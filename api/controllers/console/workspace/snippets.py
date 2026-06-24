@@ -21,8 +21,11 @@ from controllers.console.snippets.payloads import (
     UpdateSnippetPayload,
 )
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
@@ -151,6 +154,9 @@ class CustomizedSnippetsApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account):
@@ -213,6 +219,9 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     @with_current_user
     @with_current_tenant_id
     def patch(self, current_tenant_id: str, current_user: Account, snippet_id: str):
@@ -257,6 +266,7 @@ class CustomizedSnippetDetailApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, snippet_id: str):
         """Delete customized snippet."""
@@ -292,6 +302,9 @@ class CustomizedSnippetExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     @with_current_tenant_id
     def get(self, current_tenant_id: str, snippet_id: str):
         """Export snippet as DSL."""
@@ -337,6 +350,9 @@ class CustomizedSnippetImportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     @with_current_user
     def post(self, current_user: Account):
         """Import snippet from DSL."""
@@ -375,6 +391,9 @@ class CustomizedSnippetImportConfirmApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     @with_current_user
     def post(self, current_user: Account, import_id: str):
         """Confirm a pending snippet import."""
@@ -403,6 +422,9 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     @with_current_tenant_id
     def get(self, current_tenant_id: str, snippet_id: str):
         """Check dependencies for a snippet."""
@@ -433,6 +455,9 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
     @with_current_tenant_id
     def post(self, current_tenant_id: str, snippet_id: str):
         """Increment snippet use count when it is inserted into a workflow."""

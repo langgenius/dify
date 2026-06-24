@@ -1,6 +1,6 @@
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
-import { SubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
+import { AccessSubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -35,7 +35,7 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
 }))
@@ -375,8 +375,8 @@ describe('AccessControl', () => {
             appId: app.id,
             accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
             subjects: [
-              { subjectId: baseGroup.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_GROUP },
-              { subjectId: baseMember.id, subjectType: EnterpriseSubjectType.SUBJECT_TYPE_ACCOUNT },
+              { subjectId: baseGroup.id, subjectType: EnterpriseSubjectType.ACCESS_SUBJECT_TYPE_GROUP },
+              { subjectId: baseMember.id, subjectType: EnterpriseSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT },
             ],
           },
         },

@@ -5,7 +5,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { fetchWebhookUrl } from '@/service/apps'
 import { createNodeCrudModuleMock } from '../../__tests__/use-config-test-utils'
-import { DEFAULT_STATUS_CODE, MAX_STATUS_CODE, normalizeStatusCode, useConfig } from '../use-config'
+import { useConfig } from '../use-config'
 
 const mockSetInputs = vi.hoisted(() => vi.fn())
 const mockIsVarUsedInNodes = vi.hoisted(() => vi.fn())
@@ -186,7 +186,7 @@ describe('useConfig', () => {
     expect(mockedFetchWebhookUrl).toHaveBeenCalledTimes(2)
   })
 
-  it('should expose readonly state, clamp status codes and skip url generation without app id', async () => {
+  it('should expose readonly state and skip url generation without app id', async () => {
     mockUseNodesReadOnly.mockReturnValue({ nodesReadOnly: true })
     vi.spyOn(useAppStore, 'getState').mockReturnValue({
       appDetail: undefined,
@@ -195,9 +195,6 @@ describe('useConfig', () => {
     const { result } = renderHook(() => useConfig('webhook-node', createPayload()))
 
     expect(result.current.readOnly).toBe(true)
-    expect(normalizeStatusCode(DEFAULT_STATUS_CODE - 10)).toBe(DEFAULT_STATUS_CODE)
-    expect(normalizeStatusCode(248)).toBe(248)
-    expect(normalizeStatusCode(MAX_STATUS_CODE + 10)).toBe(MAX_STATUS_CODE)
 
     await result.current.generateWebhookUrl()
 

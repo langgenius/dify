@@ -269,8 +269,34 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
             name: app.name,
             description: app.description,
             mode: app.mode,
-            author: app.author ?? '',
-            tags: app.tags,
+            updated_at: app.updated_at,
+            service_api_enabled: app.service_api_enabled ?? false,
+            is_agent: app.is_agent ?? false,
+          }
+        : null,
+      parameters: wantParams ? (app.parameters ?? null) : null,
+      input_schema: wantInputSchema ? (app.input_schema ?? null) : null,
+    })
+  })
+
+  app.get('/openapi/v1/permitted-external-apps/:id/describe', (c) => {
+    const id = c.req.param('id')
+    const fieldsRaw = c.req.query('fields') ?? ''
+    const fields = fieldsRaw === '' ? [] : fieldsRaw.split(',').map(s => s.trim()).filter(s => s !== '')
+    // External subjects have no workspace scope; the app is reachable across workspaces.
+    const app = APPS.find(a => a.id === id)
+    if (app === undefined)
+      return c.json({ error: { code: 'not_found', message: 'app not found' } }, { status: 404 })
+    const wantInfo = fields.length === 0 || fields.includes('info')
+    const wantParams = fields.length === 0 || fields.includes('parameters')
+    const wantInputSchema = fields.length === 0 || fields.includes('input_schema')
+    return c.json({
+      info: wantInfo
+        ? {
+            id: app.id,
+            name: app.name,
+            description: app.description,
+            mode: app.mode,
             updated_at: app.updated_at,
             service_api_enabled: app.service_api_enabled ?? false,
             is_agent: app.is_agent ?? false,
@@ -336,6 +362,39 @@ export function buildApp(getScenario: () => Scenario, state?: MockState): Hono {
     }
     if (scenario === 'hitl-pause') {
       return new Response(hitlPauseResponse(), { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    }
+    if (scenario === 'workflow-think') {
+      const thinkSse = sseChunks([
+        { event: 'workflow_started', data: { id: 'wf-run-1', workflow_id: 'wf-1' } },
+        { event: 'workflow_finished', data: { id: 'wf-run-1', workflow_id: 'wf-1', data: { id: 'wf-run-1', status: 'succeeded', outputs: { result: '<think>secret reasoning</think>\nfinal answer' } } } },
+      ])
+      return new Response(thinkSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    }
+    if (scenario === 'chat-reasoning') {
+      // Separated mode: reasoning streams out-of-band on `reasoning_chunk` (nested
+      // under `data`), the answer stays free of <think>, and the terminal reasoning
+      // is persisted into message_end metadata.
+      const reasoningSse = sseChunks([
+        { event: 'reasoning_chunk', data: { data: { message_id: 'msg-1', reasoning: 'secret reasoning', node_id: 'llm-1', is_final: false } } },
+        { event: 'reasoning_chunk', data: { data: { message_id: 'msg-1', reasoning: '', node_id: 'llm-1', is_final: true } } },
+        { event: 'message', data: { message_id: 'msg-1', conversation_id: 'conv-1', mode: app.mode, answer: 'final answer' } },
+        { event: 'message_end', data: { message_id: 'msg-1', conversation_id: 'conv-1', task_id: 'task-1', metadata: { reasoning: { 'llm-1': 'secret reasoning' } } } },
+      ])
+      return new Response(reasoningSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
+    }
+    if (scenario === 'workflow-reasoning') {
+      // Separated mode in a workflow: reasoning streams out-of-band on
+      // `reasoning_chunk` (no message_id), outputs stay clean, and there is NO
+      // persisted metadata — the live deltas are the only source.
+      const wfReasoningSse = sseChunks([
+        { event: 'workflow_started', data: { id: 'wf-run-1', workflow_id: 'wf-1' } },
+        { event: 'node_started', data: { id: 'llm-1', title: 'LLM' } },
+        { event: 'reasoning_chunk', data: { data: { reasoning: 'secret reasoning', node_id: 'llm-1', is_final: false } } },
+        { event: 'reasoning_chunk', data: { data: { reasoning: '', node_id: 'llm-1', is_final: true } } },
+        { event: 'node_finished', data: { id: 'llm-1', status: 'succeeded' } },
+        { event: 'workflow_finished', data: { id: 'wf-run-1', workflow_id: 'wf-1', data: { id: 'wf-run-1', status: 'succeeded', outputs: { result: 'final answer' } } } },
+      ])
+      return new Response(wfReasoningSse, { status: 200, headers: { 'content-type': 'text/event-stream' } })
     }
     const sse = streamingRunResponse(app.mode, query, isAgent)
     return new Response(sse, { status: 200, headers: { 'content-type': 'text/event-stream' } })

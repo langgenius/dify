@@ -13,13 +13,13 @@ export const AccessMode = {
 
 export type AccessMode = (typeof AccessMode)[keyof typeof AccessMode]
 
-export const SubjectType = {
-  SUBJECT_TYPE_UNSPECIFIED: 'SUBJECT_TYPE_UNSPECIFIED',
-  SUBJECT_TYPE_ACCOUNT: 'SUBJECT_TYPE_ACCOUNT',
-  SUBJECT_TYPE_GROUP: 'SUBJECT_TYPE_GROUP',
+export const AccessSubjectType = {
+  ACCESS_SUBJECT_TYPE_UNSPECIFIED: 'ACCESS_SUBJECT_TYPE_UNSPECIFIED',
+  ACCESS_SUBJECT_TYPE_ACCOUNT: 'ACCESS_SUBJECT_TYPE_ACCOUNT',
+  ACCESS_SUBJECT_TYPE_GROUP: 'ACCESS_SUBJECT_TYPE_GROUP',
 } as const
 
-export type SubjectType = (typeof SubjectType)[keyof typeof SubjectType]
+export type AccessSubjectType = (typeof AccessSubjectType)[keyof typeof AccessSubjectType]
 
 export const AppRunnerLogStatus = {
   APP_RUNNER_LOG_STATUS_UNSPECIFIED: 'APP_RUNNER_LOG_STATUS_UNSPECIFIED',
@@ -295,7 +295,7 @@ export type AccessPolicy = {
 }
 
 export type AccessSubject = {
-  subjectType: SubjectType
+  subjectType: AccessSubjectType
   subjectId: string
 }
 
@@ -598,7 +598,6 @@ export type Environment = {
   status: EnvironmentStatus
   statusMessage: string
   lastError?: Error
-  apiServer?: string
   namespace?: string
   managedBy?: string
   runtimeEndpoint?: string
@@ -741,9 +740,6 @@ export type GetReleaseResponse = {
 
 export type K8sEnvironmentConfig = {
   namespace?: string
-  apiServer?: string
-  caBundle?: string
-  bearerToken?: string
 }
 
 export type ListApiKeysResponse = {
@@ -832,6 +828,7 @@ export type PrecheckReleaseResponse = {
   canCreate: boolean
   matchedRelease?: ReleaseContentMatch
   unsupportedNodes: Array<UnsupportedDslNode>
+  unsupportedToolProviders: Array<UnsupportedToolProvider>
 }
 
 export type PromoteRequest = {
@@ -996,6 +993,14 @@ export type UndeployResponse = {
 export type UnsupportedDslNode = {
   id: string
   type: string
+}
+
+export type UnsupportedToolProvider = {
+  nodeId: string
+  providerType: string
+  providerId?: string
+  providerName?: string
+  toolName?: string
 }
 
 export type UpdateAccessChannelsRequest = {
@@ -1290,6 +1295,11 @@ export type GetMfaInfoReply = {
   globalEnabled?: boolean
 }
 
+export type GetMemberRbacRolesReply = {
+  accountId?: string
+  roles?: Array<RbacRole>
+}
+
 export type GetMemberReply = {
   account?: AccountDetail
 }
@@ -1357,7 +1367,6 @@ export type InfoConfigReply = {
   Branding?: BrandingInfo
   WebAppAuth?: WebAppAuthInfo
   PluginInstallationPermission?: PluginInstallationPermissionInfo
-  EnableAppDeploy?: boolean
 }
 
 export type InnerAdmission = {
@@ -1453,6 +1462,19 @@ export type IsUserAllowedToAccessWebAppRes = {
   result?: boolean
 }
 
+export type IssueMcpTokenReply = {
+  token?: string
+  expiresAt?: string
+  tokenType?: string
+}
+
+export type IssueMcpTokenReq = {
+  userId?: string
+  tenantId?: string
+  appId?: string
+  audience?: string
+}
+
 export type JoinWorkspaceReply = {
   message?: string
 }
@@ -1461,6 +1483,7 @@ export type JoinWorkspaceReq = {
   id?: string
   email?: string
   role?: string
+  rbacRole?: string
 }
 
 export type LicenseInfo = {
@@ -1660,6 +1683,13 @@ export type PluginInstallationSettingsReply = {
   restrictToMarketplaceOnly?: boolean
 }
 
+export type RbacRole = {
+  id?: string
+  name?: string
+  description?: string
+  permissions?: Array<string>
+}
+
 export type ResetMemberPasswordReply = {
   id?: string
   password?: string
@@ -1798,7 +1828,7 @@ export type SetDefaultWorkspaceReq = {
 
 export type Subject = {
   subjectId?: string
-  subjectType?: SubjectType
+  subjectType?: string
   accountData?: SubjectAccountData
   groupData?: SubjectGroupData
 }
@@ -1937,6 +1967,16 @@ export type UpdateMfaStatusReq = {
 
 export type UpdateMfaStatusRes = {
   message?: string
+}
+
+export type UpdateMemberRbacRolesReply = {
+  accountId?: string
+  roles?: Array<RbacRole>
+}
+
+export type UpdateMemberRbacRolesReq = {
+  id?: string
+  roleIds?: Array<string>
 }
 
 export type UpdateMemberReply = {

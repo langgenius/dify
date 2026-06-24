@@ -71,6 +71,12 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
   }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo,
+  }),
+}))
+
 // Mock service hooks
 vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromMarketPlace: () => ({
@@ -95,10 +101,10 @@ vi.mock('../../../base/check-task-status', () => ({
   }),
 }))
 
-// Mock useAppContext
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo,
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    currentDifyVersion: mockLangGeniusVersionInfo.current_version,
   }),
 }))
 

@@ -41,6 +41,7 @@ from .enums import (
     ConversationStatus,
     CreatorUserRole,
     CustomizeTokenStrategy,
+    EndUserType,
     FeedbackFromSource,
     FeedbackRating,
     InvokeFrom,
@@ -395,7 +396,11 @@ class IconType(StrEnum):
 
 class App(Base):
     __tablename__ = "apps"
-    __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="app_pkey"),
+        sa.Index("app_tenant_id_idx", "tenant_id"),
+        sa.Index("app_tenant_maintainer_idx", "tenant_id", "maintainer"),
+    )
 
     if TYPE_CHECKING:
         # Response-only attributes attached by app list/detail enrichers.
@@ -426,6 +431,7 @@ class App(Base):
     tracing = mapped_column(LongText, nullable=True)
     max_active_requests: Mapped[int | None]
     created_by = mapped_column(StringUUID, nullable=True)
+    maintainer: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
@@ -768,26 +774,7 @@ class AppModelConfig(TypeBase):
 
     @property
     def annotation_reply_dict(self) -> AnnotationReplyConfig:
-        annotation_setting = db.session.scalar(
-            select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == self.app_id)
-        )
-        if annotation_setting:
-            collection_binding_detail = annotation_setting.collection_binding_detail
-            if not collection_binding_detail:
-                raise ValueError("Collection binding detail not found")
-
-            return {
-                "id": annotation_setting.id,
-                "enabled": True,
-                "score_threshold": annotation_setting.score_threshold,
-                "embedding_model": {
-                    "embedding_provider_name": collection_binding_detail.provider_name,
-                    "embedding_model_name": collection_binding_detail.model_name,
-                },
-            }
-
-        else:
-            return {"enabled": False}
+        return load_annotation_reply_config(db.session(), self.app_id)
 
     @property
     def more_like_this_dict(self) -> EnabledConfig:
@@ -858,7 +845,7 @@ class AppModelConfig(TypeBase):
             },
         )
 
-    def to_dict(self) -> AppModelConfigDict:
+    def to_dict(self, *, annotation_reply: AnnotationReplyConfig | None = None) -> AppModelConfigDict:
         return {
             "opening_statement": self.opening_statement,
             "suggested_questions": self.suggested_questions_list,
@@ -866,7 +853,7 @@ class AppModelConfig(TypeBase):
             "speech_to_text": self.speech_to_text_dict,
             "text_to_speech": self.text_to_speech_dict,
             "retriever_resource": self.retriever_resource_dict,
-            "annotation_reply": self.annotation_reply_dict,
+            "annotation_reply": annotation_reply if annotation_reply is not None else self.annotation_reply_dict,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
             "external_data_tools": self.external_data_tools_list,
@@ -936,6 +923,9 @@ class RecommendedApp(TypeBase):
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     is_learn_dify: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    is_cloud_only: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
     )
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
@@ -2032,6 +2022,30 @@ class AppAnnotationSetting(TypeBase):
         )
 
 
+def load_annotation_reply_config(session: Session, app_id: str) -> AnnotationReplyConfig:
+    annotation_setting = session.scalar(select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id))
+    if annotation_setting is None:
+        return {"enabled": False}
+
+    from .dataset import DatasetCollectionBinding
+
+    collection_binding_detail = session.scalar(
+        select(DatasetCollectionBinding).where(DatasetCollectionBinding.id == annotation_setting.collection_binding_id)
+    )
+    if collection_binding_detail is None:
+        raise ValueError("Collection binding detail not found")
+
+    return {
+        "id": annotation_setting.id,
+        "enabled": True,
+        "score_threshold": annotation_setting.score_threshold,
+        "embedding_model": {
+            "embedding_provider_name": collection_binding_detail.provider_name,
+            "embedding_model_name": collection_binding_detail.model_name,
+        },
+    }
+
+
 class OperationLog(TypeBase):
     __tablename__ = "operation_logs"
     __table_args__ = (
@@ -2078,7 +2092,7 @@ class EndUser(Base, UserMixin):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id = mapped_column(StringUUID, nullable=True)
-    type: Mapped[str] = mapped_column(String(255), nullable=False)
+    type: Mapped[EndUserType] = mapped_column(EnumText(EndUserType, length=255), nullable=False)
     external_user_id = mapped_column(String(255), nullable=True)
     name = mapped_column(String(255))
     _is_anonymous: Mapped[bool] = mapped_column(

@@ -32,6 +32,7 @@ from models.human_input import (
     EmailMemberRecipientPayload,
     HumanInputFormRecipient,
     RecipientType,
+    StandaloneWebAppRecipientPayload,
 )
 
 
@@ -307,6 +308,9 @@ class _DummyRecipient:
     recipient_type: RecipientType
     access_token: str
     form: _DummyForm | None = None
+    recipient_payload: str = dataclasses.field(
+        default_factory=lambda: StandaloneWebAppRecipientPayload().model_dump_json()
+    )
 
 
 class _FakeScalarResult:

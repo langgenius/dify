@@ -1,11 +1,12 @@
 import pytest
+from pytest_mock import MockerFixture
 
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 from services.rag_pipeline.pipeline_template.remote.remote_retrieval import RemotePipelineTemplateRetrieval
 
 
-def test_get_pipeline_templates_fallbacks_to_database_on_error(mocker) -> None:
+def test_get_pipeline_templates_fallbacks_to_database_on_error(mocker: MockerFixture) -> None:
     fetch_mock = mocker.patch.object(
         RemotePipelineTemplateRetrieval,
         "fetch_pipeline_templates_from_dify_official",
@@ -26,7 +27,7 @@ def test_get_pipeline_templates_fallbacks_to_database_on_error(mocker) -> None:
     fallback_mock.assert_called_once_with("en-US")
 
 
-def test_get_pipeline_template_detail_fallbacks_to_database_on_error(mocker) -> None:
+def test_get_pipeline_template_detail_fallbacks_to_database_on_error(mocker: MockerFixture) -> None:
     fetch_mock = mocker.patch.object(
         RemotePipelineTemplateRetrieval,
         "fetch_pipeline_template_detail_from_dify_official",
@@ -46,7 +47,7 @@ def test_get_pipeline_template_detail_fallbacks_to_database_on_error(mocker) -> 
     fallback_mock.assert_called_once_with("tpl-1")
 
 
-def test_fetch_pipeline_templates_from_dify_official(mocker) -> None:
+def test_fetch_pipeline_templates_from_dify_official(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.pipeline_template.remote.remote_retrieval"
         ".dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN",
@@ -72,7 +73,7 @@ def test_fetch_pipeline_templates_from_dify_official(mocker) -> None:
     assert http_get_mock.call_count == 2
 
 
-def test_fetch_pipeline_template_detail_from_dify_official(mocker) -> None:
+def test_fetch_pipeline_template_detail_from_dify_official(mocker: MockerFixture) -> None:
     mocker.patch(
         "services.rag_pipeline.pipeline_template.remote.remote_retrieval"
         ".dify_config.HOSTED_FETCH_PIPELINE_TEMPLATES_REMOTE_DOMAIN",

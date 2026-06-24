@@ -2,6 +2,7 @@ import type { BaseError } from '@/errors/base'
 import type { SseEvent } from '@/http/sse'
 import { HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
+import { accumulateReasoning, parseReasoningChunk } from '@/sys/io/reasoning'
 import { RUN_MODES } from './handlers'
 
 export type HitlPauseData = {
@@ -13,6 +14,8 @@ export type HitlPauseData = {
   actions: unknown[]
   display_in_ui: boolean
   form_token: string | null
+  // Channels where the form can be approved when it is not CLI-resumable, e.g. ['email'].
+  approval_channels?: string[]
   resolved_default_values: Record<string, string>
   expiration_time: number
 }
@@ -65,6 +68,7 @@ class ChatCollector implements Collector {
   private base: Record<string, unknown> = {}
   private metadata: Record<string, unknown> | undefined
   private thoughts: unknown[] = []
+  private readonly reasoning: Record<string, string> = {}
   private readonly mode: string
   private readonly isAgent: boolean
   constructor(mode: string, isAgent: boolean) {
@@ -82,6 +86,13 @@ class ChatCollector implements Collector {
         copyScalar(this.base, c, ['id', 'conversation_id', 'message_id', 'task_id', 'created_at'])
         return
       }
+      // Accumulate separated-mode reasoning deltas per LLM node.
+      case 'reasoning_chunk': {
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined)
+          accumulateReasoning(this.reasoning, chunk)
+        return
+      }
       case 'agent_thought':
         this.thoughts.push(c)
         return
@@ -96,10 +107,21 @@ class ChatCollector implements Collector {
     const out: Record<string, unknown> = { mode: this.mode, answer: this.answer, ...this.base }
     if (this.metadata !== undefined)
       out.metadata = this.metadata
+    // Fall back to live deltas only when the server didn't persist reasoning in metadata.
+    if (Object.keys(this.reasoning).length > 0 && !hasReasoning(this.metadata))
+      out.metadata = { ...(this.metadata ?? {}), reasoning: this.reasoning }
     if (this.isAgent || this.thoughts.length > 0)
       out.agent_thoughts = this.thoughts
     return out
   }
+}
+
+function hasReasoning(metadata: Record<string, unknown> | undefined): boolean {
+  const reasoning = metadata?.reasoning
+  return reasoning !== null
+    && typeof reasoning === 'object'
+    && !Array.isArray(reasoning)
+    && Object.keys(reasoning as object).length > 0
 }
 
 class CompletionCollector implements Collector {
@@ -131,14 +153,29 @@ class CompletionCollector implements Collector {
 
 class WorkflowCollector implements Collector {
   private final: Record<string, unknown> | undefined
+  private readonly reasoning: Record<string, string> = {}
   consume(ev: SseEvent): void {
+    if (ev.name === 'reasoning_chunk') {
+      const chunk = parseReasoningChunk(parseJson(ev.data))
+      if (chunk !== undefined)
+        accumulateReasoning(this.reasoning, chunk)
+      return
+    }
     if (ev.name !== 'workflow_finished')
       return
     this.final = parseJson(ev.data)
   }
 
   finalize(): Record<string, unknown> {
-    return { mode: RUN_MODES.Workflow, ...(this.final ?? {}) }
+    const out: Record<string, unknown> = { mode: RUN_MODES.Workflow, ...(this.final ?? {}) }
+    // Workflow runs don't persist reasoning; surface live deltas under metadata.reasoning.
+    if (Object.keys(this.reasoning).length > 0) {
+      const existing = (out.metadata !== null && typeof out.metadata === 'object' && !Array.isArray(out.metadata))
+        ? out.metadata as Record<string, unknown>
+        : undefined
+      out.metadata = { ...(existing ?? {}), reasoning: this.reasoning }
+    }
+    return out
   }
 }
 

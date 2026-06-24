@@ -5,19 +5,29 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { hasPluginPermission, useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
+import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, useMutationReferenceSettings, usePluginAutoUpgradeSettings, usePluginPermissionSettings } from '@/service/use-plugins'
+import { hasPermission } from '@/utils/permission'
 
-export const useCanSetPluginSettings = () => {
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
+const pluginReadAndUpdatePermissionKeys = ['plugin.install', 'plugin.manage']
+
+const useCanSetPluginSettings = () => {
+  const { workspacePermissionKeys } = useAppContext()
+  const { data: rbacEnabled } = useSuspenseQuery({
+    ...systemFeaturesQueryOptions(),
+    select: s => s.rbac_enabled,
+  })
+  const canSetPluginPreferences = hasPermission(workspacePermissionKeys, 'plugin.plugin_preferences')
 
   return {
-    canSetPermissions: isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
+    canSetPermissions: !rbacEnabled && canSetPluginPreferences,
+    canSetPluginPreferences,
   }
 }
 
 export const usePluginSettingsAccess = () => {
   const { t } = useTranslation()
-  const { canSetPermissions } = useCanSetPluginSettings()
+  const { workspacePermissionKeys, langGeniusVersionInfo } = useAppContext()
+  const { canSetPermissions, canSetPluginPreferences } = useCanSetPluginSettings()
   const permissionQuery = usePluginPermissionSettings()
   const { data: permissions } = permissionQuery
   const { mutate: setPluginPermissionSettings, isPending: isPermissionUpdatePending } = useMutationPluginPermissionSettings({
@@ -25,13 +35,25 @@ export const usePluginSettingsAccess = () => {
       toast.success(t('api.actionSuccess', { ns: 'common' }))
     },
   })
+  const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install')
+  const canUpdatePlugin = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
+  const canViewInstalledPlugins = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
+  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage')
+  const canDebugPlugin = hasPermission(workspacePermissionKeys, 'plugin.debug')
 
   return {
     permission: permissions,
     setPluginPermissionSettings,
-    canManagement: hasPluginPermission(permissions?.install_permission, canSetPermissions),
-    canDebugger: hasPluginPermission(permissions?.debug_permission, canSetPermissions),
+    canInstallPlugin,
+    canUpdatePlugin,
+    canViewInstalledPlugins,
+    canManagePlugin,
+    canDebugPlugin,
+    canSetPluginPreferences,
+    canManagement: canInstallPlugin,
+    canDebugger: canDebugPlugin,
     canSetPermissions,
+    currentDifyVersion: langGeniusVersionInfo?.current_version,
     isPermissionLoading: permissionQuery.isLoading || permissionQuery.isFetching,
     permissionError: permissionQuery.error,
     isPermissionUpdatePending,
@@ -63,7 +85,14 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     setReferenceSettings: updateReferenceSetting,
     canManagement: permissionAccess.canManagement,
     canDebugger: permissionAccess.canDebugger,
+    canInstallPlugin: permissionAccess.canInstallPlugin,
+    canUpdatePlugin: permissionAccess.canUpdatePlugin,
+    canViewInstalledPlugins: permissionAccess.canViewInstalledPlugins,
+    canManagePlugin: permissionAccess.canManagePlugin,
+    canDebugPlugin: permissionAccess.canDebugPlugin,
     canSetPermissions: permissionAccess.canSetPermissions,
+    canSetPluginPreferences: permissionAccess.canSetPluginPreferences,
+    currentDifyVersion: permissionAccess.currentDifyVersion,
     isPermissionLoading: permissionAccess.isPermissionLoading,
     permissionError: permissionAccess.permissionError,
     isReferenceSettingLoading: autoUpgradeQuery.isLoading || autoUpgradeQuery.isFetching,
@@ -73,20 +102,16 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
 }
 
 export const useCanInstallPluginFromMarketplace = () => {
-  const { data: enable_marketplace } = useSuspenseQuery({
+  const { data: marketplaceAccess } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
-  const { data: permissions } = usePluginPermissionSettings()
-  const canManagement = hasPluginPermission(
-    permissions?.install_permission,
-    isCurrentWorkspaceManager || isCurrentWorkspaceOwner,
-  )
+  const { workspacePermissionKeys } = useAppContext()
+  const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install')
 
   const canInstallPluginFromMarketplace = useMemo(() => {
-    return enable_marketplace && canManagement
-  }, [enable_marketplace, canManagement])
+    return Boolean(marketplaceAccess && canInstallPlugin)
+  }, [marketplaceAccess, canInstallPlugin])
 
   return {
     canInstallPluginFromMarketplace,

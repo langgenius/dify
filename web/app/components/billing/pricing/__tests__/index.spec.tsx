@@ -53,7 +53,10 @@ describe('Pricing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockLanguage = 'en'
-    ;(useAppContext as Mock).mockReturnValue({ isCurrentWorkspaceManager: true })
+    ;(useAppContext as Mock).mockReturnValue({
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['billing.manage'],
+    })
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {
         type: Plan.sandbox,
@@ -76,6 +79,10 @@ describe('Pricing', () => {
     })
 
     it('should default to yearly billing for education accounts', () => {
+      ;(useAppContext as Mock).mockReturnValue({
+        isCurrentWorkspaceManager: false,
+        workspacePermissionKeys: ['billing.manage'],
+      })
       ;(useProviderContext as Mock).mockReturnValue({
         plan: {
           type: Plan.sandbox,
@@ -91,8 +98,11 @@ describe('Pricing', () => {
       expect(screen.getByRole('switch')).toBeChecked()
     })
 
-    it('should not default to yearly billing for non-manager education accounts', () => {
-      ;(useAppContext as Mock).mockReturnValue({ isCurrentWorkspaceManager: false })
+    it('should not default to yearly billing when billing manage permission is missing', () => {
+      ;(useAppContext as Mock).mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: [],
+      })
       ;(useProviderContext as Mock).mockReturnValue({
         plan: {
           type: Plan.sandbox,

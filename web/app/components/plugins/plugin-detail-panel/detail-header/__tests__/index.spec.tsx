@@ -131,6 +131,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
         upgrade_time_of_day: 0,
       },
     },
+    canUpdate: true,
   }),
 }))
 

@@ -70,7 +70,10 @@ describe('Pricing dialog lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     latestOnOpenChange = undefined
-    ;(useAppContext as Mock).mockReturnValue({ isCurrentWorkspaceManager: true })
+    ;(useAppContext as Mock).mockReturnValue({
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['billing.manage'],
+    })
     ;(useProviderContext as Mock).mockReturnValue({
       plan: {
         type: Plan.sandbox,

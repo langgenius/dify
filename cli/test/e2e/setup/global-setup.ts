@@ -182,6 +182,7 @@ export async function setup(project: TestProject): Promise<void> {
       workflowAppId: '',
       fileAppId: '',
       fileChatAppId: '',
+      reasoningAppId: '',
       hitlAppId: '',
       hitlExternalAppId: '',
       hitlSingleActionAppId: '',
@@ -288,6 +289,7 @@ export async function setup(project: TestProject): Promise<void> {
     workflowAppId: provisionedIds.DIFY_E2E_WORKFLOW_APP_ID || E.workflowAppId,
     fileAppId: provisionedIds.DIFY_E2E_FILE_APP_ID || E.fileAppId,
     fileChatAppId: provisionedIds.DIFY_E2E_FILE_CHAT_APP_ID || E.fileChatAppId,
+    reasoningAppId: provisionedIds.DIFY_E2E_REASONING_APP_ID || E.reasoningAppId,
     hitlAppId: provisionedIds.DIFY_E2E_HITL_APP_ID || E.hitlAppId,
     hitlExternalAppId: provisionedIds.DIFY_E2E_HITL_EXTERNAL_APP_ID || E.hitlExternalAppId,
     hitlSingleActionAppId: provisionedIds.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID || E.hitlSingleActionAppId,
@@ -503,6 +505,12 @@ async function provisionApps(
     ['hitl-single-action.yml', 'DIFY_E2E_HITL_SINGLE_ACTION_APP_ID', primaryWsId],
     ['hitl-multi-node.yml', 'DIFY_E2E_HITL_MULTI_NODE_APP_ID', primaryWsId],
     ['file-chat.yml', 'DIFY_E2E_FILE_CHAT_APP_ID', primaryWsId],
+    // reasoning-chat.yml runs a real LLM node, so it is opt-in: provisioning it
+    // requires the workspace to have a default chat model configured. Off by
+    // default to keep the shared bootstrap free of any model dependency.
+    ...(process.env.DIFY_E2E_REASONING_PROVISION === '1'
+      ? [['reasoning-chat.yml', 'DIFY_E2E_REASONING_APP_ID', primaryWsId] as [string, string, string]]
+      : []),
     ...(edition === 'ee'
       ? [['ws2-workflow.yml', 'DIFY_E2E_WS2_APP_ID', secondaryWsId] as [string, string, string]]
       : []),
@@ -519,14 +527,14 @@ async function provisionApps(
 
   async function importAppCli(filePath: string, wsId: string): Promise<string> {
     const result = await run(
-      ['import', 'app', '--from-file', filePath, '--workspace', wsId],
+      ['import', 'studio-app', '--from-file', filePath, '--workspace', wsId],
       { configDir, timeout: 60_000 },
     )
     if (result.exitCode !== 0)
-      throw new Error(`import app failed (exit ${result.exitCode}): ${result.stderr}`)
+      throw new Error(`import studio-app failed (exit ${result.exitCode}): ${result.stderr}`)
     const match = result.stderr.match(/app ([0-9a-f-]{36})/)
     if (!match?.[1])
-      throw new Error(`import app: could not parse app_id: ${result.stderr}`)
+      throw new Error(`import studio-app: could not parse app_id: ${result.stderr}`)
     return match[1]
   }
 

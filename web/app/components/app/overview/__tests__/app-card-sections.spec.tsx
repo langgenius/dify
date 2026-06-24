@@ -149,7 +149,7 @@ describe('app-card-sections', () => {
         isApp
         accessibleUrl="https://example.com/apps/demo"
         showConfirmDelete
-        isCurrentWorkspaceManager
+        canRegenerateUrl
         genLoading={false}
         onRegenerate={onRegenerate}
         onShowRegenerateConfirm={vi.fn()}

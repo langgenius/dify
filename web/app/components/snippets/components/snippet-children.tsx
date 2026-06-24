@@ -8,6 +8,7 @@ type SnippetChildrenProps = {
   snippetId: string
   fields: SnippetInputField[]
   canDiscardChanges: boolean
+  canEdit?: boolean
   canSave: boolean
   hasDraftChanges: boolean
   isEditing: boolean
@@ -24,6 +25,7 @@ const SnippetChildren = ({
   snippetId,
   fields,
   canDiscardChanges,
+  canEdit = true,
   canSave,
   hasDraftChanges,
   isEditing,
@@ -42,6 +44,7 @@ const SnippetChildren = ({
       <SnippetHeader
         snippetId={snippetId}
         canDiscardChanges={canDiscardChanges}
+        canEdit={canEdit}
         canSave={canSave}
         hasDraftChanges={hasDraftChanges}
         isEditing={isEditing}

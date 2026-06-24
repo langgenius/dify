@@ -12,14 +12,25 @@ type MockDetail = MockProvider | undefined
 
 // Mock dependencies
 const mockRefetch = vi.fn()
+const mockUseAllToolProviders = vi.fn()
 let mockProviders: MockProvider[] = []
 let mockIsLoadingToolProviders = false
+let mockWorkspacePermissionKeys = ['mcp.manage']
 
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: () => ({
-    data: mockProviders,
-    isLoading: mockIsLoadingToolProviders,
-    refetch: mockRefetch,
+  useAllToolProviders: (enabled?: boolean) => {
+    mockUseAllToolProviders(enabled)
+    return {
+      data: mockProviders,
+      isLoading: mockIsLoadingToolProviders,
+      refetch: mockRefetch,
+    }
+  },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -36,9 +47,9 @@ vi.mock('@/app/components/tools/provider/tool-card-skeleton', () => ({
 // Mock child components
 vi.mock('../create-card', () => ({
   default: ({ handleCreate }: { handleCreate: (provider: { id: string, name: string }) => void }) => (
-    <div data-testid="create-card" onClick={() => handleCreate({ id: 'new-id', name: 'New Provider' })}>
+    <button data-testid="create-card" type="button" onClick={() => handleCreate({ id: 'new-id', name: 'New Provider' })}>
       Create Card
-    </div>
+    </button>
   ),
 }))
 
@@ -47,7 +58,7 @@ vi.mock('../provider-card', () => ({
     const displayName = typeof data.name === 'string' ? data.name : Object.values(data.name)[0]
     return (
       <div data-testid={`provider-card-${data.id}`}>
-        <span onClick={() => handleSelect(data.id)}>{displayName}</span>
+        <button type="button" onClick={() => handleSelect(data.id)}>{displayName}</button>
         <button data-testid={`update-btn-${data.id}`} onClick={() => onUpdate(data.id)}>Update</button>
         <button data-testid={`delete-btn-${data.id}`} onClick={onDeleted}>Delete</button>
       </div>
@@ -78,6 +89,7 @@ describe('MCPList', () => {
     vi.useFakeTimers()
     mockProviders = []
     mockIsLoadingToolProviders = false
+    mockWorkspacePermissionKeys = ['mcp.manage']
     mockRefetch.mockResolvedValue(undefined)
   })
 
@@ -96,6 +108,16 @@ describe('MCPList', () => {
       render(<MCPList searchText="" />)
 
       expect(screen.getByTestId('create-card')).toBeInTheDocument()
+    })
+
+    it('should not render or query providers when user lacks mcp.manage', () => {
+      mockWorkspacePermissionKeys = []
+
+      const { container } = render(<MCPList searchText="" />)
+
+      expect(container.firstElementChild).toBeNull()
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
+      expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
     })
 
     it('should hide create card when parent moves creation into the toolbar', () => {

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createReactI18nextMock } from '@/test/i18n-mock'
-import ErrorBoundary, { ErrorFallback, useAsyncError, useErrorHandler, withErrorBoundary } from '../index'
+import ErrorBoundary, { withErrorBoundary } from '../index'
 
 const mockConfig = vi.hoisted(() => ({
   isDev: false,
@@ -340,54 +340,6 @@ describe('ErrorBoundary utility exports', () => {
     consoleErrorSpy.mockRestore()
   })
 
-  // Validate imperative error hook behavior.
-  describe('useErrorHandler', () => {
-    it('should trigger error boundary fallback when setError is called', async () => {
-      const HookConsumer = () => {
-        const setError = useErrorHandler()
-        return (
-          <button onClick={() => setError(new Error('handler boom'))}>
-            Trigger hook error
-          </button>
-        )
-      }
-
-      render(
-        <ErrorBoundary fallback={<div>Hook fallback shown</div>}>
-          <HookConsumer />
-        </ErrorBoundary>,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Trigger hook error' }))
-
-      expect(await screen.findByText('Hook fallback shown')).toBeInTheDocument()
-    })
-  })
-
-  // Validate async error bridge hook behavior.
-  describe('useAsyncError', () => {
-    it('should trigger error boundary fallback when async error callback is called', async () => {
-      const AsyncHookConsumer = () => {
-        const throwAsyncError = useAsyncError()
-        return (
-          <button onClick={() => throwAsyncError(new Error('async hook boom'))}>
-            Trigger async hook error
-          </button>
-        )
-      }
-
-      render(
-        <ErrorBoundary fallback={<div>Async fallback shown</div>}>
-          <AsyncHookConsumer />
-        </ErrorBoundary>,
-      )
-
-      fireEvent.click(screen.getByRole('button', { name: 'Trigger async hook error' }))
-
-      expect(await screen.findByText('Async fallback shown')).toBeInTheDocument()
-    })
-  })
-
   // Validate HOC wrapper behavior and metadata.
   describe('withErrorBoundary', () => {
     it('should wrap component and render custom title when wrapped component throws', async () => {
@@ -425,27 +377,6 @@ describe('ErrorBoundary utility exports', () => {
       const Wrapped = withErrorBoundary(Nameless)
 
       expect(Wrapped.displayName).toBe('withErrorBoundary(Component)')
-    })
-  })
-
-  // Validate simple fallback helper component.
-  describe('ErrorFallback', () => {
-    it('should render message and call reset action when button is clicked', () => {
-      const resetErrorBoundaryAction = vi.fn()
-
-      render(
-        <ErrorFallback
-          error={new Error('fallback helper message')}
-          resetErrorBoundaryAction={resetErrorBoundaryAction}
-        />,
-      )
-
-      expect(screen.getByText('Oops! Something went wrong')).toBeInTheDocument()
-      expect(screen.getByText('fallback helper message')).toBeInTheDocument()
-
-      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-
-      expect(resetErrorBoundaryAction).toHaveBeenCalledTimes(1)
     })
   })
 })

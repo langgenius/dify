@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Opis",
   "versions.releaseDescriptionPlaceholder": "Opišite to izdajo",
   "versions.releaseHistory": "Zgodovina izdaj",
+  "versions.releaseNameConflict": "Izdaja s tem imenom že obstaja. Izberite drugo ime.",
   "versions.releaseNameLabel": "Ime izdaje",
   "versions.releaseNamePlaceholder": "Ime izdaje",
   "versions.releaseNameRequired": "Vnesite ime izdaje.",

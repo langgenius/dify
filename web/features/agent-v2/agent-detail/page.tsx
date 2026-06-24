@@ -19,7 +19,7 @@ export function AgentDetailPage({
     return <AgentMonitoringPage agentId={agentId} />
 
   if (section === 'logs')
-    return <AgentLogsPage />
+    return <AgentLogsPage agentId={agentId} />
 
   if (section === 'access')
     return <AgentAccessPage agentId={agentId} />

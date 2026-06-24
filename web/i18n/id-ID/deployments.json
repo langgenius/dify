@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Deskripsi",
   "versions.releaseDescriptionPlaceholder": "Jelaskan rilis ini",
   "versions.releaseHistory": "Riwayat rilis",
+  "versions.releaseNameConflict": "Rilis dengan nama ini sudah ada. Pilih nama lain.",
   "versions.releaseNameLabel": "Nama Rilis",
   "versions.releaseNamePlaceholder": "Nama Rilis",
   "versions.releaseNameRequired": "Masukkan nama rilis.",

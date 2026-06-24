@@ -16,14 +16,13 @@ import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
+import { useAgentDriveFiles, useAgentDriveSkills } from '../drive-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
@@ -151,8 +150,8 @@ export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const [value, setValue] = useAtom(agentComposerPromptAtom)
-  const skills = useAtomValue(agentComposerSkillsAtom)
-  const files = useAtomValue(agentComposerFilesAtom)
+  const { skills } = useAgentDriveSkills()
+  const { files } = useAgentDriveFiles()
   const [tools, setTools] = useAtom(agentComposerToolsAtom)
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
@@ -355,12 +354,12 @@ export function AgentPromptEditor() {
           onKeyUpCapture={handleEditorKeyUp}
           onPointerUpCapture={handleEditorPointerUp}
         >
-          <div ref={editorRef} className="min-h-[72px] overflow-y-auto px-3 pt-0.5">
+          <div ref={editorRef} className="min-h-[104px] overflow-y-auto px-3 pt-0.5">
             <PromptEditor
               instanceId="agent-configure-prompt-editor"
               compact
-              wrapperClassName="min-h-[72px]"
-              className="min-h-[72px] text-text-primary"
+              wrapperClassName="min-h-[104px]"
+              className="min-h-[104px] text-text-primary"
               placeholder={promptPlaceholder}
               placeholderClassName="top-0!"
               editable={!readOnly}

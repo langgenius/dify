@@ -12,6 +12,7 @@ This test suite covers:
 import base64
 import secrets
 from datetime import UTC, datetime
+from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
@@ -347,7 +348,15 @@ class TestAccountRolePermissions:
         account.role = TenantAccountRole.ADMIN
 
         # Act & Assert
-        assert account.is_admin_or_owner
+        with patch("models.account.dify_config.RBAC_ENABLED", False):
+            assert account.is_admin_or_owner
+
+    def test_is_admin_or_owner_with_rbac_enabled(self):
+        account = Account(name="Test User", email="test@example.com")
+        account.role = TenantAccountRole.NORMAL
+
+        with patch("models.account.dify_config.RBAC_ENABLED", True):
+            assert account.is_admin_or_owner
 
     def test_is_admin_or_owner_with_owner_role(self):
         """Test is_admin_or_owner property with owner role."""
@@ -383,8 +392,16 @@ class TestAccountRolePermissions:
         owner_account.role = TenantAccountRole.OWNER
 
         # Act & Assert
-        assert admin_account.is_admin
-        assert not owner_account.is_admin
+        with patch("models.account.dify_config.RBAC_ENABLED", False):
+            assert admin_account.is_admin
+            assert not owner_account.is_admin
+
+    def test_is_admin_with_rbac_enabled(self):
+        account = Account(name="Test User", email="test@example.com")
+        account.role = TenantAccountRole.NORMAL
+
+        with patch("models.account.dify_config.RBAC_ENABLED", True):
+            assert account.is_admin
 
     def test_has_edit_permission_with_editing_roles(self):
         """Test has_edit_permission property with roles that have edit permission."""
@@ -400,7 +417,15 @@ class TestAccountRolePermissions:
             account.role = role
 
             # Act & Assert
-            assert account.has_edit_permission, f"Role {role} should have edit permission"
+            with patch("models.account.dify_config.RBAC_ENABLED", False):
+                assert account.has_edit_permission, f"Role {role} should have edit permission"
+
+    def test_has_edit_permission_with_rbac_enabled(self):
+        account = Account(name="Test User", email="test@example.com")
+        account.role = TenantAccountRole.NORMAL
+
+        with patch("models.account.dify_config.RBAC_ENABLED", True):
+            assert account.has_edit_permission
 
     def test_has_edit_permission_without_editing_roles(self):
         """Test has_edit_permission property with roles that don't have edit permission."""
@@ -415,7 +440,8 @@ class TestAccountRolePermissions:
             account.role = role
 
             # Act & Assert
-            assert not account.has_edit_permission, f"Role {role} should not have edit permission"
+            with patch("models.account.dify_config.RBAC_ENABLED", False):
+                assert not account.has_edit_permission, f"Role {role} should not have edit permission"
 
     def test_is_dataset_editor_property(self):
         """Test is_dataset_editor property."""
@@ -432,12 +458,21 @@ class TestAccountRolePermissions:
             account.role = role
 
             # Act & Assert
-            assert account.is_dataset_editor, f"Role {role} should have dataset edit permission"
+            with patch("models.account.dify_config.RBAC_ENABLED", False):
+                assert account.is_dataset_editor, f"Role {role} should have dataset edit permission"
 
         # Test normal role doesn't have dataset edit permission
         normal_account = Account(name="Normal User", email="normal@example.com")
         normal_account.role = TenantAccountRole.NORMAL
-        assert not normal_account.is_dataset_editor
+        with patch("models.account.dify_config.RBAC_ENABLED", False):
+            assert not normal_account.is_dataset_editor
+
+    def test_is_dataset_editor_with_rbac_enabled(self):
+        account = Account(name="Test User", email="test@example.com")
+        account.role = TenantAccountRole.NORMAL
+
+        with patch("models.account.dify_config.RBAC_ENABLED", True):
+            assert account.is_dataset_editor
 
     def test_is_dataset_operator_property(self):
         """Test is_dataset_operator property."""
@@ -449,8 +484,16 @@ class TestAccountRolePermissions:
         normal_account.role = TenantAccountRole.NORMAL
 
         # Act & Assert
-        assert dataset_operator.is_dataset_operator
-        assert not normal_account.is_dataset_operator
+        with patch("models.account.dify_config.RBAC_ENABLED", False):
+            assert dataset_operator.is_dataset_operator
+            assert not normal_account.is_dataset_operator
+
+    def test_is_dataset_operator_with_rbac_enabled(self):
+        account = Account(name="Test User", email="test@example.com")
+        account.role = TenantAccountRole.NORMAL
+
+        with patch("models.account.dify_config.RBAC_ENABLED", True):
+            assert account.is_dataset_operator
 
     def test_current_role_property(self):
         """Test current_role property."""

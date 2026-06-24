@@ -21,7 +21,7 @@ import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Icon from '@/app/components/plugins/card/base/card-icon'
-import { useAppContext } from '@/context/app-context'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useAuthorizeMCP,
@@ -58,9 +58,9 @@ const MCPDetailContent: FC<Props> = ({
   onFirstCreate,
 }) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const canManageMCP = useCanManageMCP()
 
-  const { data, isFetching: isGettingTools } = useMCPTools(detail.is_team_authorization ? detail.id : '')
+  const { data, isFetching: isGettingTools } = useMCPTools(canManageMCP && detail.is_team_authorization ? detail.id : '')
   const invalidateMCPTools = useInvalidateMCPTools()
   const invalidateAllMCPTools = useInvalidateAllMCPTools()
   const { mutateAsync: updateTools, isPending: isUpdating } = useUpdateMCPTools()
@@ -74,13 +74,13 @@ const MCPDetailContent: FC<Props> = ({
 
   const handleUpdateTools = useCallback(async () => {
     hideUpdateConfirm()
-    if (!detail)
+    if (!canManageMCP || !detail)
       return
     await updateTools(detail.id)
     invalidateMCPTools(detail.id)
     invalidateAllMCPTools()
     onUpdate()
-  }, [detail, hideUpdateConfirm, invalidateAllMCPTools, invalidateMCPTools, onUpdate, updateTools])
+  }, [canManageMCP, detail, hideUpdateConfirm, invalidateAllMCPTools, invalidateMCPTools, onUpdate, updateTools])
 
   const { mutateAsync: updateMCP } = useUpdateMCP({})
   const { mutateAsync: deleteMCP } = useDeleteMCP({})
@@ -101,17 +101,17 @@ const MCPDetailContent: FC<Props> = ({
   }] = useBoolean(false)
 
   const handleOAuthCallback = useCallback(() => {
-    if (!isCurrentWorkspaceManager)
+    if (!canManageMCP)
       return
     if (!detail.id)
       return
     handleUpdateTools()
-  }, [detail.id, handleUpdateTools, isCurrentWorkspaceManager])
+  }, [canManageMCP, detail.id, handleUpdateTools])
 
   const handleAuthorize = useCallback(async () => {
-    onFirstCreate()
-    if (!isCurrentWorkspaceManager)
+    if (!canManageMCP)
       return
+    onFirstCreate()
     if (!detail)
       return
     try {
@@ -129,10 +129,10 @@ const MCPDetailContent: FC<Props> = ({
       // to update the connection status indicator
       onUpdate()
     }
-  }, [onFirstCreate, isCurrentWorkspaceManager, detail, authorizeMcp, handleUpdateTools, handleOAuthCallback, onUpdate])
+  }, [canManageMCP, onFirstCreate, detail, authorizeMcp, handleUpdateTools, handleOAuthCallback, onUpdate])
 
   const handleUpdate = useCallback(async (data: MCPModalConfirmPayload) => {
-    if (!detail)
+    if (!canManageMCP || !detail)
       return
     const res = await updateMCP({
       ...data,
@@ -143,10 +143,10 @@ const MCPDetailContent: FC<Props> = ({
       onUpdate()
       handleAuthorize()
     }
-  }, [detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize])
+  }, [canManageMCP, detail, updateMCP, hideUpdateModal, onUpdate, handleAuthorize])
 
   const handleDelete = useCallback(async () => {
-    if (!detail)
+    if (!canManageMCP || !detail)
       return
     showDeleting()
     const res = await deleteMCP(detail.id) as MutationResult
@@ -155,14 +155,14 @@ const MCPDetailContent: FC<Props> = ({
       hideDeleteConfirm()
       onUpdate(true)
     }
-  }, [detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate])
+  }, [canManageMCP, detail, showDeleting, deleteMCP, hideDeleting, hideDeleteConfirm, onUpdate])
 
   useEffect(() => {
     if (isTriggerAuthorize)
       handleAuthorize()
   }, [])
 
-  if (!detail)
+  if (!detail || !canManageMCP)
     return null
   const identifierLabel = t('mcp.identifier', { ns: 'tools' })
   const serverUrlLabel = t('mcp.modal.serverUrl', { ns: 'tools' })
@@ -214,7 +214,7 @@ const MCPDetailContent: FC<Props> = ({
             </div>
           </div>
           <div className="flex gap-1">
-            {isCurrentWorkspaceManager && (
+            {canManageMCP && (
               <OperationDropdown
                 onEdit={showUpdateModal}
                 onRemove={showDeleteConfirm}
@@ -231,7 +231,7 @@ const MCPDetailContent: FC<Props> = ({
               variant="secondary"
               className="w-full"
               onClick={handleAuthorize}
-              disabled={!isCurrentWorkspaceManager}
+              disabled={!canManageMCP}
             >
               <StatusDot className="mr-2" status="success" />
               {t('auth.authorized', { ns: 'tools' })}
@@ -242,7 +242,7 @@ const MCPDetailContent: FC<Props> = ({
               variant="primary"
               className="w-full"
               onClick={handleAuthorize}
-              disabled={!isCurrentWorkspaceManager}
+              disabled={!canManageMCP}
             >
               {t('mcp.authorize', { ns: 'tools' })}
             </Button>
@@ -318,7 +318,7 @@ const MCPDetailContent: FC<Props> = ({
           </div>
         )}
       </div>
-      {isShowUpdateModal && (
+      {canManageMCP && isShowUpdateModal && (
         <MCPModal
           data={detail}
           show={isShowUpdateModal}
@@ -326,7 +326,7 @@ const MCPDetailContent: FC<Props> = ({
           onHide={hideUpdateModal}
         />
       )}
-      <AlertDialog open={isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
+      <AlertDialog open={canManageMCP && isShowDeleteConfirm} onOpenChange={open => !open && hideDeleteConfirm()}>
         <AlertDialogContent>
           <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
             <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import Countdown, { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../countdown'
+import Countdown from '../countdown'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../storage'
 
 describe('Countdown', () => {
   beforeEach(() => {

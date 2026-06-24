@@ -8,7 +8,6 @@ export const Dialog = BaseDialog.Root
 export const DialogTrigger = BaseDialog.Trigger
 export const DialogTitle = BaseDialog.Title
 export const DialogDescription = BaseDialog.Description
-export const DialogPortal = BaseDialog.Portal
 
 type DialogCloseButtonProps = Omit<BaseDialog.Close.Props, 'children'>
 
@@ -22,7 +21,7 @@ export function DialogCloseButton({
       aria-label={ariaLabel}
       {...props}
       className={cn(
-        'absolute top-6 right-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+        'absolute top-6 end-6 z-10 flex h-5 w-5 cursor-pointer items-center justify-center rounded-2xl hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
     >
@@ -45,7 +44,7 @@ export function DialogContent({
   backdropProps,
 }: DialogContentProps) {
   return (
-    <DialogPortal>
+    <BaseDialog.Portal>
       <BaseDialog.Backdrop
         {...backdropProps}
         className={cn(
@@ -63,6 +62,6 @@ export function DialogContent({
       >
         {children}
       </BaseDialog.Popup>
-    </DialogPortal>
+    </BaseDialog.Portal>
   )
 }

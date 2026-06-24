@@ -123,9 +123,13 @@ describe('Switch', () => {
     await expect.element(screen.getByRole('switch')).toHaveAttribute('data-checked', '')
   })
 
-  it('should have focus-visible ring-3 styles', async () => {
+  it('should replace the native focus outline with the accent focus ring', async () => {
     const screen = await render(<Switch checked={false} />)
-    await expect.element(screen.getByRole('switch')).toHaveClass('focus-visible:ring-2')
+    await expect.element(screen.getByRole('switch')).toHaveClass(
+      'outline-hidden',
+      'focus-visible:ring-2',
+      'focus-visible:ring-state-accent-solid',
+    )
   })
 
   it('should respect prefers-reduced-motion', async () => {

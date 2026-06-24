@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from typing import cast
 
 import pytest
+from pytest_mock import MockerFixture
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models.dataset import Pipeline
@@ -9,7 +10,7 @@ from models.model import Account, App, EndUser
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 
 
-def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker) -> None:
+def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_DEFAULT_ACTIVE_REQUESTS", 5)
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_MAX_ACTIVE_REQUESTS", 3)
 
@@ -20,7 +21,7 @@ def test_get_max_active_requests_uses_smallest_non_zero_limit(mocker) -> None:
     assert result == 3
 
 
-def test_get_max_active_requests_returns_zero_when_all_unlimited(mocker) -> None:
+def test_get_max_active_requests_returns_zero_when_all_unlimited(mocker: MockerFixture) -> None:
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_DEFAULT_ACTIVE_REQUESTS", 0)
     mocker.patch("services.rag_pipeline.pipeline_generate_service.dify_config.APP_MAX_ACTIVE_REQUESTS", 0)
 
@@ -39,7 +40,7 @@ def test_get_max_active_requests_returns_zero_when_all_unlimited(mocker) -> None
         (InvokeFrom.DEBUGGER, SimpleNamespace(id="wf-1"), None),
     ],
 )
-def test_get_workflow(mocker, invoke_from, workflow, expected_error) -> None:
+def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_error) -> None:
     rag_pipeline_service_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.RagPipelineService")
     rag_pipeline_service = rag_pipeline_service_cls.return_value
     rag_pipeline_service.get_draft_workflow.return_value = workflow
@@ -55,7 +56,7 @@ def test_get_workflow(mocker, invoke_from, workflow, expected_error) -> None:
         assert result == workflow
 
 
-def test_generate_updates_document_status_and_returns_event_stream(mocker) -> None:
+def test_generate_updates_document_status_and_returns_event_stream(mocker: MockerFixture) -> None:
     pipeline = cast(Pipeline, SimpleNamespace(id="pipeline-1"))
     user = cast(Account | EndUser, SimpleNamespace(id="user-1"))
     args = {"original_document_id": "doc-1", "query": "hello"}
@@ -80,7 +81,7 @@ def test_generate_updates_document_status_and_returns_event_stream(mocker) -> No
     update_status_mock.assert_called_once_with("doc-1")
 
 
-def test_update_document_status_updates_existing_document(mocker) -> None:
+def test_update_document_status_updates_existing_document(mocker: MockerFixture) -> None:
     document = SimpleNamespace(indexing_status="completed")
 
     session_mock = mocker.Mock()
@@ -99,7 +100,7 @@ def test_update_document_status_updates_existing_document(mocker) -> None:
     commit_mock.assert_called_once()
 
 
-def test_update_document_status_skips_when_document_missing(mocker) -> None:
+def test_update_document_status_skips_when_document_missing(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = None
     add_mock = session_mock.add
@@ -118,7 +119,7 @@ def test_update_document_status_skips_when_document_missing(mocker) -> None:
 # --- generate_single_iteration ---
 
 
-def test_generate_single_iteration_delegates(mocker) -> None:
+def test_generate_single_iteration_delegates(mocker: MockerFixture) -> None:
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")
@@ -138,7 +139,7 @@ def test_generate_single_iteration_delegates(mocker) -> None:
 # --- generate_single_loop ---
 
 
-def test_generate_single_loop_delegates(mocker) -> None:
+def test_generate_single_loop_delegates(mocker: MockerFixture) -> None:
     mocker.patch.object(PipelineGenerateService, "_get_workflow", return_value=SimpleNamespace(id="wf-1"))
 
     generator_cls = mocker.patch("services.rag_pipeline.pipeline_generate_service.PipelineGenerator")

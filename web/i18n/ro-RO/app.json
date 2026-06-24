@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Flux de lucru",
   "newAppFromTemplate.sidebar.Writing": "Scriere",
   "noAccessPermission": "Nici o permisiune pentru a accesa aplicația web",
+  "noAccessResourcePermission": "Nu ai permisiunea de a accesa această resursă",
   "noUserInputNode": "Lipsă nod de intrare pentru utilizator",
   "notPublishedYet": "Aplicația nu este încă publicată",
   "openInExplore": "Deschide în Explorează",

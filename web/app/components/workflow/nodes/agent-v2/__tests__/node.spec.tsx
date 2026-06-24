@@ -128,7 +128,7 @@ describe('agent/node', () => {
     expect(robotIcon?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
   })
 
-  it('renders inline agent name from workflow composer state', () => {
+  it('renders the fixed inline setup name when workflow composer state is loaded', () => {
     render(
       <AgentV2Node
         id="agent-node"
@@ -144,7 +144,8 @@ describe('agent/node', () => {
 
     expect(mockUseAgentRosterDetail).toHaveBeenCalledWith(undefined)
     expect(mockUseWorkflowInlineAgentDetail).toHaveBeenCalledWith('agent-node', 'inline-agent-1')
-    expect(screen.getByText('Workflow Agent 1')).toHaveClass('system-xs-regular', 'text-text-secondary')
+    expect(screen.queryByText('Workflow Agent 1')).not.toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toHaveClass('system-xs-regular', 'text-text-secondary')
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
   })
 

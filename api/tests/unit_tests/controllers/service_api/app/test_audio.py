@@ -176,6 +176,7 @@ class TestAudioServiceMockedBehavior:
 
         result = AudioService.transcript_tts(
             app_model=mock_app,
+            session=Mock(),
             text="Hello world",
             voice="nova",
             end_user="user_123",

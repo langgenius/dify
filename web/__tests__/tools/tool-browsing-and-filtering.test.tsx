@@ -43,9 +43,23 @@ vi.mock('@/app/components/plugins/hooks', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    userProfile: { id: 'user-1', timezone: 'UTC' },
+    workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.manage', 'plugin.plugin_preferences'],
+    langGeniusVersionInfo: { current_version: '1.0.0' },
+  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({
+      workspacePermissionKeys: ['tool.manage', 'mcp.manage', 'plugin.install', 'plugin.manage', 'plugin.plugin_preferences'],
+    }),
+}))
+
 vi.mock('@/service/use-plugins', () => ({
   useCheckInstalled: () => ({ data: null }),
   useInvalidateInstalledPluginList: () => vi.fn(),
+  useMutationPluginPermissionSettings: () => ({ mutate: vi.fn(), isPending: false }),
+  usePluginPermissionSettings: () => ({ data: undefined, isLoading: false, isFetching: false, error: null }),
 }))
 
 const mockCollections: Collection[] = [
@@ -196,6 +210,10 @@ vi.mock('@/app/components/tools/marketplace/hooks', () => ({
 
 vi.mock('@/app/components/tools/mcp', () => ({
   default: () => <div data-testid="mcp-list">MCP List</div>,
+}))
+
+vi.mock('@/app/components/header/account-setting/update-setting-dialog', () => ({
+  default: () => null,
 }))
 
 vi.mock('@langgenius/dify-ui/cn', () => ({
