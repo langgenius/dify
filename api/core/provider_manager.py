@@ -93,6 +93,12 @@ class _CacheSnapshot(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
+class _ProviderConfigurationCacheSource[T: _CacheSnapshot]:
+    name: str
+    snapshot_cls: type[T]
+
+
+@dataclass(frozen=True, slots=True)
 class _ProviderModelSnapshot:
     id: str
     provider_name: str
@@ -321,6 +327,32 @@ class _LoadBalancingModelConfigSnapshot:
         }
 
 
+_PROVIDER_MODELS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS,
+    snapshot_cls=_ProviderModelSnapshot,
+)
+_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS,
+    snapshot_cls=_TenantPreferredModelProviderSnapshot,
+)
+_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS,
+    snapshot_cls=_ProviderModelSettingSnapshot,
+)
+_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS,
+    snapshot_cls=_ProviderModelCredentialSnapshot,
+)
+_PROVIDER_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,
+    snapshot_cls=_ProviderCredentialSnapshot,
+)
+_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
+    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,
+    snapshot_cls=_LoadBalancingModelConfigSnapshot,
+)
+
+
 class _ProviderConfigurationSourceCache:
     """Redis-backed cache for tenant provider DB snapshots.
 
@@ -395,20 +427,19 @@ class _ProviderConfigurationSourceCache:
 def _get_cached_or_load_records[T: _CacheSnapshot](
     *,
     tenant_id: str,
-    source: str,
-    snapshot_cls: type[T],
+    cache_source: _ProviderConfigurationCacheSource[T],
     load_records: Callable[[], list[T]],
 ) -> list[T]:
     cached_records = _ProviderConfigurationSourceCache.get_records(
         tenant_id=tenant_id,
-        source=source,
-        snapshot_cls=snapshot_cls,
+        source=cache_source.name,
+        snapshot_cls=cache_source.snapshot_cls,
     )
     if cached_records is not None:
         return cached_records
 
     records = load_records()
-    _ProviderConfigurationSourceCache.set_records(tenant_id=tenant_id, source=source, records=records)
+    _ProviderConfigurationSourceCache.set_records(tenant_id=tenant_id, source=cache_source.name, records=records)
     return records
 
 
@@ -869,8 +900,7 @@ class ProviderManager:
 
         provider_models = _get_cached_or_load_records(
             tenant_id=tenant_id,
-            source=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS,
-            snapshot_cls=_ProviderModelSnapshot,
+            cache_source=_PROVIDER_MODELS_CACHE_SOURCE,
             load_records=load_records,
         )
 
@@ -897,8 +927,7 @@ class ProviderManager:
 
         preferred_provider_types = _get_cached_or_load_records(
             tenant_id=tenant_id,
-            source=_PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS,
-            snapshot_cls=_TenantPreferredModelProviderSnapshot,
+            cache_source=_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE,
             load_records=load_records,
         )
 
@@ -925,8 +954,7 @@ class ProviderManager:
 
         provider_model_settings = _get_cached_or_load_records(
             tenant_id=tenant_id,
-            source=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS,
-            snapshot_cls=_ProviderModelSettingSnapshot,
+            cache_source=_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE,
             load_records=load_records,
         )
 
@@ -955,8 +983,7 @@ class ProviderManager:
 
         provider_model_credentials = _get_cached_or_load_records(
             tenant_id=tenant_id,
-            source=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS,
-            snapshot_cls=_ProviderModelCredentialSnapshot,
+            cache_source=_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE,
             load_records=load_records,
         )
 
@@ -985,8 +1012,7 @@ class ProviderManager:
 
         provider_credentials = _get_cached_or_load_records(
             tenant_id=tenant_id,
-            source=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,
-            snapshot_cls=_ProviderCredentialSnapshot,
+            cache_source=_PROVIDER_CREDENTIALS_CACHE_SOURCE,
             load_records=load_records,
         )
 
@@ -1029,8 +1055,7 @@ class ProviderManager:
 
         provider_load_balancing_configs = _get_cached_or_load_records(
             tenant_id=tenant_id,
-            source=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,
-            snapshot_cls=_LoadBalancingModelConfigSnapshot,
+            cache_source=_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE,
             load_records=load_records,
         )
 
