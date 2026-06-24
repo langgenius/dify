@@ -1,7 +1,6 @@
 """Unit tests for EnterpriseOtelTrace."""
 
 from __future__ import annotations
-from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
 
 import json
 from datetime import UTC, datetime
@@ -22,6 +21,7 @@ from core.ops.entities.trace_entity import (
     WorkflowNodeTraceInfo,
     WorkflowTraceInfo,
 )
+from enterprise.telemetry.enterprise_trace import EnterpriseOtelTrace
 from enterprise.telemetry.entities import (
     EnterpriseTelemetryCounter,
     EnterpriseTelemetryEvent,
@@ -538,7 +538,9 @@ class TestWorkflowTrace:
         assert hist_call[0][0] == EnterpriseTelemetryHistogram.WORKFLOW_DURATION
         assert hist_call[0][1] == pytest.approx(5.0)
 
-    def test_duration_falls_back_to_elapsed_time_when_timestamps_missing(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+    def test_duration_falls_back_to_elapsed_time_when_timestamps_missing(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_workflow_info(start_time=None, end_time=None, workflow_run_elapsed_time=7.3)
             trace_handler._workflow_trace(info)
@@ -662,7 +664,9 @@ class TestNodeExecutionTrace:
         mock_log.assert_called_once()
         assert mock_log.call_args[1]["event_name"] == EnterpriseTelemetrySpan.NODE_EXECUTION.value
 
-    def test_plugin_name_added_to_duration_labels_for_tool_node(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+    def test_plugin_name_added_to_duration_labels_for_tool_node(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log"):
             info = make_node_info(
                 node_type="tool",
@@ -694,7 +698,9 @@ class TestNodeExecutionTrace:
         duration_labels = hist_call[0][2]
         assert "plugin_name" not in duration_labels
 
-    def test_companion_log_inputs_use_ref_when_content_disabled(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+    def test_companion_log_inputs_use_ref_when_content_disabled(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         mock_exporter.include_content = False
         with patch("enterprise.telemetry.enterprise_trace.emit_telemetry_log") as mock_log:
             trace_handler._node_execution_trace(
@@ -775,7 +781,9 @@ class TestMessageTrace:
         attrs = mock_emit.call_args[1]["attributes"]
         assert "dify.message.duration" not in attrs
 
-    def test_records_duration_histogram_when_timestamps_present(self, trace_handler: EnterpriseOtelTrace, mock_exporter):
+    def test_records_duration_histogram_when_timestamps_present(
+        self, trace_handler: EnterpriseOtelTrace, mock_exporter
+    ):
         with patch("enterprise.telemetry.enterprise_trace.emit_metric_only_event"):
             trace_handler._message_trace(make_message_info())
 
