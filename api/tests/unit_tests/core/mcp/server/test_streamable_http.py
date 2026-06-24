@@ -233,6 +233,30 @@ class TestIndividualHandlers:
         assert result.tools[0].name == "test_app"
         assert result.tools[0].description == "Test server"
 
+    def test_handle_list_tools_adds_structured_output_for_modern_client(self):
+        """Tool advertises outputSchema and title when negotiated >= 2025-06-18."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2025-06-18")
+
+        tool = result.tools[0]
+        assert tool.outputSchema == {"type": "object"}
+        assert tool.title == "test_app"
+
+    def test_handle_list_tools_omits_structured_output_for_legacy_client(self):
+        """Tool stays unchanged (no outputSchema/title) for 2024-11-05 clients."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2024-11-05")
+
+        tool = result.tools[0]
+        assert tool.outputSchema is None
+        assert tool.title is None
+
+    def test_handle_list_tools_omits_structured_output_for_intermediate_client(self):
+        """The 2025-03-26 negotiated version is below the structured-output threshold."""
+        result = handle_list_tools("test_app", AppMode.CHAT, [], "Test server", {}, "2025-03-26")
+
+        tool = result.tools[0]
+        assert tool.outputSchema is None
+        assert tool.title is None
+
     @patch("core.mcp.server.streamable_http.AppGenerateService")
     def test_handle_call_tool(self, mock_app_generate):
         """Test call tool handler"""
