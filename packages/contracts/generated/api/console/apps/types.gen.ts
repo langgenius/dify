@@ -43,7 +43,7 @@ export type AppDetailWithSite = {
   model_config?: ModelConfig | null
   name: string
   permission_keys?: Array<string>
-  site?: Site | null
+  site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -1231,21 +1231,31 @@ export type ModelConfig = {
   provider: string
 }
 
-export type Site = {
+export type AppDetailSiteResponse = {
+  access_token?: string | null
+  app_base_url?: string | null
   chat_color_theme?: string | null
-  chat_color_theme_inverted: boolean
+  chat_color_theme_inverted?: boolean | null
+  code?: string | null
   copyright?: string | null
+  created_at?: number | null
+  created_by?: string | null
   custom_disclaimer?: string | null
-  default_language: string
+  customize_domain?: string | null
+  customize_token_strategy?: string | null
+  default_language?: string | null
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: string | IconType | null
   readonly icon_url: string | null
   privacy_policy?: string | null
-  show_workflow_steps: boolean
-  title: string
-  use_icon_as_answer_icon: boolean
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title?: string | null
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type Tag = {
@@ -2716,7 +2726,7 @@ export type AppDetailWithSiteWritable = {
   model_config?: ModelConfig | null
   name: string
   permission_keys?: Array<string>
-  site?: SiteWritable | null
+  site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -2776,20 +2786,30 @@ export type AppPartialWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type SiteWritable = {
+export type AppDetailSiteResponseWritable = {
+  access_token?: string | null
+  app_base_url?: string | null
   chat_color_theme?: string | null
-  chat_color_theme_inverted: boolean
+  chat_color_theme_inverted?: boolean | null
+  code?: string | null
   copyright?: string | null
+  created_at?: number | null
+  created_by?: string | null
   custom_disclaimer?: string | null
-  default_language: string
+  customize_domain?: string | null
+  customize_token_strategy?: string | null
+  default_language?: string | null
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | null
+  icon_type?: string | IconType | null
   privacy_policy?: string | null
-  show_workflow_steps: boolean
-  title: string
-  use_icon_as_answer_icon: boolean
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title?: string | null
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
 }
 
 export type WorkflowCommentBasicWritable = {

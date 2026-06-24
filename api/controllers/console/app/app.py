@@ -331,7 +331,7 @@ class ModelConfig(ResponseModel):
         return to_timestamp(value)
 
 
-class Site(ResponseModel):
+class AppDetailSiteResponse(ResponseModel):
     access_token: str | None = Field(default=None, validation_alias="code")
     code: str | None = None
     title: str | None = None
@@ -461,7 +461,7 @@ class AppDetailWithSite(AppDetail):
     api_base_url: str | None = None
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
-    site: Site | None = None
+    site: AppDetailSiteResponse | None = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
     # For Agent App responses exposed through /agent.
@@ -546,7 +546,7 @@ register_schema_models(
     WorkflowPartial,
     ModelConfigPartial,
     ModelConfig,
-    Site,
+    AppDetailSiteResponse,
     DeletedTool,
     AppDetail,
     AppExportResponse,
