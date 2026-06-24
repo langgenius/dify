@@ -1,3 +1,4 @@
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -9,7 +10,6 @@ from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTE
 from models.account import Account, AccountStatus
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
 
-from inspect import unwrap
 
 def _make_account() -> Account:
     account = Account(

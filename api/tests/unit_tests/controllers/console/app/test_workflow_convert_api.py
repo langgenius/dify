@@ -1,16 +1,15 @@
 """Unit tests for convert-to-workflow endpoint."""
 
 from __future__ import annotations
-from controllers.console.app.workflow import ConvertToWorkflowApi
 
+from inspect import unwrap
 from types import SimpleNamespace
 
 import pytest
 from flask import Flask
 
 from controllers.console.app import workflow as workflow_module
-
-from inspect import unwrap
+from controllers.console.app.workflow import ConvertToWorkflowApi
 
 
 class TestConvertToWorkflowApi:
