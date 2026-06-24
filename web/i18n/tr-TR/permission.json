@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Bu izin kümesi için verilen adı, açıklamayı ve izinleri görüntüleyin.",
   "permissionSet.modal.view.dataset.title": "Bilgi Tabanı izin kümesini görüntüle",
   "permissionSet.nameLabel": "İzin kümesi adı",
-  "permissionSet.namePlaceholder": "ör. DSL dışa aktarabilir",
+  "permissionSet.namePlaceholder": "ör. Operasyon izin seti",
   "permissionSet.permissions": "İzinler",
   "role.addRole": "Rol oluştur",
   "role.copyMembersDescription_one": "\"{{name}}\" {{count}} üyeye atanmış. Yeni rol kopyasının aynı üyeyi içermesini istiyor musunuz?",

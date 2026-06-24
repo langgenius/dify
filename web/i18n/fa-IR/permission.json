@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "نام، توضیحات و مجوزهای اعطاشده برای این مجموعه مجوز را مشاهده کنید.",
   "permissionSet.modal.view.dataset.title": "مشاهده مجموعه مجوز پایگاه دانش",
   "permissionSet.nameLabel": "نام مجموعه مجوز",
-  "permissionSet.namePlaceholder": "مثلاً می‌تواند DSL را صادر کند",
+  "permissionSet.namePlaceholder": "مثلاً مجموعه مجوزهای عملیات",
   "permissionSet.permissions": "مجوزها",
   "role.addRole": "ایجاد نقش‌ها",
   "role.copyMembersDescription_one": "«{{name}}» به {{count}} عضو اختصاص داده شده است. آیا می‌خواهید نسخه نقش جدید همان عضو را در بر بگیرد؟",

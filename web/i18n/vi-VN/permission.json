@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Xem tên, mô tả và các quyền được cấp cho bộ quyền này.",
   "permissionSet.modal.view.dataset.title": "Xem bộ quyền cơ sở tri thức",
   "permissionSet.nameLabel": "Tên bộ quyền",
-  "permissionSet.namePlaceholder": "ví dụ: Có thể xuất DSL",
+  "permissionSet.namePlaceholder": "ví dụ: Bộ quyền vận hành",
   "permissionSet.permissions": "Quyền",
   "role.addRole": "Tạo vai trò",
   "role.copyMembersDescription_one": "\"{{name}}\" được gán cho {{count}} thành viên. Bạn có muốn bản sao vai trò mới bao gồm cùng thành viên đó không?",
