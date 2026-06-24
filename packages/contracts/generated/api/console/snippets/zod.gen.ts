@@ -300,32 +300,11 @@ export const zSnippetWorkflowResponse = z.object({
 })
 
 /**
- * WorkflowResponse
+ * SnippetWorkflowPaginationResponse
  */
-export const zWorkflowResponse = z.object({
-  conversation_variables: z.array(zWorkflowConversationVariableResponse),
-  created_at: z.int(),
-  created_by: zSimpleAccount.nullish(),
-  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string(),
-  id: z.string(),
-  marked_comment: z.string(),
-  marked_name: z.string(),
-  rag_pipeline_variables: z.array(zPipelineVariableResponse),
-  tool_published: z.boolean(),
-  updated_at: z.int(),
-  updated_by: zSimpleAccount.nullish(),
-  version: z.string(),
-})
-
-/**
- * WorkflowPaginationResponse
- */
-export const zWorkflowPaginationResponse = z.object({
+export const zSnippetWorkflowPaginationResponse = z.object({
   has_more: z.boolean(),
-  items: z.array(zWorkflowResponse),
+  items: z.array(zSnippetWorkflowResponse),
   limit: z.int(),
   page: z.int(),
 })
@@ -443,7 +422,7 @@ export const zGetSnippetsBySnippetIdWorkflowsQuery = z.object({
 /**
  * Published workflows retrieved successfully
  */
-export const zGetSnippetsBySnippetIdWorkflowsResponse = zWorkflowPaginationResponse
+export const zGetSnippetsBySnippetIdWorkflowsResponse = zSnippetWorkflowPaginationResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
   snippet_id: z.uuid(),

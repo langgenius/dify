@@ -34,6 +34,23 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
+    success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
+    error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
+    warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
+    info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { record, api }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMocks.api,
+}))
 
 vi.mock('@/service/use-explore', () => ({
   useLearnDifyAppList: () => ({
@@ -269,6 +286,7 @@ const mockAppCreatePermission = (hasEditPermission: boolean) => {
 
 type RenderOptions = {
   enableExploreBanner?: boolean
+  enableLearnApp?: boolean
   isCloudEdition?: boolean
 }
 
@@ -285,7 +303,10 @@ const renderAppList = (
   mockConfig.isCloudEdition = options.isCloudEdition ?? false
   mockAppCreatePermission(hasEditPermission)
   const { wrapper: SystemFeaturesWrapper, queryClient } = createSystemFeaturesWrapper({
-    systemFeatures: { enable_explore_banner: options.enableExploreBanner ?? false },
+    systemFeatures: {
+      enable_explore_banner: options.enableExploreBanner ?? false,
+      enable_learn_app: options.enableLearnApp ?? true,
+    },
   })
   if (!mockIsLoading && !mockIsError && mockExploreData)
     queryClient.setQueryData(exploreAppListQueryKey, mockExploreData)
@@ -465,6 +486,36 @@ describe('AppList', () => {
       expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
     })
 
+    it('should render preview-only continue work app as a dimmed card and warn on click', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceApps = [
+        createWorkspaceApp({
+          id: 'preview-app',
+          name: 'Preview Only App',
+          author_name: 'Readonly Author',
+          permission_keys: [AppACLPermission.Preview],
+        }),
+      ]
+
+      renderAppList()
+
+      const card = screen.getByRole('button', { name: 'Preview Only App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('link', { name: /Preview Only App/ })).not.toBeInTheDocument()
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
+    })
+
     it('should hide continue work when there are no workspace apps', () => {
       mockExploreData = {
         categories: ['Writing'],
@@ -493,6 +544,18 @@ describe('AppList', () => {
       expect(screen.queryByText('Then try this')).not.toBeInTheDocument()
       expect(screen.queryByText('workflow')).not.toBeInTheDocument()
       expect(screen.queryByText('3 min')).not.toBeInTheDocument()
+    })
+
+    it('should hide learn dify templates when learn app is disabled', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, undefined, { enableLearnApp: false })
+
+      expect(screen.queryByRole('heading', { name: 'explore.learnDify.title' })).not.toBeInTheDocument()
+      expect(screen.queryByText('Learn Workflow Basics')).not.toBeInTheDocument()
     })
 
     it('should collapse learn dify and persist hidden state when hide is clicked', async () => {
@@ -529,6 +592,18 @@ describe('AppList', () => {
 
       expect(screen.getByText('Alpha')).toBeInTheDocument()
       expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+    })
+
+    it('should hide categories without apps even when the API returns them', () => {
+      mockExploreData = {
+        categories: ['Writing', 'c'],
+        allList: [createApp()],
+      }
+
+      renderAppList(false, undefined, { category: 'c' })
+
+      expect(screen.queryByRole('radio', { name: 'c' })).not.toBeInTheDocument()
+      expect(screen.getByText('Alpha')).toBeInTheDocument()
     })
 
     it('should keep selected category when clearing search text', async () => {

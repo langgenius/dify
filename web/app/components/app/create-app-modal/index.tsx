@@ -9,6 +9,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiArrowRightLine, RiArrowRightSLine, RiExchange2Fill } from '@remixicon/react'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +21,7 @@ import Input from '@/app/components/base/input'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useTheme from '@/hooks/use-theme'
 import { useRouter } from '@/next/navigation'
 import { createApp } from '@/service/apps'
@@ -56,7 +58,9 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { userProfile, workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const invalidateAppList = useInvalidateAppList()
 
@@ -100,13 +104,14 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
         currentUserId: userProfile?.id,
         resourceMaintainer: app.maintainer,
         workspacePermissionKeys,
+        isRbacEnabled,
       })
     }
     catch (error) {
       toast.error(error instanceof Error ? error.message : t('newApp.appCreateFailed', { ns: 'app' }))
     }
     isCreatingRef.current = false
-  }, [canCreateApp, name, t, appMode, appIcon, description, onSuccess, onClose, push, userProfile?.id, workspacePermissionKeys, setNeedRefresh, invalidateAppList])
+  }, [canCreateApp, name, t, appMode, appIcon, description, onSuccess, onClose, push, userProfile?.id, workspacePermissionKeys, isRbacEnabled, setNeedRefresh, invalidateAppList])
 
   const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useHotkey('Mod+Enter', () => {

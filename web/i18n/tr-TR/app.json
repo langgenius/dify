@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "İş Akışı",
   "newAppFromTemplate.sidebar.Writing": "Yazı",
   "noAccessPermission": "Web uygulamasına erişim izni yok",
+  "noAccessResourcePermission": "Bu kaynağa erişim izniniz yok",
   "noUserInputNode": "Eksik kullanıcı girdi düğümü",
   "notPublishedYet": "Uygulama henüz yayımlanmadı",
   "openInExplore": "Keşfet'te Aç",

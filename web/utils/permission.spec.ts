@@ -1,105 +1,17 @@
-import { DatasetPermission } from '@/models/datasets'
 /**
  * Test suite for permission utility functions
- * Tests dataset edit permission logic based on user roles and dataset settings
  */
 import {
   AppACLPermission,
   DatasetACLPermission,
   getAppACLCapabilities,
   getDatasetACLCapabilities,
-  hasEditPermissionForDataset,
+  hasOnlyAppPreviewPermission,
+  hasOnlyDatasetPreviewPermission,
   hasPermission,
 } from './permission'
 
 describe('permission', () => {
-  /**
-   * Tests hasEditPermissionForDataset which checks if a user can edit a dataset
-   * Based on three permission levels:
-   * - onlyMe: Only the creator can edit
-   * - allTeamMembers: All team members can edit
-   * - partialMembers: Only specified members can edit
-   */
-  describe('hasEditPermissionForDataset', () => {
-    const userId = 'user-123'
-    const creatorId = 'creator-456'
-    const otherUserId = 'user-789'
-
-    it('returns true when permission is onlyMe and user is creator', () => {
-      const config = {
-        createdBy: userId,
-        partialMemberList: [],
-        permission: DatasetPermission.onlyMe,
-      }
-      expect(hasEditPermissionForDataset(userId, config)).toBe(true)
-    })
-
-    it('returns false when permission is onlyMe and user is not creator', () => {
-      const config = {
-        createdBy: creatorId,
-        partialMemberList: [],
-        permission: DatasetPermission.onlyMe,
-      }
-      expect(hasEditPermissionForDataset(userId, config)).toBe(false)
-    })
-
-    it('returns true when permission is allTeamMembers for any user', () => {
-      const config = {
-        createdBy: creatorId,
-        partialMemberList: [],
-        permission: DatasetPermission.allTeamMembers,
-      }
-      expect(hasEditPermissionForDataset(userId, config)).toBe(true)
-      expect(hasEditPermissionForDataset(otherUserId, config)).toBe(true)
-      expect(hasEditPermissionForDataset(creatorId, config)).toBe(true)
-    })
-
-    it('returns true when permission is partialMembers and user is in list', () => {
-      const config = {
-        createdBy: creatorId,
-        partialMemberList: [userId, otherUserId],
-        permission: DatasetPermission.partialMembers,
-      }
-      expect(hasEditPermissionForDataset(userId, config)).toBe(true)
-    })
-
-    it('returns false when permission is partialMembers and user is not in list', () => {
-      const config = {
-        createdBy: creatorId,
-        partialMemberList: [otherUserId],
-        permission: DatasetPermission.partialMembers,
-      }
-      expect(hasEditPermissionForDataset(userId, config)).toBe(false)
-    })
-
-    it('returns false when permission is partialMembers with empty list', () => {
-      const config = {
-        createdBy: creatorId,
-        partialMemberList: [],
-        permission: DatasetPermission.partialMembers,
-      }
-      expect(hasEditPermissionForDataset(userId, config)).toBe(false)
-    })
-
-    it('creator is not automatically granted access with partialMembers permission', () => {
-      const config = {
-        createdBy: creatorId,
-        partialMemberList: [userId],
-        permission: DatasetPermission.partialMembers,
-      }
-      expect(hasEditPermissionForDataset(creatorId, config)).toBe(false)
-    })
-
-    it('creator has access when included in partialMemberList', () => {
-      const config = {
-        createdBy: creatorId,
-        partialMemberList: [creatorId, userId],
-        permission: DatasetPermission.partialMembers,
-      }
-      expect(hasEditPermissionForDataset(creatorId, config)).toBe(true)
-    })
-  })
-
   describe('hasPermissionKey', () => {
     const permissionKey = 'workspace.member.manage'
 
@@ -132,6 +44,32 @@ describe('permission', () => {
     })
   })
 
+  describe('hasOnlyAppPreviewPermission', () => {
+    it('should return true when app ACL contains only preview permission', () => {
+      expect(hasOnlyAppPreviewPermission([AppACLPermission.Preview])).toBe(true)
+    })
+
+    it('should return false when app ACL contains preview permission and another permission', () => {
+      expect(hasOnlyAppPreviewPermission([
+        AppACLPermission.Preview,
+        AppACLPermission.ViewLayout,
+      ])).toBe(false)
+    })
+  })
+
+  describe('hasOnlyDatasetPreviewPermission', () => {
+    it('should return true when dataset ACL contains only preview permission', () => {
+      expect(hasOnlyDatasetPreviewPermission([DatasetACLPermission.Preview])).toBe(true)
+    })
+
+    it('should return false when dataset ACL contains preview permission and another permission', () => {
+      expect(hasOnlyDatasetPreviewPermission([
+        DatasetACLPermission.Preview,
+        DatasetACLPermission.Readonly,
+      ])).toBe(false)
+    })
+  })
+
   describe('app maintainer capabilities', () => {
     it('grants all app ACL capabilities without injecting app ACL permission keys', () => {
       const permissionKeys: string[] = []
@@ -139,6 +77,7 @@ describe('permission', () => {
         currentUserId: 'user-1',
         resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: true,
       })
 
       expect(capabilities.canViewLayout).toBe(true)
@@ -163,6 +102,14 @@ describe('permission', () => {
       expect(capabilities.canEdit).toBe(false)
       expect(capabilities.canDelete).toBe(false)
     })
+
+    it('does not grant app access config when RBAC is disabled', () => {
+      const capabilities = getAppACLCapabilities([AppACLPermission.AccessConfig], {
+        isRbacEnabled: false,
+      })
+
+      expect(capabilities.canAccessConfig).toBe(false)
+    })
   })
 
   describe('dataset maintainer capabilities', () => {
@@ -172,6 +119,7 @@ describe('permission', () => {
         currentUserId: 'user-1',
         resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['dataset.create_and_management'],
+        isRbacEnabled: true,
       })
 
       expect(capabilities.canReadonly).toBe(true)
@@ -198,6 +146,14 @@ describe('permission', () => {
       expect(capabilities.canReadonly).toBe(true)
       expect(capabilities.canEdit).toBe(false)
       expect(capabilities.canDelete).toBe(false)
+    })
+
+    it('does not grant dataset access config when RBAC is disabled', () => {
+      const capabilities = getDatasetACLCapabilities([DatasetACLPermission.AccessConfig], {
+        isRbacEnabled: false,
+      })
+
+      expect(capabilities.canAccessConfig).toBe(false)
     })
   })
 })

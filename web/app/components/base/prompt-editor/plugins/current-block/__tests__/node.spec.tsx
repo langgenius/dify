@@ -11,7 +11,6 @@ import {
 import CurrentBlockComponent from '../component'
 import {
   $createCurrentBlockNode,
-  $isCurrentBlockNode,
   CurrentBlockNode,
 } from '../node'
 
@@ -174,22 +173,6 @@ describe('CurrentBlockNode', () => {
       })
 
       expect(node).toBeInstanceOf(CurrentBlockNode)
-    })
-
-    it('should identify current block nodes using type guard helper', () => {
-      const editor = createTestEditor()
-      let node!: CurrentBlockNode
-
-      act(() => {
-        editor.update(() => {
-          node = $createCurrentBlockNode(GeneratorType.prompt)
-          appendNodeToRoot(node)
-        })
-      })
-
-      expect($isCurrentBlockNode(node)).toBe(true)
-      expect($isCurrentBlockNode(null)).toBe(false)
-      expect($isCurrentBlockNode(undefined)).toBe(false)
     })
   })
 })

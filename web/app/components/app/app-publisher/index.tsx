@@ -1,3 +1,4 @@
+import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { FormEvent } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
@@ -82,7 +83,8 @@ export type AppPublisherProps = {
   hasHumanInputNode?: boolean
 }
 
-const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
+const PUBLISH_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
+const PUBLISH_SHORTCUT = PUBLISH_HOTKEY.split('+')
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
@@ -290,7 +292,7 @@ export function AppPublisher({
     }
   }
 
-  useHotkey('Mod+Shift+P', (e) => {
+  useHotkey(PUBLISH_HOTKEY, (e) => {
     e.preventDefault()
     if (publishDisabled || published)
       return

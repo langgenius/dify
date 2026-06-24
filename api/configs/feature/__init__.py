@@ -1073,6 +1073,12 @@ class MailConfig(BaseSettings):
         default=None,
     )
 
+
+class HomepageConfig(BaseSettings):
+    """
+    Configuration for homepage feature toggles exposed through system features.
+    """
+
     ENABLE_TRIAL_APP: bool = Field(
         description="Enable trial app",
         default=False,
@@ -1081,6 +1087,11 @@ class MailConfig(BaseSettings):
     ENABLE_EXPLORE_BANNER: bool = Field(
         description="Enable explore banner",
         default=False,
+    )
+
+    ENABLE_LEARN_APP: bool = Field(
+        description="Enable Learn App",
+        default=True,
     )
 
 
@@ -1489,6 +1500,7 @@ class FeatureConfig(
     EndpointConfig,
     FileAccessConfig,
     FileUploadConfig,
+    HomepageConfig,
     HttpConfig,
     InnerAPIConfig,
     IndexingConfig,

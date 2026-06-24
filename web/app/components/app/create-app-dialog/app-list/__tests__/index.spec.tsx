@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
@@ -295,7 +296,7 @@ describe('Apps', () => {
       id: 'created-app-id',
       mode: AppModeEnum.CHAT,
       permission_keys: ['app.acl.view_layout'],
-    }, mockPush)
+    }, mockPush, { isRbacEnabled: false })
   })
 
   it('shows an error toast when importing the template fails', async () => {
@@ -376,6 +377,22 @@ describe('Apps', () => {
       expect(screen.queryByText('Foxtrot')).not.toBeInTheDocument()
       expect(screen.queryByText('Echo')).not.toBeInTheDocument()
     })
+  })
+
+  it('should hide categories without templates even when the API returns them', () => {
+    mockUseExploreAppList.mockReturnValueOnce({
+      data: {
+        categories: ['Cat A', 'v'],
+        allList: [createAppEntry('Alpha', 'Cat A')],
+      },
+      isLoading: false,
+    })
+
+    render(<Apps />)
+
+    expect(screen.getByText('Cat A'))!.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'v' })).not.toBeInTheDocument()
+    expect(screen.getByText('Alpha'))!.toBeInTheDocument()
   })
 
   it('should clear the search, hide the sidebar during search, and close the modal when requested', async () => {

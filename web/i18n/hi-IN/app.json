@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "कार्यप्रवाह",
   "newAppFromTemplate.sidebar.Writing": "कृतियाँ",
   "noAccessPermission": "वेब एप्लिकेशन तक पहुँचने की अनुमति नहीं है",
+  "noAccessResourcePermission": "इस संसाधन तक पहुँचने की अनुमति नहीं है",
   "noUserInputNode": "उपयोगकर्ता इनपुट नोड गायब है",
   "notPublishedYet": "ऐप अभी प्रकाशित नहीं हुआ है",
   "openInExplore": "एक्सप्लोर में खोलें",

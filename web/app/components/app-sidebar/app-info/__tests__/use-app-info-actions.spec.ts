@@ -69,6 +69,10 @@ vi.mock('@/service/use-apps', () => ({
 }))
 
 vi.mock('@tanstack/react-query', () => ({
+  queryOptions: <TOptions>(options: TOptions) => options,
+  useSuspenseQuery: () => ({
+    data: { rbac_enabled: true },
+  }),
   useQueryClient: () => ({
     setQueryData: mockSetQueryData,
   }),

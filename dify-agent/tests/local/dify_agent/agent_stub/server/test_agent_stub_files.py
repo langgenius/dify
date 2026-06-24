@@ -59,8 +59,8 @@ def test_dify_api_agent_stub_file_handler_injects_execution_context_for_upload(m
 
     _patch_async_client(monkeypatch, handler)
     file_handler = DifyApiAgentStubFileRequestHandler(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
 
     async def scenario() -> None:
@@ -97,8 +97,8 @@ def test_dify_api_agent_stub_file_handler_injects_execution_context_for_download
 
     _patch_async_client(monkeypatch, handler)
     file_handler = DifyApiAgentStubFileRequestHandler(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
 
     async def scenario() -> None:
@@ -115,8 +115,8 @@ def test_dify_api_agent_stub_file_handler_injects_execution_context_for_download
 
 def test_dify_api_agent_stub_file_handler_rejects_missing_user_id() -> None:
     file_handler = DifyApiAgentStubFileRequestHandler(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
     principal = _principal()
     principal.execution_context = principal.execution_context.model_copy(update={"user_id": None})
@@ -141,8 +141,8 @@ def test_dify_api_agent_stub_file_handler_maps_non_2xx_response(monkeypatch) -> 
 
     _patch_async_client(monkeypatch, handler)
     file_handler = DifyApiAgentStubFileRequestHandler(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
 
     async def scenario() -> None:
@@ -166,8 +166,8 @@ def test_dify_api_agent_stub_file_handler_maps_error_envelope(monkeypatch) -> No
 
     _patch_async_client(monkeypatch, handler)
     file_handler = DifyApiAgentStubFileRequestHandler(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
 
     async def scenario() -> None:
@@ -193,8 +193,8 @@ def test_dify_api_agent_stub_file_handler_rejects_upload_response_missing_url(mo
 
     _patch_async_client(monkeypatch, handler)
     file_handler = DifyApiAgentStubFileRequestHandler(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
 
     async def scenario() -> None:
@@ -218,8 +218,8 @@ def test_dify_api_agent_stub_file_handler_rejects_invalid_download_response_sche
 
     _patch_async_client(monkeypatch, handler)
     file_handler = DifyApiAgentStubFileRequestHandler(
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
 
     async def scenario() -> None:

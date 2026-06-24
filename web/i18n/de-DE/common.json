@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Text-zu-Sprache-Modell",
   "modelProvider.ttsModel.tip": "Legen Sie das Standardmodell für die Text-zu-Sprache-Eingabe in Konversationen fest.",
   "modelProvider.upgradeForLoadBalancing": "Aktualisieren Sie Ihren Plan, um den Lastenausgleich zu aktivieren.",
+  "navigation.skipToMain": "Zum Hauptinhalt springen",
   "noData": "Keine Daten",
   "operation.add": "Hinzufügen",
   "operation.added": "Hinzugefügt",

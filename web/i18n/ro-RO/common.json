@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Model de conversie vorbire-la-text",
   "modelProvider.ttsModel.tip": "Setați modelul implicit pentru intrarea de conversie vorbire-la-text în conversație.",
   "modelProvider.upgradeForLoadBalancing": "Actualizați-vă planul pentru a activa Load Balancing.",
+  "navigation.skipToMain": "Sări la conținutul principal",
   "noData": "Fără date",
   "operation.add": "Adaugă",
   "operation.added": "Adăugat",

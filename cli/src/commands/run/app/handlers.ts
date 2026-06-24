@@ -11,6 +11,12 @@ export const RUN_MODES = {
 
 export type RunMode = typeof RUN_MODES[keyof typeof RUN_MODES]
 
+export const CHAT_MODES: ReadonlySet<string> = new Set<RunMode>([
+  RUN_MODES.Chat,
+  RUN_MODES.AgentChat,
+  RUN_MODES.AdvancedChat,
+])
+
 export type AppRunObject = FormattedPrintable
 
 export function newAppRunObject(mode: string, resp: Record<string, unknown>): AppRunObject {

@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Arbeitsablauf",
   "newAppFromTemplate.sidebar.Writing": "Schrift",
   "noAccessPermission": "Keine Berechtigung zum Zugriff auf die Webanwendung",
+  "noAccessResourcePermission": "Keine Berechtigung zum Zugriff auf diese Ressource",
   "noUserInputNode": "Fehlender Benutzereingabeknoten",
   "notPublishedYet": "App ist noch nicht veröffentlicht",
   "openInExplore": "In Explore öffnen",

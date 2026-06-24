@@ -4,16 +4,20 @@ import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReleaseWithSummaryDeployments } from './release-deployments'
 import { ReleaseSource } from '@dify/contracts/enterprise/types.gen'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
 import {
   formatDate,
   releaseCommit,
 } from '../../shared/domain/release'
+import {
+  deploymentSourceAppIdAtom,
+  deploymentSourceAppQueryAtom,
+} from '../state'
 import {
   DetailTable,
   DetailTableBody,
@@ -77,10 +81,6 @@ function ReleaseSourceCell({ release }: {
 }) {
   const { t } = useTranslation('deployments')
   const sourceAppId = release.sourceAppId
-  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: { params: { app_id: sourceAppId ?? '' } },
-    enabled: Boolean(sourceAppId),
-  }))
 
   if (!sourceAppId) {
     return (
@@ -90,6 +90,23 @@ function ReleaseSourceCell({ release }: {
     )
   }
 
+  return (
+    <ScopeProvider
+      key={sourceAppId}
+      atoms={[
+        [deploymentSourceAppIdAtom, sourceAppId],
+      ]}
+      name="DeploymentReleaseSource"
+    >
+      <ReleaseSourceLink sourceAppId={sourceAppId} />
+    </ScopeProvider>
+  )
+}
+
+function ReleaseSourceLink({ sourceAppId }: {
+  sourceAppId: string
+}) {
+  const sourceAppQuery = useAtomValue(deploymentSourceAppQueryAtom)
   const sourceAppName = sourceAppQuery.data?.name
   const label = sourceAppName || sourceAppId
   const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId

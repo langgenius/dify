@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Esta ação é permanente. Você não poderá reverter para o método anterior. Por favor, confirme para converter.",
   "conversion.confirm.title": "Confirmação",
   "conversion.descriptionChunk1": "Agora você pode converter sua base de conhecimento existente para usar o Pipeline de Conhecimento para processamento de documentos",
-  "conversion.descriptionChunk2": "— uma abordagem mais aberta e flexível com acesso a plugins do nosso mercado. Isso aplicará o novo método de processamento a todos os documentos futuros.",
+  "conversion.descriptionChunk2": " — uma abordagem mais aberta e flexível com acesso a integrações do Marketplace. Isso aplicará o novo método de processamento a todos os documentos futuros.",
   "conversion.errorMessage": "Falha ao converter o conjunto de dados em um pipeline",
   "conversion.successMessage": "Converteu com êxito o conjunto de dados em um pipeline",
   "conversion.title": "Converter em pipeline de conhecimento",

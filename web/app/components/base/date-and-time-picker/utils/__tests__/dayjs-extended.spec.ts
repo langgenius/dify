@@ -5,7 +5,6 @@ import dayjs, {
   getDateWithTimezone,
   getDaysInMonth,
   getHourIn12Hour,
-  parseDateWithFormat,
   toDayjs,
 } from '../dayjs'
 
@@ -290,46 +289,6 @@ describe('dayjs extended utilities', () => {
 
       expect(result).toBeUndefined()
       consoleSpy.mockRestore()
-    })
-  })
-
-  // Tests for parseDateWithFormat
-  describe('parseDateWithFormat', () => {
-    it('should return null for empty string', () => {
-      expect(parseDateWithFormat('')).toBeNull()
-    })
-
-    it('should parse with provided format from common formats', () => {
-      // Uses YYYY-MM-DD which is in COMMON_PARSE_FORMATS
-      const result = parseDateWithFormat('2024-06-15', 'YYYY-MM-DD')
-
-      expect(result).not.toBeNull()
-      expect(result?.format('YYYY-MM-DD')).toBe('2024-06-15')
-    })
-
-    it('should return null for invalid date with format', () => {
-      const result = parseDateWithFormat('not-a-date', 'YYYY-MM-DD')
-
-      expect(result).toBeNull()
-    })
-
-    it('should try common formats when no format is specified', () => {
-      const result = parseDateWithFormat('2024-06-15')
-
-      expect(result).not.toBeNull()
-      expect(result?.format('YYYY-MM-DD')).toBe('2024-06-15')
-    })
-
-    it('should parse ISO datetime format', () => {
-      const result = parseDateWithFormat('2024-06-15T12:00:00')
-
-      expect(result).not.toBeNull()
-    })
-
-    it('should return null for unparseable string without format', () => {
-      const result = parseDateWithFormat('gibberish')
-
-      expect(result).toBeNull()
     })
   })
 

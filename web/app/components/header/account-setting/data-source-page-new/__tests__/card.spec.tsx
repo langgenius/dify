@@ -11,7 +11,7 @@ import { useInvalidDataSourceList } from '@/service/use-pipeline'
 import Card from '../card'
 import { useDataSourceAuthUpdate } from '../hooks'
 
-let mockWorkspacePermissionKeys: string[] = ['credential.manage', 'credential.use']
+let mockWorkspacePermissionKeys: string[] = ['credential.use', 'credential.create', 'credential.manage']
 
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
@@ -126,7 +126,7 @@ describe('Card Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     mockPluginAuthActionReturn = createMockPluginAuthActionReturn()
 
     vi.mocked(useDataSourceAuthUpdate).mockReturnValue({ handleAuthUpdate: mockHandleAuthUpdate })
@@ -451,7 +451,7 @@ describe('Card Component', () => {
       expectAuthUpdated()
     })
 
-    it('should disable configure credential actions when user lacks credential.manage', () => {
+    it('should disable configure credential actions when user lacks credential.create', () => {
       // Arrange
       mockWorkspacePermissionKeys = ['credential.use']
       const configurableItem: DataSourceAuth = {

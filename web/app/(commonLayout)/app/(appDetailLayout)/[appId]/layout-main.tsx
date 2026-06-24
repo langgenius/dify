@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +10,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -36,7 +38,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, currentWorkspace, userProfile, workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const { appDetail, setAppDetail } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -95,6 +99,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       currentUserId: userProfile?.id,
       resourceMaintainer: routeAppDetail.maintainer,
       workspacePermissionKeys,
+      isRbacEnabled,
     })
     const isLayoutPath = pathname.endsWith('configuration') || pathname.endsWith('workflow')
     const isLogsPath = pathname.endsWith('logs')
@@ -112,6 +117,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         currentUserId: userProfile?.id,
         resourceMaintainer: routeAppDetail.maintainer,
         workspacePermissionKeys,
+        isRbacEnabled,
       }))
       return
     }
@@ -125,7 +131,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
     if (appDetailRes && appDetail?.id !== appDetailRes.id)
       setAppDetail({ ...appDetailRes, enable_sso: false })
-  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
+  }, [appDetail?.id, appDetailRes, appId, currentWorkspace.id, isLoadingAppDetail, isLoadingCurrentWorkspace, isLoadingWorkspacePermissionKeys, isRbacEnabled, pathname, routeAppDetail, router, setAppDetail, userProfile?.id, workspacePermissionKeys])
 
   if (!appDetail) {
     return (

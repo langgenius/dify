@@ -1,4 +1,4 @@
-import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { DecoratorNode } from 'lexical'
 import CurrentBlockComponent from './component'
@@ -69,10 +69,4 @@ export class CurrentBlockNode extends DecoratorNode<React.JSX.Element> {
 }
 export function $createCurrentBlockNode(type: GeneratorType): CurrentBlockNode {
   return new CurrentBlockNode(type)
-}
-
-export function $isCurrentBlockNode(
-  node: CurrentBlockNode | LexicalNode | null | undefined,
-): boolean {
-  return node instanceof CurrentBlockNode
 }

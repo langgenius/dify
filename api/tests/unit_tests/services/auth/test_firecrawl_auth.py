@@ -86,6 +86,7 @@ class TestFirecrawlAuth:
             "https://api.firecrawl.dev/v1/crawl",
             headers={"Content-Type": "application/json", "Authorization": "Bearer test_api_key_123"},
             json=expected_data,
+            timeout=httpx.Timeout(10.0),
         )
 
     @pytest.mark.parametrize(

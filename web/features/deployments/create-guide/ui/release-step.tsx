@@ -7,10 +7,10 @@ import { useTranslation } from 'react-i18next'
 import {
   continueFromReleaseAtom,
   dslDefaultAppNameAtom,
+  effectiveMethodAtom,
   hasInstanceNameConflictAtom,
   instanceDescriptionAtom,
   instanceNameAtom,
-  methodAtom,
   releaseCanGoNextAtom,
   releaseDescriptionAtom,
   releaseNameAtom,
@@ -74,7 +74,7 @@ function InstanceNameField() {
   const { t } = useTranslation('deployments')
   const instanceName = useAtomValue(instanceNameAtom)
   const setInstanceName = useSetAtom(setInstanceNameAtom)
-  const method = useAtomValue(methodAtom)
+  const method = useAtomValue(effectiveMethodAtom)
   const selectedApp = useAtomValue(selectedAppAtom)
   const dslDefaultAppName = useAtomValue(dslDefaultAppNameAtom)
   const instanceNamePlaceholder = method === 'importDsl'

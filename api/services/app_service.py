@@ -8,6 +8,7 @@ import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
@@ -27,6 +28,7 @@ from models import Account, AppStar
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
+from services.agent.errors import AgentNameConflictError
 from services.billing_service import BillingService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
@@ -593,6 +595,16 @@ class AppService:
         if updated_at is not None:
             agent.updated_at = updated_at
 
+    @staticmethod
+    def _commit_app_identity_update(app: App) -> None:
+        try:
+            db.session.commit()
+        except IntegrityError as exc:
+            db.session.rollback()
+            if app.mode == AppMode.AGENT:
+                raise AgentNameConflictError() from exc
+            raise
+
     def update_app(self, app: App, args: ArgsDict) -> App:
         """
         Update app
@@ -629,7 +641,7 @@ class AppService:
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
-        db.session.commit()
+        self._commit_app_identity_update(app)
 
         app_was_updated.send(app)
 
@@ -652,7 +664,7 @@ class AppService:
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
-        db.session.commit()
+        self._commit_app_identity_update(app)
 
         app_was_updated.send(app)
 

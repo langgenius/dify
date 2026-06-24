@@ -3,12 +3,13 @@ import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-moda
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useProviderContext } from '@/context/provider-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useRouter } from '@/next/navigation'
 import { copyApp, deleteApp, exportAppConfig, fetchAppDetail, updateAppInfo } from '@/service/apps'
 import { appDetailQueryKeyPrefix, useInvalidateAppList } from '@/service/use-apps'
@@ -58,6 +59,8 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const invalidateAppList = useInvalidateAppList()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
 
   const [uiState, setUiState] = useState(() => createInitialUiState(resetKey))
   const uiStateMatchesResetKey = uiState.resetKey === resetKey
@@ -216,12 +219,12 @@ export function useAppInfoActions({ onDetailExpand, resetKey }: UseAppInfoAction
       toast(t('newApp.appCreated', { ns: 'app' }), { type: 'success' })
       setNeedRefresh('1')
       onPlanInfoChanged()
-      getRedirection(newApp, replace)
+      getRedirection(newApp, replace, { isRbacEnabled })
     }
     catch {
       toast(t('newApp.appCreateFailed', { ns: 'app' }), { type: 'error' })
     }
-  }, [appDetail, closeModal, onPlanInfoChanged, replace, setNeedRefresh, t])
+  }, [appDetail, closeModal, isRbacEnabled, onPlanInfoChanged, replace, setNeedRefresh, t])
 
   const onExport = useCallback(async (include = false) => {
     if (!appDetail)

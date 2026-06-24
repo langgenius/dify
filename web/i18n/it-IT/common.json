@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Modello da Testo a Voce",
   "modelProvider.ttsModel.tip": "Imposta il modello predefinito per l'input da testo a voce nella conversazione.",
   "modelProvider.upgradeForLoadBalancing": "Aggiorna il tuo piano per abilitare il Bilanciamento del Carico.",
+  "navigation.skipToMain": "Vai al contenuto principale",
   "noData": "Nessun dato",
   "operation.add": "Aggiungi",
   "operation.added": "Aggiunto",

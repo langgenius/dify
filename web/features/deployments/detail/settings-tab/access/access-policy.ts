@@ -2,7 +2,7 @@ import type {
   AccessPolicy,
   AccessMode as AccessPolicyMode,
   AccessSubject,
-  SubjectType as AccessSubjectType,
+  AccessSubjectType as AccessSubjectTypeValue,
   Subject,
 } from '@dify/contracts/enterprise/types.gen'
 import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
@@ -12,7 +12,7 @@ import type {
 } from '@/models/access-control'
 import {
   AccessMode,
-  SubjectType,
+  AccessSubjectType,
 } from '@dify/contracts/enterprise/types.gen'
 import { AccessMode as AppAccessMode } from '@/models/access-control'
 
@@ -26,7 +26,7 @@ export const permissionIcon: Record<AccessPermissionKind, string> = {
 
 export type SelectableAccessSubject = {
   id: string
-  subjectType: AccessSubjectType
+  subjectType: AccessSubjectTypeValue
   name?: string
   memberCount?: number
 }
@@ -64,27 +64,27 @@ export function appAccessModeToPermissionKey(mode: AppAccessMode): AccessPermiss
 }
 
 export function normalizeResolvedSubject(subject: Subject): SelectableAccessSubject | undefined {
-  if (subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP) {
+  if (subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP) {
     const id = subject.subjectId || subject.groupData?.id
     if (!id)
       return undefined
 
     return {
       id,
-      subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
       name: subject.groupData?.name,
       memberCount: subject.groupData?.groupSize,
     }
   }
 
-  if (subject.subjectType === SubjectType.SUBJECT_TYPE_ACCOUNT) {
+  if (subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT) {
     const id = subject.subjectId || subject.accountData?.id
     if (!id)
       return undefined
 
     return {
       id,
-      subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
       name: subject.accountData?.name || subject.accountData?.email,
     }
   }
@@ -144,10 +144,10 @@ function selectableSubjectToAccount(subject: SelectableAccessSubject): AccessCon
 export function accessControlSelectionFromSubjects(subjects: SelectableAccessSubject[]): AccessSubjectSelectionValue {
   return {
     groups: subjects
-      .filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP)
+      .filter(subject => subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP)
       .map(selectableSubjectToGroup),
     members: subjects
-      .filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_ACCOUNT)
+      .filter(subject => subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT)
       .map(selectableSubjectToAccount),
   }
 }
@@ -156,13 +156,13 @@ export function subjectsFromAccessControlSelection(value: AccessSubjectSelection
   return [
     ...value.groups.map((group): SelectableAccessSubject => ({
       id: group.id,
-      subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
       name: group.name,
       memberCount: group.groupSize,
     })),
     ...value.members.map((member): SelectableAccessSubject => ({
       id: member.id,
-      subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
       name: member.name || member.email,
     })),
   ]

@@ -162,6 +162,7 @@ html[data-theme="light"] {
   --color-components-main-nav-glass-surface-middle-2: #0033ff1a;
   --color-components-main-nav-glass-surface-end: #0033ff14;
   --color-components-main-nav-glass-edge-highlight-first: #fffffffa;
+  --color-components-main-nav-glass-edge-highlight-middle: #ffffff00;
   --color-components-main-nav-glass-edge-highlight-end: #ffffff6b;
   --color-components-main-nav-glass-edge-reflection-first: #0033ff00;
   --color-components-main-nav-glass-edge-reflection-middle: #0033ff99;

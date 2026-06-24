@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Tindakan ini bersifat permanen. Anda tidak akan dapat kembali ke metode sebelumnya. Silakan konfirmasi untuk mengonversi.",
   "conversion.confirm.title": "Konfirmasi",
   "conversion.descriptionChunk1": "Anda sekarang dapat mengonversi basis pengetahuan yang ada untuk menggunakan Knowledge Pipeline untuk pemrosesan dokumen",
-  "conversion.descriptionChunk2": "— pendekatan yang lebih terbuka dan fleksibel dengan akses ke plugin dari pasar kami. Ini akan menerapkan metode pemrosesan baru untuk semua dokumen di masa mendatang.",
+  "conversion.descriptionChunk2": " — pendekatan yang lebih terbuka dan fleksibel dengan akses ke integrasi dari Marketplace. Ini akan menerapkan metode pemrosesan baru untuk semua dokumen di masa mendatang.",
   "conversion.errorMessage": "Gagal mengonversi himpunan data ke alur",
   "conversion.successMessage": "Berhasil mengonversi himpunan data menjadi alur",
   "conversion.title": "Mengonversi ke Alur Pengetahuan",
