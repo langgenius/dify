@@ -74,6 +74,8 @@ export type E2EEnv = {
   fileAppId: string
   /** Chat app (advanced-chat) with a file input variable */
   fileChatAppId: string
+  /** Chat app with separated reasoning (needs real model) */
+  reasoningAppId: string
   /**
    * Secondary workspace ID — EE only ("auto_test1").
    * Empty in CE mode (CE has a single workspace).
@@ -122,6 +124,7 @@ export type E2ECapabilities = {
   hitlExternalAppId: string
   hitlSingleActionAppId: string
   hitlMultiNodeAppId: string
+  reasoningAppId: string
   ws2AppId: string
 }
 
@@ -171,6 +174,7 @@ export function loadE2EEnv(): E2EEnv {
     hitlMultiNodeAppId: process.env.DIFY_E2E_HITL_MULTI_NODE_APP_ID ?? '',
     fileAppId: process.env.DIFY_E2E_FILE_APP_ID ?? '',
     fileChatAppId: process.env.DIFY_E2E_FILE_CHAT_APP_ID ?? '',
+    reasoningAppId: process.env.DIFY_E2E_REASONING_APP_ID ?? '',
     ws2Id: process.env.DIFY_E2E_WS2_ID ?? '',
     ws2AppId: process.env.DIFY_E2E_WS2_APP_ID ?? '',
     email: process.env.DIFY_E2E_EMAIL!,
@@ -210,6 +214,7 @@ export function resolveEnv(caps: E2ECapabilities | undefined): E2EEnv {
     hitlExternalAppId: caps.hitlExternalAppId || env.hitlExternalAppId,
     hitlSingleActionAppId: caps.hitlSingleActionAppId || env.hitlSingleActionAppId,
     hitlMultiNodeAppId: caps.hitlMultiNodeAppId || env.hitlMultiNodeAppId,
+    reasoningAppId: caps.reasoningAppId || env.reasoningAppId,
     ws2AppId: caps.ws2AppId || env.ws2AppId,
   }
 }
