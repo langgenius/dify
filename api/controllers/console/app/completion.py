@@ -93,6 +93,10 @@ class ChatMessagePayload(BaseMessagePayload):
     query: str = Field(..., description="User query")
     conversation_id: str | None = Field(default=None, description="Conversation ID")
     parent_message_id: str | None = Field(default=None, description="Parent message ID")
+    draft_type: Literal["draft", "debug_build"] = Field(
+        default="draft",
+        description="Agent App debug config source. Use debug_build while the Agent is in build mode.",
+    )
 
     @field_validator("conversation_id", "parent_message_id")
     @classmethod

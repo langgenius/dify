@@ -8,6 +8,8 @@ from sqlalchemy.exc import IntegrityError
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
 from models.agent import (
     Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentDebugConversation,
@@ -271,11 +273,11 @@ def test_publish_save_strategies_run_publish_validation(strategy: ComposerSaveSt
 
 def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession(scalar=[None])
-    created_version = SimpleNamespace(id="version-1")
+    saved_draft = SimpleNamespace(id="draft-1", config_snapshot_dict={"prompt": {"system_prompt": "x"}})
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
-    monkeypatch.setattr(AgentComposerService, "_create_config_version", lambda **kwargs: created_version)
+    monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **kwargs: saved_draft)
     monkeypatch.setattr(AgentComposerService, "load_agent_app_composer", lambda **kwargs: {"loaded": True})
     payload = ComposerSavePayload.model_validate(
         {
@@ -293,23 +295,21 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
     assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"loaded": True}
     assert fake_session.added[0].name == "Analyst"
-    assert fake_session.added[0].active_config_snapshot_id == "version-1"
-    assert fake_session.added[0].active_config_has_model is False
+    assert fake_session.added[0].active_config_snapshot_id is None
     assert fake_session.commits == 1
 
 
-def test_save_agent_app_composer_updates_current_version(monkeypatch: pytest.MonkeyPatch):
+def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.MonkeyPatch):
     agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1", updated_by=None)
     fake_session = FakeSession(scalar=[agent])
-    updated = {}
+    saved = {}
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
-    monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: SimpleNamespace(id="version-1"))
     monkeypatch.setattr(
         AgentComposerService,
-        "_update_current_version",
-        lambda **kwargs: updated.update(kwargs) or SimpleNamespace(id="version-2"),
+        "_save_agent_draft",
+        lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1"),
     )
     monkeypatch.setattr(AgentComposerService, "load_agent_app_composer", lambda **kwargs: {"loaded": True})
     payload = ComposerSavePayload.model_validate(
@@ -326,9 +326,115 @@ def test_save_agent_app_composer_updates_current_version(monkeypatch: pytest.Mon
 
     assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"loaded": True}
-    assert updated["operation"].value == "save_current_version"
-    assert agent.active_config_has_model is True
+    assert saved["draft_type"] == AgentConfigDraftType.DRAFT
+    assert saved["agent_soul"].model_dump(mode="json") == _agent_soul_with_model().model_dump(mode="json")
     assert fake_session._scalar == []
+    assert fake_session.commits == 1
+
+
+def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.MonkeyPatch):
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+    )
+    draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=_agent_soul_with_model(),
+    )
+    version = SimpleNamespace(id="version-2")
+    fake_session = FakeSession(scalar=[agent, draft])
+    created: dict[str, object] = {}
+
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
+    monkeypatch.setattr(AgentComposerService, "validate_knowledge_datasets", lambda **kwargs: None)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_create_config_version",
+        lambda **kwargs: created.update(kwargs) or version,
+    )
+    monkeypatch.setattr(AgentComposerService, "_serialize_version", lambda _version: {"id": _version.id})
+
+    result = AgentComposerService.publish_agent_app_draft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+        version_note="ship it",
+    )
+
+    assert result["result"] == "success"
+    assert result["active_config_snapshot_id"] == "version-2"
+    assert result["draft"]["base_snapshot_id"] == "version-2"
+    assert created["operation"] == AgentConfigRevisionOperation.PUBLISH_DRAFT
+    assert created["previous_snapshot_id"] == "version-1"
+    assert agent.active_config_snapshot_id == "version-2"
+    assert agent.active_config_has_model is True
+    assert fake_session.commits == 1
+
+
+def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkeypatch: pytest.MonkeyPatch):
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+    )
+    normal_draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=_agent_soul_with_model(),
+    )
+    fake_session = FakeSession(scalar=[agent, normal_draft, None])
+
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+
+    checked_out = AgentComposerService.checkout_agent_app_build_draft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
+    build_draft = fake_session.added[0]
+    assert checked_out["draft"]["id"] == build_draft.id
+    assert checked_out["draft"]["draft_type"] == AgentConfigDraftType.DEBUG_BUILD.value
+    assert checked_out["draft"]["account_id"] == "account-1"
+    assert checked_out["draft"]["base_snapshot_id"] == "version-1"
+    assert checked_out["agent_soul"] == normal_draft.config_snapshot_dict
+    assert fake_session.commits == 1
+
+    fake_session = FakeSession(scalar=[agent, build_draft, normal_draft])
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+
+    applied = AgentComposerService.apply_agent_app_build_draft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
+    assert applied["result"] == "success"
+    assert applied["draft"]["id"] == normal_draft.id
+    assert normal_draft.config_snapshot_dict == build_draft.config_snapshot_dict
+    assert fake_session.deleted == [build_draft]
     assert fake_session.commits == 1
 
 
@@ -1603,7 +1709,17 @@ def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id=None,
     )
-    service = AgentRosterService(FakeSession(scalars=[["agent-1"], ["agent-1"]]))
+    published_draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=AgentSoulConfig(),
+    )
+    service = AgentRosterService(
+        FakeSession(scalars=[["agent-1"], [published_draft], ["agent-1"], [published_draft]])
+    )
 
     flags = service.load_active_config_is_published_by_agent_id(tenant_id="tenant-1", agents=[agent, draft_agent])
 
@@ -1937,6 +2053,7 @@ def test_agent_app_visible_versions_exclude_draft_saves():
     roster_operations = AgentRosterService._visible_version_operations(roster_agent)
 
     assert agent_app_operations == {
+        AgentConfigRevisionOperation.PUBLISH_DRAFT,
         AgentConfigRevisionOperation.SAVE_NEW_VERSION,
         AgentConfigRevisionOperation.SAVE_TO_ROSTER,
         AgentConfigRevisionOperation.RESTORE_VERSION,
@@ -1948,7 +2065,7 @@ def test_agent_app_visible_versions_exclude_draft_saves():
 
 
 def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
-    fake_session = FakeSession(scalar=["version-2", 6])
+    fake_session = FakeSession(scalar=["version-2", None])
     service = AgentRosterService(fake_session)
     agent = Agent(
         id="agent-1",
@@ -1979,19 +2096,22 @@ def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pyte
         account_id="account-1",
     )
 
-    assert restored == {"result": "success", "active_config_snapshot_id": "version-2"}
-    assert agent.active_config_snapshot_id == "version-2"
-    assert agent.active_config_has_model is True
+    assert restored == {
+        "result": "success",
+        "active_config_snapshot_id": "version-4",
+        "draft_config_id": fake_session.added[0].id,
+        "restored_version_id": "version-2",
+    }
+    assert agent.active_config_snapshot_id == "version-4"
     assert agent.updated_by == "account-1"
     assert fake_session.commits == 1
-    revision = fake_session.added[0]
-    assert revision.tenant_id == "tenant-1"
-    assert revision.agent_id == "agent-1"
-    assert revision.previous_snapshot_id == "version-4"
-    assert revision.current_snapshot_id == "version-2"
-    assert revision.revision == 7
-    assert revision.operation == AgentConfigRevisionOperation.RESTORE_VERSION
-    assert revision.created_by == "account-1"
+    draft = fake_session.added[0]
+    assert draft.tenant_id == "tenant-1"
+    assert draft.agent_id == "agent-1"
+    assert draft.draft_type == AgentConfigDraftType.DRAFT
+    assert draft.base_snapshot_id == "version-2"
+    assert draft.config_snapshot_dict == _agent_soul_with_model().model_dump(mode="json")
+    assert draft.updated_by == "account-1"
 
 
 def test_restore_roster_agent_version_rejects_invisible_versions(monkeypatch: pytest.MonkeyPatch):

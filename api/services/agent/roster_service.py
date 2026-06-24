@@ -8,6 +8,8 @@ from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
     Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
@@ -836,6 +838,7 @@ class AgentRosterService:
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
         if agent.source == AgentSource.AGENT_APP:
             return {
+                AgentConfigRevisionOperation.PUBLISH_DRAFT,
                 AgentConfigRevisionOperation.SAVE_NEW_VERSION,
                 AgentConfigRevisionOperation.SAVE_TO_ROSTER,
                 AgentConfigRevisionOperation.RESTORE_VERSION,
@@ -849,16 +852,33 @@ class AgentRosterService:
         }
 
     def active_config_is_published(self, *, tenant_id: str, agent: Agent) -> bool:
-        """Return whether the Agent's current active snapshot is a visible published version."""
+        """Return whether the editable draft matches the active published snapshot."""
         return self.load_active_config_is_published_by_agent_id(tenant_id=tenant_id, agents=[agent]).get(
             agent.id,
             False,
         )
 
     def load_active_config_is_published_by_agent_id(self, *, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
-        """Return publish-state flags for the active config snapshots of the given Agents."""
+        """Return whether each Agent's normal draft is aligned with its active published snapshot."""
         published_agent_ids = self._load_published_active_snapshot_agent_ids(tenant_id=tenant_id, agents=agents)
-        return {agent.id: agent.id in published_agent_ids for agent in agents}
+        drafts = self._session.scalars(
+            select(AgentConfigDraft).where(
+                AgentConfigDraft.tenant_id == tenant_id,
+                AgentConfigDraft.agent_id.in_([agent.id for agent in agents] or [""]),
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.account_id.is_(None),
+            )
+        ).all()
+        drafts_by_agent_id = {draft.agent_id: draft for draft in drafts}
+        result: dict[str, bool] = {}
+        for agent in agents:
+            draft = drafts_by_agent_id.get(agent.id)
+            result[agent.id] = (
+                agent.id in published_agent_ids
+                and bool(agent.active_config_snapshot_id)
+                and (draft is None or draft.base_snapshot_id == agent.active_config_snapshot_id)
+            )
+        return result
 
     def list_agent_versions(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
@@ -957,26 +977,37 @@ class AgentRosterService:
             raise AgentVersionNotFoundError()
 
         version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
-        if agent.active_config_snapshot_id == version.id:
-            return {"result": "success", "active_config_snapshot_id": version.id}
-
-        previous_snapshot_id = agent.active_config_snapshot_id
-        agent.active_config_snapshot_id = version.id
-        agent.active_config_has_model = agent_soul_has_model(version.config_snapshot)
-        agent.updated_by = account_id
-        self._session.add(
-            AgentConfigRevision(
+        draft = self._session.scalar(
+            select(AgentConfigDraft)
+            .where(
+                AgentConfigDraft.tenant_id == tenant_id,
+                AgentConfigDraft.agent_id == agent_id,
+                AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
+                AgentConfigDraft.account_id.is_(None),
+            )
+            .limit(1)
+        )
+        if draft is None:
+            draft = AgentConfigDraft(
                 tenant_id=tenant_id,
                 agent_id=agent_id,
-                previous_snapshot_id=previous_snapshot_id,
-                current_snapshot_id=version.id,
-                revision=self._next_revision(tenant_id=tenant_id, agent_id=agent_id),
-                operation=AgentConfigRevisionOperation.RESTORE_VERSION,
+                draft_type=AgentConfigDraftType.DRAFT,
+                account_id=None,
+                draft_owner_key="",
                 created_by=account_id,
             )
-        )
+            self._session.add(draft)
+        draft.base_snapshot_id = version.id
+        draft.config_snapshot = AgentSoulConfig.model_validate(version.config_snapshot_dict)
+        draft.updated_by = account_id
+        agent.updated_by = account_id
         self._session.commit()
-        return {"result": "success", "active_config_snapshot_id": version.id}
+        return {
+            "result": "success",
+            "active_config_snapshot_id": agent.active_config_snapshot_id or version.id,
+            "draft_config_id": draft.id,
+            "restored_version_id": version.id,
+        }
 
     def _get_agent(self, *, tenant_id: str, agent_id: str, roster_only: bool = False) -> Agent:
         stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)

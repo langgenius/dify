@@ -11,6 +11,8 @@ from libs.helper import to_timestamp
 from models import Account
 from models.agent import (
     Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
@@ -265,27 +267,23 @@ class AgentComposerService:
 
     @classmethod
     def load_agent_app_composer(cls, *, tenant_id: str, app_id: str) -> dict[str, Any]:
-        agent = db.session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == tenant_id,
-                Agent.app_id == app_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.status == AgentStatus.ACTIVE,
-            )
-            .order_by(Agent.created_at.desc())
-            .limit(1)
+        agent = cls._require_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
+        draft = cls._get_or_create_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=agent.updated_by or agent.created_by,
         )
-        if not agent:
-            raise AgentNotFoundError()
-        version = cls._require_version(
+        version = cls._get_version_if_present(
             tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
         )
         return {
             "variant": ComposerVariant.AGENT_APP.value,
             "agent": cls._serialize_agent(agent),
             "active_config_snapshot": cls._serialize_version(version),
-            "agent_soul": version.config_snapshot_dict,
+            "draft": cls._serialize_draft(draft),
+            "agent_soul": draft.config_snapshot_dict,
             "save_options": [
                 ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
                 ComposerSaveStrategy.SAVE_AS_NEW_VERSION.value,
@@ -304,17 +302,7 @@ class AgentComposerService:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
 
-        agent = db.session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == tenant_id,
-                Agent.app_id == app_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.status == AgentStatus.ACTIVE,
-            )
-            .order_by(Agent.created_at.desc())
-            .limit(1)
-        )
+        agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
         if not agent:
             agent = Agent(
                 tenant_id=tenant_id,
@@ -334,37 +322,20 @@ class AgentComposerService:
             except IntegrityError as exc:
                 db.session.rollback()
                 raise AgentNameConflictError() from exc
-        payload.agent_soul = cls._preserve_active_soul_files(
+        payload.agent_soul = cls._preserve_agent_draft_soul_files(
             tenant_id=tenant_id,
             agent_id=agent.id,
             agent_soul=payload.agent_soul,
         )
-
-        if payload.save_strategy == ComposerSaveStrategy.SAVE_AS_NEW_VERSION or not agent.active_config_snapshot_id:
-            version = cls._create_config_version(
-                tenant_id=tenant_id,
-                agent_id=agent.id,
-                account_id=account_id,
-                agent_soul=payload.agent_soul,
-                operation=AgentConfigRevisionOperation.SAVE_NEW_VERSION,
-                version_note=payload.version_note,
-            )
-            agent.active_config_snapshot_id = version.id
-            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
-        else:
-            current_snapshot = cls._require_version(
-                tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
-            )
-            version = cls._update_current_version(
-                current_snapshot=current_snapshot,
-                account_id=account_id,
-                agent_soul=payload.agent_soul,
-                operation=AgentConfigRevisionOperation.SAVE_CURRENT_VERSION,
-                version_note=payload.version_note,
-            )
-            agent.active_config_snapshot_id = version.id
-            agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
-            agent.updated_by = account_id
+        cls._save_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            agent_soul=payload.agent_soul,
+            account_id_for_audit=account_id,
+        )
+        agent.updated_by = account_id
 
         db.session.commit()
         state = cls.load_agent_app_composer(tenant_id=tenant_id, app_id=app_id)
@@ -374,6 +345,167 @@ class AgentComposerService:
             agent_id=agent.id,
         )
         return state
+
+    @classmethod
+    def publish_agent_app_draft(
+        cls, *, tenant_id: str, agent_id: str, account_id: str, version_note: str | None = None
+    ) -> dict[str, Any]:
+        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
+        if agent.scope != AgentScope.ROSTER or agent.source != AgentSource.AGENT_APP:
+            raise AgentNotFoundError()
+        draft = cls._get_or_create_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=account_id,
+        )
+        agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        ComposerConfigValidator.validate_publish_payload(
+            ComposerSavePayload(
+                variant=ComposerVariant.AGENT_APP,
+                agent_soul=agent_soul,
+                save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
+                version_note=version_note,
+            )
+        )
+        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=agent_soul)
+        version = cls._create_config_version(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
+            version_note=version_note,
+            previous_snapshot_id=agent.active_config_snapshot_id,
+        )
+        agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.updated_by = account_id
+        draft.base_snapshot_id = version.id
+        draft.updated_by = account_id
+        db.session.commit()
+        return {
+            "result": "success",
+            "active_config_snapshot_id": version.id,
+            "active_config_snapshot": cls._serialize_version(version),
+            "draft": cls._serialize_draft(draft),
+        }
+
+    @classmethod
+    def checkout_agent_app_build_draft(
+        cls, *, tenant_id: str, agent_id: str, account_id: str, force: bool = False
+    ) -> dict[str, Any]:
+        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
+        if agent.scope != AgentScope.ROSTER or agent.source != AgentSource.AGENT_APP:
+            raise AgentNotFoundError()
+        normal_draft = cls._get_or_create_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=account_id,
+        )
+        build_draft = cls._get_agent_draft(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=account_id,
+        )
+        if build_draft is not None and not force:
+            return cls._serialize_build_draft_state(build_draft)
+        if build_draft is None:
+            build_draft = AgentConfigDraft(
+                tenant_id=tenant_id,
+                agent_id=agent.id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=account_id,
+                draft_owner_key=account_id,
+                created_by=account_id,
+            )
+            db.session.add(build_draft)
+        build_draft.base_snapshot_id = normal_draft.base_snapshot_id
+        build_draft.config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
+        build_draft.updated_by = account_id
+        db.session.commit()
+        return cls._serialize_build_draft_state(build_draft)
+
+    @classmethod
+    def load_agent_app_build_draft(cls, *, tenant_id: str, agent_id: str, account_id: str) -> dict[str, Any]:
+        build_draft = cls._get_agent_draft(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=account_id,
+        )
+        if build_draft is None:
+            raise AgentVersionNotFoundError()
+        return cls._serialize_build_draft_state(build_draft)
+
+    @classmethod
+    def save_agent_app_build_draft(
+        cls, *, tenant_id: str, agent_id: str, account_id: str, payload: ComposerSavePayload
+    ) -> dict[str, Any]:
+        if payload.agent_soul is None:
+            raise ValueError("agent_soul is required")
+        _backfill_cli_tool_ids(payload.agent_soul)
+        ComposerConfigValidator.validate_draft_save_payload(payload)
+        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
+        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
+        payload.agent_soul = cls._preserve_agent_draft_soul_files(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            agent_soul=payload.agent_soul,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=account_id,
+        )
+        build_draft = cls._save_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=account_id,
+            agent_soul=payload.agent_soul,
+            account_id_for_audit=account_id,
+        )
+        db.session.commit()
+        return cls._serialize_build_draft_state(build_draft)
+
+    @classmethod
+    def apply_agent_app_build_draft(cls, *, tenant_id: str, agent_id: str, account_id: str) -> dict[str, Any]:
+        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
+        build_draft = cls._get_agent_draft(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=account_id,
+        )
+        if build_draft is None:
+            raise AgentVersionNotFoundError()
+        normal_draft = cls._save_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            agent_soul=AgentSoulConfig.model_validate(build_draft.config_snapshot_dict),
+            account_id_for_audit=account_id,
+            base_snapshot_id=build_draft.base_snapshot_id,
+        )
+        db.session.delete(build_draft)
+        db.session.commit()
+        return {"result": "success", "draft": cls._serialize_draft(normal_draft)}
+
+    @classmethod
+    def discard_agent_app_build_draft(cls, *, tenant_id: str, agent_id: str, account_id: str) -> dict[str, Any]:
+        build_draft = cls._get_agent_draft(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=account_id,
+        )
+        if build_draft is not None:
+            db.session.delete(build_draft)
+            db.session.commit()
+        return {"result": "success"}
 
     @classmethod
     def collect_validation_findings(
@@ -619,23 +751,17 @@ class AgentComposerService:
 
     @classmethod
     def _load_agent_app_soul(cls, *, tenant_id: str, app_id: str) -> AgentSoulConfig | None:
-        agent = db.session.scalar(
-            select(Agent)
-            .where(
-                Agent.tenant_id == tenant_id,
-                Agent.app_id == app_id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.status == AgentStatus.ACTIVE,
-            )
-            .order_by(Agent.created_at.desc())
-            .limit(1)
-        )
+        agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
         if agent is None:
             return None
-        version = cls._get_version_if_present(
-            tenant_id=tenant_id, agent_id=agent.id, version_id=agent.active_config_snapshot_id
+        draft = cls._get_or_create_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=AgentConfigDraftType.DRAFT,
+            account_id=None,
+            created_by=agent.updated_by or agent.created_by,
         )
-        return cls._parse_soul_snapshot(version)
+        return AgentSoulConfig.model_validate(draft.config_snapshot_dict)
 
     @staticmethod
     def _parse_soul_snapshot(version: AgentConfigSnapshot | None) -> AgentSoulConfig | None:
@@ -1206,6 +1332,31 @@ class AgentComposerService:
         preserved.files = existing_soul.files
         return preserved
 
+    @classmethod
+    def _preserve_agent_draft_soul_files(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str | None,
+        agent_soul: AgentSoulConfig,
+        draft_type: AgentConfigDraftType = AgentConfigDraftType.DRAFT,
+        account_id: str | None = None,
+    ) -> AgentSoulConfig:
+        if not agent_id:
+            return agent_soul
+        draft = cls._get_agent_draft(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            draft_type=draft_type,
+            account_id=account_id,
+        )
+        if draft is not None:
+            existing_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+            preserved = agent_soul.model_copy(deep=True)
+            preserved.files = existing_soul.files
+            return preserved
+        return cls._preserve_active_soul_files(tenant_id=tenant_id, agent_id=agent_id, agent_soul=agent_soul)
+
     @staticmethod
     def _drive_copy_scopes_from_agent_configs(
         *, agent_soul: AgentSoulConfig, node_job: WorkflowNodeJobConfig | None = None
@@ -1355,6 +1506,143 @@ class AgentComposerService:
             )
             or 0
         ) + 1
+
+    @classmethod
+    def _get_agent_app_agent(cls, *, tenant_id: str, app_id: str) -> Agent | None:
+        return db.session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == tenant_id,
+                Agent.app_id == app_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+            .order_by(Agent.created_at.desc())
+            .limit(1)
+        )
+
+    @classmethod
+    def _require_agent_app_agent(cls, *, tenant_id: str, app_id: str) -> Agent:
+        agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
+        if agent is None:
+            raise AgentNotFoundError()
+        return agent
+
+    @classmethod
+    def _get_agent_draft(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        draft_type: AgentConfigDraftType,
+        account_id: str | None,
+    ) -> AgentConfigDraft | None:
+        stmt = select(AgentConfigDraft).where(
+            AgentConfigDraft.tenant_id == tenant_id,
+            AgentConfigDraft.agent_id == agent_id,
+            AgentConfigDraft.draft_type == draft_type,
+        )
+        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
+            stmt = stmt.where(AgentConfigDraft.account_id == account_id)
+        else:
+            stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
+        return db.session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
+
+    @classmethod
+    def _get_or_create_agent_draft(
+        cls,
+        *,
+        tenant_id: str,
+        agent: Agent,
+        draft_type: AgentConfigDraftType,
+        account_id: str | None,
+        created_by: str | None,
+    ) -> AgentConfigDraft:
+        draft = cls._get_agent_draft(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            draft_type=draft_type,
+            account_id=account_id,
+        )
+        if draft is not None:
+            return draft
+        base_snapshot = cls._get_version_if_present(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        agent_soul = (
+            AgentSoulConfig.model_validate(base_snapshot.config_snapshot_dict)
+            if base_snapshot is not None
+            else AgentSoulConfig()
+        )
+        draft = AgentConfigDraft(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            draft_type=draft_type,
+            account_id=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD else None,
+            draft_owner_key=account_id if draft_type == AgentConfigDraftType.DEBUG_BUILD and account_id else "",
+            base_snapshot_id=base_snapshot.id if base_snapshot else None,
+            config_snapshot=agent_soul,
+            created_by=created_by,
+            updated_by=created_by,
+        )
+        db.session.add(draft)
+        db.session.flush()
+        return draft
+
+    @classmethod
+    def _save_agent_draft(
+        cls,
+        *,
+        tenant_id: str,
+        agent: Agent,
+        draft_type: AgentConfigDraftType,
+        account_id: str | None,
+        agent_soul: AgentSoulConfig,
+        account_id_for_audit: str,
+        base_snapshot_id: str | None = None,
+    ) -> AgentConfigDraft:
+        draft = cls._get_or_create_agent_draft(
+            tenant_id=tenant_id,
+            agent=agent,
+            draft_type=draft_type,
+            account_id=account_id,
+            created_by=account_id_for_audit,
+        )
+        draft.config_snapshot = agent_soul
+        if base_snapshot_id is not None:
+            draft.base_snapshot_id = base_snapshot_id
+        elif draft.base_snapshot_id is None:
+            draft.base_snapshot_id = agent.active_config_snapshot_id
+        draft.updated_by = account_id_for_audit
+        db.session.flush()
+        return draft
+
+    @classmethod
+    def _serialize_draft(cls, draft: AgentConfigDraft | None) -> dict[str, Any] | None:
+        if draft is None:
+            return None
+        return {
+            "id": draft.id,
+            "agent_id": draft.agent_id,
+            "draft_type": draft.draft_type.value,
+            "account_id": draft.account_id,
+            "base_snapshot_id": draft.base_snapshot_id,
+            "created_by": draft.created_by,
+            "updated_by": draft.updated_by,
+            "created_at": to_timestamp(draft.created_at),
+            "updated_at": to_timestamp(draft.updated_at),
+        }
+
+    @classmethod
+    def _serialize_build_draft_state(cls, draft: AgentConfigDraft) -> dict[str, Any]:
+        return {
+            "variant": ComposerVariant.AGENT_APP.value,
+            "draft": cls._serialize_draft(draft),
+            "agent_soul": draft.config_snapshot_dict,
+        }
 
     @classmethod
     def _get_draft_workflow(cls, *, tenant_id: str, app_id: str) -> Workflow:

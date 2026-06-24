@@ -56,6 +56,7 @@ from libs.login import login_required
 from models import Account
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
+from services.agent.composer_service import AgentComposerService
 from services.agent.errors import AgentNotFoundError
 from services.agent.observability_service import (
     AgentLogQueryParams,
@@ -65,7 +66,7 @@ from services.agent.observability_service import (
 from services.agent.roster_service import AgentRosterService
 from services.app_service import AppListParams, AppService, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
-from services.entities.agent_entities import RosterListQuery
+from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
 from services.feature_service import FeatureService
 
 
@@ -250,6 +251,36 @@ class AgentDebugConversationRefreshResponse(BaseModel):
     debug_conversation_id: str
 
 
+class AgentPublishPayload(BaseModel):
+    version_note: str | None = Field(default=None, description="Optional note for this published Agent version")
+
+
+class AgentPublishResponse(BaseModel):
+    result: str
+    active_config_snapshot_id: str
+    active_config_snapshot: dict[str, object] | None = None
+    draft: dict[str, object] | None = None
+
+
+class AgentBuildDraftCheckoutPayload(BaseModel):
+    force: bool = Field(default=False, description="Overwrite the existing current-user build draft")
+
+
+class AgentBuildDraftResponse(BaseModel):
+    variant: str
+    draft: dict[str, object]
+    agent_soul: dict[str, object]
+
+
+class AgentBuildDraftApplyResponse(BaseModel):
+    result: str
+    draft: dict[str, object]
+
+
+class AgentSimpleResultResponse(BaseModel):
+    result: str
+
+
 class AgentAppPagination(GenericAppPagination):
     data: list[AgentAppPartial] = Field(  # type: ignore[assignment]  # pyrefly: ignore[bad-override-mutable-attribute]
         validation_alias=AliasChoices("items", "data")
@@ -261,6 +292,9 @@ register_schema_models(
     AgentAppCreatePayload,
     AgentAppUpdatePayload,
     AgentAppCopyPayload,
+    AgentPublishPayload,
+    AgentBuildDraftCheckoutPayload,
+    ComposerSavePayload,
     AgentApiStatusPayload,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
@@ -277,6 +311,10 @@ register_response_schema_models(
     AgentAppDetailWithSite,
     AgentAppPartial,
     AgentDebugConversationRefreshResponse,
+    AgentPublishResponse,
+    AgentBuildDraftResponse,
+    AgentBuildDraftApplyResponse,
+    AgentSimpleResultResponse,
     AgentConfigSnapshotDetailResponse,
     AgentConfigSnapshotListResponse,
     AgentConfigSnapshotRestoreResponse,
@@ -580,6 +618,112 @@ class AgentDebugConversationRefreshApi(Resource):
         )
         return AgentDebugConversationRefreshResponse(debug_conversation_id=debug_conversation_id).model_dump(
             mode="json"
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/publish")
+class AgentPublishApi(Resource):
+    @console_ns.expect(console_ns.models[AgentPublishPayload.__name__])
+    @console_ns.response(200, "Agent draft published", console_ns.models[AgentPublishResponse.__name__])
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        args = AgentPublishPayload.model_validate(console_ns.payload or {})
+        return AgentComposerService.publish_agent_app_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+            version_note=args.version_note,
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/build-draft/checkout")
+class AgentBuildDraftCheckoutApi(Resource):
+    @console_ns.expect(console_ns.models[AgentBuildDraftCheckoutPayload.__name__])
+    @console_ns.response(200, "Agent build draft checked out", console_ns.models[AgentBuildDraftResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        args = AgentBuildDraftCheckoutPayload.model_validate(console_ns.payload or {})
+        return AgentComposerService.checkout_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+            force=args.force,
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/build-draft")
+class AgentBuildDraftApi(Resource):
+    @console_ns.response(200, "Agent build draft", console_ns.models[AgentBuildDraftResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return AgentComposerService.load_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+        )
+
+    @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
+    @console_ns.response(200, "Agent build draft saved", console_ns.models[AgentBuildDraftResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def put(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        payload = ComposerSavePayload.model_validate(console_ns.payload or {})
+        return AgentComposerService.save_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+            payload=payload,
+        )
+
+    @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def delete(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return AgentComposerService.discard_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
+        )
+
+
+@console_ns.route("/agent/<uuid:agent_id>/build-draft/apply")
+class AgentBuildDraftApplyApi(Resource):
+    @console_ns.response(200, "Agent build draft applied", console_ns.models[AgentBuildDraftApplyResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return AgentComposerService.apply_agent_app_build_draft(
+            tenant_id=tenant_id,
+            agent_id=str(agent_id),
+            account_id=current_user.id,
         )
 
 

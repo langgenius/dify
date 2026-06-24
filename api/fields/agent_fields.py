@@ -6,6 +6,7 @@ from pydantic import Field, field_validator
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
 from models.agent import (
+    AgentConfigDraftType,
     AgentConfigRevisionOperation,
     AgentIconType,
     AgentKind,
@@ -47,6 +48,18 @@ class AgentConfigSnapshotSummaryResponse(ResponseModel):
     version_note: str | None = None
     created_by: str | None = None
     created_at: int | None = None
+
+
+class AgentConfigDraftSummaryResponse(ResponseModel):
+    id: str
+    agent_id: str
+    draft_type: AgentConfigDraftType
+    account_id: str | None = None
+    base_snapshot_id: str | None = None
+    created_by: str | None = None
+    updated_by: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
 
 
 class AgentPublishedReferenceResponse(ResponseModel):
@@ -294,6 +307,8 @@ class AgentConfigSnapshotListResponse(ResponseModel):
 class AgentConfigSnapshotRestoreResponse(ResponseModel):
     result: Literal["success"]
     active_config_snapshot_id: str
+    draft_config_id: str | None = None
+    restored_version_id: str | None = None
 
 
 class AgentComposerAgentResponse(ResponseModel):
@@ -356,7 +371,8 @@ class WorkflowAgentComposerResponse(ResponseModel):
 class AgentAppComposerResponse(ResponseModel):
     variant: Literal[ComposerVariant.AGENT_APP]
     agent: AgentComposerAgentResponse
-    active_config_snapshot: AgentConfigSnapshotSummaryResponse
+    active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    draft: AgentConfigDraftSummaryResponse | None = None
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]
     validation: "ComposerValidationFindingsResponse | None" = None
