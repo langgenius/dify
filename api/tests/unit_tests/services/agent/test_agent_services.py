@@ -427,6 +427,7 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         icon_background="#FFFFFF",
     )
     create_roster_calls = []
+    copy_drive_calls = []
     monkeypatch.setattr(AgentComposerService, "_create_workflow_only_agent", lambda **kwargs: workflow_agent)
 
     def fake_create_roster_agent_for_composer(**kwargs):
@@ -437,6 +438,11 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
         AgentComposerService,
         "_create_roster_agent_for_composer",
         fake_create_roster_agent_for_composer,
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_copy_agent_drive_rows",
+        lambda **kwargs: copy_drive_calls.append(kwargs),
     )
     monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: roster_agent)
     monkeypatch.setattr(
@@ -533,6 +539,16 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
     assert create_roster_calls[1]["role"] == "Copied role"
     assert create_roster_calls[1]["icon"] == "copied"
     assert create_roster_calls[1]["icon_background"] == "#E0F2FE"
+    assert copy_drive_calls == [
+        {
+            "tenant_id": "tenant-1",
+            "source_agent_id": "roster-agent-1",
+            "target_agent_id": "roster-agent-1",
+            "account_id": "account-1",
+            "agent_soul": payload.agent_soul,
+            "node_job": payload.node_job,
+        }
+    ]
 
 
 def test_node_job_only_updates_inline_agent_soul(monkeypatch: pytest.MonkeyPatch):
@@ -1173,6 +1189,39 @@ def test_drive_copy_scopes_include_declared_output_benchmark_files():
 def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
+    created_apps = []
+    backing_agent = Agent(
+        id="roster-agent-1",
+        tenant_id="tenant-1",
+        name="Ready Agent",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id="app-agent-1",
+        active_config_snapshot_id="empty-version-1",
+    )
+
+    class FakeAppService:
+        def create_app(self, tenant_id, params, account):
+            created_apps.append((tenant_id, params, account))
+            return SimpleNamespace(id="app-agent-1")
+
+    class FakeAgentRosterService:
+        def __init__(self, session):
+            self.session = session
+
+        def get_app_backing_agent(self, *, tenant_id, app_id):
+            assert tenant_id == "tenant-1"
+            assert app_id == "app-agent-1"
+            return backing_agent
+
+    monkeypatch.setattr(composer_service, "AppService", FakeAppService)
+    monkeypatch.setattr(composer_service, "AgentRosterService", FakeAgentRosterService)
+    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: SimpleNamespace(id="account-1"))
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_require_version",
+        lambda **kwargs: SimpleNamespace(id="empty-version-1", tenant_id="tenant-1", agent_id="roster-agent-1"),
+    )
     monkeypatch.setattr(
         AgentComposerService,
         "_create_config_version",
@@ -1200,6 +1249,13 @@ def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytes
     assert workflow_agent.active_config_has_model is True
     assert roster_agent.active_config_snapshot_id == "version-with-model"
     assert roster_agent.active_config_has_model is True
+    assert roster_agent.source == AgentSource.AGENT_APP
+    assert roster_agent.app_id == "app-agent-1"
+    created_tenant_id, created_params, created_account = created_apps[0]
+    assert created_tenant_id == "tenant-1"
+    assert created_params.mode == "agent"
+    assert created_params.name == "Ready Agent"
+    assert created_account.id == "account-1"
 
 
 def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPatch):
@@ -1773,6 +1829,7 @@ def test_agent_app_visible_versions_exclude_draft_saves():
 
     assert agent_app_operations == {
         AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+        AgentConfigRevisionOperation.SAVE_TO_ROSTER,
         AgentConfigRevisionOperation.RESTORE_VERSION,
     }
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION not in agent_app_operations
