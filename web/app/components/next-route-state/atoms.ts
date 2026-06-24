@@ -31,8 +31,6 @@ function routeParamsKey(params: NextRouteParams) {
   return JSON.stringify(normalizedParamEntries(params))
 }
 
-export const nextPathnameAtom = atom(get => get(nextRouteStateAtom).pathname)
-
 export const nextParamsAtom = atom(get => get(nextRouteStateAtom).params)
 
 export const setNextRouteStateAtom = atom(null, (get, set, routeState: NextRouteState) => {

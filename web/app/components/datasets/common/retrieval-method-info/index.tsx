@@ -60,4 +60,5 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
     </div>
   )
 }
+
 export default React.memo(EconomicalRetrievalMethodConfig)
