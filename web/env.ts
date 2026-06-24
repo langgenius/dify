@@ -87,6 +87,7 @@ const clientSchema = {
   NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: coercedBoolean.default(true),
+  NEXT_PUBLIC_RBAC_ENABLED: coercedBoolean.default(false),
 
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)
@@ -216,6 +217,7 @@ export const env = createEnv({
     NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: isServer ? process.env.NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED : getRuntimeEnvFromBody('creatorsPlatformFeaturesEnabled'),
     NEXT_PUBLIC_ENABLE_TRIAL_APP: isServer ? process.env.NEXT_PUBLIC_ENABLE_TRIAL_APP : getRuntimeEnvFromBody('enableTrialApp'),
     NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: isServer ? process.env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER : getRuntimeEnvFromBody('enableExploreBanner'),
+    NEXT_PUBLIC_RBAC_ENABLED: isServer ? process.env.NEXT_PUBLIC_RBAC_ENABLED : getRuntimeEnvFromBody('rbacEnabled'),
 
     NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: isServer ? process.env.NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX : getRuntimeEnvFromBody('enableSingleDollarLatex'),
     NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL: isServer ? process.env.NEXT_PUBLIC_ENABLE_WEBSITE_FIRECRAWL : getRuntimeEnvFromBody('enableWebsiteFirecrawl'),

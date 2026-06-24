@@ -3807,6 +3807,26 @@ Submit human input form preview for workflow
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
 
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowComposerCopyFromRosterPayload](#workflowcomposercopyfromrosterpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow roster agent copied to inline agent | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
 #### Parameters
 
@@ -6574,7 +6594,7 @@ Request body:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
+| 200 | Success | **application/json**: [ExploreMessageInfiniteScrollPagination](#exploremessageinfinitescrollpagination)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
 #### Parameters
@@ -14385,9 +14405,14 @@ Button styles for user actions.
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
 | binding | [ComposerBindingPayload](#composerbindingpayload) |  | No |
 | client_revision_id | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [AgentIconType](#agenticontype) |  | No |
 | idempotency_key | string |  | No |
 | new_agent_name | string |  | No |
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | No |
+| role | string |  | No |
 | save_strategy | [ComposerSaveStrategy](#composersavestrategy) |  | Yes |
 | soul_lock | [ComposerSoulLockPayload](#composersoullockpayload) |  | No |
 | variant | [ComposerVariant](#composervariant) |  | Yes |
@@ -15996,6 +16021,34 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
 
+#### ExploreMessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ExploreMessageListItem](#exploremessagelistitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
+#### ExploreMessageListItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| error | string |  | No |
+| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| metadata | [JSONValueType](#jsonvaluetype) |  | No |
+| parent_message_id | string |  | No |
+| query | string |  | Yes |
+| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
+| status | string |  | Yes |
+
 #### ExternalApiTemplateListQuery
 
 | Name | Type | Description | Required |
@@ -17070,14 +17123,6 @@ Enum class for large language model mode.
 | upload_file_id | string |  | No |
 | url | string |  | No |
 
-#### MessageInfiniteScrollPagination
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [MessageListItem](#messagelistitem) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
-
 #### MessageInfiniteScrollPaginationResponse
 
 | Name | Type | Description | Required |
@@ -17085,25 +17130,6 @@ Enum class for large language model mode.
 | data | [ [MessageDetailResponse](#messagedetailresponse) ] |  | Yes |
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
-
-#### MessageListItem
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
-| answer | string |  | Yes |
-| conversation_id | string |  | Yes |
-| created_at | integer |  | No |
-| error | string |  | No |
-| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
-| feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
-| inputs | object |  | Yes |
-| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
-| parent_message_id | string |  | No |
-| query | string |  | Yes |
-| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
-| status | string |  | Yes |
 
 #### MessageListQuery
 
@@ -20558,6 +20584,14 @@ How a workflow node is bound to an Agent.
 | mentioned_user_ids | [ string ] | Mentioned user IDs. Omit to keep existing mentions. | No |
 | position_x | number | Comment X position | No |
 | position_y | number | Comment Y position | No |
+
+#### WorkflowComposerCopyFromRosterPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| idempotency_key | string |  | No |
+| source_agent_id | string |  | Yes |
+| source_snapshot_id | string |  | No |
 
 #### WorkflowConversationVariableResponse
 
