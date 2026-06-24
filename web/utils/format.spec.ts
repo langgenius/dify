@@ -64,6 +64,9 @@ describe('formatFileSize', () => {
   it('should format petabytes correctly', () => {
     expect(formatFileSize(1500000000000000)).toBe('1.33 PB')
   })
+  it('should clamp to the largest unit for very large inputs', () => {
+    expect(formatFileSize(1024 ** 6)).toBe('1024.00 PB')
+  })
 })
 describe('formatTime', () => {
   it('should return the input if it is falsy', () => {
@@ -171,5 +174,8 @@ describe('formatTime edge cases', () => {
 
   it('should handle very large durations', () => {
     expect(formatTime(86400)).toBe('24.00 h') // 24 hours
+  })
+  it('should clamp to the largest unit for very large inputs', () => {
+    expect(formatTime(216000)).toBe('60.00 h')
   })
 })
