@@ -19,7 +19,7 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
-from models.model import ToolFile, UploadFile
+from models import ToolFile, UploadFile
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.soul_files_service import AgentSoulFilesService
