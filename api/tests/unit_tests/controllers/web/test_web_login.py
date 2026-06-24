@@ -128,8 +128,8 @@ class TestLoginApi:
 
         warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "user@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.ACCOUNT_BANNED
+        assert warn_records[0].args[0] == "user@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch(
         "controllers.web.login.WebAppAuthService.authenticate",
@@ -148,8 +148,8 @@ class TestLoginApi:
 
         warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "user@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.INVALID_CREDENTIALS
+        assert warn_records[0].args[0] == "user@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.INVALID_CREDENTIALS
 
     @patch(
         "controllers.web.login.WebAppAuthService.authenticate",
@@ -168,8 +168,8 @@ class TestLoginApi:
 
         warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "missing@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.ACCOUNT_NOT_FOUND
+        assert warn_records[0].args[0] == "missing@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_NOT_FOUND
 
     @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data", return_value=None)
     def test_email_code_login_logs_invalid_token(self, mock_get_token_data: MagicMock, app: Flask, caplog) -> None:
@@ -184,8 +184,8 @@ class TestLoginApi:
         mock_get_token_data.assert_called_once_with("token-123")
         warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "user@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.INVALID_EMAIL_CODE_TOKEN
+        assert warn_records[0].args[0] == "user@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.INVALID_EMAIL_CODE_TOKEN
 
     @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token")
     @patch(
@@ -218,8 +218,8 @@ class TestLoginApi:
         mock_revoke_token.assert_called_once_with("token-123")
         warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "user@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.ACCOUNT_BANNED
+        assert warn_records[0].args[0] == "user@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
 
 class TestLoginStatusApi:

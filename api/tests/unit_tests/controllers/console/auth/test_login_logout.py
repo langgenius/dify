@@ -212,12 +212,10 @@ class TestLoginApi:
             with pytest.raises(EmailPasswordLoginLimitError):
                 login_api.post()
 
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
+        warn_records = [r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "test@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.LOGIN_RATE_LIMITED
+        assert warn_records[0].args[0] == "test@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.LOGIN_RATE_LIMITED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
@@ -241,12 +239,10 @@ class TestLoginApi:
             with pytest.raises(AccountInFreezeError):
                 login_api.post()
 
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
+        warn_records = [r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "frozen@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.ACCOUNT_IN_FREEZE
+        assert warn_records[0].args[0] == "frozen@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_IN_FREEZE
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -288,12 +284,10 @@ class TestLoginApi:
                 login_api.post()
 
         mock_add_rate_limit.assert_called_once_with("test@example.com")
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
+        warn_records = [r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "test@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.INVALID_CREDENTIALS
+        assert warn_records[0].args[0] == "test@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.INVALID_CREDENTIALS
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -325,12 +319,10 @@ class TestLoginApi:
             with pytest.raises(AccountBannedError):
                 login_api.post()
 
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
+        warn_records = [r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "banned@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.ACCOUNT_BANNED
+        assert warn_records[0].args[0] == "banned@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -476,12 +468,10 @@ class TestLoginApi:
                 EmailCodeLoginApi().post()
 
         mock_revoke_token.assert_called_once_with("token-123")
-        warn_records = [
-            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
-        ]
+        warn_records = [r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING]
         assert len(warn_records) == 1
-        assert warn_records[0].args[1] == "user@example.com"
-        assert warn_records[0].args[2] == LoginFailureReason.ACCOUNT_BANNED
+        assert warn_records[0].args[0] == "user@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
 
 class TestLogoutApi:
