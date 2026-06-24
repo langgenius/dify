@@ -15,7 +15,7 @@
   "conversion.confirm.content": "この操作は永久的です。以前の方法に戻すことはできません。変換することを確認してください。",
   "conversion.confirm.title": "確認",
   "conversion.descriptionChunk1": "既存のナレッジベースを文書処理のためにナレッジパイプラインを使用するように変換できます。",
-  "conversion.descriptionChunk2": "— よりオープンで柔軟なアプローチを採用し、私たちのマーケットプレイスからのプラグインへのアクセスを提供します。これにより、すべての将来のドキュメントに新しい処理方法が適用されることになります。",
+  "conversion.descriptionChunk2": "— よりオープンで柔軟なアプローチを採用し、マーケットプレイスからのインテグレーションへのアクセスを提供します。これにより、すべての将来のドキュメントに新しい処理方法が適用されることになります。",
   "conversion.errorMessage": "データセットをパイプラインに変換できませんでした",
   "conversion.successMessage": "データセットをパイプラインに正常に変換しました",
   "conversion.title": "ナレッジパイプラインに変換する",
