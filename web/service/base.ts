@@ -21,6 +21,7 @@ import type {
   NodeStartedResponse,
   ParallelBranchFinishedResponse,
   ParallelBranchStartedResponse,
+  ReasoningChunkResponse,
   TextChunkResponse,
   TextReplaceResponse,
   WorkflowFinishedResponse,
@@ -66,6 +67,7 @@ type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => voi
 type IOnParallelBranchStarted = (parallelBranchStarted: ParallelBranchStartedResponse) => void
 type IOnParallelBranchFinished = (parallelBranchFinished: ParallelBranchFinishedResponse) => void
 type IOnTextChunk = (textChunk: TextChunkResponse) => void
+type IOnReasoning = (reasoningChunk: ReasoningChunkResponse) => void
 type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
 type IOnTTSEnd = (messageId: string, audioStr: string, audioType?: string) => void
 type IOnTextReplace = (textReplace: TextReplaceResponse) => void
@@ -95,6 +97,7 @@ export type IOtherOptions = {
   request?: Request
 
   onData?: IOnData // for stream
+  onReasoning?: IOnReasoning
   onThought?: IOnThought
   onFile?: IOnFile
   onMessageEnd?: IOnMessageEnd
@@ -223,6 +226,7 @@ export const handleStream = (
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
   onDataSourceNodeError?: IOnDataSourceNodeError,
+  onReasoning?: IOnReasoning,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -339,6 +343,9 @@ export const handleStream = (
             }
             else if (bufferObj.event === 'text_chunk') {
               onTextChunk?.(bufferObj as TextChunkResponse)
+            }
+            else if (bufferObj.event === 'reasoning_chunk') {
+              onReasoning?.(bufferObj as ReasoningChunkResponse)
             }
             else if (bufferObj.event === 'text_replace') {
               onTextReplace?.(bufferObj as TextReplaceResponse)
@@ -461,6 +468,7 @@ export const ssePost = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -599,6 +607,7 @@ export const ssePost = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
       )
     })
     .catch((e) => {
@@ -616,6 +625,7 @@ export const sseGet = async (
   const {
     isPublicAPI = false,
     onData,
+    onReasoning,
     onCompleted,
     onThought,
     onFile,
@@ -747,6 +757,7 @@ export const sseGet = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onReasoning,
       )
     })
     .catch((e) => {

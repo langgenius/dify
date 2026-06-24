@@ -27,6 +27,9 @@ class TaskStateMetadata(BaseModel):
     annotation_reply: AnnotationReply | None = None
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(default_factory=list)
     usage: LLMUsage | None = None
+    reasoning: dict[str, str] = Field(default_factory=dict)
+    """reasoning_content per LLM node id (separated mode), accumulated across iteration/loop
+    passes for that node; persisted to message_metadata"""
 
 
 class TaskState(BaseModel):
@@ -85,6 +88,7 @@ class StreamEvent(StrEnum):
     LOOP_COMPLETED = "loop_completed"
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
+    REASONING_CHUNK = "reasoning_chunk"
     AGENT_LOG = "agent_log"
     HUMAN_INPUT_REQUIRED = "human_input_required"
     HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
@@ -723,6 +727,29 @@ class TextChunkStreamResponse(StreamResponse):
         from_variable_selector: list[str] | None = None
 
     event: StreamEvent = StreamEvent.TEXT_CHUNK
+    data: Data
+
+
+class ReasoningChunkStreamResponse(StreamResponse):
+    """
+    ReasoningChunkStreamResponse entity
+
+    Out-of-band reasoning (chain-of-thought) delta, parallel to text_chunk. Only
+    emitted in "separated" mode; the answer/message stream stays free of <think>.
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        # chat apps set this; workflow runs have no message
+        message_id: str | None = None
+        reasoning: str
+        node_id: str | None = None
+        is_final: bool = False
+
+    event: StreamEvent = StreamEvent.REASONING_CHUNK
     data: Data
 
 

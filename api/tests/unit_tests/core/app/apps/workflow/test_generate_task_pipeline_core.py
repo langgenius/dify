@@ -26,6 +26,7 @@ from core.app.entities.queue_entities import (
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -40,6 +41,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
     WorkflowAppPausedBlockingResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
@@ -264,6 +266,41 @@ class TestWorkflowGenerateTaskPipeline:
 
         assert responses[0].data.text == "hi"
         assert published == [queue_message]
+
+    def test_handle_reasoning_chunk_event_emits_on_nonempty(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="pondering", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        # workflow runs have no message, so the id is omitted
+        assert response.data.message_id is None
+        assert response.data.reasoning == "pondering"
+        assert response.data.node_id == "llm-1"
+        assert response.data.is_final is False
+
+    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert responses == []
+
+    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=True)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        assert response.data.reasoning == ""
+        assert response.data.is_final is True
 
     def test_dispatch_event_handles_node_failed(self):
         pipeline = _make_pipeline()

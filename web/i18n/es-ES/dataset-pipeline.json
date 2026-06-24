@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Esta acción es permanente. No podrá volver al método anterior. Por favor, confirme para convertir.",
   "conversion.confirm.title": "Confirmación",
   "conversion.descriptionChunk1": "Ahora puede convertir su base de conocimientos existente para usar la canalización de conocimientos para el procesamiento de documentos",
-  "conversion.descriptionChunk2": "— un enfoque más abierto y flexible con acceso a complementos de nuestro mercado. Esto aplicará el nuevo método de procesamiento a todos los documentos futuros.",
+  "conversion.descriptionChunk2": " — un enfoque más abierto y flexible con acceso a integraciones del Marketplace. Esto aplicará el nuevo método de procesamiento a todos los documentos futuros.",
   "conversion.errorMessage": "No se pudo convertir el conjunto de datos en una canalización",
   "conversion.successMessage": "Convertir correctamente el conjunto de datos en una canalización",
   "conversion.title": "Convertir en canalización de conocimiento",

@@ -14,7 +14,19 @@ import TriggerWebhookDefault from '@/app/components/workflow/nodes/trigger-webho
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
+import { docPathProductAvailability } from '@/types/doc-paths'
 import { useIsChatMode } from './use-is-chat-mode'
+
+const getNodeHelpLinkPath = (helpLinkUri?: string): DocPathWithoutLang | undefined => {
+  if (!helpLinkUri)
+    return undefined
+
+  const helpLinkPath = `/use-dify/nodes/${helpLinkUri}`
+  if (!docPathProductAvailability[helpLinkPath])
+    return undefined
+
+  return helpLinkPath as DocPathWithoutLang
+}
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
@@ -57,14 +69,14 @@ export const useAvailableNodesMetaData = () => {
     const { metaData } = node
     const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
     const description = t(`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>, { ns: 'workflow' })
-    const helpLinkPath = `/use-dify/nodes/${metaData.helpLinkUri}` as DocPathWithoutLang
+    const helpLinkPath = getNodeHelpLinkPath(metaData.helpLinkUri)
     return {
       ...node,
       metaData: {
         ...metaData,
         title,
         description,
-        helpLinkUri: docLink(helpLinkPath),
+        helpLinkUri: helpLinkPath ? docLink(helpLinkPath) : undefined,
       },
       defaultValue: {
         ...node.defaultValue,

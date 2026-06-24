@@ -12,6 +12,7 @@ export const ACCOUNT_SETTING_TAB = {
   DATA_SOURCE: 'data-source',
   API_BASED_EXTENSION: 'custom-endpoint',
   CUSTOM: 'custom',
+  PREFERENCES: 'preferences',
   LANGUAGE: 'language',
 } as const
 
@@ -30,6 +31,7 @@ const WORKSPACE_SETTING_TAB_VALUES = [
 export type WorkspaceSettingTab = typeof WORKSPACE_SETTING_TAB_VALUES[number]
 
 const USER_SETTING_TAB_VALUES = [
+  ACCOUNT_SETTING_TAB.PREFERENCES,
   ACCOUNT_SETTING_TAB.LANGUAGE,
 ] as const
 
@@ -44,13 +46,6 @@ export const SETTINGS_TAB_VALUES = [
 ] as const
 
 export type SettingsTab = typeof SETTINGS_TAB_VALUES[number]
-
-export const isValidAccountSettingTab = (tab: string | null): tab is AccountSettingTab => {
-  if (!tab)
-    return false
-  return Object.values(ACCOUNT_SETTING_TAB).includes(tab as AccountSettingTab)
-}
-
 export const isValidSettingsTab = (tab: string | null): tab is SettingsTab => {
   if (!tab)
     return false

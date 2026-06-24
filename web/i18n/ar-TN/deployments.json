@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "الوصف",
   "versions.releaseDescriptionPlaceholder": "صف هذا الإصدار",
   "versions.releaseHistory": "سجل الإصدارات",
+  "versions.releaseNameConflict": "يوجد بالفعل إصدار بهذا الاسم. اختر اسمًا آخر.",
   "versions.releaseNameLabel": "اسم الإصدار",
   "versions.releaseNamePlaceholder": "اسم الإصدار",
   "versions.releaseNameRequired": "أدخل اسم الإصدار.",

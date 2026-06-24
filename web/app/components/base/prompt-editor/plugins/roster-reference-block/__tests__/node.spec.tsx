@@ -8,7 +8,6 @@ import { createEditor } from 'lexical'
 import RosterReferenceBlockComponent from '../component'
 import {
   $createRosterReferenceBlockNode,
-  $isRosterReferenceBlockNode,
   RosterReferenceBlockNode,
 } from '../node'
 import {
@@ -104,16 +103,12 @@ describe('RosterReferenceBlockNode', () => {
     })
   })
 
-  it('should create node with helper and support type guard checks', () => {
+  it('should create node with helper', () => {
     runInEditor(() => {
       const node = $createRosterReferenceBlockNode('[§skill:playwright:Playwright§]')
 
       expect(node).toBeInstanceOf(RosterReferenceBlockNode)
       expect(node.getTextContent()).toBe('[§skill:playwright:Playwright§]')
-      expect($isRosterReferenceBlockNode(node)).toBe(true)
-      expect($isRosterReferenceBlockNode(null)).toBe(false)
-      expect($isRosterReferenceBlockNode(undefined)).toBe(false)
-      expect($isRosterReferenceBlockNode({} as LexicalNode)).toBe(false)
     })
   })
 })
