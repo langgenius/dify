@@ -13,7 +13,6 @@ import {
   buildMarketplaceUrlPathByIntegrationSection,
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
-import { useCanManageMCP, useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -105,8 +104,6 @@ export default function IntegrationsPage({
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
-  const canManageMCP = useCanManageMCP()
-  const canManageTools = useCanManageTools()
   const {
     canDebugger,
     canInstallPlugin,
@@ -130,7 +127,7 @@ export default function IntegrationsPage({
     providerItem,
     secondaryItems,
     toolItems,
-  } = useIntegrationNav(section, { canManageMCP, canManageTools })
+  } = useIntegrationNav(section)
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
   const useFillLayout = section === 'provider' || section === 'data-source' || section === 'custom-endpoint' || isToolSection || isPluginCategory
@@ -198,11 +195,6 @@ export default function IntegrationsPage({
       <span className="min-w-0 flex-1 truncate">{t('menus.tools', { ns: 'common' })}</span>
     </>
   )
-
-  if (section === 'mcp' && !canManageMCP)
-    return null
-  if ((section === 'custom-tool' || section === 'workflow-tool') && !canManageTools)
-    return null
 
   return (
     <div className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg" style={sidebarWidthStyle}>
