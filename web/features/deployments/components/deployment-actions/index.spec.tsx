@@ -1,8 +1,37 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { DeploymentActionsMenu } from './index'
 
-vi.mock('@langgenius/dify-ui/dropdown-menu', () => import('@/__mocks__/base-ui-dropdown-menu'))
+type QueryOptions = {
+  input?: unknown
+  queryKey?: readonly unknown[]
+}
+
+const editDialogMock = vi.hoisted(() => vi.fn())
+const deleteDialogMock = vi.hoisted(() => vi.fn())
+const prefetchQueryMock = vi.hoisted(() => vi.fn())
+
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    prefetchQuery: prefetchQueryMock,
+  }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      appInstanceService: {
+        getAppInstance: {
+          queryOptions: (options: QueryOptions) => ({
+            ...options,
+            queryKey: ['getAppInstance', options.input],
+          }),
+        },
+      },
+    },
+  },
+}))
 
 vi.mock('./edit-dialog', async () => {
   const { useAtomValue } = await import('jotai')
@@ -11,6 +40,7 @@ vi.mock('./edit-dialog', async () => {
   return {
     EditDeploymentDialog: () => {
       const open = useAtomValue(editDeploymentDialogOpenAtom)
+      editDialogMock({ open })
 
       return <div data-testid="edit-dialog" data-open={String(open)} />
     },
@@ -24,6 +54,7 @@ vi.mock('./delete-dialog', async () => {
   return {
     DeleteDeploymentDialog: () => {
       const open = useAtomValue(deleteDeploymentDialogOpenAtom)
+      deleteDialogMock({ open })
 
       return <div data-testid="delete-dialog" data-open={String(open)} />
     },
@@ -31,7 +62,11 @@ vi.mock('./delete-dialog', async () => {
 })
 
 describe('DeploymentActionsMenu', () => {
-  it('keeps the trigger wrapper visible while the menu is open', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('keeps the trigger wrapper visible through uncontrolled menu state', () => {
     const { container } = render(
       <DeploymentActionsMenu
         appInstanceId="app-instance-1"
@@ -41,16 +76,17 @@ describe('DeploymentActionsMenu', () => {
     )
 
     const wrapper = container.querySelector('[role="presentation"]') as HTMLElement
-    expect(wrapper).toHaveClass('pointer-events-none', 'opacity-0')
-
-    fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-
-    expect(screen.getByText('deployments.card.menu.editInfo')).toBeInTheDocument()
-    expect(wrapper).toHaveClass('pointer-events-auto', 'opacity-100')
-    expect(wrapper).not.toHaveClass('pointer-events-none', 'opacity-0')
+    expect(wrapper).toHaveClass(
+      'pointer-events-none',
+      'opacity-0',
+      '[&:has([data-popup-open])]:pointer-events-auto',
+      '[&:has([data-popup-open])]:opacity-100',
+    )
   })
 
-  it('keeps edit and delete dialog open state independent', () => {
+  it('prefetches the app instance when the menu opens', async () => {
+    const user = userEvent.setup()
+
     render(
       <DeploymentActionsMenu
         appInstanceId="app-instance-1"
@@ -58,43 +94,50 @@ describe('DeploymentActionsMenu', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-    fireEvent.click(screen.getByText('deployments.card.menu.editInfo'))
+    expect(prefetchQueryMock).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'deployments.card.moreActions' }))
+    await screen.findByRole('menuitem', { name: 'deployments.card.menu.editInfo' })
+
+    expect(prefetchQueryMock).toHaveBeenCalledWith(expect.objectContaining({
+      input: {
+        params: {
+          appInstanceId: 'app-instance-1',
+        },
+      },
+      queryKey: ['getAppInstance', {
+        params: {
+          appInstanceId: 'app-instance-1',
+        },
+      }],
+    }))
+  })
+
+  it('opens edit and delete dialogs from menu items', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <DeploymentActionsMenu
+        appInstanceId="app-instance-1"
+        placement="bottom-end"
+      />,
+    )
+
+    expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'false')
+    expect(screen.getByTestId('delete-dialog')).toHaveAttribute('data-open', 'false')
+
+    await user.click(screen.getByRole('button', { name: 'deployments.card.moreActions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'deployments.card.menu.editInfo' }))
+
     expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'true')
     expect(screen.getByTestId('delete-dialog')).toHaveAttribute('data-open', 'false')
 
-    fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-    fireEvent.click(screen.getByText('deployments.card.menu.delete'))
-    expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'true')
+    await user.click(screen.getByRole('button', { name: 'deployments.card.moreActions' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'deployments.card.menu.delete' }))
+
+    expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'false')
     expect(screen.getByTestId('delete-dialog')).toHaveAttribute('data-open', 'true')
-  })
-
-  it('resets dialog state when the menu app instance changes', () => {
-    const { rerender } = render(
-      <DeploymentActionsMenu
-        appInstanceId="app-instance-1"
-        placement="bottom-end"
-      />,
-    )
-
-    fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
-    fireEvent.click(screen.getByText('deployments.card.menu.editInfo'))
-    expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'true')
-
-    rerender(
-      <DeploymentActionsMenu
-        appInstanceId="app-instance-2"
-        placement="bottom-end"
-      />,
-    )
-    expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'false')
-
-    rerender(
-      <DeploymentActionsMenu
-        appInstanceId="app-instance-1"
-        placement="bottom-end"
-      />,
-    )
-    expect(screen.getByTestId('edit-dialog')).toHaveAttribute('data-open', 'false')
+    expect(editDialogMock).toHaveBeenLastCalledWith({ open: false })
+    expect(deleteDialogMock).toHaveBeenLastCalledWith({ open: true })
   })
 })
