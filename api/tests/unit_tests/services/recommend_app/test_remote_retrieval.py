@@ -175,7 +175,7 @@ class TestFetchFromDifyOfficial:
         with flask_app.test_request_context():
             RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
 
-        assert mock_get.call_args.kwargs["headers"] == {"Origin": "https://saas.dify.dev"}
+        assert mock_get.call_args.kwargs["headers"] == {"Origin": "https://saas.dify.dev/console"}
 
     @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
@@ -188,11 +188,11 @@ class TestFetchFromDifyOfficial:
 
         RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
 
-        assert mock_get.call_args.kwargs["headers"] == {"Origin": "http://localhost:3000"}
+        assert mock_get.call_args.kwargs["headers"] == {"Origin": "http://localhost:3000/console"}
 
     @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
-    def test_apps_omits_origin_for_invalid_console_web_url(self, mock_get, mock_config):
+    def test_apps_uses_console_web_url_without_scheme(self, mock_get, mock_config):
         mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
         mock_config.CONSOLE_WEB_URL = "saas.dify.dev"
         mock_response = MagicMock(status_code=200)
@@ -203,7 +203,7 @@ class TestFetchFromDifyOfficial:
         with flask_app.test_request_context():
             RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
 
-        assert mock_get.call_args.kwargs["headers"] == {}
+        assert mock_get.call_args.kwargs["headers"] == {"Origin": "saas.dify.dev"}
 
     @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")

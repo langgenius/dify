@@ -1,6 +1,5 @@
 import logging
 from typing import Any, override
-from urllib.parse import urlparse
 
 import httpx
 from flask import has_request_context, request
@@ -14,30 +13,15 @@ from services.recommend_app.recommend_app_type import RecommendAppType
 logger = logging.getLogger(__name__)
 
 
-def _origin_from_url(url: str | None) -> str | None:
-    if not url:
-        return None
-
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return None
-
-    return f"{parsed.scheme}://{parsed.netloc}"
-
-
 def _current_origin_headers() -> dict[str, str]:
     origin = request.headers.get("Origin") if has_request_context() else None
     if origin:
         return {"Origin": origin}
 
     console_web_url = getattr(dify_config, "CONSOLE_WEB_URL", "")
-    if not isinstance(console_web_url, str):
+    if not isinstance(console_web_url, str) or not console_web_url:
         return {}
-    origin = _origin_from_url(console_web_url)
-    if not origin:
-        return {}
-
-    return {"Origin": origin}
+    return {"Origin": console_web_url}
 
 
 class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
