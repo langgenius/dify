@@ -207,7 +207,13 @@ const WorkflowPreview = () => {
               {workflowRunningData?.reasoningContent && Object.values(workflowRunningData.reasoningContent).some(Boolean) && (
                 <ReasoningPanel
                   content={workflowRunningData.reasoningContent}
-                  done={!!workflowRunningData?.reasoningFinished || workflowRunningData?.result?.status !== WorkflowRunningStatus.Running}
+                  // freeze the timer once the answer starts streaming (resultText non-empty) — the only
+                  // mid-node signal; reasoningFinished trails the whole answer and status stays Running till the run ends
+                  done={
+                    !!workflowRunningData?.resultText?.trim()
+                    || !!workflowRunningData?.reasoningFinished
+                    || workflowRunningData?.result?.status !== WorkflowRunningStatus.Running
+                  }
                 />
               )}
               <ResultText

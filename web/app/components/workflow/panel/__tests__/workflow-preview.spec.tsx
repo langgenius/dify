@@ -374,6 +374,30 @@ describe('WorkflowPreview', () => {
     expect(panels[0]).toHaveAttribute('data-done', 'false')
   })
 
+  it('should mark reasoning done once the answer starts streaming while still running', async () => {
+    const user = userEvent.setup()
+
+    renderWorkflowComponent(
+      <WorkflowPreview />,
+      {
+        initialStoreState: {
+          workflowRunningData: {
+            ...createWorkflowRunningData({
+              result: createWorkflowResult({ status: WorkflowRunningStatus.Running }),
+            }),
+            resultText: 'the answer',
+            reasoningContent: { 'llm-1': 'thinking a' },
+          } as NonNullable<Shape['workflowRunningData']>,
+        },
+      },
+    )
+
+    await user.click(screen.getByText('runLog.result'))
+
+    // answer-started (resultText non-empty) freezes the timer even though the run is still Running
+    expect(screen.getByTestId('reasoning-panel')).toHaveAttribute('data-done', 'true')
+  })
+
   it('should not render a reasoning panel when there is no reasoning content', async () => {
     const user = userEvent.setup()
 
