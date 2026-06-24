@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Lihat nama, deskripsi, dan izin yang diberikan untuk set izin ini.",
   "permissionSet.modal.view.dataset.title": "Lihat set izin Basis Pengetahuan",
   "permissionSet.nameLabel": "Nama set izin",
-  "permissionSet.namePlaceholder": "mis. Dapat mengekspor DSL",
+  "permissionSet.namePlaceholder": "mis. Set izin operasional",
   "permissionSet.permissions": "Izin",
   "role.addRole": "Buat peran",
   "role.copyMembersDescription_one": "\"{{name}}\" ditetapkan ke {{count}} anggota. Apakah Anda ingin salinan peran baru menyertakan anggota yang sama?",
