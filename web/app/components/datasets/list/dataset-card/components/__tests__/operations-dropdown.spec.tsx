@@ -1,10 +1,28 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { DatasetACLPermission } from '@/utils/permission'
 import OperationsDropdown from '../operations-dropdown'
+
+const mockAppContextState = vi.hoisted(() => ({
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}))
+
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: vi.fn((selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState)),
+}))
 
 describe('OperationsDropdown', () => {
   const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
@@ -45,6 +63,9 @@ describe('OperationsDropdown', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContextState.userProfile = { id: 'user-1' }
+    mockAppContextState.workspacePermissionKeys = []
+    mockIsRbacEnabled = true
   })
 
   describe('Rendering', () => {
@@ -118,6 +139,19 @@ describe('OperationsDropdown', () => {
       fireEvent.click(screen.getByLabelText('Dataset operations'))
 
       expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+    })
+
+    it('should hide resource access option when RBAC is disabled', () => {
+      mockIsRbacEnabled = false
+      const dataset = createMockDataset({
+        permission_keys: [DatasetACLPermission.AccessConfig, DatasetACLPermission.Delete],
+      })
+      render(<OperationsDropdown {...defaultProps} dataset={dataset} />)
+
+      fireEvent.click(screen.getByLabelText('Dataset operations'))
+
+      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 

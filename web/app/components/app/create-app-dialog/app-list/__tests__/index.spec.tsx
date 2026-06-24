@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/app/components/apps/storage'
 import { AppModeEnum } from '@/types/app'
 import Apps from '../index'
@@ -295,7 +296,7 @@ describe('Apps', () => {
       id: 'created-app-id',
       mode: AppModeEnum.CHAT,
       permission_keys: ['app.acl.view_layout'],
-    }, mockPush)
+    }, mockPush, { isRbacEnabled: false })
   })
 
   it('shows an error toast when importing the template fails', async () => {

@@ -64,13 +64,6 @@ export function ApiKeyGenerateMenu({
       nameInputRef.current?.focus()
   }, [createDialogOpen])
 
-  function resetCreateDialog() {
-    setCreateDialogOpen(false)
-    setSelectedEnvironmentId(undefined)
-    setDraftName('')
-    setNameError(false)
-  }
-
   function handleOpenCreateDialog() {
     const firstEnvironment = selectableEnvironments[0]
     if (!firstEnvironment)
@@ -84,6 +77,19 @@ export function ApiKeyGenerateMenu({
 
   function handleEnvironmentChange(environmentId: string) {
     setSelectedEnvironmentId(environmentId)
+    setNameError(false)
+  }
+
+  function handleDraftNameChange(nextDraftName: string) {
+    setDraftName(nextDraftName)
+    if (nameError && nextDraftName.trim())
+      setNameError(false)
+  }
+
+  function resetCreateDialog() {
+    setCreateDialogOpen(false)
+    setSelectedEnvironmentId(undefined)
+    setDraftName('')
     setNameError(false)
   }
 
@@ -175,9 +181,7 @@ export function ApiKeyGenerateMenu({
                   aria-describedby={nameError ? `${nameInputId}-error` : undefined}
                   placeholder={t('access.api.namePlaceholder')}
                   onChange={(event) => {
-                    setDraftName(event.target.value)
-                    if (nameError && event.target.value.trim())
-                      setNameError(false)
+                    handleDraftNameChange(event.target.value)
                   }}
                 />
                 {nameError && (

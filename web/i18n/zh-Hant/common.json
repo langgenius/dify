@@ -544,6 +544,7 @@
   "modelProvider.ttsModel.key": "文字轉語音模型",
   "modelProvider.ttsModel.tip": "設定對話中文字轉語音輸出的預設使用模型。",
   "modelProvider.upgradeForLoadBalancing": "升級您的計劃以啟用 Load Balancing。",
+  "navigation.skipToMain": "跳至主要內容",
   "noData": "無資料",
   "operation.add": "新增",
   "operation.added": "已新增",

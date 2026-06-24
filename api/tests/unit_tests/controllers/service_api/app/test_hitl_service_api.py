@@ -29,7 +29,7 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.workflow.human_input_policy import HumanInputSurface
+from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
@@ -592,8 +592,10 @@ class TestHitlServiceApi:
         monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
         monkeypatch.setattr(
             workflow_response_converter,
-            "load_form_tokens_by_form_id",
-            lambda form_ids, session=None, surface=None: {"form-1": "token"},
+            "load_form_dispositions_by_form_id",
+            lambda form_ids, session=None, surface=None: {
+                "form-1": FormDisposition(form_token="token", approval_channels=[])
+            },
         )
 
         reason = HumanInputRequired(
@@ -652,8 +654,10 @@ class TestHitlServiceApi:
         snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
         resumption_context = _build_resumption_context("task-ctx")
         monkeypatch.setattr(
-            "services.workflow_event_snapshot_service.load_form_tokens_by_form_id",
-            lambda form_ids, session=None, surface=None: {"form-1": "wtok"},
+            "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
+            lambda form_ids, session=None, surface=None: {
+                "form-1": FormDisposition(form_token="wtok", approval_channels=[])
+            },
         )
 
         class _SessionContext:

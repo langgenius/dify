@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "पाठ-से-भाषण मॉडल",
   "modelProvider.ttsModel.tip": "संवाद में पाठ-से-भाषण इनपुट के लिए डिफ़ॉल्ट मॉडल सेट करें।",
   "modelProvider.upgradeForLoadBalancing": "लोड बैलेंसिंग सक्षम करने के लिए अपनी योजना अपग्रेड करें।",
+  "navigation.skipToMain": "मुख्य सामग्री पर जाएं",
   "noData": "कोई डेटा नहीं",
   "operation.add": "जोड़ें",
   "operation.added": "जोड़ा गया",

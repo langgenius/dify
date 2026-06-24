@@ -67,8 +67,8 @@ class DifyKnowledgeBaseLayer(PlainLayer[DifyKnowledgeBaseDeps, DifyKnowledgeBase
     type_id: ClassVar[str | None] = DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID
 
     config: DifyKnowledgeBaseLayerConfig
-    dify_api_inner_url: str
-    dify_api_inner_api_key: str
+    inner_api_url: str
+    inner_api_key: str
 
     @classmethod
     @override
@@ -84,14 +84,14 @@ class DifyKnowledgeBaseLayer(PlainLayer[DifyKnowledgeBaseDeps, DifyKnowledgeBase
         cls,
         config: DifyKnowledgeBaseLayerConfig,
         *,
-        dify_api_inner_url: str,
-        dify_api_inner_api_key: str,
+        inner_api_url: str,
+        inner_api_key: str,
     ) -> Self:
         """Create the layer from public config plus server-only API settings."""
         return cls(
             config=DifyKnowledgeBaseLayerConfig.model_validate(config),
-            dify_api_inner_url=dify_api_inner_url,
-            dify_api_inner_api_key=dify_api_inner_api_key,
+            inner_api_url=inner_api_url,
+            inner_api_key=inner_api_key,
         )
 
     async def get_tools(self, *, http_client: httpx.AsyncClient) -> list[Tool[object]]:
@@ -114,8 +114,8 @@ class DifyKnowledgeBaseLayer(PlainLayer[DifyKnowledgeBaseDeps, DifyKnowledgeBase
         execution_context = self.deps.execution_context.config
         caller = _build_caller_context(execution_context)
         client = DifyKnowledgeBaseClient(
-            base_url=self.dify_api_inner_url,
-            api_key=self.dify_api_inner_api_key,
+            base_url=self.inner_api_url,
+            api_key=self.inner_api_key,
             http_client=http_client,
         )
 

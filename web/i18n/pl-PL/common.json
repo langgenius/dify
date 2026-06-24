@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Model tekstu na mowę",
   "modelProvider.ttsModel.tip": "Ustaw domyślny model dla konwersji tekstu na mowę w rozmowach.",
   "modelProvider.upgradeForLoadBalancing": "Uaktualnij swój plan, aby włączyć równoważenie obciążenia.",
+  "navigation.skipToMain": "Przejdź do głównej treści",
   "noData": "Brak danych",
   "operation.add": "Dodaj",
   "operation.added": "Dodano",

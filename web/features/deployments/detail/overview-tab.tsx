@@ -1,14 +1,14 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { consoleQuery } from '@/service/client'
 import { DeploymentStateMessage } from '../components/empty-state'
 import { hasRuntimeInstanceDeployment } from '../shared/domain/runtime-status'
 import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './overview-tab/access-status-section'
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
 import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
+import { deploymentDetailOverviewQueryAtom } from './state'
 
 function OverviewLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -64,8 +64,7 @@ export function OverviewTab({ appInstanceId }: {
   appInstanceId: string
 }) {
   const { t } = useTranslation('deployments')
-  const input = { params: { appInstanceId } }
-  const overviewQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({ input }))
+  const overviewQuery = useAtomValue(deploymentDetailOverviewQueryAtom)
   const overview = overviewQuery.data
 
   if (overviewQuery.isLoading)

@@ -9,6 +9,8 @@ import {
   getAppACLCapabilities,
   getDatasetACLCapabilities,
   hasEditPermissionForDataset,
+  hasOnlyAppPreviewPermission,
+  hasOnlyDatasetPreviewPermission,
   hasPermission,
 } from './permission'
 
@@ -132,6 +134,32 @@ describe('permission', () => {
     })
   })
 
+  describe('hasOnlyAppPreviewPermission', () => {
+    it('should return true when app ACL contains only preview permission', () => {
+      expect(hasOnlyAppPreviewPermission([AppACLPermission.Preview])).toBe(true)
+    })
+
+    it('should return false when app ACL contains preview permission and another permission', () => {
+      expect(hasOnlyAppPreviewPermission([
+        AppACLPermission.Preview,
+        AppACLPermission.ViewLayout,
+      ])).toBe(false)
+    })
+  })
+
+  describe('hasOnlyDatasetPreviewPermission', () => {
+    it('should return true when dataset ACL contains only preview permission', () => {
+      expect(hasOnlyDatasetPreviewPermission([DatasetACLPermission.Preview])).toBe(true)
+    })
+
+    it('should return false when dataset ACL contains preview permission and another permission', () => {
+      expect(hasOnlyDatasetPreviewPermission([
+        DatasetACLPermission.Preview,
+        DatasetACLPermission.Readonly,
+      ])).toBe(false)
+    })
+  })
+
   describe('app maintainer capabilities', () => {
     it('grants all app ACL capabilities without injecting app ACL permission keys', () => {
       const permissionKeys: string[] = []
@@ -139,6 +167,7 @@ describe('permission', () => {
         currentUserId: 'user-1',
         resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['app.create_and_management'],
+        isRbacEnabled: true,
       })
 
       expect(capabilities.canViewLayout).toBe(true)
@@ -163,6 +192,14 @@ describe('permission', () => {
       expect(capabilities.canEdit).toBe(false)
       expect(capabilities.canDelete).toBe(false)
     })
+
+    it('does not grant app access config when RBAC is disabled', () => {
+      const capabilities = getAppACLCapabilities([AppACLPermission.AccessConfig], {
+        isRbacEnabled: false,
+      })
+
+      expect(capabilities.canAccessConfig).toBe(false)
+    })
   })
 
   describe('dataset maintainer capabilities', () => {
@@ -172,6 +209,7 @@ describe('permission', () => {
         currentUserId: 'user-1',
         resourceMaintainer: 'user-1',
         workspacePermissionKeys: ['dataset.create_and_management'],
+        isRbacEnabled: true,
       })
 
       expect(capabilities.canReadonly).toBe(true)
@@ -198,6 +236,14 @@ describe('permission', () => {
       expect(capabilities.canReadonly).toBe(true)
       expect(capabilities.canEdit).toBe(false)
       expect(capabilities.canDelete).toBe(false)
+    })
+
+    it('does not grant dataset access config when RBAC is disabled', () => {
+      const capabilities = getDatasetACLCapabilities([DatasetACLPermission.AccessConfig], {
+        isRbacEnabled: false,
+      })
+
+      expect(capabilities.canAccessConfig).toBe(false)
     })
   })
 })

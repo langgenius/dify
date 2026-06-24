@@ -181,6 +181,7 @@ const MainNav = ({
       agentV2Enabled,
       canUseAppDeploy,
       isCurrentWorkspaceDatasetOperator,
+      marketplaceEnabled: systemFeatures.enable_marketplace,
     }))
     .map(route => ({
       href: route.href,
@@ -188,7 +189,7 @@ const MainNav = ({
       active: route.active,
       icon: route.icon,
       activeIcon: route.activeIcon,
-    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, t])
+    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, systemFeatures.enable_marketplace, t])
 
   const renderLogo = () => {
     const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'

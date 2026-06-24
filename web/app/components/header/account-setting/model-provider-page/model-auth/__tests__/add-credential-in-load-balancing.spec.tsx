@@ -3,9 +3,13 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { ConfigurationMethodEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import AddCredentialInLoadBalancing from '../add-credential-in-load-balancing'
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['credential.use', 'credential.create', 'credential.manage'],
+}))
+
 vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
-    workspacePermissionKeys: ['credential.use', 'credential.manage'],
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }),
 }))
 
@@ -15,13 +19,21 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-auth'
     authParams,
     items,
     onItemClick,
+    hideAddAction,
+    triggerOnlyOpenModal,
   }: {
     renderTrigger: (open?: boolean) => React.ReactNode
     authParams?: { onUpdate?: (payload?: unknown, formValues?: Record<string, unknown>) => void }
     items: Array<{ credentials: Array<{ credential_id: string, credential_name: string }> }>
     onItemClick?: (credential: { credential_id: string, credential_name: string }) => void
+    hideAddAction?: boolean
+    triggerOnlyOpenModal?: boolean
   }) => (
-    <div>
+    <div
+      data-testid="authorized-mock"
+      data-hide-add-action={String(!!hideAddAction)}
+      data-trigger-only-open-modal={String(!!triggerOnlyOpenModal)}
+    >
       {renderTrigger(false)}
       <button onClick={() => authParams?.onUpdate?.({ provider: 'x' }, { key: 'value' })}>Run update</button>
       <button onClick={() => onItemClick?.(items[0]!.credentials[0]!)}>Select first</button>
@@ -50,6 +62,7 @@ describe('AddCredentialInLoadBalancing', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
   })
 
   it('should render add credential label', () => {
@@ -101,6 +114,45 @@ describe('AddCredentialInLoadBalancing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select first' }))
 
     expect(onSelectCredential).toHaveBeenCalledWith(modelCredential.available_credentials[0])
+  })
+
+  it('should render credential menu for manage-only users with existing credentials', () => {
+    mockWorkspacePermissionKeys.value = ['credential.manage']
+
+    render(
+      <AddCredentialInLoadBalancing
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.customizableModel}
+        modelCredential={modelCredential}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText(/modelProvider.auth.addCredential/i))!.toBeInTheDocument()
+    expect(screen.getByTestId('authorized-mock')).toHaveAttribute('data-hide-add-action', 'true')
+    expect(screen.getByTestId('authorized-mock')).toHaveAttribute('data-trigger-only-open-modal', 'false')
+  })
+
+  it('should render nothing for manage-only users without existing credentials', () => {
+    mockWorkspacePermissionKeys.value = ['credential.manage']
+
+    const emptyModelCredential = {
+      ...modelCredential,
+      available_credentials: [],
+    } as ModelCredential
+
+    const { container } = render(
+      <AddCredentialInLoadBalancing
+        provider={provider}
+        model={model}
+        configurationMethod={ConfigurationMethodEnum.customizableModel}
+        modelCredential={emptyModelCredential}
+        onSelectCredential={vi.fn()}
+      />,
+    )
+
+    expect(container).toBeEmptyDOMElement()
   })
 
   // renderTrigger with open=true: bg-state-base-hover style applied

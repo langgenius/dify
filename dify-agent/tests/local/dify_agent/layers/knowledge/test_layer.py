@@ -56,8 +56,8 @@ def _knowledge_provider() -> LayerProvider[DifyKnowledgeBaseLayer]:
         layer_type=DifyKnowledgeBaseLayer,
         create=lambda config: DifyKnowledgeBaseLayer.from_config_with_settings(
             DifyKnowledgeBaseLayerConfig.model_validate(config),
-            dify_api_inner_url="http://dify-api",
-            dify_api_inner_api_key="inner-secret",
+            inner_api_url="http://dify-api",
+            inner_api_key="inner-secret",
         ),
     )
 

@@ -79,7 +79,7 @@ const Authorized = ({
   notAllowCustomCredential,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
-  const { canUseCredential, canManageCredential } = useCredentialPermissions()
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -152,12 +152,12 @@ const Authorized = ({
   // popover closes due to outside-click detection on the modal's portal.
   const [isAddApiKeyOpen, setIsAddApiKeyOpen] = useState(false)
   const handleAddApiKeyClick = useCallback(() => {
-    if (!canManageCredential)
+    if (!canCreateCredential)
       return
 
     setMergedIsOpen(false)
     setIsAddApiKeyOpen(true)
-  }, [canManageCredential, setMergedIsOpen])
+  }, [canCreateCredential, setMergedIsOpen])
   const handleRemove = useCallback(() => {
     if (!canManageCredential)
       return
@@ -394,7 +394,7 @@ const Authorized = ({
             onOpenChange={setIsAddApiKeyOpen}
             pluginPayload={pluginPayload}
             onClose={() => setIsAddApiKeyOpen(false)}
-            disabled={!canManageCredential || doingAction}
+            disabled={!canCreateCredential || doingAction}
             onUpdate={onUpdate}
           />
         )

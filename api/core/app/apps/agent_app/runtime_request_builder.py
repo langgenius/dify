@@ -37,6 +37,7 @@ from core.workflow.nodes.agent_v2.plugin_tools_builder import (
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
     build_ask_human_layer_config,
+    build_drive_aware_soul_mention_resolver,
     build_drive_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,
@@ -123,9 +124,19 @@ class AgentAppRuntimeRequestBuilder:
             }
 
         drive_config = None
+        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent_id)
+            drive_config, drive_warnings = build_drive_layer_config(
+                agent_soul,
+                tenant_id=context.dify_context.tenant_id,
+                agent_id=context.agent_id,
+            )
             append_runtime_warnings(metadata, drive_warnings)
+            soul_prompt_resolver = build_drive_aware_soul_mention_resolver(
+                agent_soul,
+                tenant_id=context.dify_context.tenant_id,
+                agent_id=context.agent_id,
+            )
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_agent_app(
@@ -154,9 +165,7 @@ class AgentAppRuntimeRequestBuilder:
                 ),
                 # ENG-616: expand slash-menu mention tokens to canonical names so
                 # no frontend-internal {{#…#}} marker ever reaches the model.
-                agent_soul_prompt=expand_prompt_mentions(
-                    agent_soul.prompt.system_prompt, build_soul_mention_resolver(agent_soul)
-                ).strip()
+                agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
                 user_prompt=context.user_query,
                 tools=tools_layer,

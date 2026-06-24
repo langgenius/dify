@@ -519,14 +519,14 @@ async function provisionApps(
 
   async function importAppCli(filePath: string, wsId: string): Promise<string> {
     const result = await run(
-      ['import', 'app', '--from-file', filePath, '--workspace', wsId],
+      ['import', 'studio-app', '--from-file', filePath, '--workspace', wsId],
       { configDir, timeout: 60_000 },
     )
     if (result.exitCode !== 0)
-      throw new Error(`import app failed (exit ${result.exitCode}): ${result.stderr}`)
+      throw new Error(`import studio-app failed (exit ${result.exitCode}): ${result.stderr}`)
     const match = result.stderr.match(/app ([0-9a-f-]{36})/)
     if (!match?.[1])
-      throw new Error(`import app: could not parse app_id: ${result.stderr}`)
+      throw new Error(`import studio-app: could not parse app_id: ${result.stderr}`)
     return match[1]
   }
 

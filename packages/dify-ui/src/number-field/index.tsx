@@ -100,8 +100,8 @@ export const numberFieldUnitVariants = cva(
   {
     variants: {
       size: {
-        medium: 'pr-2',
-        large: 'pr-2.5',
+        medium: 'pe-2',
+        large: 'pe-2.5',
       },
     },
     defaultVariants: {

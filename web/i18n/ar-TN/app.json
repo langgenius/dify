@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "سير العمل",
   "newAppFromTemplate.sidebar.Writing": "كتابة",
   "noAccessPermission": "لا يوجد إذن للوصول إلى تطبيق الويب",
+  "noAccessResourcePermission": "لا يوجد إذن للوصول إلى هذا المورد",
   "noUserInputNode": "عقدة إدخال المستخدم مفقودة",
   "notPublishedYet": "التطبيق لم ينشر بعد",
   "openInExplore": "فتح في الاستكشاف",

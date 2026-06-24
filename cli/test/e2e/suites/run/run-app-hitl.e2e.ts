@@ -386,15 +386,7 @@ describeExternal('E2E / difyctl run app — HITL display_in_ui=false (4.5.8)', (
     await fx.cleanup()
   })
 
-  it('[P1] 4.5.8 HITL pause with display_in_ui=false: JSON contains display_in_ui=false and exit is 0', async () => {
-    // Spec 4.5.8: when the Human Input node has display_in_ui=false the CLI
-    // should indicate the form is delivered via an external channel.
-    //
-    // Current CLI behaviour (v1.0): the JSON field display_in_ui is correctly
-    // set to false.  The stderr hint still includes the resume command (the
-    // "form delivered via external channel" hint is not yet implemented in CLI).
-    // This test verifies the current actual behaviour and will need updating
-    // once the CLI implements the display_in_ui=false hint distinction.
+  it('[P1] 4.5.8 HITL pause with display_in_ui=false: external-channel form is not CLI-resumable', async () => {
     const result = await fx.r([
       'run',
       'app',
@@ -407,7 +399,8 @@ describeExternal('E2E / difyctl run app — HITL display_in_ui=false (4.5.8)', (
     const parsed = assertJson<{
       status: string
       display_in_ui: boolean
-      form_token: string
+      form_token: string | null
+      approval_channels: string[]
       workflow_run_id: string
     }>(result)
 
@@ -417,12 +410,13 @@ describeExternal('E2E / difyctl run app — HITL display_in_ui=false (4.5.8)', (
     // status must be paused
     expect(parsed.status).toBe('paused')
 
-    // form_token must be present (resume is still possible even for external delivery)
-    expect(parsed.form_token, 'form_token must be non-empty').toBeTruthy()
+    // external delivery is not CLI-resumable: no token, channels name the real route
+    expect(parsed.form_token, 'form_token must be null for external delivery').toBeNull()
+    expect(parsed.approval_channels, 'approval_channels must name the delivery channel').toContain('email')
 
-    // stderr must contain a hint (current behaviour: hint includes resume command)
-    expect(result.stderr.trim().length, 'stderr must contain a hint').toBeGreaterThan(0)
-    expect(result.stderr).toMatch(/hint|resume|paused/i)
+    // stderr hint must describe the channel, not offer a resume command
+    expect(result.stderr).toMatch(/delivered via|resume only from/i)
+    expect(result.stderr).not.toMatch(/difyctl resume/i)
   })
 })
 

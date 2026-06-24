@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Alur Kerja",
   "newAppFromTemplate.sidebar.Writing": "Tulisan",
   "noAccessPermission": "Tidak ada izin untuk mengakses aplikasi web",
+  "noAccessResourcePermission": "Tidak ada izin untuk mengakses sumber daya ini",
   "noUserInputNode": "Node input pengguna hilang",
   "notPublishedYet": "Aplikasi belum diterbitkan",
   "openInExplore": "Buka di Jelajahi",

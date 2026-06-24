@@ -1304,7 +1304,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
-    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.2.0" },
+    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.2.1" },
     { name = "typer", specifier = ">=0.16.1,<0.17" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
@@ -1636,7 +1636,7 @@ requires-dist = [
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
     { name = "google-api-python-client", specifier = ">=2.196.0,<3.0.0" },
     { name = "google-cloud-aiplatform", specifier = ">=1.151.0,<2.0.0" },
-    { name = "graphon", specifier = "==0.5.2" },
+    { name = "graphon", specifier = "==0.5.3" },
     { name = "gunicorn", specifier = ">=26.0.0,<27.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "==0.28.1" },
     { name = "httpx-sse", specifier = "==0.4.3" },
@@ -2987,7 +2987,7 @@ httpx = [
 
 [[package]]
 name = "graphon"
-version = "0.5.2"
+version = "0.5.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
@@ -3008,9 +3008,9 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c2/16/f183da187414c335be67f52f6a1b7c2a33bf0b1d5090eda7e6c92d42d94a/graphon-0.5.2.tar.gz", hash = "sha256:d66a9edcd883766bd50e94f84a691c92ce536ea60e721552089e83ac8e94bf68", size = 269773, upload-time = "2026-06-16T04:06:22.074Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/50/02/75c8cc2f946c8b6debe4f71a8a0f41a69cd499073368a8735ca424c6551f/graphon-0.5.3.tar.gz", hash = "sha256:eaa87d5e664acdf14c80e38afce6bc0f14644961de7ce7b059266fe61bc30e0b", size = 271204, upload-time = "2026-06-23T08:13:32.46Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/e6/36a3981cd44e7a40a7cd7d374e26f01e02dd49410c5fbbd7df248750d5fb/graphon-0.5.2-py3-none-any.whl", hash = "sha256:11f89399e67ed1ddd2ce1c336accd9c4ad5b8fe2741f9167e6085af0b325cd14", size = 381908, upload-time = "2026-06-16T04:06:20.453Z" },
+    { url = "https://files.pythonhosted.org/packages/84/fb/616f8ecbd184af57dca8380877b149198d944f4a6658cceb353ae02ace92/graphon-0.5.3-py3-none-any.whl", hash = "sha256:a7f070d1e5eef13d25b97cce6d23675b228c1d38f3c656e3dcacaa6be9ccada4", size = 383359, upload-time = "2026-06-23T08:13:31.075Z" },
 ]
 
 [[package]]

@@ -318,3 +318,26 @@ class TestIsDatasetExists:
             return_value=mock_dataset,
         )
         assert not DatasetConfigManager.is_dataset_exists("tenant1", valid_uuid)
+
+
+# ==============================
+# extract_dataset_config_for_legacy_compatibility tests
+# ==============================
+
+
+class TestExtractDatasetConfigForLegacyCompatibility:
+    def test_skips_empty_tool_entry(self):
+        # A malformed empty tool dict in agent_mode.tools must be skipped, not
+        # crash with `IndexError` on `list(tool.keys())[0]`. The sibling
+        # convert() already guards this with `if len(tool) == 1`.
+        config = {
+            "agent_mode": {
+                "enabled": True,
+                "strategy": PlanningStrategy.ROUTER,
+                "tools": [{}],
+            }
+        }
+
+        result = DatasetConfigManager.extract_dataset_config_for_legacy_compatibility("tenant1", AppMode.CHAT, config)
+
+        assert result["agent_mode"]["tools"] == [{}]

@@ -24,14 +24,10 @@ export type EnvVariable = {
 
 export type AgentSkill = {
   description?: string
-  files?: string[]
-  fileId?: string
-  fullArchiveFileId?: string
-  fullArchiveKey?: string
+  archiveKey?: string
   id: string
   name: string
   path?: string
-  skillMdFileId?: string
   skillMdKey?: string
 }
 
@@ -100,8 +96,6 @@ export type AgentSoulConfigFormState = {
   prompt: string
   model?: DefaultModel
   appFeatures?: AgentSoulAppFeaturesConfig
-  skills: AgentSkill[]
-  files: AgentFileNode[]
   tools: AgentTool[]
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   envVariables: EnvVariable[]
@@ -110,8 +104,6 @@ export type AgentSoulConfigFormState = {
 
 export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
   prompt: '',
-  skills: [],
-  files: [],
   tools: [],
   knowledgeRetrievals: [],
   envVariables: [],

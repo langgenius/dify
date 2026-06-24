@@ -1,5 +1,6 @@
 import type { App } from '@/types/app'
-import { render, screen, waitFor } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { useStore } from '@/app/components/app/store'
 import { usePathname, useRouter } from '@/next/navigation'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -10,6 +11,13 @@ import AppDetailLayout from '../layout-main'
 const mockReplace = vi.fn()
 let mockPathname = '/app/app-1/workflow'
 let mockIsLoadingWorkspacePermissionKeys = false
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 vi.mock('@/next/navigation', () => ({
   usePathname: vi.fn(),
@@ -57,6 +65,7 @@ describe('AppDetailLayout', () => {
     vi.clearAllMocks()
     mockPathname = '/app/app-1/workflow'
     mockIsLoadingWorkspacePermissionKeys = false
+    mockIsRbacEnabled = true
     mockUsePathname.mockImplementation(() => mockPathname)
     mockUseRouter.mockReturnValue({
       back: vi.fn(),
@@ -260,6 +269,24 @@ describe('AppDetailLayout', () => {
 
     expect(mockReplace).not.toHaveBeenCalled()
     expect(useStore.getState().appDetail?.id).toBe('app-1')
+  })
+
+  it('should redirect access config pages when RBAC is disabled', async () => {
+    mockIsRbacEnabled = false
+    mockPathname = '/app/app-1/access-config'
+    mockFetchAppDetailDirect.mockResolvedValue(createAppDetail({ permission_keys: [AppACLPermission.AccessConfig] }))
+
+    render(
+      <AppDetailLayout appId="app-1">
+        <div>App page content</div>
+      </AppDetailLayout>,
+    )
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/app/app-1/develop')
+    })
+    expect(screen.queryByText('App page content')).not.toBeInTheDocument()
+    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
   it('should redirect annotation pages when edit access is missing', async () => {

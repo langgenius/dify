@@ -2,8 +2,7 @@ import type { Credential, CustomModel, ModelProvider } from '../../declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import CredentialItem from '../../model-auth/authorized/credential-item'
 
 type ApiKeySectionProps = {
@@ -29,8 +28,7 @@ function ApiKeySection({
 }: ApiKeySectionProps) {
   const { t } = useTranslation()
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
 
   if (!credentials.length) {
     return (
@@ -45,7 +43,7 @@ function ApiKeySection({
             </div>
           </div>
         </div>
-        {!notAllowCustomCredential && canManageCredential && (
+        {!notAllowCustomCredential && canCreateCredential && (
           <Button
             onClick={onAdd}
             className="w-full"
@@ -71,7 +69,7 @@ function ApiKeySection({
               disabled={isActivating}
               showSelectedIcon
               selectedCredentialId={selectedCredentialId}
-              onItemClick={onItemClick}
+              onItemClick={canUseCredential ? onItemClick : undefined}
               onEdit={onEdit}
               onDelete={onDelete}
               disableEdit={!canManageCredential}
@@ -80,7 +78,7 @@ function ApiKeySection({
           ))}
         </div>
       </div>
-      {!notAllowCustomCredential && canManageCredential && (
+      {!notAllowCustomCredential && canCreateCredential && (
         <div className="p-2">
           <Button
             onClick={onAdd}

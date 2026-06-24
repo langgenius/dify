@@ -78,6 +78,13 @@ def _filter_snapshot_to_specs(
     return CompositorSessionSnapshot(schema_version=snapshot.schema_version, layers=filtered_layers)
 
 
+def _shell_layer_deps(*, include_drive: bool) -> dict[str, str]:
+    deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    if include_drive:
+        deps["drive"] = DIFY_DRIVE_LAYER_ID
+    return deps
+
+
 class AgentBackendModelConfig(BaseModel):
     """API-side model/plugin selection before it is converted to Dify Agent layers."""
 
@@ -263,6 +270,7 @@ class AgentBackendRunRequestBuilder:
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )
@@ -329,14 +337,15 @@ class AgentBackendRunRequestBuilder:
             )
 
         if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). Depends on execution_context so
-            # the agent server can mint per-command Agent Stub env (back proxy);
+            # Sandboxed bash workspace (dify.shell). Depends on execution_context
+            # so the agent server can mint per-command Agent Stub env, and on
+            # drive when present so that env points at /mnt/drive/<drive_ref>.
             # shellctl connection itself is server-injected.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=_shell_layer_deps(include_drive=run_input.drive_config is not None),
                     metadata=run_input.metadata,
                     config=run_input.shell_config or DifyShellLayerConfig(),
                 )
@@ -460,6 +469,7 @@ class AgentBackendRunRequestBuilder:
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )
@@ -528,14 +538,15 @@ class AgentBackendRunRequestBuilder:
             )
 
         if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). Depends on execution_context so
-            # the agent server can mint per-command Agent Stub env (back proxy);
+            # Sandboxed bash workspace (dify.shell). Depends on execution_context
+            # so the agent server can mint per-command Agent Stub env, and on
+            # drive when present so that env points at /mnt/drive/<drive_ref>.
             # shellctl connection itself is server-injected.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_SHELL_LAYER_ID,
                     type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=_shell_layer_deps(include_drive=run_input.drive_config is not None),
                     metadata=run_input.metadata,
                     config=run_input.shell_config or DifyShellLayerConfig(),
                 )

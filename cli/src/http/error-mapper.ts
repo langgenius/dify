@@ -44,9 +44,17 @@ const RATE_LIMITED_CLASS: StatusClass = {
   includeRaw: false,
 }
 
+const ACCESS_DENIED_CLASS: StatusClass = {
+  code: ErrorCode.AccessDenied,
+  fallbackMessage: () => 'not permitted',
+  includeRaw: false,
+}
+
 function statusClass(status: number): StatusClass {
   if (status === 401)
     return AUTH_EXPIRED_CLASS
+  if (status === 403)
+    return ACCESS_DENIED_CLASS
   if (status === 429)
     return RATE_LIMITED_CLASS
   if (status >= 500)
