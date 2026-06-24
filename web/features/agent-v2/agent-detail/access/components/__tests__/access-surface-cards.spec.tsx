@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   apiAccessQueryFn: vi.fn(),
   apiKeysQueryFn: vi.fn(),
   siteEnableMutation: vi.fn(),
+  siteMutation: vi.fn(),
   siteAccessTokenResetMutation: vi.fn(),
   apiEnableMutation: vi.fn(),
   createApiKeyMutation: vi.fn(),
@@ -63,6 +64,12 @@ vi.mock('@/service/client', () => ({
           },
         },
         site: {
+          post: {
+            mutationOptions: (options = {}) => ({
+              mutationFn: mocks.siteMutation,
+              ...options,
+            }),
+          },
           accessTokenReset: {
             post: {
               mutationOptions: (options = {}) => ({
@@ -152,7 +159,19 @@ function createAgent(overrides: Partial<AgentAppDetailWithSite> = {}): AgentAppD
 }
 
 function renderWithQueryClient(ui: React.ReactElement) {
-  const queryClient = new QueryClient({
+  const queryClient = createTestQueryClient()
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  )
+
+  return queryClient
+}
+
+function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
@@ -162,14 +181,6 @@ function renderWithQueryClient(ui: React.ReactElement) {
       },
     },
   })
-
-  render(
-    <QueryClientProvider client={queryClient}>
-      {ui}
-    </QueryClientProvider>,
-  )
-
-  return queryClient
 }
 
 describe('Agent access surface cards', () => {
@@ -240,6 +251,68 @@ describe('Agent access surface cards', () => {
       })
     })
 
+    it('should save settings through the backing app id and update the agent detail cache', async () => {
+      const user = userEvent.setup()
+      const agent = createAgent()
+      mocks.siteMutation.mockResolvedValueOnce({
+        app_id: 'app-1',
+        code: 'new-site-token',
+        copyright: '',
+        custom_disclaimer: '',
+        customize_domain: null,
+        customize_token_strategy: 'allow',
+        default_language: 'en-US',
+        description: 'Updated web description.',
+        icon: '🤖',
+        icon_background: '#FFEAD5',
+        privacy_policy: '',
+        prompt_public: false,
+        show_workflow_steps: false,
+        title: 'Support Portal',
+        use_icon_as_answer_icon: true,
+      })
+
+      const queryClient = renderWithQueryClient(
+        <WebAppAccessCard agent={agent} agentId="agent-1" isLoading={false} />,
+      )
+      queryClient.setQueryData(['agent-detail', 'agent-1'], agent)
+      const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' }))
+      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.settings.title' })
+
+      await user.clear(within(dialog).getByPlaceholderText('app.appNamePlaceholder'))
+      await user.type(within(dialog).getByPlaceholderText('app.appNamePlaceholder'), 'Support Portal')
+      await user.clear(within(dialog).getByRole('textbox', { name: 'appOverview.overview.appInfo.settings.webDesc' }))
+      await user.type(within(dialog).getByRole('textbox', { name: 'appOverview.overview.appInfo.settings.webDesc' }), 'Updated web description.')
+      await user.clear(within(dialog).getByPlaceholderText('E.g #A020F0'))
+      await user.type(within(dialog).getByPlaceholderText('E.g #A020F0'), '#123456')
+      await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+      await waitFor(() => {
+        expect(mocks.siteMutation.mock.calls[0]?.[0]).toEqual({
+          params: {
+            app_id: 'app-1',
+          },
+          body: expect.objectContaining({
+            title: 'Support Portal',
+            description: 'Updated web description.',
+            chat_color_theme: '#123456',
+          }),
+        })
+      })
+      expect(mocks.siteMutation.mock.calls[0]?.[0].body).not.toHaveProperty('enable_sso')
+      expect(queryClient.getQueryData<AgentAppDetailWithSite>(['agent-detail', 'agent-1'])).toMatchObject({
+        site: {
+          access_token: 'new-site-token',
+          chat_color_theme: '#123456',
+          description: 'Updated web description.',
+          title: 'Support Portal',
+        },
+      })
+      expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['agent-detail', 'agent-1'] })
+    })
+
     it('should keep embedded disabled until the backing app id and web app token are available', () => {
       renderWithQueryClient(
         <WebAppAccessCard
@@ -257,6 +330,31 @@ describe('Agent access surface cards', () => {
       )
 
       expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' })).toBeDisabled()
+    })
+
+    it('should keep settings disabled until the backing app id and site data are available', () => {
+      const agentWithoutApp = createAgent({
+        app_id: null,
+      })
+      const agentWithoutSite = createAgent({
+        site: null,
+      })
+      const queryClient = createTestQueryClient()
+      const { rerender } = render(
+        <QueryClientProvider client={queryClient}>
+          <WebAppAccessCard agent={agentWithoutApp} agentId="agent-1" isLoading={false} />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' })).toBeDisabled()
+
+      rerender(
+        <QueryClientProvider client={queryClient}>
+          <WebAppAccessCard agent={agentWithoutSite} agentId="agent-1" isLoading={false} />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.settings' })).toBeDisabled()
     })
 
     it('should keep customize disabled until the generated contract provides the required fields', () => {
