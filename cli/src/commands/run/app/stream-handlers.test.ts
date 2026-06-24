@@ -50,7 +50,7 @@ describe('streamPrinterFor — chat separated reasoning', () => {
     sp.onEvent(cap.out, cap.err, reasoningEvent('', true))
     sp.onEvent(cap.out, cap.err, ev('message', { conversation_id: 'c1', answer: 'final answer' }))
     sp.onEnd(cap.out, cap.err)
-    expect(cap.errBuf()).toContain('<think>\npondering</think>')
+    expect(cap.errBuf()).toContain('<think> [llm-1]\npondering</think>')
     expect(cap.outBuf()).toBe('final answer\n')
   })
 
@@ -69,7 +69,7 @@ describe('streamPrinterFor — chat separated reasoning', () => {
     const cap = captures()
     sp.onEvent(cap.out, cap.err, reasoningEvent('thinking', false))
     sp.onEnd(cap.out, cap.err)
-    expect(cap.errBuf()).toContain('<think>\nthinking</think>')
+    expect(cap.errBuf()).toContain('<think> [llm-1]\nthinking</think>')
   })
 })
 
@@ -158,7 +158,7 @@ describe('streamPrinterFor — workflow separated reasoning', () => {
     sp.onEnd(cap.out, cap.err)
     // node title precedes the reasoning block for attribution
     expect(cap.errBuf()).toContain('→ LLM')
-    expect(cap.errBuf()).toContain('<think>\npondering</think>')
+    expect(cap.errBuf()).toContain('<think> [llm-1]\npondering</think>')
     const parsed = JSON.parse(cap.outBuf().trim()) as { result: string }
     expect(parsed.result).toBe('clean answer')
   })
@@ -179,10 +179,10 @@ describe('streamPrinterFor — workflow separated reasoning', () => {
     const cap = captures()
     sp.onEvent(cap.out, cap.err, wfReasoning('thinking', 'llm-1', false))
     sp.onEnd(cap.out, cap.err)
-    expect(cap.errBuf()).toContain('<think>\nthinking</think>')
+    expect(cap.errBuf()).toContain('<think> [llm-1]\nthinking</think>')
   })
 
-  it('keeps interleaved parallel-node reasoning in separate blocks', () => {
+  it('keeps interleaved parallel-node reasoning in separate node-tagged blocks', () => {
     const sp = streamPrinterFor('workflow', true)
     const cap = captures()
     sp.onEvent(cap.out, cap.err, wfReasoning('a1', 'llm-1', false))
@@ -192,7 +192,7 @@ describe('streamPrinterFor — workflow separated reasoning', () => {
     sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { result: 'ok' } } }))
     sp.onEnd(cap.out, cap.err)
     expect(cap.errBuf()).toBe(
-      '<think>\na1</think>\n<think>\nb1</think>\n<think>\na2</think>\n<think>\nb2</think>\n',
+      '<think> [llm-1]\na1</think>\n<think> [llm-2]\nb1</think>\n<think> [llm-1]\na2</think>\n<think> [llm-2]\nb2</think>\n',
     )
   })
 })

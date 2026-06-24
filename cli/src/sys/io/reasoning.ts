@@ -39,8 +39,9 @@ export function accumulateReasoning(acc: Record<string, string>, chunk: Reasonin
 
 // Frames a live reasoning stream into stderr: <think> on the first delta,
 // raw deltas thereafter, </think> on is_final. Parallel branches can interleave
-// chunks from different nodes on one stream, so it keeps at most one block open
-// and switches blocks on node change rather than merging them.
+// chunks from different nodes on one stream, so it keeps at most one block open,
+// switches blocks on node change, and tags each block with its node id so the
+// interleaved fragments stay distinguishable.
 export class ReasoningChunkRenderer {
   private openNode: string | undefined
 
@@ -49,7 +50,7 @@ export class ReasoningChunkRenderer {
     if (chunk.reasoning !== '') {
       if (this.openNode !== key) {
         this.closeActive(errOut)
-        errOut.write(`${THINK_OPEN}\n`)
+        errOut.write(chunk.nodeId !== '' ? `${THINK_OPEN} [${chunk.nodeId}]\n` : `${THINK_OPEN}\n`)
         this.openNode = key
       }
       errOut.write(chunk.reasoning)

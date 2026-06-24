@@ -34,24 +34,24 @@ describe('parseReasoningChunk', () => {
 })
 
 describe('ReasoningChunkRenderer', () => {
-  it('frames streamed deltas with <think> open/close on the terminal marker', () => {
+  it('frames streamed deltas with a node-tagged <think> open/close on the terminal marker', () => {
     const cap = capture()
     const r = new ReasoningChunkRenderer()
     r.push({ reasoning: 'pon', nodeId: 'llm-1', isFinal: false }, cap.err)
     r.push({ reasoning: 'dering', nodeId: 'llm-1', isFinal: false }, cap.err)
     r.push({ reasoning: '', nodeId: 'llm-1', isFinal: true }, cap.err)
-    expect(cap.errBuf()).toBe('<think>\npondering</think>\n')
+    expect(cap.errBuf()).toBe('<think> [llm-1]\npondering</think>\n')
   })
 
-  it('emits separate blocks per node', () => {
+  it('emits separate node-tagged blocks per node', () => {
     const cap = capture()
     const r = new ReasoningChunkRenderer()
     r.push({ reasoning: 'a', nodeId: 'n1', isFinal: true }, cap.err)
     r.push({ reasoning: 'b', nodeId: 'n2', isFinal: true }, cap.err)
-    expect(cap.errBuf()).toBe('<think>\na</think>\n<think>\nb</think>\n')
+    expect(cap.errBuf()).toBe('<think> [n1]\na</think>\n<think> [n2]\nb</think>\n')
   })
 
-  it('serializes interleaved nodes into per-node blocks', () => {
+  it('tags each block with its node id so interleaved fragments stay distinguishable', () => {
     const cap = capture()
     const r = new ReasoningChunkRenderer()
     r.push({ reasoning: 'a1', nodeId: 'n1', isFinal: false }, cap.err)
@@ -59,8 +59,15 @@ describe('ReasoningChunkRenderer', () => {
     r.push({ reasoning: 'a2', nodeId: 'n1', isFinal: true }, cap.err)
     r.push({ reasoning: 'b2', nodeId: 'n2', isFinal: true }, cap.err)
     expect(cap.errBuf()).toBe(
-      '<think>\na1</think>\n<think>\nb1</think>\n<think>\na2</think>\n<think>\nb2</think>\n',
+      '<think> [n1]\na1</think>\n<think> [n2]\nb1</think>\n<think> [n1]\na2</think>\n<think> [n2]\nb2</think>\n',
     )
+  })
+
+  it('omits the tag when the chunk carries no node id', () => {
+    const cap = capture()
+    const r = new ReasoningChunkRenderer()
+    r.push({ reasoning: 'plain', nodeId: '', isFinal: true }, cap.err)
+    expect(cap.errBuf()).toBe('<think>\nplain</think>\n')
   })
 
   it('flush closes a block left open by a truncated stream', () => {
@@ -68,7 +75,7 @@ describe('ReasoningChunkRenderer', () => {
     const r = new ReasoningChunkRenderer()
     r.push({ reasoning: 'half', nodeId: 'n1', isFinal: false }, cap.err)
     r.flush(cap.err)
-    expect(cap.errBuf()).toBe('<think>\nhalf</think>\n')
+    expect(cap.errBuf()).toBe('<think> [n1]\nhalf</think>\n')
   })
 
   it('a lone terminal marker with no reasoning emits nothing', () => {
