@@ -107,6 +107,35 @@ class AgentSoulFilesService:
         return items
 
     @classmethod
+    def list_manifest_items(
+        cls,
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_id: str,
+        prefix: str = "",
+    ) -> list[dict[str, Any]]:
+        agent_soul = cls.active_agent_soul(session=session, tenant_id=tenant_id, agent_id=agent_id)
+        refs = cls._all_file_refs(agent_soul)
+        if prefix:
+            normalized_prefix = normalize_drive_key(prefix)
+            refs = [ref for ref in refs if (ref.drive_key or "").startswith(normalized_prefix)]
+        keys = [ref.drive_key for ref in refs if ref.drive_key]
+        rows = cls._drive_rows_by_key(session=session, tenant_id=tenant_id, agent_id=agent_id, keys=keys)
+
+        items: list[dict[str, Any]] = []
+        for file_ref in refs:
+            key = file_ref.drive_key
+            if not key:
+                continue
+            row = rows.get(key)
+            item = cls._file_item_from_ref(file_ref)
+            item.update(cls._row_item(row) if row is not None else {"key": key, "missing": True})
+            item["file_id"] = file_ref.file_id or file_ref.upload_file_id
+            items.append(item)
+        return sorted(items, key=lambda item: str(item.get("key") or ""))
+
+    @classmethod
     def list_skills(
         cls,
         *,
@@ -126,15 +155,16 @@ class AgentSoulFilesService:
                 continue
             row = rows.get(skill.skill_md_key)
             archive_key = skill.full_archive_key if skill.full_archive_key in rows else None
+            skill_md_ref = cls.file_ref_for_key(agent_soul=agent_soul, key=skill.skill_md_key)
             items.append(
                 {
                     "path": skill.path or cls.skill_path_from_key(skill.skill_md_key),
                     "skill_md_key": skill.skill_md_key,
-                    "archive_key": archive_key,
+                    "archive_key": archive_key or skill.full_archive_key,
                     "name": skill.name,
                     "description": skill.description,
                     "size": row.size if row is not None else None,
-                    "mime_type": row.mime_type if row is not None else None,
+                    "mime_type": row.mime_type if row is not None else (skill_md_ref.type if skill_md_ref else None),
                     "hash": row.hash if row is not None else None,
                     "created_at": int(row.created_at.timestamp()) if row is not None and row.created_at else None,
                     "missing": row is None,
@@ -153,6 +183,9 @@ class AgentSoulFilesService:
                 keys.add(skill.skill_md_key)
             if skill.full_archive_key:
                 keys.add(skill.full_archive_key)
+            for file_ref in skill.file_refs:
+                if file_ref.drive_key:
+                    keys.add(file_ref.drive_key)
         return keys
 
     @classmethod
@@ -170,6 +203,18 @@ class AgentSoulFilesService:
         if normalized_key in cls.allowed_drive_keys(agent_soul):
             return True
         return any(normalized_key.startswith(prefix) for prefix in cls.allowed_skill_prefixes(agent_soul))
+
+    @classmethod
+    def file_ref_for_key(cls, *, agent_soul: AgentSoulConfig, key: str) -> AgentFileRefConfig | None:
+        normalized_key = normalize_drive_key(key)
+        for file_ref in agent_soul.files.files:
+            if file_ref.drive_key == normalized_key:
+                return file_ref
+        for skill in agent_soul.files.skills:
+            for file_ref in skill.file_refs:
+                if file_ref.drive_key == normalized_key:
+                    return file_ref
+        return None
 
     @classmethod
     def drive_copy_scopes(cls, *, agent_soul: AgentSoulConfig) -> tuple[set[str], set[str]]:
@@ -223,6 +268,8 @@ class AgentSoulFilesService:
             return
         if key.startswith(_FILES_PREFIX):
             cls._upsert_file_ref(agent_soul=agent_soul, key=key, item=item)
+            return
+        cls._upsert_skill_file_ref(agent_soul=agent_soul, key=key, item=item)
 
     @classmethod
     def _upsert_skill_ref(cls, *, agent_soul: AgentSoulConfig, key: str, item: dict[str, Any]) -> None:
@@ -239,6 +286,22 @@ class AgentSoulFilesService:
             full_archive_key=cls.skill_archive_key(key),
             manifest_files=metadata.manifest_files,
         )
+        existing_ref = next(
+            (
+                existing
+                for existing in agent_soul.files.skills
+                if existing.skill_md_key == key or existing.path == path
+            ),
+            None,
+        )
+        file_refs = list(existing_ref.file_refs) if existing_ref else []
+        file_refs = [file_ref for file_ref in file_refs if file_ref.drive_key != key]
+        file_refs.append(cls._file_ref_from_item(key=key, item=item, name="SKILL.md"))
+        archive_key = cls.skill_archive_key(key)
+        archive_ref = next((file_ref for file_ref in file_refs if file_ref.drive_key == archive_key), None)
+        if archive_ref:
+            ref.full_archive_file_id = archive_ref.file_id
+        ref.file_refs = sorted(file_refs, key=lambda value: value.drive_key or value.name)
         skills = [
             existing
             for existing in agent_soul.files.skills
@@ -260,11 +323,58 @@ class AgentSoulFilesService:
             type=str(item.get("mime_type") or ""),
             transfer_method=str(item.get("file_kind") or ""),
             drive_key=key,
+            size=item.get("size"),
+            hash=item.get("hash"),
         )
         files = [existing for existing in agent_soul.files.files if existing.drive_key != key]
         files.append(ref)
         files.sort(key=lambda value: value.drive_key or value.name)
         agent_soul.files.files = files
+
+    @classmethod
+    def _upsert_skill_file_ref(cls, *, agent_soul: AgentSoulConfig, key: str, item: dict[str, Any]) -> None:
+        path = key.split("/", 1)[0]
+        if not path:
+            return
+        updated: list[AgentSkillRefConfig] = []
+        changed = False
+        for skill in agent_soul.files.skills:
+            skill_path = skill.path or (cls.skill_path_from_key(skill.skill_md_key) if skill.skill_md_key else "")
+            if skill_path != path:
+                updated.append(skill)
+                continue
+            file_ref = cls._file_ref_from_item(key=key, item=item)
+            file_refs = [existing for existing in skill.file_refs if existing.drive_key != key]
+            file_refs.append(file_ref)
+            replacement = skill.model_copy(
+                update={"file_refs": sorted(file_refs, key=lambda value: value.drive_key or value.name)}
+            )
+            if key.endswith(f"/{_SKILL_ARCHIVE_NAME}"):
+                replacement = replacement.model_copy(
+                    update={
+                        "full_archive_key": key,
+                        "full_archive_file_id": file_ref.file_id,
+                    }
+                )
+            updated.append(replacement)
+            changed = True
+        if changed:
+            agent_soul.files.skills = updated
+
+    @staticmethod
+    def _file_ref_from_item(*, key: str, item: dict[str, Any], name: str | None = None) -> AgentFileRefConfig:
+        file_id = str(item.get("file_id") or "")
+        return AgentFileRefConfig(
+            id=key,
+            file_id=file_id,
+            upload_file_id=file_id if item.get("file_kind") == "upload_file" else None,
+            name=name or key.rsplit("/", 1)[-1],
+            type=str(item.get("mime_type") or ""),
+            transfer_method=str(item.get("file_kind") or ""),
+            drive_key=key,
+            size=item.get("size"),
+            hash=item.get("hash"),
+        )
 
     @classmethod
     def _remove_ref(cls, *, agent_soul: AgentSoulConfig, key: str) -> None:
@@ -277,11 +387,35 @@ class AgentSoulFilesService:
             return
         if key.endswith(f"/{_SKILL_ARCHIVE_NAME}"):
             agent_soul.files.skills = [
-                skill.model_copy(update={"full_archive_key": None})
+                skill.model_copy(
+                    update={
+                        "full_archive_key": None,
+                        "full_archive_file_id": None,
+                        "file_refs": [file_ref for file_ref in skill.file_refs if file_ref.drive_key != key],
+                    }
+                )
                 if skill.full_archive_key == key
                 else skill
                 for skill in agent_soul.files.skills
             ]
+            return
+        path = key.split("/", 1)[0]
+        if path:
+            agent_soul.files.skills = [
+                skill.model_copy(
+                    update={"file_refs": [file_ref for file_ref in skill.file_refs if file_ref.drive_key != key]}
+                )
+                if (skill.path or (cls.skill_path_from_key(skill.skill_md_key) if skill.skill_md_key else "")) == path
+                else skill
+                for skill in agent_soul.files.skills
+            ]
+
+    @staticmethod
+    def _all_file_refs(agent_soul: AgentSoulConfig) -> list[AgentFileRefConfig]:
+        refs = list(agent_soul.files.files)
+        for skill in agent_soul.files.skills:
+            refs.extend(skill.file_refs)
+        return refs
 
     @staticmethod
     def _parse_skill_metadata(raw_metadata: Any) -> DriveSkillMetadata:
@@ -336,6 +470,8 @@ class AgentSoulFilesService:
             "mime_type": file_ref.type,
             "file_kind": file_ref.transfer_method,
             "is_skill": False,
+            "size": file_ref.get("size"),
+            "hash": file_ref.get("hash"),
         }
 
     @classmethod

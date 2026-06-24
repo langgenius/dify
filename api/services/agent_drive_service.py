@@ -825,6 +825,24 @@ class AgentDriveService:
         except ValueError:
             return None
 
+    @classmethod
+    def resolve_download_url_for_ref(
+        cls,
+        *,
+        tenant_id: str,
+        file_kind: AgentDriveFileKind,
+        file_id: str,
+        for_external: bool = False,
+        as_attachment: bool = False,
+    ) -> str | None:
+        return cls._resolve_download_url(
+            tenant_id=tenant_id,
+            file_kind=file_kind,
+            file_id=file_id,
+            for_external=for_external,
+            as_attachment=as_attachment,
+        )
+
     # ── console drive inspector (ENG-624) ────────────────────────────────────
 
     # SKILL.md is the primary preview use case; 64 KiB covers it with headroom
@@ -844,15 +862,30 @@ class AgentDriveService:
         return row
 
     def _storage_key_for_row(self, session: Session, *, tenant_id: str, row: AgentDriveFile) -> str:
-        if row.file_kind == AgentDriveFileKind.TOOL_FILE:
+        return self._storage_key_for_ref(
+            session,
+            tenant_id=tenant_id,
+            file_kind=row.file_kind,
+            file_id=row.file_id,
+        )
+
+    def _storage_key_for_ref(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        file_kind: AgentDriveFileKind,
+        file_id: str,
+    ) -> str:
+        if file_kind == AgentDriveFileKind.TOOL_FILE:
             tool_file = session.scalar(
-                select(ToolFile).where(ToolFile.id == row.file_id, ToolFile.tenant_id == tenant_id)
+                select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)
             )
             if tool_file is None:
                 raise AgentDriveError("drive_key_not_found", "drive value record is missing", status_code=404)
             return tool_file.file_key
         upload_file = session.scalar(
-            select(UploadFile).where(UploadFile.id == row.file_id, UploadFile.tenant_id == tenant_id)
+            select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)
         )
         if upload_file is None:
             raise AgentDriveError("drive_key_not_found", "drive value record is missing", status_code=404)
@@ -889,6 +922,47 @@ class AgentDriveService:
                 return {"key": row.key, "size": size, "truncated": truncated, "binary": True, "text": None}
         return {"key": row.key, "size": size, "truncated": truncated, "binary": False, "text": text}
 
+    def preview_file_ref(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        file_kind: AgentDriveFileKind,
+        file_id: str,
+        size: int | None = None,
+    ) -> dict[str, Any]:
+        """Preview a concrete versioned file ref recorded in Agent Soul."""
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            storage_key = self._storage_key_for_ref(
+                session,
+                tenant_id=tenant_id,
+                file_kind=file_kind,
+                file_id=file_id,
+            )
+
+        data = bytearray()
+        for chunk in storage.load_stream(storage_key):
+            data.extend(chunk)
+            if len(data) > self.PREVIEW_MAX_BYTES:
+                break
+        truncated = len(data) > self.PREVIEW_MAX_BYTES
+        sample = bytes(data[: self.PREVIEW_MAX_BYTES])
+        if b"\x00" in sample:
+            return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
+        try:
+            text = sample.decode("utf-8")
+        except UnicodeDecodeError:
+            if truncated:
+                try:
+                    text = sample[:-3].decode("utf-8", errors="strict")
+                except UnicodeDecodeError:
+                    return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
+            else:
+                return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
+        return {"key": key, "size": size, "truncated": truncated, "binary": False, "text": text}
+
     def download_url(self, *, tenant_id: str, agent_id: str, key: str) -> str:
         """External signed URL for a browser download of one drive value."""
         with session_factory.create_session() as session:
@@ -898,6 +972,27 @@ class AgentDriveService:
                 tenant_id=tenant_id,
                 file_kind=row.file_kind,
                 file_id=row.file_id,
+                for_external=True,
+                as_attachment=True,
+            )
+        if url is None:
+            raise AgentDriveError("drive_key_not_found", "drive value cannot be resolved", status_code=404)
+        return url
+
+    def download_url_for_ref(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        file_kind: AgentDriveFileKind,
+        file_id: str,
+    ) -> str:
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            url = self._resolve_download_url(
+                tenant_id=tenant_id,
+                file_kind=file_kind,
+                file_id=file_id,
                 for_external=True,
                 as_attachment=True,
             )

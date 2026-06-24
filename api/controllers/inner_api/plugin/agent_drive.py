@@ -18,6 +18,7 @@ from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
 from extensions.ext_database import db
+from models.agent import AgentDriveFileKind
 from services.agent.soul_files_service import AgentSoulFilesService
 from services.agent_drive_service import (
     AgentDriveError,
@@ -46,17 +47,31 @@ def _versioned_manifest(
 ) -> list[dict[str, object]]:
     agent_soul = AgentSoulFilesService.active_agent_soul(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
     normalized_prefix = prefix.strip().lstrip("/")
-    items = AgentDriveService().manifest(
+    items = AgentSoulFilesService.list_manifest_items(
+        session=db.session,
         tenant_id=tenant_id,
         agent_id=agent_id,
         prefix=normalized_prefix,
-        include_download_url=include_download_url,
     )
     skill_prefixes = AgentSoulFilesService.allowed_skill_prefixes(agent_soul)
-    if normalized_prefix and any(normalized_prefix.startswith(p) for p in skill_prefixes):
-        return items
-    allowed_keys = AgentSoulFilesService.allowed_drive_keys(agent_soul)
-    return [item for item in items if item.get("key") in allowed_keys]
+    if normalized_prefix and not any(normalized_prefix.startswith(p) for p in skill_prefixes):
+        allowed_keys = AgentSoulFilesService.allowed_drive_keys(agent_soul)
+        items = [item for item in items if item.get("key") in allowed_keys]
+    if include_download_url:
+        for item in items:
+            file_kind = item.get("file_kind")
+            file_id = item.get("file_id")
+            if not file_kind or not file_id:
+                continue
+            try:
+                item["download_url"] = AgentDriveService.resolve_download_url_for_ref(
+                    tenant_id=tenant_id,
+                    file_kind=AgentDriveFileKind(str(file_kind)),
+                    file_id=str(file_id),
+                )
+            except ValueError:
+                item["download_url"] = None
+    return items
 
 
 @inner_api_ns.route("/drive/<string:drive_ref>/manifest")

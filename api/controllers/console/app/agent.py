@@ -297,15 +297,7 @@ def _delete_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
 
-    try:
-        result = AgentDriveService().commit(
-            tenant_id=app_model.tenant_id,
-            user_id=current_user.id,
-            agent_id=agent_id,
-            items=[DriveCommitItem(key=key, file_ref=None)],
-        )
-    except AgentDriveError as exc:
-        return {"code": exc.code, "message": exc.message}, exc.status_code
+    result = [{"key": key, "removed": True}]
     _sync_active_soul_files(
         tenant_id=app_model.tenant_id,
         agent_id=agent_id,
@@ -326,24 +318,34 @@ def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, a
         return {"code": "drive_key_invalid", "message": "skill slug must be a single path segment"}, 400
 
     try:
-        result = AgentDriveService().commit(
+        agent_soul = AgentSoulFilesService.active_agent_soul(
+            session=db.session,
             tenant_id=app_model.tenant_id,
-            user_id=current_user.id,
             agent_id=agent_id,
-            items=[
-                DriveCommitItem(key=f"{slug}/SKILL.md", file_ref=None),
-                DriveCommitItem(key=f"{slug}/.DIFY-SKILL-FULL.zip", file_ref=None),
-            ],
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
+    skill_prefix = f"{slug}/"
+    removed_keys = [
+        file_ref.drive_key
+        for skill in agent_soul.files.skills
+        if (
+            skill.path
+            or (AgentSoulFilesService.skill_path_from_key(skill.skill_md_key) if skill.skill_md_key else "")
+        ).strip("/")
+        == slug
+        for file_ref in skill.file_refs
+        if file_ref.drive_key
+    ]
+    if f"{slug}/SKILL.md" not in removed_keys:
+        removed_keys.append(f"{slug}/SKILL.md")
+    result = [{"key": key, "removed": True} for key in removed_keys if key.startswith(skill_prefix)]
     _sync_active_soul_files(
         tenant_id=app_model.tenant_id,
         agent_id=agent_id,
         account_id=current_user.id,
         committed_items=result,
     )
-    removed_keys = [item["key"] for item in result if item.get("removed")]
     return {"result": "success", "removed_keys": removed_keys}
 
 
