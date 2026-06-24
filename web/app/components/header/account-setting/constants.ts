@@ -10,6 +10,8 @@ export const ACCOUNT_SETTING_TAB = {
   ACCESS_RULES: 'access-rules',
   BILLING: 'billing',
   DATA_SOURCE: 'data-source',
+  API_BASED_EXTENSION: 'api-based-extension',
+  USAGE_LIMITS: 'usage-limits',
   API_BASED_EXTENSION: 'custom-endpoint',
   CUSTOM: 'custom',
   LANGUAGE: 'language',

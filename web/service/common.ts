@@ -144,6 +144,13 @@ export const updateWorkspaceInfo = ({ url, body }: { url: string, body: Record<s
   return post<ICurrentWorkspace>(url, { body })
 }
 
+export const updateWorkspaceSettings = (body: {
+  name: string
+  max_active_requests?: number | null
+}): Promise<CommonResponse & { tenant: ICurrentWorkspace }> => {
+  return post<CommonResponse & { tenant: ICurrentWorkspace }>('/workspaces/current/settings', { body })
+}
+
 export const fetchDataSource = ({ url }: { url: string }): Promise<{ data: DataSourceNotion[] }> => {
   return get<{ data: DataSourceNotion[] }>(url)
 }

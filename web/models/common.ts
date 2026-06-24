@@ -100,6 +100,7 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   trial_credits: number
   trial_credits_used: number
   next_credit_reset_date: number
+  max_active_requests?: number | null
   trial_end_reason?: string
   custom_config?: {
     remove_webapp_brand?: boolean

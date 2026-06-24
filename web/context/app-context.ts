@@ -52,6 +52,7 @@ export const initialWorkspaceInfo: ICurrentWorkspace = {
   trial_credits: 200,
   trial_credits_used: 0,
   next_credit_reset_date: 0,
+  max_active_requests: 0,
 }
 
 export const AppContext = createContext<AppContextValue>({

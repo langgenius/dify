@@ -27,6 +27,7 @@ class TestAppGenerateService:
             patch("services.billing_service.BillingService", autospec=True) as mock_billing_service,
             patch("services.app_generate_service.WorkflowService", autospec=True) as mock_workflow_service,
             patch("services.app_generate_service.RateLimit", autospec=True) as mock_rate_limit,
+            patch("services.app_generate_service.RateLimitLease", autospec=True) as mock_rate_limit_lease,
             patch("services.app_generate_service.CompletionAppGenerator", autospec=True) as mock_completion_generator,
             patch("services.app_generate_service.ChatAppGenerator", autospec=True) as mock_chat_generator,
             patch("services.app_generate_service.AgentChatAppGenerator", autospec=True) as mock_agent_chat_generator,
@@ -67,8 +68,11 @@ class TestAppGenerateService:
             # Setup default mock returns for rate limiting
             mock_rate_limit_instance = mock_rate_limit.return_value
             mock_rate_limit_instance.enter.return_value = "test_request_id"
-            mock_rate_limit_instance.generate.return_value = ["test_response"]
             mock_rate_limit_instance.exit.return_value = None
+            mock_rate_limit_lease_instance = mock_rate_limit_lease.return_value
+            mock_rate_limit_lease_instance.generate.return_value = ["test_response"]
+            mock_rate_limit_lease_instance.close.return_value = None
+            mock_rate_limit_lease_instance.add.return_value = None
 
             # Setup default mock returns for app generators
             mock_completion_generator_instance = mock_completion_generator.return_value
@@ -122,6 +126,7 @@ class TestAppGenerateService:
                 "billing_service": mock_billing_service,
                 "workflow_service": mock_workflow_service,
                 "rate_limit": mock_rate_limit,
+                "rate_limit_lease": mock_rate_limit_lease,
                 "completion_generator": mock_completion_generator,
                 "chat_generator": mock_chat_generator,
                 "agent_chat_generator": mock_agent_chat_generator,
@@ -240,8 +245,8 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify rate limiting was called
-        mock_external_service_dependencies["rate_limit"].return_value.enter.assert_called_once()
-        mock_external_service_dependencies["rate_limit"].return_value.generate.assert_called_once()
+        assert mock_external_service_dependencies["rate_limit"].return_value.enter.call_count == 2
+        mock_external_service_dependencies["rate_limit_lease"].return_value.generate.assert_called_once()
 
         # Verify completion generator was called
         mock_external_service_dependencies["completion_generator"].return_value.generate.assert_called_once()
@@ -432,7 +437,7 @@ class TestAppGenerateService:
         assert result == ["test_response"]
 
         # Verify rate limit exit was called for non-streaming mode
-        mock_external_service_dependencies["rate_limit"].return_value.exit.assert_called_once()
+        mock_external_service_dependencies["rate_limit_lease"].return_value.close.assert_called_once()
 
     def test_generate_with_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -942,7 +947,7 @@ class TestAppGenerateService:
         assert "Test exception" in str(exc_info.value)
 
         # Verify rate limit exit was called for cleanup
-        mock_external_service_dependencies["rate_limit"].return_value.exit.assert_called_once()
+        mock_external_service_dependencies["rate_limit_lease"].return_value.close.assert_called_once()
 
     def test_generate_with_agent_mode_detection(
         self, db_session_with_containers: Session, mock_external_service_dependencies

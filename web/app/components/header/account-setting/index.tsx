@@ -24,6 +24,7 @@ import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
+import UsageLimitsPage from './usage-limits-page'
 import PermissionsPage from './permissions-page'
 
 const iconClassName = `
@@ -129,6 +130,65 @@ export default function AccountSetting({
   const activeItem = settingItems.find(item => item.key === activeMenu)
 
   const visibleSettingItems: GroupItem[] = (() => {
+    if (isCurrentWorkspaceDatasetOperator)
+      return []
+
+    const items: GroupItem[] = [
+      {
+        key: ACCOUNT_SETTING_TAB.PROVIDER,
+        name: t('settings.provider', { ns: 'common' }),
+        icon: <span className={cn('i-ri-brain-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-brain-2-fill', iconClassName)} />,
+      },
+      {
+        key: ACCOUNT_SETTING_TAB.MEMBERS,
+        name: t('settings.members', { ns: 'common' }),
+        icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+      },
+    ]
+
+    if (enableBilling) {
+      items.push({
+        key: ACCOUNT_SETTING_TAB.BILLING,
+        name: t('settings.billing', { ns: 'common' }),
+        description: t('plansCommon.receiptInfo', { ns: 'billing' }),
+        icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
+      })
+    }
+
+    items.push(
+      {
+        key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
+        name: t('settings.dataSource', { ns: 'common' }),
+        icon: <span className={cn('i-ri-database-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-database-2-fill', iconClassName)} />,
+      },
+      {
+        key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
+        name: t('settings.apiBasedExtension', { ns: 'common' }),
+        icon: <span className={cn('i-ri-puzzle-2-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-puzzle-2-fill', iconClassName)} />,
+      },
+      {
+        key: ACCOUNT_SETTING_TAB.USAGE_LIMITS,
+        name: t('settings.usageLimits', { ns: 'common' }),
+        icon: <span className={cn('i-ri-speed-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-speed-fill', iconClassName)} />,
+      },
+    )
+
+    if (enableReplaceWebAppLogo || enableBilling) {
+      items.push({
+        key: ACCOUNT_SETTING_TAB.CUSTOM,
+        name: t('custom', { ns: 'custom' }),
+        icon: <span className={cn('i-ri-color-filter-line', iconClassName)} />,
+        activeIcon: <span className={cn('i-ri-color-filter-fill', iconClassName)} />,
+      })
+    }
+
+    return items
     const visibleTabs: AccountSettingTab[] = []
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
@@ -265,6 +325,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.USAGE_LIMITS && <UsageLimitsPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.LANGUAGE && <LanguagePage />}
             </div>

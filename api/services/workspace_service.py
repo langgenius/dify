@@ -22,6 +22,7 @@ class WorkspaceService:
             "created_at": tenant.created_at,
             "trial_end_reason": None,
             "role": "normal",
+            "max_active_requests": tenant.max_active_requests or 0,
         }
 
         # Get role of user

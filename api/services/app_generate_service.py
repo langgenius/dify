@@ -15,12 +15,13 @@ from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.features.rate_limiting import RateLimit
-from core.app.features.rate_limiting.rate_limit import rate_limit_context
+from core.app.features.rate_limiting import RateLimit, RateLimitLease
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums.quota_type import QuotaType
+from extensions.ext_database import db
 from extensions.otel import AppGenerateHandler, trace_span
+from models.account import Tenant
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -112,34 +113,39 @@ class AppGenerateService:
             except QuotaExceededError:
                 raise InvokeRateLimitError(f"Workflow execution quota limit reached for tenant {app_model.tenant_id}")
 
+        # workspace level rate limiter
+        workspace_rate_limit = RateLimit(
+            f"workspace:{app_model.tenant_id}", cls._get_workspace_max_active_requests(app_model)
+        )
         # app level rate limiter
         max_active_request = cls._get_max_active_requests(app_model)
-        rate_limit = RateLimit(app_model.id, max_active_request)
-        request_id = RateLimit.gen_request_key()
+        app_rate_limit = RateLimit(app_model.id, max_active_request)
+        rate_limit_lease = RateLimitLease()
         try:
-            request_id = rate_limit.enter(request_id)
+            workspace_request_id = workspace_rate_limit.enter()
+            rate_limit_lease.add(workspace_rate_limit, workspace_request_id)
+            app_request_id = app_rate_limit.enter()
+            rate_limit_lease.add(app_rate_limit, app_request_id)
             quota_charge.commit()
             effective_mode = (
                 AppMode.AGENT_CHAT if app_model.is_agent and app_model.mode != AppMode.AGENT_CHAT else app_model.mode
             )
             match effective_mode:
                 case AppMode.COMPLETION:
-                    return rate_limit.generate(
+                    return rate_limit_lease.generate(
                         CompletionAppGenerator.convert_to_event_stream(
                             CompletionAppGenerator().generate(
                                 app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
                             ),
-                        ),
-                        request_id=request_id,
+                        )
                     )
                 case AppMode.AGENT_CHAT:
-                    return rate_limit.generate(
+                    return rate_limit_lease.generate(
                         AgentChatAppGenerator.convert_to_event_stream(
                             AgentChatAppGenerator().generate(
                                 app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
                             ),
-                        ),
-                        request_id,
+                        )
                     )
                 case AppMode.AGENT:
                     return rate_limit.generate(
@@ -151,13 +157,12 @@ class AppGenerateService:
                         request_id,
                     )
                 case AppMode.CHAT:
-                    return rate_limit.generate(
+                    return rate_limit_lease.generate(
                         ChatAppGenerator.convert_to_event_stream(
                             ChatAppGenerator().generate(
                                 app_model=app_model, user=user, args=args, invoke_from=invoke_from, streaming=streaming
                             ),
-                        ),
-                        request_id=request_id,
+                        )
                     )
                 case AppMode.ADVANCED_CHAT:
                     workflow_id = args.get("workflow_id")
@@ -165,33 +170,31 @@ class AppGenerateService:
 
                     if streaming:
                         # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
-                        with rate_limit_context(rate_limit, request_id):
-                            payload = AppExecutionParams.new(
-                                app_model=app_model,
-                                workflow=workflow,
-                                user=user,
-                                args=args,
-                                invoke_from=invoke_from,
-                                streaming=True,
-                                call_depth=0,
-                                workflow_run_id=str(uuid.uuid4()),
-                            )
-                            payload_json = payload.model_dump_json()
+                        payload = AppExecutionParams.new(
+                            app_model=app_model,
+                            workflow=workflow,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=True,
+                            call_depth=0,
+                            workflow_run_id=str(uuid.uuid4()),
+                        )
+                        payload_json = payload.model_dump_json()
 
                         def on_subscribe():
                             workflow_based_app_execution_task.delay(payload_json)
 
                         on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
                         generator = AdvancedChatAppGenerator()
-                        return rate_limit.generate(
+                        return rate_limit_lease.generate(
                             generator.convert_to_event_stream(
                                 generator.retrieve_events(
                                     AppMode.ADVANCED_CHAT,
                                     payload.workflow_run_id,
                                     on_subscribe=on_subscribe,
                                 ),
-                            ),
-                            request_id=request_id,
+                            )
                         )
                     else:
                         # Blocking mode: run synchronously and return JSON instead of SSE
@@ -201,7 +204,7 @@ class AppGenerateService:
                             state_owner_user_id=workflow.created_by,
                         )
                         advanced_generator = AdvancedChatAppGenerator()
-                        return rate_limit.generate(
+                        return rate_limit_lease.generate(
                             advanced_generator.convert_to_event_stream(
                                 advanced_generator.generate(
                                     app_model=app_model,
@@ -213,47 +216,44 @@ class AppGenerateService:
                                     streaming=False,
                                     pause_state_config=pause_config,
                                 )
-                            ),
-                            request_id=request_id,
+                            )
                         )
                 case AppMode.WORKFLOW:
                     workflow_id = args.get("workflow_id")
                     workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
                     if streaming:
-                        with rate_limit_context(rate_limit, request_id):
-                            payload = AppExecutionParams.new(
-                                app_model=app_model,
-                                workflow=workflow,
-                                user=user,
-                                args=args,
-                                invoke_from=invoke_from,
-                                streaming=True,
-                                call_depth=0,
-                                root_node_id=root_node_id,
-                                workflow_run_id=str(uuid.uuid4()),
-                            )
-                            payload_json = payload.model_dump_json()
+                        payload = AppExecutionParams.new(
+                            app_model=app_model,
+                            workflow=workflow,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=True,
+                            call_depth=0,
+                            root_node_id=root_node_id,
+                            workflow_run_id=str(uuid.uuid4()),
+                        )
+                        payload_json = payload.model_dump_json()
 
                         def on_subscribe():
                             workflow_based_app_execution_task.delay(payload_json)
 
                         on_subscribe = cls._build_streaming_task_on_subscribe(on_subscribe)
-                        return rate_limit.generate(
+                        return rate_limit_lease.generate(
                             WorkflowAppGenerator.convert_to_event_stream(
                                 MessageBasedAppGenerator.retrieve_events(
                                     AppMode.WORKFLOW,
                                     payload.workflow_run_id,
                                     on_subscribe=on_subscribe,
                                 ),
-                            ),
-                            request_id,
+                            )
                         )
 
                     pause_config = PauseStateLayerConfig(
                         session_factory=session_factory.get_session_maker(),
                         state_owner_user_id=workflow.created_by,
                     )
-                    return rate_limit.generate(
+                    return rate_limit_lease.generate(
                         WorkflowAppGenerator.convert_to_event_stream(
                             WorkflowAppGenerator().generate(
                                 app_model=app_model,
@@ -266,18 +266,17 @@ class AppGenerateService:
                                 call_depth=0,
                                 pause_state_config=pause_config,
                             ),
-                        ),
-                        request_id,
+                        )
                     )
                 case _:
                     raise ValueError(f"Invalid app mode {app_model.mode}")
         except Exception:
             quota_charge.refund()
-            rate_limit.exit(request_id)
+            rate_limit_lease.close()
             raise
         finally:
             if not streaming:
-                rate_limit.exit(request_id)
+                rate_limit_lease.close()
 
     @staticmethod
     def _get_max_active_requests(app: App) -> int:
@@ -299,6 +298,13 @@ class AppGenerateService:
         # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
         limits = [limit for limit in [app_limit, config_limit] if limit > 0]
         return min(limits) if limits else 0
+
+    @staticmethod
+    def _get_workspace_max_active_requests(app: App) -> int:
+        tenant = db.session.get(Tenant, app.tenant_id)
+        if not tenant:
+            return 0
+        return tenant.max_active_requests or 0
 
     @classmethod
     def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):

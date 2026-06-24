@@ -2,21 +2,20 @@
 Comprehensive unit tests for services.app_generate_service.AppGenerateService.
 
 Covers:
-  - _build_streaming_task_on_subscribe  (streams / pubsub / exception / idempotency)
-  - generate                           (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
-                                         streaming & blocking, billing, quota-refund-on-error, rate_limit.exit)
-  - _get_max_active_requests            (all limit combos)
-  - generate_single_iteration           (ADVANCED_CHAT / WORKFLOW / invalid mode)
-  - generate_single_loop                (ADVANCED_CHAT / WORKFLOW / invalid mode)
+  - _build_streaming_task_on_subscribe   (streams / pubsub / exception / idempotency)
+  - generate                            (COMPLETION / AGENT_CHAT / CHAT / ADVANCED_CHAT / WORKFLOW / invalid mode,
+                                          streaming & blocking, billing, quota-refund-on-error, rate limit cleanup)
+  - _get_max_active_requests             (all limit combos)
+  - generate_single_iteration            (ADVANCED_CHAT / WORKFLOW / invalid mode)
+  - generate_single_loop                 (ADVANCED_CHAT / WORKFLOW / invalid mode)
   - generate_more_like_this
-  - _get_workflow                       (debugger / non-debugger / specific id / invalid format / not found)
-  - get_response_generator              (ended / non-ended workflow run)
+  - _get_workflow                        (debugger / non-debugger / specific id / invalid format / not found)
+  - get_response_generator               (ended / non-ended workflow run)
 """
 
 import threading
 import time
 import uuid
-from contextlib import contextmanager
 from unittest.mock import MagicMock
 
 import pytest
@@ -62,6 +61,32 @@ class _DummyRateLimit:
         return generator
 
 
+class _DummyRateLimitLease:
+    """Minimal stand-in for RateLimitLease that never touches Redis directly."""
+
+    def __init__(self) -> None:
+        self.items: list[tuple[_DummyRateLimit, str]] = []
+        self.closed = False
+
+    def add(self, rate_limit: _DummyRateLimit, request_id: str) -> None:
+        if self.closed:
+            rate_limit.exit(request_id)
+            return
+        self.items.append((rate_limit, request_id))
+
+    def close(self) -> None:
+        if self.closed:
+            return
+        self.closed = True
+        for rate_limit, request_id in reversed(self.items):
+            rate_limit.exit(request_id)
+
+    def generate(self, generator):
+        if isinstance(generator, dict):
+            self.close()
+        return generator
+
+
 def _make_app(mode: AppMode | str, *, max_active_requests: int = 0, is_agent: bool = False) -> MagicMock:
     app = MagicMock()
     app.mode = mode
@@ -83,13 +108,6 @@ def _make_workflow(*, workflow_id: str = "workflow-id", created_by: str = "owner
     workflow.id = workflow_id
     workflow.created_by = created_by
     return workflow
-
-
-@contextmanager
-def _noop_rate_limit_context(rate_limit, request_id):
-    """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
-    yield
-
 
 # ---------------------------------------------------------------------------
 # _build_streaming_task_on_subscribe
@@ -218,11 +236,8 @@ class TestGenerate:
     def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        # Prevent AppExecutionParams.new from touching real models via isinstance
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
+        mocker.patch("services.app_generate_service.RateLimitLease", _DummyRateLimitLease)
+        mocker.patch.object(AppGenerateService, "_get_workspace_max_active_requests", return_value=0)
 
     # -- COMPLETION ---------------------------------------------------------
     def test_completion_mode(self, mocker: MockerFixture):
@@ -442,10 +457,8 @@ class TestGenerateBilling:
     @pytest.fixture(autouse=True)
     def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
+        mocker.patch("services.app_generate_service.RateLimitLease", _DummyRateLimitLease)
+        mocker.patch.object(AppGenerateService, "_get_workspace_max_active_requests", return_value=0)
 
     def test_billing_enabled_consumes_quota(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
@@ -533,6 +546,7 @@ class TestGenerateBilling:
                 exit_calls.append(request_id)
 
         mocker.patch("services.app_generate_service.RateLimit", _TrackingRateLimit)
+        mocker.patch("services.app_generate_service.RateLimitLease", _DummyRateLimitLease)
         mocker.patch(
             "services.app_generate_service.CompletionAppGenerator.generate",
             return_value={"ok": True},

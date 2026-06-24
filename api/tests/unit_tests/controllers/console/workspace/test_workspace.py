@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pydantic import ValidationError
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Unauthorized
 
@@ -26,6 +27,8 @@ from controllers.console.workspace.workspace import (
     WorkspaceInfoApi,
     WorkspaceListApi,
     WorkspacePermissionApi,
+    WorkspaceSettingsApi,
+    WorkspaceSettingsPayload,
 )
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
@@ -691,6 +694,76 @@ class TestWorkspaceInfoApi:
         ):
             with pytest.raises(ValueError):
                 method(api, None)
+
+
+class TestWorkspaceSettingsApi:
+    def test_post_updates_name_and_max_active_requests(self, app: Flask):
+        api = WorkspaceSettingsApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock()
+        tenant.max_active_requests = 5
+
+        payload = {"name": "New Workspace", "max_active_requests": 12}
+
+        with (
+            app.test_request_context("/workspaces/current/settings", json=payload),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant",
+                return_value=(MagicMock(), "t1"),
+            ),
+            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
+            patch("controllers.console.workspace.workspace.db.session.commit") as commit_mock,
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={
+                    "name": "New Workspace",
+                    "max_active_requests": 12,
+                },
+            ),
+        ):
+            result = method(api)
+
+        assert result["result"] == "success"
+        assert tenant.name == "New Workspace"
+        assert tenant.max_active_requests == 12
+        commit_mock.assert_called_once()
+
+    def test_workspace_info_keeps_legacy_behavior(self, app: Flask):
+        api = WorkspaceInfoApi()
+        method = unwrap(api.post)
+
+        tenant = MagicMock()
+        tenant.max_active_requests = 7
+
+        payload = {"name": "Renamed Workspace", "max_active_requests": 99}
+
+        with (
+            app.test_request_context("/workspaces/info", json=payload),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant",
+                return_value=(MagicMock(), "t1"),
+            ),
+            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
+            patch("controllers.console.workspace.workspace.db.session.commit") as commit_mock,
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={
+                    "name": "Renamed Workspace",
+                    "max_active_requests": 7,
+                },
+            ),
+        ):
+            result = method(api)
+
+        assert result["result"] == "success"
+        assert tenant.name == "Renamed Workspace"
+        assert tenant.max_active_requests == 7
+        commit_mock.assert_called_once()
+
+    def test_rejects_negative_max_active_requests(self):
+        with pytest.raises(ValidationError):
+            WorkspaceSettingsPayload.model_validate({"name": "New Workspace", "max_active_requests": -1})
 
 
 class TestWorkspacePermissionApi:

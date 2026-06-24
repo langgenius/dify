@@ -23,6 +23,7 @@ from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    is_admin_or_owner_required,
     only_edition_enterprise,
     setup_required,
     with_current_tenant_id,
@@ -67,6 +68,11 @@ class WorkspaceInfoPayload(BaseModel):
     name: str
 
 
+class WorkspaceSettingsPayload(BaseModel):
+    name: str
+    max_active_requests: int | None = Field(default=None, ge=0)
+
+
 class TenantInfoResponse(ResponseModel):
     id: str
     name: str | None = None
@@ -80,6 +86,7 @@ class TenantInfoResponse(ResponseModel):
     trial_credits: int | None = None
     trial_credits_used: int | None = None
     next_credit_reset_date: int | None = None
+    max_active_requests: int | None = None
 
     @field_validator("plan", "status", "trial_end_reason", mode="before")
     @classmethod
@@ -178,6 +185,7 @@ register_schema_models(
     SwitchWorkspacePayload,
     WorkspaceCustomConfigPayload,
     WorkspaceInfoPayload,
+    WorkspaceSettingsPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -211,6 +219,7 @@ tenant_fields = {
     "trial_credits": fields.Integer,
     "trial_credits_used": fields.Integer,
     "next_credit_reset_date": fields.Integer,
+    "max_active_requests": fields.Integer,
 }
 
 tenants_fields = {
@@ -386,6 +395,30 @@ class CustomConfigWorkspaceApi(Resource):
         }
 
         tenant.custom_config_dict = custom_config_dict
+        db.session.commit()
+
+        return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
+
+
+@console_ns.route("/workspaces/current/settings")
+class WorkspaceSettingsApi(Resource):
+    @console_ns.expect(console_ns.models[WorkspaceSettingsPayload.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    def post(self):
+        _, current_tenant_id = current_account_with_tenant()
+        payload = console_ns.payload or {}
+        args = WorkspaceSettingsPayload.model_validate(payload)
+
+        if not current_tenant_id:
+            raise ValueError("No current tenant")
+
+        tenant = db.get_or_404(Tenant, current_tenant_id)
+        tenant.name = args.name
+        if args.max_active_requests is not None:
+            tenant.max_active_requests = args.max_active_requests
         db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}

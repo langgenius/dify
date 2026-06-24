@@ -143,3 +143,54 @@ class RateLimitGenerator:
             self.rate_limit.exit(self.request_id)
             if self.generator is not None and hasattr(self.generator, "close"):
                 self.generator.close()
+
+
+class RateLimitLease:
+    def __init__(self):
+        self.items: list[tuple[RateLimit, str]] = []
+        self.closed = False
+
+    def add(self, rate_limit: RateLimit, request_id: str):
+        if self.closed:
+            rate_limit.exit(request_id)
+            return
+        self.items.append((rate_limit, request_id))
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+        for rate_limit, request_id in reversed(self.items):
+            rate_limit.exit(request_id)
+
+    def generate(self, generator: Union[Generator[str, None, None], Mapping[str, Any]]):
+        if isinstance(generator, Mapping):
+            self.close()
+            return generator
+        return RateLimitLeaseGenerator(self, generator)
+
+
+class RateLimitLeaseGenerator:
+    def __init__(self, lease: RateLimitLease, generator: Generator[str, None, None]):
+        self.lease = lease
+        self.generator = generator
+        self.closed = False
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.closed:
+            raise StopIteration
+        try:
+            return next(self.generator)
+        except Exception:
+            self.close()
+            raise
+
+    def close(self):
+        if not self.closed:
+            self.closed = True
+            self.lease.close()
+            if self.generator is not None and hasattr(self.generator, "close"):
+                self.generator.close()
