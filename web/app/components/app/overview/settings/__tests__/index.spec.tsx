@@ -36,6 +36,10 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
+const configMocks = vi.hoisted(() => ({
+  isCloudEdition: true,
+}))
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
@@ -57,7 +61,9 @@ vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()
   return {
     ...actual,
-    IS_CLOUD_EDITION: true,
+    get IS_CLOUD_EDITION() {
+      return configMocks.isCloudEdition
+    },
   }
 })
 
@@ -137,12 +143,13 @@ describe('SettingsModal', () => {
     mockOnSave.mockClear()
     mockSetShowPricingModal.mockClear()
     mockSetShowAccountSettingModal.mockClear()
+    configMocks.isCloudEdition = true
     mockUseProviderContext.mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
       plan: {
         ...baseProviderContextValue.plan,
-        type: Plan.sandbox,
+        type: Plan.professional,
       },
       webappCopyrightEnabled: true,
     })
@@ -317,7 +324,65 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('Updated prompt')
   })
 
+  it('should disable the input placeholder for Cloud sandbox plans', () => {
+    mockUseProviderContext.mockReturnValue({
+      ...baseProviderContextValue,
+      enableBilling: true,
+      plan: {
+        ...baseProviderContextValue.plan,
+        type: Plan.sandbox,
+      },
+      webappCopyrightEnabled: false,
+    })
+
+    renderSettingsModal()
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+
+    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
+  })
+
+  it('should keep the input placeholder editable for self-hosted sandbox plans', async () => {
+    configMocks.isCloudEdition = false
+    mockOnSave.mockResolvedValueOnce(undefined)
+    mockUseProviderContext.mockReturnValue({
+      ...baseProviderContextValue,
+      enableBilling: true,
+      plan: {
+        ...baseProviderContextValue.plan,
+        type: Plan.sandbox,
+      },
+      webappCopyrightEnabled: false,
+    })
+
+    renderSettingsModal()
+
+    fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
+    const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
+    fireEvent.change(inputPlaceholder, { target: { value: 'Self-hosted prompt' } })
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    expect(inputPlaceholder).toBeEnabled()
+    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
+        copyright: '',
+        input_placeholder: 'Self-hosted prompt',
+      }))
+    })
+  })
+
   it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {
+    mockUseProviderContext.mockReturnValue({
+      ...baseProviderContextValue,
+      enableBilling: true,
+      plan: {
+        ...baseProviderContextValue.plan,
+        type: Plan.sandbox,
+      },
+      webappCopyrightEnabled: false,
+    })
+
     renderSettingsModal()
 
     fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))

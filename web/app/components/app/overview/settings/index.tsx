@@ -19,7 +19,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { Plan } from '@/app/components/billing/type'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -152,22 +152,22 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const isFreePlan = plan.type === 'sandbox'
-  const showUpgradeAction = IS_CLOUD_EDITION && enableBilling && isFreePlan
+  const { setShowPricingModal } = useModalContext()
+  const isCloudSandboxPlan = IS_CLOUD_EDITION && plan.type === Plan.sandbox
+  const showUpgradeAction = enableBilling && isCloudSandboxPlan
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
 
   const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
-  // Paid + has value + blurred → preview as gray placeholder text (matches how it'll render in chat).
-  const showInputPlaceholderPreview = webappCopyrightEnabled && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
+  // Editable + has value + blurred -> preview as gray placeholder text (matches how it'll render in chat).
+  const showInputPlaceholderPreview = !isCloudSandboxPlan && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
   const inputPlaceholderField = (
     <div
       className={cn(
         'mt-2 flex h-10 items-center gap-2 rounded-lg border border-components-input-border-hover bg-components-input-bg-normal pr-1 pl-3 transition-colors',
-        webappCopyrightEnabled && inputPlaceholderFocused && 'border-components-input-border-active bg-components-input-bg-active',
-        !webappCopyrightEnabled && 'cursor-not-allowed opacity-60',
+        !isCloudSandboxPlan && inputPlaceholderFocused && 'border-components-input-border-active bg-components-input-bg-active',
+        isCloudSandboxPlan && 'cursor-not-allowed opacity-60',
       )}
     >
       <input
@@ -177,7 +177,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         onChange={e => setInputInfo(item => ({ ...item, inputPlaceholder: e.target.value }))}
         onFocus={() => setInputPlaceholderFocused(true)}
         onBlur={() => setInputPlaceholderFocused(false)}
-        disabled={!webappCopyrightEnabled}
+        disabled={isCloudSandboxPlan}
         maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
         autoComplete="off"
         aria-labelledby={inputPlaceholderLabelId}
@@ -186,7 +186,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         className={cn(
           'flex-1 bg-transparent body-md-regular outline-hidden',
           showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
-          !webappCopyrightEnabled && 'cursor-not-allowed',
+          isCloudSandboxPlan && 'cursor-not-allowed',
         )}
       />
       <span
@@ -204,11 +204,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       setLanguage(nextLanguage.value)
   }
   const handlePlanClick = useCallback(() => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
-  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
+    setShowPricingModal()
+  }, [setShowPricingModal])
 
   const shouldResetForm = isShow && (!previousIsShow || settingsResetKey !== previousSettingsResetKey)
   if (isShow !== previousIsShow || shouldResetForm) {
@@ -275,7 +272,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
-      input_placeholder: (!webappCopyrightEnabled || !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode))
+      input_placeholder: (isCloudSandboxPlan || !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode))
         ? ''
         : (inputInfo.inputPlaceholder ?? '').slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
       icon_type: appIcon.type,
@@ -429,7 +426,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             {/* more settings switch */}
             <Divider className="my-0 h-px" />
             {!isShowMore && (
-              <div className="flex cursor-pointer items-center" onClick={() => setIsShowMore(true)}>
+              <button type="button" className="flex w-full cursor-pointer items-center text-left" onClick={() => setIsShowMore(true)}>
                 <div className="grow">
                   <div className={cn('py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.entry`, { ns: 'appOverview' })}</div>
                   <p className={cn('pb-0.5 body-xs-regular text-text-tertiary')}>
@@ -441,7 +438,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                   </p>
                 </div>
                 <span aria-hidden="true" className="ml-1 i-ri-arrow-right-s-line size-4 shrink-0 text-text-secondary" />
-              </div>
+              </button>
             )}
             {/* more settings */}
             {isShowMore && (
@@ -467,17 +464,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                       </div>
                     </div>
                     <p id={inputPlaceholderDescriptionId} className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
-                    {webappCopyrightEnabled
-                      ? inputPlaceholderField
-                      : (
+                    {isCloudSandboxPlan
+                      ? (
                           <Tooltip>
                             <TooltipTrigger render={inputPlaceholderField} />
                             <TooltipContent className="w-[180px]">
                               {t(`${prefixSettings}.more.inputPlaceholderTooltip`, { ns: 'appOverview' })}
                             </TooltipContent>
                           </Tooltip>
-                        )}
-                    {webappCopyrightEnabled && (
+                        )
+                      : inputPlaceholderField}
+                    {!isCloudSandboxPlan && (
                       <div className="mt-1 text-right body-xs-regular text-text-tertiary">
                         {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
                       </div>
