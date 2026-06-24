@@ -56,11 +56,7 @@ def mock_response_receiver(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     return mock_log_request_finished
 
 
-@pytest.fixture
-def mock_logger(monkeypatch: pytest.MonkeyPatch) -> logging.Logger:
-    _logger = mock.MagicMock(spec=logging.Logger)
-    monkeypatch.setattr(ext_request_logging, "logger", _logger)
-    return _logger
+
 
 
 @pytest.fixture
@@ -108,67 +104,73 @@ class TestRequestLoggingExtension:
 
 class TestLoggingLevel:
     @pytest.mark.usefixtures("enable_request_logging")
-    def test_logging_should_be_skipped_if_level_is_above_debug(self, enable_request_logging, mock_logger):
-        mock_logger.isEnabledFor.return_value = False
+    def test_logging_should_be_skipped_if_level_is_above_debug(
+        self, enable_request_logging, caplog: pytest.LogCaptureFixture
+    ):
+        caplog.set_level(logging.INFO, logger=ext_request_logging.__name__)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", json={_KEY_NEEDLE: _VALUE_NEEDLE})
-        mock_logger.debug.assert_not_called()
+
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 0
 
 
+@pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
 class TestRequestReceiverLogging:
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_non_json_request(self, enable_request_logging, mock_logger, mock_response_receiver):
-        mock_logger.isEnabledFor.return_value = True
+    def test_non_json_request(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", data="plain text")
-        assert mock_logger.debug.call_count == 1
-        call_args = mock_logger.debug.call_args[0]
-        assert "Received Request" in call_args[0]
-        assert call_args[1] == "POST"
-        assert call_args[2] == "/"
-        assert "Request Body" not in call_args[0]
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request(self, enable_request_logging, mock_logger, mock_response_receiver):
-        mock_logger.isEnabledFor.return_value = True
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 1
+        msg = debug_records[0].getMessage()
+        assert "Received Request" in msg
+        assert "POST" in msg
+        assert "/" in msg
+        assert "Request Body" not in msg
+
+    def test_json_request(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", json={_KEY_NEEDLE: _VALUE_NEEDLE})
-        assert mock_logger.debug.call_count == 1
-        call_args = mock_logger.debug.call_args[0]
-        assert "Received Request" in call_args[0]
-        assert "Request Body" in call_args[0]
-        assert call_args[1] == "POST"
-        assert call_args[2] == "/"
-        assert _KEY_NEEDLE in call_args[3]
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request_with_empty_body(self, enable_request_logging, mock_logger, mock_response_receiver):
-        mock_logger.isEnabledFor.return_value = True
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 1
+        msg = debug_records[0].getMessage()
+        assert "Received Request" in msg
+        assert "Request Body" in msg
+        assert "POST" in msg
+        assert "/" in msg
+        assert _KEY_NEEDLE in msg
+
+    def test_json_request_with_empty_body(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", headers={"Content-Type": "application/json"})
 
-        assert mock_logger.debug.call_count == 1
-        call_args = mock_logger.debug.call_args[0]
-        assert "Received Request" in call_args[0]
-        assert "Request Body" not in call_args[0]
-        assert call_args[1] == "POST"
-        assert call_args[2] == "/"
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 1
+        msg = debug_records[0].getMessage()
+        assert "Received Request" in msg
+        assert "Request Body" not in msg
+        assert "POST" in msg
+        assert "/" in msg
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request_with_invalid_json_as_body(self, enable_request_logging, mock_logger, mock_response_receiver):
-        mock_logger.isEnabledFor.return_value = True
+    def test_json_request_with_invalid_json_as_body(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
         app = _get_test_app()
         init_app(app)
 
@@ -178,50 +180,52 @@ class TestRequestReceiverLogging:
                 headers={"Content-Type": "application/json"},
                 data="{",
             )
-        assert mock_logger.debug.call_count == 0
-        assert mock_logger.exception.call_count == 1
 
-        exception_call_args = mock_logger.exception.call_args[0]
-        assert exception_call_args[0] == "Failed to parse JSON request"
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 0
+        exception_records = [rec for rec in caplog.records if rec.levelno == logging.ERROR]
+        assert len(exception_records) == 1
+        assert "Failed to parse JSON request" in exception_records[0].getMessage()
 
 
 class TestResponseReceiverLogging:
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_non_json_response(self, enable_request_logging, mock_logger):
-        mock_logger.isEnabledFor.return_value = True
+    def test_non_json_response(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
         app = _get_test_app()
         response = Response(
             "OK",
             headers={"Content-Type": "text/plain"},
         )
         _log_request_finished(app, response)
-        assert mock_logger.debug.call_count == 1
-        call_args = mock_logger.debug.call_args[0]
-        assert "Response" in call_args[0]
-        assert "200" in call_args[1]
-        assert call_args[2] == "text/plain"
-        assert "Response Body" not in call_args[0]
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_response(self, enable_request_logging, mock_logger, mock_response_receiver):
-        mock_logger.isEnabledFor.return_value = True
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 1
+        msg = debug_records[0].getMessage()
+        assert "Response" in msg
+        assert "200" in msg
+        assert "text/plain" in msg
+        assert "Response Body" not in msg
+
+    def test_json_response(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
         app = _get_test_app()
         response = Response(
             json.dumps({_KEY_NEEDLE: _VALUE_NEEDLE}),
             headers={"Content-Type": "application/json"},
         )
         _log_request_finished(app, response)
-        assert mock_logger.debug.call_count == 1
-        call_args = mock_logger.debug.call_args[0]
-        assert "Response" in call_args[0]
-        assert "Response Body" in call_args[0]
-        assert "200" in call_args[1]
-        assert call_args[2] == "application/json"
-        assert _KEY_NEEDLE in call_args[3]
 
-    @pytest.mark.usefixtures("enable_request_logging")
-    def test_json_request_with_invalid_json_as_body(self, enable_request_logging, mock_logger, mock_response_receiver):
-        mock_logger.isEnabledFor.return_value = True
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 1
+        msg = debug_records[0].getMessage()
+        assert "Response" in msg
+        assert "Response Body" in msg
+        assert "200" in msg
+        assert "application/json" in msg
+        assert _KEY_NEEDLE in msg
+
+    def test_json_request_with_invalid_json_as_body(self, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
         app = _get_test_app()
 
         response = Response(
@@ -229,11 +233,12 @@ class TestResponseReceiverLogging:
             headers={"Content-Type": "application/json"},
         )
         _log_request_finished(app, response)
-        assert mock_logger.debug.call_count == 0
-        assert mock_logger.exception.call_count == 1
 
-        exception_call_args = mock_logger.exception.call_args[0]
-        assert exception_call_args[0] == "Failed to parse JSON response"
+        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        assert len(debug_records) == 0
+        exception_records = [rec for rec in caplog.records if rec.levelno == logging.ERROR]
+        assert len(exception_records) == 1
+        assert "Failed to parse JSON response" in exception_records[0].getMessage()
 
 
 class TestResponseUnmodified:
