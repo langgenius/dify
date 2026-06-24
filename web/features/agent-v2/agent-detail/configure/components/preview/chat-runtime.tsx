@@ -23,6 +23,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
+import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -395,6 +396,7 @@ export type AgentChatRuntimeEmptyStateProps = {
   agentIconType?: AgentIconType | null
   agentName?: string
   hasInstructions: boolean
+  inputNode: ReactNode
 }
 
 export type AgentChatRuntimeProps = {
@@ -587,6 +589,21 @@ function AgentPreviewChatSession({
   }, [chatList, doSend])
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
+  const emptyChatInputNode = (
+    <div className="pointer-events-auto mt-5 w-full">
+      <ChatInputArea
+        botName={agentName || 'Agent'}
+        placeholder={inputPlaceholder}
+        disabled={isResponding}
+        showFileUpload={false}
+        visionConfig={config.file_upload}
+        speechToTextConfig={config.speech_to_text}
+        onSend={doSend}
+        inputs={inputs}
+        inputsForm={inputsForm}
+      />
+    </div>
+  )
 
   return (
     <Chat
@@ -600,12 +617,13 @@ function AgentPreviewChatSession({
             agentIconType,
             agentName,
             hasInstructions,
+            inputNode: emptyChatInputNode,
           })
         : null}
-      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12' : 'px-3')}
+      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 !pb-[88px]' : 'px-3')}
       chatFooterClassName={cn(
-        'pb-0',
-        isEmptyChat ? '!bottom-[27%] px-12 pt-3' : 'px-3 pt-10',
+        '!bottom-2 pb-0',
+        isEmptyChat ? 'hidden' : 'px-3 pt-10',
       )}
       inputPlaceholder={inputPlaceholder}
       showFileUpload={false}
@@ -616,6 +634,7 @@ function AgentPreviewChatSession({
       onRegenerate={doRegenerate}
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       onStopResponding={handleStop}
+      noChatInput={isEmptyChat}
       showPromptLog
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       onAnnotationEdited={handleAnnotationEdited}

@@ -13,13 +13,14 @@ function AgentPreviewChatEmptyState({
   agentIconType,
   agentName,
   hasInstructions,
+  inputNode,
 }: AgentChatRuntimeEmptyStateProps) {
   const { t } = useTranslation('agentV2')
   const imageUrl = (agentIconType === 'image' || agentIconType === 'link') ? agentIcon : undefined
   const iconType = imageUrl ? 'image' : agentIconType
 
   return (
-    <div className="pointer-events-none absolute inset-x-12 bottom-[calc(27%+84px)] flex justify-center">
+    <div className="flex h-full items-center justify-center">
       <div className="flex w-full max-w-150 flex-col items-start p-3 text-left">
         <AppIcon
           size="xxl"
@@ -43,6 +44,7 @@ function AgentPreviewChatEmptyState({
             {t('agentDetail.configure.preview.empty.noInstructionsDescription')}
           </p>
         )}
+        {inputNode}
       </div>
     </div>
   )
