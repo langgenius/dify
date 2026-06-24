@@ -3,13 +3,6 @@
 import * as z from 'zod'
 
 /**
- * SimpleResultResponse
- */
-export const zSimpleResultResponse = z.object({
-  result: z.string(),
-})
-
-/**
  * DataSourceIntegrateIconResponse
  */
 export const zDataSourceIntegrateIconResponse = z.object({
@@ -65,11 +58,6 @@ export const zDataSourceIntegrateListResponse = z.object({
  */
 export const zGetDataSourceIntegratesResponse = zDataSourceIntegrateListResponse
 
-/**
- * Success
- */
-export const zPatchDataSourceIntegratesResponse = zSimpleResultResponse
-
 export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
   action: z.string(),
   binding_id: z.uuid(),
@@ -79,13 +67,3 @@ export const zGetDataSourceIntegratesByBindingIdByActionPath = z.object({
  * Success
  */
 export const zGetDataSourceIntegratesByBindingIdByActionResponse = zDataSourceIntegrateListResponse
-
-export const zPatchDataSourceIntegratesByBindingIdByActionPath = z.object({
-  action: z.string(),
-  binding_id: z.uuid(),
-})
-
-/**
- * Success
- */
-export const zPatchDataSourceIntegratesByBindingIdByActionResponse = zSimpleResultResponse

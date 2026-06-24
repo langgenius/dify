@@ -186,12 +186,9 @@ class DataSourceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    @with_current_tenant_id
-    def patch(
-        self, current_tenant_id: str, binding_id: UUID, action: Literal["enable", "disable"]
-    ) -> tuple[dict[str, str], int]:
-        binding_id_str = str(binding_id)
+    def patch(self, binding_id, action: Literal["enable", "disable"]):
+        binding_id = str(binding_id)
+        current_user, current_tenant_id = current_account_with_tenant()
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             data_source_binding = session.execute(
                 select(DataSourceOauthBinding).where(
