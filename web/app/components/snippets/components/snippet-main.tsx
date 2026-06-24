@@ -23,6 +23,7 @@ import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useSnippetDraftStore } from '../draft-store'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useGetRunAndTraceUrl } from '../hooks/use-get-run-and-trace-url'
@@ -32,6 +33,7 @@ import { useSnippetRefreshDraft } from '../hooks/use-snippet-refresh-draft'
 import { useSnippetRun } from '../hooks/use-snippet-run'
 import { useSnippetStartRun } from '../hooks/use-snippet-start-run'
 import { useSnippetDetailStore } from '../store'
+import { canCreateAndModifySnippets } from '../utils/permission'
 import { useSnippetInputFieldActions } from './hooks/use-snippet-input-field-actions'
 import { useSnippetPublish } from './hooks/use-snippet-publish'
 import SnippetChildren from './snippet-children'
@@ -51,6 +53,7 @@ type SnippetMainContentProps = {
   snippetId: string
   fields: SnippetInputField[]
   canSave: boolean
+  canEdit: boolean
   onBeforePublish: () => Promise<Omit<SnippetDraftSyncPayload, 'hash'> | void>
   onSaved: (syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void) => void
 }
@@ -80,6 +83,7 @@ const SnippetMainContent = ({
   snippetId,
   fields,
   canSave,
+  canEdit,
   onBeforePublish,
   onSaved,
 }: SnippetMainContentProps) => {
@@ -113,6 +117,7 @@ const SnippetMainContent = ({
       snippetId={snippetId}
       fields={fields}
       canSave={canSave}
+      canEdit={canEdit}
       isPublishing={isPublishing}
       onPublish={handlePublishSnippet}
     />
@@ -138,7 +143,9 @@ const SnippetMain = ({
   const effectiveDraftEdges = localDraftState?.edges ?? draftEdges
   const effectiveDraftViewport = localDraftState?.viewport ?? draftViewport
   const { graph, snippet } = effectiveDraftPayload
-  const canSave = currentCanvasNodeCount > 0
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canEditSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
+  const canSave = canEditSnippet && currentCanvasNodeCount > 0
   const {
     doSyncWorkflowDraft: syncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -210,7 +217,7 @@ const SnippetMain = ({
     fields,
     handleFieldsChange: handleSnippetFieldsChange,
   } = useSnippetInputFieldActions({
-    canEdit: true,
+    canEdit: canEditSnippet,
     snippetId,
   })
   const {
@@ -234,12 +241,12 @@ const SnippetMain = ({
   }, [effectiveDraftPayload.inputFields, hydrateDraft, snippetId])
 
   useEffect(() => {
-    workflowStore.setState({ canvasReadOnly: false })
+    workflowStore.setState({ canvasReadOnly: !canEditSnippet })
 
     return () => {
       workflowStore.setState({ canvasReadOnly: false })
     }
-  }, [workflowStore])
+  }, [canEditSnippet, workflowStore])
 
   useEffect(() => {
     workflowStore.temporal.getState().pause()
@@ -255,7 +262,19 @@ const SnippetMain = ({
 
   const doSyncWorkflowDraft = useCallback((
     ...args: Parameters<typeof syncWorkflowDraft>
-  ) => syncWorkflowDraft(...args), [syncWorkflowDraft])
+  ) => {
+    if (!canEditSnippet)
+      return Promise.resolve()
+
+    return syncWorkflowDraft(...args)
+  }, [canEditSnippet, syncWorkflowDraft])
+
+  const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
+    if (!canEditSnippet)
+      return
+
+    syncWorkflowDraftWhenPageClose()
+  }, [canEditSnippet, syncWorkflowDraftWhenPageClose])
 
   const handleFieldsChange = useCallback((nextFields: SnippetInputField[]) => {
     handleSnippetFieldsChange(nextFields)
@@ -265,10 +284,10 @@ const SnippetMain = ({
     setNavigationState({
       snippetId,
       snippet,
-      readonly: false,
+      readonly: !canEditSnippet,
       onFieldsChange: handleFieldsChange,
     })
-  }, [handleFieldsChange, setNavigationState, snippet, snippetId])
+  }, [canEditSnippet, handleFieldsChange, setNavigationState, snippet, snippetId])
 
   const updateLocalDraftFromSyncPayload = useCallback((
     syncedDraftPayload?: Omit<SnippetDraftSyncPayload, 'hash'> | void,
@@ -305,7 +324,7 @@ const SnippetMain = ({
   const hooksStore = useMemo(() => {
     return {
       doSyncWorkflowDraft,
-      syncWorkflowDraftWhenPageClose,
+      syncWorkflowDraftWhenPageClose: handleSyncWorkflowDraftWhenPageClose,
       handleRefreshWorkflowDraft,
       handleBackupDraft,
       handleLoadBackupDraft,
@@ -331,11 +350,19 @@ const SnippetMain = ({
       invalidateSysVarValues,
       resetConversationVar,
       invalidateConversationVarValues,
+      accessControl: {
+        canEdit: canEditSnippet,
+        canComment: true,
+        canRun: true,
+        canImportExportDSL: canEditSnippet,
+        canReleaseAndVersion: canEditSnippet,
+      },
       configsMap,
     }
   }, [
     appendNodeInspectVars,
     availableNodesMetaData,
+    canEditSnippet,
     configsMap,
     deleteAllInspectorVars,
     deleteInspectVar,
@@ -345,6 +372,7 @@ const SnippetMain = ({
     fetchInspectVarValue,
     fetchInspectVars,
     handleBackupDraft,
+    handleSyncWorkflowDraftWhenPageClose,
     handleRefreshWorkflowDraft,
     handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow,
@@ -361,7 +389,6 @@ const SnippetMain = ({
     renameInspectVarName,
     resetConversationVar,
     resetToLastRunVar,
-    syncWorkflowDraftWhenPageClose,
   ])
 
   return (
@@ -378,7 +405,8 @@ const SnippetMain = ({
             snippetId={snippetId}
             fields={fields}
             canSave={canSave}
-            onBeforePublish={() => syncWorkflowDraft(true)}
+            canEdit={canEditSnippet}
+            onBeforePublish={() => doSyncWorkflowDraft(true)}
             onSaved={updateLocalDraftFromSyncPayload}
           />
         </WorkflowWithInnerContext>

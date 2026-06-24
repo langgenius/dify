@@ -13,6 +13,7 @@ import RunMode from './run-mode'
 type SnippetHeaderProps = {
   snippetId: string
   canSave: boolean
+  canEdit: boolean
   isPublishing: boolean
   onPublish: () => void
 }
@@ -39,6 +40,7 @@ const PublishAction = ({
 const SnippetHeader = ({
   snippetId,
   canSave,
+  canEdit,
   isPublishing,
   onPublish,
 }: SnippetHeaderProps) => {
@@ -54,11 +56,15 @@ const SnippetHeader = ({
       normal: {
         components: {
           left: (
-            <PublishAction
-              canSave={canSave}
-              isPublishing={isPublishing}
-              onPublish={onPublish}
-            />
+            canEdit
+              ? (
+                  <PublishAction
+                    canSave={canSave}
+                    isPublishing={isPublishing}
+                    onPublish={onPublish}
+                  />
+                )
+              : null
           ),
         },
         controls: {
@@ -78,7 +84,7 @@ const SnippetHeader = ({
         viewHistoryProps,
       },
     }
-  }, [canSave, isPublishing, onPublish, t, viewHistoryProps])
+  }, [canEdit, canSave, isPublishing, onPublish, t, viewHistoryProps])
 
   return <Header {...headerProps} />
 }
