@@ -80,6 +80,7 @@ export type AppSiteResponse = {
   icon_background?: string | null
   icon_type?: string | null
   icon_url?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null

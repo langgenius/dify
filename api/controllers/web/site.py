@@ -38,6 +38,7 @@ class AppSiteResponse(ResponseModel):
     description: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
+    input_placeholder: str | None = None
     custom_disclaimer: str | None = None
     default_language: str | None = None
     prompt_public: bool | None = None
@@ -84,6 +85,7 @@ class AppSiteApi(WebApiResource):
         "description": fields.String,
         "copyright": fields.String,
         "privacy_policy": fields.String,
+        "input_placeholder": fields.String,
         "custom_disclaimer": fields.String,
         "default_language": fields.String,
         "prompt_public": fields.Boolean,
