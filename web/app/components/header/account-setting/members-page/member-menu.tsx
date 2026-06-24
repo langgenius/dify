@@ -45,6 +45,9 @@ const MemberMenu = ({
   const showTransferOwnership = isOwner && canTransferOwnership
 
   const selectedRoles = member.roles || []
+  const assignRolesLabel = allowMultipleRoles
+    ? t('members.assignRoles', { ns: 'common', defaultValue: 'Assign Roles' })
+    : t('members.editRole', { ns: 'common', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
@@ -120,7 +123,7 @@ const MemberMenu = ({
               className="system-sm-medium text-text-secondary"
               onClick={handleOpenAssignRoles}
             >
-              {t('members.assignRoles', { ns: 'common', defaultValue: 'Assign Roles' })}
+              {assignRolesLabel}
             </DropdownMenuItem>
           )}
           {showTransferOwnership && (

@@ -97,6 +97,32 @@ describe('MemberMenu', () => {
     } as unknown as ReturnType<typeof useWorkspaceRoleList>)
   })
 
+  it('should show edit role copy when multiple roles are disabled', async () => {
+    const user = userEvent.setup()
+
+    renderWithSystemFeatures(
+      <MemberMenu
+        member={member}
+        isCurrentUser={false}
+        allowMultipleRoles={false}
+      />,
+      {
+        systemFeatures: {
+          rbac_enabled: false,
+        },
+      },
+    )
+
+    await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
+
+    expect(screen.getByRole('menuitem', { name: /common\.members\.editRole/i })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: /common\.members\.assignRoles/i })).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: /common\.members\.editRole/i }))
+
+    expect(screen.getByRole('dialog', { name: /common\.members\.editRole/i })).toBeInTheDocument()
+  })
+
   it('should submit only one selected role from the assign modal when RBAC is disabled', async () => {
     const user = userEvent.setup()
 
@@ -114,7 +140,7 @@ describe('MemberMenu', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /members\.memberActions/i }))
-    await user.click(screen.getByRole('menuitem', { name: /members\.assignRoles/i }))
+    await user.click(screen.getByRole('menuitem', { name: /members\.editRole/i }))
     await user.click(screen.getByRole('radio', { name: /Second role/i }))
     await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 

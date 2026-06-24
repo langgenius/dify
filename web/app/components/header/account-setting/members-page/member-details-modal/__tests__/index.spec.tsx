@@ -76,6 +76,39 @@ describe('MemberDetailsModal', () => {
   })
 
   describe('Rendering', () => {
+    it('should render edit role action when multiple roles are disabled', () => {
+      render(
+        <MemberDetailsModal
+          member={member}
+          canAssignRoles
+          allowMultipleRoles={false}
+          onClose={vi.fn()}
+          onAssignSubmit={vi.fn()}
+        />,
+      )
+
+      const editButton = screen.getByRole('button', { name: /common\.operation\.edit/i })
+
+      expect(editButton).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /members\.memberDetails\.assign/i })).not.toBeInTheDocument()
+      expect(editButton.querySelector('.i-ri-edit-line')).toBeInTheDocument()
+      expect(editButton.querySelector('.i-ri-add-line')).not.toBeInTheDocument()
+    })
+
+    it('should render singular assigned role label when there is one role', () => {
+      render(
+        <MemberDetailsModal
+          member={member}
+          canAssignRoles
+          onClose={vi.fn()}
+          onAssignSubmit={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText(/common\.members\.memberDetails\.assignedRole:/i)).toBeInTheDocument()
+      expect(screen.queryByText(/common\.members\.memberDetails\.assignedRoles/i)).not.toBeInTheDocument()
+    })
+
     it('should render role loading state without assigned role chips or count', () => {
       vi.mocked(useRolesOfMember).mockReturnValue({
         data: undefined,
@@ -99,6 +132,26 @@ describe('MemberDetailsModal', () => {
   })
 
   describe('Role actions', () => {
+    it('should keep role chips readonly when multiple roles are disabled', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <MemberDetailsModal
+          member={member}
+          canAssignRoles
+          allowMultipleRoles={false}
+          onClose={vi.fn()}
+          onAssignSubmit={vi.fn()}
+        />,
+      )
+
+      expect(screen.queryByRole('button', { name: /Custom role/i })).not.toBeInTheDocument()
+
+      await user.click(screen.getByText('Custom role'))
+
+      expect(screen.queryByRole('menuitem', { name: /common\.operation\.remove/i })).not.toBeInTheDocument()
+    })
+
     it('should not show role removal controls when role assignment is not allowed', () => {
       render(
         <MemberDetailsModal
@@ -190,7 +243,7 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.edit/i }))
       await user.click(screen.getByRole('radio', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
