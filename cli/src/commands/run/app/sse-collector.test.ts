@@ -154,6 +154,15 @@ describe('collect — workflow separated reasoning', () => {
     ), 'workflow')
     expect((got.metadata as { reasoning?: unknown } | undefined)?.reasoning).toBeUndefined()
   })
+
+  it('merges reasoning into metadata already carried by workflow_finished', async () => {
+    const got = await collect(iterOf(
+      wfReasoning('think', 'llm-1', true),
+      ev('workflow_finished', { data: { status: 'succeeded' }, metadata: { usage: { tokens: 7 } } }),
+    ), 'workflow')
+    expect((got.metadata as { reasoning?: unknown }).reasoning).toEqual({ 'llm-1': 'think' })
+    expect((got.metadata as { usage?: unknown }).usage).toEqual({ tokens: 7 })
+  })
 })
 
 describe('collect — error event', () => {
