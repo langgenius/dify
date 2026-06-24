@@ -101,7 +101,9 @@ def handle_mcp_request(
                     )
                 )
             case mcp_types.CallToolRequest():
-                return create_success_response(handle_call_tool(app, request, user_input_form, end_user))
+                return create_success_response(
+                    handle_call_tool(app, request, user_input_form, end_user, protocol_version)
+                )
             case mcp_types.PingRequest():
                 return create_success_response(handle_ping())
             case _:
@@ -172,6 +174,7 @@ def handle_call_tool(
     request: mcp_types.ClientRequest,
     user_input_form: list[VariableEntity],
     end_user: EndUser | None,
+    protocol_version: str = mcp_types.DEFAULT_NEGOTIATED_VERSION,
 ) -> mcp_types.CallToolResult:
     """Handle call tool request"""
     request_obj = cast(mcp_types.CallToolRequest, request.root)
@@ -189,7 +192,13 @@ def handle_call_tool(
     )
 
     answer = extract_answer_from_response(app, response)
-    return mcp_types.CallToolResult(content=[mcp_types.TextContent(text=answer, type="text")])
+    structured_content = None
+    if _supports_structured_output(protocol_version):
+        structured_content = extract_structured_output(app, response, answer)
+    return mcp_types.CallToolResult(
+        content=[mcp_types.TextContent(text=answer, type="text")],
+        structuredContent=structured_content,
+    )
 
 
 def build_parameter_schema(
@@ -228,6 +237,29 @@ def prepare_tool_arguments(app: App, arguments: dict[str, Any]) -> ToolArguments
             args_copy = arguments.copy()
             query = args_copy.pop("query", "")
             return {"query": query, "inputs": args_copy}
+
+
+def extract_structured_output(app: App, response: Any, answer: str) -> dict[str, Any] | None:
+    """Build MCP structured tool output (2025-06-18) from the app response.
+
+    WORKFLOW mode exposes the raw outputs mapping; chat/agent/completion modes expose the
+    answer string under an "answer" key. Returns None when no structured output is available.
+    """
+    match app.mode:
+        case AppMode.WORKFLOW:
+            if isinstance(response, Mapping):
+                data = response.get("data")
+                if isinstance(data, Mapping):
+                    outputs = data.get("outputs")
+                    # All three guards use Mapping for consistency; coerce to a concrete dict
+                    # because structuredContent must be a JSON object (dict[str, Any]).
+                    if isinstance(outputs, Mapping):
+                        return dict(outputs)
+            return None
+        case AppMode.ADVANCED_CHAT | AppMode.CHAT | AppMode.AGENT_CHAT | AppMode.COMPLETION:
+            return {"answer": answer}
+        case _:
+            return None
 
 
 def extract_answer_from_response(app: App, response: Any) -> str:
