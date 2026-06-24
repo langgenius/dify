@@ -42,6 +42,7 @@ from services.agent.knowledge_datasets import (
     list_missing_tenant_knowledge_dataset_ids,
 )
 from services.agent.roster_service import AgentRosterService
+from services.agent.soul_files_service import AgentSoulFilesService
 from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
@@ -333,6 +334,11 @@ class AgentComposerService:
             except IntegrityError as exc:
                 db.session.rollback()
                 raise AgentNameConflictError() from exc
+        payload.agent_soul = cls._preserve_active_soul_files(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            agent_soul=payload.agent_soul,
+        )
 
         if payload.save_strategy == ComposerSaveStrategy.SAVE_AS_NEW_VERSION or not agent.active_config_snapshot_id:
             version = cls._create_config_version(
@@ -392,7 +398,7 @@ class AgentComposerService:
                 cls._drive_mention_findings(
                     tenant_id=tenant_id,
                     agent_id=agent_id,
-                    prompt=payload.agent_soul.prompt.system_prompt,
+                    agent_soul=payload.agent_soul,
                 )
             )
         return findings
@@ -446,14 +452,16 @@ class AgentComposerService:
         *,
         tenant_id: str,
         agent_id: str,
-        prompt: str,
+        agent_soul: AgentSoulConfig,
     ) -> list[dict[str, str | None]]:
         """Soft warnings for missing drive-backed prompt mentions."""
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
         from services.agent_drive_service import decode_drive_mention_ref
 
+        soul_skill_keys = {skill.skill_md_key for skill in agent_soul.files.skills if skill.skill_md_key}
+        soul_file_keys = {file_ref.drive_key for file_ref in agent_soul.files.files if file_ref.drive_key}
         wanted_keys: dict[str, tuple[str, str]] = {}
-        for mention in parse_prompt_mentions(prompt):
+        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
             if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
                 continue
             decoded_key = decode_drive_mention_ref(mention.ref_id)
@@ -474,6 +482,28 @@ class AgentComposerService:
         )
         findings: list[dict[str, str | None]] = []
         for key, (kind, display) in wanted_keys.items():
+            if kind == MentionKind.SKILL.value and key not in soul_skill_keys:
+                findings.append(
+                    {
+                        "code": "mention_target_missing",
+                        "surface": "agent_soul",
+                        "kind": kind,
+                        "id": key,
+                        "message": f"{kind} '{display}' is not recorded in this Agent Soul version.",
+                    }
+                )
+                continue
+            if kind == MentionKind.FILE.value and key not in soul_file_keys:
+                findings.append(
+                    {
+                        "code": "mention_target_missing",
+                        "surface": "agent_soul",
+                        "kind": kind,
+                        "id": key,
+                        "message": f"{kind} '{display}' is not recorded in this Agent Soul version.",
+                    }
+                )
+                continue
             if key in existing_keys:
                 continue
             findings.append(
@@ -759,6 +789,11 @@ class AgentComposerService:
                 )
             binding.node_job_config = node_job
             if payload.agent_soul is not None and binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
+                payload.agent_soul = cls._preserve_active_soul_files(
+                    tenant_id=tenant_id,
+                    agent_id=binding.agent_id,
+                    agent_soul=payload.agent_soul,
+                )
                 current_snapshot = cls._require_version(
                     tenant_id=tenant_id,
                     agent_id=binding.agent_id,
@@ -859,6 +894,11 @@ class AgentComposerService:
         binding = cls._require_binding(binding)
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
+        payload.agent_soul = cls._preserve_active_soul_files(
+            tenant_id=tenant_id,
+            agent_id=binding.agent_id,
+            agent_soul=payload.agent_soul,
+        )
         current_snapshot = cls._require_version(
             tenant_id=tenant_id,
             agent_id=binding.agent_id,
@@ -893,6 +933,11 @@ class AgentComposerService:
         binding = cls._require_binding(binding)
         if not binding.agent_id or payload.agent_soul is None:
             raise ValueError("agent_id and agent_soul are required")
+        payload.agent_soul = cls._preserve_active_soul_files(
+            tenant_id=tenant_id,
+            agent_id=binding.agent_id,
+            agent_soul=payload.agent_soul,
+        )
         version = cls._create_config_version(
             tenant_id=tenant_id,
             agent_id=binding.agent_id,
@@ -925,6 +970,12 @@ class AgentComposerService:
     ) -> WorkflowAgentNodeBinding:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
+        if binding and binding.agent_id:
+            payload.agent_soul = cls._preserve_active_soul_files(
+                tenant_id=tenant_id,
+                agent_id=binding.agent_id,
+                agent_soul=payload.agent_soul,
+            )
         agent_name = payload.new_agent_name or "Untitled Agent"
         agent = cls._create_roster_agent_for_composer(
             tenant_id=tenant_id,
@@ -940,6 +991,15 @@ class AgentComposerService:
             version_note=payload.version_note,
         )
         node_job = payload.node_job or WorkflowNodeJobConfig()
+        if binding and binding.agent_id:
+            cls._copy_agent_drive_rows(
+                tenant_id=tenant_id,
+                source_agent_id=binding.agent_id,
+                target_agent_id=agent.id,
+                account_id=account_id,
+                agent_soul=payload.agent_soul,
+                node_job=node_job,
+            )
         if not binding:
             binding = WorkflowAgentNodeBinding(
                 tenant_id=tenant_id,
@@ -975,6 +1035,9 @@ class AgentComposerService:
             version_id=binding.current_snapshot_id,
         )
         agent_soul = payload.agent_soul or AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
+        source_soul = AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
+        agent_soul = agent_soul.model_copy(deep=True)
+        agent_soul.files = source_soul.files
         agent_name = payload.new_agent_name or source_agent.name
         roster_agent = cls._create_roster_agent_for_composer(
             tenant_id=tenant_id,
@@ -1116,26 +1179,38 @@ class AgentComposerService:
                 )
             )
 
+    @classmethod
+    def _preserve_active_soul_files(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str | None,
+        agent_soul: AgentSoulConfig,
+    ) -> AgentSoulConfig:
+        """Keep drive refs owned by drive APIs when saving non-file composer changes."""
+
+        if not agent_id:
+            return agent_soul
+        agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=agent_id)
+        if agent is None or not agent.active_config_snapshot_id:
+            return agent_soul
+        version = cls._get_version_if_present(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        if version is None:
+            return agent_soul
+        existing_soul = AgentSoulConfig.model_validate(version.config_snapshot_dict)
+        preserved = agent_soul.model_copy(deep=True)
+        preserved.files = existing_soul.files
+        return preserved
+
     @staticmethod
     def _drive_copy_scopes_from_agent_configs(
         *, agent_soul: AgentSoulConfig, node_job: WorkflowNodeJobConfig | None = None
     ) -> tuple[set[str], set[str]]:
-        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
-        from services.agent_drive_service import decode_drive_mention_ref
-
-        exact_keys: set[str] = set()
-        prefixes: set[str] = set()
-
-        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
-            if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
-                continue
-            drive_key = decode_drive_mention_ref(mention.ref_id)
-            if not drive_key:
-                continue
-            if mention.kind == MentionKind.SKILL and "/" in drive_key:
-                prefixes.add(f"{drive_key.rsplit('/', 1)[0]}/")
-            else:
-                exact_keys.add(drive_key)
+        exact_keys, prefixes = AgentSoulFilesService.drive_copy_scopes(agent_soul=agent_soul)
 
         if node_job is not None:
             for file_ref in node_job.metadata.file_refs or []:
