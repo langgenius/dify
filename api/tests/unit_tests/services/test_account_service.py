@@ -179,7 +179,7 @@ class TestAccountService:
         mock_password_dependencies["compare_password"].return_value = True
 
         # Execute test
-        result = AccountService.authenticate("test@example.com", "password")
+        result = AccountService.authenticate("test@example.com", "password", session=mock_db_dependencies["db"].session)
 
         # Verify results
         assert result == mock_account
@@ -191,7 +191,11 @@ class TestAccountService:
 
         # Execute test and verify exception
         self._assert_exception_raised(
-            AccountPasswordError, AccountService.authenticate, "notfound@example.com", "password"
+            AccountPasswordError,
+            AccountService.authenticate,
+            "notfound@example.com",
+            "password",
+            session=mock_db_dependencies["db"].session,
         )
 
     def test_authenticate_account_banned(self, mock_db_dependencies):
@@ -202,7 +206,13 @@ class TestAccountService:
         mock_db_dependencies["db"].session.scalar.return_value = mock_account
 
         # Execute test and verify exception
-        self._assert_exception_raised(AccountLoginError, AccountService.authenticate, "banned@example.com", "password")
+        self._assert_exception_raised(
+            AccountLoginError,
+            AccountService.authenticate,
+            "banned@example.com",
+            "password",
+            session=mock_db_dependencies["db"].session,
+        )
 
     def test_authenticate_password_error(self, mock_db_dependencies, mock_password_dependencies):
         """Test authentication with wrong password."""
@@ -215,7 +225,11 @@ class TestAccountService:
 
         # Execute test and verify exception
         self._assert_exception_raised(
-            AccountPasswordError, AccountService.authenticate, "test@example.com", "wrongpassword"
+            AccountPasswordError,
+            AccountService.authenticate,
+            "test@example.com",
+            "wrongpassword",
+            session=mock_db_dependencies["db"].session,
         )
 
     def test_authenticate_pending_account_activates(self, mock_db_dependencies, mock_password_dependencies):
@@ -228,7 +242,9 @@ class TestAccountService:
         mock_password_dependencies["compare_password"].return_value = True
 
         # Execute test
-        result = AccountService.authenticate("pending@example.com", "password")
+        result = AccountService.authenticate(
+            "pending@example.com", "password", session=mock_db_dependencies["db"].session
+        )
 
         # Verify results
         assert result == mock_account
@@ -253,6 +269,7 @@ class TestAccountService:
             interface_language="en-US",
             password="password123",
             interface_theme="light",
+            session=mock_db_dependencies["db"].session,
         )
 
         # Verify results
@@ -290,6 +307,7 @@ class TestAccountService:
             interface_language="en-US",
             password="password123",
             timezone="Asia/Shanghai",
+            session=mock_db_dependencies["db"].session,
         )
 
         assert result.timezone == "Asia/Shanghai"
@@ -309,6 +327,7 @@ class TestAccountService:
             email="test@example.com",
             name="Test User",
             interface_language="en-US",
+            session=MagicMock(),
         )
 
     def test_create_account_email_frozen(self, mock_db_dependencies, mock_external_service_dependencies):
@@ -325,6 +344,7 @@ class TestAccountService:
             email="frozen@example.com",
             name="Test User",
             interface_language="en-US",
+            session=mock_db_dependencies["db"].session,
         )
         dify_config.BILLING_ENABLED = False
 
@@ -341,6 +361,7 @@ class TestAccountService:
             interface_language="zh-CN",
             password=None,
             interface_theme="dark",
+            session=mock_db_dependencies["db"].session,
         )
 
         # Verify results
@@ -375,7 +396,9 @@ class TestAccountService:
         mock_password_dependencies["hash_password"].return_value = b"new_hashed_password"
 
         # Execute test
-        result = AccountService.update_account_password(mock_account, "old_password", "new_password123")
+        result = AccountService.update_account_password(
+            mock_account, "old_password", "new_password123", session=mock_db_dependencies["db"].session
+        )
 
         # Verify results
         assert result == mock_account
@@ -391,7 +414,7 @@ class TestAccountService:
         # Verify database operations
         self._assert_database_operations_called(mock_db_dependencies["db"])
 
-    def test_update_account_password_current_password_incorrect(self, mock_password_dependencies):
+    def test_update_account_password_current_password_incorrect(self, mock_db_dependencies, mock_password_dependencies):
         """Test password update with incorrect current password."""
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
@@ -404,6 +427,7 @@ class TestAccountService:
             mock_account,
             "wrong_password",
             "new_password123",
+            session=mock_db_dependencies["db"].session,
         )
 
         # Verify password comparison was called
@@ -411,7 +435,7 @@ class TestAccountService:
             "wrong_password", "hashed_password", "salt"
         )
 
-    def test_update_account_password_invalid_new_password(self, mock_password_dependencies):
+    def test_update_account_password_invalid_new_password(self, mock_db_dependencies, mock_password_dependencies):
         """Test password update with invalid new password."""
         # Setup test data
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
@@ -420,7 +444,12 @@ class TestAccountService:
 
         # Execute test and verify exception
         self._assert_exception_raised(
-            ValueError, AccountService.update_account_password, mock_account, "old_password", "short"
+            ValueError,
+            AccountService.update_account_password,
+            mock_account,
+            "old_password",
+            "short",
+            session=mock_db_dependencies["db"].session,
         )
 
         # Verify password validation was called
@@ -447,19 +476,19 @@ class TestAccountService:
             mock_datetime.UTC = "UTC"
 
             # Execute test
-            result = AccountService.load_user("user-123")
+            result = AccountService.load_user("user-123", mock_db_dependencies["db"].session)
 
             # Verify results
             assert result == mock_account
             assert mock_account.set_tenant_id.called
-            mock_refresh_last_active.assert_called_once_with(mock_account)
+            mock_refresh_last_active.assert_called_once_with(mock_account, mock_db_dependencies["db"].session)
 
     def test_load_user_not_found(self, mock_db_dependencies):
         """Test user loading when user does not exist."""
         mock_db_dependencies["db"].session.get.return_value = None
 
         # Execute test
-        result = AccountService.load_user("non-existent-user")
+        result = AccountService.load_user("non-existent-user", mock_db_dependencies["db"].session)
 
         # Verify results
         assert result is None
@@ -500,14 +529,14 @@ class TestAccountService:
             mock_naive_utc_now.return_value = mock_now
 
             # Execute test
-            result = AccountService.load_user("user-123")
+            result = AccountService.load_user("user-123", mock_db_dependencies["db"].session)
 
             # Verify results
             assert result == mock_account
             assert mock_available_tenant.current is True
             assert mock_available_tenant.last_opened_at == mock_now
             self._assert_database_operations_called(mock_db_dependencies["db"])
-            mock_refresh_last_active.assert_called_once_with(mock_account)
+            mock_refresh_last_active.assert_called_once_with(mock_account, mock_db_dependencies["db"].session)
 
     def test_load_user_no_tenants(self, mock_db_dependencies):
         """Test user loading when user has no tenants at all."""
@@ -525,7 +554,7 @@ class TestAccountService:
             mock_datetime.UTC = "UTC"
 
             # Execute test
-            result = AccountService.load_user("user-123")
+            result = AccountService.load_user("user-123", mock_db_dependencies["db"].session)
 
             # Verify results
             assert result is None
@@ -542,7 +571,7 @@ class TestAccountService:
         ):
             mock_redis_client.set.return_value = True
 
-            AccountService._refresh_account_last_active(mock_account)
+            AccountService._refresh_account_last_active(mock_account, mock_db_dependencies["db"].session)
 
         mock_redis_client.set.assert_called_once_with(
             "account_last_active_refresh:user-123",
@@ -565,7 +594,7 @@ class TestAccountService:
         ):
             mock_redis_client.set.return_value = None
 
-            AccountService._refresh_account_last_active(mock_account)
+            AccountService._refresh_account_last_active(mock_account, mock_db_dependencies["db"].session)
 
         mock_redis_client.set.assert_called_once_with(
             "account_last_active_refresh:user-123",
@@ -586,7 +615,7 @@ class TestAccountService:
             patch("services.account_service.naive_utc_now", return_value=now),
             patch("services.account_service.redis_client") as mock_redis_client,
         ):
-            AccountService._refresh_account_last_active(mock_account)
+            AccountService._refresh_account_last_active(mock_account, mock_db_dependencies["db"].session)
 
         mock_redis_client.set.assert_not_called()
         mock_db_dependencies["db"].session.execute.assert_not_called()
@@ -736,7 +765,9 @@ class TestTenantService:
                     mock_credit_pool_db.session.commit = MagicMock()
 
                     # Execute test
-                    TenantService.create_owner_tenant_if_not_exist(mock_account)
+                    TenantService.create_owner_tenant_if_not_exist(
+                        mock_account, session=mock_db_dependencies["db"].session
+                    )
 
         # Verify tenant was created with correct parameters
         mock_db_dependencies["db"].session.add.assert_called()
@@ -838,7 +869,9 @@ class TestTenantService:
                 mock_sync.return_value = True
 
                 # Act
-                TenantService.remove_member_from_tenant(mock_tenant, mock_pending_member, mock_operator)
+                TenantService.remove_member_from_tenant(
+                    mock_tenant, mock_pending_member, mock_operator, session=mock_db.session
+                )
 
                 # Assert: enterprise sync still receives the correct member ID
                 mock_sync.assert_called_once_with(
@@ -878,7 +911,9 @@ class TestTenantService:
                 mock_sync.return_value = True
 
                 # Act
-                TenantService.remove_member_from_tenant(mock_tenant, mock_pending_member, mock_operator)
+                TenantService.remove_member_from_tenant(
+                    mock_tenant, mock_pending_member, mock_operator, session=mock_db.session
+                )
 
             # Assert: only the join record should be deleted, not the account
             mock_db.session.delete.assert_called_once_with(mock_ta)
@@ -909,7 +944,9 @@ class TestTenantService:
                 mock_sync.return_value = True
 
                 # Act
-                TenantService.remove_member_from_tenant(mock_tenant, mock_active_member, mock_operator)
+                TenantService.remove_member_from_tenant(
+                    mock_tenant, mock_active_member, mock_operator, session=mock_db.session
+                )
 
             # Assert: only the join record should be deleted
             mock_db.session.delete.assert_called_once_with(mock_ta)
@@ -934,7 +971,7 @@ class TestTenantService:
                 mock_naive_utc_now.return_value = mock_now
 
                 # Execute test
-                TenantService.switch_tenant(mock_account, "tenant-456")
+                TenantService.switch_tenant(mock_account, "tenant-456", session=mock_db.session)
 
             # Verify tenant was switched
             assert mock_tenant_join.current is True
@@ -947,7 +984,7 @@ class TestTenantService:
         mock_account = TestAccountAssociatedDataFactory.create_account_mock()
 
         # Execute test and verify exception
-        self._assert_exception_raised(ValueError, TenantService.switch_tenant, mock_account, None)
+        self._assert_exception_raised(ValueError, TenantService.switch_tenant, mock_account, None, session=MagicMock())
 
     # ==================== Role Management Tests ====================
 
@@ -971,7 +1008,7 @@ class TestTenantService:
             mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
 
             # Execute test
-            TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator)
+            TenantService.update_member_role(mock_tenant, mock_member, "admin", mock_operator, session=mock_db.session)
 
             # Verify role was updated
             assert mock_target_join.role == "admin"
@@ -1005,7 +1042,9 @@ class TestTenantService:
         ):
             mock_db_dependencies["db"].session.scalar.return_value = None
 
-            TenantService.create_owner_tenant_if_not_exist(mock_account, is_setup=True)
+            TenantService.create_owner_tenant_if_not_exist(
+                mock_account, is_setup=True, session=mock_db_dependencies["db"].session
+            )
 
         mock_rbac_service.MemberRoles.replace.assert_called_once_with(
             tenant_id="tenant-rbac",
@@ -1030,7 +1069,7 @@ class TestTenantService:
         with patch("services.account_service.db") as mock_db:
             mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
 
-            TenantService.update_member_role(mock_tenant, mock_member, "editor", mock_operator)
+            TenantService.update_member_role(mock_tenant, mock_member, "editor", mock_operator, session=mock_db.session)
 
             assert mock_target_join.role == "editor"
             self._assert_database_operations_called(mock_db)
@@ -1052,7 +1091,9 @@ class TestTenantService:
             mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
 
             with pytest.raises(NoPermissionError):
-                TenantService.update_member_role(mock_tenant, mock_member, "editor", mock_operator)
+                TenantService.update_member_role(
+                    mock_tenant, mock_member, "editor", mock_operator, session=mock_db.session
+                )
 
     def test_admin_cannot_promote_member_to_owner(self):
         """Test admin cannot promote a non-owner member to owner."""
@@ -1071,7 +1112,9 @@ class TestTenantService:
             mock_db.session.scalar.side_effect = [mock_operator_join, mock_target_join, mock_operator_join]
 
             with pytest.raises(NoPermissionError):
-                TenantService.update_member_role(mock_tenant, mock_member, "owner", mock_operator)
+                TenantService.update_member_role(
+                    mock_tenant, mock_member, "owner", mock_operator, session=mock_db.session
+                )
 
     # ==================== Permission Check Tests ====================
 
@@ -1089,7 +1132,9 @@ class TestTenantService:
         mock_db_dependencies["db"].session.scalar.return_value = mock_operator_join
 
         # Execute test - should not raise exception
-        TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "add")
+        TenantService.check_member_permission(
+            mock_tenant, mock_operator, mock_member, "add", session=mock_db_dependencies["db"].session
+        )
 
     def test_check_member_permission_operate_self(self):
         """Test member permission check when operator tries to operate self."""
@@ -1108,6 +1153,7 @@ class TestTenantService:
             mock_operator,
             mock_operator,  # Same as operator
             "add",
+            session=MagicMock(),
         )
 
     def test_admin_can_remove_non_owner_member(self, mock_db_dependencies):
@@ -1124,7 +1170,9 @@ class TestTenantService:
         )
         mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
 
-        TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+        TenantService.check_member_permission(
+            mock_tenant, mock_operator, mock_member, "remove", session=mock_db_dependencies["db"].session
+        )
 
     def test_admin_cannot_remove_owner_member(self, mock_db_dependencies):
         """Test admin cannot remove an owner member."""
@@ -1141,7 +1189,9 @@ class TestTenantService:
         mock_db_dependencies["db"].session.scalar.side_effect = [mock_operator_join, mock_member_join]
 
         with pytest.raises(NoPermissionError):
-            TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+            TenantService.check_member_permission(
+                mock_tenant, mock_operator, mock_member, "remove", session=MagicMock()
+            )
 
     def test_rbac_member_can_remove_non_owner_member(self):
         """Test RBAC workspace.member.manage allows removing a non-owner member."""
@@ -1158,7 +1208,9 @@ class TestTenantService:
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
             patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=False),
         ):
-            TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+            TenantService.check_member_permission(
+                mock_tenant, mock_operator, mock_member, "remove", session=MagicMock()
+            )
 
     def test_rbac_member_cannot_remove_without_permission(self):
         """Test RBAC permission check rejects removal without workspace.member.manage."""
@@ -1175,7 +1227,9 @@ class TestTenantService:
             patch("services.account_service.RBACService.MyPermissions.get", return_value=mock_permissions),
         ):
             with pytest.raises(NoPermissionError):
-                TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+                TenantService.check_member_permission(
+                    mock_tenant, mock_operator, mock_member, "remove", session=MagicMock()
+                )
 
     def test_rbac_member_cannot_remove_owner_member(self):
         """Test RBAC permission check rejects removing an owner member."""
@@ -1193,7 +1247,9 @@ class TestTenantService:
             patch("services.account_service.AccountService.is_rbac_workspace_owner", return_value=True),
         ):
             with pytest.raises(NoPermissionError):
-                TenantService.check_member_permission(mock_tenant, mock_operator, mock_member, "remove")
+                TenantService.check_member_permission(
+                    mock_tenant, mock_operator, mock_member, "remove", session=MagicMock()
+                )
 
     def test_get_rbac_workspace_owner_account_id(self):
         mock_roles = MagicMock()
@@ -1304,7 +1360,14 @@ class TestRegisterService:
                     mock_dify_setup.return_value = mock_dify_setup_instance
 
                     # Execute test
-                    RegisterService.setup("admin@example.com", "Admin User", "password123", "192.168.1.1", "en-US")
+                    RegisterService.setup(
+                        "admin@example.com",
+                        "Admin User",
+                        "password123",
+                        "192.168.1.1",
+                        "en-US",
+                        session=mock_db_dependencies["db"].session,
+                    )
 
                     # Verify results
                     mock_create_account.assert_called_once_with(
@@ -1313,8 +1376,11 @@ class TestRegisterService:
                         interface_language="en-US",
                         password="password123",
                         is_setup=True,
+                        session=mock_db_dependencies["db"].session,
                     )
-                    mock_create_tenant.assert_called_once_with(account=mock_account, is_setup=True)
+                    mock_create_tenant.assert_called_once_with(
+                        account=mock_account, is_setup=True, session=mock_db_dependencies["db"].session
+                    )
                     mock_dify_setup.assert_called_once()
                     self._assert_database_operations_called(mock_db_dependencies["db"])
 
@@ -1337,6 +1403,7 @@ class TestRegisterService:
                 "password123",
                 "192.168.1.1",
                 "en-US",
+                session=mock_db_dependencies["db"].session,
             )
 
             # Verify rollback operations were called
@@ -1369,10 +1436,13 @@ class TestRegisterService:
                 name="Test User",
                 interface_language="en-US",
                 password=None,
+                session=mock_db_dependencies["db"].session,
             )
 
             assert result == mock_account
-            mock_create_workspace.assert_called_once_with(account=mock_account)
+            mock_create_workspace.assert_called_once_with(
+                account=mock_account, session=mock_db_dependencies["db"].session
+            )
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
 
     def test_create_account_and_tenant_does_not_call_default_workspace_join_when_enterprise_disabled(
@@ -1400,9 +1470,12 @@ class TestRegisterService:
                 name="Test User",
                 interface_language="en-US",
                 password=None,
+                session=mock_db_dependencies["db"].session,
             )
 
-            mock_create_workspace.assert_called_once_with(account=mock_account)
+            mock_create_workspace.assert_called_once_with(
+                account=mock_account, session=mock_db_dependencies["db"].session
+            )
             mock_join_default_workspace.assert_not_called()
 
     def test_create_account_and_tenant_still_calls_default_workspace_join_when_workspace_creation_fails(
@@ -1433,6 +1506,7 @@ class TestRegisterService:
                     name="Test User",
                     interface_language="en-US",
                     password=None,
+                    session=mock_db_dependencies["db"].session,
                 )
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
@@ -1470,6 +1544,7 @@ class TestRegisterService:
                     name="Test User",
                     password="password123",
                     language="en-US",
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 # Verify results
@@ -1483,8 +1558,11 @@ class TestRegisterService:
                     password="password123",
                     is_setup=False,
                     timezone=None,
+                    session=mock_db_dependencies["db"].session,
                 )
-                mock_create_tenant.assert_called_once_with("Test User's Workspace")
+                mock_create_tenant.assert_called_once_with(
+                    "Test User's Workspace", session=mock_db_dependencies["db"].session
+                )
                 mock_create_member.assert_called_once_with(
                     mock_tenant, mock_account, mock_db_dependencies["db"].session, role="owner"
                 )
@@ -1516,6 +1594,7 @@ class TestRegisterService:
                 password="password123",
                 language="en-US",
                 create_workspace_required=False,
+                session=mock_db_dependencies["db"].session,
             )
 
             assert result == mock_account
@@ -1546,6 +1625,7 @@ class TestRegisterService:
                 password="password123",
                 language="en-US",
                 create_workspace_required=False,
+                session=mock_db_dependencies["db"].session,
             )
 
             mock_join_default_workspace.assert_not_called()
@@ -1584,6 +1664,7 @@ class TestRegisterService:
                     name="Test User",
                     password="password123",
                     language="en-US",
+                    session=mock_db_dependencies["db"].session,
                 )
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
@@ -1623,6 +1704,7 @@ class TestRegisterService:
                     name="Test User",
                     password="password123",
                     language="en-US",
+                    session=mock_db_dependencies["db"].session,
                 )
 
             mock_join_default_workspace.assert_called_once_with(str(mock_account.id))
@@ -1665,11 +1747,14 @@ class TestRegisterService:
                     open_id="oauth123",
                     provider="google",
                     language="en-US",
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 # Verify results
                 assert result == mock_account
-                mock_link_account.assert_called_once_with("google", "oauth123", mock_account)
+                mock_link_account.assert_called_once_with(
+                    "google", "oauth123", mock_account, session=mock_db_dependencies["db"].session
+                )
                 self._assert_database_operations_called(mock_db_dependencies["db"])
 
     def test_register_with_pending_status(self, mock_db_dependencies, mock_external_service_dependencies):
@@ -1707,6 +1792,7 @@ class TestRegisterService:
                     password="password123",
                     language="en-US",
                     status=AccountStatus.PENDING,
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 # Verify results
@@ -1744,6 +1830,7 @@ class TestRegisterService:
                     name="Test User",
                     password="password123",
                     language="en-US",
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 # Verify rollback was called
@@ -1767,6 +1854,7 @@ class TestRegisterService:
                 name="Test User",
                 password="password123",
                 language="en-US",
+                session=mock_db_dependencies["db"].session,
             )
 
             # Verify rollback was called
@@ -1810,6 +1898,7 @@ class TestRegisterService:
                         language="en-US",
                         role="normal",
                         inviter=mock_inviter,
+                        session=mock_db_dependencies["db"].session,
                     )
 
                     # Verify results
@@ -1820,6 +1909,7 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        session=mock_db_dependencies["db"].session,
                     )
                     mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, "newuser@example.com")
 
@@ -1856,6 +1946,7 @@ class TestRegisterService:
                         language="en-US",
                         role="normal",
                         inviter=mock_inviter,
+                        session=mock_db_dependencies["db"].session,
                     )
 
                     mock_register.assert_called_once_with(
@@ -1864,13 +1955,22 @@ class TestRegisterService:
                         language="en-US",
                         status=AccountStatus.PENDING,
                         is_setup=True,
+                        session=mock_db_dependencies["db"].session,
                     )
                     mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, mixed_email)
-                    mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
+                    mock_check_permission.assert_called_once_with(
+                        mock_tenant,
+                        mock_inviter,
+                        None,
+                        "add",
+                        session=mock_db_dependencies["db"].session,
+                    )
                     mock_create_member.assert_called_once_with(
                         mock_tenant, mock_new_account, mock_db_dependencies["db"].session, "normal"
                     )
-                    mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
+                    mock_switch_tenant.assert_called_once_with(
+                        mock_new_account, mock_tenant.id, session=mock_db_dependencies["db"].session
+                    )
                     mock_generate_token.assert_called_once_with(
                         mock_tenant, mock_new_account, "normal", requires_setup=True
                     )
@@ -1912,6 +2012,7 @@ class TestRegisterService:
                     language="en-US",
                     role="normal",
                     inviter=mock_inviter,
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 # Verify results
@@ -1954,10 +2055,17 @@ class TestRegisterService:
                     language="en-US",
                     role="admin",
                     inviter=mock_inviter,
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 assert result == "invite-token-123"
-                mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, mock_existing_account, "add")
+                mock_check_permission.assert_called_once_with(
+                    mock_tenant,
+                    mock_inviter,
+                    mock_existing_account,
+                    "add",
+                    session=mock_db_dependencies["db"].session,
+                )
                 mock_create_member.assert_not_called()
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "admin", requires_setup=False
@@ -1993,6 +2101,7 @@ class TestRegisterService:
                 language="en-US",
                 role="normal",
                 inviter=mock_inviter,
+                session=mock_db_dependencies["db"].session,
             )
             mock_lookup.assert_called_once()
 
@@ -2010,6 +2119,7 @@ class TestRegisterService:
             language="en-US",
             role="normal",
             inviter=None,
+            session=MagicMock(),
         )
 
     # ==================== RBAC Member Invitation Tests ====================
@@ -2048,6 +2158,7 @@ class TestRegisterService:
                     language="en-US",
                     role="rbac-role-id-123",
                     inviter=mock_inviter,
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 assert result == "rbac-token"
@@ -2093,6 +2204,7 @@ class TestRegisterService:
                     language="en-US",
                     role="rbac-role-id-456",
                     inviter=mock_inviter,
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 assert result == "rbac-token"
@@ -2141,6 +2253,7 @@ class TestRegisterService:
                         language="en-US",
                         role="rbac-role-id-456",
                         inviter=mock_inviter,
+                        session=mock_db_dependencies["db"].session,
                     )
 
                 mock_create_member.assert_called_once_with(
@@ -2191,6 +2304,7 @@ class TestRegisterService:
                     language="en-US",
                     role="editor",
                     inviter=mock_inviter,
+                    session=mock_db_dependencies["db"].session,
                 )
 
                 assert result == "legacy-token"
@@ -2300,7 +2414,9 @@ class TestRegisterService:
             mock_db_dependencies["db"].session.scalar.side_effect = [mock_tenant, mock_account]
 
             # Execute test
-            result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+            result = RegisterService.get_invitation_if_token_valid(
+                "tenant-456", "test@example.com", "token-123", session=mock_db_dependencies["db"].session
+            )
 
             # Verify results
             assert result is not None
@@ -2314,7 +2430,9 @@ class TestRegisterService:
         mock_redis_dependencies.get.return_value = None
 
         # Execute test
-        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+        result = RegisterService.get_invitation_if_token_valid(
+            "tenant-456", "test@example.com", "token-123", session=MagicMock()
+        )
 
         # Verify results
         assert result is None
@@ -2333,7 +2451,9 @@ class TestRegisterService:
         mock_db_dependencies["db"].session.scalar.return_value = None
 
         # Execute test
-        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+        result = RegisterService.get_invitation_if_token_valid(
+            "tenant-456", "test@example.com", "token-123", session=mock_db_dependencies["db"].session
+        )
 
         # Verify results
         assert result is None
@@ -2357,7 +2477,9 @@ class TestRegisterService:
         mock_db_dependencies["db"].session.scalar.side_effect = [mock_tenant, None]
 
         # Execute test
-        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+        result = RegisterService.get_invitation_if_token_valid(
+            "tenant-456", "test@example.com", "token-123", session=mock_db_dependencies["db"].session
+        )
 
         # Verify results
         assert result is None
@@ -2384,7 +2506,9 @@ class TestRegisterService:
         mock_db_dependencies["db"].session.scalar.side_effect = [mock_tenant, mock_account]
 
         # Execute test
-        result = RegisterService.get_invitation_if_token_valid("tenant-456", "test@example.com", "token-123")
+        result = RegisterService.get_invitation_if_token_valid(
+            "tenant-456", "test@example.com", "token-123", session=mock_db_dependencies["db"].session
+        )
 
         # Verify results
         assert result is None
@@ -2395,22 +2519,28 @@ class TestRegisterService:
         with patch(
             "services.account_service.RegisterService.get_invitation_if_token_valid", return_value=invitation
         ) as mock_get:
-            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+            result = RegisterService.get_invitation_with_case_fallback(
+                "tenant-456", "User@Test.com", "token-123", session=MagicMock()
+            )
 
         assert result == invitation
-        mock_get.assert_called_once_with("tenant-456", "User@Test.com", "token-123")
+        mock_get.assert_called_once_with(
+            "tenant-456", "User@Test.com", "token-123", session=mock_get.call_args.kwargs["session"]
+        )
 
     def test_get_invitation_with_case_fallback_retries_with_lowercase(self):
         """Fallback helper should retry with lowercase email when needed."""
         invitation = {"workspace_id": "tenant-456"}
         with patch("services.account_service.RegisterService.get_invitation_if_token_valid") as mock_get:
             mock_get.side_effect = [None, invitation]
-            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+            result = RegisterService.get_invitation_with_case_fallback(
+                "tenant-456", "User@Test.com", "token-123", session=MagicMock()
+            )
 
         assert result == invitation
         assert mock_get.call_args_list == [
-            (("tenant-456", "User@Test.com", "token-123"),),
-            (("tenant-456", "user@test.com", "token-123"),),
+            (("tenant-456", "User@Test.com", "token-123"), {"session": mock_get.call_args_list[0].kwargs["session"]}),
+            (("tenant-456", "user@test.com", "token-123"), {"session": mock_get.call_args_list[1].kwargs["session"]}),
         ]
 
     # ==================== Helper Method Tests ====================

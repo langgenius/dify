@@ -17,6 +17,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole
 from libs.helper import build_avatar_url, dump_response, to_timestamp
@@ -489,7 +490,7 @@ class WorkflowCommentMentionUsersApi(Resource):
         current_tenant = current_user.current_tenant  # need the tenant object here
         if current_tenant is None:
             raise ValueError("current tenant is required")
-        members = TenantService.get_tenant_members(current_tenant)
+        members = TenantService.get_tenant_members(current_tenant, session=db.session)
         users = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
         response = WorkflowCommentMentionUsersPayload(users=users)
         return response.model_dump(mode="json"), 200
