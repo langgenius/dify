@@ -61,8 +61,7 @@ const ResultText: FC<ResultTextProps> = ({
         <>
           {outputs && (
             <div className="px-4 py-2">
-              {/* Provide isResponding so the inline tagged-<think> ThinkBlock timer ticks
-                  during the run; this run panel (unlike the chat UI) has no ChatContext. */}
+              {/* ThinkBlock's timer reads isResponding from ChatContext, which the run panel otherwise lacks. */}
               <ChatContextProvider chatList={[]} isResponding={!!isRunning}>
                 <Markdown content={outputs} />
               </ChatContextProvider>

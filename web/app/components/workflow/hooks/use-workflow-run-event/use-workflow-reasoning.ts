@@ -15,7 +15,7 @@ export const useWorkflowReasoning = () => {
 
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       const reasoningContent = (draft.reasoningContent ||= {})
-      // key by producing LLM node so the panel can keep multiple nodes' reasoning ordered
+      // key by LLM node so multiple nodes' reasoning stays separated
       const key = node_id || '_'
       if (reasoning)
         reasoningContent[key] = (reasoningContent[key] || '') + reasoning

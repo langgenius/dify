@@ -86,7 +86,7 @@ class ChatCollector implements Collector {
         copyScalar(this.base, c, ['id', 'conversation_id', 'message_id', 'task_id', 'created_at'])
         return
       }
-      // Accumulate out-of-band (separated-mode) reasoning deltas per LLM node.
+      // Accumulate separated-mode reasoning deltas per LLM node.
       case 'reasoning_chunk': {
         const chunk = parseReasoningChunk(c)
         if (chunk !== undefined && chunk.reasoning !== '') {
@@ -109,8 +109,7 @@ class ChatCollector implements Collector {
     const out: Record<string, unknown> = { mode: this.mode, answer: this.answer, ...this.base }
     if (this.metadata !== undefined)
       out.metadata = this.metadata
-    // The server persists terminal reasoning into message_end metadata; fall back
-    // to the live deltas only when that authoritative copy is absent.
+    // Fall back to live deltas only when the server didn't persist reasoning in metadata.
     if (Object.keys(this.reasoning).length > 0 && !hasReasoning(this.metadata))
       out.metadata = { ...(this.metadata ?? {}), reasoning: this.reasoning }
     if (this.isAgent || this.thoughts.length > 0)
@@ -173,8 +172,7 @@ class WorkflowCollector implements Collector {
 
   finalize(): Record<string, unknown> {
     const out: Record<string, unknown> = { mode: RUN_MODES.Workflow, ...(this.final ?? {}) }
-    // Workflow runs carry no persisted reasoning metadata — the live deltas are
-    // the only source — so surface them under metadata.reasoning like chat does.
+    // Workflow runs don't persist reasoning; surface live deltas under metadata.reasoning.
     if (Object.keys(this.reasoning).length > 0) {
       const existing = (out.metadata !== null && typeof out.metadata === 'object' && !Array.isArray(out.metadata))
         ? out.metadata as Record<string, unknown>

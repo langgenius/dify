@@ -1,9 +1,5 @@
-// Out-of-band reasoning ("separated" mode). When an LLM node sets
-// reasoning_format=separated, the server keeps the answer stream free of
-// <think> blocks and streams the chain-of-thought on its own `reasoning_chunk`
-// SSE channel instead. This module renders that channel to stderr so --think
-// looks identical whether reasoning arrives inline (tagged) or out-of-band
-// (separated) — see think-filter.ts for the inline counterpart.
+// Renders "separated"-mode reasoning (streamed on its own `reasoning_chunk` SSE
+// channel) to stderr, so --think matches inline <think> (see think-filter.ts).
 
 const THINK_OPEN = '<think>'
 const THINK_CLOSE = '</think>'
@@ -14,9 +10,7 @@ export type ReasoningChunk = {
   isFinal: boolean
 }
 
-// A `reasoning_chunk` event nests its payload under `data` (unlike `message`
-// events, whose `answer` sits at the top level). Returns undefined when the
-// event carries no reasoning payload.
+// reasoning_chunk nests its payload under `data` (not top-level like `message`).
 export function parseReasoningChunk(parsed: Record<string, unknown>): ReasoningChunk | undefined {
   const data = parsed.data
   if (data === null || typeof data !== 'object' || Array.isArray(data))
@@ -29,10 +23,8 @@ export function parseReasoningChunk(parsed: Record<string, unknown>): ReasoningC
   }
 }
 
-// Incrementally frames a separated reasoning stream into stderr the same way
-// ThinkChunkFilter frames inline <think> blocks: `<think>\n` on the first delta,
-// raw deltas thereafter, `</think>\n` on the terminal marker. Each LLM node's
-// stream ends with is_final, so multiple nodes produce separate framed blocks.
+// Frames a live reasoning stream into stderr: <think> on the first delta,
+// raw deltas thereafter, </think> on is_final.
 export class ReasoningChunkRenderer {
   private open = false
 
@@ -48,7 +40,7 @@ export class ReasoningChunkRenderer {
       this.close(errOut)
   }
 
-  // Close a block left open by a truncated stream (no terminal marker arrived).
+  // Close a block left open by a truncated stream.
   flush(errOut: NodeJS.WritableStream): void {
     this.close(errOut)
   }
@@ -61,8 +53,7 @@ export class ReasoningChunkRenderer {
   }
 }
 
-// Renders fully-buffered reasoning (one entry per LLM node id, as persisted in
-// message_end metadata) into <think>-framed blocks, mirroring extractThinkBlocks.
+// Frames fully-buffered reasoning (one entry per LLM node id) into <think> blocks.
 export function formatReasoningBlocks(reasoning: Record<string, string>): string {
   const blocks: string[] = []
   for (const text of Object.values(reasoning)) {
@@ -73,9 +64,7 @@ export function formatReasoningBlocks(reasoning: Record<string, string>): string
   return blocks.join('\n---\n')
 }
 
-// Pulls per-node reasoning out of a message_end `metadata` object and frames it.
-// Returns '' when metadata carries no (non-empty) reasoning — e.g. tagged mode,
-// where the server sends `reasoning: {}`.
+// Frames per-node reasoning from a message_end `metadata` object; '' when absent.
 export function reasoningBlocksFromMetadata(metadata: unknown): string {
   if (metadata === null || typeof metadata !== 'object' || Array.isArray(metadata))
     return ''

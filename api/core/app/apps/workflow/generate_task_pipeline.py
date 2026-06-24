@@ -576,13 +576,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_reasoning_chunk_event(
         self, event: QueueReasoningChunkEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
-        """Handle out-of-band reasoning chunk events.
-
-        Pure emit: reasoning is streamed on its own channel and never written to the
-        workflow output. The terminal marker (is_final) may carry an empty reasoning
-        string, in which case it is still forwarded as the "thinking finished" signal.
-        Workflow runs have no message id, so it is omitted from the response.
-        """
+        """Handle reasoning chunk events."""
+        # is_final with empty reasoning is still forwarded as the "thinking finished" signal
         if not event.reasoning and not event.is_final:
             return
         yield ReasoningChunkStreamResponse(

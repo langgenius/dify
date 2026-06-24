@@ -11,9 +11,9 @@ type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
   resultText?: string
   resultTextSelectorKey?: string
-  // separated-mode LLM reasoning deltas accumulated per LLM node id (live preview only)
+  // separated-mode reasoning deltas per LLM node id (live preview only)
   reasoningContent?: Record<string, string>
-  // true once a terminal reasoning marker arrived (latches the thinking timer)
+  // true once the terminal reasoning marker arrived
   reasoningFinished?: boolean
   // human input form schema or data cached when node is in 'Paused' status
   extraContentAndFormData?: Record<string, unknown>

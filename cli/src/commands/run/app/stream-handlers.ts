@@ -66,8 +66,7 @@ class ChatStreamPrinter implements StreamPrinter {
           this.convoId = c.conversation_id
         return
       }
-      // Separated-mode reasoning: stream the out-of-band chain-of-thought to
-      // stderr under --think, mirroring how inline <think> blocks are surfaced.
+      // Stream separated-mode reasoning to stderr under --think.
       case 'reasoning_chunk': {
         if (!this.think)
           return
@@ -140,8 +139,7 @@ class WorkflowStreamPrinter implements StreamPrinter {
           errOut.write(`→ ${title}\n`)
         return
       }
-      // Separated-mode reasoning per LLM node: stream to stderr under --think.
-      // The preceding `→ <title>` line attributes which node it belongs to.
+      // Stream separated-mode reasoning to stderr under --think; the prior → title attributes the node.
       case 'reasoning_chunk': {
         if (!this.think)
           return

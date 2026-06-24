@@ -100,9 +100,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
       }
     }
 
-    // Separated-mode reasoning rides in message_end metadata, not the answer, so
-    // surface it to stderr under --think the same way inline <think> is above. It
-    // stays in the JSON envelope's metadata (the server's persisted copy).
+    // Surface separated-mode reasoning (carried in message_end metadata) to stderr under --think.
     if (ctx.think) {
       const reasoningBlocks = reasoningBlocksFromMetadata(processedResp.metadata)
       if (reasoningBlocks !== '')
