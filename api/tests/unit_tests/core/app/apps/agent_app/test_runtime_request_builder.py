@@ -144,6 +144,22 @@ class TestAgentAppRuntimeRequestBuilder:
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
 
+    def test_build_normalizes_marketplace_model_plugin_id(self):
+        soul = _soul_with_model()
+        soul.model.plugin_id = (
+            "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468"
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
+        assert llm.config.plugin_id == "langgenius/openai"
+        assert llm.config.model_provider == "openai"
+
     def test_build_maps_agent_soul_knowledge_to_knowledge_layer(self):
         soul = AgentSoulConfig.model_validate(
             {

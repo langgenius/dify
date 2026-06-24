@@ -9,17 +9,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useSetAtom } from 'jotai'
+import { useQueryClient } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DeleteDeploymentDialog } from './delete-dialog'
 import { EditDeploymentDialog } from './edit-dialog'
 import {
-  deleteDeploymentDialogOpenAtom,
-  deploymentActionAppInstanceIdHydrationAtom,
+  deploymentActionAppInstanceIdAtom,
+  deploymentActionAppInstanceQueryOptionsAtom,
   deploymentActionsLocalAtoms,
-  editDeploymentDialogOpenAtom,
+  openDeleteDeploymentDialogAtom,
+  openEditDeploymentDialogAtom,
 } from './state'
 
 const ACTION_TRIGGER_CLASS_NAME = cn(
@@ -36,37 +37,34 @@ type DeploymentActionsMenuProps = {
   sideOffset?: ComponentProps<typeof DropdownMenuContent>['sideOffset']
 }
 
-type DeploymentActionsMenuContentProps = Omit<DeploymentActionsMenuProps, 'appInstanceId'>
-
 function DeploymentActionsMenuContent({
   className,
   triggerClassName,
   placement,
   sideOffset,
-}: DeploymentActionsMenuContentProps) {
+}: Omit<DeploymentActionsMenuProps, 'appInstanceId'>) {
   const { t } = useTranslation('deployments')
-  const setEditOpen = useSetAtom(editDeploymentDialogOpenAtom)
-  const setDeleteOpen = useSetAtom(deleteDeploymentDialogOpenAtom)
-  const [menuOpen, setMenuOpen] = useState(false)
+  const queryClient = useQueryClient()
+  const appInstanceQueryOptions = useAtomValue(deploymentActionAppInstanceQueryOptionsAtom)
+  const openEditDialog = useSetAtom(openEditDeploymentDialogAtom)
+  const openDeleteDialog = useSetAtom(openDeleteDeploymentDialogAtom)
 
-  function openEditDialog() {
-    setMenuOpen(false)
-    setEditOpen(true)
-  }
-
-  function openDeleteDialog() {
-    setMenuOpen(false)
-    setDeleteOpen(true)
+  function handleMenuOpenChange(open: boolean) {
+    if (open)
+      void queryClient.prefetchQuery(appInstanceQueryOptions)
   }
 
   return (
     <div
       role="presentation"
-      className={cn(className, menuOpen && 'pointer-events-auto opacity-100')}
+      className={cn(
+        className,
+        '[&:has([data-popup-open])]:pointer-events-auto [&:has([data-popup-open])]:opacity-100',
+      )}
       onClick={event => event.stopPropagation()}
       onKeyDown={event => event.stopPropagation()}
     >
-      <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenu modal={false} onOpenChange={handleMenuOpenChange}>
         <DropdownMenuTrigger
           aria-label={t('card.moreActions')}
           className={cn(ACTION_TRIGGER_CLASS_NAME, triggerClassName)}
@@ -89,7 +87,6 @@ function DeploymentActionsMenuContent({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
       <EditDeploymentDialog />
       <DeleteDeploymentDialog />
     </div>
@@ -104,7 +101,7 @@ export function DeploymentActionsMenu({
     <ScopeProvider
       key={appInstanceId}
       atoms={[
-        [deploymentActionAppInstanceIdHydrationAtom, appInstanceId],
+        [deploymentActionAppInstanceIdAtom, appInstanceId],
         ...deploymentActionsLocalAtoms,
       ]}
       name="DeploymentActionsMenu"

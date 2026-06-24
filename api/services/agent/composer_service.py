@@ -8,6 +8,7 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from extensions.ext_database import db
 from libs.helper import to_timestamp
+from models import Account
 from models.agent import (
     Agent,
     AgentConfigRevision,
@@ -40,6 +41,8 @@ from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
     list_missing_tenant_knowledge_dataset_ids,
 )
+from services.agent.roster_service import AgentRosterService
+from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerCandidatesResponse,
@@ -988,6 +991,14 @@ class AgentComposerService:
             operation=AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             version_note=payload.version_note,
         )
+        cls._copy_agent_drive_rows(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            target_agent_id=roster_agent.id,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            node_job=payload.node_job or WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
+        )
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = roster_agent.id
         binding.current_snapshot_id = roster_agent.active_config_snapshot_id
@@ -1153,30 +1164,36 @@ class AgentComposerService:
         icon: str | None = None,
         icon_background: str | None = None,
     ) -> Agent:
-        agent = Agent(
-            tenant_id=tenant_id,
-            name=name,
-            description=description,
-            role=role,
-            icon_type=icon_type,
-            icon=icon,
-            icon_background=icon_background,
-            agent_kind=AgentKind.DIFY_AGENT,
-            scope=AgentScope.ROSTER,
-            source=AgentSource.WORKFLOW,
-            status=AgentStatus.ACTIVE,
-            created_by=account_id,
-            updated_by=account_id,
-        )
-        db.session.add(agent)
+        account = cls._require_account(account_id=account_id)
         try:
-            db.session.flush()
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(
+                    name=name,
+                    description=description,
+                    mode="agent",
+                    agent_role=role,
+                    icon_type=icon_type.value if isinstance(icon_type, AgentIconType) else icon_type,
+                    icon=icon,
+                    icon_background=icon_background,
+                ),
+                account,
+            )
         except IntegrityError as exc:
             db.session.rollback()
             raise AgentNameConflictError() from exc
-        version = cls._create_config_version(
+
+        agent = AgentRosterService(db.session).get_app_backing_agent(tenant_id=tenant_id, app_id=app.id)
+        if agent is None:
+            raise AgentNotFoundError()
+
+        current_snapshot = cls._require_version(
             tenant_id=tenant_id,
             agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        version = cls._update_current_version(
+            current_snapshot=current_snapshot,
             account_id=account_id,
             agent_soul=agent_soul,
             operation=operation,
@@ -1184,6 +1201,7 @@ class AgentComposerService:
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.updated_by = account_id
         return agent
 
     @classmethod
@@ -1311,6 +1329,13 @@ class AgentComposerService:
         if not agent:
             raise AgentNotFoundError()
         return agent
+
+    @classmethod
+    def _require_account(cls, *, account_id: str) -> Account:
+        account = db.session.get(Account, account_id)
+        if not account:
+            raise ValueError("Account not found")
+        return account
 
     @classmethod
     def _get_agent_if_present(cls, *, tenant_id: str, agent_id: str | None) -> Agent | None:
