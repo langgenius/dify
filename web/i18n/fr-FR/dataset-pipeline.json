@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Cette action est permanente. Vous ne pourrez pas revenir à la méthode précédente. Veuillez confirmer la conversion.",
   "conversion.confirm.title": "Confirmation",
   "conversion.descriptionChunk1": "Vous pouvez désormais convertir votre base de connaissances existante pour utiliser le pipeline de connaissances pour le traitement des documents",
-  "conversion.descriptionChunk2": "— une approche plus ouverte et plus flexible avec un accès aux plugins de notre Marketplace. Cela appliquera la nouvelle méthode de traitement à tous les documents futurs.",
+  "conversion.descriptionChunk2": " — une approche plus ouverte et plus flexible avec un accès aux plugins du Marketplace. Cela appliquera la nouvelle méthode de traitement à tous les documents futurs.",
   "conversion.errorMessage": "Échec de la conversion du jeu de données en pipeline",
   "conversion.successMessage": "Conversion réussie du jeu de données en pipeline",
   "conversion.title": "Convertir vers le pipeline de connaissances",

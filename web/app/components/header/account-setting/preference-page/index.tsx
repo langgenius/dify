@@ -33,7 +33,7 @@ const isThemeOption = (value: string): value is ThemeOption => {
   return (themes as readonly string[]).includes(value)
 }
 
-export default function LanguagePage() {
+export default function PreferencePage() {
   const locale = useLocale()
   const { userProfile, mutateUserProfile } = useAppContext()
   const [editing, setEditing] = useState(false)
