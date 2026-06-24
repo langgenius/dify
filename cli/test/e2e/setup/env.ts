@@ -124,7 +124,6 @@ export type E2ECapabilities = {
   hitlExternalAppId: string
   hitlSingleActionAppId: string
   hitlMultiNodeAppId: string
-  reasoningAppId: string
   ws2AppId: string
 }
 
@@ -214,7 +213,6 @@ export function resolveEnv(caps: E2ECapabilities | undefined): E2EEnv {
     hitlExternalAppId: caps.hitlExternalAppId || env.hitlExternalAppId,
     hitlSingleActionAppId: caps.hitlSingleActionAppId || env.hitlSingleActionAppId,
     hitlMultiNodeAppId: caps.hitlMultiNodeAppId || env.hitlMultiNodeAppId,
-    reasoningAppId: caps.reasoningAppId || env.reasoningAppId,
     ws2AppId: caps.ws2AppId || env.ws2AppId,
   }
 }
