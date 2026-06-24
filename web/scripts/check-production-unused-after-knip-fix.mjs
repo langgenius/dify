@@ -2,13 +2,6 @@ import { spawn } from 'node:child_process'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const UNUSED_RULES = new Set([
-  'unused-imports/no-unused-vars',
-  'unused-imports/no-unused-imports',
-  '@typescript-eslint/no-unused-vars',
-  'no-unused-vars',
-])
-
 const scriptDir = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(scriptDir, '../..')
 const webDir = path.join(repoRoot, 'web')
@@ -34,16 +27,20 @@ function run(command, args, options = {}) {
   })
 }
 
-function parseEslintJson(stdout) {
-  if (!stdout.trim())
-    return []
+function parseVpLintJson(stdout) {
+  const jsonStart = stdout.indexOf('{')
+  if (jsonStart === -1)
+    return { diagnostics: [] }
 
-  return JSON.parse(stdout)
+  return JSON.parse(stdout.slice(jsonStart))
 }
 
-function relativeMessage(file, message) {
-  const filePath = path.relative(repoRoot, file.filePath)
-  return `${filePath}:${message.line}:${message.column} ${message.ruleId} ${message.message}`
+function relativeDiagnostic(diagnostic) {
+  const label = diagnostic.labels?.[0]
+  const filePath = label?.file ? path.relative(webDir, path.join(webDir, label.file)) : '<unknown>'
+  const span = label?.span ? `:${label.span.line}:${label.span.column}` : ''
+
+  return `${filePath}${span} ${diagnostic.code ?? ''} ${diagnostic.message ?? ''}`.trim()
 }
 
 async function ensureCleanWorktree() {
@@ -79,9 +76,8 @@ async function restoreWorktree() {
 }
 
 const knip = path.join(webDir, 'node_modules', '.bin', commandName('knip'))
-const eslint = path.join(repoRoot, 'node_modules', '.bin', commandName('eslint'))
+const vp = path.join(repoRoot, 'node_modules', '.bin', commandName('vp'))
 let shouldRestore = false
-let hasFatalMessages = false
 let hasUnusedMessages = false
 
 try {
@@ -96,55 +92,45 @@ try {
     throw new Error('knip --production --fix failed.')
   }
 
-  console.log('Running ESLint unused checks after knip --fix...')
-  const eslintResult = await run(eslint, [
-    '--cache',
-    '--concurrency=auto',
-    '--quiet',
+  console.log('Running Vite+ unused checks after knip --fix...')
+  const lintResult = await run(vp, [
+    'lint',
+    '-A',
+    'all',
+    '-D',
+    'no-unused-vars',
     '--format',
     'json',
-    '--pass-on-unpruned-suppressions',
-    'web',
-  ], { cwd: repoRoot })
+    '--ignore-pattern',
+    'public/**',
+    '--ignore-pattern',
+    'coverage/**',
+    '--ignore-pattern',
+    '.next/**',
+    '--ignore-pattern',
+    '**/__tests__/**',
+    '--ignore-pattern',
+    '**/*.spec.ts',
+    '--ignore-pattern',
+    '**/*.spec.tsx',
+    '--ignore-pattern',
+    '**/*.test.ts',
+    '--ignore-pattern',
+    '**/*.test.tsx',
+    '.',
+  ], { cwd: webDir })
 
-  let eslintOutput
+  let lintOutput
   try {
-    eslintOutput = parseEslintJson(eslintResult.stdout)
+    lintOutput = parseVpLintJson(lintResult.stdout)
   }
   catch {
-    process.stdout.write(eslintResult.stdout)
-    process.stderr.write(eslintResult.stderr)
-    throw new Error('Failed to parse ESLint JSON output.')
+    process.stdout.write(lintResult.stdout)
+    process.stderr.write(lintResult.stderr)
+    throw new Error('Failed to parse Vite+ lint JSON output.')
   }
 
-  const fatalMessages = []
-  const unusedMessages = []
-  const otherMessages = []
-  for (const file of eslintOutput) {
-    for (const message of file.messages ?? []) {
-      if (message.fatal)
-        fatalMessages.push(relativeMessage(file, message))
-      else if (UNUSED_RULES.has(message.ruleId))
-        unusedMessages.push(relativeMessage(file, message))
-      else
-        otherMessages.push(relativeMessage(file, message))
-    }
-  }
-
-  if (fatalMessages.length > 0) {
-    hasFatalMessages = true
-    console.error('ESLint reported fatal errors after knip --fix.')
-    for (const message of fatalMessages)
-      console.error(message)
-  }
-
-  if (otherMessages.length > 0) {
-    console.warn(`Ignoring ${otherMessages.length} non-unused ESLint message(s) produced after knip --fix.`)
-    for (const message of otherMessages.slice(0, 20))
-      console.warn(message)
-    if (otherMessages.length > 20)
-      console.warn(`...and ${otherMessages.length - 20} more.`)
-  }
+  const unusedMessages = (lintOutput.diagnostics ?? []).map(relativeDiagnostic)
 
   if (unusedMessages.length > 0) {
     hasUnusedMessages = true
@@ -154,7 +140,7 @@ try {
       console.error(message)
   }
   else {
-    console.log('No ESLint unused declarations remain after knip --production --fix.')
+    console.log('No Vite+ unused declarations remain after knip --production --fix.')
   }
 }
 finally {
@@ -164,5 +150,5 @@ finally {
   }
 }
 
-if (hasFatalMessages || hasUnusedMessages)
+if (hasUnusedMessages)
   process.exit(1)
