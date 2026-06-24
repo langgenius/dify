@@ -10,6 +10,7 @@ import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Loading from '@/app/components/base/loading'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import List from '@/app/components/plugins/marketplace/list'
 import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -35,6 +36,7 @@ const Marketplace = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const router = useRouter()
+  const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const {
     isLoading,
     marketplaceCollections,
@@ -127,7 +129,7 @@ const Marketplace = ({
                 marketplaceCollections={marketplaceCollections || []}
                 marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
                 plugins={plugins}
-                showInstallButton
+                showInstallButton={canInstallPlugin}
                 cardContainerClassName={cardContainerClassName}
                 onCollectionMoreClick={handleCollectionMoreClick}
               />
