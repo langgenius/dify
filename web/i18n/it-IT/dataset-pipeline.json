@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Questa azione è permanente. Non sarà possibile ripristinare il metodo precedente. Si prega di confermare per convertire.",
   "conversion.confirm.title": "Conferma",
   "conversion.descriptionChunk1": "Ora puoi convertire la tua knowledge base esistente per utilizzare la Knowledge Pipeline per l'elaborazione dei documenti",
-  "conversion.descriptionChunk2": "— un approccio più aperto e flessibile con l'accesso ai plugin dal nostro marketplace. In questo modo il nuovo metodo di elaborazione verrà applicato a tutti i documenti futuri.",
+  "conversion.descriptionChunk2": " — un approccio più aperto e flessibile con l'accesso alle integrazioni dal Marketplace. In questo modo il nuovo metodo di elaborazione verrà applicato a tutti i documenti futuri.",
   "conversion.errorMessage": "Impossibile convertire il set di dati in una pipeline",
   "conversion.successMessage": "Conversione del set di dati in pipeline",
   "conversion.title": "Conversione in pipeline di conoscenza",
