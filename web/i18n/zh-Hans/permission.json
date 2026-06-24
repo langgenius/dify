@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "查看此权限集的名称、描述和授予的权限。",
   "permissionSet.modal.view.dataset.title": "查看知识库权限集",
   "permissionSet.nameLabel": "权限集名称",
-  "permissionSet.namePlaceholder": "例如：可导出 DSL",
+  "permissionSet.namePlaceholder": "例如：运维权限集合",
   "permissionSet.permissions": "权限",
   "role.addRole": "创建角色",
   "role.copyMembersDescription_one": "“{{name}}”已分配给 {{count}} 个成员。是否让新角色副本包含相同成员？",

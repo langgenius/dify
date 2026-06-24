@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Oglejte si ime, opis in dovoljenja, podeljena za ta nabor dovoljenj.",
   "permissionSet.modal.view.dataset.title": "Ogled nabora dovoljenj za bazo znanja",
   "permissionSet.nameLabel": "Ime nabora dovoljenj",
-  "permissionSet.namePlaceholder": "npr. Lahko izvozi DSL",
+  "permissionSet.namePlaceholder": "npr. Nabor dovoljenj za operacije",
   "permissionSet.permissions": "Dovoljenja",
   "role.addRole": "Ustvari vloge",
   "role.copyMembersDescription_one": "\"{{name}}\" je dodeljen {{count}} članu. Ali želite, da nova kopija vloge vključuje istega člana?",

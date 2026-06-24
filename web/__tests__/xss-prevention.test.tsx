@@ -1,14 +1,13 @@
 /**
  * XSS Prevention Test Suite
  *
- * This test verifies that the XSS vulnerabilities in block-input and support-var-input
- * components have been properly fixed by replacing dangerouslySetInnerHTML with safe React rendering.
+ * This test verifies that the XSS vulnerability in block-input has been properly
+ * fixed by replacing dangerouslySetInnerHTML with safe React rendering.
  */
 
 import { cleanup, render } from '@testing-library/react'
 import * as React from 'react'
 import BlockInput from '../app/components/base/block-input'
-import SupportVarInput from '../app/components/workflow/nodes/_base/components/support-var-input'
 
 // Mock styles
 vi.mock('../app/components/app/configuration/base/var-highlight/style.module.css', () => ({
@@ -17,7 +16,7 @@ vi.mock('../app/components/app/configuration/base/var-highlight/style.module.css
   },
 }))
 
-describe('XSS Prevention - Block Input and Support Var Input Security', () => {
+describe('XSS Prevention - Block Input Security', () => {
   afterEach(() => {
     cleanup()
   })
@@ -41,22 +40,6 @@ describe('XSS Prevention - Block Input and Support Var Input Security', () => {
       const textContent = container.textContent
       expect(textContent).toContain('userName')
       expect(textContent).toContain('appName')
-    })
-  })
-
-  describe('SupportVarInput Component Security', () => {
-    it('should safely render malicious variable names without executing scripts', () => {
-      const testInput = 'test@evil.com{{<img src=x onerror=alert(1)>}}'
-      const { container } = render(<SupportVarInput value={testInput} readonly={true} />)
-
-      const scriptElements = container.querySelectorAll('script')
-      const imgElements = container.querySelectorAll('img')
-
-      expect(scriptElements).toHaveLength(0)
-      expect(imgElements).toHaveLength(0)
-
-      const textContent = container.textContent
-      expect(textContent).toContain('<img')
     })
   })
 

@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Visualizza il nome, la descrizione e i permessi concessi per questo set di permessi.",
   "permissionSet.modal.view.dataset.title": "Visualizza set di permessi per knowledge base",
   "permissionSet.nameLabel": "Nome del set di permessi",
-  "permissionSet.namePlaceholder": "es. Può esportare DSL",
+  "permissionSet.namePlaceholder": "es. Set di autorizzazioni operative",
   "permissionSet.permissions": "Permessi",
   "role.addRole": "Crea ruoli",
   "role.copyMembersDescription_one": "\"{{name}}\" è assegnato a {{count}} membro. Vuoi che la copia del nuovo ruolo includa lo stesso membro?",
