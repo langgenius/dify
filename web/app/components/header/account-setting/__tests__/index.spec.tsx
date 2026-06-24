@@ -257,6 +257,17 @@ describe('AccountSetting', () => {
       expect(screen.getByText('common.settings.dataSource'))!.toBeInTheDocument()
     })
 
+    it('should normalize legacy language tab entries to preferences', () => {
+      // Act
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.LANGUAGE })
+
+      // Assert
+      const preferencesButton = screen.getByRole('button', { name: 'common.settings.preferences' })
+      expect(preferencesButton.querySelector('.i-ri-equalizer-2-fill')).toBeInTheDocument()
+      expect(screen.getByText('common.account.general')).toBeInTheDocument()
+      expect(screen.getByText('common.account.appearanceLabel')).toBeInTheDocument()
+    })
+
     it('should hide sidebar labels on mobile', () => {
       // Arrange
       vi.mocked(useBreakpoints).mockReturnValue(MediaType.mobile)
