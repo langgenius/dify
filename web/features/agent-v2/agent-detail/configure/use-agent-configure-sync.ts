@@ -73,16 +73,24 @@ export function useAgentConfigureSync({
     const composerMutation = saveStrategy === 'save_as_new_version'
       ? publishComposerMutation
       : saveComposerMutation
-    const composerState = await composerMutation.mutateAsync({
-      params: {
-        agent_id: agentId,
-      },
-      body: {
-        variant: 'agent_app',
-        save_strategy: saveStrategy,
-        agent_soul: configSnapshot,
-      },
-    })
+    let composerState: Awaited<ReturnType<typeof composerMutation.mutateAsync>>
+
+    try {
+      composerState = await composerMutation.mutateAsync({
+        params: {
+          agent_id: agentId,
+        },
+        body: {
+          variant: 'agent_app',
+          save_strategy: saveStrategy,
+          agent_soul: configSnapshot,
+        },
+      })
+    }
+    catch {
+      // Draft sync follows workflow autosave behavior: save failures are silent and keep the local draft intact.
+      return
+    }
 
     if (saveStrategy === 'save_to_current_version') {
       setOriginalDraft(agentSoulConfigToFormState(configSnapshot))
