@@ -73,7 +73,11 @@ class MCPAppApi(Resource):
         header_value = request.headers.get("MCP-Protocol-Version")
         protocol_version = negotiate_protocol_version(header_value, is_initialize)
         if protocol_version is None:
-            return self._protocol_version_error_response(request_id, header_value)
+            # A notification never receives a response, even with an unsupported header.
+            if isinstance(mcp_request, mcp_types.ClientNotification):
+                protocol_version = mcp_types.DEFAULT_NEGOTIATED_VERSION
+            else:
+                return self._protocol_version_error_response(request_id, header_value)
 
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             # Get MCP server and app
