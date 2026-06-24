@@ -1,11 +1,13 @@
 'use client'
 
-import type { AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppDetailWithSite, AgentIconType, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
+import { consoleQuery } from '@/service/client'
 import { AgentOrchestratePanel } from './components/orchestrate'
 import { AgentBuildChat } from './components/preview/build-chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
@@ -20,6 +22,15 @@ type AgentConfigurePageProps = {
 }
 
 type AgentConfigureRightPanelMode = 'build' | 'preview'
+type AgentConfigureConversationIds = Record<AgentConfigureRightPanelMode, string | null>
+type DebugConversationRefreshInput = {
+  params: {
+    agent_id: string
+  }
+  body: {
+    debug_conversation_id: string
+  }
+}
 
 export function AgentConfigurePage({
   agentId,
@@ -71,6 +82,7 @@ function AgentConfigurePageLoadedContent({
   onSelectVersion: (versionId: string | null) => void
 }) {
   const { t } = useTranslation('agentV2')
+  const queryClient = useQueryClient()
   const [showChatFeatures, setShowChatFeatures] = useState(false)
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
@@ -86,6 +98,57 @@ function AgentConfigurePageLoadedContent({
   } = configureData
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
   const isViewingVersion = !!selectedVersionId
+  const [conversationIds, setConversationIds] = useState<AgentConfigureConversationIds>({
+    build: agentQuery.data?.debug_conversation_id ?? null,
+    preview: null,
+  })
+  const rightPanelChatMode: AgentConfigureRightPanelMode = rightPanelMode === 'preview' ? 'build' : rightPanelMode
+  const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+    onSuccess: ({ debug_conversation_id }) => {
+      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+        (agentDetail) => {
+          if (!agentDetail)
+            return agentDetail
+
+          return {
+            ...agentDetail,
+            debug_conversation_id,
+          }
+        },
+      )
+    },
+  }))
+  const refreshDebugConversation = (conversationId: string) => {
+    const input: DebugConversationRefreshInput = {
+      params: {
+        agent_id: agentId,
+      },
+      body: {
+        debug_conversation_id: conversationId,
+      },
+    }
+
+    refreshDebugConversationMutation.mutate(
+      input as unknown as Parameters<typeof refreshDebugConversationMutation.mutate>[0],
+    )
+  }
+  const updateConversationId = (mode: AgentConfigureRightPanelMode, conversationId: string) => {
+    setConversationIds(current => ({
+      ...current,
+      [mode]: conversationId,
+    }))
+  }
+  const restartCurrentChat = () => {
+    if (rightPanelChatMode === 'build')
+      refreshDebugConversation(conversationIds.build ?? '')
+
+    setConversationIds(current => ({
+      ...current,
+      [rightPanelChatMode]: null,
+    }))
+    setClearPreviewChat(true)
+  }
 
   useHydrateAgentSoulConfigDraft({
     agentId,
@@ -137,13 +200,14 @@ function AgentConfigurePageLoadedContent({
       <div className="flex min-w-105 flex-1 gap-1 overflow-hidden">
         <div className="flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
           <AgentPreviewHeader
-            agentId={agentId}
-            mode={rightPanelMode}
+            mode={rightPanelChatMode}
+            previewEnabled={false}
             isChatFeaturesOpen={showChatFeatures}
             onModeChange={setRightPanelMode}
             onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
             onOpenVersions={() => setShowPreviewVersions(true)}
-            onRestart={() => setClearPreviewChat(true)}
+            onRefresh={restartCurrentChat}
+            refreshDisabled={refreshDebugConversationMutation.isPending}
           />
 
           <div className="min-h-0 flex-1">
@@ -155,9 +219,10 @@ function AgentConfigurePageLoadedContent({
               agentName={agentQuery.data?.name}
               agentSoulConfig={agentSoulConfig}
               clearChatList={clearPreviewChat}
-              debugConversationId={agentQuery.data?.debug_conversation_id}
-              mode={rightPanelMode}
+              conversationIds={conversationIds}
+              mode={rightPanelChatMode}
               onClearChatListChange={setClearPreviewChat}
+              onConversationIdChange={updateConversationId}
               onSaveDraftBeforeRun={saveDraft}
             />
           </div>
@@ -184,25 +249,37 @@ function AgentConfigurePageLoadedContent({
 
 function AgentRightPanelChatWithDraftConfig({
   agentSoulConfig,
+  conversationIds,
   mode,
+  onConversationIdChange,
   ...props
-}: Omit<Parameters<typeof AgentPreviewChat>[0], 'agentSoulConfig'> & {
+}: Omit<Parameters<typeof AgentPreviewChat>[0], 'agentSoulConfig' | 'conversationId' | 'onConversationIdChange'> & {
   agentSoulConfig?: AgentSoulConfig
+  conversationIds: AgentConfigureConversationIds
   mode: AgentConfigureRightPanelMode
+  onConversationIdChange: (mode: AgentConfigureRightPanelMode, conversationId: string) => void
 }) {
   const previewAgentSoulConfig = useAgentPreviewSoulConfig(agentSoulConfig)
+  const conversationId = conversationIds[mode]
+  const handleConversationIdChange = (newConversationId: string) => {
+    onConversationIdChange(mode, newConversationId)
+  }
 
   return mode === 'build'
     ? (
         <AgentBuildChat
           {...props}
+          conversationId={conversationId}
           agentSoulConfig={previewAgentSoulConfig}
+          onConversationIdChange={handleConversationIdChange}
         />
       )
     : (
         <AgentPreviewChat
           {...props}
+          conversationId={conversationId}
           agentSoulConfig={previewAgentSoulConfig}
+          onConversationIdChange={handleConversationIdChange}
         />
       )
 }

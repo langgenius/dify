@@ -167,7 +167,7 @@ describe('AgentPreviewChat', () => {
     })
 
     renderPreviewChat({
-      debugConversationId: 'debug-conversation-1',
+      conversationId: 'debug-conversation-1',
     })
 
     await waitFor(() => expect(useChatMock).toHaveBeenCalled())

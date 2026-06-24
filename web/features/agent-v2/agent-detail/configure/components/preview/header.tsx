@@ -1,50 +1,29 @@
-'use client'
-
-import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
 
 type AgentConfigureRightPanelMode = 'build' | 'preview'
 
 export function AgentPreviewHeader({
-  agentId,
   mode,
+  previewEnabled,
   isChatFeaturesOpen,
   onModeChange,
   onToggleChatFeatures,
   onOpenVersions,
-  onRestart,
+  onRefresh,
+  refreshDisabled,
 }: {
-  agentId: string
   mode: AgentConfigureRightPanelMode
+  previewEnabled: boolean
   isChatFeaturesOpen: boolean
   onModeChange: (mode: AgentConfigureRightPanelMode) => void
   onToggleChatFeatures: () => void
   onOpenVersions: () => void
-  onRestart: () => void
+  onRefresh: () => void
+  refreshDisabled?: boolean
 }) {
   const { t } = useTranslation('agentV2')
-  const queryClient = useQueryClient()
-  const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
-    onSuccess: ({ debug_conversation_id }) => {
-      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-        (agentDetail) => {
-          if (!agentDetail)
-            return agentDetail
-
-          return {
-            ...agentDetail,
-            debug_conversation_id,
-          }
-        },
-      )
-      onRestart()
-    },
-  }))
 
   return (
     <div className="flex h-12 shrink-0 items-center gap-3 py-2 pr-3 pl-4">
@@ -53,7 +32,7 @@ export function AgentPreviewHeader({
           value={[mode]}
           onValueChange={(value) => {
             const nextMode = value[0]
-            if (nextMode)
+            if (nextMode && (nextMode !== 'preview' || previewEnabled))
               onModeChange(nextMode)
           }}
           aria-label={t('agentDetail.configure.rightPanel.modeLabel')}
@@ -62,7 +41,11 @@ export function AgentPreviewHeader({
             <span aria-hidden className="i-ri-hammer-line size-4" />
             {t('agentDetail.configure.rightPanel.build')}
           </SegmentedControlItem>
-          <SegmentedControlItem<AgentConfigureRightPanelMode> value="preview" className="uppercase">
+          <SegmentedControlItem<AgentConfigureRightPanelMode>
+            value="preview"
+            disabled={!previewEnabled}
+            className="uppercase"
+          >
             <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
             {t('agentDetail.configure.rightPanel.preview')}
           </SegmentedControlItem>
@@ -72,12 +55,8 @@ export function AgentPreviewHeader({
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
-          onClick={() => refreshDebugConversationMutation.mutate({
-            params: {
-              agent_id: agentId,
-            },
-          })}
-          disabled={refreshDebugConversationMutation.isPending}
+          onClick={onRefresh}
+          disabled={refreshDisabled}
           className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
           aria-label={t('agentDetail.configure.preview.restart')}
         >
