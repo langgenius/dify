@@ -1083,6 +1083,11 @@ class MailConfig(BaseSettings):
         default=False,
     )
 
+    ENABLE_LEARN_APP: bool = Field(
+        description="Enable Learn App",
+        default=True,
+    )
+
 
 class RagEtlConfig(BaseSettings):
     """
