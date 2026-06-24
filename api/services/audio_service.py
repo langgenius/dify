@@ -5,7 +5,7 @@ from collections.abc import Generator
 from typing import cast
 
 from flask import Response, stream_with_context
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
@@ -78,7 +78,7 @@ class AudioService:
         cls,
         app_model: App,
         *,
-        session: Session,
+        session: Session | scoped_session,
         text: str | None = None,
         voice: str | None = None,
         end_user: str | None = None,
