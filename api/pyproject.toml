@@ -295,8 +295,13 @@ infer-with-first-use = true
 min-severity = "warn"
 errors = { missing-override-decorator = "error" }
 
+
 [tool.mypy]
 
 [[tool.mypy.overrides]]
 module = "core.helper.*"
-strict = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_reexport = true
