@@ -14,8 +14,9 @@ from models.model import Account, App, Conversation, Message, MessageFeedback
 class FeedbackService:
     @staticmethod
     def export_feedbacks(
-        session: Session,
         app_id: str,
+        *,
+        session: Session,
         from_source: str | None = None,
         rating: str | None = None,
         has_comment: bool | None = None,
@@ -28,6 +29,7 @@ class FeedbackService:
 
         Args:
             app_id: Application ID
+            session: Database session used to run the export query
             from_source: Filter by feedback source ('user' or 'admin')
             rating: Filter by rating ('like' or 'dislike')
             has_comment: Only include feedback with comments

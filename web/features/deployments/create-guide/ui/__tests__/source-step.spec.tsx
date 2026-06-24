@@ -1,6 +1,32 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SourceStepContent } from '../source-step'
+
+const mocks = vi.hoisted(() => {
+  const sourceAppsQuery = {
+    data: { pages: [{ data: [] }] },
+    hasNextPage: false,
+    isFetching: false,
+    isFetchingNextPage: false,
+    isLoading: false,
+    isPlaceholderData: false,
+    fetchNextPage: vi.fn(),
+  }
+
+  return {
+    sourceAppsQuery,
+    useInfiniteScroll: vi.fn(() => ({
+      rootEl: null,
+      rootRef: vi.fn(),
+      sentinelEl: null,
+      sentinelRef: vi.fn(),
+    })),
+  }
+})
+
+vi.mock('@/features/deployments/shared/hooks/use-infinite-scroll', () => ({
+  useInfiniteScroll: mocks.useInfiniteScroll,
+}))
 
 vi.mock('@/features/deployments/create-guide/state', async () => {
   const { atom } = await import('jotai')
@@ -22,15 +48,7 @@ vi.mock('@/features/deployments/create-guide/state', async () => {
     }),
     selectSourceAppAtom: emptyActionAtom,
     setSourceSearchTextAtom: emptyActionAtom,
-    sourceAppsQueryAtom: atom({
-      data: { pages: [{ data: [] }] },
-      hasNextPage: false,
-      isFetching: false,
-      isFetchingNextPage: false,
-      isLoading: false,
-      isPlaceholderData: false,
-      fetchNextPage: vi.fn(),
-    }),
+    sourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
     sourceCanGoNextAtom: atom(false),
     sourceSearchTextAtom: atom(''),
     unsupportedDslNodesAtom: atom([]),
@@ -38,6 +56,19 @@ vi.mock('@/features/deployments/create-guide/state', async () => {
 })
 
 describe('SourceStepContent', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    Object.assign(mocks.sourceAppsQuery, {
+      data: { pages: [{ data: [] }] },
+      hasNextPage: false,
+      isFetching: false,
+      isFetchingNextPage: false,
+      isLoading: false,
+      isPlaceholderData: false,
+      fetchNextPage: vi.fn(),
+    })
+  })
+
   it('should hide the import DSL option when deployment DSL import is disabled', () => {
     render(<SourceStepContent />)
 
@@ -45,5 +76,30 @@ describe('SourceStepContent', () => {
     expect(screen.queryByText(/createGuide\.methods\.importDsl\.title/)).not.toBeInTheDocument()
     expect(screen.queryByText(/createGuide\.methods\.importDsl\.description/)).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: /createGuide\.source\.sourceApp/ })).toBeInTheDocument()
+  })
+
+  it('should use infinite scroll to load more source apps', () => {
+    Object.assign(mocks.sourceAppsQuery, {
+      data: {
+        pages: [{
+          data: [{
+            id: 'app-1',
+            name: 'Workflow App',
+          }],
+        }],
+      },
+      hasNextPage: true,
+    })
+
+    render(<SourceStepContent />)
+
+    expect(mocks.useInfiniteScroll).toHaveBeenCalledWith(
+      mocks.sourceAppsQuery,
+      expect.objectContaining({
+        rootMargin: '0px 0px 160px 0px',
+        threshold: 0.1,
+      }),
+    )
+    expect(screen.queryByRole('button', { name: /createModal\.loadMoreApps/ })).not.toBeInTheDocument()
   })
 })
