@@ -2,8 +2,9 @@ import logging
 from collections.abc import Sequence
 from typing import cast
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -60,6 +61,13 @@ def attach_message_extra_contents(messages: Sequence[Message]) -> None:
         message.set_extra_contents([content.model_dump(mode="json", exclude_none=True) for content in contents])
 
 
+def _message_before_cursor_condition(cursor_message: Message) -> ColumnElement[bool]:
+    return or_(
+        Message.created_at < cursor_message.created_at,
+        (Message.created_at == cursor_message.created_at) & (Message.id < cursor_message.id),
+    )
+
+
 class MessageService:
     @classmethod
     def pagination_by_first_id(
@@ -95,17 +103,16 @@ class MessageService:
                 select(Message)
                 .where(
                     Message.conversation_id == conversation.id,
-                    Message.created_at < first_message.created_at,
-                    Message.id != first_message.id,
+                    _message_before_cursor_condition(first_message),
                 )
-                .order_by(Message.created_at.desc())
+                .order_by(Message.created_at.desc(), Message.id.desc())
                 .limit(fetch_limit)
             ).all()
         else:
             history_messages = db.session.scalars(
                 select(Message)
                 .where(Message.conversation_id == conversation.id)
-                .order_by(Message.created_at.desc())
+                .order_by(Message.created_at.desc(), Message.id.desc())
                 .limit(fetch_limit)
             ).all()
 
@@ -158,12 +165,14 @@ class MessageService:
                 raise LastMessageNotExistsError()
 
             history_messages = db.session.scalars(
-                stmt.where(Message.created_at < last_message.created_at, Message.id != last_message.id)
-                .order_by(Message.created_at.desc())
+                stmt.where(_message_before_cursor_condition(last_message))
+                .order_by(Message.created_at.desc(), Message.id.desc())
                 .limit(fetch_limit)
             ).all()
         else:
-            history_messages = db.session.scalars(stmt.order_by(Message.created_at.desc()).limit(fetch_limit)).all()
+            history_messages = db.session.scalars(
+                stmt.order_by(Message.created_at.desc(), Message.id.desc()).limit(fetch_limit)
+            ).all()
 
         has_more = False
         if len(history_messages) > limit:
