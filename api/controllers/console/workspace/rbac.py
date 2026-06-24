@@ -5,6 +5,7 @@ from typing import Any
 
 from flask import request
 from flask_restx import Resource
+from numba.scripts.generate_lower_listing import description
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
@@ -201,9 +202,11 @@ def _legacy_workspace_roles(
     This keeps the new `/rbac/roles` endpoint compatible with the original
     Dify role model when enterprise RBAC is disabled.
     """
-
-    legacy_roles = [
-        svc.RBACRole(
+    legacy_roles = []
+    for role_name in ("owner", "admin", "editor", "normal", "dataset_operator"):
+        if not dify_config.DATASET_OPERATOR_ENABLED and role_name == "dataset_operator":
+            continue
+        legacy_roles.append(svc.RBACRole(
             id=role_name,
             tenant_id="",
             type=svc.RBACRoleType.WORKSPACE.value,
@@ -213,9 +216,7 @@ def _legacy_workspace_roles(
             is_builtin=True,
             permission_keys=list(dict.fromkeys(_LEGACY_ROLE_PERMISSION_KEYS[role_name])),
             role_tag="owner" if role_name == "owner" else "",
-        )
-        for role_name in ("owner", "admin", "editor", "normal", "dataset_operator")
-    ]
+        ))
 
     if not include_owner:
         legacy_roles = [r for r in legacy_roles if r.name != "owner"]
