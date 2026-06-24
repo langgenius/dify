@@ -26,7 +26,7 @@ export function AgentPreviewHeader({
   const { t } = useTranslation('agentV2')
 
   return (
-    <div className="flex h-12 shrink-0 items-center gap-3 py-2 pr-3 pl-4">
+    <div className="relative z-1 flex h-12 shrink-0 items-center gap-3 py-2 pr-3 pl-4">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <SegmentedControl<AgentConfigureRightPanelMode>
           value={[mode]}

@@ -23,6 +23,7 @@ import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configu
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
+import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentDriveFiles, useAgentDriveSkills } from '../drive-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { replaceTrailingSlashWithToken } from './options'
@@ -324,7 +325,7 @@ export function AgentPromptEditor() {
             {t('agentDetail.configure.prompt.label')}
           </h3>
           <Infotip aria-label={promptTip} popupClassName="max-w-64">
-            {promptTip}
+            <AgentConfigureTipContent type="prompt" />
           </Infotip>
         </div>
         <Tooltip>

@@ -19,6 +19,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { AgentConfigureTipContent } from '../common/tip-content'
 import { FILES_DRIVE_PREFIX, useAgentDriveApiContext, useAgentDriveFiles } from '../drive-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
@@ -249,7 +250,7 @@ export function AgentFiles() {
       <ConfigureSection
         label={t('agentDetail.configure.files.label')}
         labelId="agent-configure-files-label"
-        tip={filesTip}
+        tip={<AgentConfigureTipContent type="files" />}
         tipAriaLabel={filesTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="pb-4"

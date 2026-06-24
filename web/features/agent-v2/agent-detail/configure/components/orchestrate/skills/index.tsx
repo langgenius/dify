@@ -10,6 +10,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentDriveApiContext, useAgentDriveSkills } from '../drive-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
@@ -79,7 +80,7 @@ export function AgentSkills() {
         label={t('agentDetail.configure.skills.label')}
         labelId="agent-configure-skills-label"
         panelId={skillsListId}
-        tip={skillsTip}
+        tip={<AgentConfigureTipContent type="skills" />}
         tipAriaLabel={skillsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"

@@ -9,6 +9,7 @@ import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provid
 import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
 import { AgentOrchestratePanel } from './components/orchestrate'
+import { AgentBuildHeaderBackground } from './components/preview/build-background'
 import { AgentBuildChat } from './components/preview/build-chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
 import { AgentPreviewHeader } from './components/preview/header'
@@ -198,7 +199,8 @@ function AgentConfigurePageLoadedContent({
 
       {/* Preview area */}
       <div className="flex min-w-105 flex-1 gap-1 overflow-hidden">
-        <div className="flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
+        <div className="relative flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
+          <AgentBuildHeaderBackground visible={rightPanelChatMode === 'build'} />
           <AgentPreviewHeader
             mode={rightPanelChatMode}
             previewEnabled={false}
@@ -210,7 +212,7 @@ function AgentConfigurePageLoadedContent({
             refreshDisabled={refreshDebugConversationMutation.isPending}
           />
 
-          <div className="min-h-0 flex-1">
+          <div className="relative z-1 min-h-0 flex-1">
             <AgentRightPanelChatWithDraftConfig
               agentId={agentId}
               agentIcon={agentQuery.data?.icon}

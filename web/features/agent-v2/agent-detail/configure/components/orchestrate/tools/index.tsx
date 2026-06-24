@@ -23,6 +23,7 @@ import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { CliToolDialog } from './cli-tool/dialog'
 import { AgentCliToolItem } from './cli-tool/item'
@@ -428,7 +429,7 @@ export function AgentTools() {
         label={t('agentDetail.configure.tools.label')}
         labelId="agent-configure-tools-label"
         panelId={toolsListId}
-        tip={toolsTip}
+        tip={<AgentConfigureTipContent type="tools" />}
         tipAriaLabel={toolsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"
