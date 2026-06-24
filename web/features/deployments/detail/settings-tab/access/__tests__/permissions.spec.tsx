@@ -1,22 +1,42 @@
 import type { AccessPolicy, Environment, EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
-import { AccessMode, SubjectType } from '@dify/contracts/enterprise/types.gen'
+import { AccessMode, AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
 import { EnvironmentPermissionRow } from '../permissions'
 import { AccessPermissionsSection } from '../permissions-section'
 
-const mockMutate = vi.fn()
-const mockUseMutation = vi.hoisted(() => vi.fn())
+const mockMutate = vi.hoisted(() => vi.fn())
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useMutation: (...args: unknown[]) => mockUseMutation(...args),
-  }
-})
+vi.mock('@tanstack/react-query', () => ({
+  useInfiniteQuery: () => ({
+    data: { pages: [] },
+    fetchNextPage: vi.fn(),
+    isFetchingNextPage: false,
+    isLoading: false,
+  }),
+  useMutation: () => ({
+    isPending: false,
+    mutate: mockMutate,
+  }),
+  useQuery: () => ({
+    data: undefined,
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    enterprise: {
+      accessService: {
+        updateAccessPolicy: {
+          mutationOptions: () => ({ mutationKey: ['updateAccessPolicy'] }),
+        },
+      },
+    },
+  },
+}))
 
 function renderWithAtomStore(children: ReactNode) {
   return render(
@@ -53,11 +73,11 @@ function createSpecificAccessPolicy(): AccessPolicy {
     subjects: [
       {
         subjectId: 'group-1',
-        subjectType: SubjectType.SUBJECT_TYPE_GROUP,
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
       },
       {
         subjectId: 'member-1',
-        subjectType: SubjectType.SUBJECT_TYPE_ACCOUNT,
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
       },
     ],
   }
@@ -77,10 +97,6 @@ describe('EnvironmentPermissionRow', () => {
     mockMutate.mockImplementation((_variables: unknown, options?: { onError?: () => void }) => {
       options?.onError?.()
     })
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: mockMutate,
-    })
   })
 
   it('should keep the previous permission visible when updating the policy fails', () => {
@@ -98,6 +114,89 @@ describe('EnvironmentPermissionRow', () => {
 
     expect(mockMutate).toHaveBeenCalled()
     expect(screen.getByText('deployments.access.permission.organization')).toBeInTheDocument()
+  })
+
+  it('should show the updated policy after success', () => {
+    mockMutate.mockImplementation((_variables: unknown, options?: { onSuccess?: () => void }) => {
+      options?.onSuccess?.()
+    })
+
+    renderWithAtomStore(
+      <EnvironmentPermissionRow
+        appInstanceId="app-instance-1"
+        environment={createEnvironment()}
+        summaryPolicy={createAccessPolicy()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
+    fireEvent.click(screen.getByRole('radio', { name: 'app.accessControlDialog.accessItems.anyone' }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      {
+        params: {
+          appInstanceId: 'app-instance-1',
+          environmentId: 'environment-1',
+        },
+        body: {
+          appInstanceId: 'app-instance-1',
+          environmentId: 'environment-1',
+          mode: AccessMode.ACCESS_MODE_PUBLIC,
+          subjects: [],
+        },
+      },
+      expect.objectContaining({
+        onError: expect.any(Function),
+        onSuccess: expect.any(Function),
+      }),
+    )
+    expect(screen.getByText('deployments.access.permission.anyone')).toBeInTheDocument()
+  })
+
+  it('should submit specific subjects with the deployment access subject type', () => {
+    mockMutate.mockImplementation((_variables: unknown, options?: { onSuccess?: () => void }) => {
+      options?.onSuccess?.()
+    })
+
+    renderWithAtomStore(
+      <EnvironmentPermissionRow
+        appInstanceId="app-instance-1"
+        environment={createEnvironment()}
+        summaryPolicy={createSpecificAccessPolicy()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /deployments\.access\.permissions\.editAriaLabel/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      {
+        params: {
+          appInstanceId: 'app-instance-1',
+          environmentId: 'environment-1',
+        },
+        body: {
+          appInstanceId: 'app-instance-1',
+          environmentId: 'environment-1',
+          mode: AccessMode.ACCESS_MODE_PRIVATE,
+          subjects: [
+            {
+              subjectId: 'group-1',
+              subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
+            },
+            {
+              subjectId: 'member-1',
+              subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
+            },
+          ],
+        },
+      },
+      expect.objectContaining({
+        onError: expect.any(Function),
+        onSuccess: expect.any(Function),
+      }),
+    )
   })
 
   it('should show specific subject counts in the access summary', () => {
@@ -121,10 +220,6 @@ describe('EnvironmentPermissionRow', () => {
 describe('AccessPermissionsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseMutation.mockReturnValue({
-      isPending: false,
-      mutate: mockMutate,
-    })
   })
 
   it('should render permission rows without column headers', () => {

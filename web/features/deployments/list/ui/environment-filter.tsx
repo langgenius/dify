@@ -8,14 +8,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useAtomValue } from 'jotai'
+import { useQuery } from '@tanstack/react-query'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  envFilterQueryState,
-  environmentsFilterQueryAtom,
-} from '../state'
+import { consoleQuery } from '@/service/client'
+import { envFilterQueryState } from '../state'
 
 type EnvironmentFilterOption = {
   value: string | null
@@ -33,7 +31,16 @@ export function EnvironmentFilter({ className }: {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
   const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const environmentsQuery = useAtomValue(environmentsFilterQueryAtom)
+  const environmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listEnvironments.queryOptions({
+    input: {
+      query: {
+        // The filter lists every deployable environment; environment count is
+        // capped well below the 100-per-page maximum.
+        pageNumber: 1,
+        resultsPerPage: 100,
+      },
+    },
+  }))
   const environmentOptions: EnvironmentFilterOption[] = environmentsQuery.data?.environments
     ?.map(environment => ({
       value: environment.id,

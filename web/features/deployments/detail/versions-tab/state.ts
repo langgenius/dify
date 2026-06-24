@@ -1,6 +1,5 @@
 'use client'
 
-import type { ListReleaseSummariesResponse } from '@dify/contracts/enterprise/types.gen'
 import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
@@ -11,7 +10,7 @@ import { RELEASE_HISTORY_PAGE_SIZE } from '../../shared/domain/pagination'
 export const releaseHistoryCurrentPageAtom = atom(0)
 export const deployReleaseMenuOpenReleaseIdAtom = atom<string | undefined>(undefined)
 
-export const releaseHistoryQueryAtom = atomWithQuery<ListReleaseSummariesResponse>((get) => {
+export const releaseHistoryQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
   const currentPage = get(releaseHistoryCurrentPageAtom)
 
