@@ -35,10 +35,10 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
 import { useDocLink } from '@/context/i18n'
+import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
+import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
-import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
 type MetadataFilteringConditions = {

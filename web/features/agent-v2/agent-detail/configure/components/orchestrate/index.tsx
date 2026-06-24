@@ -48,7 +48,7 @@ export function AgentOrchestratePanel({
   nodeId,
   activeConfigIsPublished,
   activeConfigSnapshot,
-  agentSoulConfig,
+  agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
   textGenerationModelList,

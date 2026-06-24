@@ -33,6 +33,23 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
+vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
+  useThemeContext: () => ({
+    buildTheme: vi.fn(),
+    theme: {
+      primaryColor: '#1C64F2',
+    },
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    langGeniusVersionInfo: {
+      current_env: 'PRODUCTION',
+    },
+  }),
+}))
+
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     apps: {
@@ -200,6 +217,46 @@ describe('Agent access surface cards', () => {
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_APP_ID=\s*'app-1'/)
       expect(dialog).toHaveTextContent(/NEXT_PUBLIC_API_URL=\s*'https:\/\/api\.example\.test\/v1'/)
       expect(within(dialog).getByRole('button', { name: /appOverview\.overview\.appInfo\.customize\.way1\.step1Operation/ })).toHaveAttribute('href', 'https://github.com/langgenius/webapp-conversation')
+    })
+
+    it('should open the embedded dialog with the Agent web app route', async () => {
+      const user = userEvent.setup()
+
+      renderWithQueryClient(
+        <WebAppAccessCard agent={createAgent()} agentId="agent-1" isLoading={false} />,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' }))
+
+      const dialog = await screen.findByRole('dialog', { name: 'appOverview.overview.appInfo.embedded.title' })
+      await waitFor(() => {
+        expect(dialog).toHaveTextContent('https://chat.example.test/agent/site-token')
+      })
+
+      await user.click(within(dialog).getByRole('button', { name: 'appOverview.overview.appInfo.embedded.scripts' }))
+
+      await waitFor(() => {
+        expect(dialog).toHaveTextContent('routeSegment: \'agent\'')
+      })
+    })
+
+    it('should keep embedded disabled until the backing app id and web app token are available', () => {
+      renderWithQueryClient(
+        <WebAppAccessCard
+          agent={createAgent({
+            app_id: null,
+            site: {
+              ...createAgent().site!,
+              access_token: null,
+              code: null,
+            },
+          })}
+          agentId="agent-1"
+          isLoading={false}
+        />,
+      )
+
+      expect(screen.getByRole('button', { name: 'agentV2.agentDetail.access.webApp.actions.embedded' })).toBeDisabled()
     })
 
     it('should keep customize disabled until the generated contract provides the required fields', () => {

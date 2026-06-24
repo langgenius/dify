@@ -7,16 +7,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CustomizeModal from '@/app/components/app/overview/customize'
+import EmbeddedModal from '@/app/components/app/overview/embedded'
 import ShareQRCode from '@/app/components/base/qrcode'
 import { AccessMode } from '@/models/access-control'
 import { consoleQuery } from '@/service/client'
 import { accessSurfaceActionClassName, AccessSurfaceCard } from './access-surface-card'
-
-type AgentWebAppSite = NonNullable<AgentAppDetailWithSite['site']> & {
-  access_token?: string | null
-  app_base_url?: string | null
-  code?: string | null
-}
 
 export function WebAppAccessCard({
   agent,
@@ -32,9 +27,23 @@ export function WebAppAccessCard({
   const queryClient = useQueryClient()
   const appId = agent?.app_id
   const apiBaseUrl = agent?.api_base_url
+  const site = agent?.site
+  const accessToken = site?.access_token ?? site?.code
+  const appBaseUrl = site?.app_base_url || (typeof window === 'undefined' ? '' : window.location.origin)
   const webAppUrl = getAgentWebAppUrl(agent)
   const isEnabled = Boolean(agent?.enable_site)
   const canManageWebApp = Boolean(appId)
+  const embeddedConfig = appId && accessToken
+    ? {
+        accessToken,
+        appBaseUrl,
+        siteInfo: {
+          title: site?.title ?? agent?.name ?? '',
+          chat_color_theme: site?.chat_color_theme ?? undefined,
+          chat_color_theme_inverted: site?.chat_color_theme_inverted ?? undefined,
+        },
+      }
+    : null
   const customizeConfig = appId && apiBaseUrl
     ? {
         apiBaseUrl,
@@ -43,6 +52,7 @@ export function WebAppAccessCard({
     : null
   const showSsoBadge = agent?.access_mode === AccessMode.EXTERNAL_MEMBERS
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
+  const [showEmbeddedModal, setShowEmbeddedModal] = useState(false)
   const toggleSiteMutation = useMutation(consoleQuery.apps.byAppId.siteEnable.post.mutationOptions({
     onSuccess: (_updatedApp, variables) => {
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
@@ -65,7 +75,7 @@ export function WebAppAccessCard({
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
         consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
         (agentDetail) => {
-          if (!agentDetail)
+          if (!agentDetail || !agentDetail.site)
             return agentDetail
 
           return {
@@ -74,7 +84,7 @@ export function WebAppAccessCard({
               ...agentDetail.site,
               ...site,
               access_token: site.code,
-            } as AgentWebAppSite,
+            },
           }
         },
       )
@@ -162,7 +172,13 @@ export function WebAppAccessCard({
               {t('agentDetail.access.webApp.actions.launch')}
             </Button>
           )}
-      <Button variant="secondary" size="medium" className="gap-1.5 px-3" disabled>
+      <Button
+        variant="secondary"
+        size="medium"
+        className="gap-1.5 px-3"
+        disabled={!embeddedConfig}
+        onClick={() => setShowEmbeddedModal(true)}
+      >
         <span aria-hidden className="i-ri-window-line size-4" />
         {t('agentDetail.access.webApp.actions.embedded')}
       </Button>
@@ -189,12 +205,22 @@ export function WebAppAccessCard({
           sourceCodeRepository="webapp-conversation"
         />
       )}
+      {embeddedConfig && (
+        <EmbeddedModal
+          isShow={showEmbeddedModal}
+          onClose={() => setShowEmbeddedModal(false)}
+          appBaseUrl={embeddedConfig.appBaseUrl}
+          accessToken={embeddedConfig.accessToken}
+          siteInfo={embeddedConfig.siteInfo}
+          webAppRoute="agent"
+        />
+      )}
     </AccessSurfaceCard>
   )
 }
 
 function getAgentWebAppUrl(agent?: AgentAppDetailWithSite) {
-  const site = agent?.site as AgentWebAppSite | null | undefined
+  const site = agent?.site
   const token = site?.access_token ?? site?.code
   if (!token)
     return ''

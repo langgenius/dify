@@ -3,14 +3,14 @@ import { useTranslation } from 'react-i18next'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { RETRIEVE_TYPE } from '@/types/app'
 
-export type KnowledgeValidationIssueCode =
-  | 'name_required'
-  | 'name_duplicate'
-  | 'datasets_required'
-  | 'custom_query_required'
-  | 'single_model_required'
-  | 'metadata_model_required'
-  | 'metadata_conditions_required'
+export type KnowledgeValidationIssueCode
+  = | 'name_required'
+    | 'name_duplicate'
+    | 'datasets_required'
+    | 'custom_query_required'
+    | 'single_model_required'
+    | 'metadata_model_required'
+    | 'metadata_conditions_required'
 
 export type KnowledgeValidationField = 'name' | 'datasets' | 'query' | 'retrieval' | 'metadata'
 

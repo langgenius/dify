@@ -920,11 +920,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/overview/customize/index.tsx": {
-    "jsx-a11y/anchor-has-content": {
-      "count": 3
-    }
-  },
   "web/app/components/app/overview/settings/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
