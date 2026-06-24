@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "이 권한 집합의 이름, 설명 및 부여된 권한을 봅니다.",
   "permissionSet.modal.view.dataset.title": "지식 베이스 권한 집합 보기",
   "permissionSet.nameLabel": "권한 집합 이름",
-  "permissionSet.namePlaceholder": "예: DSL 내보내기 가능",
+  "permissionSet.namePlaceholder": "예: 운영 권한 세트",
   "permissionSet.permissions": "권한",
   "role.addRole": "역할 생성",
   "role.copyMembersDescription_one": "\"{{name}}\"이(가) {{count}}명의 멤버에게 할당되어 있습니다. 새 역할 복사본에 동일한 멤버를 포함하시겠습니까?",

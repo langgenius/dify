@@ -18,6 +18,7 @@ const defaultCloudEnv = {
   NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: true,
   NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: false,
   NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: true,
+  NEXT_PUBLIC_ENABLE_LEARN_APP: true,
   NEXT_PUBLIC_ENABLE_MARKETPLACE: true,
   NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: true,
   NEXT_PUBLIC_ENABLE_TRIAL_APP: true,
@@ -140,6 +141,7 @@ describe('systemFeaturesQueryOptions', () => {
       enable_email_password_login: false,
       enable_social_oauth_login: true,
       enable_trial_app: true,
+      enable_learn_app: true,
       rbac_enabled: false,
     })
   })
@@ -153,6 +155,7 @@ describe('systemFeaturesQueryOptions', () => {
         NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: true,
         NEXT_PUBLIC_ALLOW_REGISTER: false,
         NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: false,
+        NEXT_PUBLIC_ENABLE_LEARN_APP: true,
         NEXT_PUBLIC_RBAC_ENABLED: true,
       },
     })
@@ -166,6 +169,7 @@ describe('systemFeaturesQueryOptions', () => {
       enable_collaboration_mode: true,
       is_allow_register: false,
       enable_explore_banner: false,
+      enable_learn_app: true,
       rbac_enabled: true,
       branding: {
         enabled: false,
@@ -219,6 +223,7 @@ describe('serverSystemFeaturesQueryOptions', () => {
       cloudEnv: {
         NEXT_PUBLIC_ENABLE_MARKETPLACE: false,
         NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: true,
+        NEXT_PUBLIC_ENABLE_LEARN_APP: true,
       },
     })
 
@@ -231,6 +236,7 @@ describe('serverSystemFeaturesQueryOptions', () => {
     expect(data).toMatchObject({
       enable_marketplace: false,
       enable_email_password_login: true,
+      enable_learn_app: true,
     })
   })
 

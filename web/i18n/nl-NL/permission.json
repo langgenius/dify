@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Bekijk de naam, beschrijving en verleende rechten voor deze rechtenset.",
   "permissionSet.modal.view.dataset.title": "Kennisbank-rechtenset bekijken",
   "permissionSet.nameLabel": "Naam van rechtenset",
-  "permissionSet.namePlaceholder": "bijv. Kan DSL exporteren",
+  "permissionSet.namePlaceholder": "bijv. Machtigingenset voor operations",
   "permissionSet.permissions": "Rechten",
   "role.addRole": "Rollen maken",
   "role.copyMembersDescription_one": "\"{{name}}\" is toegewezen aan {{count}} lid. Wil je dat de nieuwe rolkopie hetzelfde lid bevat?",

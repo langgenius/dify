@@ -105,6 +105,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: vp run knip
 
+      - name: Web dead code check production
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip:production
+
   ts-common-style:
     name: TS Common
     runs-on: depot-ubuntu-24.04

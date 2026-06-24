@@ -9,7 +9,7 @@ This module tests the core authentication endpoints including:
 """
 
 import base64
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
 from flask import Flask
@@ -129,7 +129,7 @@ class TestLoginApi:
             response = login_api.post()
 
         # Assert
-        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", None)
+        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", None, session=ANY)
         mock_login.assert_called_once()
         mock_reset_rate_limit.assert_called_once_with("test@example.com")
         assert response.json["result"] == "success"
@@ -184,7 +184,7 @@ class TestLoginApi:
             response = login_api.post()
 
         # Assert
-        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", "valid_token")
+        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", "valid_token", session=ANY)
         assert response.json["result"] == "success"
 
     @patch("controllers.console.wraps.db")
@@ -407,13 +407,13 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
     def test_login_retries_with_lowercase_email(
         self,
-        mock_reset_rate_limit,
-        mock_login_service,
-        mock_get_tenants,
-        mock_add_rate_limit,
-        mock_authenticate,
-        mock_get_invitation,
-        mock_is_rate_limit,
+        mock_reset_rate_limit: MagicMock,
+        mock_login_service: MagicMock,
+        mock_get_tenants: MagicMock,
+        mock_add_rate_limit: MagicMock,
+        mock_authenticate: MagicMock,
+        mock_get_invitation: MagicMock,
+        mock_is_rate_limit: MagicMock,
         mock_db,
         app: Flask,
         mock_account,
@@ -435,8 +435,8 @@ class TestLoginApi:
 
         assert response.json["result"] == "success"
         assert mock_authenticate.call_args_list == [
-            (("Upper@Example.com", "ValidPass123!", None), {}),
-            (("upper@example.com", "ValidPass123!", None), {}),
+            (("Upper@Example.com", "ValidPass123!", None), {"session": ANY}),
+            (("upper@example.com", "ValidPass123!", None), {"session": ANY}),
         ]
         mock_add_rate_limit.assert_not_called()
         mock_reset_rate_limit.assert_called_once_with("upper@example.com")
@@ -447,10 +447,10 @@ class TestLoginApi:
     @patch("controllers.console.auth.login._get_account_with_case_fallback")
     def test_email_code_login_logs_banned_account(
         self,
-        mock_get_account,
-        mock_revoke_token,
-        mock_get_token_data,
-        mock_db,
+        mock_get_account: MagicMock,
+        mock_revoke_token: MagicMock,
+        mock_get_token_data: MagicMock,
+        mock_db: MagicMock,
         app: Flask,
     ):
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
@@ -491,7 +491,9 @@ class TestLogoutApi:
 
     @patch("controllers.console.auth.login.AccountService.logout")
     @patch("controllers.console.auth.login.flask_login.logout_user")
-    def test_successful_logout(self, mock_logout_user, mock_service_logout, app: Flask, mock_account):
+    def test_successful_logout(
+        self, mock_logout_user: MagicMock, mock_service_logout: MagicMock, app: Flask, mock_account
+    ):
         """
         Test successful logout flow.
 

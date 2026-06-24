@@ -5,7 +5,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { inputVarTypeToVarType } from '../../data-source/utils'
 
-export const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
+const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
 
 export const isSnippetCanvas = () => {
   if (typeof globalThis.location === 'undefined')

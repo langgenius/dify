@@ -8,6 +8,7 @@ type SnippetChildrenProps = {
   snippetId: string
   fields: SnippetInputField[]
   canSave: boolean
+  canEdit: boolean
   isPublishing: boolean
   onPublish: () => void
 }
@@ -16,6 +17,7 @@ const SnippetChildren = ({
   snippetId,
   fields,
   canSave,
+  canEdit,
   isPublishing,
   onPublish,
 }: SnippetChildrenProps) => {
@@ -26,6 +28,7 @@ const SnippetChildren = ({
       <SnippetHeader
         snippetId={snippetId}
         canSave={canSave}
+        canEdit={canEdit}
         isPublishing={isPublishing}
         onPublish={onPublish}
       />

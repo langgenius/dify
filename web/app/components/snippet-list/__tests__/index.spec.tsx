@@ -359,6 +359,18 @@ describe('SnippetList', () => {
     expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
   })
 
+  it('fetches snippets without create action for users with snippet management permission', () => {
+    mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+
+    renderList()
+
+    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(expect.any(Object), {
+      enabled: true,
+    })
+    expect(screen.getByRole('link', { name: /Sales Snippet/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'snippet.create' })).not.toBeInTheDocument()
+  })
+
   it('does not fetch or render snippets without snippet list permissions', () => {
     mockWorkspacePermissionKeys.mockReturnValue([])
 

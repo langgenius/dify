@@ -548,6 +548,7 @@ class TestAccountGeneration:
                         provider="github",
                         language="en-US",
                         timezone=None,
+                        session=ANY,
                     )
                 else:
                     mock_register_service.register.assert_not_called()
@@ -581,6 +582,7 @@ class TestAccountGeneration:
             provider="github",
             language="en-US",
             timezone=None,
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -612,6 +614,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone="Asia/Shanghai",
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email", return_value=None)
@@ -643,6 +646,7 @@ class TestAccountGeneration:
             provider="github",
             language="zh-Hans",
             timezone=None,
+            session=ANY,
         )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
@@ -673,7 +677,7 @@ class TestAccountGeneration:
 
             assert result == mock_account
             assert oauth_new_user is False
-            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace")
+            mock_tenant_service.create_tenant.assert_called_once_with("Test User's Workspace", session=ANY)
             mock_tenant_service.create_tenant_member.assert_called_once_with(
                 mock_new_tenant, mock_account, ANY, role="owner"
             )

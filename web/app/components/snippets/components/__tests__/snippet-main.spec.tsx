@@ -25,6 +25,9 @@ const mockHandleStopRun = vi.fn()
 const mockHandleWorkflowStartRunInWorkflow = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn()
 const mockUseAvailableNodesMetaData = vi.hoisted(() => vi.fn())
+const mockAppContext = vi.hoisted(() => ({
+  workspacePermissionKeys: ['snippets.create_and_modify'] as string[],
+}))
 const mockInspectVarsCrud = {
   hasNodeInspectVars: vi.fn(),
   hasSetInspectVar: vi.fn(),
@@ -47,6 +50,12 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
     error: vi.fn(),
     success: vi.fn(),
   },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockAppContext.workspacePermissionKeys,
+  }),
 }))
 
 let capturedHooksStore: Record<string, unknown> | undefined
@@ -153,13 +162,15 @@ vi.mock('@/app/components/snippets/components/snippet-children', () => ({
   default: ({
     onPublish,
     canSave,
+    canEdit,
   }: {
     canSave: boolean
+    canEdit: boolean
     onPublish: () => void
   }) => (
     <div>
       <a href="/snippets">snippets list</a>
-      <button type="button" disabled={!canSave} onClick={onPublish}>publish</button>
+      {canEdit && <button type="button" disabled={!canSave} onClick={onPublish}>publish</button>}
     </div>
   ),
 }))
@@ -245,6 +256,7 @@ const createDraftNode = (id = 'draft-node') => ({
 describe('SnippetMain', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockAppContext.workspacePermissionKeys = ['snippets.create_and_modify']
     mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
     mockSyncInputFieldsDraft.mockResolvedValue(undefined)
     mockPublishSnippetMutateAsync.mockResolvedValue({ created_at: 1_744_000_000 })
@@ -296,15 +308,17 @@ describe('SnippetMain', () => {
       expect(capturedWorkflowNodes?.map(node => node.id)).toEqual(['draft-node'])
     })
 
-    it('should keep the snippet canvas editable and sync draft changes without permission gating', async () => {
+    it('should keep the snippet canvas editable and sync draft changes with create-and-modify permission', async () => {
       const draftNode = createDraftNode('draft-node')
 
-      renderSnippetMain({
+      const { store } = renderSnippetMain({
         hasPublishedWorkflow: false,
         workflowDraftNodes: [draftNode],
       })
 
       expect(screen.queryByRole('button', { name: 'edit' })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'publish' })).toBeInTheDocument()
+      expect(store.getState().canvasReadOnly).toBe(false)
       expect(mockSetNavigationState).toHaveBeenCalledWith(expect.objectContaining({
         readonly: false,
       }))
@@ -313,6 +327,38 @@ describe('SnippetMain', () => {
       await doSyncWorkflowDraft()
 
       expect(mockDoSyncWorkflowDraft).toHaveBeenCalledTimes(1)
+    })
+
+    it('should make the snippet canvas readonly and skip draft sync without create-and-modify permission', async () => {
+      mockAppContext.workspacePermissionKeys = ['snippets.management']
+
+      const { store } = renderSnippetMain({
+        hasPublishedWorkflow: false,
+        workflowDraftNodes: [createDraftNode('draft-node')],
+      })
+
+      expect(screen.queryByRole('button', { name: 'publish' })).not.toBeInTheDocument()
+      expect(store.getState().canvasReadOnly).toBe(true)
+      expect(mockSetNavigationState).toHaveBeenCalledWith(expect.objectContaining({
+        readonly: true,
+      }))
+
+      const doSyncWorkflowDraft = capturedHooksStore?.doSyncWorkflowDraft as (() => Promise<void>)
+      await doSyncWorkflowDraft()
+      const syncWorkflowDraftWhenPageClose = capturedHooksStore?.syncWorkflowDraftWhenPageClose as (() => void)
+      syncWorkflowDraftWhenPageClose()
+      snippetDetailStoreState.onFieldsChange?.([
+        {
+          type: PipelineInputVarType.textInput,
+          label: 'Question',
+          variable: 'question',
+          required: false,
+        },
+      ])
+
+      expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
+      expect(mockSyncWorkflowDraftWhenPageClose).not.toHaveBeenCalled()
+      expect(mockSyncInputFieldsDraft).not.toHaveBeenCalled()
     })
 
     it('should render the draft graph even when a published workflow exists', async () => {

@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "ดูชื่อ คําอธิบาย และสิทธิ์ที่ให้สําหรับชุดสิทธิ์นี้",
   "permissionSet.modal.view.dataset.title": "ดูชุดสิทธิ์ฐานความรู้",
   "permissionSet.nameLabel": "ชื่อชุดสิทธิ์",
-  "permissionSet.namePlaceholder": "เช่น สามารถส่งออก DSL",
+  "permissionSet.namePlaceholder": "เช่น ชุดสิทธิ์การดำเนินงาน",
   "permissionSet.permissions": "สิทธิ์",
   "role.addRole": "สร้างบทบาท",
   "role.copyMembersDescription_one": "\"{{name}}\" ถูกกําหนดให้กับสมาชิก {{count}} คน คุณต้องการให้สําเนาบทบาทใหม่รวมสมาชิกคนเดียวกันหรือไม่",
