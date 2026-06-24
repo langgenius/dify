@@ -34,8 +34,8 @@ vi.mock('@/app/components/plugins/marketplace/list', () => ({
   },
 }))
 
-vi.mock('@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission', () => ({
-  default: () => ({
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
     canInstallPlugin: mockCanInstallPlugin(),
   }),
 }))
