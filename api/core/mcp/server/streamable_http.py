@@ -74,7 +74,9 @@ def handle_mcp_request(
         # Dispatch request to appropriate handler based on instance type
         match request_root:
             case mcp_types.InitializeRequest():
-                return create_success_response(handle_initialize(mcp_server.description))
+                return create_success_response(
+                    handle_initialize(mcp_server.description, request_root.params.protocolVersion)
+                )
             case mcp_types.ListToolsRequest():
                 return create_success_response(
                     handle_list_tools(
@@ -101,14 +103,22 @@ def handle_ping() -> mcp_types.EmptyResult:
     return mcp_types.EmptyResult()
 
 
-def handle_initialize(description: str) -> mcp_types.InitializeResult:
-    """Handle initialize request"""
+def handle_initialize(description: str, requested_version: str | int) -> mcp_types.InitializeResult:
+    """Handle initialize request, negotiating the protocol version with the client.
+
+    Echoes the client's requested version when the server supports it, otherwise returns the
+    server's latest supported version (per the MCP lifecycle spec).
+    """
+    negotiated_version: str = mcp_types.SERVER_LATEST_PROTOCOL_VERSION
+    if isinstance(requested_version, str) and requested_version in mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS:
+        negotiated_version = requested_version
+
     capabilities = mcp_types.ServerCapabilities(
         tools=mcp_types.ToolsCapability(listChanged=False),
     )
 
     return mcp_types.InitializeResult(
-        protocolVersion=mcp_types.SERVER_LATEST_PROTOCOL_VERSION,
+        protocolVersion=negotiated_version,
         capabilities=capabilities,
         serverInfo=mcp_types.Implementation(name="Dify", version=dify_config.project.version),
         instructions=description,
