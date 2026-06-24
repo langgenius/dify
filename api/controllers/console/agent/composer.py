@@ -28,9 +28,9 @@ from libs.login import login_required
 from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
-from services.entities.agent_entities import ComposerSavePayload
+from services.entities.agent_entities import ComposerSavePayload, WorkflowComposerCopyFromRosterPayload
 
-register_schema_models(console_ns, ComposerSavePayload)
+register_schema_models(console_ns, ComposerSavePayload, WorkflowComposerCopyFromRosterPayload)
 register_response_schema_models(
     console_ns,
     AgentAppComposerResponse,
@@ -87,6 +87,38 @@ class WorkflowAgentComposerApi(Resource):
                 node_id=node_id,
                 account_id=account_id,
                 payload=payload,
+            ),
+        )
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer/copy-from-roster")
+class WorkflowAgentComposerCopyFromRosterApi(Resource):
+    @console_ns.expect(console_ns.models[WorkflowComposerCopyFromRosterPayload.__name__])
+    @console_ns.response(
+        200,
+        "Workflow roster agent copied to inline agent",
+        console_ns.models[WorkflowAgentComposerResponse.__name__],
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, tenant_id: str, account_id: str, app_model: App, node_id: str):
+        payload = WorkflowComposerCopyFromRosterPayload.model_validate(console_ns.payload or {})
+        return dump_response(
+            WorkflowAgentComposerResponse,
+            AgentComposerService.copy_workflow_composer_from_roster(
+                tenant_id=tenant_id,
+                app_id=app_model.id,
+                node_id=node_id,
+                account_id=account_id,
+                source_agent_id=payload.source_agent_id,
+                source_snapshot_id=payload.source_snapshot_id,
+                idempotency_key=payload.idempotency_key,
             ),
         )
 

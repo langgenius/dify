@@ -22,6 +22,7 @@ const defaultCloudEnv = {
   NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: true,
   NEXT_PUBLIC_ENABLE_TRIAL_APP: true,
   NEXT_PUBLIC_IS_EMAIL_SETUP: true,
+  NEXT_PUBLIC_RBAC_ENABLED: false,
 }
 
 const queryKey = ['console', 'systemFeatures'] as const
@@ -139,6 +140,7 @@ describe('systemFeaturesQueryOptions', () => {
       enable_email_password_login: false,
       enable_social_oauth_login: true,
       enable_trial_app: true,
+      rbac_enabled: false,
     })
   })
 
@@ -151,6 +153,7 @@ describe('systemFeaturesQueryOptions', () => {
         NEXT_PUBLIC_ENABLE_COLLABORATION_MODE: true,
         NEXT_PUBLIC_ALLOW_REGISTER: false,
         NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: false,
+        NEXT_PUBLIC_RBAC_ENABLED: true,
       },
     })
 
@@ -163,6 +166,7 @@ describe('systemFeaturesQueryOptions', () => {
       enable_collaboration_mode: true,
       is_allow_register: false,
       enable_explore_banner: false,
+      rbac_enabled: true,
       branding: {
         enabled: false,
         application_title: '',

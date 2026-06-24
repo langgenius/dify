@@ -105,6 +105,28 @@ def test_agent_app_soul_allows_app_features_and_variables():
     assert payload.agent_soul.app_variables[0].name == "company_name"
 
 
+def test_composer_save_payload_accepts_new_roster_metadata():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_ROSTER,
+            "new_agent_name": "Research Agent",
+            "description": "Finds relevant sources.",
+            "role": "Research Assistant",
+            "icon_type": "emoji",
+            "icon": "search",
+            "icon_background": "#E0F2FE",
+        }
+    )
+
+    assert payload.new_agent_name == "Research Agent"
+    assert payload.description == "Finds relevant sources."
+    assert payload.role == "Research Assistant"
+    assert payload.icon_type == "emoji"
+    assert payload.icon == "search"
+    assert payload.icon_background == "#E0F2FE"
+
+
 def test_knowledge_query_mode_uses_stable_backend_enums():
     config = AgentSoulConfig.model_validate(
         {

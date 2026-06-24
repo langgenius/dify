@@ -27,25 +27,26 @@ export default async function Layout({ children }: { children: ReactNode }) {
       <OAuthRegistrationAnalytics />
       <EducationVerifyActionRecorder />
       <CommonLayoutHydrationBoundary>
-        <AppContextProvider>
-          <EventEmitterContextProvider>
-            <ProviderContextProvider>
-              <ModalContextProvider>
-                <NextRouteStateBridge />
-                <MainNavLayout>
-                  <RoleRouteGuard>
-                    {children}
-                  </RoleRouteGuard>
-                </MainNavLayout>
-                <InSiteMessageNotification />
-                <PartnerStack />
-                <ReadmePanel />
-                <GotoAnything />
-                <WorkflowGeneratorMount />
-              </ModalContextProvider>
-            </ProviderContextProvider>
-          </EventEmitterContextProvider>
-        </AppContextProvider>
+        <NextRouteStateBridge>
+          <AppContextProvider>
+            <EventEmitterContextProvider>
+              <ProviderContextProvider>
+                <ModalContextProvider>
+                  <MainNavLayout>
+                    <RoleRouteGuard>
+                      {children}
+                    </RoleRouteGuard>
+                  </MainNavLayout>
+                  <InSiteMessageNotification />
+                  <PartnerStack />
+                  <ReadmePanel />
+                  <GotoAnything />
+                  <WorkflowGeneratorMount />
+                </ModalContextProvider>
+              </ProviderContextProvider>
+            </EventEmitterContextProvider>
+          </AppContextProvider>
+        </NextRouteStateBridge>
       </CommonLayoutHydrationBoundary>
       <Zendesk />
     </>
