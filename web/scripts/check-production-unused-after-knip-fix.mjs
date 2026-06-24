@@ -37,7 +37,10 @@ function parseVpLintJson(stdout) {
 
 function relativeDiagnostic(diagnostic) {
   const label = diagnostic.labels?.[0]
-  const filePath = label?.file ? path.relative(webDir, path.join(webDir, label.file)) : '<unknown>'
+  const diagnosticFile = label?.file ?? diagnostic.filename
+  const filePath = diagnosticFile
+    ? path.relative(webDir, path.isAbsolute(diagnosticFile) ? diagnosticFile : path.join(webDir, diagnosticFile))
+    : '<unknown>'
   const span = label?.span ? `:${label.span.line}:${label.span.column}` : ''
 
   return `${filePath}${span} ${diagnostic.code ?? ''} ${diagnostic.message ?? ''}`.trim()
