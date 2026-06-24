@@ -201,10 +201,10 @@ class TestPaginationMapping:
             },
         ]
         assert response["pagination"] == {
-            "total_count": 5,
+            "total_count": 4,
             "per_page": 2,
             "current_page": 1,
-            "total_pages": 3,
+            "total_pages": 2,
         }
         mock_list.assert_not_called()
 

@@ -379,6 +379,9 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "snippets.create_and_modify",
     "tool.manage",
     "snippets.create_and_modify",
+    "billing.view",
+    "billing.subscription.manage",
+    "billing.manage",
 ]
 
 _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
@@ -386,6 +389,9 @@ _LEGACY_WORKSPACE_NORMAL_KEYS: list[str] = [
     "plugin.install",
     "credential.use",
     "app_library.access",
+    "billing.view",
+    "billing.subscription.manage",
+    "billing.manage",
 ]
 
 _LEGACY_WORKSPACE_DATASET_OPERATOR_KEYS: list[str] = [
@@ -834,6 +840,7 @@ class RBACService:
             options: ListOption | None = None,
         ) -> Paginated[RBACRole]:
             params = (options or ListOption()).to_params({"include_owner": include_owner})
+            params["dataset_operator_enabled"] = dify_config.DATASET_OPERATOR_ENABLED
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/roles",
