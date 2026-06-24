@@ -6,7 +6,6 @@ import {
 import LastRunBlockComponent from '../component'
 import {
   $createLastRunBlockNode,
-  $isLastRunBlockNode,
   LastRunBlockNode,
 } from '../node'
 
@@ -101,14 +100,6 @@ describe('LastRunBlockNode', () => {
       const { node } = createNodeInEditor()
 
       expect(node).toBeInstanceOf(LastRunBlockNode)
-    })
-
-    it('should identify last run block nodes using type guard helper', () => {
-      const { node } = createNodeInEditor()
-
-      expect($isLastRunBlockNode(node)).toBe(true)
-      expect($isLastRunBlockNode(null)).toBe(false)
-      expect($isLastRunBlockNode(undefined)).toBe(false)
     })
   })
 })

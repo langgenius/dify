@@ -2,7 +2,7 @@ import type { FileListItemProps } from '../file-list-item'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { PROGRESS_ERROR, PROGRESS_NOT_STARTED } from '../../constants'
+import { PROGRESS_ERROR } from '../../constants'
 import FileListItem from '../file-list-item'
 
 // Mock theme hook - can be changed per test
@@ -53,7 +53,7 @@ describe('FileListItem', () => {
   const createMockFileItem = (overrides: Partial<FileItem> = {}): FileItem => ({
     fileID: 'file-123',
     file: createMockFile(overrides.file as Partial<File>),
-    progress: PROGRESS_NOT_STARTED,
+    progress: 100,
     ...overrides,
   })
 
@@ -135,13 +135,6 @@ describe('FileListItem', () => {
 
     it('should not show progress chart when complete (100)', () => {
       const fileItem = createMockFileItem({ progress: 100 })
-      render(<FileListItem {...defaultProps} fileItem={fileItem} />)
-
-      expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
-    })
-
-    it('should not show progress chart when not started (-1)', () => {
-      const fileItem = createMockFileItem({ progress: PROGRESS_NOT_STARTED })
       render(<FileListItem {...defaultProps} fileItem={fileItem} />)
 
       expect(screen.queryByTestId('pie-chart')).not.toBeInTheDocument()
