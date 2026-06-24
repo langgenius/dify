@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "इस अनुमति सेट के लिए नाम, विवरण और प्रदान की गई अनुमतियों को देखें।",
   "permissionSet.modal.view.dataset.title": "ज्ञान आधार अनुमति सेट देखें",
   "permissionSet.nameLabel": "अनुमति सेट नाम",
-  "permissionSet.namePlaceholder": "उदा. DSL निर्यात कर सकते हैं",
+  "permissionSet.namePlaceholder": "उदा. संचालन अनुमति सेट",
   "permissionSet.permissions": "अनुमतियां",
   "role.addRole": "भूमिकाएं बनाएं",
   "role.copyMembersDescription_one": "\"{{name}}\" {{count}} सदस्य को सौंपी गई है। क्या आप चाहते हैं कि नई भूमिका प्रति में वही सदस्य शामिल हो?",

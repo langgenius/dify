@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Affichez le nom, la description et les autorisations accordées pour cet ensemble d'autorisations.",
   "permissionSet.modal.view.dataset.title": "Afficher l'ensemble d'autorisations de base de connaissances",
   "permissionSet.nameLabel": "Nom de l'ensemble d'autorisations",
-  "permissionSet.namePlaceholder": "ex. Peut exporter le DSL",
+  "permissionSet.namePlaceholder": "ex. Ensemble de permissions d'exploitation",
   "permissionSet.permissions": "Autorisations",
   "role.addRole": "Créer des rôles",
   "role.copyMembersDescription_one": "\"{{name}}\" est attribué à {{count}} membre. Voulez-vous que la copie du nouveau rôle inclue le même membre ?",

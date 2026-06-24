@@ -23,7 +23,8 @@ import { AppModeEnum } from '@/types/app'
 import MainNav from '../index'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
-const activeEdgeClassName = 'before:pointer-events-none'
+const activeGradientMaskClassName = 'aria-[current=page]:main-nav-active-glass'
+const activeStackingClassName = 'aria-[current=page]:z-1'
 
 const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
@@ -429,7 +430,7 @@ describe('MainNav', () => {
     expect(logoLink.parentElement).toHaveClass('pt-3', 'pr-2', 'pb-2', 'pl-4')
 
     const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink.closest('nav')).toHaveClass('flex', 'flex-col', 'gap-px', 'p-2')
+    expect(homeLink.closest('nav')).toHaveClass('isolate', 'flex', 'flex-col', 'gap-px', 'p-2')
     expect(homeLink).toHaveClass('h-8', 'w-full', 'rounded-[10px]', 'px-2', 'py-1.5')
 
     const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
@@ -567,8 +568,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     const datasetsLink = screen.getByRole('link', { name: /common.menus.datasets/ })
-    expect(datasetsLink.className).toContain('bg-[linear-gradient(98.077deg')
-    expect(datasetsLink).toHaveClass(activeEdgeClassName)
+    expect(datasetsLink).toHaveClass(activeGradientMaskClassName)
     expect(datasetsLink).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
@@ -579,7 +579,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     const studioLink = screen.getByRole('link', { name: /common.menus.apps/ })
-    expect(studioLink).toHaveClass(activeEdgeClassName)
+    expect(studioLink).toHaveClass(activeGradientMaskClassName)
     expect(studioLink).toHaveAttribute('aria-current', 'page')
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
@@ -855,7 +855,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
-    expect(marketplaceLink).toHaveClass(activeEdgeClassName)
+    expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
   })
 
   it('marks roster active on roster routes', () => {
@@ -864,7 +864,7 @@ describe('MainNav', () => {
     renderMainNav()
 
     const rosterLink = screen.getByRole('link', { name: /common.menus.roster/ })
-    expect(rosterLink).toHaveClass(activeEdgeClassName)
+    expect(rosterLink).toHaveClass(activeGradientMaskClassName)
     expect(rosterLink).toHaveAttribute('aria-current', 'page')
   })
 
@@ -875,13 +875,8 @@ describe('MainNav', () => {
 
     const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
 
-    expect(homeLink).toHaveClass(
-      'backdrop-blur-[5px]',
-      'text-saas-dify-blue-inverted',
-      activeEdgeClassName,
-      'after:border-components-main-nav-glass-edge-highlight-first',
-    )
-    expect(homeLink.className).toContain('var(--color-components-main-nav-glass-surface-first)')
+    expect(homeLink).toHaveClass(activeGradientMaskClassName)
+    expect(homeLink).toHaveClass(activeStackingClassName)
   })
 
   it('keeps Home active on the legacy explore apps route only', () => {

@@ -7,7 +7,6 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import Billing from '@/app/components/billing/billing-page'
 import { defaultPlan, NUM_INFINITE } from '@/app/components/billing/config'
-import HeaderBillingBtn from '@/app/components/billing/header-billing-btn'
 import PlanComp from '@/app/components/billing/plan'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -696,83 +695,7 @@ describe('Capacity Full Components Integration', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
-// 5. Header Billing Button Integration
-// Tests HeaderBillingBtn behavior for different plan states
-// ═══════════════════════════════════════════════════════════════════════════
-describe('Header Billing Button Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setupAppContext()
-  })
-
-  it('should render UpgradeBtn (premium badge) for sandbox plan', () => {
-    setupProviderContext({ type: Plan.sandbox })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText(/upgradeBtn\.encourageShort/i)).toBeInTheDocument()
-  })
-
-  it('should render "pro" badge for professional plan', () => {
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText('pro')).toBeInTheDocument()
-    expect(screen.queryByText(/upgradeBtn/i)).not.toBeInTheDocument()
-  })
-
-  it('should render "team" badge for team plan', () => {
-    setupProviderContext({ type: Plan.team })
-
-    render(<HeaderBillingBtn />)
-
-    expect(screen.getByText('team')).toBeInTheDocument()
-  })
-
-  it('should return null when billing is disabled', () => {
-    setupProviderContext({ type: Plan.sandbox }, { enableBilling: false })
-
-    const { container } = render(<HeaderBillingBtn />)
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('should return null when plan is not fetched yet', () => {
-    setupProviderContext({ type: Plan.sandbox }, { isFetchedPlan: false })
-
-    const { container } = render(<HeaderBillingBtn />)
-
-    expect(container.innerHTML).toBe('')
-  })
-
-  it('should call onClick when clicking pro/team badge in non-display-only mode', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn onClick={onClick} />)
-
-    await user.click(screen.getByText('pro'))
-
-    expect(onClick).toHaveBeenCalledTimes(1)
-  })
-
-  it('should not call onClick when isDisplayOnly is true', async () => {
-    const user = userEvent.setup()
-    const onClick = vi.fn()
-    setupProviderContext({ type: Plan.professional })
-
-    render(<HeaderBillingBtn onClick={onClick} isDisplayOnly />)
-
-    await user.click(screen.getByText('pro'))
-
-    expect(onClick).not.toHaveBeenCalled()
-  })
-})
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 6. PriorityLabel Integration
+// 5. PriorityLabel Integration
 // Tests priority badge display for different plan types
 // ═══════════════════════════════════════════════════════════════════════════
 describe('PriorityLabel Integration', () => {

@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Diese Aktion ist dauerhaft. Sie können die vorherige Methode nicht wiederherstellen. Bitte bestätigen Sie, um umzurechnen.",
   "conversion.confirm.title": "Bestätigung",
   "conversion.descriptionChunk1": "Sie können jetzt Ihre vorhandene Wissensdatenbank konvertieren, um die Knowledge Pipeline für die Dokumentenverarbeitung zu verwenden",
-  "conversion.descriptionChunk2": "– ein offenerer und flexiblerer Ansatz mit Zugang zu Plugins aus unserem Marktplatz. Dadurch wird die neue Verarbeitungsmethode auf alle zukünftigen Dokumente angewendet.",
+  "conversion.descriptionChunk2": " – ein offenerer und flexiblerer Ansatz mit Zugang zu Plugins aus dem Marketplace. Dadurch wird die neue Verarbeitungsmethode auf alle zukünftigen Dokumente angewendet.",
   "conversion.errorMessage": "Fehler beim Konvertieren des Datasets in eine Pipeline.",
   "conversion.successMessage": "Erfolgreiches Konvertieren des Datasets in eine Pipeline",
   "conversion.title": "In Wissenspipeline konvertieren",

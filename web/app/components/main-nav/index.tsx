@@ -298,7 +298,7 @@ const MainNav = ({
               ? null
               : (
                   <>
-                    <nav className="flex flex-col gap-px p-2">
+                    <nav className="isolate flex flex-col gap-px p-2">
                       {navItems.map(item => (
                         <MainNavLink key={item.href} item={item} pathname={pathname}>
                           {item.href === '/roster' && (
