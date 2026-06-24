@@ -189,7 +189,7 @@ def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={"system_prompt": "You are careful."},
         model=AgentSoulModelConfig(
-            plugin_id="langgenius/openai/openai",
+            plugin_id="langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
             model_provider="langgenius/openai/openai",
             model="gpt-test",
         ),
