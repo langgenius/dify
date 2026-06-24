@@ -4,15 +4,18 @@ from typing import Any
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.sql.elements import ColumnElement
 
 from extensions.ext_database import db
 from libs.helper import to_timestamp
+from models import Account
 from models.agent import (
     Agent,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentDriveFile,
+    AgentIconType,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -20,9 +23,7 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import (
-    DeclaredOutputConfig,
-)
+from models.agent_config_entities import DeclaredOutputConfig
 from models.agent_config_entities import (
     effective_declared_outputs as _effective_declared_outputs,
 )
@@ -32,8 +33,12 @@ from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentNameConflictError,
     AgentNotFoundError,
+    AgentVersionConflictError,
     AgentVersionNotFoundError,
+    InvalidComposerConfigError,
 )
+from services.agent.roster_service import AgentRosterService
+from services.app_service import AppService, CreateAppParams
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerCandidatesResponse,
@@ -171,6 +176,86 @@ class AgentComposerService:
             agent_id=binding.agent_id,
         )
         return state
+
+    @classmethod
+    def copy_workflow_composer_from_roster(
+        cls,
+        *,
+        tenant_id: str,
+        app_id: str,
+        node_id: str,
+        account_id: str,
+        source_agent_id: str,
+        source_snapshot_id: str | None = None,
+        idempotency_key: str | None = None,
+    ) -> dict[str, Any]:
+        workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
+        binding = cls._require_binding(
+            cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
+        )
+
+        if binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT and idempotency_key:
+            agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id)
+            version = cls._get_version_if_present(
+                tenant_id=tenant_id,
+                agent_id=agent.id if agent else None,
+                version_id=binding.current_snapshot_id,
+            )
+            return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
+
+        if binding.binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
+            raise InvalidComposerConfigError("Workflow agent node must be bound to a roster agent.")
+        if binding.agent_id != source_agent_id:
+            raise InvalidComposerConfigError("Source agent does not match the current workflow node binding.")
+
+        source_agent = cls._require_agent(tenant_id=tenant_id, agent_id=source_agent_id)
+        if source_agent.scope != AgentScope.ROSTER or source_agent.status != AgentStatus.ACTIVE:
+            raise InvalidComposerConfigError("Source agent must be an active roster agent.")
+        source_version = cls._require_version(
+            tenant_id=tenant_id,
+            agent_id=source_agent.id,
+            version_id=source_agent.active_config_snapshot_id,
+        )
+        if source_snapshot_id and source_snapshot_id != source_version.id:
+            raise AgentVersionConflictError()
+
+        agent_soul = AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
+        inline_agent = cls._create_workflow_only_agent(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_id=workflow.id,
+            node_id=node_id,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            name=source_agent.name,
+            description=source_agent.description,
+            role=source_agent.role,
+            icon_type=source_agent.icon_type,
+            icon=source_agent.icon,
+            icon_background=source_agent.icon_background,
+        )
+        cls._copy_agent_drive_rows(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            target_agent_id=inline_agent.id,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            node_job=WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
+        )
+
+        binding.binding_type = WorkflowAgentBindingType.INLINE_AGENT
+        binding.agent_id = inline_agent.id
+        binding.current_snapshot_id = inline_agent.active_config_snapshot_id
+        binding.updated_by = account_id
+        db.session.flush()
+        db.session.commit()
+
+        version = cls._require_version(
+            tenant_id=tenant_id,
+            agent_id=inline_agent.id,
+            version_id=inline_agent.active_config_snapshot_id,
+        )
+        return cls._serialize_workflow_state(binding=binding, agent=inline_agent, version=version)
 
     @classmethod
     def load_agent_app_composer(cls, *, tenant_id: str, app_id: str) -> dict[str, Any]:
@@ -849,6 +934,11 @@ class AgentComposerService:
             tenant_id=tenant_id,
             account_id=account_id,
             name=agent_name,
+            description=payload.description or "",
+            role=payload.role or "",
+            icon_type=payload.icon_type,
+            icon=payload.icon,
+            icon_background=payload.icon_background,
             agent_soul=payload.agent_soul,
             operation=AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             version_note=payload.version_note,
@@ -894,9 +984,24 @@ class AgentComposerService:
             tenant_id=tenant_id,
             account_id=account_id,
             name=agent_name,
+            description=payload.description if payload.description is not None else source_agent.description,
+            role=payload.role if payload.role is not None else source_agent.role,
+            icon_type=payload.icon_type if payload.icon_type is not None else source_agent.icon_type,
+            icon=payload.icon if payload.icon is not None else source_agent.icon,
+            icon_background=payload.icon_background
+            if payload.icon_background is not None
+            else source_agent.icon_background,
             agent_soul=agent_soul,
             operation=AgentConfigRevisionOperation.SAVE_TO_ROSTER,
             version_note=payload.version_note,
+        )
+        cls._copy_agent_drive_rows(
+            tenant_id=tenant_id,
+            source_agent_id=source_agent.id,
+            target_agent_id=roster_agent.id,
+            account_id=account_id,
+            agent_soul=agent_soul,
+            node_job=payload.node_job or WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict),
         )
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = roster_agent.id
@@ -916,11 +1021,21 @@ class AgentComposerService:
         node_id: str,
         account_id: str,
         agent_soul: AgentSoulConfig,
+        name: str | None = None,
+        description: str = "",
+        role: str = "",
+        icon_type: Any | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
     ) -> Agent:
         agent = Agent(
             tenant_id=tenant_id,
-            name=f"Workflow Agent {node_id}",
-            description="",
+            name=name or f"Workflow Agent {node_id}",
+            description=description,
+            role=role,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
             agent_kind=AgentKind.DIFY_AGENT,
             scope=AgentScope.WORKFLOW_ONLY,
             source=AgentSource.WORKFLOW,
@@ -946,6 +1061,98 @@ class AgentComposerService:
         return agent
 
     @classmethod
+    def _copy_agent_drive_rows(
+        cls,
+        *,
+        tenant_id: str,
+        source_agent_id: str,
+        target_agent_id: str,
+        account_id: str,
+        agent_soul: AgentSoulConfig,
+        node_job: WorkflowNodeJobConfig | None = None,
+    ) -> None:
+        exact_keys, prefixes = cls._drive_copy_scopes_from_agent_configs(agent_soul=agent_soul, node_job=node_job)
+        predicates: list[ColumnElement[bool]] = []
+        if exact_keys:
+            predicates.append(AgentDriveFile.key.in_(sorted(exact_keys)))
+        predicates.extend(AgentDriveFile.key.startswith(prefix) for prefix in sorted(prefixes))
+        if not predicates:
+            return
+
+        source_rows = list(
+            db.session.scalars(
+                select(AgentDriveFile).where(
+                    AgentDriveFile.tenant_id == tenant_id,
+                    AgentDriveFile.agent_id == source_agent_id,
+                    or_(*predicates),
+                )
+            ).all()
+        )
+        if not source_rows:
+            return
+
+        existing_target_keys = set(
+            db.session.scalars(
+                select(AgentDriveFile.key).where(
+                    AgentDriveFile.tenant_id == tenant_id,
+                    AgentDriveFile.agent_id == target_agent_id,
+                    AgentDriveFile.key.in_([row.key for row in source_rows]),
+                )
+            ).all()
+        )
+        for row in source_rows:
+            if row.key in existing_target_keys:
+                continue
+            db.session.add(
+                AgentDriveFile(
+                    tenant_id=tenant_id,
+                    agent_id=target_agent_id,
+                    key=row.key,
+                    file_kind=row.file_kind,
+                    file_id=row.file_id,
+                    value_owned_by_drive=row.value_owned_by_drive,
+                    is_skill=row.is_skill,
+                    skill_metadata=row.skill_metadata,
+                    size=row.size,
+                    hash=row.hash,
+                    mime_type=row.mime_type,
+                    created_by=account_id,
+                )
+            )
+
+    @staticmethod
+    def _drive_copy_scopes_from_agent_configs(
+        *, agent_soul: AgentSoulConfig, node_job: WorkflowNodeJobConfig | None = None
+    ) -> tuple[set[str], set[str]]:
+        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
+        from services.agent_drive_service import decode_drive_mention_ref
+
+        exact_keys: set[str] = set()
+        prefixes: set[str] = set()
+
+        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
+            if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
+                continue
+            drive_key = decode_drive_mention_ref(mention.ref_id)
+            if not drive_key:
+                continue
+            if mention.kind == MentionKind.SKILL and "/" in drive_key:
+                prefixes.add(f"{drive_key.rsplit('/', 1)[0]}/")
+            else:
+                exact_keys.add(drive_key)
+
+        if node_job is not None:
+            for file_ref in node_job.metadata.file_refs or []:
+                if file_ref.drive_key:
+                    exact_keys.add(file_ref.drive_key)
+            for output in node_job.declared_outputs:
+                benchmark_ref = output.check.benchmark_file_ref if output.check and output.check.enabled else None
+                if benchmark_ref and benchmark_ref.drive_key:
+                    exact_keys.add(benchmark_ref.drive_key)
+
+        return exact_keys, prefixes
+
+    @classmethod
     def _create_roster_agent_for_composer(
         cls,
         *,
@@ -955,27 +1162,42 @@ class AgentComposerService:
         agent_soul: AgentSoulConfig,
         operation: AgentConfigRevisionOperation,
         version_note: str | None,
+        description: str = "",
+        role: str = "",
+        icon_type: AgentIconType | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
     ) -> Agent:
-        agent = Agent(
-            tenant_id=tenant_id,
-            name=name,
-            description="",
-            agent_kind=AgentKind.DIFY_AGENT,
-            scope=AgentScope.ROSTER,
-            source=AgentSource.WORKFLOW,
-            status=AgentStatus.ACTIVE,
-            created_by=account_id,
-            updated_by=account_id,
-        )
-        db.session.add(agent)
+        account = cls._require_account(account_id=account_id)
         try:
-            db.session.flush()
+            app = AppService().create_app(
+                tenant_id,
+                CreateAppParams(
+                    name=name,
+                    description=description,
+                    mode="agent",
+                    agent_role=role,
+                    icon_type=icon_type.value if isinstance(icon_type, AgentIconType) else icon_type,
+                    icon=icon,
+                    icon_background=icon_background,
+                ),
+                account,
+            )
         except IntegrityError as exc:
             db.session.rollback()
             raise AgentNameConflictError() from exc
-        version = cls._create_config_version(
+
+        agent = AgentRosterService(db.session).get_app_backing_agent(tenant_id=tenant_id, app_id=app.id)
+        if agent is None:
+            raise AgentNotFoundError()
+
+        current_snapshot = cls._require_version(
             tenant_id=tenant_id,
             agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        version = cls._update_current_version(
+            current_snapshot=current_snapshot,
             account_id=account_id,
             agent_soul=agent_soul,
             operation=operation,
@@ -983,6 +1205,7 @@ class AgentComposerService:
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.updated_by = account_id
         return agent
 
     @classmethod
@@ -1110,6 +1333,13 @@ class AgentComposerService:
         if not agent:
             raise AgentNotFoundError()
         return agent
+
+    @classmethod
+    def _require_account(cls, *, account_id: str) -> Account:
+        account = db.session.get(Account, account_id)
+        if not account:
+            raise ValueError("Account not found")
+        return account
 
     @classmethod
     def _get_agent_if_present(cls, *, tenant_id: str, agent_id: str | None) -> Agent | None:

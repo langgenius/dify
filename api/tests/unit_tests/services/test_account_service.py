@@ -1821,7 +1821,7 @@ class TestRegisterService:
                         status=AccountStatus.PENDING,
                         is_setup=True,
                     )
-                    mock_lookup.assert_called_once_with("newuser@example.com")
+                    mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, "newuser@example.com")
 
     def test_invite_new_member_normalizes_new_account_email(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
@@ -1865,7 +1865,7 @@ class TestRegisterService:
                         status=AccountStatus.PENDING,
                         is_setup=True,
                     )
-                    mock_lookup.assert_called_once_with(mixed_email)
+                    mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, mixed_email)
                     mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
                     mock_create_member.assert_called_once_with(
                         mock_tenant, mock_new_account, mock_db_dependencies["db"].session, "normal"
@@ -1923,7 +1923,7 @@ class TestRegisterService:
                     mock_tenant, mock_existing_account, "normal", requires_setup=True
                 )
                 mock_task_dependencies.delay.assert_called_once()
-                mock_lookup.assert_called_once_with("existing@example.com")
+                mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, "existing@example.com")
 
     def test_invite_existing_active_account_requires_acceptance_before_joining(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies

@@ -15,7 +15,7 @@
   "conversion.confirm.content": "This action is permanent. You won't be able to revert to the previous method.Please confirm to convert.",
   "conversion.confirm.title": "Confirmation",
   "conversion.descriptionChunk1": "You can now convert your existing knowledge base to use the Knowledge Pipeline for document processing",
-  "conversion.descriptionChunk2": " — a more open and flexible approach with access to plugins from our marketplace. This will apply the new processing method to all future documents.",
+  "conversion.descriptionChunk2": " — a more open and flexible approach with access to integrations from the Marketplace. This will apply the new processing method to all future documents.",
   "conversion.errorMessage": "Failed to convert the dataset to a pipeline",
   "conversion.successMessage": "Successfully converted the dataset to a pipeline",
   "conversion.title": "Convert to Knowledge Pipeline",

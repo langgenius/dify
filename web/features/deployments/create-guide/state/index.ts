@@ -10,7 +10,7 @@ import type { RuntimeCredentialBindingSelections } from '@/features/deployments/
 import type { UnsupportedDslNode } from '@/features/deployments/shared/domain/error'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
-import { keepPreviousData, skipToken } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/components/env-var-bindings-utils'
@@ -139,10 +139,41 @@ export const selectedAppAtom = atom<WorkflowSourceApp | undefined>(undefined)
 
 // DSL primitives and derived state
 export const dslFileAtom = atom<File | undefined>(undefined)
-const dslContentAtom = atom('')
-export const isReadingDslAtom = atom(false)
-export const dslReadErrorAtom = atom(false)
-const dslReadTokenAtom = atom(0)
+const dslFileReadVersionAtom = atom(0)
+
+const dslFileContentQueryAtom = atomWithQuery((get) => {
+  const file = get(dslFileAtom)
+  const fileReadVersion = get(dslFileReadVersionAtom)
+
+  return queryOptions({
+    queryKey: [
+      'createGuideDslFileContent',
+      fileReadVersion,
+      file,
+      file?.name ?? '',
+      file?.size ?? 0,
+      file?.lastModified ?? 0,
+    ],
+    queryFn: async () => file ? await file.text() : '',
+    enabled: Boolean(file),
+    retry: false,
+  })
+})
+
+const dslContentAtom = atom((get) => {
+  return get(dslFileContentQueryAtom).data ?? ''
+})
+
+export const isReadingDslAtom = atom((get) => {
+  const file = get(dslFileAtom)
+  const dslFileContentQuery = get(dslFileContentQueryAtom)
+
+  return Boolean(file && (dslFileContentQuery.isLoading || dslFileContentQuery.isFetching))
+})
+
+export const dslReadErrorAtom = atom((get) => {
+  return Boolean(get(dslFileAtom) && get(dslFileContentQueryAtom).isError)
+})
 
 export const dslDefaultAppNameAtom = atom((get) => {
   const dslContent = get(dslContentAtom)
@@ -470,42 +501,14 @@ export const continueFromSourceAtom = atom(null, (get, set, {
 })
 
 // DSL actions
-export const selectDslFileAtom = atom(null, async (get, set, dslFile?: File) => {
+export const selectDslFileAtom = atom(null, (get, set, dslFile?: File) => {
   set(selectedEnvironmentIdAtom, '')
   set(manualBindingSelectionsAtom, {})
   set(envVarValuesAtom, {})
   set(submissionUnsupportedDslNodesAtom, [])
 
-  // Token guard prevents a slow read from an older file from overwriting the newest selection.
-  const dslReadToken = get(dslReadTokenAtom) + 1
-  set(dslReadTokenAtom, dslReadToken)
+  set(dslFileReadVersionAtom, get(dslFileReadVersionAtom) + 1)
   set(dslFileAtom, dslFile)
-  set(dslContentAtom, '')
-  set(isReadingDslAtom, Boolean(dslFile))
-  set(dslReadErrorAtom, false)
-
-  if (!dslFile)
-    return
-
-  try {
-    const content = await dslFile.text()
-    if (get(dslReadTokenAtom) !== dslReadToken)
-      return
-
-    set(dslContentAtom, content)
-    set(dslReadErrorAtom, false)
-  }
-  catch {
-    if (get(dslReadTokenAtom) !== dslReadToken)
-      return
-
-    set(dslContentAtom, '')
-    set(dslReadErrorAtom, true)
-  }
-  finally {
-    if (get(dslReadTokenAtom) === dslReadToken)
-      set(isReadingDslAtom, false)
-  }
 })
 
 // Release derived state and actions
@@ -914,10 +917,7 @@ export const createDeploymentGuideScopedAtoms = [
   sourceSearchTextAtom,
   selectedAppAtom,
   dslFileAtom,
-  dslContentAtom,
-  isReadingDslAtom,
-  dslReadErrorAtom,
-  dslReadTokenAtom,
+  dslFileReadVersionAtom,
   instanceNameAtom,
   instanceDescriptionAtom,
   releaseNameAtom,
