@@ -23,8 +23,8 @@ import { AppModeEnum } from '@/types/app'
 import MainNav from '../index'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
-const activeGradientMaskClassName = 'main-nav-active-glass'
-const activeStackingClassName = 'z-[1]'
+const activeGradientMaskClassName = 'aria-[current=page]:main-nav-active-glass'
+const activeStackingClassName = 'aria-[current=page]:z-1'
 
 const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),

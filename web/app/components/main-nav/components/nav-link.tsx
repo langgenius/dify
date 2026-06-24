@@ -4,15 +4,6 @@ import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import Link from '@/next/link'
 
-const navItemClassName = 'group relative flex h-8 w-full items-center gap-2 rounded-[10px] px-2 py-1.5 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-state-accent-solid'
-
-const activeNavItemClassName = cn(
-  'main-nav-active-glass',
-  'z-1',
-)
-
-const inactiveNavItemClassName = 'system-md-medium bg-components-main-nav-nav-button-bg text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover hover:text-components-main-nav-nav-button-text'
-
 const NavIcon = ({
   icon,
   className,
@@ -40,12 +31,14 @@ const MainNavLink = ({
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(
-        navItemClassName,
-        activated ? activeNavItemClassName : inactiveNavItemClassName,
+        'group relative flex h-8 w-full items-center gap-2 rounded-[10px] px-2 py-1.5 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
+        'not-aria-[current=page]:bg-components-main-nav-nav-button-bg not-aria-[current=page]:system-md-medium not-aria-[current=page]:text-components-main-nav-nav-button-text not-aria-[current=page]:hover:bg-components-main-nav-nav-button-bg-hover not-aria-[current=page]:hover:text-components-main-nav-nav-button-text',
+        'aria-[current=page]:main-nav-active-glass aria-[current=page]:z-1',
       )}
     >
-      <NavIcon icon={activated ? item.activeIcon : item.icon} />
-      <span className={cn('truncate', activated && 'text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]')}>{item.label}</span>
+      <NavIcon icon={item.icon} className="group-aria-[current=page]:hidden" />
+      <NavIcon icon={item.activeIcon} className="hidden group-aria-[current=page]:block" />
+      <span className="truncate group-aria-[current=page]:text-shadow-[0px_0px_8px_var(--color-components-main-nav-glass-text-glow)]">{item.label}</span>
     </Link>
   )
 }
