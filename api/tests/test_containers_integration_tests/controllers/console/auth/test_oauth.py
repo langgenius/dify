@@ -495,10 +495,7 @@ class TestAccountGeneration:
         second_result.scalar_one_or_none.return_value = expected_account
         mock_session.execute.side_effect = [first_result, second_result]
 
-        with patch("services.account_service.session_factory") as mock_factory:
-            mock_factory.create_session.return_value.__enter__ = MagicMock(return_value=mock_session)
-            mock_factory.create_session.return_value.__exit__ = MagicMock(return_value=False)
-            result = AccountService.get_account_by_email_with_case_fallback(db.session, "Case@Test.com")
+        result = AccountService.get_account_by_email_with_case_fallback(mock_session, "Case@Test.com")
 
         assert result is expected_account
         assert mock_session.execute.call_count == 2
