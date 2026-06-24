@@ -2,7 +2,6 @@ import json
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session
 
 from core.helper import encrypter
