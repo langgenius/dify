@@ -6,7 +6,6 @@ from sqlalchemy.orm import scoped_session
 from configs import dify_config
 from models.model import AccountTrialAppRecord, TrialApp
 from services.feature_service import FeatureService
-from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_factory import RecommendAppRetrievalFactory
 
 
@@ -38,11 +37,13 @@ class RecommendedAppService:
     @classmethod
     def get_learn_dify_apps(cls, session: scoped_session, language: str) -> dict[str, Any]:
         """
-        Get database-backed recommended apps marked as Learn Dify.
+        Get recommended apps marked for the Learn Dify section.
         :param language: language
         :return:
         """
-        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language)
+        mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
+        retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
+        result = retrieval_instance.get_learn_dify_apps(language)
 
         if FeatureService.get_system_features().enable_trial_app:
             for app in result["recommended_apps"]:

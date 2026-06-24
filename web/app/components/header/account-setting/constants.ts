@@ -46,13 +46,6 @@ export const SETTINGS_TAB_VALUES = [
 ] as const
 
 export type SettingsTab = typeof SETTINGS_TAB_VALUES[number]
-
-export const isValidAccountSettingTab = (tab: string | null): tab is AccountSettingTab => {
-  if (!tab)
-    return false
-  return Object.values(ACCOUNT_SETTING_TAB).includes(tab as AccountSettingTab)
-}
-
 export const isValidSettingsTab = (tab: string | null): tab is SettingsTab => {
   if (!tab)
     return false

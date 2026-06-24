@@ -474,11 +474,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/base/var-highlight/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/components/app/configuration/config-prompt/__tests__/index.spec.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -1060,34 +1055,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/block-input/index.stories.tsx": {
-    "no-console": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/base/block-input/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    },
-    "react-refresh/only-export-components": {
-      "count": 1
-    },
-    "react/no-nested-component-definitions": {
-      "count": 1
-    },
-    "react/set-state-in-effect": {
-      "count": 1
-    },
-    "react/static-components": {
-      "count": 2
-    }
-  },
   "web/app/components/base/carousel/index.tsx": {
     "react-hooks-extra/no-direct-set-state-in-use-effect": {
       "count": 1
@@ -1379,7 +1346,7 @@
   },
   "web/app/components/base/error-boundary/index.tsx": {
     "react-refresh/only-export-components": {
-      "count": 3
+      "count": 1
     },
     "react/jsx-no-key-after-spread": {
       "count": 1
@@ -2602,11 +2569,6 @@
       "count": 3
     }
   },
-  "web/app/components/datasets/common/retrieval-method-info/index.tsx": {
-    "react-refresh/only-export-components": {
-      "count": 1
-    }
-  },
   "web/app/components/datasets/create-from-pipeline/create-options/create-from-dsl-modal/header.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -3079,19 +3041,6 @@
   "web/app/components/datasets/documents/detail/metadata/components/field-info.tsx": {
     "no-restricted-imports": {
       "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/detail/metadata/components/metadata-field-list.tsx": {
-    "ts/no-non-null-asserted-optional-chain": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 6
-    },
-    "react/set-state-in-effect": {
-      "count": 6
     }
   },
   "web/app/components/datasets/documents/detail/metadata/index.tsx": {
@@ -5113,10 +5062,10 @@
   },
   "web/app/components/workflow/nodes/_base/components/layout/index.tsx": {
     "no-barrel-files/no-barrel-files": {
-      "count": 7
+      "count": 6
     },
     "react-refresh/only-export-components": {
-      "count": 7
+      "count": 6
     }
   },
   "web/app/components/workflow/nodes/_base/components/mcp-tool-availability.tsx": {
@@ -5476,9 +5425,6 @@
   },
   "web/app/components/workflow/nodes/data-source/types.ts": {
     "erasable-syntax-only/enums": {
-      "count": 1
-    },
-    "no-barrel-files/no-barrel-files": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7169,11 +7115,6 @@
       "count": 1
     }
   },
-  "web/service/__tests__/use-snippet-workflows.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/__tests__/use-tools.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7278,7 +7219,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 26
+      "count": 13
     }
   },
   "web/service/datasets.ts": {
@@ -7286,7 +7227,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/service/debug.ts": {

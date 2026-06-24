@@ -1,3 +1,4 @@
+import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -324,10 +325,14 @@ beforeAll(() => {
 
 // Render helper wrapping with shared nuqs testing helper plus a seeded
 // systemFeatures cache so List can resolve its useSuspenseQuery.
-const renderList = (searchParams = '') => {
+type RenderListOptions = {
+  systemFeatures?: Partial<GetSystemFeaturesResponse>
+}
+
+const renderList = (searchParams = '', options: RenderListOptions = {}) => {
   mockSearchParams = new URLSearchParams(searchParams)
   const { wrapper: SystemFeaturesWrapper } = createSystemFeaturesWrapper({
-    systemFeatures: { branding: { enabled: false } },
+    systemFeatures: { branding: { enabled: false }, ...options.systemFeatures },
   })
   return renderWithNuqs(<SystemFeaturesWrapper><List /></SystemFeaturesWrapper>, { searchParams })
 }
@@ -502,7 +507,7 @@ describe('List', () => {
     it('should render first empty state when there are no apps and no active filters', () => {
       mockAppData = { pages: [{ data: [], total: 0 }] }
 
-      renderList()
+      renderList('', { systemFeatures: { enable_learn_app: true } })
 
       expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
       expect(screen.getByText('app.firstEmpty.learnDifyTitle'))!.toBeInTheDocument()
@@ -510,6 +515,15 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+    })
+
+    it('should hide learn dify in first empty state when learn app is disabled', () => {
+      mockAppData = { pages: [{ data: [], total: 0 }] }
+
+      renderList('', { systemFeatures: { enable_learn_app: false } })
+
+      expect(screen.getByText('app.firstEmpty.title'))!.toBeInTheDocument()
+      expect(screen.queryByText('app.firstEmpty.learnDifyTitle')).not.toBeInTheDocument()
     })
 
     it('should not render first empty state before the first app list page resolves', () => {
