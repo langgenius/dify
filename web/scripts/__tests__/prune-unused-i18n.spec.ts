@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { analyzeUnusedTranslations, removeUnusedTranslations } from '../prune-unused-i18n'
+import { analyzeUnusedTranslations, removeUnusedTranslations } from '../i18n-prune/core'
 
 let webRoot: string
 
