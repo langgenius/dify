@@ -1006,6 +1006,7 @@ Returns Server-Sent Events stream.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | icon_url | string |  | No |
+| input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |
 | show_workflow_steps | boolean |  | No |
