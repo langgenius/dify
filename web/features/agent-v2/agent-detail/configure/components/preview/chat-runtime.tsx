@@ -405,10 +405,11 @@ export type AgentChatRuntimeProps = {
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
-  debugConversationId?: string | null
+  conversationId?: string | null
   inputPlaceholder: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
+  onConversationIdChange?: (conversationId: string) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }
 
@@ -420,23 +421,24 @@ export function AgentChatRuntime({
   agentName,
   agentSoulConfig,
   clearChatList,
-  debugConversationId,
+  conversationId,
   inputPlaceholder,
   renderEmptyState,
   onClearChatListChange,
+  onConversationIdChange,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
   const historyQuery = useQuery({
-    queryKey: ['agent-preview-debug-conversation', agentId, debugConversationId],
-    queryFn: () => fetchAgentConversationMessages(agentId, debugConversationId!),
-    enabled: !!debugConversationId,
+    queryKey: ['agent-chat-conversation-messages', agentId, conversationId],
+    queryFn: () => fetchAgentConversationMessages(agentId, conversationId!),
+    enabled: !!conversationId,
   })
   const initialChatTree = useMemo(
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
 
-  if (debugConversationId && historyQuery.isPending) {
+  if (conversationId && historyQuery.isPending) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading type="app" />
@@ -446,7 +448,7 @@ export function AgentChatRuntime({
 
   return (
     <AgentPreviewChatSession
-      key={`${debugConversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`}
+      key={`${conversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`}
       agentId={agentId}
       agentIcon={agentIcon}
       agentIconBackground={agentIconBackground}
@@ -454,11 +456,12 @@ export function AgentChatRuntime({
       agentName={agentName}
       agentSoulConfig={agentSoulConfig}
       clearChatList={clearChatList}
-      debugConversationId={debugConversationId}
+      conversationId={conversationId}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
       renderEmptyState={renderEmptyState}
       onClearChatListChange={onClearChatListChange}
+      onConversationIdChange={onConversationIdChange}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
   )
@@ -472,11 +475,12 @@ function AgentPreviewChatSession({
   agentName,
   agentSoulConfig,
   clearChatList,
-  debugConversationId,
+  conversationId,
   initialChatTree,
   inputPlaceholder,
   renderEmptyState,
   onClearChatListChange,
+  onConversationIdChange,
   onSaveDraftBeforeRun,
 }: {
   agentId: string
@@ -486,11 +490,12 @@ function AgentPreviewChatSession({
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
-  debugConversationId?: string | null
+  conversationId?: string | null
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
+  onConversationIdChange?: (conversationId: string) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }) {
   const { userProfile } = useAppContext()
@@ -533,7 +538,7 @@ function AgentPreviewChatSession({
     },
     clearChatList,
     onClearChatListChange,
-    debugConversationId ?? undefined,
+    conversationId ?? undefined,
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
@@ -562,9 +567,10 @@ function AgentPreviewChatSession({
       {
         onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
         onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
+        onConversationComplete: onConversationIdChange,
       },
     )
-  }, [agentId, chatList, config.model.name, config.model.provider, handleSend, inputs, onSaveDraftBeforeRun, textGenerationModelList])
+  }, [agentId, chatList, config.model.name, config.model.provider, handleSend, inputs, onConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)
