@@ -1958,7 +1958,13 @@ class TestRegisterService:
                         session=mock_db_dependencies["db"].session,
                     )
                     mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, mixed_email)
-                    mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
+                    mock_check_permission.assert_called_once_with(
+                        mock_tenant,
+                        mock_inviter,
+                        None,
+                        "add",
+                        session=mock_db_dependencies["db"].session,
+                    )
                     mock_create_member.assert_called_once_with(
                         mock_tenant, mock_new_account, mock_db_dependencies["db"].session, "normal"
                     )
