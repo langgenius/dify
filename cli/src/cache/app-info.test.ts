@@ -14,10 +14,10 @@ function appInfoPath(dir: string): string {
   return cachePath(dir, CACHE_APP_INFO)
 }
 
-function metaInfoOnly(): AppMeta {
+function metaInfoOnly(id = 'app-1'): AppMeta {
   return {
     info: {
-      id: 'app-1',
+      id,
       name: 'Greeter',
       description: '',
       mode: 'chat',
@@ -109,7 +109,7 @@ describe('app-info disk cache', () => {
   it('drops a corrupt single entry but keeps valid siblings', async () => {
     // Seed a real serialized entry via set() — no hand-authored on-disk shape.
     const seed = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
-    await seed.set('h', 'app-2', metaInfoOnly())
+    await seed.set('h', 'app-2', metaInfoOnly('app-2'))
 
     // Inject a corrupt sibling alongside the real one.
     const file = yaml.load(await readFile(appInfoPath(dir), 'utf8')) as { entries: Record<string, unknown> }
@@ -118,7 +118,7 @@ describe('app-info disk cache', () => {
 
     const c = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     expect(c.get('h', 'app-1')).toBeUndefined()
-    expect(c.get('h', 'app-2')?.meta.info?.id).toBe('app-1')
+    expect(c.get('h', 'app-2')?.meta.info?.id).toBe('app-2')
   })
 
   it('treats a non-object entries map as empty', async () => {
