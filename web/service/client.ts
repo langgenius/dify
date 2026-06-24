@@ -354,6 +354,20 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             nodes: {
               byNodeId: {
                 agentComposer: {
+                  put: {
+                    mutationOptions: {
+                      onSuccess: (composerState, variables, _onMutateResult, context) => {
+                        context.client.setQueryData(
+                          consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+                            input: {
+                              params: variables.params,
+                            },
+                          }),
+                          composerState,
+                        )
+                      },
+                    },
+                  },
                   copyFromRoster: {
                     post: {
                       mutationOptions: {

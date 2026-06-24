@@ -33,6 +33,28 @@ const mockComposerMutationFn = vi.hoisted(() => vi.fn(async (variables: unknown)
 })))
 const mockComposerMutationOptions = vi.hoisted(() => vi.fn(() => ({
   mutationFn: mockComposerMutationFn,
+  onSuccess: (
+    composerState: unknown,
+    variables: {
+      params: {
+        app_id: string
+        node_id: string
+      }
+    },
+    _onMutateResult: unknown,
+    context: {
+      client: QueryClient
+    },
+  ) => {
+    context.client.setQueryData(
+      [
+        'workflow-agent-composer',
+        variables.params.app_id,
+        variables.params.node_id,
+      ],
+      composerState,
+    )
+  },
 })))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -155,6 +177,16 @@ describe('useCreateInlineAgentBinding', () => {
       binding_type: 'inline_agent',
       agent_id: 'inline-agent-1',
       current_snapshot_id: 'inline-snapshot-1',
+    }))
+    expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(expect.objectContaining({
+      agent_soul: expect.objectContaining({
+        schema_version: 1,
+      }),
+      binding: expect.objectContaining({
+        binding_type: 'inline_agent',
+        agent_id: 'inline-agent-1',
+        current_snapshot_id: 'inline-snapshot-1',
+      }),
     }))
   })
 
