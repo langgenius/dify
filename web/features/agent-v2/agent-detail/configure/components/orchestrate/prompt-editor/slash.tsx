@@ -16,6 +16,7 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { ToolTypeEnum as ToolTabEnum } from '@/app/components/workflow/block-selector/types'
 import { useGetLanguage } from '@/context/i18n'
+import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -170,14 +171,16 @@ export function AgentPromptSlashMenu({
       {view === 'tools'
         ? (
             <AgentPromptToolFooter
-              onAddCliTool={() => {
-                onAddCliTool?.({
-                  onAdded: (item) => {
-                    if (isCliToolItem(item))
-                      onSelect(createReferenceToken('cli_tool', item.id, item.name))
-                  },
-                })
-              }}
+              onAddCliTool={ENABLE_AGENT_CLI_TOOLS
+                ? () => {
+                    onAddCliTool?.({
+                      onAdded: (item) => {
+                        if (isCliToolItem(item))
+                          onSelect(createReferenceToken('cli_tool', item.id, item.name))
+                      },
+                    })
+                  }
+                : undefined}
             />
           )
         : (
@@ -281,7 +284,9 @@ function AgentPromptToolRows({
   const { data: customTools = [] } = useAllCustomTools()
   const { data: workflowTools = [] } = useAllWorkflowTools()
   const { data: mcpTools = [] } = useAllMCPTools()
-  const configuredCliTools = configuredTools.filter(tool => tool.kind === 'cli')
+  const configuredCliTools = ENABLE_AGENT_CLI_TOOLS
+    ? configuredTools.filter(tool => tool.kind === 'cli')
+    : []
   const availableProviders = useMemo(() => {
     if (activeTab === 'all')
       return [...builtInTools, ...workflowTools, ...customTools, ...mcpTools]
@@ -304,7 +309,9 @@ function AgentPromptToolRows({
     { key: ToolTabEnum.Workflow, label: t('agentDetail.configure.tools.toolTabs.workflow') },
     { key: ToolTabEnum.Custom, label: t('agentDetail.configure.tools.toolTabs.custom') },
     { key: ToolTabEnum.MCP, label: t('agentDetail.configure.tools.toolTabs.mcp') },
-    { key: 'cli' as const, label: t('agentDetail.configure.tools.toolTabs.cli') },
+    ...(ENABLE_AGENT_CLI_TOOLS
+      ? [{ key: 'cli' as const, label: t('agentDetail.configure.tools.toolTabs.cli') }]
+      : []),
   ]
 
   const selectTools = (tools: AgentProviderToolDefaultValue[]) => {
@@ -565,14 +572,16 @@ function AgentPromptToolFooter({
         <span aria-hidden className="i-ri-store-2-line size-4 shrink-0 text-text-secondary" />
         <span className="system-sm-regular text-text-secondary">{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
       </a>
-      <button
-        type="button"
-        className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
-        onClick={onAddCliTool}
-      >
-        <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
-        <span className="system-sm-regular text-text-secondary">{t('agentDetail.configure.tools.cliDialog.title', { ns: 'agentV2' })}</span>
-      </button>
+      {onAddCliTool && (
+        <button
+          type="button"
+          className="flex h-7 w-full items-center gap-1.5 rounded-md px-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+          onClick={onAddCliTool}
+        >
+          <span aria-hidden className="i-ri-add-line size-4 shrink-0 text-text-secondary" />
+          <span className="system-sm-regular text-text-secondary">{t('agentDetail.configure.tools.cliDialog.title', { ns: 'agentV2' })}</span>
+        </button>
+      )}
     </div>
   )
 }

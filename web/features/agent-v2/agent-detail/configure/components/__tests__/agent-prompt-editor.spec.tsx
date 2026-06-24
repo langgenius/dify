@@ -249,7 +249,7 @@ describe('AgentPromptEditor', () => {
         </>,
       )
 
-      expect(container.querySelector('.i-ri-terminal-box-line')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-terminal-box-line')).not.toBeInTheDocument()
     })
   })
 
@@ -295,7 +295,7 @@ describe('AgentPromptEditor', () => {
       expect(screen.queryByRole('button', { name: /agentDetail\.configure\.prompt\.mention\.label/i })).not.toBeInTheDocument()
     })
 
-    it('should insert references after prompt add actions create skills, files, CLI tools, or knowledge retrievals', () => {
+    it('should insert references after prompt add actions create skills, files, or knowledge retrievals', () => {
       const onSelect = vi.fn()
       const categories = [
         { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
@@ -373,8 +373,8 @@ describe('AgentPromptEditor', () => {
           onSelect={onSelect}
         />,
       )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§cli_tool:cli-1:Lark CLI§]')
+      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.toolTabs\.cli/i })).not.toBeInTheDocument()
     })
 
     it('should append available provider tool references and add missing tools to the configuration', () => {

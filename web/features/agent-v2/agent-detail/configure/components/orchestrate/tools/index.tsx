@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
 import { useSetProviderToolCredential } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -300,13 +301,15 @@ function AddToolMenu({
                   description={t('agentDetail.configure.tools.addMenu.tool.description')}
                   onClick={openToolPicker}
                 />
-                <AddToolMenuItem
-                  iconClassName="i-ri-terminal-box-line"
-                  label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
-                  badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
-                  description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
-                  onClick={openCliToolDialog}
-                />
+                {ENABLE_AGENT_CLI_TOOLS && (
+                  <AddToolMenuItem
+                    iconClassName="i-ri-terminal-box-line"
+                    label={t('agentDetail.configure.tools.addMenu.cliTool.label')}
+                    badge={t('agentDetail.configure.tools.addMenu.cliTool.badge')}
+                    description={t('agentDetail.configure.tools.addMenu.cliTool.description')}
+                    onClick={openCliToolDialog}
+                  />
+                )}
               </>
             )
           : (
@@ -349,14 +352,22 @@ export function AgentTools() {
     handleCliDialogOpenChange,
     closeProviderSettingsDialog,
   } = useAgentToolsOperations()
-  const displayTools = useDisplayTools(tools, providerById)
+  const visibleTools = useMemo(
+    () => ENABLE_AGENT_CLI_TOOLS ? tools : tools.filter(tool => tool.kind !== 'cli'),
+    [tools],
+  )
+  const displayTools = useDisplayTools(visibleTools, providerById)
+  const displayToolById = useMemo(
+    () => new Map(displayTools.map(tool => [tool.id, tool])),
+    [displayTools],
+  )
   useEffect(() => {
     if (readOnly)
       return
 
     let shouldSyncCredentials = false
-    const nextTools = tools.map((tool, index) => {
-      const displayTool = displayTools[index]
+    const nextTools = tools.map((tool) => {
+      const displayTool = displayToolById.get(tool.id)
 
       if (tool.kind !== 'provider' || displayTool?.kind !== 'provider')
         return tool
@@ -382,7 +393,7 @@ export function AgentTools() {
 
     if (shouldSyncCredentials)
       setTools(nextTools)
-  }, [displayTools, readOnly, setTools, tools])
+  }, [displayToolById, readOnly, setTools, tools])
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const openCliToolDialogFromPrompt = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
@@ -400,7 +411,10 @@ export function AgentTools() {
       promptAddCallbackRef.current = undefined
     handleCliDialogOpenChange(open)
   }, [handleCliDialogOpenChange])
-  useRegisterAgentOrchestrateAddAction('cli', openCliToolDialogFromPrompt)
+  useRegisterAgentOrchestrateAddAction(
+    'cli',
+    ENABLE_AGENT_CLI_TOOLS ? openCliToolDialogFromPrompt : () => {},
+  )
   const toolsTip = t('agentDetail.configure.tools.tip')
   const toolsListId = 'agent-configure-tools-list'
   const settingTargetCollection = settingTarget
@@ -455,15 +469,17 @@ export function AgentTools() {
         collection={settingTargetCollection}
         onClose={closeProviderSettingsDialog}
       />
-      <CliToolDialog
-        key={`${editingCliTool?.id ?? 'add'}:${isCliToolDialogOpen ? 'open' : 'closed'}`}
-        mode={editingCliTool ? 'edit' : 'add'}
-        tool={editingCliTool}
-        onDeleteCliTool={deleteCliTool}
-        onSaveCliTool={handleCliDialogSaveWithPromptInsert}
-        open={isCliToolDialogOpen}
-        onOpenChange={handleCliDialogOpenChangeWithPromptInsert}
-      />
+      {ENABLE_AGENT_CLI_TOOLS && (
+        <CliToolDialog
+          key={`${editingCliTool?.id ?? 'add'}:${isCliToolDialogOpen ? 'open' : 'closed'}`}
+          mode={editingCliTool ? 'edit' : 'add'}
+          tool={editingCliTool}
+          onDeleteCliTool={deleteCliTool}
+          onSaveCliTool={handleCliDialogSaveWithPromptInsert}
+          open={isCliToolDialogOpen}
+          onOpenChange={handleCliDialogOpenChangeWithPromptInsert}
+        />
+      )}
     </>
   )
 }

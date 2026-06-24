@@ -19,6 +19,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
+import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
@@ -261,6 +262,9 @@ export function AgentPromptEditor() {
   }
 
   const renderRosterReferenceIcon = useCallback((token: RosterReferenceToken) => {
+    if (!ENABLE_AGENT_CLI_TOOLS && token.kind === 'cli_tool')
+      return null
+
     if (token.kind !== 'tool' && token.kind !== 'tool-all' && token.kind !== 'cli_tool')
       return null
 
@@ -407,7 +411,7 @@ export function AgentPromptEditor() {
               files={files}
               tools={tools}
               onToolsChange={setTools}
-              onAddCliTool={addActions.cli}
+              onAddCliTool={ENABLE_AGENT_CLI_TOOLS ? addActions.cli : undefined}
               onAddFile={addActions.files}
               onAddKnowledge={addActions.knowledge}
               onAddSkill={addActions.skills}

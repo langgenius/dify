@@ -36,6 +36,7 @@ import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/
 import { useAppContext } from '@/context/app-context'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
 import { consoleClient } from '@/service/client'
@@ -326,7 +327,7 @@ const buildChatConfig = ({
   const modelSettings = getModelSettings(agentSoulConfig)
   const appFeatures = agentSoulConfig?.app_features ?? {}
   const difyTools = agentSoulConfig?.tools?.dify_tools ?? []
-  const cliTools = agentSoulConfig?.tools?.cli_tools ?? []
+  const cliTools = ENABLE_AGENT_CLI_TOOLS ? (agentSoulConfig?.tools?.cli_tools ?? []) : []
 
   return {
     pre_prompt: prompt || agentSoulConfig?.prompt?.system_prompt || '',
