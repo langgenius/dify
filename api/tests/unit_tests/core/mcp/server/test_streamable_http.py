@@ -16,6 +16,7 @@ from core.mcp.server.streamable_http import (
     handle_list_tools,
     handle_mcp_request,
     handle_ping,
+    negotiate_protocol_version,
     prepare_tool_arguments,
     process_mapping_response,
 )
@@ -696,3 +697,25 @@ class TestUtilityFunctions:
         # Or validation should also raise SchemaError
         with pytest.raises(jsonschema.exceptions.SchemaError):
             jsonschema.validate(instance={"count": 1.23}, schema=bad_schema)
+
+
+class TestNegotiateProtocolVersion:
+    """Test the MCP-Protocol-Version header resolver."""
+
+    def test_initialize_ignores_header(self):
+        """Initialize negotiates via the request body, so its header is ignored."""
+        assert negotiate_protocol_version("anything", True) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_absent_header_defaults(self):
+        """An absent header defaults to 2025-03-26 per the spec back-compat rule."""
+        assert negotiate_protocol_version(None, False) == types.DEFAULT_NEGOTIATED_VERSION
+
+    def test_supported_header_passes_through(self):
+        """All supported header values are used as the negotiated version."""
+        assert negotiate_protocol_version("2025-06-18", False) == "2025-06-18"
+        assert negotiate_protocol_version("2025-03-26", False) == "2025-03-26"
+        assert negotiate_protocol_version("2024-11-05", False) == "2024-11-05"
+
+    def test_unsupported_header_returns_none(self):
+        """An explicit but unsupported header signals an error (None)."""
+        assert negotiate_protocol_version("1999-01-01", False) is None
