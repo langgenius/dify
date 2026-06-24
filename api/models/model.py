@@ -25,7 +25,7 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from graphon.file import helpers as file_helpers
 from libs.helper import generate_string  # type: ignore[import-not-found]
-from libs.url_utils import normalize_api_base_url
+from libs.url_utils import get_request_base_url, normalize_api_base_url
 from libs.uuid_utils import uuidv7
 from models.utils.file_input_compat import build_file_from_input_mapping
 
@@ -2223,7 +2223,9 @@ class Site(Base):
 
     @property
     def app_base_url(self):
-        return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
+        if dify_config.APP_WEB_URL:
+            return dify_config.APP_WEB_URL
+        return get_request_base_url()
 
 
 class ApiToken(Base):  # bug: this uses setattr so idk the field.
