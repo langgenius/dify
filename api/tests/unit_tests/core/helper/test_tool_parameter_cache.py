@@ -23,6 +23,21 @@ def test_tool_parameter_cache_get_returns_decoded_dict(mocker: MockerFixture) ->
     redis_client_mock.get.assert_called_once_with(cache_key)
 
 
+def test_tool_parameter_cache_get_returns_none_for_invalid_utf8(mocker: MockerFixture) -> None:
+    redis_client_mock = mocker.patch("core.helper.tool_parameter_cache.redis_client")
+    cache = ToolParameterCache(
+        tenant_id="tenant",
+        provider="provider",
+        tool_name="tool",
+        cache_type=ToolParameterCacheType.PARAMETER,
+        identity_id="identity",
+    )
+
+    redis_client_mock.get.return_value = b"\xff"
+
+    assert cache.get() is None
+
+
 def test_tool_parameter_cache_get_returns_none_for_invalid_json(mocker: MockerFixture) -> None:
     redis_client_mock = mocker.patch("core.helper.tool_parameter_cache.redis_client")
     cache = ToolParameterCache(
