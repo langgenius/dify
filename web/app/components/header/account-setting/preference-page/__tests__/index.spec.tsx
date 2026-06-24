@@ -4,7 +4,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
-import LanguagePage from '../index'
+import PreferencePage from '../index'
 
 const mockRefresh = vi.fn()
 const mockMutateUserProfile = vi.fn()
@@ -54,7 +54,7 @@ vi.mock('@langgenius/dify-ui/select', async () => {
     SelectItem: ({ children, value }: { children: React.ReactNode, value: string }) => {
       const context = React.useContext(SelectContext)
       return (
-        <button type="button" role="option" onClick={() => context.onValueChange?.(value)}>
+        <button type="button" role="option" aria-selected={false} onClick={() => context.onValueChange?.(value)}>
           {children}
         </button>
       )
@@ -104,7 +104,7 @@ const createUserProfile = (overrides: Partial<GetAccountProfileResponse> = {}): 
 const renderPage = () => {
   render(
     <>
-      <LanguagePage />
+      <PreferencePage />
       <ToastHost />
     </>,
   )
@@ -150,7 +150,7 @@ beforeEach(() => {
 })
 
 // Rendering
-describe('LanguagePage - Rendering', () => {
+describe('PreferencePage - Rendering', () => {
   it('should render default language and timezone labels', () => {
     const english = getLanguageOption('en-US')
     const niueTimezone = getTimezoneOption('Pacific/Niue')
@@ -182,7 +182,7 @@ describe('LanguagePage - Rendering', () => {
 })
 
 // Interactions
-describe('LanguagePage - Interactions', () => {
+describe('PreferencePage - Interactions', () => {
   it('should show success toast when language updates', async () => {
     const chinese = getLanguageOption('zh-Hans')
     mockUserProfile = createUserProfile({ interface_language: 'en-US' })

@@ -20,11 +20,11 @@ import { BillingPermission, hasPermission } from '@/utils/permission'
 import AccessRulesPage from './access-rules-page'
 import { ApiBasedExtensionPage } from './api-based-extension-page'
 import DataSourcePage from './data-source-page-new'
-import LanguagePage from './language-page'
 import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
+import PreferencePage from './preference-page'
 
 const iconClassName = `
   w-4 h-4 mr-2
@@ -58,6 +58,7 @@ export default function AccountSetting({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
+  // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab = activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
   const activeMenu = (() => {
     if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
@@ -267,7 +268,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <LanguagePage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PREFERENCES && <PreferencePage />}
             </div>
           </ScrollArea>
         </div>
