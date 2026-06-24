@@ -49,7 +49,7 @@ export const SelectItem = ({
   onClick,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode, value?: unknown }) => {
-  const select = React.useContext(SelectContext)
+  const select = React.use(SelectContext)
   return (
     <div
       role="option"

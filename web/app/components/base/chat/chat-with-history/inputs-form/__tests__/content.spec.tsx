@@ -91,7 +91,7 @@ const createMockContext = (overrides: Partial<ChatWithHistoryContextValue> = {})
 const MockContext = React.createContext<ChatWithHistoryContextValue>(createMockContext())
 
 vi.mock('../../context', () => ({
-  useChatWithHistoryContext: () => React.useContext(MockContext),
+  useChatWithHistoryContext: () => React.use(MockContext),
 }))
 
 const MockContextProvider = ({ children, value }: { children: React.ReactNode, value: ChatWithHistoryContextValue }) => {

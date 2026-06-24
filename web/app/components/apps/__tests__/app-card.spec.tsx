@@ -56,7 +56,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 // Include createContext for components that use it (like Toast)
 vi.mock('use-context-selector', () => ({
   createContext: <T,>(defaultValue: T) => React.createContext(defaultValue),
-  useContext: () => ({
+  use: () => ({
     notify: toastMocks.api,
   }),
   useContextSelector: (_context: unknown, selector: (state: Record<string, unknown>) => unknown) => selector({

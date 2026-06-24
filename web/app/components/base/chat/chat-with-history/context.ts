@@ -15,7 +15,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'es-toolkit/function'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'use-context-selector'
 
 export type ChatWithHistoryContextValue = {
   appMeta?: AppMeta | null
@@ -96,4 +96,4 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   allInputsHidden: false,
   initUserVariables: {},
 })
-export const useChatWithHistoryContext = () => useContext(ChatWithHistoryContext)
+export const useChatWithHistoryContext = () => use(ChatWithHistoryContext)

@@ -54,7 +54,7 @@ export const DropdownMenuTrigger = ({
   onClick,
   ...props
 }: DropdownMenuTriggerProps) => {
-  const { open, onOpenChange } = React.useContext(DropdownMenuContext)
+  const { open, onOpenChange } = React.use(DropdownMenuContext)
   const node = render ?? children
   const isNativeButton = React.isValidElement(node) && node.type === 'button'
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -97,7 +97,7 @@ export const DropdownMenuContent = ({
   alignOffset,
   ...props
 }: DropdownMenuContentProps) => {
-  const { open } = React.useContext(DropdownMenuContext)
+  const { open } = React.use(DropdownMenuContext)
   if (!open)
     return null
 

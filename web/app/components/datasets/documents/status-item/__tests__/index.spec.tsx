@@ -21,7 +21,7 @@ const toastMocks = vi.hoisted(() => {
 })
 vi.mock('use-context-selector', () => ({
   createContext: (defaultValue: unknown) => React.createContext(defaultValue),
-  useContext: () => ({
+  use: () => ({
     notify: toastMocks.api,
   }),
   useContextSelector: (context: unknown, selector: (state: unknown) => unknown) => selector({}),

@@ -40,7 +40,7 @@ const mockDataset: Partial<DataSet> = {
 
 // Mock use-context-selector
 vi.mock('use-context-selector', () => ({
-  useContext: vi.fn(() => ({ dataset: mockDataset })),
+  use: vi.fn(() => ({ dataset: mockDataset })),
   useContextSelector: vi.fn((_, selector) => selector({ dataset: mockDataset })),
   createContext: vi.fn(() => ({})),
 }))

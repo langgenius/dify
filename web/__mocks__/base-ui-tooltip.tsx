@@ -33,7 +33,7 @@ export const TooltipTrigger = ({
   nativeButton: _nativeButton,
   ...props
 }: React.HTMLAttributes<HTMLElement> & { children?: ReactNode, render?: React.ReactElement, nativeButton?: boolean }) => {
-  const { open, onOpenChange } = React.useContext(TooltipContext)
+  const { open, onOpenChange } = React.use(TooltipContext)
   const node = render ?? children
 
   if (React.isValidElement(node)) {
@@ -86,7 +86,7 @@ export const TooltipContent = ({
   children,
   ...props
 }: React.HTMLAttributes<HTMLDivElement> & { children?: ReactNode }) => {
-  const { open } = React.useContext(TooltipContext)
+  const { open } = React.use(TooltipContext)
   if (!open)
     return null
   return <div {...props}>{children}</div>

@@ -5,7 +5,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import Input from '@/app/components/base/input'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
@@ -18,7 +18,7 @@ const ChatUserInput = ({
   inputs,
 }: Props) => {
   const { t } = useTranslation()
-  const { modelConfig, setInputs, canTestAndRun = false } = useContext(ConfigContext)
+  const { modelConfig, setInputs, canTestAndRun = false } = use(ConfigContext)
   const debugInputReadonly = !canTestAndRun
 
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {

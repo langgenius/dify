@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import ConfigContext from '@/context/debug-configuration'
@@ -29,7 +29,7 @@ const Config: FC = () => {
     setModelConfig,
     setPrevPromptConfig,
     dataSets,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const isChatApp = [AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT, AppModeEnum.CHAT].includes(mode)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 

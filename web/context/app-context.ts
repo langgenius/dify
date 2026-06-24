@@ -3,7 +3,7 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
 import type { ICurrentWorkspace, LangGeniusVersionResponse } from '@/models/common'
 import { noop } from 'es-toolkit/function'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { createContext, use, useContextSelector } from 'use-context-selector'
 
 export type AppContextValue = {
   userProfile: GetAccountProfileResponse
@@ -75,4 +75,4 @@ export function useSelector<T>(selector: (value: AppContextValue) => T): T {
   return useContextSelector(AppContext, selector)
 }
 
-export const useAppContext = () => useContext(AppContext)
+export const useAppContext = () => use(AppContext)

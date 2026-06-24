@@ -21,7 +21,7 @@ import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import { useContext } from 'use-context-selector'
+import { use } from 'use-context-selector'
 import { Infotip } from '@/app/components/base/infotip'
 import { InputVarType } from '@/app/components/workflow/types'
 import ConfigContext from '@/context/debug-configuration'
@@ -99,7 +99,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const {
     mode,
     dataSets,
-  } = useContext(ConfigContext)
+  } = use(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
 
   const hasVar = promptVariables.length > 0

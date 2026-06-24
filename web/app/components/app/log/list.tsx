@@ -30,7 +30,7 @@ import { parseAsString, useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { createContext, useContext } from 'use-context-selector'
+import { createContext, use } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ModelInfo from '@/app/components/app/log/model-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -164,7 +164,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     select: data => data.profile.timezone ?? undefined,
   })
   const { formatTime } = useTimestamp()
-  const { onClose, appDetail } = useContext(DrawerContext)
+  const { onClose, appDetail } = use(DrawerContext)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,

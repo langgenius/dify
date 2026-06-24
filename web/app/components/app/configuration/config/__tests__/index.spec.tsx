@@ -11,7 +11,7 @@ vi.mock('use-context-selector', async (importOriginal) => {
   const actual = await importOriginal<typeof import('use-context-selector')>()
   return {
     ...actual,
-    useContext: vi.fn(),
+    use: vi.fn(),
   }
 })
 
@@ -142,7 +142,7 @@ const createContextValue = (overrides: Partial<MockContext> = {}): MockContext =
   ...overrides,
 })
 
-const mockUseContext = vi.mocked(useContextSelector.useContext)
+const mockUseContext = vi.mocked(useContextSelector.use)
 
 const renderConfig = (contextOverrides: Partial<MockContext> = {}) => {
   const contextValue = createContextValue(contextOverrides)
