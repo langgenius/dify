@@ -17,6 +17,8 @@ from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
+from extensions.ext_database import db
+from services.agent.soul_files_service import AgentSoulFilesService
 from services.agent_drive_service import (
     AgentDriveError,
     AgentDriveService,
@@ -35,6 +37,28 @@ def _error_response(exc: AgentDriveError) -> tuple[dict[str, str], int]:
     return {"code": exc.code, "message": exc.message}, exc.status_code
 
 
+def _versioned_manifest(
+    *,
+    tenant_id: str,
+    agent_id: str,
+    prefix: str = "",
+    include_download_url: bool = False,
+) -> list[dict[str, object]]:
+    agent_soul = AgentSoulFilesService.active_agent_soul(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
+    normalized_prefix = prefix.strip().lstrip("/")
+    items = AgentDriveService().manifest(
+        tenant_id=tenant_id,
+        agent_id=agent_id,
+        prefix=normalized_prefix,
+        include_download_url=include_download_url,
+    )
+    skill_prefixes = AgentSoulFilesService.allowed_skill_prefixes(agent_soul)
+    if normalized_prefix and any(normalized_prefix.startswith(p) for p in skill_prefixes):
+        return items
+    allowed_keys = AgentSoulFilesService.allowed_drive_keys(agent_soul)
+    return [item for item in items if item.get("key") in allowed_keys]
+
+
 @inner_api_ns.route("/drive/<string:drive_ref>/manifest")
 class AgentDriveManifestApi(Resource):
     @setup_required
@@ -48,7 +72,7 @@ class AgentDriveManifestApi(Resource):
             if not tenant_id:
                 raise AgentDriveError("missing_tenant_id", "tenant_id is required", status_code=400)
             include_download_url = (request.args.get("include_download_url") or "").lower() in ("1", "true", "yes")
-            items = AgentDriveService().manifest(
+            items = _versioned_manifest(
                 tenant_id=tenant_id,
                 agent_id=agent_id,
                 prefix=request.args.get("prefix", ""),
@@ -71,7 +95,7 @@ class AgentDriveSkillsApi(Resource):
             tenant_id = (request.args.get("tenant_id") or "").strip()
             if not tenant_id:
                 raise AgentDriveError("missing_tenant_id", "tenant_id is required", status_code=400)
-            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=agent_id)
+            items = AgentSoulFilesService.list_skills(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
         except AgentDriveError as exc:
             return _error_response(exc)
         return {"items": items}
@@ -97,6 +121,13 @@ class AgentDriveCommitApi(Resource):
                 agent_id=agent_id,
                 items=body.items,
             )
+            AgentSoulFilesService.sync_drive_commit_to_active_soul(
+                tenant_id=body.tenant_id,
+                agent_id=agent_id,
+                account_id=user.id,
+                committed_items=items,
+            )
+            db.session.commit()
         except AgentDriveError as exc:
             return _error_response(exc)
         return {"items": items}

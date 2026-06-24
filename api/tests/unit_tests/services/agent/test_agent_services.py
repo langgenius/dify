@@ -1095,6 +1095,16 @@ def test_copy_agent_drive_rows_copies_skill_prefix_and_files(monkeypatch: pytest
             "prompt": {
                 "system_prompt": "[§skill:tender-analyzer/SKILL.md:Tender Analyzer§]",
             },
+            "files": {
+                "skills": [
+                    {
+                        "id": "tender-analyzer",
+                        "name": "Tender Analyzer",
+                        "path": "tender-analyzer",
+                        "skill_md_key": "tender-analyzer/SKILL.md",
+                    }
+                ],
+            },
         }
     )
     node_job = WorkflowNodeJobConfig.model_validate(
@@ -1173,6 +1183,17 @@ def test_drive_copy_scopes_include_declared_output_benchmark_files():
                     "[§knowledge:dataset-1:Docs§] "
                     "[§skill:tender-analyzer/SKILL.md:Tender Analyzer§]"
                 )
+            },
+            "files": {
+                "skills": [
+                    {
+                        "id": "tender-analyzer",
+                        "name": "Tender Analyzer",
+                        "path": "tender-analyzer",
+                        "skill_md_key": "tender-analyzer/SKILL.md",
+                    }
+                ],
+                "files": [{"id": "files/source.pdf", "name": "source.pdf", "drive_key": "files/source.pdf"}],
             },
         }
     )
@@ -3523,6 +3544,18 @@ def _drive_soul(**overrides):
                 "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."
             )
         },
+        "files": {
+            "skills": [
+                {
+                    "id": "tender-analyzer",
+                    "name": "Tender Analyzer",
+                    "path": "tender-analyzer",
+                    "skill_md_key": "tender-analyzer/SKILL.md",
+                    "full_archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                }
+            ],
+            "files": [{"id": "files/sample.pdf", "name": "sample.pdf", "drive_key": "files/sample.pdf"}],
+        },
     }
     base.update(overrides)
     return AgentSoulConfig.model_validate(base)
@@ -3547,7 +3580,7 @@ def test_drive_mention_findings_reports_missing_keys(monkeypatch: pytest.MonkeyP
     findings = AgentComposerService._drive_mention_findings(
         tenant_id="tenant-1",
         agent_id="agent-1",
-        prompt=_drive_soul().prompt.system_prompt,
+        agent_soul=_drive_soul(),
     )
 
     assert [(f["code"], f["id"]) for f in findings] == [("mention_target_missing", "files/sample.pdf")]
@@ -3562,7 +3595,7 @@ def test_drive_mention_findings_clean_when_all_keys_exist(monkeypatch: pytest.Mo
         AgentComposerService._drive_mention_findings(
             tenant_id="tenant-1",
             agent_id="agent-1",
-            prompt=_drive_soul().prompt.system_prompt,
+            agent_soul=_drive_soul(),
         )
         == []
     )
@@ -3574,7 +3607,7 @@ def test_drive_mention_findings_skips_prompt_without_drive_mentions(monkeypatch:
     findings = AgentComposerService._drive_mention_findings(
         tenant_id="tenant-1",
         agent_id="agent-1",
-        prompt=soul.prompt.system_prompt,
+        agent_soul=soul,
     )
     assert findings == []
 

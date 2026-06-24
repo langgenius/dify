@@ -71,7 +71,8 @@ from services.agent.prompt_mentions import (
     expand_prompt_mentions,
     parse_prompt_mentions,
 )
-from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
+from services.agent.soul_files_service import AgentSoulFilesService
+from services.agent_drive_service import AgentDriveError, AgentDriveService, decode_drive_mention_ref
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
@@ -669,13 +670,19 @@ def build_drive_aware_soul_mention_resolver(
     tenant_id: str,
     agent_id: str,
 ):
-    """Resolve skill/file mentions against the agent drive and everything else via Agent Soul."""
+    """Resolve skill/file mentions against versioned Agent Soul refs and everything else via Agent Soul."""
 
     base_resolver = build_soul_mention_resolver(agent_soul)
-    drive_service = AgentDriveService()
-    skill_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
-    skill_names_by_key = {skill["skill_md_key"]: skill["name"] for skill in skill_catalog}
-    drive_keys = {item["key"] for item in drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)}
+    skill_names_by_key = {
+        skill.skill_md_key: skill.name
+        for skill in agent_soul.files.skills
+        if skill.skill_md_key and skill.name
+    }
+    file_names_by_key = {
+        file_ref.drive_key: file_ref.name or file_ref.drive_key.rsplit("/", 1)[-1]
+        for file_ref in agent_soul.files.files
+        if file_ref.drive_key
+    }
 
     def _resolve(mention: object) -> str | None:
         if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
@@ -688,9 +695,7 @@ def build_drive_aware_soul_mention_resolver(
             return skill_names_by_key.get(decoded_key) or label or decoded_key
         if kind == MentionKind.FILE:
             decoded_key = decode_drive_mention_ref(ref_id)
-            if decoded_key in drive_keys:
-                return decoded_key.rsplit("/", 1)[-1]
-            return label or decoded_key
+            return file_names_by_key.get(decoded_key) or label or decoded_key
         return base_resolver(cast(Any, mention))
 
     return _resolve
@@ -702,7 +707,7 @@ def build_drive_layer_config(
     tenant_id: str,
     agent_id: str | None,
 ) -> tuple[DifyDriveLayerConfig | None, list[dict[str, str]]]:
-    """Derive drive runtime catalog + prompt-mentioned eager-pull keys from the drive."""
+    """Derive drive runtime catalog + prompt-mentioned eager-pull keys from Agent Soul refs."""
 
     mentioned_drive_refs = [
         decode_drive_mention_ref(mention.ref_id)
@@ -721,9 +726,22 @@ def build_drive_layer_config(
             }
         ]
 
-    drive_service = AgentDriveService()
-    skills_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
-    manifest_items = drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)
+    skills_catalog = [
+        {
+            "path": skill.path or AgentSoulFilesService.skill_path_from_key(skill.skill_md_key),
+            "name": skill.name or skill.path or skill.skill_md_key,
+            "description": skill.description or "",
+            "skill_md_key": skill.skill_md_key,
+            "archive_key": skill.full_archive_key,
+        }
+        for skill in agent_soul.files.skills
+        if skill.skill_md_key
+    ]
+    soul_file_keys = {file_ref.drive_key for file_ref in agent_soul.files.files if file_ref.drive_key}
+    try:
+        manifest_items = AgentDriveService().manifest(tenant_id=tenant_id, agent_id=agent_id)
+    except AgentDriveError:
+        manifest_items = []
     manifest_by_key = {item["key"]: item for item in manifest_items}
     skill_keys = {skill["skill_md_key"] for skill in skills_catalog}
     warnings: list[dict[str, str]] = []
@@ -733,7 +751,7 @@ def build_drive_layer_config(
         if drive_key in skill_keys:
             mentioned_skill_keys.append(drive_key)
             continue
-        if drive_key in manifest_by_key:
+        if drive_key in soul_file_keys:
             mentioned_file_keys.append(drive_key)
             continue
         warnings.append(
@@ -743,6 +761,15 @@ def build_drive_layer_config(
                 "message": f"drive mention '{drive_key}' has no matching drive entry.",
             }
         )
+    for drive_key in sorted(skill_keys | soul_file_keys):
+        if drive_key not in manifest_by_key:
+            warnings.append(
+                {
+                    "section": "agent_soul.files",
+                    "code": "drive_value_missing",
+                    "message": f"Agent Soul drive ref '{drive_key}' has no backing drive value.",
+                }
+            )
 
     skills = [
         DifyDriveSkillConfig(
