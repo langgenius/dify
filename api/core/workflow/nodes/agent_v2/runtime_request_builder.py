@@ -72,7 +72,7 @@ from services.agent.prompt_mentions import (
     parse_prompt_mentions,
 )
 from services.agent.soul_files_service import AgentSoulFilesService
-from services.agent_drive_service import AgentDriveError, AgentDriveService, decode_drive_mention_ref
+from services.agent_drive_service import decode_drive_mention_ref
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
@@ -737,12 +737,11 @@ def build_drive_layer_config(
         for skill in agent_soul.files.skills
         if skill.skill_md_key
     ]
-    soul_file_keys = {file_ref.drive_key for file_ref in agent_soul.files.files if file_ref.drive_key}
-    try:
-        manifest_items = AgentDriveService().manifest(tenant_id=tenant_id, agent_id=agent_id)
-    except AgentDriveError:
-        manifest_items = []
-    manifest_by_key = {item["key"]: item for item in manifest_items}
+    soul_file_keys = {
+        key
+        for key in AgentSoulFilesService.allowed_drive_keys(agent_soul)
+        if key not in {skill["skill_md_key"] for skill in skills_catalog}
+    }
     skill_keys = {skill["skill_md_key"] for skill in skills_catalog}
     warnings: list[dict[str, str]] = []
     mentioned_skill_keys: list[str] = []
@@ -761,15 +760,6 @@ def build_drive_layer_config(
                 "message": f"drive mention '{drive_key}' has no matching drive entry.",
             }
         )
-    for drive_key in sorted(skill_keys | soul_file_keys):
-        if drive_key not in manifest_by_key:
-            warnings.append(
-                {
-                    "section": "agent_soul.files",
-                    "code": "drive_value_missing",
-                    "message": f"Agent Soul drive ref '{drive_key}' has no backing drive value.",
-                }
-            )
 
     skills = [
         DifyDriveSkillConfig(

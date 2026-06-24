@@ -12,13 +12,14 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationE
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
-    AgentDriveFile,
+    AgentDriveFileKind,
     AgentScope,
     AgentStatus,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
+from models.model import ToolFile, UploadFile
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.soul_files_service import AgentSoulFilesService
@@ -171,7 +172,7 @@ class WorkflowAgentPublishService:
 
         wanted_keys: dict[str, tuple[str, str]] = {}
         soul_skill_keys = {skill.skill_md_key for skill in agent_soul.files.skills if skill.skill_md_key}
-        soul_file_keys = {file_ref.drive_key for file_ref in agent_soul.files.files if file_ref.drive_key}
+        soul_file_keys = AgentSoulFilesService.allowed_drive_keys(agent_soul=agent_soul) - soul_skill_keys
         for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
             if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
                 continue
@@ -187,15 +188,11 @@ class WorkflowAgentPublishService:
         check_keys = sorted(set(wanted_keys) | declared_keys)
         if not check_keys:
             return
-        existing_keys = set(
-            session.scalars(
-                select(AgentDriveFile.key).where(
-                    AgentDriveFile.tenant_id == binding.tenant_id,
-                    AgentDriveFile.agent_id == binding.agent_id,
-                    AgentDriveFile.key.in_(check_keys),
-                )
-            ).all()
-        )
+        existing_keys = {
+            key
+            for key in check_keys
+            if cls._soul_file_ref_exists(session=session, tenant_id=binding.tenant_id, agent_soul=agent_soul, key=key)
+        }
         messages: list[str] = []
         for key, (code, display) in wanted_keys.items():
             if code == "skill_ref_dangling" and key not in soul_skill_keys:
@@ -215,6 +212,35 @@ class WorkflowAgentPublishService:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} has invalid Agent Soul drive refs: {'; '.join(messages)}"
             )
+
+    @staticmethod
+    def _soul_file_ref_exists(
+        *,
+        session: Session,
+        tenant_id: str,
+        agent_soul: AgentSoulConfig,
+        key: str,
+    ) -> bool:
+        file_ref = AgentSoulFilesService.file_ref_for_key(agent_soul=agent_soul, key=key)
+        if file_ref is None:
+            return False
+        file_id = file_ref.file_id or file_ref.upload_file_id
+        if not file_id:
+            return False
+        raw_kind = file_ref.transfer_method or ("upload_file" if file_ref.upload_file_id else None)
+        try:
+            file_kind = AgentDriveFileKind(str(raw_kind))
+        except ValueError:
+            return False
+        if file_kind == AgentDriveFileKind.TOOL_FILE:
+            return (
+                session.scalar(select(ToolFile.id).where(ToolFile.tenant_id == tenant_id, ToolFile.id == file_id))
+                is not None
+            )
+        return (
+            session.scalar(select(UploadFile.id).where(UploadFile.tenant_id == tenant_id, UploadFile.id == file_id))
+            is not None
+        )
 
     @classmethod
     def sync_agent_bindings_for_draft(

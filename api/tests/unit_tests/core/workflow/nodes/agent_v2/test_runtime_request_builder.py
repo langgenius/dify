@@ -960,41 +960,11 @@ def _soul_with_drive_skill() -> AgentSoulConfig:
 
 
 def _mock_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [
-            {
-                "path": "tender-analyzer",
-                "skill_md_key": "tender-analyzer/SKILL.md",
-                "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                "name": "Tender Analyzer",
-                "description": "Parses RFPs.",
-                "size": 123,
-                "mime_type": "text/markdown",
-                "hash": "hash-1",
-                "created_at": 1,
-            }
-        ],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
-            {"key": "tender-analyzer/SKILL.md", "is_skill": True},
-            {"key": "tender-analyzer/.DIFY-SKILL-FULL.zip", "is_skill": False},
-            {"key": "files/sample.pdf", "is_skill": False},
-        ],
-    )
+    return None
 
 
 def _mock_empty_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
-    )
+    return None
 
 
 def test_build_drive_layer_config_catalogs_drive_skills_and_mentions(monkeypatch: pytest.MonkeyPatch):
@@ -1119,14 +1089,6 @@ def test_workflow_runtime_expands_drive_mentions_in_agent_soul_prompt(monkeypatc
 def test_workflow_runtime_missing_drive_mentions_fall_back_to_label_then_decoded_key(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
     )
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
