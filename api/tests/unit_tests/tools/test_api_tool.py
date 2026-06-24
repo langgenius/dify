@@ -5,6 +5,7 @@ from unittest.mock import Mock, patch
 import httpx
 import pytest
 
+from configs import dify_config
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.common_entities import I18nObject
@@ -171,6 +172,48 @@ class TestApiToolInvoke:
         # Verify _invoke yields json message
         json_message = _get_message_by_type(result, ToolInvokeMessage.JsonMessage)
         assert json_message is None, "_invoke should not yield a JSON message for JSON array response"
+
+    @patch("core.tools.custom_tool.tool.ssrf_proxy.get")
+    def test_invoke_with_attachment_response_yields_blob_message(self, mock_get: Mock) -> None:
+        """When upstream returns an attachment, _invoke should yield a blob message."""
+        file_bytes = b"file-bytes"
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.content = file_bytes
+        mock_response.close.return_value = None
+        mock_response.text = ""
+        mock_response.headers = {
+            "content-type": "application/pdf",
+            "content-disposition": 'attachment; filename="test.pdf"',
+        }
+        mock_get.return_value = mock_response
+
+        result = list(self.api_tool._invoke(user_id="test_user", tool_parameters={}))
+        assert len(result) == 1
+        msg = result[0]
+        assert msg.type == ToolInvokeMessage.MessageType.BLOB
+        assert isinstance(msg.message, ToolInvokeMessage.BlobMessage)
+        assert msg.message.blob == file_bytes
+        assert msg.meta is not None
+        assert msg.meta.get("mime_type") == "application/pdf"
+
+    @patch("core.tools.custom_tool.tool.ssrf_proxy.get")
+    def test_invoke_with_attachment_response_exceeds_max_size_raises_tool_invoke_error(self, mock_get: Mock) -> None:
+        """When upstream returns an oversized attachment, _invoke should raise ToolInvokeError."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.status_code = 200
+        mock_response.headers = {
+            "content-type": "application/pdf",
+            "content-disposition": 'attachment; filename="test.pdf"',
+            "content-length": str(dify_config.PLUGIN_MAX_FILE_SIZE + 1),
+        }
+        mock_response.close.return_value = None
+        mock_get.return_value = mock_response
+
+        from core.tools.errors import ToolInvokeError
+
+        with pytest.raises(ToolInvokeError):
+            list(self.api_tool._invoke(user_id="test_user", tool_parameters={}))
 
     @patch("core.tools.custom_tool.tool.ssrf_proxy.get")
     def test_invoke_with_text_response_creates_text_message_with_original_text(self, mock_get: Mock) -> None:
