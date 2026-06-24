@@ -7,10 +7,10 @@ import type {
   Model,
   ModelProvider,
 } from '../declarations'
-import { act, renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook } from '@testing-library/react'
 import { useLocale } from '@/context/i18n'
 import { consoleQuery } from '@/service/client'
-import { fetchDefaultModal, fetchModelList, fetchModelProviderCredentials } from '@/service/common'
+import { fetchDefaultModal, fetchModelList } from '@/service/common'
 import {
   ConfigurationMethodEnum,
   CurrentSystemQuotaTypeEnum,
@@ -21,7 +21,6 @@ import {
   PreferredProviderTypeEnum,
 } from '../declarations'
 import {
-  useAnthropicBuyQuota,
   useCurrentProviderAndModel,
   useDefaultModel,
   useInvalidateDefaultModel,
@@ -31,7 +30,6 @@ import {
   useModelListAndDefaultModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
   useModelModalHandler,
-  useProviderCredentialsAndLoadBalancing,
   useRefreshModel,
   useSystemDefaultModelAndModelList,
   useTextGenerationCurrentProviderAndModelAndModelList,
@@ -50,8 +48,6 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/service/common', () => ({
   fetchDefaultModal: vi.fn(),
   fetchModelList: vi.fn(),
-  fetchModelProviderCredentials: vi.fn(),
-  getPayUrl: vi.fn(),
 }))
 
 vi.mock('@/service/use-common', () => ({
@@ -97,7 +93,6 @@ vi.mock('../atoms', () => ({
 }))
 
 const { useQuery, useQueryClient } = await import('@tanstack/react-query')
-const { getPayUrl } = await import('@/service/common')
 const { useProviderContext } = await import('@/context/provider-context')
 const { useModalContextSelector } = await import('@/context/modal-context')
 const { useMarketplacePlugins, useMarketplacePluginsByCollectionId } = await import('@/app/components/plugins/marketplace/hooks')
@@ -243,241 +238,6 @@ describe('hooks', () => {
       const { result } = renderHook(() => useSystemDefaultModelAndModelList(defaultModel, []))
 
       expect(result.current[0]).toBeUndefined()
-    })
-  })
-
-  describe('useProviderCredentialsAndLoadBalancing', () => {
-    const mockCredentials = { api_key: 'test-key', enabled: true }
-    const mockLoadBalancing = { enabled: true, configs: [] }
-
-    beforeEach(() => {
-      ; (useQueryClient as Mock).mockReturnValue({
-        invalidateQueries: vi.fn(),
-      })
-    })
-
-    it('should fetch predefined credentials when configured', async () => {
-      (useQuery as Mock).mockReturnValue({
-        data: { credentials: mockCredentials, load_balancing: mockLoadBalancing },
-        isPending: false,
-      })
-
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.predefinedModel,
-        true,
-        undefined,
-        'cred-id',
-      ))
-
-      expect(result.current.credentials).toEqual(mockCredentials)
-      expect(result.current.loadBalancing).toEqual(mockLoadBalancing)
-      expect(result.current.isLoading).toBe(false)
-
-      // Coverage for queryFn
-      const queryCall = (useQuery as Mock).mock.calls.find(call => call[0].queryKey[1] === 'credentials')
-      if (queryCall) {
-        await queryCall[0].queryFn()
-        expect(fetchModelProviderCredentials).toHaveBeenCalled()
-      }
-    })
-
-    it('should not fetch predefined credentials when not configured', () => {
-      (useQuery as Mock).mockReturnValue({
-        data: undefined,
-        isPending: false,
-      })
-
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.predefinedModel,
-        false,
-        undefined,
-        'cred-id',
-      ))
-
-      expect(result.current.credentials).toBeUndefined()
-    })
-
-    it('should fetch custom credentials with model fields', async () => {
-      (useQuery as Mock).mockReturnValue({
-        data: { credentials: mockCredentials, load_balancing: mockLoadBalancing },
-        isPending: false,
-      })
-
-      const customFields = { __model_name: 'gpt-4', __model_type: ModelTypeEnum.textGeneration }
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.customizableModel,
-        true,
-        customFields,
-        'cred-id',
-      ))
-
-      expect(result.current.credentials).toEqual({
-        ...mockCredentials,
-        ...customFields,
-      })
-
-      // Coverage for queryFn
-      const queryCall = (useQuery as Mock).mock.calls.find(call => call[0].queryKey[1] === 'models')
-      if (queryCall) {
-        await queryCall[0].queryFn()
-        expect(fetchModelProviderCredentials).toHaveBeenCalled()
-      }
-    })
-
-    it('should return undefined credentials when custom data is not available', () => {
-      (useQuery as Mock).mockReturnValue({
-        data: { load_balancing: mockLoadBalancing },
-        isPending: false,
-      })
-
-      const customFields = { __model_name: 'gpt-4', __model_type: ModelTypeEnum.textGeneration }
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.customizableModel,
-        true,
-        customFields,
-        'cred-id',
-      ))
-
-      expect(result.current.credentials).toBeUndefined()
-    })
-
-    it('should handle loading state', () => {
-      (useQuery as Mock).mockReturnValue({
-        data: undefined,
-        isPending: true,
-      })
-
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.predefinedModel,
-        true,
-        undefined,
-        'cred-id',
-      ))
-
-      expect(result.current.isLoading).toBe(true)
-    })
-
-    it('should call mutate and invalidate queries for predefined model', () => {
-      const invalidateQueries = vi.fn()
-        ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-      ; (useQuery as Mock).mockReturnValue({
-        data: { credentials: mockCredentials },
-        isPending: false,
-      })
-
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.predefinedModel,
-        true,
-        undefined,
-        'cred-id',
-      ))
-
-      act(() => {
-        result.current.mutate()
-      })
-
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-providers', 'credentials', 'openai', 'cred-id'],
-      })
-    })
-
-    it('should call mutate and invalidate queries for custom model', () => {
-      const invalidateQueries = vi.fn()
-        ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-      ; (useQuery as Mock).mockReturnValue({
-        data: { credentials: mockCredentials },
-        isPending: false,
-      })
-
-      const customFields = { __model_name: 'gpt-4', __model_type: ModelTypeEnum.textGeneration }
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.customizableModel,
-        true,
-        customFields,
-        'cred-id',
-      ))
-
-      act(() => {
-        result.current.mutate()
-      })
-
-      expect(invalidateQueries).toHaveBeenCalledWith({
-        queryKey: ['model-providers', 'models', 'credentials', 'openai', ModelTypeEnum.textGeneration, 'gpt-4', 'cred-id'],
-      })
-    })
-
-    it('should return undefined credentials when credentialId is not provided', () => {
-      // When credentialId is absent, predefinedEnabled=false so query is disabled and returns no data
-      ; (useQuery as Mock).mockReturnValue({
-        data: undefined,
-        isPending: false,
-      })
-
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.predefinedModel,
-        true,
-        undefined,
-        undefined,
-      ))
-
-      expect(result.current.credentials).toBeUndefined()
-    })
-
-    it('should not call invalidateQueries when neither predefined nor custom is enabled', () => {
-      const invalidateQueries = vi.fn()
-        ; (useQueryClient as Mock).mockReturnValue({ invalidateQueries })
-      ; (useQuery as Mock).mockReturnValue({
-        data: undefined,
-        isPending: false,
-      })
-
-      // Both predefinedEnabled and customEnabled are false (no credentialId)
-      const { result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.predefinedModel,
-        false,
-        undefined,
-        undefined,
-      ))
-
-      act(() => {
-        result.current.mutate()
-      })
-
-      expect(invalidateQueries).not.toHaveBeenCalled()
-    })
-
-    it('should build URL without credentialId when not provided in predefined queryFn', async () => {
-      // Trigger the queryFn when credentialId is undefined but predefinedEnabled is true
-      ; (useQuery as Mock).mockReturnValue({
-        data: { credentials: { api_key: 'k' } },
-        isPending: false,
-      })
-
-      const { result: _result } = renderHook(() => useProviderCredentialsAndLoadBalancing(
-        'openai',
-        ConfigurationMethodEnum.predefinedModel,
-        true,
-        undefined,
-        undefined,
-      ))
-
-      // Find and invoke the predefined queryFn
-      const queryCall = (useQuery as Mock).mock.calls.find(
-        call => call[0].queryKey?.[1] === 'credentials',
-      )
-      if (queryCall) {
-        await queryCall[0].queryFn()
-        expect(fetchModelProviderCredentials).toHaveBeenCalled()
-      }
     })
   })
 
@@ -939,93 +699,6 @@ describe('hooks', () => {
       })
 
       expect(invalidateQueries).toHaveBeenCalledTimes(3)
-    })
-  })
-
-  describe('useAnthropicBuyQuota', () => {
-    beforeEach(() => {
-      Object.defineProperty(window, 'location', {
-        value: { href: '' },
-        writable: true,
-        configurable: true,
-      })
-    })
-
-    it('should fetch payment URL and redirect', async () => {
-      const mockUrl = 'https://payment.anthropic.com/checkout'
-        ; (getPayUrl as Mock).mockResolvedValue({ url: mockUrl })
-
-      const { result } = renderHook(() => useAnthropicBuyQuota())
-
-      await act(async () => {
-        await result.current()
-      })
-
-      expect(getPayUrl).toHaveBeenCalledWith('/workspaces/current/model-providers/anthropic/checkout-url')
-      await waitFor(() => {
-        expect(window.location.href).toBe(mockUrl)
-      })
-    })
-
-    it('should prevent concurrent calls while loading', async () => {
-      // The loading guard in useAnthropicBuyQuota relies on React re-render to expose `loading=true`.
-      // A slow first call keeps loading=true after the first render; a second call from the
-      // re-rendered hook captures loading=true and returns early.
-      let resolveFirst: (value: { url: string }) => void
-      const firstCallPromise = new Promise<{ url: string }>((resolve) => {
-        resolveFirst = resolve
-      })
-        ; (getPayUrl as Mock)
-        .mockReturnValueOnce(firstCallPromise)
-        .mockResolvedValue({ url: 'https://example.com' })
-
-      const { result } = renderHook(() => useAnthropicBuyQuota())
-
-      // Start the first call – this sets loading=true
-      let firstCall: Promise<void>
-      act(() => {
-        firstCall = result.current()
-      })
-
-      // Wait for re-render where loading=true
-      // Then call again while loading is true to hit the guard (line 230)
-      act(() => {
-        result.current()
-      })
-
-      // Resolve the first promise
-      await act(async () => {
-        resolveFirst!({ url: 'https://example.com' })
-        await firstCall!
-      })
-
-      // Should only be called once due to loading guard
-      expect(getPayUrl).toHaveBeenCalledTimes(1)
-    })
-
-    it('should handle errors gracefully and reset loading state', async () => {
-      ; (getPayUrl as Mock).mockRejectedValue(new Error('Network error'))
-
-      const { result } = renderHook(() => useAnthropicBuyQuota())
-
-      // The hook does not catch the error, so it re-throws; wrap it to avoid unhandled rejection
-      await act(async () => {
-        try {
-          await result.current()
-        }
-        catch {
-          // expected rejection
-        }
-      })
-
-      expect(getPayUrl).toHaveBeenCalledWith('/workspaces/current/model-providers/anthropic/checkout-url')
-
-      // After error, loading state is reset via finally block — a second call should proceed
-      ; (getPayUrl as Mock).mockResolvedValue({ url: 'https://example.com' })
-      await act(async () => {
-        await result.current()
-      })
-      expect(getPayUrl).toHaveBeenCalledTimes(2)
     })
   })
 

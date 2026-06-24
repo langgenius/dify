@@ -1,4 +1,4 @@
-import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import ErrorMessageBlockComponent from './component'
 
@@ -58,10 +58,4 @@ export class ErrorMessageBlockNode extends DecoratorNode<React.JSX.Element> {
 }
 export function $createErrorMessageBlockNode(): ErrorMessageBlockNode {
   return new ErrorMessageBlockNode()
-}
-
-export function $isErrorMessageBlockNode(
-  node: ErrorMessageBlockNode | LexicalNode | null | undefined,
-): boolean {
-  return node instanceof ErrorMessageBlockNode
 }
