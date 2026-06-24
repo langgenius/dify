@@ -28,11 +28,15 @@ from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppCopyApi,
     AgentAppListApi,
+    AgentBuildDraftApi,
+    AgentBuildDraftApplyApi,
+    AgentBuildDraftCheckoutApi,
     AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
+    AgentPublishApi,
     AgentRosterVersionDetailApi,
     AgentRosterVersionRestoreApi,
     AgentRosterVersionsApi,
@@ -151,6 +155,10 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/composer/candidates",
         "/agent/<uuid:agent_id>/features",
         "/agent/<uuid:agent_id>/copy",
+        "/agent/<uuid:agent_id>/publish",
+        "/agent/<uuid:agent_id>/build-draft/checkout",
+        "/agent/<uuid:agent_id>/build-draft",
+        "/agent/<uuid:agent_id>/build-draft/apply",
         "/agent/<uuid:agent_id>/referencing-workflows",
         "/agent/<uuid:agent_id>/drive/files",
         "/agent/<uuid:agent_id>/sandbox/files",
@@ -518,6 +526,129 @@ def test_agent_debug_conversation_refresh_uses_current_user(
         "agent_id": agent_id,
         "account_id": account_id,
     }
+
+
+def test_agent_publish_and_build_draft_routes_call_composer_service(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    current_user = SimpleNamespace(id=account_id)
+    captured: dict[str, object] = {}
+
+    def publish_agent_app_draft(**kwargs: object) -> dict[str, object]:
+        captured["publish"] = kwargs
+        return {"result": "success", "active_config_snapshot_id": "version-1"}
+
+    def checkout_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["checkout"] = kwargs
+        return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
+
+    def load_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["load"] = kwargs
+        return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
+
+    def save_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["save"] = kwargs
+        return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
+
+    def apply_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["apply"] = kwargs
+        return {"result": "success", "draft": {"id": "draft-1"}}
+
+    def discard_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["discard"] = kwargs
+        return {"result": "success"}
+
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "publish_agent_app_draft",
+        publish_agent_app_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "checkout_agent_app_build_draft",
+        checkout_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "load_agent_app_build_draft",
+        load_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "save_agent_app_build_draft",
+        save_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "apply_agent_app_build_draft",
+        apply_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "discard_agent_app_build_draft",
+        discard_agent_app_build_draft,
+    )
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/publish",
+        json={"version_note": "publish v1"},
+    ):
+        published = unwrap(AgentPublishApi.post)(AgentPublishApi(), "tenant-1", current_user, agent_id)
+    assert published["active_config_snapshot_id"] == "version-1"
+    assert captured["publish"] == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account_id": account_id,
+        "version_note": "publish v1",
+    }
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft/checkout",
+        json={"force": True},
+    ):
+        checked_out = unwrap(AgentBuildDraftCheckoutApi.post)(
+            AgentBuildDraftCheckoutApi(), "tenant-1", current_user, agent_id
+        )
+    assert checked_out["draft"]["id"] == "build-draft-1"
+    assert captured["checkout"] == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account_id": account_id,
+        "force": True,
+    }
+
+    with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft"):
+        loaded = unwrap(AgentBuildDraftApi.get)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
+    assert loaded["draft"]["id"] == "build-draft-1"
+    assert captured["load"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
+        json={"variant": "agent_app", "save_strategy": "save_to_current_version", "agent_soul": {}},
+    ):
+        saved = unwrap(AgentBuildDraftApi.put)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
+    assert saved["draft"]["id"] == "build-draft-1"
+    assert captured["save"]["tenant_id"] == "tenant-1"
+    assert captured["save"]["agent_id"] == agent_id
+    assert captured["save"]["account_id"] == account_id
+    assert captured["save"]["payload"].variant == ComposerVariant.AGENT_APP
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft/apply",
+        method="POST",
+    ):
+        applied = unwrap(AgentBuildDraftApplyApi.post)(AgentBuildDraftApplyApi(), "tenant-1", current_user, agent_id)
+    assert applied == {"result": "success", "draft": {"id": "draft-1"}}
+    assert captured["apply"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
+        method="DELETE",
+    ):
+        discarded = unwrap(AgentBuildDraftApi.delete)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
+    assert discarded == {"result": "success"}
+    assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
 
 
 def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
