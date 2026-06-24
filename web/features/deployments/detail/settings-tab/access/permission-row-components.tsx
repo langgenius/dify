@@ -6,7 +6,7 @@ import type {
 } from './access-policy'
 import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
 import type { AccessControlDraft } from '@/app/components/app/app-access-control/store'
-import { SubjectType } from '@dify/contracts/enterprise/types.gen'
+import { AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 import { AccessControlDialog } from '@/app/components/app/app-access-control/access-control-dialog'
@@ -35,7 +35,7 @@ export function PermissionSummaryButton({
   onClick: () => void
 }) {
   const { t } = useTranslation('deployments')
-  const groupCount = subjects?.filter(subject => subject.subjectType === SubjectType.SUBJECT_TYPE_GROUP).length ?? 0
+  const groupCount = subjects?.filter(subject => subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP).length ?? 0
   const memberCount = (subjects?.length ?? 0) - groupCount
   const countLabels = [
     ...(groupCount > 0 ? [t('access.members.groupCount', { count: groupCount })] : []),

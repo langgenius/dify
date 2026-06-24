@@ -3,9 +3,7 @@
 import type {
   AppInstance,
   GetAppInstanceResponse,
-  ListAppInstancesResponse,
 } from '@dify/contracts/enterprise/types.gen'
-import type { InfiniteData, QueryKey } from '@tanstack/react-query'
 import type { NavItem } from '@/app/components/header/nav/nav-selector'
 import { keepPreviousData, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
@@ -64,13 +62,7 @@ const deploymentsNavCurrentInstanceQueryAtom = atomWithQuery((get) => {
   })
 })
 
-export const deploymentsNavListQueryAtom = atomWithInfiniteQuery<
-  ListAppInstancesResponse,
-  Error,
-  InfiniteData<ListAppInstancesResponse>,
-  QueryKey,
-  number
->((get) => {
+export const deploymentsNavListQueryAtom = atomWithInfiniteQuery((get) => {
   const isActive = get(deploymentsRouteActiveAtom)
 
   return consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
