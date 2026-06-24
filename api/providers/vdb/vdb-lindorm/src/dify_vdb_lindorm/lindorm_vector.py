@@ -113,7 +113,7 @@ class LindormVectorStore(BaseVector):
         )
         def _bulk_with_retry(actions):
             try:
-                response = self._client.bulk(actions, timeout=timeout)
+                response = self._client.bulk(body=actions, timeout=timeout)
                 if response["errors"]:
                     error_items = [item for item in response["items"] if "error" in item["index"]]
                     error_msg = f"Bulk indexing had {len(error_items)} errors"
@@ -231,7 +231,7 @@ class LindormVectorStore(BaseVector):
             routing_filter_query = {
                 "query": {"bool": {"must": [{"term": {f"{ROUTING_FIELD}.keyword": self._routing}}]}}
             }
-            self._client.delete_by_query(self._collection_name, body=routing_filter_query)
+            self._client.delete_by_query(index=self._collection_name, body=routing_filter_query)
             self.refresh()
         else:
             if self._client.indices.exists(index=self._collection_name):
