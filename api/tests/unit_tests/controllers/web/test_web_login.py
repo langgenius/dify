@@ -17,6 +17,13 @@ def encode_code(code: str) -> str:
     return base64.b64encode(code.encode("utf-8")).decode()
 
 
+def assert_login_failure_logged(caplog: pytest.LogCaptureFixture, email: str, reason: LoginFailureReason) -> None:
+    records = [record for record in caplog.records if record.name == "controllers.web.login"]
+    assert len(records) == 1
+    assert records[0].args[0] == email
+    assert records[0].args[1] == reason
+
+
 @pytest.fixture
 def app():
     flask_app = Flask(__name__)
@@ -115,77 +122,71 @@ class TestLoginApi:
         "controllers.web.login.WebAppAuthService.authenticate",
         side_effect=services.errors.account.AccountLoginError(),
     )
-    def test_login_banned_account(self, mock_auth: MagicMock, app: Flask, caplog) -> None:
+    def test_login_banned_account(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
         from controllers.console.error import AccountBannedError
 
-        with app.test_request_context(
-            "/web/login",
-            method="POST",
-            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-        ):
-            with pytest.raises(AccountBannedError):
-                LoginApi().post()
+        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
+            with app.test_request_context(
+                "/web/login",
+                method="POST",
+                json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+            ):
+                with pytest.raises(AccountBannedError):
+                    LoginApi().post()
 
-        warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "user@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
+        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.ACCOUNT_BANNED)
 
     @patch(
         "controllers.web.login.WebAppAuthService.authenticate",
         side_effect=services.errors.account.AccountPasswordError(),
     )
-    def test_login_wrong_password(self, mock_auth: MagicMock, app: Flask, caplog) -> None:
+    def test_login_wrong_password(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
         from controllers.console.auth.error import AuthenticationFailedError
 
-        with app.test_request_context(
-            "/web/login",
-            method="POST",
-            json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-        ):
-            with pytest.raises(AuthenticationFailedError):
-                LoginApi().post()
+        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
+            with app.test_request_context(
+                "/web/login",
+                method="POST",
+                json={"email": "user@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+            ):
+                with pytest.raises(AuthenticationFailedError):
+                    LoginApi().post()
 
-        warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "user@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.INVALID_CREDENTIALS
+        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.INVALID_CREDENTIALS)
 
     @patch(
         "controllers.web.login.WebAppAuthService.authenticate",
         side_effect=services.errors.account.AccountNotFoundError(),
     )
-    def test_login_account_not_found(self, mock_auth: MagicMock, app: Flask, caplog) -> None:
+    def test_login_account_not_found(self, mock_auth: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture) -> None:
         from controllers.console.auth.error import AuthenticationFailedError
 
-        with app.test_request_context(
-            "/web/login",
-            method="POST",
-            json={"email": "missing@example.com", "password": base64.b64encode(b"Valid1234").decode()},
-        ):
-            with pytest.raises(AuthenticationFailedError):
-                LoginApi().post()
+        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
+            with app.test_request_context(
+                "/web/login",
+                method="POST",
+                json={"email": "missing@example.com", "password": base64.b64encode(b"Valid1234").decode()},
+            ):
+                with pytest.raises(AuthenticationFailedError):
+                    LoginApi().post()
 
-        warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "missing@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_NOT_FOUND
+        assert_login_failure_logged(caplog, "missing@example.com", LoginFailureReason.ACCOUNT_NOT_FOUND)
 
     @patch("controllers.web.login.WebAppAuthService.get_email_code_login_data", return_value=None)
-    def test_email_code_login_logs_invalid_token(self, mock_get_token_data: MagicMock, app: Flask, caplog) -> None:
-        with app.test_request_context(
-            "/web/email-code-login/validity",
-            method="POST",
-            json={"email": "user@example.com", "code": encode_code("123456"), "token": "token-123"},
-        ):
-            with pytest.raises(InvalidTokenError):
-                EmailCodeLoginApi().post()
+    def test_email_code_login_logs_invalid_token(
+        self, mock_get_token_data: MagicMock, app: Flask, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
+            with app.test_request_context(
+                "/web/email-code-login/validity",
+                method="POST",
+                json={"email": "user@example.com", "code": encode_code("123456"), "token": "token-123"},
+            ):
+                with pytest.raises(InvalidTokenError):
+                    EmailCodeLoginApi().post()
 
         mock_get_token_data.assert_called_once_with("token-123")
-        warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "user@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.INVALID_EMAIL_CODE_TOKEN
+        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.INVALID_EMAIL_CODE_TOKEN)
 
     @patch("controllers.web.login.WebAppAuthService.revoke_email_code_login_token")
     @patch(
@@ -202,24 +203,22 @@ class TestLoginApi:
         mock_get_user: MagicMock,
         mock_revoke_token: MagicMock,
         app: Flask,
-        caplog,
+        caplog: pytest.LogCaptureFixture,
     ) -> None:
         from controllers.console.error import AccountBannedError
 
-        with app.test_request_context(
-            "/web/email-code-login/validity",
-            method="POST",
-            json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
-        ):
-            with pytest.raises(AccountBannedError):
-                EmailCodeLoginApi().post()
+        with caplog.at_level(logging.WARNING, logger="controllers.web.login"):
+            with app.test_request_context(
+                "/web/email-code-login/validity",
+                method="POST",
+                json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
+            ):
+                with pytest.raises(AccountBannedError):
+                    EmailCodeLoginApi().post()
 
         mock_get_token_data.assert_called_once_with("token-123")
         mock_revoke_token.assert_called_once_with("token-123")
-        warn_records = [r for r in caplog.records if r.name == "controllers.web.login" and r.levelno == logging.WARNING]
-        assert len(warn_records) == 1
-        assert warn_records[0].args[0] == "user@example.com"
-        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
+        assert_login_failure_logged(caplog, "user@example.com", LoginFailureReason.ACCOUNT_BANNED)
 
 
 class TestLoginStatusApi:
