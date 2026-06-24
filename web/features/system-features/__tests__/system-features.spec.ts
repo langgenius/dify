@@ -18,7 +18,7 @@ const defaultCloudEnv = {
   NEXT_PUBLIC_ENABLE_EMAIL_CODE_LOGIN: true,
   NEXT_PUBLIC_ENABLE_EMAIL_PASSWORD_LOGIN: false,
   NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: true,
-  NEXT_PUBLIC_ENABLE_LEARN_APP: false,
+  NEXT_PUBLIC_ENABLE_LEARN_APP: true,
   NEXT_PUBLIC_ENABLE_MARKETPLACE: true,
   NEXT_PUBLIC_ENABLE_SOCIAL_OAUTH_LOGIN: true,
   NEXT_PUBLIC_ENABLE_TRIAL_APP: true,
@@ -140,7 +140,7 @@ describe('systemFeaturesQueryOptions', () => {
       enable_email_password_login: false,
       enable_social_oauth_login: true,
       enable_trial_app: true,
-      enable_learn_app: false,
+      enable_learn_app: true,
     })
   })
 

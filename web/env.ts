@@ -87,7 +87,7 @@ const clientSchema = {
   NEXT_PUBLIC_CREATORS_PLATFORM_FEATURES_ENABLED: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_TRIAL_APP: coercedBoolean.default(true),
   NEXT_PUBLIC_ENABLE_EXPLORE_BANNER: coercedBoolean.default(true),
-  NEXT_PUBLIC_ENABLE_LEARN_APP: coercedBoolean.default(false),
+  NEXT_PUBLIC_ENABLE_LEARN_APP: coercedBoolean.default(true),
 
   /**
    * Enable inline LaTeX rendering with single dollar signs ($...$)

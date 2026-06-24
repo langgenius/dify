@@ -52,7 +52,7 @@ export const defaultSystemFeatures = {
   enable_creators_platform: false,
   enable_trial_app: false,
   enable_explore_banner: false,
-  enable_learn_app: false,
+  enable_learn_app: true,
 } satisfies GetSystemFeaturesResponse
 
 export const cloudSystemFeatures = {
