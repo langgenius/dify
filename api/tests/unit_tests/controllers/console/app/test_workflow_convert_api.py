@@ -1,6 +1,7 @@
 """Unit tests for convert-to-workflow endpoint."""
 
 from __future__ import annotations
+from controllers.console.app.workflow import ConvertToWorkflowApi
 
 from types import SimpleNamespace
 
@@ -9,14 +10,7 @@ from flask import Flask
 
 from controllers.console.app import workflow as workflow_module
 
-
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+from inspect import unwrap
 
 
 class TestConvertToWorkflowApi:
@@ -25,9 +19,9 @@ class TestConvertToWorkflowApi:
         return workflow_module.ConvertToWorkflowApi()
 
     def test_convert_to_workflow_attaches_permission_keys_when_rbac_enabled(
-        self, api, app: Flask, monkeypatch: pytest.MonkeyPatch
+        self, api: ConvertToWorkflowApi, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        method = _unwrap(api.post)
+        method = unwrap(api.post)
 
         monkeypatch.setattr(
             workflow_module,
@@ -46,6 +40,7 @@ class TestConvertToWorkflowApi:
             json={},
         ):
             response = method(
+                api,
                 current_tenant_id="tenant-1",
                 current_user=SimpleNamespace(id="u1"),
                 app_model=SimpleNamespace(id="app-1"),
