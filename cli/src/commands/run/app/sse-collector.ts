@@ -2,7 +2,7 @@ import type { BaseError } from '@/errors/base'
 import type { SseEvent } from '@/http/sse'
 import { HttpClientError, newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
-import { parseReasoningChunk } from '@/sys/io/reasoning'
+import { accumulateReasoning, parseReasoningChunk } from '@/sys/io/reasoning'
 import { RUN_MODES } from './handlers'
 
 export type HitlPauseData = {
@@ -89,10 +89,8 @@ class ChatCollector implements Collector {
       // Accumulate separated-mode reasoning deltas per LLM node.
       case 'reasoning_chunk': {
         const chunk = parseReasoningChunk(c)
-        if (chunk !== undefined && chunk.reasoning !== '') {
-          const key = chunk.nodeId !== '' ? chunk.nodeId : '_'
-          this.reasoning[key] = (this.reasoning[key] ?? '') + chunk.reasoning
-        }
+        if (chunk !== undefined)
+          accumulateReasoning(this.reasoning, chunk)
         return
       }
       case 'agent_thought':
@@ -159,10 +157,8 @@ class WorkflowCollector implements Collector {
   consume(ev: SseEvent): void {
     if (ev.name === 'reasoning_chunk') {
       const chunk = parseReasoningChunk(parseJson(ev.data))
-      if (chunk !== undefined && chunk.reasoning !== '') {
-        const key = chunk.nodeId !== '' ? chunk.nodeId : '_'
-        this.reasoning[key] = (this.reasoning[key] ?? '') + chunk.reasoning
-      }
+      if (chunk !== undefined)
+        accumulateReasoning(this.reasoning, chunk)
       return
     }
     if (ev.name !== 'workflow_finished')

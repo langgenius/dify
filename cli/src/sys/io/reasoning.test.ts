@@ -2,6 +2,7 @@ import { Buffer } from 'node:buffer'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it } from 'vitest'
 import {
+  accumulateReasoning,
   formatReasoningBlocks,
   parseReasoningChunk,
   reasoningBlocksFromMetadata,
@@ -50,6 +51,18 @@ describe('ReasoningChunkRenderer', () => {
     expect(cap.errBuf()).toBe('<think>\na</think>\n<think>\nb</think>\n')
   })
 
+  it('serializes interleaved nodes into per-node blocks', () => {
+    const cap = capture()
+    const r = new ReasoningChunkRenderer()
+    r.push({ reasoning: 'a1', nodeId: 'n1', isFinal: false }, cap.err)
+    r.push({ reasoning: 'b1', nodeId: 'n2', isFinal: false }, cap.err)
+    r.push({ reasoning: 'a2', nodeId: 'n1', isFinal: true }, cap.err)
+    r.push({ reasoning: 'b2', nodeId: 'n2', isFinal: true }, cap.err)
+    expect(cap.errBuf()).toBe(
+      '<think>\na1</think>\n<think>\nb1</think>\n<think>\na2</think>\n<think>\nb2</think>\n',
+    )
+  })
+
   it('flush closes a block left open by a truncated stream', () => {
     const cap = capture()
     const r = new ReasoningChunkRenderer()
@@ -63,6 +76,22 @@ describe('ReasoningChunkRenderer', () => {
     const r = new ReasoningChunkRenderer()
     r.push({ reasoning: '', nodeId: 'n1', isFinal: true }, cap.err)
     expect(cap.errBuf()).toBe('')
+  })
+})
+
+describe('accumulateReasoning', () => {
+  it('appends deltas per node, falling back to "_" for a missing nodeId', () => {
+    const acc: Record<string, string> = {}
+    accumulateReasoning(acc, { reasoning: 'a', nodeId: 'n1', isFinal: false })
+    accumulateReasoning(acc, { reasoning: 'b', nodeId: 'n1', isFinal: false })
+    accumulateReasoning(acc, { reasoning: 'x', nodeId: '', isFinal: false })
+    expect(acc).toEqual({ n1: 'ab', _: 'x' })
+  })
+
+  it('ignores empty reasoning', () => {
+    const acc: Record<string, string> = {}
+    accumulateReasoning(acc, { reasoning: '', nodeId: 'n1', isFinal: true })
+    expect(acc).toEqual({})
   })
 })
 

@@ -181,6 +181,20 @@ describe('streamPrinterFor — workflow separated reasoning', () => {
     sp.onEnd(cap.out, cap.err)
     expect(cap.errBuf()).toContain('<think>\nthinking</think>')
   })
+
+  it('keeps interleaved parallel-node reasoning in separate blocks', () => {
+    const sp = streamPrinterFor('workflow', true)
+    const cap = captures()
+    sp.onEvent(cap.out, cap.err, wfReasoning('a1', 'llm-1', false))
+    sp.onEvent(cap.out, cap.err, wfReasoning('b1', 'llm-2', false))
+    sp.onEvent(cap.out, cap.err, wfReasoning('a2', 'llm-1', true))
+    sp.onEvent(cap.out, cap.err, wfReasoning('b2', 'llm-2', true))
+    sp.onEvent(cap.out, cap.err, ev('workflow_finished', { data: { outputs: { result: 'ok' } } }))
+    sp.onEnd(cap.out, cap.err)
+    expect(cap.errBuf()).toBe(
+      '<think>\na1</think>\n<think>\nb1</think>\n<think>\na2</think>\n<think>\nb2</think>\n',
+    )
+  })
 })
 
 describe('streamPrinterFor — unknown mode', () => {
