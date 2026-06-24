@@ -25,6 +25,24 @@ def _supports_structured_output(protocol_version: str) -> bool:
     return protocol_version >= STRUCTURED_OUTPUT_MIN_VERSION
 
 
+def negotiate_protocol_version(header_value: str | None, is_initialize: bool) -> str | None:
+    """Resolve the negotiated protocol version for an incoming MCP request.
+
+    The version is taken from the MCP-Protocol-Version header on post-initialize requests.
+    Returns the version to use for behavior gating, or None when the client sent an explicit
+    but unsupported header (the caller should reply with a JSON-RPC INVALID_REQUEST error).
+    Initialize requests negotiate via the request body, so they always receive
+    DEFAULT_NEGOTIATED_VERSION and their header is never validated or rejected.
+    """
+    if is_initialize:
+        return mcp_types.DEFAULT_NEGOTIATED_VERSION
+    if header_value is None:
+        return mcp_types.DEFAULT_NEGOTIATED_VERSION
+    if header_value not in mcp_types.SERVER_SUPPORTED_PROTOCOL_VERSIONS:
+        return None
+    return header_value
+
+
 class ToolParameterSchemaDict(TypedDict):
     type: str
     properties: dict[str, Any]
