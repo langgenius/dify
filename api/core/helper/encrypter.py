@@ -17,8 +17,8 @@ def full_mask_token(token_length: int = 20) -> str:
 
 
 def encrypt_token(tenant_id: str, token: str) -> str:
-    from models.engine import db
     from models.account import Tenant
+    from models.engine import db
 
     if not (tenant := db.session.get(Tenant, tenant_id)):
         raise ValueError(f"Tenant with id {tenant_id} not found")

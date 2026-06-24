@@ -30,7 +30,8 @@ def import_module_from_source[T: (str, bytes)](
         module = importlib.util.module_from_spec(spec)
         if not existed_spec:
             sys.modules[module_name] = module
-        spec.loader.exec_module(module)
+        if spec.loader is not None:
+            spec.loader.exec_module(module)
         return module
     except Exception as e:
         logger.exception("Failed to load module %s from script file '%s'", module_name, repr(py_file_path))

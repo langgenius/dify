@@ -1,5 +1,6 @@
 from typing import Any
 
+
 def download_with_size_limit(url: str, max_download_size: int, **kwargs: Any) -> bytes:
     from core.file import remote_fetcher
 
