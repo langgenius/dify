@@ -74,6 +74,42 @@ def make_request(method: str, url: str, max_retries: int = SSRF_DEFAULT_MAX_RETR
     return ssrf_proxy.make_request(method=method, url=url, max_retries=max_retries, **kwargs)
 
 
+def resolve_signed_upload_file_id(url: str) -> str | None:
+    """Resolve a valid Dify upload preview URL back to its UploadFile id.
+
+    File-upload UI flows may round-trip the signed preview URL as a
+    ``remote_url`` input. Returning the backing record id lets file factories
+    preserve storage-backed file references for workflow nodes that need file
+    bytes, while forged, expired, tool, or datasource URLs continue through the
+    normal remote URL path.
+    """
+
+    parsed_url = urllib.parse.urlparse(url)
+    if not _is_dify_file_origin(parsed_url):
+        return None
+
+    signed_file_url = _parse_signed_file_path(parsed_url.path)
+    if signed_file_url is None or signed_file_url.record_kind != "upload":
+        return None
+
+    query = urllib.parse.parse_qs(parsed_url.query, keep_blank_values=True)
+    timestamp = _single_query_value(query, "timestamp")
+    nonce = _single_query_value(query, "nonce")
+    sign = _single_query_value(query, "sign")
+    if timestamp is None or nonce is None or sign is None:
+        return None
+
+    if not _verify_signed_file_url(
+        signed_file_url=signed_file_url,
+        timestamp=timestamp,
+        nonce=nonce,
+        sign=sign,
+    ):
+        return None
+
+    return signed_file_url.file_id
+
+
 class GraphonRemoteFileFetcher:
     """Graphon HTTP-client adapter backed by the unified remote-file fetcher.
 
