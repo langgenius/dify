@@ -87,7 +87,11 @@ class TestRoles:
         assert call.method == "GET"
         assert call.endpoint == "/rbac/roles"
         assert call.params == {
-            "dataset_operator_enabled": False, "page_number": 2, "results_per_page": 50, "reverse": "true"}
+            "dataset_operator_enabled": False,
+            "page_number": 2,
+            "results_per_page": 50,
+            "reverse": "true",
+        }
         assert out.pagination
         assert out.pagination.total_count == 1
 
