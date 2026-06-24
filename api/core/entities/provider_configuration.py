@@ -22,7 +22,10 @@ from core.entities.provider_entities import (
     SystemConfigurationStatus,
 )
 from core.helper import encrypter
-from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.helper.model_provider_cache import (
+    ProviderCredentialsCache,
+    ProviderCredentialsCacheType,
+)
 from core.plugin.impl.model_runtime_factory import create_model_type_instance, create_plugin_model_assembly
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -473,6 +476,39 @@ class ProviderConfiguration(BaseModel):
             provider_names.append(model_provider_id.provider_name)
         return provider_names
 
+    def _invalidate_provider_configuration_cache(
+        self,
+        *,
+        provider_models: bool = False,
+        preferred_model_providers: bool = False,
+        provider_model_settings: bool = False,
+        provider_model_credentials: bool = False,
+        provider_credentials: bool = False,
+        provider_load_balancing_configs: bool = False,
+    ) -> None:
+        """Invalidate tenant-scoped provider snapshots after committing configuration writes."""
+        from core.provider_manager import ProviderManager
+
+        sources: list[str] = []
+        if provider_models:
+            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_MODELS)
+        if preferred_model_providers:
+            sources.append(ProviderManager.CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS)
+        if provider_model_settings:
+            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS)
+        if provider_model_credentials:
+            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS)
+        if provider_credentials:
+            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS)
+        if provider_load_balancing_configs:
+            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS)
+
+        if not sources:
+            logger.warning("No provider configuration cache source selected for invalidation")
+            return
+
+        ProviderManager.invalidate_configurations_cache(self.tenant_id, sources=sources)
+
     def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None):
         """
         Add custom provider credentials.
@@ -536,6 +572,9 @@ class ProviderConfiguration(BaseModel):
                         self.switch_preferred_provider_type(provider_type=ProviderType.CUSTOM, session=session)
 
                 session.commit()
+                self._invalidate_provider_configuration_cache(
+                    provider_credentials=True,
+                )
             except Exception:
                 session.rollback()
                 raise
@@ -594,6 +633,9 @@ class ProviderConfiguration(BaseModel):
                     credential_source=CredentialSourceType.PROVIDER,
                     session=session,
                 )
+                self._invalidate_provider_configuration_cache(
+                    provider_credentials=True,
+                )
             except Exception:
                 session.rollback()
                 raise
@@ -643,6 +685,7 @@ class ProviderConfiguration(BaseModel):
             lb_credentials_cache.delete()
 
         session.commit()
+        self._invalidate_provider_configuration_cache(provider_load_balancing_configs=True)
 
     def delete_provider_credential(self, credential_id: str):
         """
@@ -717,6 +760,10 @@ class ProviderConfiguration(BaseModel):
                     self.switch_preferred_provider_type(provider_type=ProviderType.SYSTEM, session=session)
 
                 session.commit()
+                self._invalidate_provider_configuration_cache(
+                    provider_credentials=True,
+                    provider_load_balancing_configs=True,
+                )
             except Exception:
                 session.rollback()
                 raise
@@ -1007,6 +1054,10 @@ class ProviderConfiguration(BaseModel):
                     session.add(provider_model_record)
 
                 session.commit()
+                self._invalidate_provider_configuration_cache(
+                    provider_models=True,
+                    provider_model_credentials=True,
+                )
 
                 provider_model_credentials_cache = ProviderCredentialsCache(
                     tenant_id=self.tenant_id,
@@ -1088,6 +1139,10 @@ class ProviderConfiguration(BaseModel):
                     credential_source=CredentialSourceType.CUSTOM_MODEL,
                     session=session,
                 )
+                self._invalidate_provider_configuration_cache(
+                    provider_models=True,
+                    provider_model_credentials=True,
+                )
             except Exception:
                 session.rollback()
                 raise
@@ -1157,6 +1212,11 @@ class ProviderConfiguration(BaseModel):
                     provider_model_credentials_cache.delete()
 
                 session.commit()
+                self._invalidate_provider_configuration_cache(
+                    provider_models=True,
+                    provider_model_credentials=True,
+                    provider_load_balancing_configs=True,
+                )
 
             except Exception:
                 session.rollback()
@@ -1213,6 +1273,7 @@ class ProviderConfiguration(BaseModel):
 
             session.add(provider_model_record)
             session.commit()
+            self._invalidate_provider_configuration_cache(provider_models=True)
 
     def switch_custom_model_credential(self, model_type: ModelType, model: str, credential_id: str):
         """
@@ -1243,6 +1304,7 @@ class ProviderConfiguration(BaseModel):
             provider_model_record.updated_at = naive_utc_now()
             session.add(provider_model_record)
             session.commit()
+            self._invalidate_provider_configuration_cache(provider_models=True)
 
             # clear cache
             provider_model_credentials_cache = ProviderCredentialsCache(
@@ -1267,6 +1329,7 @@ class ProviderConfiguration(BaseModel):
             if provider_model_record:
                 session.delete(provider_model_record)
                 session.commit()
+                self._invalidate_provider_configuration_cache(provider_models=True)
 
                 provider_model_credentials_cache = ProviderCredentialsCache(
                     tenant_id=self.tenant_id,
@@ -1314,6 +1377,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+            self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1340,6 +1404,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+            self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1392,6 +1457,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+            self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1419,6 +1485,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(model_setting)
             session.commit()
+            self._invalidate_provider_configuration_cache(provider_model_settings=True)
 
         return model_setting
 
@@ -1483,6 +1550,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 s.add(preferred_model_provider)
             s.commit()
+            self._invalidate_provider_configuration_cache(preferred_model_providers=True)
 
         if session:
             return _switch(session)

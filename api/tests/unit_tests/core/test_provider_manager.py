@@ -8,7 +8,14 @@ from core.entities.provider_entities import ModelSettings
 from core.provider_manager import ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
-from models.provider import LoadBalancingModelConfig, ProviderModelSetting, TenantDefaultModel
+from models.provider import (
+    LoadBalancingModelConfig,
+    Provider,
+    ProviderCredential,
+    ProviderModelSetting,
+    ProviderType,
+    TenantDefaultModel,
+)
 from models.provider_ids import ModelProviderID
 
 
@@ -21,6 +28,33 @@ def _build_session_context(session: Mock) -> MagicMock:
     session_cm.__enter__.return_value = session
     session_cm.__exit__.return_value = False
     return session_cm
+
+
+class _FakeRedis:
+    def __init__(self) -> None:
+        self.store: dict[str, str] = {}
+
+    def get(self, key: str):
+        return self.store.get(key)
+
+    def setex(self, key: str, time: int, value: str) -> None:
+        self.store[key] = value
+
+    def incr(self, key: str) -> int:
+        value = int(self.store.get(key, "0")) + 1
+        self.store[key] = str(value)
+        return value
+
+
+class _FakeScalarResult:
+    def __init__(self, values: list[object]) -> None:
+        self._values = values
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def all(self) -> list[object]:
+        return self._values
 
 
 @pytest.fixture
@@ -309,6 +343,7 @@ def test_get_configurations_uses_injected_runtime_and_adds_provider_aliases(mock
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
         patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
     ):
         mock_factory_cls.return_value.get_providers.return_value = []
@@ -361,6 +396,7 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
         patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
         patch.object(manager, "_to_system_configuration", return_value=system_configuration),
         patch.object(manager, "_to_model_settings", return_value=[]),
@@ -388,6 +424,7 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mocker: MockerF
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
         patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
         patch.object(manager, "_to_system_configuration", return_value=system_configuration),
         patch.object(manager, "_to_model_settings", return_value=[]),
@@ -424,6 +461,7 @@ def test_clear_configurations_cache_rebuilds_requested_tenant(mocker: MockerFixt
         patch.object(manager, "_get_all_provider_model_settings", return_value={}),
         patch.object(manager, "_get_all_provider_load_balancing_configs", return_value={}),
         patch.object(manager, "_get_all_provider_model_credentials", return_value={}),
+        patch.object(manager, "_get_all_provider_credentials", return_value={}),
         patch.object(manager, "_to_custom_configuration", return_value=custom_configuration),
         patch.object(manager, "_to_system_configuration", return_value=system_configuration),
         patch.object(manager, "_to_model_settings", return_value=[]),
@@ -578,19 +616,129 @@ def test_get_all_providers_normalizes_provider_names_with_model_provider_id() ->
     assert list(result[str(ModelProviderID("langgenius/gemini/google"))]) == [gemini_provider]
 
 
+def test_get_all_providers_attaches_active_credentials() -> None:
+    provider = Provider(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        provider_type=ProviderType.CUSTOM,
+        is_valid=True,
+        credential_id="credential-id",
+    )
+    provider.id = "provider-id"
+    credential = ProviderCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+    session = Mock()
+    session.scalars.side_effect = [
+        _FakeScalarResult([provider]),
+        _FakeScalarResult([credential]),
+    ]
+
+    with (
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
+    ):
+        result = ProviderManager._get_all_providers("tenant-id")
+
+    assert session.scalars.call_count == 2
+    assert result[str(ModelProviderID("openai"))][0].credential_name == "primary"
+    assert result[str(ModelProviderID("openai"))][0].encrypted_config == '{"api_key": "secret"}'
+
+
+def test_invalidate_configurations_cache_bumps_selected_source_version() -> None:
+    fake_redis = _FakeRedis()
+
+    with patch("core.provider_manager.redis_client", fake_redis):
+        ProviderManager.invalidate_configurations_cache(
+            "tenant-id",
+            sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,),
+        )
+        ProviderManager.invalidate_configurations_cache(
+            "tenant-id",
+            sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,),
+        )
+
+    assert fake_redis.store["provider_configurations:tenant:tenant-id:source:provider_credentials:version"] == "2"
+    assert "provider_configurations:tenant:tenant-id:source:provider_models:version" not in fake_redis.store
+
+
+def test_provider_model_credentials_cache_returns_snapshots() -> None:
+    fake_redis = _FakeRedis()
+    credential_record = SimpleNamespace(
+        id="credential-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name="primary",
+    )
+    session = Mock()
+    session.scalars.return_value = [credential_record]
+
+    with (
+        patch("core.provider_manager.redis_client", fake_redis),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
+    ):
+        first = ProviderManager._get_all_provider_model_credentials("tenant-id")
+        second = ProviderManager._get_all_provider_model_credentials("tenant-id")
+
+    assert session.scalars.call_count == 1
+    assert first["openai"][0] is not credential_record
+    assert second["openai"][0].credential_name == "primary"
+    assert second["openai"][0].model_type == ModelType.LLM
+
+
 @pytest.mark.parametrize(
     "method_name",
     [
         "_get_all_provider_models",
         "_get_all_provider_model_settings",
         "_get_all_provider_model_credentials",
+        "_get_all_provider_credentials",
     ],
 )
 def test_provider_grouping_helpers_group_records_by_provider_name(method_name: str) -> None:
+    def build_record(provider_name: str, index: int):
+        match method_name:
+            case "_get_all_provider_models":
+                return SimpleNamespace(
+                    id=f"model-{index}",
+                    provider_name=provider_name,
+                    model_name=f"model-{index}",
+                    model_type=ModelType.LLM,
+                    credential_id=None,
+                )
+            case "_get_all_provider_model_settings":
+                return SimpleNamespace(
+                    provider_name=provider_name,
+                    model_name=f"model-{index}",
+                    model_type=ModelType.LLM,
+                    enabled=True,
+                    load_balancing_enabled=False,
+                )
+            case "_get_all_provider_model_credentials":
+                return SimpleNamespace(
+                    id=f"model-credential-{index}",
+                    provider_name=provider_name,
+                    model_name=f"model-{index}",
+                    model_type=ModelType.LLM,
+                    credential_name=f"credential-{index}",
+                )
+            case "_get_all_provider_credentials":
+                return SimpleNamespace(
+                    id=f"credential-{index}",
+                    provider_name=provider_name,
+                    credential_name=f"credential-{index}",
+                )
+            case _:
+                raise AssertionError(f"Unexpected method: {method_name}")
+
     session = Mock()
-    openai_primary = SimpleNamespace(provider_name="openai")
-    openai_secondary = SimpleNamespace(provider_name="openai")
-    anthropic_record = SimpleNamespace(provider_name="anthropic")
+    openai_primary = build_record("openai", 1)
+    openai_secondary = build_record("openai", 2)
+    anthropic_record = build_record("anthropic", 3)
     session.scalars.return_value = [openai_primary, openai_secondary, anthropic_record]
 
     with (
@@ -598,14 +746,14 @@ def test_provider_grouping_helpers_group_records_by_provider_name(method_name: s
     ):
         result = getattr(ProviderManager, method_name)("tenant-id")
 
-    assert list(result["openai"]) == [openai_primary, openai_secondary]
-    assert list(result["anthropic"]) == [anthropic_record]
+    assert [record.provider_name for record in result["openai"]] == ["openai", "openai"]
+    assert [record.provider_name for record in result["anthropic"]] == ["anthropic"]
 
 
 def test_get_all_preferred_model_providers_returns_mapping_by_provider_name() -> None:
     session = Mock()
-    openai_preference = SimpleNamespace(provider_name="openai")
-    anthropic_preference = SimpleNamespace(provider_name="anthropic")
+    openai_preference = SimpleNamespace(provider_name="openai", preferred_provider_type=ProviderType.SYSTEM)
+    anthropic_preference = SimpleNamespace(provider_name="anthropic", preferred_provider_type=ProviderType.CUSTOM)
     session.scalars.return_value = [openai_preference, anthropic_preference]
 
     with (
@@ -613,10 +761,8 @@ def test_get_all_preferred_model_providers_returns_mapping_by_provider_name() ->
     ):
         result = ProviderManager._get_all_preferred_model_providers("tenant-id")
 
-    assert result == {
-        "openai": openai_preference,
-        "anthropic": anthropic_preference,
-    }
+    assert result["openai"].preferred_provider_type == ProviderType.SYSTEM
+    assert result["anthropic"].preferred_provider_type == ProviderType.CUSTOM
 
 
 def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_is_disabled() -> None:
@@ -634,8 +780,30 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
 
 def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_configs() -> None:
     session = Mock()
-    openai_config = SimpleNamespace(provider_name="openai")
-    anthropic_config = SimpleNamespace(provider_name="anthropic")
+    openai_config = SimpleNamespace(
+        id="lb-1",
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        name="primary",
+        encrypted_config=None,
+        credential_id=None,
+        credential_source_type=None,
+        enabled=True,
+    )
+    anthropic_config = SimpleNamespace(
+        id="lb-2",
+        tenant_id="tenant-id",
+        provider_name="anthropic",
+        model_name="claude",
+        model_type=ModelType.LLM,
+        name="primary",
+        encrypted_config=None,
+        credential_id=None,
+        credential_source_type=None,
+        enabled=True,
+    )
     session.scalars.return_value = [openai_config, anthropic_config]
 
     with (
@@ -649,6 +817,6 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     ):
         result = ProviderManager._get_all_provider_load_balancing_configs("tenant-id")
 
-    mock_setex.assert_called_once_with("tenant:tenant-id:model_load_balancing_enabled", 120, "True")
-    assert list(result["openai"]) == [openai_config]
-    assert list(result["anthropic"]) == [anthropic_config]
+    mock_setex.assert_any_call("tenant:tenant-id:model_load_balancing_enabled", 120, "True")
+    assert [record.provider_name for record in result["openai"]] == ["openai"]
+    assert [record.provider_name for record in result["anthropic"]] == ["anthropic"]

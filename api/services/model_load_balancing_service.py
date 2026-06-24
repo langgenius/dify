@@ -7,7 +7,10 @@ from sqlalchemy import or_, select
 from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
-from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.helper.model_provider_cache import (
+    ProviderCredentialsCache,
+    ProviderCredentialsCacheType,
+)
 from core.model_manager import LBModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
@@ -313,6 +316,10 @@ class ModelLoadBalancingService:
         )
         db.session.add(inherit_config)
         db.session.commit()
+        ProviderManager.invalidate_configurations_cache(
+            tenant_id,
+            sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+        )
 
         return inherit_config
 
@@ -434,6 +441,10 @@ class ModelLoadBalancingService:
                 load_balancing_config.enabled = enabled
                 load_balancing_config.updated_at = naive_utc_now()
                 db.session.commit()
+                ProviderManager.invalidate_configurations_cache(
+                    tenant_id,
+                    sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+                )
 
                 self._clear_credentials_cache(tenant_id, config_id)
             else:
@@ -487,12 +498,20 @@ class ModelLoadBalancingService:
 
                 db.session.add(load_balancing_model_config)
                 db.session.commit()
+                ProviderManager.invalidate_configurations_cache(
+                    tenant_id,
+                    sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+                )
 
         # get deleted config ids
         deleted_config_ids = set(current_load_balancing_configs_dict.keys()) - updated_config_ids
         for config_id in deleted_config_ids:
             db.session.delete(current_load_balancing_configs_dict[config_id])
             db.session.commit()
+            ProviderManager.invalidate_configurations_cache(
+                tenant_id,
+                sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+            )
 
             self._clear_credentials_cache(tenant_id, config_id)
 
