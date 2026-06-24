@@ -9,10 +9,11 @@ to the agent drive (Agent Files §5.4 / §4):
 
 Both are stored as ``ToolFile`` records and bound via ``AgentDriveService.commit``
 with ``value_owned_by_drive=True`` (the drive owns their lifecycle). The returned
-skill ref records the stable drive paths + file ids (not just the raw upload id),
-so the Composer can reload the bound skill list. The console ``/skills/upload``
-endpoints delegate to this service so "upload" now always means drive-backed skill
-normalization.
+payload is the slim drive-derived skill DTO the UI needs to work with the drive
+catalog — ``name``, ``description``, ``path``, ``skill_md_key``, and
+``archive_key`` — plus the extracted manifest for upload feedback. The console
+``/skills/upload`` endpoints delegate to this service so "upload" now always means
+drive-backed skill normalization rather than Agent Soul binding.
 """
 
 from __future__ import annotations
@@ -23,7 +24,6 @@ import re
 from typing import Any
 
 from core.tools.tool_file_manager import ToolFileManager
-from models.agent_config_entities import AgentSkillRefConfig
 from services.agent.skill_package_service import SkillPackageService
 from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef, DriveSkillMetadata
 
@@ -134,26 +134,20 @@ class SkillStandardizeService:
             ],
         )
 
-        skill_ref = AgentSkillRefConfig.model_validate(
-            {
-                "id": manifest.hash,
-                "name": manifest.name,
-                "description": manifest.description,
-                "file_id": archive_tool_file.id,
-                "path": slug,
-                "size": manifest.size,
-                "hash": manifest.hash,
-                "entry_path": skill_md_key,
-                "skill_md_file_id": md_tool_file.id,
-                "skill_md_key": skill_md_key,
-                "full_archive_file_id": archive_tool_file.id,
-                "full_archive_key": archive_key,
-                # ENG-371: zip member listing — strong signals (scripts/*.sh) for infer-tools.
-                "manifest_files": manifest.files,
-            }
+        drive_skill = next(
+            skill
+            for skill in self._drive.list_skills(tenant_id=tenant_id, agent_id=agent_id)
+            if skill["skill_md_key"] == skill_md_key
         )
+
         return {
-            "skill": skill_ref.model_dump(exclude_none=True),
+            "skill": {
+                "name": drive_skill["name"],
+                "description": drive_skill["description"],
+                "path": drive_skill["path"],
+                "skill_md_key": drive_skill["skill_md_key"],
+                "archive_key": drive_skill["archive_key"],
+            },
             "manifest": manifest.model_dump(),
         }
 

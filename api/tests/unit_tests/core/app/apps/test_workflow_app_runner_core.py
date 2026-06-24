@@ -16,6 +16,7 @@ from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
     QueueNodeRetryEvent,
     QueueNodeSucceededEvent,
+    QueueReasoningChunkEvent,
     QueueTextChunkEvent,
     QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
@@ -34,6 +35,7 @@ from graphon.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunIterationSucceededEvent,
     NodeRunLoopFailedEvent,
+    NodeRunReasoningChunkEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
@@ -397,6 +399,17 @@ class TestWorkflowBasedAppRunner:
         )
         runner._handle_event(
             workflow_entry,
+            NodeRunReasoningChunkEvent(
+                id="exec",
+                node_id="node",
+                node_type=BuiltinNodeTypes.LLM,
+                selector=["node", "reasoning_content"],
+                chunk="thinking",
+                is_final=False,
+            ),
+        )
+        runner._handle_event(
+            workflow_entry,
             NodeRunAgentLogEvent(
                 id="exec",
                 node_id="node",
@@ -442,6 +455,7 @@ class TestWorkflowBasedAppRunner:
         )
 
         assert any(isinstance(event, QueueTextChunkEvent) for event in published)
+        assert any(isinstance(event, QueueReasoningChunkEvent) for event in published)
         assert any(isinstance(event, QueueAgentLogEvent) for event in published)
         assert any(isinstance(event, QueueIterationCompletedEvent) for event in published)
         assert any(isinstance(event, QueueLoopCompletedEvent) for event in published)

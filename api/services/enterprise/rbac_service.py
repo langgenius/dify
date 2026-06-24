@@ -534,6 +534,31 @@ def _legacy_role_permission_keys(role: TenantAccountRole) -> list[str]:
     )
 
 
+def _legacy_member_roles_response(
+    tenant_id: str, member_account_id: str, role: TenantAccountRole | str | None
+) -> MemberRolesResponse:
+    if not role:
+        return MemberRolesResponse(account_id=member_account_id, roles=[])
+
+    tenant_role = TenantAccountRole(role)
+    role_value = tenant_role.value
+    return MemberRolesResponse(
+        account_id=member_account_id,
+        roles=[
+            RBACRole(
+                id=role_value,
+                name=role_value,
+                description="",
+                is_builtin=True,
+                type="",
+                permission_keys=_legacy_role_permission_keys(tenant_role),
+                role_tag="owner" if tenant_role == TenantAccountRole.OWNER else role_value,
+                tenant_id=tenant_id,
+            )
+        ],
+    )
+
+
 def _legacy_my_permissions(tenant_id: str, account_id: str | None) -> MyPermissionsResponse:
     if not account_id:
         return MyPermissionsResponse()
@@ -770,6 +795,7 @@ class RBACService:
             data = _inner_call(
                 "GET",
                 f"{_INNER_PREFIX}/role-permissions/catalog",
+                params={"billing_enabled": dify_config.BILLING_ENABLED},
                 tenant_id=tenant_id,
                 account_id=account_id,
             )
@@ -1581,23 +1607,7 @@ class RBACService:
                             TenantAccountJoin.account_id == member_account_id,
                         )
                     )
-                    return MemberRolesResponse(
-                        account_id=member_account_id,
-                        roles=[
-                            RBACRole(
-                                id="",
-                                name=role,
-                                description="",
-                                is_builtin=True,
-                                type="",
-                                permission_keys=_legacy_role_permission_keys(role),
-                                role_tag="owner" if role == "owner" else role,
-                                tenant_id=tenant_id,
-                            )
-                        ]
-                        if role
-                        else [],
-                    )
+                    return _legacy_member_roles_response(tenant_id, member_account_id, role)
 
         @staticmethod
         def batch_get(
@@ -1628,6 +1638,36 @@ class RBACService:
             member_account_id: str,
             role_ids: list[str],
         ) -> MemberRolesResponse:
+            if not dify_config.RBAC_ENABLED:
+                if len(role_ids) != 1:
+                    raise ValueError("Legacy workspace member role update requires exactly one role.")
+
+                tenant_role = TenantAccountRole(role_ids[0])
+                with session_factory.create_session() as session:
+                    target_member_join = session.scalar(
+                        select(TenantAccountJoin).where(
+                            TenantAccountJoin.tenant_id == tenant_id,
+                            TenantAccountJoin.account_id == member_account_id,
+                        )
+                    )
+                    if not target_member_join:
+                        raise ValueError("Member not in tenant.")
+
+                    if tenant_role == TenantAccountRole.OWNER:
+                        current_owner_join = session.scalar(
+                            select(TenantAccountJoin).where(
+                                TenantAccountJoin.tenant_id == tenant_id,
+                                TenantAccountJoin.role == TenantAccountRole.OWNER,
+                            )
+                        )
+                        if current_owner_join and current_owner_join.account_id != member_account_id:
+                            current_owner_join.role = TenantAccountRole.ADMIN
+
+                    target_member_join.role = tenant_role
+                    session.commit()
+
+                return _legacy_member_roles_response(tenant_id, member_account_id, tenant_role)
+
             data = _inner_call(
                 "PUT",
                 f"{_INNER_PREFIX}/members/rbac-roles",

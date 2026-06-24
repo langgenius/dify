@@ -20,6 +20,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.explore.wraps import InstalledAppResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from models.model import InstalledApp
 from services.audio_service import AudioService
@@ -99,7 +100,13 @@ class ChatTextApi(InstalledAppResource):
             text = payload.text
             voice = payload.voice
 
-            response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
+            response = AudioService.transcript_tts(
+                app_model=app_model,
+                session=db.session,
+                text=text,
+                voice=voice,
+                message_id=message_id,
+            )
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")

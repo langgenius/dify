@@ -361,11 +361,6 @@ class AgentSoulPromptConfig(BaseModel):
     system_prompt: str = ""
 
 
-class AgentSoulSkillsFilesConfig(BaseModel):
-    files: list[AgentFileRefConfig] = Field(default_factory=list)
-    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
-
-
 class AgentSoulDifyToolCredentialRef(BaseModel):
     """Reference to a stored Dify Plugin Tool credential.
 
@@ -514,7 +509,6 @@ class AgentSoulConfig(BaseModel):
 
     schema_version: int = 1
     prompt: AgentSoulPromptConfig = Field(default_factory=AgentSoulPromptConfig)
-    skills_files: AgentSoulSkillsFilesConfig = Field(default_factory=AgentSoulSkillsFilesConfig)
     tools: AgentSoulToolsConfig = Field(default_factory=AgentSoulToolsConfig)
     knowledge: AgentSoulKnowledgeConfig = Field(default_factory=AgentSoulKnowledgeConfig)
     human: AgentSoulHumanConfig = Field(default_factory=AgentSoulHumanConfig)

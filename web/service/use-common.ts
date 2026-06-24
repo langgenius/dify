@@ -7,7 +7,6 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
-  AccountIntegrate,
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
@@ -222,13 +221,6 @@ export const useSupportRetrievalMethods = () => {
   return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
     queryKey: commonQueryKeys.retrievalMethods,
     queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
-  })
-}
-
-export const useAccountIntegrates = () => {
-  return useQuery<{ data: AccountIntegrate[] | null }>({
-    queryKey: commonQueryKeys.accountIntegrates,
-    queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
   })
 }
 

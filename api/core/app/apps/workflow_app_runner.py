@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -74,6 +75,7 @@ from graphon.graph_events import (
     NodeRunLoopNextEvent,
     NodeRunLoopStartedEvent,
     NodeRunLoopSucceededEvent,
+    NodeRunReasoningChunkEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunRetryEvent,
     NodeRunStartedEvent,
@@ -572,6 +574,16 @@ class WorkflowBasedAppRunner:
                     QueueTextChunkEvent(
                         text=event.chunk,
                         from_variable_selector=list(event.selector),
+                        in_iteration_id=event.in_iteration_id,
+                        in_loop_id=event.in_loop_id,
+                    )
+                )
+            case NodeRunReasoningChunkEvent():
+                self._publish_event(
+                    QueueReasoningChunkEvent(
+                        reasoning=event.chunk,
+                        from_node_id=event.node_id,
+                        is_final=event.is_final,
                         in_iteration_id=event.in_iteration_id,
                         in_loop_id=event.in_loop_id,
                     )

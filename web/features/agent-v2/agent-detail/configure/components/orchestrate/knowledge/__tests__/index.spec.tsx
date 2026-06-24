@@ -78,7 +78,7 @@ describe('AgentKnowledgeRetrieval', () => {
       })).not.toBeInTheDocument()
     })
 
-    it('should keep row actions focusable while visually hidden until hover or focus', () => {
+    it('should keep row actions out of layout until hover or focus', () => {
       renderKnowledgeRetrieval()
 
       const editButton = screen.getByRole('button', {
@@ -89,12 +89,10 @@ describe('AgentKnowledgeRetrieval', () => {
       })
       const actionGroup = editButton.parentElement
 
-      expect(actionGroup).toHaveClass('flex')
-      expect(actionGroup).not.toHaveClass('hidden')
+      expect(actionGroup).toHaveClass('hidden')
       expect(actionGroup).toHaveClass(
-        'opacity-0',
-        'group-focus-within:opacity-100',
-        'group-hover:opacity-100',
+        'group-focus-within:flex',
+        'group-hover:flex',
       )
       expect(removeButton).toHaveClass(
         'hover:bg-state-destructive-hover',

@@ -91,7 +91,10 @@ class AgentAppFeatureConfigResource(Resource):
         args = AgentAppFeaturesPayload.model_validate(console_ns.payload or {})
 
         new_app_model_config = AgentAppFeatureConfigService.update_features(
-            app_model=app_model, account=current_user, config=args.model_dump(exclude_none=True), session=db.session
+            app_model=app_model,
+            account=current_user,
+            config=args.model_dump(exclude_none=True),
+            session=db.session,
         )
 
         app_model_config_was_updated.send(app_model, app_model_config=new_app_model_config)
