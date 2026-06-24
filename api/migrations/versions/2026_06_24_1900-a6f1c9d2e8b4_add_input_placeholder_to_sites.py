@@ -1,8 +1,8 @@
 """add input placeholder to sites
 
-Revision ID: e4b5c6d7a8f9
-Revises: c8f4a6b2d3e1
-Create Date: 2026-06-24 17:00:00.000000
+Revision ID: a6f1c9d2e8b4
+Revises: d9e8f7a6b5c4
+Create Date: 2026-06-24 19:00:00.000000
 
 """
 
@@ -10,8 +10,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision = "e4b5c6d7a8f9"
-down_revision = "c8f4a6b2d3e1"
+revision = "a6f1c9d2e8b4"
+down_revision = "d9e8f7a6b5c4"
 branch_labels = None
 depends_on = None
 
