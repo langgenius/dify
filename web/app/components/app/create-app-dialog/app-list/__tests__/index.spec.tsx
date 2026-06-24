@@ -379,6 +379,22 @@ describe('Apps', () => {
     })
   })
 
+  it('should hide categories without templates even when the API returns them', () => {
+    mockUseExploreAppList.mockReturnValueOnce({
+      data: {
+        categories: ['Cat A', 'v'],
+        allList: [createAppEntry('Alpha', 'Cat A')],
+      },
+      isLoading: false,
+    })
+
+    render(<Apps />)
+
+    expect(screen.getByText('Cat A'))!.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'v' })).not.toBeInTheDocument()
+    expect(screen.getByText('Alpha'))!.toBeInTheDocument()
+  })
+
   it('should clear the search, hide the sidebar during search, and close the modal when requested', async () => {
     render(<Apps />)
 
