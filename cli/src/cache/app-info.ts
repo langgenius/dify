@@ -74,8 +74,7 @@ async function readEntries(store: Store): Promise<Map<string, AppMetaCacheRecord
   catch {
     return out
   }
-  // A manually-edited `entries` key may be a scalar/array; Object.entries on
-  // those does not throw but yields garbage. Reject explicitly.
+  // A scalar/array survives Object.entries as garbage rather than throwing.
   if (raw === null || typeof raw !== 'object' || Array.isArray(raw))
     return out
 
@@ -84,8 +83,7 @@ async function readEntries(store: Store): Promise<Map<string, AppMetaCacheRecord
       out.set(k, deserialize(e))
     }
     catch {
-      // Unreadable entry → drop it. It becomes a cache miss, so the consumer
-      // refetches from the network; the file self-compacts on the next set().
+      // Drop unreadable entry → becomes a cache miss → consumer refetches.
     }
   }
   return out
