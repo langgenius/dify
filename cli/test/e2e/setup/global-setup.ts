@@ -186,6 +186,7 @@ export async function setup(project: TestProject): Promise<void> {
       hitlExternalAppId: '',
       hitlSingleActionAppId: '',
       hitlMultiNodeAppId: '',
+      reasoningAppId: E.reasoningAppId,
       ws2AppId: '',
     } satisfies E2ECapabilities)
     return
@@ -292,6 +293,7 @@ export async function setup(project: TestProject): Promise<void> {
     hitlExternalAppId: provisionedIds.DIFY_E2E_HITL_EXTERNAL_APP_ID || E.hitlExternalAppId,
     hitlSingleActionAppId: provisionedIds.DIFY_E2E_HITL_SINGLE_ACTION_APP_ID || E.hitlSingleActionAppId,
     hitlMultiNodeAppId: provisionedIds.DIFY_E2E_HITL_MULTI_NODE_APP_ID || E.hitlMultiNodeAppId,
+    reasoningAppId: E.reasoningAppId,
     ws2AppId: provisionedIds.DIFY_E2E_WS2_APP_ID || E.ws2AppId,
   }
 
