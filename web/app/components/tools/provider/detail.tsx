@@ -82,8 +82,9 @@ const ProviderDetail = ({
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { canUseCredential, canManageCredential } = useCredentialPermissions()
-  const canOpenCredentialSettings = isAuthed ? canUseCredential : canManageCredential
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
+  const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
@@ -432,7 +433,7 @@ const ProviderDetail = ({
                     collection={collection}
                     onCancel={() => setShowSettingAuth(false)}
                     onSaved={async (value) => {
-                      if (!canManageCredential)
+                      if (!canSaveCredentialSettings)
                         return
 
                       await updateBuiltInToolCredential(collection.name, value)
@@ -449,7 +450,7 @@ const ProviderDetail = ({
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
-                    readonly={!canManageCredential}
+                    readonly={!canSaveCredentialSettings}
                   />
                 )}
                 {isShowEditCollectionToolModal && canManageTools && (

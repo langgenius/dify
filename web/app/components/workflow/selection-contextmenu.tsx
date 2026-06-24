@@ -12,15 +12,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useReactFlowStore } from 'reactflow'
-import { useCreateSnippetFromSelection } from '@/app/components/snippets/hooks/use-create-snippet-from-selection'
-import { canCreateAndModifySnippets } from '@/app/components/snippets/utils/permission'
 import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
 import { ShortcutKbd } from './shortcuts/shortcut-kbd'
 import { useStore, useWorkflowStore } from './store'
-import { BlockEnum } from './types'
 
 const AlignType = {
   Bottom: 'bottom',
@@ -74,14 +70,6 @@ const menuSections: MenuSection[] = [
     ],
   },
 ]
-
-const unsupportedSnippetNodeTypes = new Set([
-  BlockEnum.Answer,
-  BlockEnum.End,
-  BlockEnum.Start,
-  BlockEnum.HumanInput,
-  BlockEnum.KnowledgeRetrieval,
-])
 
 const getAlignableNodes = (nodes: Node[], selectedNodes: Node[]) => {
   const selectedNodeIds = new Set(selectedNodes.map(node => node.id))
@@ -235,7 +223,6 @@ export function SelectionContextmenu({
 }) {
   const { t } = useTranslation()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const { handleNodesCopy, handleNodesDelete, handleNodesDuplicate } = useNodesInteractions()
   const isSelectionContextMenu = useStore(s => s.contextMenuTarget?.type === 'selection')
 
@@ -247,20 +234,8 @@ export function SelectionContextmenu({
   const selectedNodes = useReactFlowStore(state =>
     state.getNodes().filter(node => node.selected),
   )
-  const edges = useReactFlowStore(state => state.edges)
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
-  const {
-    createSnippetDialog,
-    handleOpenCreateSnippet,
-    isCreateSnippetDialogOpen,
-  } = useCreateSnippetFromSelection({
-    edges,
-    selectedNodes,
-    onClose,
-  })
-  const canCreateSnippet = canCreateAndModifySnippets(workspacePermissionKeys)
-    && selectedNodes.every(node => !unsupportedSnippetNodeTypes.has(node.data.type))
 
   const handleCopyNodes = useCallback(() => {
     handleNodesCopy()
@@ -370,24 +345,11 @@ export function SelectionContextmenu({
   }, [collaborativeWorkflow, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, onClose])
 
   if (!isSelectionContextMenu || selectedNodes.length <= 1)
-    return isCreateSnippetDialogOpen ? createSnippetDialog : null
+    return null
 
   return (
     <>
       <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
-        {canCreateSnippet && (
-          <>
-            <ContextMenuGroup>
-              <ContextMenuItem
-                className="px-3 text-text-secondary"
-                onClick={handleOpenCreateSnippet}
-              >
-                <span>{t('snippet.createDialogTitle', { defaultValue: 'Create Snippet', ns: 'workflow' })}</span>
-              </ContextMenuItem>
-            </ContextMenuGroup>
-            <ContextMenuSeparator />
-          </>
-        )}
         <ContextMenuGroup>
           <ContextMenuItem
             className="justify-between px-3 text-text-secondary"
@@ -436,7 +398,6 @@ export function SelectionContextmenu({
           </ContextMenuGroup>
         ))}
       </ContextMenuContent>
-      {createSnippetDialog}
     </>
   )
 }

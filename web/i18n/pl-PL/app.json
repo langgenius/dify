@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "Przepływ pracy",
   "newAppFromTemplate.sidebar.Writing": "Pismo",
   "noAccessPermission": "Brak uprawnień do dostępu do aplikacji internetowej",
+  "noAccessResourcePermission": "Brak uprawnień dostępu do tego zasobu",
   "noUserInputNode": "Brak węzła wejściowego użytkownika",
   "notPublishedYet": "Aplikacja nie została jeszcze opublikowana",
   "openInExplore": "Otwieranie w obszarze Eksploruj",

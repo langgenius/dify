@@ -122,7 +122,9 @@ describe('Chip', () => {
     it('should show left icon by default', () => {
       const { container } = renderChip()
 
-      expect(container.querySelector('.i-ri-filter-3-line')).toBeInTheDocument()
+      const icon = container.querySelector('.i-ri-filter-3-line')
+      expect(icon).toBeInTheDocument()
+      expect(icon).toHaveAttribute('aria-hidden')
     })
 
     it('should hide left icon when showLeftIcon is false', () => {
@@ -140,6 +142,7 @@ describe('Chip', () => {
       renderChip({ leftIcon: <CustomIcon /> })
 
       expect(screen.getByTestId('custom-icon'))!.toBeInTheDocument()
+      expect(screen.getByTestId('custom-icon').closest('[aria-hidden="true"]')).toBeInTheDocument()
     })
 
     it('should apply custom className to trigger', () => {
@@ -160,6 +163,15 @@ describe('Chip', () => {
       // Panel is rendered in a portal, so check document.body
       const panel = document.body.querySelector(`.${customPanelClass}`)
       expect(panel)!.toBeInTheDocument()
+    })
+
+    it('should use visible focus styles on the trigger', () => {
+      const { container } = renderChip()
+
+      expect(getTrigger(container)).toHaveClass(
+        'focus-visible:ring-2',
+        'focus-visible:ring-state-accent-solid',
+      )
     })
   })
 
@@ -207,7 +219,15 @@ describe('Chip', () => {
     it('should call onClear when clear button is clicked', async () => {
       const { user } = renderChip({ value: 'active' })
 
-      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      const clearButton = screen.getByRole('button', { name: /common\.operation\.clear/ })
+      expect(clearButton).toHaveAccessibleName(/Active/)
+      expect(clearButton).toHaveClass(
+        'outline-hidden',
+        'focus-visible:ring-2',
+        'focus-visible:ring-state-accent-solid',
+        'focus-visible:ring-inset',
+      )
+      expect(clearButton.querySelector('.i-ri-close-circle-fill')).toHaveAttribute('aria-hidden')
 
       await user.click(clearButton)
 
@@ -221,7 +241,7 @@ describe('Chip', () => {
       expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
       expect(trigger).not.toHaveAttribute('data-popup-open')
 
-      const clearButton = screen.getByRole('button', { name: 'common.operation.clear' })
+      const clearButton = screen.getByRole('button', { name: /common\.operation\.clear/ })
 
       await user.click(clearButton)
 
@@ -326,7 +346,7 @@ describe('Chip', () => {
 
       // The trigger should not display any item name text
       expect(trigger?.textContent?.trim()).toBeFalsy()
-      expect(screen.queryByRole('button', { name: 'common.operation.clear' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /common\.operation\.clear/ })).not.toBeInTheDocument()
     })
 
     it('should allow selecting already selected item', async () => {
@@ -368,7 +388,7 @@ describe('Chip', () => {
       renderChip({ value: 0, items: numericItems })
 
       expect(screen.getByRole('combobox', { name: 'Zero' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.operation.clear' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /common\.operation\.clear/ })).toBeInTheDocument()
     })
 
     it('should handle items with additional properties', async () => {

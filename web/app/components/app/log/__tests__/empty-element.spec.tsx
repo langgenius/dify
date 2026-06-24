@@ -1,5 +1,6 @@
 import type { App } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
 import { AppModeEnum } from '@/types/app'
 import EmptyElement from '../empty-element'
 

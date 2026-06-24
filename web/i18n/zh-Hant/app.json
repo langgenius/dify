@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "工作流",
   "newAppFromTemplate.sidebar.Writing": "寫作",
   "noAccessPermission": "沒有權限訪問網絡應用程式",
+  "noAccessResourcePermission": "目前沒有權限訪問此資源",
   "noUserInputNode": "缺少使用者輸入節點",
   "notPublishedYet": "應用程式尚未發布",
   "openInExplore": "在“探索”中打開",

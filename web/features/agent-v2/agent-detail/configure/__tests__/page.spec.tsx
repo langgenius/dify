@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import { AgentConfigurePage } from '../page'
 
@@ -15,13 +16,13 @@ const mocks = vi.hoisted(() => ({
       isSuccess: true,
     },
     composer: {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: true,
       isPending: true,
       isSuccess: false,
     },
     version: {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: false,
       isPending: false,
       isSuccess: false,
@@ -60,10 +61,15 @@ vi.mock('@/service/client', () => ({
       byAgentId: {
         get: {
           queryOptions: () => ({ queryKey: ['agent'] }),
+          queryKey: () => ['agent'],
         },
         composer: {
           get: {
             queryOptions: () => ({ queryKey: ['composer'] }),
+            queryKey: () => ['composer'],
+          },
+          put: {
+            mutationOptions: () => ({ mutationFn: vi.fn() }),
           },
         },
         versions: {
@@ -71,6 +77,9 @@ vi.mock('@/service/client', () => ({
             get: {
               queryOptions: () => ({ queryKey: ['version'] }),
             },
+          },
+          get: {
+            key: () => ['versions'],
           },
         },
       },
@@ -102,7 +111,9 @@ vi.mock('../components/preview/header', () => ({
 }))
 
 vi.mock('../components/preview/versions-panel', () => ({
-  AgentPreviewVersionsPanel: () => null,
+  AgentPreviewVersionsPanel: (props: { onSelectVersion: (versionId: string) => void }) => (
+    <button type="button" onClick={() => props.onSelectVersion('snapshot-2')}>select version</button>
+  ),
 }))
 
 describe('AgentConfigurePage', () => {
@@ -120,13 +131,13 @@ describe('AgentConfigurePage', () => {
       isSuccess: true,
     }
     mocks.queryState.composer = {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: true,
       isPending: true,
       isSuccess: false,
     }
     mocks.queryState.version = {
-      data: undefined,
+      data: undefined as unknown,
       isFetching: false,
       isPending: false,
       isSuccess: false,
@@ -135,7 +146,13 @@ describe('AgentConfigurePage', () => {
 
   describe('Loading state', () => {
     it('should show loading instead of the configure panels while composer data is pending', () => {
-      render(<AgentConfigurePage agentId="agent-1" />)
+      const queryClient = new QueryClient()
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
 
       expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()

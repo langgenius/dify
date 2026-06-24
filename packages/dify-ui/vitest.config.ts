@@ -19,6 +19,7 @@ export default defineConfig({
       '@base-ui/react/form',
       '@base-ui/react/merge-props',
       '@base-ui/react/use-render',
+      'vite-plus/test/browser',
     ],
   },
   test: {

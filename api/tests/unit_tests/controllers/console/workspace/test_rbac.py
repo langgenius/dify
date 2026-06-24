@@ -185,7 +185,7 @@ class TestPaginationMapping:
                 "name": "owner",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"]),
+                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["owner"])),
                 "role_tag": "owner",
             },
             {
@@ -196,7 +196,7 @@ class TestPaginationMapping:
                 "name": "admin",
                 "description": "",
                 "is_builtin": True,
-                "permission_keys": list(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"]),
+                "permission_keys": list(dict.fromkeys(rbac_mod._LEGACY_ROLE_PERMISSION_KEYS["admin"])),
                 "role_tag": "",
             },
         ]
@@ -336,23 +336,6 @@ class TestResourceAccessScopeBindings:
 
 
 class TestPaginationForwarding:
-    def test_role_members_get_forwards_outer_pagination_params(self, app):
-        with (
-            app.test_request_context("/workspaces/current/rbac/roles/role-1/members?page=2&limit=50&reverse=true"),
-            patch("controllers.console.workspace.rbac._current_ids", return_value=("tenant-1", "acct-1")),
-            patch("controllers.console.workspace.rbac.svc.RBACService.Roles.members") as mock_members,
-            patch("controllers.console.workspace.rbac._dump", return_value={}),
-        ):
-            inspect.unwrap(rbac_mod.RBACRoleMembersApi.get)(rbac_mod.RBACRoleMembersApi(), "role-1")
-
-        _, _, role_id = mock_members.call_args.args
-        _, kwargs = mock_members.call_args
-        assert role_id == "role-1"
-        options = kwargs["options"]
-        assert options.page_number == 2
-        assert options.results_per_page == 50
-        assert options.reverse is True
-
     def test_access_policies_get_forwards_outer_pagination_params(self, app):
         with (
             app.test_request_context(

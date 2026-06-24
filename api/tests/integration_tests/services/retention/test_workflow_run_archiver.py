@@ -1,17 +1,17 @@
 import datetime
-import io
 import json
 import uuid
-import zipfile
 from unittest.mock import MagicMock, patch
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 import pytest
 
 from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     ArchiveSummary,
     WorkflowRunArchiver,
 )
-from services.retention.workflow_run.constants import ARCHIVE_SCHEMA_VERSION
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
 
 
 class TestWorkflowRunArchiverInit:
@@ -39,6 +39,22 @@ class TestWorkflowRunArchiverInit:
         with pytest.raises(ValueError, match="workers must be at least 1"):
             WorkflowRunArchiver(workers=0)
 
+    def test_run_shard_index_without_total_raises(self):
+        with pytest.raises(ValueError, match="run_shard_index and run_shard_total must be provided together"):
+            WorkflowRunArchiver(run_shard_index=0)
+
+    def test_run_shard_total_without_index_raises(self):
+        with pytest.raises(ValueError, match="run_shard_index and run_shard_total must be provided together"):
+            WorkflowRunArchiver(run_shard_total=4)
+
+    def test_run_shard_total_above_supported_range_raises(self):
+        with pytest.raises(ValueError, match="run_shard_total must be between 1 and 16"):
+            WorkflowRunArchiver(run_shard_index=0, run_shard_total=17)
+
+    def test_run_shard_index_must_be_less_than_total(self):
+        with pytest.raises(ValueError, match="run_shard_index must be between 0 and run_shard_total - 1"):
+            WorkflowRunArchiver(run_shard_index=4, run_shard_total=4)
+
     def test_valid_init_defaults(self):
         archiver = WorkflowRunArchiver(days=30, batch_size=50)
         assert archiver.days == 30
@@ -55,29 +71,93 @@ class TestWorkflowRunArchiverInit:
         assert archiver.end_before is not None
         assert archiver.workers == 2
 
+    def test_delete_after_archive_is_not_supported_for_bundle_archive(self):
+        with pytest.raises(ValueError, match="delete_after_archive is not supported by bundle archive"):
+            WorkflowRunArchiver(delete_after_archive=True)
+
+    def test_get_runs_batch_passes_shard_options(self):
+        repo = MagicMock()
+        repo.get_runs_batch_by_time_range.return_value = []
+        archiver = WorkflowRunArchiver(
+            tenant_prefixes=["0", "a"],
+            run_shard_index=1,
+            run_shard_total=4,
+            workflow_run_repo=repo,
+        )
+
+        archiver._get_runs_batch(None)
+
+        repo.get_runs_batch_by_time_range.assert_called_once()
+        assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_prefixes"] == ["0", "a"]
+        assert repo.get_runs_batch_by_time_range.call_args.kwargs["run_shard_index"] == 1
+        assert repo.get_runs_batch_by_time_range.call_args.kwargs["run_shard_total"] == 4
+
+    def test_get_runs_batch_prefers_planned_tenant_ids_over_prefix_filter(self):
+        repo = MagicMock()
+        repo.get_runs_batch_by_time_range.return_value = []
+        archiver = WorkflowRunArchiver(
+            tenant_ids=["0tenant"],
+            tenant_prefixes=["0"],
+            paid_tenant_ids=["0tenant"],
+            workflow_run_repo=repo,
+        )
+
+        archiver._get_runs_batch(None)
+
+        repo.get_runs_batch_by_time_range.assert_called_once()
+        assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_ids"] == ["0tenant"]
+        assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_prefixes"] is None
+
+    def test_get_runs_batch_uses_current_tenant_scan_scope(self):
+        repo = MagicMock()
+        repo.get_runs_batch_by_time_range.return_value = []
+        archiver = WorkflowRunArchiver(
+            tenant_ids=["tenant-a", "tenant-b"],
+            workflow_run_repo=repo,
+        )
+
+        archiver._get_runs_batch(None, tenant_scope=["tenant-b"])
+
+        repo.get_runs_batch_by_time_range.assert_called_once()
+        assert repo.get_runs_batch_by_time_range.call_args.kwargs["tenant_ids"] == ["tenant-b"]
+
+    def test_start_message_includes_shard(self):
+        archiver = WorkflowRunArchiver(tenant_prefixes=["0"], run_shard_index=1, run_shard_total=4)
+
+        message = archiver._build_start_message()
+
+        assert "tenant_prefixes=0" in message
+        assert "run_shard=1/4" in message
+
+    def test_start_message_summarizes_large_planned_tenant_list(self):
+        tenant_ids = [f"tenant-{index}" for index in range(11)]
+        archiver = WorkflowRunArchiver(tenant_ids=tenant_ids, tenant_prefixes=["0"])
+
+        message = archiver._build_start_message()
+
+        assert "tenant_ids=11 planned tenants" in message
+        assert "tenant-10" not in message
+
 
 class TestBuildArchiveBundle:
-    def test_bundle_contains_manifest_and_all_tables(self):
+    def test_bundle_contains_manifest_and_all_table_objects(self):
         archiver = WorkflowRunArchiver(days=90)
+        run = MagicMock()
+        run.id = str(uuid.uuid4())
+        run.tenant_id = str(uuid.uuid4())
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        identity = archiver._build_bundle_identity([run])
+        table_data = {"workflow_runs": [{"id": run.id, "tenant_id": run.tenant_id}]}
 
-        manifest_data = json.dumps({"schema_version": ARCHIVE_SCHEMA_VERSION}).encode("utf-8")
-        table_payloads = dict.fromkeys(archiver.ARCHIVED_TABLES, b"")
+        table_stats, table_payloads, manifest_data = archiver._build_archive_payload(identity, [run], table_data)
+        manifest = json.loads(manifest_data)
 
-        bundle_bytes = archiver._build_archive_bundle(manifest_data, table_payloads)
-
-        with zipfile.ZipFile(io.BytesIO(bundle_bytes), "r") as zf:
-            names = set(zf.namelist())
-            assert "manifest.json" in names
-            for table in archiver.ARCHIVED_TABLES:
-                assert f"{table}.jsonl" in names, f"Missing {table}.jsonl in bundle"
-
-    def test_bundle_missing_table_payload_raises(self):
-        archiver = WorkflowRunArchiver(days=90)
-        manifest_data = b"{}"
-        incomplete_payloads = {archiver.ARCHIVED_TABLES[0]: b"data"}
-
-        with pytest.raises(ValueError, match="Missing archive payload"):
-            archiver._build_archive_bundle(manifest_data, incomplete_payloads)
+        assert manifest["schema_version"] == ARCHIVE_BUNDLE_SCHEMA_VERSION
+        assert manifest["archive_format"] == ARCHIVE_BUNDLE_FORMAT
+        assert manifest["object_prefix"] == identity.object_prefix
+        assert set(table_payloads) == set(archiver.ARCHIVED_TABLES)
+        assert {stat.table_name for stat in table_stats} == set(archiver.ARCHIVED_TABLES)
+        assert pq.read_table(pa.BufferReader(table_payloads["workflow_runs"])).num_rows == 1
 
 
 class TestGenerateManifest:
@@ -88,25 +168,39 @@ class TestGenerateManifest:
         run = MagicMock()
         run.id = str(uuid.uuid4())
         run.tenant_id = str(uuid.uuid4())
-        run.app_id = str(uuid.uuid4())
-        run.workflow_id = str(uuid.uuid4())
         run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        identity = archiver._build_bundle_identity([run])
 
         stats = [
-            TableStats(table_name="workflow_runs", row_count=1, checksum="abc123", size_bytes=512),
-            TableStats(table_name="workflow_app_logs", row_count=2, checksum="def456", size_bytes=1024),
+            TableStats(
+                table_name="workflow_runs",
+                row_count=1,
+                checksum="abc123",
+                size_bytes=512,
+                object_key="workflow_runs.parquet",
+            ),
+            TableStats(
+                table_name="workflow_node_executions",
+                row_count=2,
+                checksum="def456",
+                size_bytes=1024,
+                object_key="workflow_node_executions.parquet",
+            ),
         ]
 
-        manifest = archiver._generate_manifest(run, stats)
+        manifest = archiver._generate_manifest(identity, [run], stats)
 
-        assert manifest["schema_version"] == ARCHIVE_SCHEMA_VERSION
-        assert manifest["workflow_run_id"] == run.id
+        assert manifest["schema_version"] == ARCHIVE_BUNDLE_SCHEMA_VERSION
+        assert manifest["archive_format"] == ARCHIVE_BUNDLE_FORMAT
+        assert manifest["bundle_id"] == identity.bundle_id
         assert manifest["tenant_id"] == run.tenant_id
-        assert manifest["app_id"] == run.app_id
+        assert manifest["workflow_run_count"] == 1
+        assert manifest["workflow_node_execution_count"] == 2
+        assert manifest["run_ids"] == [run.id]
         assert "tables" in manifest
         assert manifest["tables"]["workflow_runs"]["row_count"] == 1
         assert manifest["tables"]["workflow_runs"]["checksum"] == "abc123"
-        assert manifest["tables"]["workflow_app_logs"]["row_count"] == 2
+        assert manifest["tables"]["workflow_node_executions"]["row_count"] == 2
 
 
 class TestFilterPaidTenants:
@@ -163,6 +257,19 @@ class TestFilterPaidTenants:
 
         assert result == set()
 
+    def test_planned_paid_tenants_skip_billing_lookup(self):
+        archiver = WorkflowRunArchiver(days=90, paid_tenant_ids=["t1", "t3"])
+
+        with (
+            patch("services.retention.workflow_run.archive_paid_plan_workflow_run.dify_config") as cfg,
+            patch("services.retention.workflow_run.archive_paid_plan_workflow_run.BillingService") as billing,
+        ):
+            cfg.BILLING_ENABLED = True
+            result = archiver._filter_paid_tenants({"t1", "t2", "t3"})
+
+        billing.get_plan_bulk_with_cache.assert_not_called()
+        assert result == {"t1", "t3"}
+
 
 class TestDryRunArchive:
     @patch("services.retention.workflow_run.archive_paid_plan_workflow_run.get_archive_storage")
@@ -175,3 +282,81 @@ class TestDryRunArchive:
         mock_get_storage.assert_not_called()
         assert isinstance(summary, ArchiveSummary)
         assert summary.runs_failed == 0
+
+    def test_dry_run_estimates_table_and_object_sizes(self):
+        archiver = WorkflowRunArchiver(days=90, dry_run=True)
+        run = MagicMock()
+        run.id = "run-1"
+        run.tenant_id = "tenant-1"
+        run.app_id = "app-1"
+        run.workflow_id = "workflow-1"
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        table_data = {
+            "workflow_runs": [{"id": "run-1", "tenant_id": "tenant-1"}],
+            "workflow_app_logs": [{"id": "log-1", "workflow_run_id": "run-1"}],
+        }
+
+        with patch.object(archiver, "_extract_bundle_data", return_value=table_data):
+            result = archiver._archive_bundle(MagicMock(), None, [run])
+
+        stats_by_table = {stat.table_name: stat for stat in result.tables}
+        assert result.success is True
+        assert result.object_size_bytes > 0
+        assert stats_by_table["workflow_runs"].row_count == 1
+        assert stats_by_table["workflow_runs"].size_bytes > 0
+        assert stats_by_table["workflow_app_logs"].row_count == 1
+        assert stats_by_table["workflow_app_logs"].size_bytes > 0
+        assert stats_by_table["workflow_node_executions"].row_count == 0
+        assert stats_by_table["workflow_node_executions"].size_bytes > 0
+
+    def test_summary_merges_dry_run_estimates(self):
+        summary = ArchiveSummary()
+        result = MagicMock()
+        result.object_size_bytes = 128
+        result.tables = [
+            MagicMock(table_name="workflow_runs", row_count=1, size_bytes=64),
+            MagicMock(table_name="workflow_app_logs", row_count=2, size_bytes=32),
+        ]
+
+        WorkflowRunArchiver._merge_result_stats(summary, result)
+
+        assert summary.total_object_size_bytes == 128
+        assert summary.table_stats["workflow_runs"].row_count == 1
+        assert summary.table_stats["workflow_runs"].size_bytes == 64
+        assert summary.table_stats["workflow_app_logs"].row_count == 2
+        assert summary.table_stats["workflow_app_logs"].size_bytes == 32
+
+
+class TestArchiveRunIdempotency:
+    def test_locked_bundle_is_skipped(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = MagicMock()
+        run.id = "run-1"
+        run.tenant_id = "tenant-1"
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+
+        with (
+            patch.object(archiver, "_lock_runs_for_archive", return_value=[]),
+        ):
+            storage = MagicMock()
+            storage.object_exists.return_value = False
+            result = archiver._archive_bundle(MagicMock(), storage, [run])
+
+        assert result.success is True
+        assert result.skipped is True
+        assert result.error == "one or more runs locked or deleted by another archiver"
+
+    def test_already_archived_bundle_is_skipped(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = MagicMock()
+        run.id = "run-1"
+        run.tenant_id = "tenant-1"
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        storage = MagicMock()
+        storage.object_exists.return_value = True
+
+        result = archiver._archive_bundle(MagicMock(), storage, [run])
+
+        assert result.success is True
+        assert result.skipped is True
+        assert result.error == "bundle already archived"

@@ -1,7 +1,8 @@
 import type { DataSet } from '@/models/datasets'
-import { createEvent, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createEvent, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   ChunkingMode,
   DatasetPermission,
@@ -23,6 +24,13 @@ const mockExportPipeline = vi.fn()
 const mockCheckIsUsedInApp = vi.fn()
 const mockDeleteDataset = vi.fn()
 const TestEditIcon = () => <span aria-hidden className="i-ri-edit-line" />
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -107,6 +115,13 @@ vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => unknown) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }),
+}))
+
 vi.mock('@/service/knowledge/use-dataset', () => ({
   datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
   useInvalidDatasetList: () => mockInvalidDatasetList,
@@ -162,6 +177,7 @@ const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('DatasetInfo', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockIsRbacEnabled = true
     mockDataset = createDataset()
   })
 
@@ -374,6 +390,7 @@ describe('Dropdown', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
+    mockIsRbacEnabled = true
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
     mockCheckIsUsedInApp.mockResolvedValue({ is_using: false })
     mockDeleteDataset.mockResolvedValue({})
@@ -429,6 +446,24 @@ describe('Dropdown', () => {
       expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
       expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
       expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
+    })
+
+    it('should hide resource access option when RBAC is disabled', async () => {
+      const user = userEvent.setup()
+      // Arrange
+      mockIsRbacEnabled = false
+      mockDataset = createDataset({
+        runtime_mode: 'general',
+        permission_keys: [DatasetACLPermission.AccessConfig, DatasetACLPermission.Delete],
+      })
+      render(<Dropdown expand />)
+
+      // Act
+      await openMenu(user)
+
+      // Assert
+      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
     })
   })
 

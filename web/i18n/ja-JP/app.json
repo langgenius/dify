@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "ワークフロー",
   "newAppFromTemplate.sidebar.Writing": "ライティング",
   "noAccessPermission": "Web アプリにアクセス権限がありません",
+  "noAccessResourcePermission": "このリソースにアクセスする権限がありません",
   "noUserInputNode": "ユーザー入力ノードが見つかりません",
   "notPublishedYet": "アプリはまだ公開されていません",
   "openInExplore": "\"探索\" で開く",

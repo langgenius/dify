@@ -13,12 +13,24 @@ def runner():
     return AgentChatAppRunner()
 
 
+def patch_create_session(mocker: MockerFixture, *, return_value=None, side_effect=None):
+    session = mocker.MagicMock()
+    if side_effect is not None:
+        session.scalar.side_effect = side_effect
+    else:
+        session.scalar.return_value = return_value
+    session_context = mocker.MagicMock()
+    session_context.__enter__.return_value = session
+    mocker.patch("core.app.apps.agent_chat.app_runner.create_session", return_value=session_context)
+    return session
+
+
 class TestAgentChatAppRunnerRun:
     def test_run_app_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", agent=mocker.MagicMock())
         generate_entity = mocker.MagicMock(app_config=app_config, inputs={}, query="q", files=[], stream=True)
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=None)
+        patch_create_session(mocker, return_value=None)
 
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
@@ -37,7 +49,7 @@ class TestAgentChatAppRunnerRun:
             conversation_id=None,
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", side_effect=ModerationError("bad"))
         mocker.patch.object(runner, "direct_output")
@@ -62,7 +74,7 @@ class TestAgentChatAppRunnerRun:
             invoke_from=mocker.MagicMock(),
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         annotation = mocker.MagicMock(id="anno", content="answer")
@@ -91,7 +103,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -121,7 +133,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -163,7 +175,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -179,10 +191,7 @@ class TestAgentChatAppRunnerRun:
 
         conversation = mocker.MagicMock(id="conv")
         message = mocker.MagicMock(id="msg")
-        mocker.patch(
-            "core.app.apps.agent_chat.app_runner.db.session.scalar",
-            side_effect=[app_record, conversation, message],
-        )
+        patch_create_session(mocker, side_effect=[app_record, conversation, message])
 
         runner_cls = mocker.MagicMock()
         mocker.patch(f"core.app.apps.agent_chat.app_runner.{expected_runner}", runner_cls)
@@ -219,7 +228,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -235,10 +244,7 @@ class TestAgentChatAppRunnerRun:
 
         conversation = mocker.MagicMock(id="conv")
         message = mocker.MagicMock(id="msg")
-        mocker.patch(
-            "core.app.apps.agent_chat.app_runner.db.session.scalar",
-            side_effect=[app_record, conversation, message],
-        )
+        patch_create_session(mocker, side_effect=[app_record, conversation, message])
 
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), conversation, message)
@@ -267,7 +273,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -283,10 +289,7 @@ class TestAgentChatAppRunnerRun:
 
         conversation = mocker.MagicMock(id="conv")
         message = mocker.MagicMock(id="msg")
-        mocker.patch(
-            "core.app.apps.agent_chat.app_runner.db.session.scalar",
-            side_effect=[app_record, conversation, message],
-        )
+        patch_create_session(mocker, side_effect=[app_record, conversation, message])
 
         runner_cls = mocker.MagicMock()
         mocker.patch("core.app.apps.agent_chat.app_runner.FunctionCallAgentRunner", runner_cls)
@@ -323,10 +326,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch(
-            "core.app.apps.agent_chat.app_runner.db.session.scalar",
-            side_effect=[app_record, None],
-        )
+        patch_create_session(mocker, side_effect=[app_record, None])
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -357,10 +357,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch(
-            "core.app.apps.agent_chat.app_runner.db.session.scalar",
-            side_effect=[app_record, mocker.MagicMock(id="conv"), None],
-        )
+        patch_create_session(mocker, side_effect=[app_record, mocker.MagicMock(id="conv"), None])
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -391,7 +388,7 @@ class TestAgentChatAppRunnerRun:
             user_id="user",
         )
 
-        mocker.patch("core.app.apps.agent_chat.app_runner.db.session.scalar", return_value=app_record)
+        patch_create_session(mocker, return_value=app_record)
         mocker.patch.object(runner, "organize_prompt_messages", return_value=([], None))
         mocker.patch.object(runner, "moderation_for_inputs", return_value=(None, {}, "q"))
         mocker.patch.object(runner, "query_app_annotations_to_reply", return_value=None)
@@ -407,10 +404,7 @@ class TestAgentChatAppRunnerRun:
 
         conversation = mocker.MagicMock(id="conv")
         message = mocker.MagicMock(id="msg")
-        mocker.patch(
-            "core.app.apps.agent_chat.app_runner.db.session.scalar",
-            side_effect=[app_record, conversation, message],
-        )
+        patch_create_session(mocker, side_effect=[app_record, conversation, message])
 
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), conversation, message)

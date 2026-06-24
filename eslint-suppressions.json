@@ -986,6 +986,9 @@
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": {
+      "count": 1
+    },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
     }
@@ -1001,6 +1004,11 @@
   "web/app/components/apps/new-app-card.tsx": {
     "react/set-state-in-effect": {
       "count": 3
+    }
+  },
+  "web/app/components/apps/starred-app-card.tsx": {
+    "jsx-a11y/no-noninteractive-element-to-interactive-role": {
+      "count": 1
     }
   },
   "web/app/components/base/action-button/index.tsx": {
@@ -2125,9 +2133,6 @@
     }
   },
   "web/app/components/base/markdown-blocks/think-block.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -2600,11 +2605,6 @@
   "web/app/components/base/with-input-validation/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/base/zendesk/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "web/app/components/billing/header-billing-btn/index.tsx": {
@@ -3357,14 +3357,6 @@
     }
   },
   "web/app/components/datasets/list/dataset-card/components/operations-dropdown.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/list/dataset-card/index.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
     },

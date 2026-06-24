@@ -13,7 +13,7 @@ def valid_password(password):
     if re.match(pattern, password) is not None:
         return password
 
-    raise ValueError("Password must contain letters and numbers, and the length must be greater than 8.")
+    raise ValueError("Password must contain letters and numbers, and the length must be at least 8 characters.")
 
 
 def hash_password(password_str, salt_byte):

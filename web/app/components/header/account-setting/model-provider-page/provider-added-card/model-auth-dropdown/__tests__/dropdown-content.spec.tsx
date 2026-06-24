@@ -10,7 +10,7 @@ const mockOpenConfirmDelete = vi.fn()
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
 let mockDeleteCredentialId: string | null = null
-let mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
+let mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
 
 vi.mock('../../use-trial-credits', () => ({
   useTrialCredits: () => ({ credits: 0, totalCredits: 10_000, isExhausted: true, isLoading: false }),
@@ -53,7 +53,7 @@ vi.mock('../../../model-auth/authorized/credential-item', () => ({
   }) => (
     <div data-testid={`credential-${credential.credential_id}`}>
       <span>{credential.credential_name}</span>
-      <button data-testid={`click-${credential.credential_id}`} onClick={() => onItemClick?.(credential)}>select</button>
+      <button data-testid={`click-${credential.credential_id}`} disabled={disabled} onClick={() => onItemClick?.(credential)}>select</button>
       <button data-testid={`edit-${credential.credential_id}`} disabled={disabled || disableEdit} onClick={() => onEdit?.(credential)}>edit</button>
       <button data-testid={`delete-${credential.credential_id}`} disabled={disabled || disableDelete} onClick={() => onDelete?.(credential)}>delete</button>
     </div>
@@ -97,7 +97,7 @@ describe('DropdownContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDeleteCredentialId = null
-    mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
   })
 
   describe('UsagePrioritySection visibility', () => {
@@ -396,6 +396,58 @@ describe('DropdownContent', () => {
       )
       expect(mockHandleOpenModal).not.toHaveBeenCalled()
       expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
+    })
+
+    it('should allow create-only users to add credentials but not switch, edit, or delete existing credentials', () => {
+      mockWorkspacePermissionKeys = ['credential.create']
+
+      render(
+        <DropdownContent
+          provider={createProvider()}
+          state={createState()}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+          onClose={onClose}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('click-cred-2'))
+      fireEvent.click(screen.getByTestId('edit-cred-2'))
+      fireEvent.click(screen.getByTestId('delete-cred-2'))
+      fireEvent.click(screen.getByRole('button', { name: /addApiKey/ }))
+
+      expect(mockActivate).not.toHaveBeenCalled()
+      expect(mockOpenConfirmDelete).not.toHaveBeenCalled()
+      expect(mockHandleOpenModal).toHaveBeenCalledTimes(1)
+      expect(mockHandleOpenModal).toHaveBeenCalledWith()
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should allow manage-only users to edit and delete credentials but not switch or add them', () => {
+      mockWorkspacePermissionKeys = ['credential.manage']
+
+      render(
+        <DropdownContent
+          provider={createProvider()}
+          state={createState()}
+          isChangingPriority={false}
+          onChangePriority={onChangePriority}
+          onClose={onClose}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('click-cred-2'))
+      fireEvent.click(screen.getByTestId('edit-cred-2'))
+      fireEvent.click(screen.getByTestId('delete-cred-2'))
+
+      expect(mockActivate).not.toHaveBeenCalled()
+      expect(mockHandleOpenModal).toHaveBeenCalledWith(
+        expect.objectContaining({ credential_id: 'cred-2' }),
+      )
+      expect(mockOpenConfirmDelete).toHaveBeenCalledWith(
+        expect.objectContaining({ credential_id: 'cred-2' }),
+      )
+      expect(screen.queryByRole('button', { name: /addApiKey/ })).not.toBeInTheDocument()
     })
   })
 

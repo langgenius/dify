@@ -7,6 +7,7 @@ import type {
 } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { IOtherOptions } from '@/service/base'
+import type { ReasoningChunkResponse } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
@@ -365,6 +366,22 @@ export const useChat = (
             parentId: params.parent_message_id,
           })
         },
+        onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+          const { reasoning, node_id, is_final } = reasoningData
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
           const { workflowRunningData } = workflowStore.getState()
           handleResponding(false)
@@ -711,6 +728,18 @@ export const useChat = (
         if (taskId)
           taskIdRef.current = taskId
       },
+      onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+        const { message_id, reasoning, node_id, is_final } = reasoningData
+        updateChatTreeNode(message_id, (responseItem) => {
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
+        })
+      },
+
       async onCompleted(hasError?: boolean) {
         const { workflowRunningData } = workflowStore.getState()
         handleResponding(false)

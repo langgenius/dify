@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "نموذج تحويل النص إلى كلام",
   "modelProvider.ttsModel.tip": "تعيين النموذج الافتراضي لإدخال تحويل النص إلى كلام في المحادثة.",
   "modelProvider.upgradeForLoadBalancing": "قم بترقية خطتك لتمكين موازنة التحميل.",
+  "navigation.skipToMain": "الانتقال إلى المحتوى الرئيسي",
   "noData": "لا توجد بيانات",
   "operation.add": "إضافة",
   "operation.added": "تمت الإضافة",

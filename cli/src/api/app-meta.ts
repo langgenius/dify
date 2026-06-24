@@ -1,17 +1,17 @@
-import type { AppsClient } from './apps'
+import type { AppReader } from './app-reader'
 import type { AppInfoCache } from '@/cache/app-info'
 import type { AppMeta, AppMetaFieldKey } from '@/types/app-meta'
 import { covers, fromDescribe, mergeMeta } from '@/types/app-meta'
 
 export type AppMetaClientOptions = {
-  readonly apps: AppsClient
+  readonly apps: AppReader
   readonly host: string
   readonly cache?: AppInfoCache
   readonly now?: () => Date
 }
 
 export class AppMetaClient {
-  private readonly apps: AppsClient
+  private readonly apps: AppReader
   private readonly host: string
   private readonly cache: AppInfoCache | undefined
   private readonly now: () => Date

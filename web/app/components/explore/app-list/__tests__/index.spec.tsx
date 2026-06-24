@@ -34,6 +34,23 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
+const toastMocks = vi.hoisted(() => {
+  const record = vi.fn()
+  const api = Object.assign(vi.fn((message: unknown, options?: Record<string, unknown>) => record({ message, ...options })), {
+    success: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'success', message, ...options })),
+    error: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'error', message, ...options })),
+    warning: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'warning', message, ...options })),
+    info: vi.fn((message: unknown, options?: Record<string, unknown>) => record({ type: 'info', message, ...options })),
+    dismiss: vi.fn(),
+    update: vi.fn(),
+    promise: vi.fn(),
+  })
+  return { record, api }
+})
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMocks.api,
+}))
 
 vi.mock('@/service/use-explore', () => ({
   useLearnDifyAppList: () => ({
@@ -463,6 +480,36 @@ describe('AppList', () => {
       expect(screen.getAllByText('explore.continueWork.editedAt:{"time":"3 minutes ago"}')).toHaveLength(8)
       expect(screen.getByRole('link', { name: /Email Reply/ })).toHaveAttribute('href', '/app/app-1/overview')
       expect(screen.getByRole('link', { name: 'explore.continueWork.exploreStudio' })).toHaveAttribute('href', '/apps')
+    })
+
+    it('should render preview-only continue work app as a dimmed card and warn on click', () => {
+      mockExploreData = {
+        categories: ['Writing'],
+        allList: [createApp()],
+      }
+      mockWorkspaceApps = [
+        createWorkspaceApp({
+          id: 'preview-app',
+          name: 'Preview Only App',
+          author_name: 'Readonly Author',
+          permission_keys: [AppACLPermission.Preview],
+        }),
+      ]
+
+      renderAppList()
+
+      const card = screen.getByRole('button', { name: 'Preview Only App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.queryByRole('link', { name: /Preview Only App/ })).not.toBeInTheDocument()
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
     })
 
     it('should hide continue work when there are no workspace apps', () => {

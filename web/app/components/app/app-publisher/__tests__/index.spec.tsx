@@ -30,6 +30,7 @@ const sectionProps = vi.hoisted(() => ({
   actions: null as null | Record<string, any>,
 }))
 const hotkeyMocks = vi.hoisted(() => ({
+  hotkeys: [] as string[],
   handlers: [] as Array<(event: { preventDefault: () => void }) => void>,
 }))
 
@@ -44,7 +45,8 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('@tanstack/react-hotkeys', () => ({
-  useHotkey: (_hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+  useHotkey: (hotkey: string, handler: (event: { preventDefault: () => void }) => void) => {
+    hotkeyMocks.hotkeys.push(hotkey)
     hotkeyMocks.handlers.push(handler)
   },
 }))
@@ -190,6 +192,7 @@ vi.mock('../sections', () => ({
 describe('AppPublisher', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    hotkeyMocks.hotkeys.length = 0
     hotkeyMocks.handlers.length = 0
     sectionProps.summary = null
     sectionProps.access = null
@@ -240,6 +243,7 @@ describe('AppPublisher', () => {
         enabled: true,
       })
     })
+    expect(sectionProps.summary?.publishShortcut).toEqual(['Mod', 'Shift', 'P'])
     expect(mockRefetch).not.toHaveBeenCalled()
   })
 
@@ -477,6 +481,7 @@ describe('AppPublisher', () => {
       />,
     )
 
+    expect(hotkeyMocks.hotkeys).toContain('Mod+Shift+P')
     hotkeyMocks.handlers[0]!({ preventDefault })
 
     await waitFor(() => {

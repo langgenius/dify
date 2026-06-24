@@ -1,5 +1,6 @@
 import type { AccessRulesEditorProps } from '@/app/components/access-rules-editor'
-import { render, screen } from '@testing-library/react'
+import { screen } from '@testing-library/react'
+import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import {
   useDatasetAccessRules,
   useDatasetUserAccessSettings,
@@ -26,6 +27,14 @@ const mockAppContextState = vi.hoisted(() => ({
   userProfile: { id: 'user-1' },
   workspacePermissionKeys: [] as string[],
 }))
+
+let mockIsRbacEnabled = true
+
+const render = (ui: Parameters<typeof renderWithSystemFeatures>[0]) => renderWithSystemFeatures(ui, {
+  systemFeatures: {
+    rbac_enabled: mockIsRbacEnabled,
+  },
+})
 
 const mockAccessRulesEditor = vi.hoisted(() => ({
   props: null as AccessRulesEditorProps | null,
@@ -93,6 +102,7 @@ describe('DatasetAccessConfigPage', () => {
     }
     mockAppContextState.userProfile = { id: 'user-1' }
     mockAppContextState.workspacePermissionKeys = []
+    mockIsRbacEnabled = true
     mockAccessRulesEditor.props = null
   })
 
@@ -154,6 +164,16 @@ describe('DatasetAccessConfigPage', () => {
         maintainer: 'account-1',
         permission_keys: [],
       }
+
+      render(<DatasetAccessConfigPage datasetId="dataset-1" />)
+
+      expect(screen.queryByTestId('access-rules-editor')).not.toBeInTheDocument()
+      expect(vi.mocked(useDatasetAccessRules)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
+      expect(vi.mocked(useDatasetUserAccessSettings)).toHaveBeenCalledWith('dataset-1', expect.any(String), { enabled: false })
+    })
+
+    it('should disable access config queries and hide the editor when RBAC is disabled', () => {
+      mockIsRbacEnabled = false
 
       render(<DatasetAccessConfigPage datasetId="dataset-1" />)
 

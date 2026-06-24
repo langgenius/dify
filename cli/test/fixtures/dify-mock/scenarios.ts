@@ -14,6 +14,7 @@ export type Scenario
     | 'server-version-empty'
     | 'server-version-unsupported'
     | 'run-422-stale'
+    | 'workflow-think'
     | 'import-pending'
     | 'import-failed'
 

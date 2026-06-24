@@ -10,6 +10,7 @@ describe('zendesk/utils', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     // Clean up window.zE after each test
     window.zE = mockZE
   })
@@ -116,6 +117,42 @@ describe('zendesk/utils', () => {
       const { toggleZendeskWindow } = await import('../utils')
 
       toggleZendeskWindow(true)
+
+      expect(window.zE).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('openZendeskWindow', () => {
+    it('should show and open messenger when zE exists', async () => {
+      vi.doMock('@/config', () => ({ IS_CE_EDITION: false }))
+      const { openZendeskWindow } = await import('../utils')
+
+      openZendeskWindow()
+
+      expect(window.zE).toHaveBeenCalledWith('messenger', 'show')
+      expect(window.zE).toHaveBeenCalledWith('messenger', 'open')
+    })
+
+    it('should retry opening until zE is ready', async () => {
+      vi.useFakeTimers()
+      vi.doMock('@/config', () => ({ IS_CE_EDITION: false }))
+      const { openZendeskWindow } = await import('../utils')
+
+      window.zE = undefined
+      openZendeskWindow({ interval: 10, retries: 2 })
+      window.zE = mockZE
+      vi.advanceTimersByTime(10)
+
+      expect(window.zE).toHaveBeenCalledWith('messenger', 'show')
+      expect(window.zE).toHaveBeenCalledWith('messenger', 'open')
+      vi.useRealTimers()
+    })
+
+    it('should not call window.zE when IS_CE_EDITION is true', async () => {
+      vi.doMock('@/config', () => ({ IS_CE_EDITION: true }))
+      const { openZendeskWindow } = await import('../utils')
+
+      openZendeskWindow()
 
       expect(window.zE).not.toHaveBeenCalled()
     })

@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Модель перетворення тексту в мовлення",
   "modelProvider.ttsModel.tip": "Встановіть модель за замовчуванням для введення тексту в мовлення в розмові.",
   "modelProvider.upgradeForLoadBalancing": "Оновіть свій план, щоб увімкнути балансування навантаження.",
+  "navigation.skipToMain": "Перейти до основного вмісту",
   "noData": "Немає даних",
   "operation.add": "Додати",
   "operation.added": "Додано",

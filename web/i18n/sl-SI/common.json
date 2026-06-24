@@ -516,6 +516,7 @@
   "modelProvider.ttsModel.key": "Model za pretvorbo besedila v govor",
   "modelProvider.ttsModel.tip": "Nastavite privzeti model za pretvorbo besedila v govor v pogovoru.",
   "modelProvider.upgradeForLoadBalancing": "Nadgradite svoj načrt, da omogočite uravnoteženje obremenitev.",
+  "navigation.skipToMain": "Preskoči na glavno vsebino",
   "noData": "Ni podatkov",
   "operation.add": "Dodaj",
   "operation.added": "Dodano",

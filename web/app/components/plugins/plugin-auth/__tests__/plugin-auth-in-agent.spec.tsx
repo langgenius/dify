@@ -46,7 +46,7 @@ vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { userProfile: typeof mockUserProfile, workspacePermissionKeys: string[] }) => unknown) =>
     selector({
       userProfile: mockUserProfile,
-      workspacePermissionKeys: ['credential.manage', 'credential.use'],
+      workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
     }),
 }))
 

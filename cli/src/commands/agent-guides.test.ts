@@ -2,7 +2,9 @@ import type { CommandConstructor } from '@/framework/command'
 import { describe, expect, it } from 'vitest'
 import Login from '@/commands/auth/login/index'
 import DescribeApp from '@/commands/describe/app/index'
+import ExportStudioApp from '@/commands/export/studio-app/index'
 import GetApp from '@/commands/get/app/index'
+import ImportStudioApp from '@/commands/import/studio-app/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
 
@@ -13,6 +15,8 @@ const GUIDED_COMMANDS: ReadonlyArray<readonly [string, CommandConstructor]> = [
   ['resume app', ResumeApp],
   ['describe app', DescribeApp],
   ['get app', GetApp],
+  ['export studio-app', ExportStudioApp],
+  ['import studio-app', ImportStudioApp],
   ['auth login', Login],
 ]
 
