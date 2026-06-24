@@ -51,7 +51,7 @@ members = [
     "dify-vdb-weaviate",
 ]
 overrides = [
-    { name = "cryptography", specifier = ">=48.0.1" },
+    { name = "cryptography", specifier = ">=49.0.0,<50.0.0" },
     { name = "litellm", specifier = ">=1.83.10,<2.0.0" },
     { name = "pyarrow", specifier = ">=23.0.1,<24.0.0" },
 ]

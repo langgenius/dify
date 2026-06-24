@@ -103,7 +103,11 @@ dify-trace-weave = { workspace = true }
 [tool.uv]
 default-groups = ["storage", "tools", "vdb-all", "trace-all"]
 package = false
-override-dependencies = ["litellm>=1.83.10,<2.0.0", "pyarrow>=23.0.1,<24.0.0", "cryptography>=48.0.1"]
+override-dependencies = [
+    "litellm>=1.83.10,<2.0.0",
+    "pyarrow>=23.0.1,<24.0.0",
+    "cryptography>=49.0.0,<50.0.0",
+]
 
 [dependency-groups]
 
