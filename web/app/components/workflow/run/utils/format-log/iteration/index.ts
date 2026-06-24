@@ -69,5 +69,3 @@ const format = (list: NodeTracing[], t: any): NodeTracing[] => {
 
   return result
 }
-
-export default format
