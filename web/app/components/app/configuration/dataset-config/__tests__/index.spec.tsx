@@ -992,9 +992,6 @@ describe('DatasetConfig', () => {
     })
   })
 
-  describe('Permission Handling', () => {
-  })
-
   describe('Dataset Reordering and Management', () => {
     it('should maintain dataset order after updates', () => {
       const datasets = [

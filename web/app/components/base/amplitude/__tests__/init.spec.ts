@@ -1,12 +1,13 @@
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { ensureAmplitudeInitialized } from '../init'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
   IS_CLOUD_EDITION: true,
 }))
+
+let ensureAmplitudeInitialized: typeof import('../init').ensureAmplitudeInitialized
 
 vi.mock('@/config', () => ({
   get AMPLITUDE_API_KEY() {
@@ -30,10 +31,12 @@ vi.mock('@amplitude/plugin-session-replay-browser', () => ({
 }))
 
 describe('amplitude init helper', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetModules()
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
     mockConfig.IS_CLOUD_EDITION = true
+    ;({ ensureAmplitudeInitialized } = await import('../init'))
   })
 
   describe('ensureAmplitudeInitialized', () => {
