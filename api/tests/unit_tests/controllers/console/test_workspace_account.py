@@ -12,7 +12,6 @@ from controllers.console.workspace.account import (
     ChangeEmailSendEmailApi,
     CheckEmailUnique,
 )
-from extensions.ext_database import db
 from models import Account, AccountStatus, Tenant
 from services.account_service import AccountService
 from services.entities.auth_entities import (
