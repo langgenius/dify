@@ -43,6 +43,7 @@ from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
+from core.workflow.nodes.iteration import DifyIterationNode
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from graphon.entities.base_node_data import BaseNodeData
@@ -128,6 +129,9 @@ def get_node_type_classes_mapping() -> Mapping[NodeType, Mapping[str, type[Node]
 
 def resolve_workflow_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
     """Resolve the production node class for the requested type/version."""
+    if node_type == BuiltinNodeTypes.ITERATION and node_version in (DifyIterationNode.version(), LATEST_VERSION):
+        return DifyIterationNode
+
     node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
