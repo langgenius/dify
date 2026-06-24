@@ -5,11 +5,11 @@ from collections.abc import Generator
 from typing import cast
 
 from flask import Response, stream_with_context
+from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
 from constants import AUDIO_EXTENSIONS
 from core.model_manager import ModelManager
-from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
@@ -77,6 +77,8 @@ class AudioService:
     def transcript_tts(
         cls,
         app_model: App,
+        *,
+        session: Session,
         text: str | None = None,
         voice: str | None = None,
         end_user: str | None = None,
@@ -87,7 +89,7 @@ class AudioService:
             if voice is None:
                 if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
                     if is_draft:
-                        workflow = WorkflowService().get_draft_workflow(app_model=app_model)
+                        workflow = WorkflowService().get_draft_workflow(app_model=app_model, session=session)
                     else:
                         workflow = app_model.workflow
                     if (
@@ -132,7 +134,7 @@ class AudioService:
                 uuid.UUID(message_id)
             except ValueError:
                 return None
-            message = db.session.get(Message, message_id)
+            message = session.get(Message, message_id)
             if message is None:
                 return None
             if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:
