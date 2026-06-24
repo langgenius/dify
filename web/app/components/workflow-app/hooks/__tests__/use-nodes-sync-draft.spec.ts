@@ -320,6 +320,9 @@ describe('useNodesSyncDraft — handleRefreshWorkflowDraft(true) on 409', () => 
                 desc: '',
                 agent_node_kind: 'dify_agent',
                 version: '2',
+                agent_binding: {
+                  binding_type: 'inline_agent',
+                },
                 selected: true,
               },
             },

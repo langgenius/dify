@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
+from models import ToolFile, UploadFile
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
@@ -19,7 +20,6 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
-from models import ToolFile, UploadFile
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.soul_files_service import AgentSoulFilesService
@@ -41,10 +41,10 @@ class WorkflowAgentPublishService:
 
     @classmethod
     def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
-        """Return draft graph with persisted Agent node job config projected into node data.
+        """Return draft graph with persisted Agent binding fields projected into node data.
 
         Workflow draft graph is the front-end's editing source of truth, while
-        runtime/publish reads WorkflowAgentNodeBinding.node_job_config. This
+        runtime/publish reads WorkflowAgentNodeBinding. This
         response-only projection keeps reads aligned without writing binding
         details back into the stored graph JSON.
         """
@@ -66,6 +66,18 @@ class WorkflowAgentPublishService:
             node_data = agent_nodes.get(binding.node_id)
             if not isinstance(node_data, dict):
                 continue
+            graph_binding = node_data.get(cls._AGENT_BINDING_KEY)
+            is_pending_inline_graph_binding = (
+                isinstance(graph_binding, Mapping)
+                and graph_binding.get("binding_type") == WorkflowAgentBindingType.INLINE_AGENT.value
+                and (not graph_binding.get("agent_id") or not graph_binding.get("current_snapshot_id"))
+            )
+            if not is_pending_inline_graph_binding or binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
+                node_data[cls._AGENT_BINDING_KEY] = {
+                    "binding_type": binding.binding_type.value,
+                    "agent_id": binding.agent_id,
+                    "current_snapshot_id": binding.current_snapshot_id,
+                }
             node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
             if node_job.workflow_prompt is not None:
                 node_data[cls._AGENT_TASK_KEY] = node_job.workflow_prompt
@@ -273,6 +285,11 @@ class WorkflowAgentPublishService:
                 continue
             if not isinstance(binding_payload, Mapping):
                 raise ValueError(f"Workflow Agent node {node_id} has invalid agent_binding.")
+            if (
+                binding_payload.get("binding_type") == WorkflowAgentBindingType.INLINE_AGENT.value
+                and (not binding_payload.get("agent_id") or not binding_payload.get("current_snapshot_id"))
+            ):
+                continue
             cls._sync_agent_binding_for_node(
                 session=session,
                 draft_workflow=draft_workflow,

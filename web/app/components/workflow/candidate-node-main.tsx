@@ -96,6 +96,7 @@ const CandidateNodeMain: FC<Props> = ({
 
     if (shouldCreateInlineAgentBinding) {
       workflowStore.getState().setOpenInlineAgentPanelNodeId(candidateNode.id)
+      handleSyncWorkflowDraft(true, true)
       createInlineAgentBinding(candidateNode.id, {
         onError: () => {
           const { nodes, setNodes } = collaborativeWorkflow.getState()

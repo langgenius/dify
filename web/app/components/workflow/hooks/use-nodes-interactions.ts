@@ -194,6 +194,7 @@ export const useNodesInteractions = () => {
     onError?: () => void
   }) => {
     workflowStore.getState().setOpenInlineAgentPanelNodeId(nodeId)
+    handleSyncWorkflowDraft(true, true)
     createInlineAgentBinding(nodeId, {
       onError: () => {
         options?.onError?.()

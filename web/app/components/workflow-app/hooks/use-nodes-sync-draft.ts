@@ -71,9 +71,6 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     const features = featuresStore!.getState().features
     const producedNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        if (isAgentV2NodeData(node.data) && needsInlineAgentBindingCreation(node.data))
-          delete node.data.agent_binding
-
         Object.keys(node.data).forEach((key) => {
           if (key.startsWith('_'))
             delete node.data[key]
