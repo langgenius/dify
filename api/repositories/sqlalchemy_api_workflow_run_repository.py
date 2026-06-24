@@ -593,56 +593,38 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> RunsWithRelatedCountsDict:
+        with self._session_maker.begin() as session:
+            return self.delete_runs_with_related_in_session(
+                session,
+                runs,
+                delete_node_executions=delete_node_executions,
+                delete_trigger_logs=delete_trigger_logs,
+            )
+
+    @override
+    def delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
         if not runs:
-            return {
-                "runs": 0,
-                "node_executions": 0,
-                "offloads": 0,
-                "app_logs": 0,
-                "trigger_logs": 0,
-                "pauses": 0,
-                "pause_reasons": 0,
-            }
+            return self._empty_runs_with_related_counts()
 
-        with self._session_maker() as session:
-            run_ids = [run.id for run in runs]
-            if delete_node_executions:
-                node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
-            else:
-                node_executions_deleted, offloads_deleted = 0, 0
+        runs = list(runs)
 
-            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
-            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+        def delete_node_executions_by_ids(active_session: Session, _run_ids: Sequence[str]) -> tuple[int, int]:
+            if delete_node_executions is None:
+                return 0, 0
+            return delete_node_executions(active_session, runs)
 
-            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
-            pause_ids = session.scalars(pause_stmt).all()
-            pause_reasons_deleted = 0
-            pauses_deleted = 0
-
-            if pause_ids:
-                pause_reasons_result = session.execute(
-                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
-                )
-                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
-                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
-
-            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
-
-            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
-            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
-
-            session.commit()
-
-            return {
-                "runs": runs_deleted,
-                "node_executions": node_executions_deleted,
-                "offloads": offloads_deleted,
-                "app_logs": app_logs_deleted,
-                "trigger_logs": trigger_logs_deleted,
-                "pauses": pauses_deleted,
-                "pause_reasons": pause_reasons_deleted,
-            }
+        return self._delete_runs_with_related_by_ids_in_session(
+            session,
+            [run.id for run in runs],
+            delete_node_executions=delete_node_executions_by_ids if delete_node_executions else None,
+            delete_trigger_logs=delete_trigger_logs,
+        )
 
     @override
     def delete_runs_with_related_by_ids(
@@ -651,48 +633,60 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> RunsWithRelatedCountsDict:
+        with self._session_maker.begin() as session:
+            return self._delete_runs_with_related_by_ids_in_session(
+                session,
+                run_ids,
+                delete_node_executions=delete_node_executions,
+                delete_trigger_logs=delete_trigger_logs,
+            )
+
+    def _delete_runs_with_related_by_ids_in_session(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+        delete_node_executions: Callable[[Session, Sequence[str]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
         if not run_ids:
             return self._empty_runs_with_related_counts()
 
         run_ids = list(run_ids)
-        with self._session_maker() as session:
-            if delete_node_executions:
-                node_executions_deleted, offloads_deleted = delete_node_executions(session, run_ids)
-            else:
-                node_executions_deleted, offloads_deleted = 0, 0
+        if delete_node_executions:
+            node_executions_deleted, offloads_deleted = delete_node_executions(session, run_ids)
+        else:
+            node_executions_deleted, offloads_deleted = 0, 0
 
-            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
-            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
+        app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
+        app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
 
-            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
-            pause_ids = session.scalars(pause_stmt).all()
-            pause_reasons_deleted = 0
-            pauses_deleted = 0
+        pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+        pause_ids = session.scalars(pause_stmt).all()
+        pause_reasons_deleted = 0
+        pauses_deleted = 0
 
-            if pause_ids:
-                pause_reasons_result = session.execute(
-                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
-                )
-                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
-                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
+        if pause_ids:
+            pause_reasons_result = session.execute(
+                delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+            )
+            pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
+            pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
+            pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
-            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+        trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
 
-            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
-            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
+        runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
+        runs_deleted = cast(CursorResult, runs_result).rowcount or 0
 
-            session.commit()
-
-            return {
-                "runs": runs_deleted,
-                "node_executions": node_executions_deleted,
-                "offloads": offloads_deleted,
-                "app_logs": app_logs_deleted,
-                "trigger_logs": trigger_logs_deleted,
-                "pauses": pauses_deleted,
-                "pause_reasons": pause_reasons_deleted,
-            }
+        return {
+            "runs": runs_deleted,
+            "node_executions": node_executions_deleted,
+            "offloads": offloads_deleted,
+            "app_logs": app_logs_deleted,
+            "trigger_logs": trigger_logs_deleted,
+            "pauses": pauses_deleted,
+            "pause_reasons": pause_reasons_deleted,
+        }
 
     @override
     def get_app_logs_by_run_id(
