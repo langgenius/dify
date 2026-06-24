@@ -980,7 +980,7 @@ class AccountService:
         return token
 
     @staticmethod
-    def get_account_by_email_with_case_fallback(session: Session, email: str) -> Account | None:
+    def get_account_by_email_with_case_fallback(session: Session | scoped_session, email: str) -> Account | None:
         """
         Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
 
