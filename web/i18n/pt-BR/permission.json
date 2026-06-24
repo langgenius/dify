@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Visualize o nome, a descrição e as permissões concedidas para este conjunto de permissões.",
   "permissionSet.modal.view.dataset.title": "Visualizar conjunto de permissões de Conhecimento",
   "permissionSet.nameLabel": "Nome do conjunto de permissões",
-  "permissionSet.namePlaceholder": "ex.: Pode exportar DSL",
+  "permissionSet.namePlaceholder": "ex.: Conjunto de permissões de operações",
   "permissionSet.permissions": "Permissões",
   "role.addRole": "Criar funções",
   "role.copyMembersDescription_one": "\"{{name}}\" está atribuída a {{count}} membro. Você deseja que a cópia da nova função inclua o mesmo membro?",

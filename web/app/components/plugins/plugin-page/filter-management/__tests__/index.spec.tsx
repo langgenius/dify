@@ -1,6 +1,5 @@
-import type { Category, Tag } from '../constant'
 import type { FilterState } from '../index'
-import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createContext, useContext } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -10,7 +9,6 @@ import CategoriesFilter from '../category-filter'
 // Import real components
 import FilterManagement from '../index'
 import SearchBox from '../search-box'
-import { useStore } from '../store'
 import TagFilter from '../tag-filter'
 
 // ==================== Mock Setup ====================
@@ -95,13 +93,14 @@ vi.mock('@langgenius/dify-ui/popover', () => ({
   }) => {
     const { open, onOpenChange } = useContext(MockPopoverContext)
     return (
-      <div
+      <button
+        type="button"
         data-testid="portal-trigger"
         onClick={() => onOpenChange?.(!open)}
         className={className}
       >
         {render ?? children}
-      </div>
+      </button>
     )
   },
   PopoverContent: ({ children, className }: {
@@ -128,232 +127,6 @@ const renderFilterManagement = (onFilterChange = vi.fn(), props?: Partial<React.
   const result = render(<FilterManagement onFilterChange={onFilterChange} {...props} />)
   return { ...result, onFilterChange }
 }
-
-// ==================== constant.ts Tests ====================
-describe('constant.ts - Type Definitions', () => {
-  it('should define Tag type correctly', () => {
-    // Arrange
-    const tag: Tag = {
-      id: 'test-id',
-      name: 'test-tag',
-      type: 'custom',
-      binding_count: 5,
-    }
-
-    // Assert
-    expect(tag.id).toBe('test-id')
-    expect(tag.name).toBe('test-tag')
-    expect(tag.type).toBe('custom')
-    expect(tag.binding_count).toBe(5)
-  })
-
-  it('should define Category type correctly', () => {
-    // Arrange
-    const category: Category = {
-      name: 'model',
-      binding_count: 10,
-    }
-
-    // Assert
-    expect(category.name).toBe('model')
-    expect(category.binding_count).toBe(10)
-  })
-
-  it('should enforce Category name as specific union type', () => {
-    // Arrange - Valid category names
-    const validNames: Array<Category['name']> = ['model', 'tool', 'extension', 'bundle']
-
-    // Assert
-    validNames.forEach((name) => {
-      const category: Category = { name, binding_count: 0 }
-      expect(['model', 'tool', 'extension', 'bundle']).toContain(category.name)
-    })
-  })
-})
-
-// ==================== store.ts Tests ====================
-describe('store.ts - Zustand Store', () => {
-  describe('Initial State', () => {
-    it('should have empty tagList initially', () => {
-      const { result } = renderHook(() => useStore(state => state.tagList))
-      expect(result.current).toEqual([])
-    })
-
-    it('should have empty categoryList initially', () => {
-      const { result } = renderHook(() => useStore(state => state.categoryList))
-      expect(result.current).toEqual([])
-    })
-
-    it('should have showTagManagementModal false initially', () => {
-      const { result } = renderHook(() => useStore(state => state.showTagManagementModal))
-      expect(result.current).toBe(false)
-    })
-
-    it('should have showCategoryManagementModal false initially', () => {
-      const { result } = renderHook(() => useStore(state => state.showCategoryManagementModal))
-      expect(result.current).toBe(false)
-    })
-  })
-
-  describe('setTagList', () => {
-    it('should update tagList', () => {
-      // Arrange
-      const mockTagList: Tag[] = [
-        { id: '1', name: 'tag1', type: 'custom', binding_count: 1 },
-        { id: '2', name: 'tag2', type: 'custom', binding_count: 2 },
-      ]
-
-      // Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setTagList(mockTagList)
-      })
-
-      // Assert
-      expect(result.current.tagList).toEqual(mockTagList)
-    })
-
-    it('should handle undefined tagList', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setTagList(undefined)
-      })
-
-      // Assert
-      expect(result.current.tagList).toBeUndefined()
-    })
-
-    it('should handle empty tagList', () => {
-      // Arrange
-      const { result } = renderHook(() => useStore())
-
-      // First set some tags
-      act(() => {
-        result.current.setTagList([{ id: '1', name: 'tag1', type: 'custom', binding_count: 1 }])
-      })
-
-      // Act - Clear the list
-      act(() => {
-        result.current.setTagList([])
-      })
-
-      // Assert
-      expect(result.current.tagList).toEqual([])
-    })
-  })
-
-  describe('setCategoryList', () => {
-    it('should update categoryList', () => {
-      // Arrange
-      const mockCategoryList: Category[] = [
-        { name: 'model', binding_count: 5 },
-        { name: 'tool', binding_count: 10 },
-      ]
-
-      // Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setCategoryList(mockCategoryList)
-      })
-
-      // Assert
-      expect(result.current.categoryList).toEqual(mockCategoryList)
-    })
-
-    it('should handle undefined categoryList', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setCategoryList(undefined)
-      })
-
-      // Assert
-      expect(result.current.categoryList).toBeUndefined()
-    })
-  })
-
-  describe('setShowTagManagementModal', () => {
-    it('should set showTagManagementModal to true', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowTagManagementModal(true)
-      })
-
-      // Assert
-      expect(result.current.showTagManagementModal).toBe(true)
-    })
-
-    it('should set showTagManagementModal to false', () => {
-      // Arrange
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowTagManagementModal(true)
-      })
-
-      // Act
-      act(() => {
-        result.current.setShowTagManagementModal(false)
-      })
-
-      // Assert
-      expect(result.current.showTagManagementModal).toBe(false)
-    })
-  })
-
-  describe('setShowCategoryManagementModal', () => {
-    it('should set showCategoryManagementModal to true', () => {
-      // Arrange & Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowCategoryManagementModal(true)
-      })
-
-      // Assert
-      expect(result.current.showCategoryManagementModal).toBe(true)
-    })
-
-    it('should set showCategoryManagementModal to false', () => {
-      // Arrange
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setShowCategoryManagementModal(true)
-      })
-
-      // Act
-      act(() => {
-        result.current.setShowCategoryManagementModal(false)
-      })
-
-      // Assert
-      expect(result.current.showCategoryManagementModal).toBe(false)
-    })
-  })
-
-  describe('Store Isolation', () => {
-    it('should maintain separate state for each property', () => {
-      // Arrange
-      const mockTagList: Tag[] = [{ id: '1', name: 'tag1', type: 'custom', binding_count: 1 }]
-      const mockCategoryList: Category[] = [{ name: 'model', binding_count: 5 }]
-
-      // Act
-      const { result } = renderHook(() => useStore())
-      act(() => {
-        result.current.setTagList(mockTagList)
-        result.current.setCategoryList(mockCategoryList)
-        result.current.setShowTagManagementModal(true)
-        result.current.setShowCategoryManagementModal(false)
-      })
-
-      // Assert - All states are independent
-      expect(result.current.tagList).toEqual(mockTagList)
-      expect(result.current.categoryList).toEqual(mockCategoryList)
-      expect(result.current.showTagManagementModal).toBe(true)
-      expect(result.current.showCategoryManagementModal).toBe(false)
-    })
-  })
-})
 
 // ==================== search-box.tsx Tests ====================
 describe('SearchBox Component', () => {

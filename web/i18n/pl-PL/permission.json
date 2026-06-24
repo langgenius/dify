@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Wyświetl nazwę, opis i uprawnienia przyznane dla tego zestawu uprawnień.",
   "permissionSet.modal.view.dataset.title": "Wyświetl zestaw uprawnień bazy wiedzy",
   "permissionSet.nameLabel": "Nazwa zestawu uprawnień",
-  "permissionSet.namePlaceholder": "np. Może eksportować DSL",
+  "permissionSet.namePlaceholder": "np. Zestaw uprawnień operacyjnych",
   "permissionSet.permissions": "Uprawnienia",
   "role.addRole": "Twórz role",
   "role.copyMembersDescription_one": "\"{{name}}\" jest przypisana do {{count}} członka. Czy chcesz, aby nowa kopia roli zawierała tego samego członka?",

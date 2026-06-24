@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Sehen Sie den Namen, die Beschreibung und die für diesen Berechtigungssatz gewährten Berechtigungen.",
   "permissionSet.modal.view.dataset.title": "Wissensdatenbank-Berechtigungssatz anzeigen",
   "permissionSet.nameLabel": "Name des Berechtigungssatzes",
-  "permissionSet.namePlaceholder": "z. B. Kann DSL exportieren",
+  "permissionSet.namePlaceholder": "z. B. Berechtigungsset für Betrieb",
   "permissionSet.permissions": "Berechtigungen",
   "role.addRole": "Rollen erstellen",
   "role.copyMembersDescription_one": "\"{{name}}\" ist {{count}} Mitglied zugewiesen. Möchten Sie, dass die neue Rollenkopie dasselbe Mitglied enthält?",

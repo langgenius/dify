@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Vizualizează numele, descrierea și permisiunile acordate pentru acest set de permisiuni.",
   "permissionSet.modal.view.dataset.title": "Vizualizează set de permisiuni pentru baza de cunoștințe",
   "permissionSet.nameLabel": "Numele setului de permisiuni",
-  "permissionSet.namePlaceholder": "de ex. Poate exporta DSL",
+  "permissionSet.namePlaceholder": "de ex. Set de permisiuni operaționale",
   "permissionSet.permissions": "Permisiuni",
   "role.addRole": "Creează roluri",
   "role.copyMembersDescription_one": "\"{{name}}\" este atribuit unui {{count}} membru. Dorești ca noua copie a rolului să includă același membru?",

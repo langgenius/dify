@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "Перегляньте назву, опис та надані дозволи для цього набору дозволів.",
   "permissionSet.modal.view.dataset.title": "Переглянути набір дозволів бази знань",
   "permissionSet.nameLabel": "Назва набору дозволів",
-  "permissionSet.namePlaceholder": "напр. Може експортувати DSL",
+  "permissionSet.namePlaceholder": "напр. Набір дозволів для експлуатації",
   "permissionSet.permissions": "Дозволи",
   "role.addRole": "Створити ролі",
   "role.copyMembersDescription_one": "\"{{name}}\" призначено {{count}} учаснику. Чи хочете ви, щоб нова копія ролі включала того самого учасника?",
