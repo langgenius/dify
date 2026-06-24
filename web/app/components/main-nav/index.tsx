@@ -320,7 +320,7 @@ const MainNav = ({
                       : <SnippetCollapsedPreview inputFieldCount={snippetInputFields.length} />
             : (
                 <>
-                  <nav className="flex flex-col gap-px p-2">
+                  <nav className="isolate flex flex-col gap-px p-2">
                     {navItems.map(item => (
                       <MainNavLink key={item.href} item={item} pathname={pathname} />
                     ))}

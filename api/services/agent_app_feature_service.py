@@ -69,7 +69,12 @@ class AgentAppFeatureConfigService:
 
     @classmethod
     def update_features(
-        cls, *, app_model: App, account: Account, config: dict[str, Any], session: scoped_session
+        cls,
+        *,
+        app_model: App,
+        account: Account,
+        config: dict[str, Any],
+        session: scoped_session,
     ) -> AppModelConfig:
         """Persist the presentation features as a new app_model_config version.
 
