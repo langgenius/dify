@@ -304,6 +304,47 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it('should cache workflow composer state after saving workflow node composer', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+      },
+    }))).toEqual(composerState)
+  })
+
   it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()

@@ -53,12 +53,18 @@ const CandidateNodeMain: FC<Props> = ({
     const { x, y } = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
     const shouldCreateInlineAgentBinding = isAgentV2NodeData(candidateNode.data) && needsInlineAgentBindingCreation(candidateNode.data)
     const newNodes = produce(nodes, (draft) => {
+      if (shouldCreateInlineAgentBinding) {
+        draft.forEach((node) => {
+          node.data.selected = false
+        })
+      }
       draft.push({
         ...candidateNode,
         data: {
           ...candidateNode.data,
           _isCandidate: false,
           _isTempNode: shouldCreateInlineAgentBinding ? true : candidateNode.data._isTempNode,
+          selected: shouldCreateInlineAgentBinding ? true : candidateNode.data.selected,
         },
         position: {
           x,
