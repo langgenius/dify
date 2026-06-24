@@ -13,7 +13,6 @@ from controllers.console.auth.email_register import (
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
 )
-from extensions.ext_database import db
 from services.account_service import AccountService
 
 

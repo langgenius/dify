@@ -14,7 +14,6 @@ from controllers.console.auth.oauth import (
     _get_account_by_openid_or_email,
     get_oauth_providers,
 )
-from extensions.ext_database import db
 from libs.oauth import OAuthUserInfo, encode_oauth_state
 from models.account import AccountStatus
 from services.account_service import AccountService

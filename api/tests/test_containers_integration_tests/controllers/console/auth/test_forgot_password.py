@@ -13,7 +13,6 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
 )
-from extensions.ext_database import db
 from services.account_service import AccountService
 
 
