@@ -34,11 +34,8 @@ from controllers.console.app.workflow_draft_variable import (
 )
 from controllers.console.snippets.snippet_workflow import get_snippet
 from controllers.console.wraps import (
-    RBACPermission,
-    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
-    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -128,9 +125,6 @@ class SnippetWorkflowVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all draft workflow variables for the current user (snippet scope)")
     @console_ns.response(204, "Workflow variables deleted successfully")
     @_snippet_draft_var_prerequisite
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def delete(self, current_user: Account, snippet: CustomizedSnippet) -> Response:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         draft_var_srv.delete_user_workflow_variables(snippet.id, user_id=current_user.id)
@@ -157,9 +151,6 @@ class SnippetNodeVariableCollectionApi(Resource):
     @console_ns.doc(description="Delete all variables for a specific node (snippet draft workflow)")
     @console_ns.response(204, "Node variables deleted successfully")
     @_snippet_draft_var_prerequisite
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def delete(self, current_user: Account, snippet: CustomizedSnippet, node_id: str) -> Response:
         validate_node_id(node_id)
         srv = WorkflowDraftVariableService(db.session())
@@ -194,9 +185,6 @@ class SnippetVariableApi(Resource):
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
     @marshal_with(workflow_draft_variable_model)
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def patch(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> WorkflowDraftVariable:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
@@ -244,9 +232,6 @@ class SnippetVariableApi(Resource):
     @console_ns.response(204, "Variable deleted successfully")
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def delete(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> Response:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         variable = ensure_variable_access(
@@ -269,9 +254,6 @@ class SnippetVariableResetApi(Resource):
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_snippet_draft_var_prerequisite
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
-    )
     def put(self, current_user: Account, snippet: CustomizedSnippet, variable_id: str) -> Response | Any:
         draft_var_srv = WorkflowDraftVariableService(session=db.session())
         snippet_service = _snippet_service()
