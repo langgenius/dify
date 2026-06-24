@@ -280,6 +280,8 @@
   "members.ok": "OKE",
   "members.pending": "Tertunda...",
   "members.removeFromTeam": "Hapus dari tim",
+  "members.removeFromTeamConfirmDescription": "Konfirmasi untuk menghapus anggota ini. Tindakan ini tidak dapat dibatalkan.",
+  "members.removeFromTeamConfirmTitle": "Hapus {{memberName}} dari tim",
   "members.removeFromTeamTip": "Akan menghapus akses tim",
   "members.role": "PERAN",
   "members.roles": "PERAN",

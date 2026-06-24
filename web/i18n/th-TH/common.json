@@ -280,6 +280,8 @@
   "members.ok": "ตกลง, ได้",
   "members.pending": "รอ   ",
   "members.removeFromTeam": "ลบออกจากทีม",
+  "members.removeFromTeamConfirmDescription": "ยืนยันการลบสมาชิกนี้ การดำเนินการนี้ไม่สามารถย้อนกลับได้",
+  "members.removeFromTeamConfirmTitle": "ลบ {{memberName}} ออกจากทีม",
   "members.removeFromTeamTip": "จะลบการเข้าถึงของทีม",
   "members.role": "บทบาท",
   "members.roles": "บทบาท",

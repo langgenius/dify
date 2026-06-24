@@ -280,6 +280,8 @@
   "members.ok": "ठीक है",
   "members.pending": "लंबित...",
   "members.removeFromTeam": "टीम से हटाएं",
+  "members.removeFromTeamConfirmDescription": "इस सदस्य को हटाने की पुष्टि करें। यह कार्रवाई वापस नहीं की जा सकती।",
+  "members.removeFromTeamConfirmTitle": "{{memberName}} को टीम से हटाएं",
   "members.removeFromTeamTip": "टीम पहुंच को हटा देगा",
   "members.role": "भूमिकाएं",
   "members.roles": "भूमिकाएं",

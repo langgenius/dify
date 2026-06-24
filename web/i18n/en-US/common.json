@@ -308,6 +308,8 @@
   "members.ok": "OK",
   "members.pending": "Pending...",
   "members.removeFromTeam": "Remove from team",
+  "members.removeFromTeamConfirmDescription": "Confirm removing this member. This action cannot be undone.",
+  "members.removeFromTeamConfirmTitle": "Remove {{memberName}} from team",
   "members.removeFromTeamTip": "Will remove team access",
   "members.role": "ROLE",
   "members.roles": "ROLES",

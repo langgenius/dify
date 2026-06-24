@@ -280,6 +280,8 @@
   "members.ok": "OK",
   "members.pending": "In attesa...",
   "members.removeFromTeam": "Rimuovi dal team",
+  "members.removeFromTeamConfirmDescription": "Conferma la rimozione di questo membro. Questa azione non può essere annullata.",
+  "members.removeFromTeamConfirmTitle": "Rimuovi {{memberName}} dal team",
   "members.removeFromTeamTip": "Rimuoverà l'accesso al team",
   "members.role": "RUOLI",
   "members.roles": "RUOLI",

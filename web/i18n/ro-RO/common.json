@@ -280,6 +280,8 @@
   "members.ok": "OK",
   "members.pending": "În așteptare...",
   "members.removeFromTeam": "Elimină din echipă",
+  "members.removeFromTeamConfirmDescription": "Confirmă eliminarea acestui membru. Această acțiune nu poate fi anulată.",
+  "members.removeFromTeamConfirmTitle": "Elimină {{memberName}} din echipă",
   "members.removeFromTeamTip": "Va elimina accesul la echipă",
   "members.role": "ROLURI",
   "members.roles": "ROLURI",

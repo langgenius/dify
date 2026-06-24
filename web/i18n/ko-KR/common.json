@@ -280,6 +280,8 @@
   "members.ok": "확인",
   "members.pending": "대기 중...",
   "members.removeFromTeam": "팀에서 제거",
+  "members.removeFromTeamConfirmDescription": "이 멤버를 제거하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+  "members.removeFromTeamConfirmTitle": "{{memberName}}님을 팀에서 제거",
   "members.removeFromTeamTip": "팀 액세스가 제거됩니다",
   "members.role": "역할",
   "members.roles": "역할",

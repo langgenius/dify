@@ -307,6 +307,8 @@
   "members.ok": "OK",
   "members.pending": "保留中...",
   "members.removeFromTeam": "チームから削除",
+  "members.removeFromTeamConfirmDescription": "このメンバーを削除することを確認してください。この操作は元に戻せません。",
+  "members.removeFromTeamConfirmTitle": "{{memberName}}をチームから削除",
   "members.removeFromTeamTip": "チームへのアクセスが削除されます",
   "members.role": "ロール",
   "members.roles": "ロール",

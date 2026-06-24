@@ -280,6 +280,8 @@
   "members.ok": "OK",
   "members.pending": "Pending...",
   "members.removeFromTeam": "Remove from team",
+  "members.removeFromTeamConfirmDescription": "Bevestig dat je dit lid wilt verwijderen. Deze actie kan niet ongedaan worden gemaakt.",
+  "members.removeFromTeamConfirmTitle": "{{memberName}} uit team verwijderen",
   "members.removeFromTeamTip": "Will remove team access",
   "members.role": "ROLES",
   "members.roles": "ROLES",

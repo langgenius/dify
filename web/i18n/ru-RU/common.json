@@ -280,6 +280,8 @@
   "members.ok": "ОК",
   "members.pending": "Ожидание...",
   "members.removeFromTeam": "Удалить из команды",
+  "members.removeFromTeamConfirmDescription": "Подтвердите удаление этого участника. Это действие нельзя отменить.",
+  "members.removeFromTeamConfirmTitle": "Удалить {{memberName}} из команды",
   "members.removeFromTeamTip": "Удалить доступ к команде",
   "members.role": "РОЛИ",
   "members.roles": "РОЛИ",

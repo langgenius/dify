@@ -280,6 +280,8 @@
   "members.ok": "تایید",
   "members.pending": "در انتظار...",
   "members.removeFromTeam": "حذف از تیم",
+  "members.removeFromTeamConfirmDescription": "حذف این عضو را تأیید کنید. این عمل قابل بازگشت نیست.",
+  "members.removeFromTeamConfirmTitle": "حذف {{memberName}} از تیم",
   "members.removeFromTeamTip": "دسترسی تیم را حذف می‌کند",
   "members.role": "نقش‌ها",
   "members.roles": "نقش‌ها",

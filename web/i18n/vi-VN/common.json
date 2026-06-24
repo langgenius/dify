@@ -280,6 +280,8 @@
   "members.ok": "OK",
   "members.pending": "Đang chờ...",
   "members.removeFromTeam": "Xóa khỏi nhóm",
+  "members.removeFromTeamConfirmDescription": "Xác nhận xóa thành viên này. Không thể hoàn tác thao tác này.",
+  "members.removeFromTeamConfirmTitle": "Xóa {{memberName}} khỏi nhóm",
   "members.removeFromTeamTip": "Sẽ xóa quyền truy cập nhóm",
   "members.role": "VAI TRÒ",
   "members.roles": "VAI TRÒ",

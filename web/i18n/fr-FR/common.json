@@ -280,6 +280,8 @@
   "members.ok": "D'accord",
   "members.pending": "En attente...",
   "members.removeFromTeam": "Retirer de l'équipe",
+  "members.removeFromTeamConfirmDescription": "Confirmez le retrait de ce membre. Cette action est irréversible.",
+  "members.removeFromTeamConfirmTitle": "Retirer {{memberName}} de l'équipe",
   "members.removeFromTeamTip": "Supprimera l'accès de l'équipe",
   "members.role": "RÔLES",
   "members.roles": "RÔLES",

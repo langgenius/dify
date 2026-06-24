@@ -280,6 +280,8 @@
   "members.ok": "OK",
   "members.pending": "Ausstehend...",
   "members.removeFromTeam": "Vom Team entfernen",
+  "members.removeFromTeamConfirmDescription": "Bestätige, dass dieses Mitglied entfernt werden soll. Diese Aktion kann nicht rückgängig gemacht werden.",
+  "members.removeFromTeamConfirmTitle": "{{memberName}} aus dem Team entfernen",
   "members.removeFromTeamTip": "Wird den Teamzugang entfernen",
   "members.role": "ROLLEN",
   "members.roles": "ROLLEN",

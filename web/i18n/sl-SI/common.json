@@ -280,6 +280,8 @@
   "members.ok": "V redu",
   "members.pending": "V teku...",
   "members.removeFromTeam": "Odstrani iz ekipe",
+  "members.removeFromTeamConfirmDescription": "Potrdite odstranitev tega člana. Tega dejanja ni mogoče razveljaviti.",
+  "members.removeFromTeamConfirmTitle": "Odstrani {{memberName}} iz ekipe",
   "members.removeFromTeamTip": "Odstranjen bo dostop do ekipe",
   "members.role": "VLOGE",
   "members.roles": "VLOGE",

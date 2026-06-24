@@ -280,6 +280,8 @@
   "members.ok": "OK",
   "members.pending": "Oczekujący...",
   "members.removeFromTeam": "Usuń z zespołu",
+  "members.removeFromTeamConfirmDescription": "Potwierdź usunięcie tego członka. Tej czynności nie można cofnąć.",
+  "members.removeFromTeamConfirmTitle": "Usuń {{memberName}} z zespołu",
   "members.removeFromTeamTip": "Usunie dostęp do zespołu",
   "members.role": "ROLE",
   "members.roles": "ROLE",

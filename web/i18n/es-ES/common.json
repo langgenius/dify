@@ -280,6 +280,8 @@
   "members.ok": "OK",
   "members.pending": "Pendiente...",
   "members.removeFromTeam": "Eliminar del espacio de trabajo",
+  "members.removeFromTeamConfirmDescription": "Confirma que quieres eliminar a este miembro. Esta acción no se puede deshacer.",
+  "members.removeFromTeamConfirmTitle": "Eliminar a {{memberName}} del equipo",
   "members.removeFromTeamTip": "Se eliminará el acceso al equipo",
   "members.role": "ROLES",
   "members.roles": "ROLES",

@@ -307,6 +307,8 @@
   "members.ok": "好的",
   "members.pending": "待定...",
   "members.removeFromTeam": "移出團隊",
+  "members.removeFromTeamConfirmDescription": "確認將該成員移出，此操作不可逆",
+  "members.removeFromTeamConfirmTitle": "將{{memberName}}移出團隊",
   "members.removeFromTeamTip": "將取消團隊訪問",
   "members.role": "角色",
   "members.roles": "角色",

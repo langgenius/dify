@@ -280,6 +280,8 @@
   "members.ok": "Tamam",
   "members.pending": "Beklemede...",
   "members.removeFromTeam": "Takımdan Kaldır",
+  "members.removeFromTeamConfirmDescription": "Bu üyeyi kaldırmayı onaylayın. Bu işlem geri alınamaz.",
+  "members.removeFromTeamConfirmTitle": "{{memberName}} adlı üyeyi takımdan kaldır",
   "members.removeFromTeamTip": "Takım erişimi kaldırılacak",
   "members.role": "ROLLER",
   "members.roles": "ROLLER",

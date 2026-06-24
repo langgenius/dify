@@ -280,6 +280,8 @@
   "members.ok": "موافق",
   "members.pending": "قيد الانتظار...",
   "members.removeFromTeam": "إزالة من الفريق",
+  "members.removeFromTeamConfirmDescription": "يرجى تأكيد إزالة هذا العضو. لا يمكن التراجع عن هذا الإجراء.",
+  "members.removeFromTeamConfirmTitle": "إزالة {{memberName}} من الفريق",
   "members.removeFromTeamTip": "سيتم إزالة وصول الفريق",
   "members.role": "الأدوار",
   "members.roles": "الأدوار",
