@@ -15,6 +15,17 @@ from services.app_generate_service import AppGenerateService
 
 logger = logging.getLogger(__name__)
 
+# Structured tool output (outputSchema + structuredContent) was introduced in MCP 2025-06-18.
+STRUCTURED_OUTPUT_MIN_VERSION = "2025-06-18"
+
+
+def _supports_structured_output(protocol_version: str) -> bool:
+    """Return True when the negotiated protocol version supports structured tool output.
+
+    MCP protocol versions are YYYY-MM-DD strings, so lexical comparison equals chronological.
+    """
+    return protocol_version >= STRUCTURED_OUTPUT_MIN_VERSION
+
 
 class ToolParameterSchemaDict(TypedDict):
     type: str
@@ -35,6 +46,7 @@ def handle_mcp_request(
     mcp_server: AppMCPServer,
     end_user: EndUser | None = None,
     request_id: int | str = 1,
+    protocol_version: str = mcp_types.DEFAULT_NEGOTIATED_VERSION,
 ) -> mcp_types.JSONRPCResponse | mcp_types.JSONRPCError:
     """
     Handle MCP request and return JSON-RPC response
@@ -83,7 +95,12 @@ def handle_mcp_request(
             case mcp_types.ListToolsRequest():
                 return create_success_response(
                     handle_list_tools(
-                        app.name, app.mode, user_input_form, mcp_server.description, mcp_server.parameters_dict
+                        app.name,
+                        app.mode,
+                        user_input_form,
+                        mcp_server.description,
+                        mcp_server.parameters_dict,
+                        protocol_version,
                     )
                 )
             case mcp_types.CallToolRequest():
@@ -134,19 +151,23 @@ def handle_list_tools(
     user_input_form: list[VariableEntity],
     description: str,
     parameters_dict: dict[str, str],
+    protocol_version: str = mcp_types.DEFAULT_NEGOTIATED_VERSION,
 ) -> mcp_types.ListToolsResult:
     """Handle list tools request"""
     parameter_schema = build_parameter_schema(app_mode, user_input_form, parameters_dict)
+    supports_structured = _supports_structured_output(protocol_version)
 
-    return mcp_types.ListToolsResult(
-        tools=[
-            mcp_types.Tool(
-                name=app_name,
-                description=description,
-                inputSchema=cast(dict[str, Any], parameter_schema),
-            )
-        ],
+    # For 2025-06-18+ clients, expose an explicit display title and a permissive output
+    # schema. Both stay None (and are stripped by exclude_none serialization) for older
+    # clients, so their tool definition is unchanged.
+    tool = mcp_types.Tool(
+        name=app_name,
+        title=app_name if supports_structured else None,
+        description=description,
+        inputSchema=cast(dict[str, Any], parameter_schema),
+        outputSchema={"type": "object"} if supports_structured else None,
     )
+    return mcp_types.ListToolsResult(tools=[tool])
 
 
 def handle_call_tool(
