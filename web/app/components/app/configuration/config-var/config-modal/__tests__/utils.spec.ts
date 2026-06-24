@@ -9,7 +9,6 @@ import {
   isJsonSchemaEmpty,
   isStringInputType,
   normalizeSelectDefaultValue,
-  parseCheckboxSelectValue,
   updatePayloadField,
   validateConfigModalPayload,
 } from '../utils'
@@ -82,9 +81,7 @@ describe('config-modal utils', () => {
       expect(nextPayload.default).toBeUndefined()
     })
 
-    it('should parse checkbox default values and normalize json schema editor content', () => {
-      expect(parseCheckboxSelectValue('true')).toBe(true)
-      expect(parseCheckboxSelectValue('false')).toBe(false)
+    it('should normalize json schema editor content', () => {
       expect(getJsonSchemaEditorValue(InputVarType.jsonObject, { type: 'object' } as never)).toBe(JSON.stringify({ type: 'object' }, null, 2))
       expect(getJsonSchemaEditorValue(InputVarType.textInput, '{"type":"object"}')).toBe('')
       expect(getJsonSchemaEditorValue(InputVarType.jsonObject, '{"type":"object"}')).toBe('{"type":"object"}')

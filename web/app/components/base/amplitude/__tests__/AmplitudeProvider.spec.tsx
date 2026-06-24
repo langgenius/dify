@@ -3,7 +3,6 @@ import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 import { render } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import AmplitudeProvider from '../AmplitudeProvider'
-import { resetAmplitudeInitializationForTests } from '../init'
 
 const mockConfig = vi.hoisted(() => ({
   AMPLITUDE_API_KEY: 'test-api-key',
@@ -36,7 +35,6 @@ describe('AmplitudeProvider', () => {
     vi.clearAllMocks()
     mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
     mockConfig.IS_CLOUD_EDITION = true
-    resetAmplitudeInitializationForTests()
   })
 
   describe('Component', () => {
