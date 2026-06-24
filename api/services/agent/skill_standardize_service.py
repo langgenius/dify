@@ -50,6 +50,7 @@ class SkillStandardizeService:
         self._package = package_service or SkillPackageService()
         self._drive = drive_service or AgentDriveService()
         self._tool_files = tool_file_manager or ToolFileManager()
+        self.last_committed_items: list[dict[str, Any]] = []
 
     def standardize(
         self,
@@ -109,7 +110,7 @@ class SkillStandardizeService:
                 )
             )
 
-        self._drive.commit(
+        committed_items = self._drive.commit(
             tenant_id=tenant_id,
             user_id=user_id,
             agent_id=agent_id,
@@ -133,6 +134,7 @@ class SkillStandardizeService:
                 *member_items,
             ],
         )
+        self.last_committed_items = committed_items
 
         drive_skill = next(
             skill
