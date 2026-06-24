@@ -665,7 +665,7 @@ def test_invalidate_configurations_cache_bumps_selected_source_version() -> None
     assert "provider_configurations:tenant:tenant-id:source:provider_models:version" not in fake_redis.store
 
 
-def test_provider_model_credentials_cache_returns_snapshots() -> None:
+def test_provider_model_credentials_cache_returns_cache_entries() -> None:
     fake_redis = _FakeRedis()
     credential_record = SimpleNamespace(
         id="credential-id",
