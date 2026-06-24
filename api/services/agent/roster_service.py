@@ -11,6 +11,7 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -97,7 +98,7 @@ class AgentRosterService:
             "scope": agent.scope.value,
             "source": agent.source.value,
             "app_id": agent.app_id,
-            "debug_conversation_id": getattr(agent, "debug_conversation_id", None),
+            "debug_conversation_id": None,
             "workflow_id": agent.workflow_id,
             "workflow_node_id": agent.workflow_node_id,
             "active_config_snapshot_id": agent.active_config_snapshot_id,
@@ -393,15 +394,12 @@ class AgentRosterService:
         self._session.add(revision)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
-        agent.debug_conversation_id = self._create_agent_app_debug_conversation(
-            app_id=app_id,
-            account_id=account_id,
-        )
         self._session.flush()
+        self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
         return agent
 
     def _create_agent_app_debug_conversation(self, *, app_id: str, account_id: str) -> str:
-        """Create the stable console conversation used by Agent App debug mode."""
+        """Create one console debug conversation for an Agent App editor."""
 
         conversation = Conversation(
             app_id=app_id,
@@ -424,6 +422,144 @@ class AgentRosterService:
         self._session.add(conversation)
         self._session.flush()
         return conversation.id
+
+    def _get_or_create_agent_app_debug_conversation(self, *, agent: Agent, account_id: str) -> str:
+        if not agent.app_id:
+            raise AgentNotFoundError()
+
+        mapping = self._session.scalar(
+            select(AgentDebugConversation).where(
+                AgentDebugConversation.tenant_id == agent.tenant_id,
+                AgentDebugConversation.agent_id == agent.id,
+                AgentDebugConversation.account_id == account_id,
+            )
+        )
+        if mapping is not None:
+            conversation_id = self._session.scalar(
+                select(Conversation.id).where(
+                    Conversation.id == mapping.conversation_id,
+                    Conversation.app_id == agent.app_id,
+                    Conversation.from_source == ConversationFromSource.CONSOLE,
+                    Conversation.from_account_id == account_id,
+                    Conversation.is_deleted.is_(False),
+                )
+            )
+            if conversation_id:
+                return conversation_id
+
+            mapping.conversation_id = self._create_agent_app_debug_conversation(
+                app_id=agent.app_id,
+                account_id=account_id,
+            )
+            self._session.flush()
+            return mapping.conversation_id
+
+        conversation_id = self._create_agent_app_debug_conversation(
+            app_id=agent.app_id,
+            account_id=account_id,
+        )
+        self._session.add(
+            AgentDebugConversation(
+                tenant_id=agent.tenant_id,
+                agent_id=agent.id,
+                app_id=agent.app_id,
+                account_id=account_id,
+                conversation_id=conversation_id,
+            )
+        )
+        self._session.flush()
+        return conversation_id
+
+    def get_or_create_agent_app_debug_conversation_id(
+        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+    ) -> str:
+        """Return the current editor's debug conversation for an Agent App."""
+
+        agent = self._session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent is None:
+            raise AgentNotFoundError()
+
+        conversation_id = self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
+        if commit:
+            self._session.commit()
+        return conversation_id
+
+    def refresh_agent_app_debug_conversation_id(
+        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+    ) -> str:
+        """Start a new console debug conversation for the current Agent App editor."""
+
+        agent = self._session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent is None or not agent.app_id:
+            raise AgentNotFoundError()
+
+        conversation_id = self._create_agent_app_debug_conversation(
+            app_id=agent.app_id,
+            account_id=account_id,
+        )
+        mapping = self._session.scalar(
+            select(AgentDebugConversation).where(
+                AgentDebugConversation.tenant_id == tenant_id,
+                AgentDebugConversation.agent_id == agent_id,
+                AgentDebugConversation.account_id == account_id,
+            )
+        )
+        if mapping is None:
+            self._session.add(
+                AgentDebugConversation(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    app_id=agent.app_id,
+                    account_id=account_id,
+                    conversation_id=conversation_id,
+                )
+            )
+        else:
+            mapping.app_id = agent.app_id
+            mapping.conversation_id = conversation_id
+        self._session.flush()
+        if commit:
+            self._session.commit()
+        return conversation_id
+
+    def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
+        self, *, tenant_id: str, agents: list[Agent], account_id: str
+    ) -> dict[str, str]:
+        """Return per-account debug conversations for a page of Agent Apps."""
+
+        conversation_ids_by_agent_id: dict[str, str] = {}
+        changed = False
+        for agent in agents:
+            if (
+                agent.tenant_id != tenant_id
+                or agent.scope != AgentScope.ROSTER
+                or agent.source != AgentSource.AGENT_APP
+            ):
+                continue
+            conversation_ids_by_agent_id[agent.id] = self._get_or_create_agent_app_debug_conversation(
+                agent=agent,
+                account_id=account_id,
+            )
+            changed = True
+        if changed:
+            self._session.commit()
+        return conversation_ids_by_agent_id
 
     def load_app_backing_agents_by_app_id(self, *, tenant_id: str, app_ids: list[str]) -> dict[str, Agent]:
         """Return active app-backed Agents keyed by Agent App id."""
@@ -497,6 +633,7 @@ class AgentRosterService:
         account: Any,
         name: str | None = None,
         description: str | None = None,
+        role: str | None = None,
         icon_type: Any = None,
         icon: str | None = None,
         icon_background: str | None = None,
@@ -508,6 +645,7 @@ class AgentRosterService:
 
         copied_name = name or self._next_duplicate_agent_name(tenant_id=tenant_id, base_name=source_app.name)
         copied_description = description if description is not None else source_app.description
+        copied_role = role if role is not None else source_agent.role or ""
         copied_icon_type = icon_type if icon_type is not None else source_app.icon_type
         copied_icon = icon if icon is not None else source_app.icon
         copied_icon_background = icon_background if icon_background is not None else source_app.icon_background
@@ -518,7 +656,7 @@ class AgentRosterService:
                 name=copied_name,
                 description=copied_description,
                 mode="agent",
-                agent_role=source_agent.role or "",
+                agent_role=copied_role,
                 icon_type=self._normalize_app_icon_type(copied_icon_type),
                 icon=copied_icon,
                 icon_background=copied_icon_background,
@@ -699,6 +837,7 @@ class AgentRosterService:
         if agent.source == AgentSource.AGENT_APP:
             return {
                 AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
                 AgentConfigRevisionOperation.RESTORE_VERSION,
             }
         return {

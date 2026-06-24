@@ -194,7 +194,7 @@ class WorkspaceMembersApi(Resource):
             raise BadRequest(str(exc))
 
         normalized_email = body.email.lower()
-        member = AccountService.get_account_by_email_with_case_fallback(normalized_email)
+        member = AccountService.get_account_by_email_with_case_fallback(db.session, normalized_email)
         if member is None:
             # invite_new_member just created or fetched this account.
             raise RuntimeError("invited member missing from DB after invite")

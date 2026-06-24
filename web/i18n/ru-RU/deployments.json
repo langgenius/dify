@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Описание",
   "versions.releaseDescriptionPlaceholder": "Опишите этот Релиз",
   "versions.releaseHistory": "История Релизов",
+  "versions.releaseNameConflict": "Релиз с таким именем уже существует. Выберите другое имя.",
   "versions.releaseNameLabel": "Имя Релиза",
   "versions.releaseNamePlaceholder": "Имя Релиза",
   "versions.releaseNameRequired": "Введите имя Релиза.",

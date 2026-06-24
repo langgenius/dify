@@ -35,7 +35,6 @@ class WorkflowAgentNodeValidator:
             "soul",
             "prompt",
             "system_prompt",
-            "skills_files",
             "skills",
             "files",
             "tools",

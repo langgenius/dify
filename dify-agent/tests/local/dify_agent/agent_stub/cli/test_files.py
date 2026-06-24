@@ -25,7 +25,7 @@ def test_upload_file_from_environment_requests_signed_url_and_normalizes_output(
 ) -> None:
     source = tmp_path / "report.pdf"
     source.write_bytes(b"report-bytes")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
@@ -68,7 +68,7 @@ def test_upload_tool_file_resource_from_environment_preserves_tool_file_id(
 ) -> None:
     source = tmp_path / "report.pdf"
     source.write_bytes(b"report-bytes")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
@@ -96,7 +96,7 @@ def test_download_file_from_environment_saves_bytes_and_renames_on_collision(
     target_dir = tmp_path / "downloads"
     target_dir.mkdir()
     (target_dir / "report.pdf").write_bytes(b"existing")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
@@ -133,7 +133,7 @@ def test_download_file_from_environment_sanitizes_server_filename(
 ) -> None:
     target_dir = tmp_path / "downloads"
     target_dir.mkdir()
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
@@ -171,7 +171,7 @@ def test_upload_file_from_environment_rejects_non_canonical_reference(
 ) -> None:
     source = tmp_path / "report.pdf"
     source.write_bytes(b"report-bytes")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(
@@ -193,7 +193,7 @@ def test_upload_tool_file_resource_from_environment_rejects_missing_id(
 ) -> None:
     source = tmp_path / "report.pdf"
     source.write_bytes(b"report-bytes")
-    monkeypatch.setenv("DIFY_AGENT_STUB_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
     monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
 
     monkeypatch.setattr(

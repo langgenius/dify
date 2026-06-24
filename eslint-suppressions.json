@@ -2133,9 +2133,6 @@
     }
   },
   "web/app/components/base/markdown-blocks/think-block.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    },
     "ts/no-explicit-any": {
       "count": 4
     }
@@ -2608,11 +2605,6 @@
   "web/app/components/base/with-input-validation/index.tsx": {
     "ts/no-explicit-any": {
       "count": 1
-    }
-  },
-  "web/app/components/base/zendesk/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
     }
   },
   "web/app/components/billing/header-billing-btn/index.tsx": {
