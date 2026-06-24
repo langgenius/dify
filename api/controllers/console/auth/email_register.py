@@ -187,7 +187,7 @@ class EmailRegisterResetApi(Resource):
             timezone=args.timezone,
             language=args.language,
         )
-        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, session=db.session, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
@@ -206,6 +206,7 @@ class EmailRegisterResetApi(Resource):
                 password=password,
                 interface_language=get_valid_language(language),
                 timezone=timezone,
+                session=db.session,
             )
         except AccountRegisterError:
             raise AccountInFreezeError()
