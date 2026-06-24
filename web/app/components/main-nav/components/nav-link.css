@@ -1,7 +1,13 @@
 @utility main-nav-active-glass {
   @apply overflow-hidden system-md-semibold text-saas-dify-blue-inverted backdrop-blur-[5px];
 
-  background-image: linear-gradient(91.46deg, rgb(0 51 255 / 0.08) 0%, rgb(0 51 255 / 0.12) 17.98%, rgb(0 51 255 / 0.1) 58.75%, rgb(0 51 255 / 0.08) 101.09%);
+  background-image: linear-gradient(
+    91.46deg,
+    var(--color-components-main-nav-glass-surface-first, rgb(0 51 255 / 0.08)) 0%,
+    var(--color-components-main-nav-glass-surface-middle-1, rgb(0 51 255 / 0.12)) 17.98%,
+    var(--color-components-main-nav-glass-surface-middle-2, rgb(0 51 255 / 0.1)) 58.75%,
+    var(--color-components-main-nav-glass-surface-end, rgb(0 51 255 / 0.08)) 101.09%
+  );
   box-shadow:
     0 4px 8px 0 var(--color-components-main-nav-glass-shadow-reflection-glow),
     0 10px 12px -4px var(--color-shadow-shadow-4),
@@ -15,7 +21,12 @@
     inset: 0;
     border-radius: inherit;
     border: 1px solid transparent;
-    background: linear-gradient(0deg, var(--color-components-main-nav-glass-edge-reflection-first) 0%, var(--color-components-main-nav-glass-edge-reflection-middle) 50%, var(--color-components-main-nav-glass-edge-reflection-end) 100%) border-box;
+    background: linear-gradient(
+      0deg,
+      var(--color-components-main-nav-glass-edge-reflection-first, rgb(0 51 255 / 0)) 0%,
+      var(--color-components-main-nav-glass-edge-reflection-middle, rgb(0 51 255 / 0.6)) 50%,
+      var(--color-components-main-nav-glass-edge-reflection-end, rgb(0 51 255 / 0)) 100%
+    ) border-box;
     -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: destination-out;
     mask-composite: exclude;

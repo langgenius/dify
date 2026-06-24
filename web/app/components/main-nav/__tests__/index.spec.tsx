@@ -24,7 +24,7 @@ import MainNav from '../index'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
 const activeGradientMaskClassName = 'main-nav-active-glass'
-const activeStackingClassName = 'z-10'
+const activeStackingClassName = 'z-[1]'
 
 const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
@@ -429,7 +429,7 @@ describe('MainNav', () => {
     expect(logoLink.parentElement).toHaveClass('pt-3', 'pr-2', 'pb-2', 'pl-4')
 
     const homeLink = screen.getByRole('link', { name: /common.mainNav.home/ })
-    expect(homeLink.closest('nav')).toHaveClass('flex', 'flex-col', 'gap-px', 'p-2')
+    expect(homeLink.closest('nav')).toHaveClass('isolate', 'flex', 'flex-col', 'gap-px', 'p-2')
     expect(homeLink).toHaveClass('h-8', 'w-full', 'rounded-[10px]', 'px-2', 'py-1.5')
 
     const webAppsButton = screen.getByRole('button', { name: 'explore.sidebar.webApps' })
