@@ -3051,19 +3051,6 @@
       "count": 1
     }
   },
-  "web/app/components/datasets/documents/detail/metadata/components/metadata-field-list.tsx": {
-    "ts/no-non-null-asserted-optional-chain": {
-      "count": 1
-    }
-  },
-  "web/app/components/datasets/documents/detail/metadata/hooks/use-metadata-state.ts": {
-    "react-hooks-extra/no-direct-set-state-in-use-effect": {
-      "count": 6
-    },
-    "react/set-state-in-effect": {
-      "count": 6
-    }
-  },
   "web/app/components/datasets/documents/detail/metadata/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 1
@@ -7248,7 +7235,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 6
+      "count": 5
     }
   },
   "web/service/debug.ts": {
