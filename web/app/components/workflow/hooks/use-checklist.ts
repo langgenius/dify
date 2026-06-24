@@ -56,6 +56,7 @@ import {
 } from '../hooks'
 import { useHooksStore } from '../hooks-store/store'
 import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
+import { isAgentV2NodeData } from '../nodes/agent-v2/types'
 import { IndexMethodEnum } from '../nodes/knowledge-base/types'
 import { getLLMModelIssue, isLLMModelProviderInstalled, LLMModelIssueCode } from '../nodes/llm/utils'
 import {
@@ -65,6 +66,7 @@ import {
 import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
+  getNodeCatalogType,
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
@@ -249,7 +251,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
         moreDataForCheckValid = getTriggerCheckParams(node!.data as PluginTriggerNodeType, triggerPlugins, language)
 
       const toolIcon = getToolIcon(node!.data)
-      if (node!.data.type === BlockEnum.Agent) {
+      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
         const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
@@ -267,7 +269,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[], options?: { flowType?
 
       if (node!.type === CUSTOM_NODE) {
         const checkData = getCheckData(node!.data)
-        const validator = nodesExtraData?.[node!.data.type as BlockEnum]?.checkValid
+        const validator = nodesExtraData?.[getNodeCatalogType(node!.data)]?.checkValid
         const isPluginMissing = isNodePluginMissing(node!.data, { builtInTools: buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, dataSourceList })
 
         const errorMessages: string[] = []
@@ -522,7 +524,7 @@ export const useChecklistBeforePublish = () => {
       if (node!.data.type === BlockEnum.DataSource)
         moreDataForCheckValid = getDataSourceCheckParams(node!.data as DataSourceNodeType, dataSourceList || [], language)
 
-      if (node!.data.type === BlockEnum.Agent) {
+      if (node!.data.type === BlockEnum.Agent && !isAgentV2NodeData(node!.data)) {
         const data = node!.data as AgentNodeType
         const isReadyForCheckValid = !!strategyProviders
         const provider = strategyProviders?.find(provider => provider.declaration.identity.name === data.agent_strategy_provider_name)
@@ -551,7 +553,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       const checkData = getCheckData(node!.data, datasets, embeddingProviderModelMap)
-      const { errorMessage } = nodesExtraData![node!.data.type as BlockEnum].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
+      const { errorMessage } = nodesExtraData![getNodeCatalogType(node!.data)].checkValid(checkData, t, withFlowType(moreDataForCheckValid, flowType))
 
       if (errorMessage) {
         toast.error(`[${node!.data.title}] ${errorMessage}`)

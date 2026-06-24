@@ -5,6 +5,12 @@ import List from '../index'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
+let mockAppContextState = {
+  isCurrentWorkspaceEditor: true,
+  isCurrentWorkspaceManager: true,
+  workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+}
+let mockIsCurrentWorkspaceOwner = true
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
@@ -16,9 +22,9 @@ vi.mock('@/next/navigation', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     currentWorkspace: { role: 'admin' },
-    isCurrentWorkspaceOwner: true,
+    isCurrentWorkspaceOwner: mockIsCurrentWorkspaceOwner,
   }),
-  useSelector: () => true,
+  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
 // Mock external api panel context
@@ -75,8 +81,8 @@ vi.mock('../datasets', () => ({
 
 // Mock ExternalAPIPanel component
 vi.mock('../../external-api/external-api-panel', () => ({
-  default: ({ onClose }: { onClose: () => void }) => (
-    <div data-testid="external-api-panel">
+  default: ({ canManageExternalKnowledgeApi, onClose }: { canManageExternalKnowledgeApi: boolean, onClose: () => void }) => (
+    <div data-testid="external-api-panel" data-can-manage-external-knowledge-api={canManageExternalKnowledgeApi}>
       <button onClick={onClose}>Close Panel</button>
     </div>
   ),
@@ -123,6 +129,12 @@ vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () 
 describe('List', () => {
   beforeEach(async () => {
     vi.clearAllMocks()
+    mockAppContextState = {
+      isCurrentWorkspaceEditor: true,
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+    }
+    mockIsCurrentWorkspaceOwner = true
     const { useDatasetList } = await import('@/service/knowledge/use-dataset')
     vi.mocked(useDatasetList).mockReturnValue({
       data: { pages: [{ data: [], total: 1 }] },
@@ -152,6 +164,18 @@ describe('List', () => {
     it('should render external API panel button', () => {
       render(<List />)
       expect(screen.getByText(/externalAPIPanelTitle/)).toBeInTheDocument()
+    })
+
+    it('should hide external API panel button without dataset.external.connect', () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: true,
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      }
+
+      render(<List />)
+
+      expect(screen.queryByText(/externalAPIPanelTitle/)).not.toBeInTheDocument()
     })
   })
 
@@ -254,6 +278,48 @@ describe('List', () => {
       expect(screen.queryByTestId('datasets-component')).not.toBeInTheDocument()
     })
 
+    it('should render first empty state when dataset.create_and_management is available without the legacy editor role', async () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: false,
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: ['dataset.create_and_management'],
+      }
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<List />)
+
+      expect(screen.getByText('dataset.firstEmpty.title')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /dataset\.firstEmpty\.pipelineTitle/ })).toHaveAttribute('href', '/datasets/create-from-pipeline')
+    })
+
+    it('should not render first empty state for legacy editors without dataset creation permissions', async () => {
+      mockAppContextState = {
+        isCurrentWorkspaceEditor: true,
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: [],
+      }
+      const { useDatasetList } = await import('@/service/knowledge/use-dataset')
+      vi.mocked(useDatasetList).mockReturnValue({
+        data: { pages: [{ data: [], total: 0 }] },
+        fetchNextPage: vi.fn(),
+        hasNextPage: false,
+        isFetching: false,
+        isFetchingNextPage: false,
+      } as unknown as ReturnType<typeof useDatasetList>)
+
+      render(<List />)
+
+      expect(screen.queryByText('dataset.firstEmpty.title')).not.toBeInTheDocument()
+      expect(screen.getByTestId('datasets-component')).toBeInTheDocument()
+    })
+
     it('should not render first empty state before the first dataset page resolves', async () => {
       const { useDatasetList } = await import('@/service/knowledge/use-dataset')
       vi.mocked(useDatasetList).mockReturnValue({
@@ -298,7 +364,11 @@ describe('List', () => {
           currentWorkspace: { role: 'normal' },
           isCurrentWorkspaceOwner: false,
         }),
-        useSelector: () => true,
+        useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
+          isCurrentWorkspaceEditor: false,
+          isCurrentWorkspaceManager: false,
+          workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+        }),
       }))
 
       // Clear module cache and re-import
@@ -343,9 +413,48 @@ describe('List', () => {
       render(<ListComponent />)
 
       expect(screen.getByTestId('external-api-panel')).toBeInTheDocument()
+      expect(screen.getByTestId('external-api-panel')).toHaveAttribute('data-can-manage-external-knowledge-api', 'true')
+    })
+
+    it('should not show ExternalAPIPanel without dataset.external.connect even when panel state is open', async () => {
+      vi.doMock('@/context/app-context', () => ({
+        useAppContext: () => ({
+          currentWorkspace: { role: 'admin' },
+          isCurrentWorkspaceOwner: true,
+        }),
+        useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
+          isCurrentWorkspaceEditor: true,
+          isCurrentWorkspaceManager: true,
+          workspacePermissionKeys: ['dataset.create_and_management'],
+        }),
+      }))
+      vi.doMock('@/context/external-api-panel-context', () => ({
+        useExternalApiPanel: () => ({
+          showExternalApiPanel: true,
+          setShowExternalApiPanel: mockSetShowExternalApiPanel,
+        }),
+      }))
+
+      vi.resetModules()
+      const { default: ListComponent } = await import('../index')
+
+      render(<ListComponent />)
+
+      expect(screen.queryByTestId('external-api-panel')).not.toBeInTheDocument()
     })
 
     it('should close ExternalAPIPanel when onClose is called', async () => {
+      vi.doMock('@/context/app-context', () => ({
+        useAppContext: () => ({
+          currentWorkspace: { role: 'admin' },
+          isCurrentWorkspaceOwner: true,
+        }),
+        useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
+          isCurrentWorkspaceEditor: true,
+          isCurrentWorkspaceManager: true,
+          workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+        }),
+      }))
       vi.doMock('@/context/external-api-panel-context', () => ({
         useExternalApiPanel: () => ({
           showExternalApiPanel: true,
@@ -377,7 +486,11 @@ describe('List', () => {
           currentWorkspace: { role: 'editor' },
           isCurrentWorkspaceOwner: false,
         }),
-        useSelector: () => true,
+        useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector({
+          isCurrentWorkspaceEditor: true,
+          isCurrentWorkspaceManager: true,
+          workspacePermissionKeys: ['dataset.create_and_management', 'dataset.external.connect'],
+        }),
       }))
 
       vi.resetModules()

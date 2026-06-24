@@ -66,7 +66,9 @@ def test_connect_agent_stub_sync_posts_connections_request_with_authorization() 
 
 
 def test_connect_agent_stub_sync_rejects_invalid_base_url() -> None:
-    with pytest.raises(AgentStubValidationError, match="invalid DIFY_AGENT_STUB_URL|invalid Agent Stub base URL"):
+    with pytest.raises(
+        AgentStubValidationError, match="invalid DIFY_AGENT_STUB_API_BASE_URL|invalid Agent Stub base URL"
+    ):
         _ = connect_agent_stub_sync(
             url="https://agent.example.com/agent-stub?x=1",
             auth_jwe="test-jwe",

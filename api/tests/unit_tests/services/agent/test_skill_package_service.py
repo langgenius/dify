@@ -121,16 +121,3 @@ def test_read_member_bytes_roundtrip_and_errors():
     with pytest.raises(SkillPackageError) as bad_zip:
         service.read_member_bytes(content=b"not a zip", member_path="SKILL.md")
     assert bad_zip.value.code == "invalid_archive"
-
-
-def test_to_skill_ref_carries_metadata():
-    manifest = _extract({"SKILL.md": _SKILL_MD.encode()})
-    ref = manifest.to_skill_ref(file_id="upload-1", path="pdf-toolkit/.DIFY-SKILL-FULL.zip")
-
-    assert ref.name == "PDF Toolkit"
-    assert ref.file_id == "upload-1"
-    assert ref.path == "pdf-toolkit/.DIFY-SKILL-FULL.zip"
-    assert ref.id == manifest.hash
-    dumped = ref.model_dump()
-    assert dumped["hash"] == manifest.hash
-    assert dumped["entry_path"] == "SKILL.md"

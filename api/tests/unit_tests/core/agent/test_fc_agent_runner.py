@@ -147,12 +147,12 @@ def runner(mocker: MockerFixture):
 
 class TestToolCallChecks:
     @pytest.mark.parametrize(("tool_calls", "expected"), [([], False), ([MagicMock()], True)])
-    def test_check_tool_calls(self, runner, tool_calls, expected):
+    def test_check_tool_calls(self, runner: FunctionCallAgentRunner, tool_calls, expected):
         chunk = DummyChunk(message=DummyMessage(tool_calls=tool_calls))
         assert runner.check_tool_calls(chunk) is expected
 
     @pytest.mark.parametrize(("tool_calls", "expected"), [([], False), ([MagicMock()], True)])
-    def test_check_blocking_tool_calls(self, runner, tool_calls, expected):
+    def test_check_blocking_tool_calls(self, runner: FunctionCallAgentRunner, tool_calls, expected):
         result = DummyResult(message=DummyMessage(tool_calls=tool_calls))
         assert runner.check_blocking_tool_calls(result) is expected
 
@@ -163,7 +163,7 @@ class TestToolCallChecks:
 
 
 class TestExtractToolCalls:
-    def test_extract_tool_calls_with_valid_json(self, runner):
+    def test_extract_tool_calls_with_valid_json(self, runner: FunctionCallAgentRunner):
         tool_call = MagicMock()
         tool_call.id = "1"
         tool_call.function.name = "tool"
@@ -174,7 +174,7 @@ class TestExtractToolCalls:
 
         assert calls == [("1", "tool", {"a": 1})]
 
-    def test_extract_tool_calls_empty_arguments(self, runner):
+    def test_extract_tool_calls_empty_arguments(self, runner: FunctionCallAgentRunner):
         tool_call = MagicMock()
         tool_call.id = "1"
         tool_call.function.name = "tool"
@@ -185,7 +185,7 @@ class TestExtractToolCalls:
 
         assert calls == [("1", "tool", {})]
 
-    def test_extract_blocking_tool_calls(self, runner):
+    def test_extract_blocking_tool_calls(self, runner: FunctionCallAgentRunner):
         tool_call = MagicMock()
         tool_call.id = "2"
         tool_call.function.name = "block"
@@ -203,16 +203,16 @@ class TestExtractToolCalls:
 
 
 class TestInitSystemMessage:
-    def test_init_system_message_empty_prompt_messages(self, runner):
+    def test_init_system_message_empty_prompt_messages(self, runner: FunctionCallAgentRunner):
         result = runner._init_system_message("system", [])
         assert len(result) == 1
 
-    def test_init_system_message_insert_at_start(self, runner):
+    def test_init_system_message_insert_at_start(self, runner: FunctionCallAgentRunner):
         msgs = [MagicMock()]
         result = runner._init_system_message("system", msgs)
         assert result[0].content == "system"
 
-    def test_init_system_message_no_template(self, runner):
+    def test_init_system_message_no_template(self, runner: FunctionCallAgentRunner):
         result = runner._init_system_message("", [])
         assert result == []
 
@@ -223,15 +223,15 @@ class TestInitSystemMessage:
 
 
 class TestOrganizeUserQuery:
-    def test_without_files(self, runner):
+    def test_without_files(self, runner: FunctionCallAgentRunner):
         result = runner._organize_user_query("query", [])
         assert len(result) == 1
 
-    def test_with_none_query(self, runner):
+    def test_with_none_query(self, runner: FunctionCallAgentRunner):
         result = runner._organize_user_query(None, [])
         assert len(result) == 1
 
-    def test_with_files_uses_image_detail_config(self, runner, mocker: MockerFixture):
+    def test_with_files_uses_image_detail_config(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
         file_content = TextPromptMessageContent(data="file-content")
         mock_to_prompt = mocker.patch(
             "core.agent.fc_agent_runner.file_manager.to_prompt_message_content",
@@ -255,7 +255,7 @@ class TestOrganizeUserQuery:
 
 
 class TestClearUserPromptImageMessages:
-    def test_clear_text_and_image_content(self, runner):
+    def test_clear_text_and_image_content(self, runner: FunctionCallAgentRunner):
         text = MagicMock()
         text.type = "text"
         text.data = "hello"
@@ -271,7 +271,7 @@ class TestClearUserPromptImageMessages:
         result = runner._clear_user_prompt_image_messages([user_msg])
         assert isinstance(result, list)
 
-    def test_clear_includes_file_placeholder(self, runner):
+    def test_clear_includes_file_placeholder(self, runner: FunctionCallAgentRunner):
         text = TextPromptMessageContent(data="hello")
         image = ImagePromptMessageContent(format="url", mime_type="image/png")
         document = DocumentPromptMessageContent(format="url", mime_type="application/pdf")
@@ -289,7 +289,7 @@ class TestClearUserPromptImageMessages:
 
 
 class TestRunMethod:
-    def test_run_non_streaming_no_tool_calls(self, runner):
+    def test_run_non_streaming_no_tool_calls(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
         dummy_message = DummyMessage(content="hello")
         result = DummyResult(message=dummy_message, usage=build_usage())
@@ -303,7 +303,7 @@ class TestRunMethod:
         queue_calls = runner.queue_manager.publish.call_args_list
         assert any(call.args and call.args[0].__class__.__name__ == "QueueMessageEndEvent" for call in queue_calls)
 
-    def test_run_streaming_branch(self, runner):
+    def test_run_streaming_branch(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
 
@@ -318,7 +318,7 @@ class TestRunMethod:
         outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
 
-    def test_run_streaming_tool_calls_list_content(self, runner):
+    def test_run_streaming_tool_calls_list_content(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
 
@@ -341,7 +341,7 @@ class TestRunMethod:
         outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-    def test_run_non_streaming_list_content(self, runner):
+    def test_run_non_streaming_list_content(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
         content = [TextPromptMessageContent(data="hi")]
         dummy_message = DummyMessage(content=content)
@@ -353,7 +353,7 @@ class TestRunMethod:
         assert len(outputs) == 1
         assert runner.save_agent_thought.call_args.kwargs["thought"] == "hi"
 
-    def test_run_streaming_tool_call_inputs_type_error(self, runner, mocker: MockerFixture):
+    def test_run_streaming_tool_call_inputs_type_error(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
         message = MagicMock(id="m1")
         runner.stream_tool_call = True
 
@@ -381,7 +381,7 @@ class TestRunMethod:
         outputs = list(runner.run(message, "query"))
         assert len(outputs) == 1
 
-    def test_run_with_missing_tool_instance(self, runner):
+    def test_run_with_missing_tool_instance(self, runner: FunctionCallAgentRunner):
         message = MagicMock(id="m1")
 
         tool_call = MagicMock()
@@ -399,7 +399,7 @@ class TestRunMethod:
         outputs = list(runner.run(message, "query"))
         assert len(outputs) >= 1
 
-    def test_run_with_tool_instance_and_files(self, runner, mocker: MockerFixture):
+    def test_run_with_tool_instance_and_files(self, runner: FunctionCallAgentRunner, mocker: MockerFixture):
         message = MagicMock(id="m1")
 
         tool_call = MagicMock()
@@ -434,7 +434,7 @@ class TestRunMethod:
             for call in runner.queue_manager.publish.call_args_list
         )
 
-    def test_run_max_iteration_error(self, runner):
+    def test_run_max_iteration_error(self, runner: FunctionCallAgentRunner):
         runner.app_config.agent.max_iteration = 0
 
         message = MagicMock(id="m1")

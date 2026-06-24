@@ -94,7 +94,7 @@ class TestSystemFeatureApi:
             "controllers.console.feature.current_account_with_tenant_optional",
             return_value=(account, "tenant-123"),
         )
-        system_features = SystemFeatureModel(is_allow_register=True)
+        system_features = SystemFeatureModel(is_allow_register=True, enable_learn_app=True)
         get_system_features = mocker.patch(
             "controllers.console.feature.FeatureService.get_system_features",
             return_value=system_features,
@@ -104,6 +104,7 @@ class TestSystemFeatureApi:
         result = api.get()
 
         assert result == system_features.model_dump()
+        assert result["enable_learn_app"] is True
         current_account.assert_called_once_with()
         get_system_features.assert_called_once_with(is_authenticated=True)
 

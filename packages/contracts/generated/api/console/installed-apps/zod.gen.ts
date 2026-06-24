@@ -128,7 +128,7 @@ export const zSavedMessageCreatePayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
@@ -143,7 +143,16 @@ export const zAudioBinaryResponse = z.custom<Blob | File>()
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
 
@@ -494,9 +503,9 @@ export const zHumanInputContent = z.object({
 })
 
 /**
- * MessageListItem
+ * ExploreMessageListItem
  */
-export const zMessageListItem = z.object({
+export const zExploreMessageListItem = z.object({
   agent_thoughts: z.array(zAgentThought),
   answer: z.string(),
   conversation_id: z.string(),
@@ -507,6 +516,7 @@ export const zMessageListItem = z.object({
   id: z.string(),
   inputs: z.record(z.string(), zJsonValueType),
   message_files: z.array(zMessageFile),
+  metadata: zJsonValueType.nullish(),
   parent_message_id: z.string().nullish(),
   query: z.string(),
   retriever_resources: z.array(zRetrieverResource),
@@ -514,10 +524,10 @@ export const zMessageListItem = z.object({
 })
 
 /**
- * MessageInfiniteScrollPagination
+ * ExploreMessageInfiniteScrollPagination
  */
-export const zMessageInfiniteScrollPagination = z.object({
-  data: z.array(zMessageListItem),
+export const zExploreMessageInfiniteScrollPagination = z.object({
+  data: z.array(zExploreMessageListItem),
   has_more: z.boolean(),
   limit: z.int(),
 })
@@ -684,7 +694,8 @@ export const zGetInstalledAppsByInstalledAppIdMessagesQuery = z.object({
 /**
  * Success
  */
-export const zGetInstalledAppsByInstalledAppIdMessagesResponse = zMessageInfiniteScrollPagination
+export const zGetInstalledAppsByInstalledAppIdMessagesResponse
+  = zExploreMessageInfiniteScrollPagination
 
 export const zPostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksBody
   = zMessageFeedbackPayload

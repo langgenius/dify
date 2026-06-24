@@ -14,7 +14,6 @@ import {
   getKnowledgeBaseValidationIssue,
   getKnowledgeBaseValidationMessage,
   isHighQualitySearchMethod,
-  isKnowledgeBaseEmbeddingIssue,
   KnowledgeBaseValidationIssueCode,
 } from '../utils'
 
@@ -211,16 +210,5 @@ describe('knowledge-base validation messaging', () => {
 
   it('returns an empty string when there is no issue', () => {
     expect(getKnowledgeBaseValidationMessage(undefined, t as never)).toBe('')
-  })
-})
-
-describe('isKnowledgeBaseEmbeddingIssue', () => {
-  it('returns true for embedding-related issues', () => {
-    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.embeddingModelDisabled })).toBe(true)
-  })
-
-  it('returns false for non-embedding issues and missing values', () => {
-    expect(isKnowledgeBaseEmbeddingIssue({ code: KnowledgeBaseValidationIssueCode.rerankingModelInvalid })).toBe(false)
-    expect(isKnowledgeBaseEmbeddingIssue(undefined)).toBe(false)
   })
 })

@@ -70,58 +70,37 @@ const setCurrentWorkspaceQuery = (overrides: { role?: string, isPending?: boolea
 describe('RoleRouteGuard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockPathname = '/apps'
+    mockPathname = '/app/app-1'
     setCurrentWorkspaceQuery()
   })
 
-  it('should render loading while workspace is loading', () => {
-    setCurrentWorkspaceQuery({ isPending: true })
+  it.each(['/', '/apps', '/app/app-1', '/deployments/create', '/snippets', '/explore/apps', '/tools', '/integrations', '/datasets'])('should allow %s without workspace role checks', (pathname) => {
+    mockPathname = pathname
 
     renderGuard(<div>content</div>)
 
-    expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.queryByText('content')).not.toBeInTheDocument()
+    expect(screen.getByText('content')).toBeInTheDocument()
     expect(mocks.redirect).not.toHaveBeenCalled()
-    expect(mocks.currentWorkspaceQueryOptions).toHaveBeenCalledWith({
-      select: expect.any(Function),
-    })
+    expect(mockUseQuery).not.toHaveBeenCalled()
+    expect(mocks.currentWorkspaceQueryOptions).not.toHaveBeenCalled()
   })
 
-  it('should redirect dataset operator on guarded routes', () => {
-    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
-
-    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
-
-    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
-  })
-
-  it('should redirect dataset operator on deployments routes', () => {
+  it('should redirect deployments route when app deploy is disabled', () => {
     mockPathname = '/deployments/create'
-    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
 
-    expect(() => renderGuard(<div>content</div>)).toThrow('NEXT_REDIRECT:/datasets')
+    expect(() => renderWithSystemFeatures(
+      <RoleRouteGuard>
+        <div>content</div>
+      </RoleRouteGuard>,
+      {
+        systemFeatures: {
+          enable_app_deploy: false,
+        },
+      },
+    )).toThrow('NEXT_REDIRECT:/apps')
 
-    expect(mocks.redirect).toHaveBeenCalledWith('/datasets')
-  })
-
-  it('should allow dataset operator on non-guarded routes', () => {
-    mockPathname = '/plugins'
-    setCurrentWorkspaceQuery({ role: 'dataset_operator' })
-
-    renderGuard(<div>content</div>)
-
-    expect(screen.getByText('content')).toBeInTheDocument()
-    expect(mocks.redirect).not.toHaveBeenCalled()
-  })
-
-  it('should not block non-guarded routes while workspace is loading', () => {
-    mockPathname = '/plugins'
-    setCurrentWorkspaceQuery({ isPending: true })
-
-    renderGuard(<div>content</div>)
-
-    expect(screen.getByText('content')).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(mocks.redirect).toHaveBeenCalledWith('/apps')
+    expect(mockUseQuery).not.toHaveBeenCalled()
+    expect(mocks.currentWorkspaceQueryOptions).not.toHaveBeenCalled()
   })
 })

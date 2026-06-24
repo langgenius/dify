@@ -556,6 +556,7 @@ export type SystemFeatureModel = {
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_explore_banner: boolean
+  enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_trial_app: boolean
@@ -566,6 +567,7 @@ export type SystemFeatureModel = {
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
+  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
   webapp_auth: WebAppAuthModel
@@ -640,7 +642,10 @@ export type WebMessageListItem = {
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown

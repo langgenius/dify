@@ -5,7 +5,6 @@ import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import {
   $createWorkflowVariableBlockNode,
-  $isWorkflowVariableBlockNode,
   WorkflowVariableBlockNode,
 } from '../node'
 
@@ -145,7 +144,7 @@ describe('WorkflowVariableBlockNode', () => {
     })
   })
 
-  it('should create node helper and type guard checks', () => {
+  it('should create node helper', () => {
     runInEditor(() => {
       const availableVariables: NodeOutPutVar[] = [{
         nodeId: 'node-1',
@@ -156,10 +155,6 @@ describe('WorkflowVariableBlockNode', () => {
 
       expect(node).toBeInstanceOf(WorkflowVariableBlockNode)
       expect(node.getAvailableVariables()).toEqual(availableVariables)
-      expect($isWorkflowVariableBlockNode(node)).toBe(true)
-      expect($isWorkflowVariableBlockNode(null)).toBe(false)
-      expect($isWorkflowVariableBlockNode(undefined)).toBe(false)
-      expect($isWorkflowVariableBlockNode({} as LexicalNode)).toBe(false)
     })
   })
 })

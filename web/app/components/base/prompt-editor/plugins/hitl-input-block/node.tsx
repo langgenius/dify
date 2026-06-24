@@ -1,4 +1,4 @@
-import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { NodeKey, SerializedLexicalNode } from 'lexical'
 import type { GetVarType } from '../../types'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
@@ -268,10 +268,4 @@ export function $createHITLInputNode(
     ragVariables,
     readonly,
   )
-}
-
-export function $isHITLInputNode(
-  node: HITLInputNode | LexicalNode | null | undefined,
-): node is HITLInputNode {
-  return node instanceof HITLInputNode
 }

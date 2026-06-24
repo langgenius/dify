@@ -81,7 +81,7 @@ describe('release-r2-edge manifest', () => {
 
   it('carries the compat window from package.json', () => {
     const { json } = buildManifest()
-    expect(json.compat).toEqual({ minDify: '1.14.0', maxDify: '1.15.0' })
+    expect(json.compat).toEqual({ minDify: '1.15.0', maxDify: '1.15.0' })
   })
 
   it('lists all 5 targets with asset name + sha256 from the checksums file', () => {

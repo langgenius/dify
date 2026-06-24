@@ -1,4 +1,5 @@
-import type { AppMode } from '@dify/contracts/api/openapi/types.gen'
+import type { SupportedAppType } from '@dify/contracts/api/openapi/types.gen'
+import { zSupportedAppType } from '@dify/contracts/api/openapi/zod.gen'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
@@ -6,16 +7,9 @@ import { OutputFormat, table } from '@/framework/output'
 import { agentGuide } from './guide'
 import { runGetApp } from './run'
 
-const APP_MODE_VALUES: readonly AppMode[] = [
-  'advanced-chat',
-  'agent',
-  'agent-chat',
-  'channel',
-  'chat',
-  'completion',
-  'rag-pipeline',
-  'workflow',
-]
+// Single source: derived from the backend's listable app types (openapi codegen).
+// Adding/removing a listable type is a backend-only change that flows here on regen.
+const APP_MODE_VALUES: readonly SupportedAppType[] = zSupportedAppType.options
 
 export default class GetApp extends DifyCommand {
   static override description = 'List apps or describe one app\'s basic info'
@@ -42,7 +36,6 @@ export default class GetApp extends DifyCommand {
     'limit': Flags.string({ description: 'page size [1..200]' }),
     'mode': Flags.string({ description: 'filter by app mode', options: APP_MODE_VALUES }),
     'name': Flags.string({ description: 'filter by app name (server-side substring)' }),
-    'tag': Flags.string({ description: 'filter by tag name (server-side exact match)' }),
     'http-retry': httpRetryFlag,
     'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE], default: '' }),
   }
@@ -57,9 +50,8 @@ export default class GetApp extends DifyCommand {
       allWorkspaces: flags['all-workspaces'],
       page: flags.page,
       limitRaw: flags.limit,
-      mode: flags.mode as AppMode | undefined,
+      mode: flags.mode as SupportedAppType | undefined,
       name: flags.name,
-      tag: flags.tag,
       format,
     }, { active: ctx.active, http: ctx.http, io: ctx.io })
     return table({

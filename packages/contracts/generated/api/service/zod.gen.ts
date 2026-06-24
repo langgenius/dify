@@ -131,12 +131,19 @@ export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 export const zChatRequestPayload = z.object({
   auto_generate_name: z.boolean().optional().default(true),
   conversation_id: z.string().nullish(),
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  retriever_from: z.string().optional().default('dev'),
-  trace_session_id: z.string().nullish(),
   workflow_id: z.string().nullish(),
 })
 
@@ -146,12 +153,19 @@ export const zChatRequestPayload = z.object({
 export const zChatRequestPayloadWithUser = z.object({
   auto_generate_name: z.boolean().optional().default(true),
   conversation_id: z.string().nullish(),
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string(),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  retriever_from: z.string().optional().default('dev'),
-  trace_session_id: z.string().nullish(),
   user: z.string(),
   workflow_id: z.string().nullish(),
 })
@@ -215,24 +229,38 @@ export const zChildChunkUpdatePayload = z.object({
  * CompletionRequestPayload
  */
 export const zCompletionRequestPayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  retriever_from: z.string().optional().default('dev'),
-  trace_session_id: z.string().nullish(),
 })
 
 /**
  * CompletionRequestPayload
  */
 export const zCompletionRequestPayloadWithUser = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
   query: z.string().optional().default(''),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  retriever_from: z.string().optional().default('dev'),
-  trace_session_id: z.string().nullish(),
   user: z.string(),
 })
 
@@ -263,7 +291,7 @@ export const zCondition = z.object({
     '≥',
   ]),
   name: z.string(),
-  value: z.union([z.string(), z.array(z.string()), z.int(), z.number()]).nullish(),
+  value: z.union([z.string(), z.array(z.string()), z.number()]).nullish(),
 })
 
 /**
@@ -574,8 +602,10 @@ export const zDatasetDetailResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
+  maintainer: z.string().nullish(),
   name: z.string(),
   permission: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
   provider: z.string(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,
@@ -615,9 +645,11 @@ export const zDatasetDetailWithPartialMembersResponse = z.object({
   indexing_technique: z.string().nullable(),
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
+  maintainer: z.string().nullish(),
   name: z.string(),
   partial_member_list: z.array(z.string()).nullish(),
   permission: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   pipeline_id: z.string().nullable(),
   provider: z.string(),
   retrieval_model_dict: zDatasetRetrievalModelResponse,
@@ -657,7 +689,7 @@ export const zDatasourceCredentialInfoResponse = z.object({
  */
 export const zDatasourceNodeRunPayload = z.object({
   credential_id: z.string().nullish(),
-  datasource_type: z.string(),
+  datasource_type: z.enum(['local_file', 'online_document', 'online_drive', 'website_crawl']),
   inputs: z.record(z.string(), z.unknown()),
   is_published: z.boolean(),
 })
@@ -710,7 +742,9 @@ export const zDocumentListQuery = z.object({
   keyword: z.string().nullish(),
   limit: z.int().optional().default(20),
   page: z.int().optional().default(1),
-  status: z.string().nullish(),
+  status: z
+    .enum(['archived', 'available', 'disabled', 'error', 'indexing', 'paused', 'queuing'])
+    .nullish(),
 })
 
 /**
@@ -1337,11 +1371,37 @@ export const zPermissionEnum = z.enum(['all_team_members', 'only_me', 'partial_m
  * PipelineRunApiEntity
  */
 export const zPipelineRunApiEntity = z.object({
-  datasource_info_list: z.array(z.record(z.string(), z.unknown())),
-  datasource_type: z.string(),
+  datasource_info_list: z.array(
+    z.union([
+      z.object({
+        name: z.string().optional(),
+        reference: z.string(),
+      }),
+      z.object({
+        credential_id: z.string().optional(),
+        page: z.object({
+          page_id: z.string(),
+          page_name: z.string().optional(),
+          type: z.string(),
+        }),
+        workspace_id: z.string(),
+      }),
+      z.object({
+        title: z.string().optional(),
+        url: z.string(),
+      }),
+      z.object({
+        bucket: z.string().optional(),
+        id: z.string(),
+        name: z.string().optional(),
+        type: z.enum(['file', 'folder']),
+      }),
+    ]),
+  ),
+  datasource_type: z.enum(['local_file', 'online_document', 'online_drive', 'website_crawl']),
   inputs: z.record(z.string(), z.unknown()),
   is_published: z.boolean(),
-  response_mode: z.string(),
+  response_mode: z.enum(['blocking', 'streaming']),
   start_node_id: z.string(),
 })
 
@@ -1363,7 +1423,7 @@ export const zPipelineUploadFileResponse = z.object({
  */
 export const zPreProcessingRule = z.object({
   enabled: z.boolean(),
-  id: z.string(),
+  id: z.enum(['remove_extra_spaces', 'remove_stopwords', 'remove_urls_emails']),
 })
 
 /**
@@ -1779,7 +1839,7 @@ export const zTagUpdatePayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
@@ -1789,7 +1849,7 @@ export const zTextToAudioPayload = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayloadWithUser = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   user: z.string().optional(),
@@ -1956,7 +2016,7 @@ export const zWeightModel = z.object({
 export const zRetrievalModel = z.object({
   metadata_filtering_conditions: zMetadataFilteringCondition.nullish(),
   reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
+  reranking_mode: z.enum(['reranking_model', 'weighted_score']).nullish(),
   reranking_model: zRerankingModel.nullish(),
   score_threshold: z.number().nullish(),
   score_threshold_enabled: z.boolean(),
@@ -1977,9 +2037,16 @@ export const zDatasetCreatePayload = z.object({
   indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
   name: z.string().min(1).max(40),
   permission: zPermissionEnum.nullish().default('only_me'),
-  provider: z.string().optional().default('vendor'),
+  provider: z.enum(['external', 'vendor']).optional().default('vendor'),
   retrieval_model: zRetrievalModel.nullish(),
-  summary_index_setting: z.record(z.string(), z.unknown()).nullish(),
+  summary_index_setting: z
+    .object({
+      enable: z.boolean().optional(),
+      model_name: z.string().optional(),
+      model_provider_name: z.string().optional(),
+      summary_prompt: z.string().optional(),
+    })
+    .nullish(),
 })
 
 /**
@@ -1991,10 +2058,22 @@ export const zDatasetUpdatePayload = z.object({
   embedding_model_provider: z.string().nullish(),
   external_knowledge_api_id: z.string().nullish(),
   external_knowledge_id: z.string().nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z
+    .object({
+      score_threshold: z.number().optional(),
+      score_threshold_enabled: z.boolean().optional(),
+      top_k: z.int().optional(),
+    })
+    .nullish(),
   indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
   name: z.string().min(1).max(40).nullish(),
-  partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
+  partial_member_list: z
+    .array(
+      z.object({
+        user_id: z.string().optional(),
+      }),
+    )
+    .nullish(),
   permission: zPermissionEnum.nullish(),
   retrieval_model: zRetrievalModel.nullish(),
 })
@@ -2003,11 +2082,14 @@ export const zDatasetUpdatePayload = z.object({
  * DocumentTextCreatePayload
  */
 export const zDocumentTextCreatePayload = z.object({
-  doc_form: z.string().optional().default('text_model'),
+  doc_form: z
+    .enum(['hierarchical_model', 'qa_model', 'text_model'])
+    .optional()
+    .default('text_model'),
   doc_language: z.string().optional().default('English'),
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.string().nullish(),
+  indexing_technique: z.enum(['economy', 'high_quality']).nullish(),
   name: z.string(),
   original_document_id: z.string().nullish(),
   process_rule: zProcessRule.nullish(),
@@ -2018,7 +2100,10 @@ export const zDocumentTextCreatePayload = z.object({
 export const zDocumentTextUpdate = z.intersection(
   z.union([
     z.object({
-      doc_form: z.string().optional().default('text_model'),
+      doc_form: z
+        .enum(['hierarchical_model', 'qa_model', 'text_model'])
+        .optional()
+        .default('text_model'),
       doc_language: z.string().optional().default('English'),
       name: z.string(),
       process_rule: zProcessRule.nullish(),
@@ -2026,7 +2111,10 @@ export const zDocumentTextUpdate = z.intersection(
       text: z.string(),
     }),
     z.object({
-      doc_form: z.string().optional().default('text_model'),
+      doc_form: z
+        .enum(['hierarchical_model', 'qa_model', 'text_model'])
+        .optional()
+        .default('text_model'),
       doc_language: z.string().optional().default('English'),
       name: z.string().nullish(),
       process_rule: zProcessRule.nullish(),
@@ -2035,7 +2123,10 @@ export const zDocumentTextUpdate = z.intersection(
     }),
   ]),
   z.object({
-    doc_form: z.string().optional().default('text_model'),
+    doc_form: z
+      .enum(['hierarchical_model', 'qa_model', 'text_model'])
+      .optional()
+      .default('text_model'),
     doc_language: z.string().optional().default('English'),
     name: z.string().nullish(),
     process_rule: zProcessRule.nullish(),
@@ -2049,7 +2140,13 @@ export const zDocumentTextUpdate = z.intersection(
  */
 export const zHitTestingPayload = z.object({
   attachment_ids: z.array(z.string()).nullish(),
-  external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
+  external_retrieval_model: z
+    .object({
+      score_threshold: z.number().optional(),
+      score_threshold_enabled: z.boolean().optional(),
+      top_k: z.int().optional(),
+    })
+    .nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),
 })
@@ -2132,20 +2229,36 @@ export const zWorkflowAppLogPaginationResponse = z.object({
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  trace_session_id: z.string().nullish(),
 })
 
 /**
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayloadWithUser = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
   response_mode: z.enum(['blocking', 'streaming']).nullish(),
-  trace_session_id: z.string().nullish(),
   user: z.string(),
 })
 
@@ -2231,7 +2344,7 @@ export const zPostAppsAnnotationReplyByActionPath = z.object({
 export const zPostAppsAnnotationReplyByActionResponse = zAnnotationJobStatusResponse
 
 export const zGetAppsAnnotationReplyByActionStatusByJobIdPath = z.object({
-  action: z.string(),
+  action: z.enum(['disable', 'enable']),
   job_id: z.uuid(),
 })
 
@@ -2553,7 +2666,9 @@ export const zGetDatasetsByDatasetIdDocumentsQuery = z.object({
   keyword: z.string().optional(),
   limit: z.int().optional().default(20),
   page: z.int().optional().default(1),
-  status: z.string().optional(),
+  status: z
+    .enum(['archived', 'available', 'disabled', 'error', 'indexing', 'paused', 'queuing'])
+    .optional(),
 })
 
 /**
@@ -3112,8 +3227,8 @@ export const zGetWorkflowByTaskIdEventsQuery = z.object({
 export const zGetWorkflowByTaskIdEventsResponse = zEventStreamResponse
 
 export const zGetWorkflowsLogsQuery = z.object({
-  created_at__after: z.string().optional(),
-  created_at__before: z.string().optional(),
+  created_at__after: z.iso.datetime().optional(),
+  created_at__before: z.iso.datetime().optional(),
   created_by_account: z.string().optional(),
   created_by_end_user_session_id: z.string().optional(),
   keyword: z.string().optional(),
@@ -3172,7 +3287,7 @@ export const zPostWorkflowsByWorkflowIdRunPath = z.object({
 export const zPostWorkflowsByWorkflowIdRunResponse = zGeneratedAppResponse
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
-  model_type: z.string(),
+  model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
 })
 
 /**

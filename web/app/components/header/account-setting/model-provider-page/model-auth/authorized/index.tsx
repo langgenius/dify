@@ -1,6 +1,3 @@
-import type {
-  OffsetOptions,
-} from '@floating-ui/react'
 import type { Placement } from '@langgenius/dify-ui/popover'
 import type { MouseEvent } from 'react'
 import type {
@@ -27,17 +24,21 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import {
-  RiAddLine,
-} from '@remixicon/react'
-import {
   Fragment,
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
+
+type PopoverOffsetOptions = {
+  mainAxis?: number
+  crossAxis?: number
+  alignmentAxis?: number
+}
 
 type AuthorizedProps = {
   provider: ModelProvider
@@ -59,7 +60,7 @@ type AuthorizedProps = {
   renderTrigger: (open?: boolean) => React.ReactNode
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
-  offset?: number | OffsetOptions
+  offset?: number | PopoverOffsetOptions
   placement?: Placement
   triggerPopupSameWidth?: boolean
   popupClassName?: string
@@ -99,6 +100,7 @@ const Authorized = ({
   disableDeleteTip,
 }: AuthorizedProps) => {
   const { t } = useTranslation()
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const [isLocalOpen, setIsLocalOpen] = useState(false)
   const mergedIsOpen = isOpen ?? isLocalOpen
   const setMergedIsOpen = useCallback((open: boolean) => {
@@ -134,15 +136,24 @@ const Authorized = ({
   )
 
   const handleEdit = useCallback((credential?: Credential, model?: CustomModel) => {
+    if (credential ? !canManageCredential : !canCreateCredential)
+      return
+
     setMergedIsOpen(false)
     handleOpenModal(credential, model)
-  }, [handleOpenModal, setMergedIsOpen])
+  }, [canCreateCredential, canManageCredential, handleOpenModal, setMergedIsOpen])
   const handleDelete = useCallback((credential?: Credential, model?: CustomModel) => {
+    if (!canManageCredential)
+      return
+
     setMergedIsOpen(false)
     openConfirmDelete(credential, model)
-  }, [openConfirmDelete, setMergedIsOpen])
+  }, [canManageCredential, openConfirmDelete, setMergedIsOpen])
 
   const handleItemClick = useCallback((credential: Credential, model?: CustomModel) => {
+    if (!canUseCredential)
+      return
+
     if (disableItemClick)
       return
 
@@ -152,9 +163,9 @@ const Authorized = ({
       handleActiveCredential(credential, model)
 
     setMergedIsOpen(false)
-  }, [handleActiveCredential, onItemClick, setMergedIsOpen, disableItemClick])
+  }, [canUseCredential, handleActiveCredential, onItemClick, setMergedIsOpen, disableItemClick])
   const notAllowCustomCredential = provider.allow_custom_token === false
-  const resolvedOffset = typeof offset === 'number' || typeof offset === 'function' ? undefined : offset
+  const resolvedOffset = typeof offset === 'number' ? undefined : offset
   const sideOffset = typeof offset === 'number' ? offset : resolvedOffset?.mainAxis ?? 0
   const alignOffset = typeof offset === 'number' ? 0 : resolvedOffset?.crossAxis ?? resolvedOffset?.alignmentAxis ?? 0
   const popupProps = triggerPopupSameWidth
@@ -165,8 +176,11 @@ const Authorized = ({
       return
 
     event.preventDefault()
+    if (!canCreateCredential)
+      return
+
     handleOpenModal()
-  }, [handleOpenModal, triggerOnlyOpenModal])
+  }, [canCreateCredential, handleOpenModal, triggerOnlyOpenModal])
 
   return (
     <>
@@ -208,13 +222,15 @@ const Authorized = ({
                       model={item.model}
                       credentials={item.credentials}
                       disabled={disabled}
+                      disableEdit={!canManageCredential}
+                      disableDelete={!canManageCredential}
                       onDelete={handleDelete}
                       disableDeleteButShowAction={disableDeleteButShowAction}
                       disableDeleteTip={disableDeleteTip}
                       onEdit={handleEdit}
                       showItemSelectedIcon={showItemSelectedIcon}
                       selectedCredentialId={item.selectedCredential?.credential_id}
-                      onItemClick={handleItemClick}
+                      onItemClick={canUseCredential ? handleItemClick : undefined}
                       showModelTitle={showModelTitle}
                     />
                     {
@@ -228,7 +244,7 @@ const Authorized = ({
             </div>
             <div className="h-px bg-divider-subtle"></div>
             {
-              isModelCredential && !notAllowCustomCredential && !hideAddAction && (
+              isModelCredential && !notAllowCustomCredential && !hideAddAction && canCreateCredential && (
                 <div
                   onClick={() => handleEdit(
                     undefined,
@@ -241,13 +257,13 @@ const Authorized = ({
                   )}
                   className="flex h-[40px] cursor-pointer items-center px-3 system-xs-medium text-text-accent-light-mode-only"
                 >
-                  <RiAddLine className="mr-1 size-4" />
+                  <span className="mr-1 i-ri-add-line size-4" />
                   {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
                 </div>
               )
             }
             {
-              !isModelCredential && !notAllowCustomCredential && !hideAddAction && (
+              !isModelCredential && !notAllowCustomCredential && !hideAddAction && canCreateCredential && (
                 <div className="p-2">
                   <Button
                     onClick={() => handleEdit()}

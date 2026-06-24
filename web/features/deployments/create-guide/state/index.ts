@@ -10,7 +10,7 @@ import type { RuntimeCredentialBindingSelections } from '@/features/deployments/
 import type { UnsupportedDslNode } from '@/features/deployments/shared/domain/error'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
-import { keepPreviousData } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/components/env-var-bindings-utils'
@@ -27,6 +27,7 @@ import {
   isWorkflowDsl,
 } from '@/features/deployments/shared/domain/dsl'
 import { unsupportedDslNodeError } from '@/features/deployments/shared/domain/error'
+import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
 import { createDeploymentIdempotencyKey } from '@/features/deployments/shared/domain/idempotency'
 import {
   DEPLOYMENT_PAGE_SIZE,
@@ -40,6 +41,12 @@ import { environmentMatchesIdentifier } from './environment'
 export type GuideMethod = 'bindApp' | 'importDsl'
 export type GuideStep = 'source' | 'release' | 'target'
 export type WorkflowSourceApp = App & { mode: Extract<AppModeEnum, 'workflow'> }
+
+function deploymentGuideMethod(method: GuideMethod): GuideMethod {
+  return method === 'importDsl' && !isDeploymentDslImportEnabled
+    ? 'bindApp'
+    : method
+}
 
 const RANDOM_SUFFIX_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
 const RANDOM_SUFFIX_LENGTH = 4
@@ -124,6 +131,7 @@ function envVarInput(slot: EnvVarBindingSlot, selection: EnvVarValueSelection | 
 // Workflow primitives
 export const stepAtom = atom<GuideStep>('source')
 export const methodAtom = atom<GuideMethod>('bindApp')
+export const effectiveMethodAtom = atom(get => deploymentGuideMethod(get(methodAtom)))
 
 // Source primitives
 export const sourceSearchTextAtom = atom('')
@@ -131,10 +139,41 @@ export const selectedAppAtom = atom<WorkflowSourceApp | undefined>(undefined)
 
 // DSL primitives and derived state
 export const dslFileAtom = atom<File | undefined>(undefined)
-const dslContentAtom = atom('')
-export const isReadingDslAtom = atom(false)
-export const dslReadErrorAtom = atom(false)
-const dslReadTokenAtom = atom(0)
+const dslFileReadVersionAtom = atom(0)
+
+const dslFileContentQueryAtom = atomWithQuery((get) => {
+  const file = get(dslFileAtom)
+  const fileReadVersion = get(dslFileReadVersionAtom)
+
+  return queryOptions({
+    queryKey: [
+      'createGuideDslFileContent',
+      fileReadVersion,
+      file,
+      file?.name ?? '',
+      file?.size ?? 0,
+      file?.lastModified ?? 0,
+    ],
+    queryFn: async () => file ? await file.text() : '',
+    enabled: Boolean(file),
+    retry: false,
+  })
+})
+
+const dslContentAtom = atom((get) => {
+  return get(dslFileContentQueryAtom).data ?? ''
+})
+
+export const isReadingDslAtom = atom((get) => {
+  const file = get(dslFileAtom)
+  const dslFileContentQuery = get(dslFileContentQueryAtom)
+
+  return Boolean(file && (dslFileContentQuery.isLoading || dslFileContentQuery.isFetching))
+})
+
+export const dslReadErrorAtom = atom((get) => {
+  return Boolean(get(dslFileAtom) && get(dslFileContentQueryAtom).isError)
+})
 
 export const dslDefaultAppNameAtom = atom((get) => {
   const dslContent = get(dslContentAtom)
@@ -145,7 +184,7 @@ export const dslDefaultAppNameAtom = atom((get) => {
 export const dslUnsupportedModeAtom = atom((get) => {
   const dslContent = get(dslContentAtom)
 
-  return get(methodAtom) === 'importDsl'
+  return get(effectiveMethodAtom) === 'importDsl'
     && Boolean(dslContent.trim())
     && !get(isReadingDslAtom)
     && !get(dslReadErrorAtom)
@@ -185,22 +224,20 @@ export const isSubmittingDeploymentGuideAtom = atom(get => (
 export const sourceAppsQueryAtom = atomWithInfiniteQuery((get) => {
   const sourceSearchText = get(sourceSearchTextAtom)
 
-  return {
-    ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          page: Number(pageParam),
-          limit: SOURCE_APPS_PAGE_SIZE,
-          name: sourceSearchText,
-          mode: AppModeEnum.WORKFLOW,
-        },
-      }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
+  return consoleQuery.apps.list.infiniteOptions({
+    input: pageParam => ({
+      query: {
+        page: Number(pageParam),
+        limit: SOURCE_APPS_PAGE_SIZE,
+        name: sourceSearchText,
+        mode: AppModeEnum.WORKFLOW,
+      },
     }),
-    enabled: get(methodAtom) === 'bindApp',
-  }
+    getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
+    initialPageParam: 1,
+    placeholderData: keepPreviousData,
+    enabled: get(effectiveMethodAtom) === 'bindApp',
+  })
 })
 
 export const effectiveSelectedAppAtom = atom((get) => {
@@ -218,15 +255,15 @@ export const effectiveSelectedAppAtom = atom((get) => {
 })
 
 function sourceReady(get: Getter) {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
 
   return method === 'importDsl'
     ? get(importDslReadyAtom)
     : Boolean(get(effectiveSelectedAppAtom)?.id)
 }
 
-const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
-  ...consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
+const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() =>
+  consoleQuery.enterprise.appInstanceService.listAppInstances.infiniteOptions({
     input: pageParam => ({
       query: {
         pageNumber: Number(pageParam),
@@ -235,9 +272,9 @@ const existingInstanceNamesQueryAtom = atomWithInfiniteQuery(() => ({
     }),
     getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
     initialPageParam: 1,
+    placeholderData: keepPreviousData,
   }),
-  placeholderData: keepPreviousData,
-}))
+)
 
 const instanceNameConflictQueryAtom = atomWithQuery((get) => {
   const submittedInstanceName = get(instanceNameAtom).trim()
@@ -269,34 +306,38 @@ export const deployableEnvironmentsQueryAtom = atomWithQuery((get) => {
 })
 
 const precheckReleaseQueryAtom = atomWithQuery((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
+  const encodedDslContent = dslContent.trim() ? encodeDslContent(dslContent) : undefined
   const enabled = sourceReady(get)
 
   // PrecheckRelease takes exactly one source arm (dsl | sourceAppId).
   const precheckReleaseQueryOptions = method === 'importDsl'
     ? consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-        input: {
-          body: {
-            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
-          },
-        },
+        input: encodedDslContent
+          ? {
+              body: {
+                dsl: encodedDslContent,
+              },
+            }
+          : skipToken,
         enabled,
+        retry: false,
       })
     : consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-        input: {
-          body: {
-            sourceAppId: effectiveSelectedApp?.id ?? '',
-          },
-        },
+        input: effectiveSelectedApp?.id
+          ? {
+              body: {
+                sourceAppId: effectiveSelectedApp.id,
+              },
+            }
+          : skipToken,
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
+        retry: false,
       })
 
-  return {
-    ...precheckReleaseQueryOptions,
-    retry: false,
-  }
+  return precheckReleaseQueryOptions
 })
 
 function precheckReleaseReady(get: Getter) {
@@ -310,35 +351,38 @@ function precheckReleaseReady(get: Getter) {
 }
 
 export const deploymentOptionsQueryAtom = atomWithQuery((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const dslContent = get(dslContentAtom)
+  const encodedDslContent = dslContent.trim() ? encodeDslContent(dslContent) : undefined
   const enabled = precheckReleaseReady(get)
 
   // ComputeDeploymentOptions takes exactly one source arm (dsl | sourceAppId | releaseId).
   const deploymentOptionsQueryOptions = method === 'importDsl'
     ? consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-        input: {
-          body: {
-            dsl: dslContent.trim() ? encodeDslContent(dslContent) : '',
-          },
-        },
+        input: encodedDslContent
+          ? {
+              body: {
+                dsl: encodedDslContent,
+              },
+            }
+          : skipToken,
         enabled,
+        retry: false,
       })
     : consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-        input: {
-          body: {
-            sourceAppId: effectiveSelectedApp?.id ?? '',
-          },
-        },
+        input: effectiveSelectedApp?.id
+          ? {
+              body: {
+                sourceAppId: effectiveSelectedApp.id,
+              },
+            }
+          : skipToken,
         enabled: enabled && Boolean(effectiveSelectedApp?.id),
+        retry: false,
       })
 
-  // oRPC encodes input before TanStack can skip work, so keep a valid input shape and gate requests with enabled.
-  return {
-    ...deploymentOptionsQueryOptions,
-    retry: false,
-  }
+  return deploymentOptionsQueryOptions
 })
 
 // Unsupported DSL state
@@ -378,7 +422,7 @@ const deploymentOptionsContentCheckedAtom = atom((get) => {
 })
 
 export const sourceCanGoNextAtom = atom((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   const importDslReady = method === 'importDsl' && get(importDslReadyAtom)
   const bindAppReady = method === 'bindApp' && Boolean(effectiveSelectedApp?.id)
@@ -416,7 +460,7 @@ export const continueFromSourceAtom = atom(null, (get, set, {
   if (!get(sourceCanGoNextAtom))
     return
 
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const effectiveSelectedApp = get(effectiveSelectedAppAtom)
   if (method === 'bindApp' && effectiveSelectedApp)
     set(selectSourceAppAtom, effectiveSelectedApp)
@@ -457,42 +501,14 @@ export const continueFromSourceAtom = atom(null, (get, set, {
 })
 
 // DSL actions
-export const selectDslFileAtom = atom(null, async (get, set, dslFile?: File) => {
+export const selectDslFileAtom = atom(null, (get, set, dslFile?: File) => {
   set(selectedEnvironmentIdAtom, '')
   set(manualBindingSelectionsAtom, {})
   set(envVarValuesAtom, {})
   set(submissionUnsupportedDslNodesAtom, [])
 
-  // Token guard prevents a slow read from an older file from overwriting the newest selection.
-  const dslReadToken = get(dslReadTokenAtom) + 1
-  set(dslReadTokenAtom, dslReadToken)
+  set(dslFileReadVersionAtom, get(dslFileReadVersionAtom) + 1)
   set(dslFileAtom, dslFile)
-  set(dslContentAtom, '')
-  set(isReadingDslAtom, Boolean(dslFile))
-  set(dslReadErrorAtom, false)
-
-  if (!dslFile)
-    return
-
-  try {
-    const content = await dslFile.text()
-    if (get(dslReadTokenAtom) !== dslReadToken)
-      return
-
-    set(dslContentAtom, content)
-    set(dslReadErrorAtom, false)
-  }
-  catch {
-    if (get(dslReadTokenAtom) !== dslReadToken)
-      return
-
-    set(dslContentAtom, '')
-    set(dslReadErrorAtom, true)
-  }
-  finally {
-    if (get(dslReadTokenAtom) === dslReadToken)
-      set(isReadingDslAtom, false)
-  }
 })
 
 // Release derived state and actions
@@ -606,7 +622,7 @@ const requiredBindingsReadyAtom = atom((get) => {
 })
 
 export const deploymentTargetEnvVarSlotsAtom = atom((get) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const deploymentOptionsQuery = get(deploymentOptionsQueryAtom)
   const slots = sourceReady(get) ? deploymentOptionsQuery.data?.options?.envVarSlots : undefined
   const dslContent = get(dslContentAtom)
@@ -702,7 +718,7 @@ export const setEnvVarAtom = atom(null, (get, set, key: string, value: EnvVarVal
 
 // Workflow actions
 export const selectMethodAtom = atom(null, (_get, set, method: GuideMethod) => {
-  set(methodAtom, method)
+  set(methodAtom, deploymentGuideMethod(method))
   set(selectedEnvironmentIdAtom, '')
   set(manualBindingSelectionsAtom, {})
   set(envVarValuesAtom, {})
@@ -738,7 +754,7 @@ export const createDeploymentGuideSubmissionAtom = atom(null, async (get, set, {
 }: {
   deployToEnvironment: boolean
 }) => {
-  const method = get(methodAtom)
+  const method = get(effectiveMethodAtom)
   const dslContent = get(dslContentAtom)
   const submittedInstanceName = get(instanceNameAtom).trim()
   const submittedReleaseName = get(releaseNameAtom).trim()
@@ -901,10 +917,7 @@ export const createDeploymentGuideScopedAtoms = [
   sourceSearchTextAtom,
   selectedAppAtom,
   dslFileAtom,
-  dslContentAtom,
-  isReadingDslAtom,
-  dslReadErrorAtom,
-  dslReadTokenAtom,
+  dslFileReadVersionAtom,
   instanceNameAtom,
   instanceDescriptionAtom,
   releaseNameAtom,

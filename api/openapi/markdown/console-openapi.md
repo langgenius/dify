@@ -323,7 +323,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Agent app created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -368,7 +368,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app detail | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app detail | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 
 ### [PUT] /agent/{agent_id}
 #### Parameters
@@ -387,9 +387,83 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app updated successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/api-access
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API access | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
+
+### [POST] /agent/{agent_id}/api-enable
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentApiStatusPayload](#agentapistatuspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API status updated | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
+| 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/api-keys
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API keys | **application/json**: [ApiKeyList](#apikeylist)<br> |
+
+### [POST] /agent/{agent_id}/api-keys
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent service API key created | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
+| 400 | Maximum keys exceeded |  |
+
+### [DELETE] /agent/{agent_id}/api-keys/{api_key_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| api_key_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Agent service API key deleted |
 
 ### [GET] /agent/{agent_id}/chat-messages
 Get Agent App chat messages for a conversation with pagination
@@ -518,14 +592,28 @@ Stop a running Agent App chat message generation
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [CopyAppPayload](#copyapppayload)<br> |
+|  Yes | **application/json**: [AgentAppCopyPayload](#agentappcopypayload)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Agent app copied successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 201 | Agent app copied successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [POST] /agent/{agent_id}/debug-conversation/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /agent/{agent_id}/drive/files
@@ -575,6 +663,37 @@ Truncated text preview of one Agent App drive value
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/skills
+List drive-backed skills for an Agent App
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/skills/{skill_path}/inspect
+Inspect one drive-backed skill for slash-menu hover/detail UI
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
 
 ### [POST] /agent/{agent_id}/features
 Update an Agent App's presentation features (opener, follow-up, citations, ...)
@@ -680,9 +799,13 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | keyword | query | Search query, answer, or conversation name | No | string |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
-| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
+| sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
+| source | query | Deprecated single source filter | No | string |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
-| status | query | Filter by success, failed, or paused | No | string |
+| status | query | Deprecated single status filter | No | string |
+| statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
 | agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -700,9 +823,13 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | keyword | query | Search query, answer, or conversation name | No | string |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
-| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
+| sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
+| source | query | Deprecated single source filter | No | string |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
-| status | query | Filter by success, failed, or paused | No | string |
+| status | query | Deprecated single status filter | No | string |
+| statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
 | agent_id | path |  | Yes | string (uuid) |
 | conversation_id | path |  | Yes | string (uuid) |
 
@@ -800,24 +927,8 @@ Upload one Agent App sandbox file as a Dify ToolFile mapping
 | ---- | ----------- | ------ |
 | 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
-### [POST] /agent/{agent_id}/skills/standardize
-Validate + standardize a Skill into an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
 ### [POST] /agent/{agent_id}/skills/upload
-Upload + validate a Skill package for an Agent App
+Upload + standardize a Skill into an Agent App drive
 
 #### Parameters
 
@@ -825,12 +936,18 @@ Upload + validate a Skill package for an Agent App
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path | Agent ID | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
+| 400 | Invalid skill package or no bound agent |  |
 
 ### [DELETE] /agent/{agent_id}/skills/{slug}
 Delete a standardized skill from an Agent App drive
@@ -906,6 +1023,20 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent version detail | **application/json**: [AgentConfigSnapshotDetailResponse](#agentconfigsnapshotdetailresponse)<br> |
+
+### [POST] /agent/{agent_id}/versions/{version_id}/restore
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| version_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent version restored | **application/json**: [AgentConfigSnapshotRestoreResponse](#agentconfigsnapshotrestoreresponse)<br> |
 
 ### [GET] /all-workspaces
 #### Parameters
@@ -1456,8 +1587,42 @@ Truncated text preview of one drive value (binary-safe; SKILL.md is the main cas
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
 
+### [GET] /apps/{app_id}/agent/drive/skills
+List drive-backed skills for the bound agent
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/drive/skills/{skill_path}/inspect
+Inspect one drive-backed skill for slash-menu hover/detail UI
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
+
 ### [DELETE] /apps/{app_id}/agent/files
-Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)
+Delete one drive file by key via drive commit-null semantics
 
 #### Parameters
 
@@ -1517,10 +1682,10 @@ Get agent execution logs for an application
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### [POST] /apps/{app_id}/agent/skills/standardize
-**Upload a Skill, validate it, and standardize it into the app agent's drive**
+### [POST] /apps/{app_id}/agent/skills/upload
+**Upload a Skill, validate it, and commit drive-backed skill files**
 
-Validate + standardize a Skill into the agent drive (ENG-594)
+Upload + standardize a Skill into the agent drive
 
 #### Parameters
 
@@ -1529,35 +1694,21 @@ Validate + standardize a Skill into the agent drive (ENG-594)
 | app_id | path | Application ID | Yes | string (uuid) |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
 | 400 | Invalid skill package or no bound agent |  |
 
-### [POST] /apps/{app_id}/agent/skills/upload
-**Validate an uploaded Skill package and persist the archive**
-
-Upload + validate a Skill package (.zip/.skill) and extract its manifest
-Returns a validated skill ref (to bind into the Agent soul config on save)
-plus its manifest. Standardizing into the agent drive is ENG-594.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
-
 ### [DELETE] /apps/{app_id}/agent/skills/{slug}
-Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
+Delete a standardized skill by removing its known drive keys via commit-null
 
 #### Parameters
 
@@ -3655,6 +3806,26 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
+
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowComposerCopyFromRosterPayload](#workflowcomposercopyfromrosterpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow roster agent copied to inline agent | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
 #### Parameters
@@ -6414,16 +6585,16 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| conversation_id | query | Conversation UUID | Yes | string |
-| first_id | query | First message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+| conversation_id | query | Conversation ID. | Yes | string |
+| first_id | query | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No | string |
+| limit | query | Number of chat history messages to return per request. | No | integer, <br>**Default:** 20 |
 | installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
+| 200 | Success | **application/json**: [ExploreMessageInfiniteScrollPagination](#exploremessageinfinitescrollpagination)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
 #### Parameters
@@ -8008,7 +8179,7 @@ Get all published workflows for a snippet
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
+| 200 | Published workflows retrieved successfully | **application/json**: [SnippetWorkflowPaginationResponse](#snippetworkflowpaginationresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/default-workflow-block-configs
 **Get default block configurations for snippet workflow**
@@ -10218,6 +10389,539 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginCategoryListResponse](#plugincategorylistresponse)<br> |
 
+### [GET] /workspaces/current/rbac/access-policies
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_AccessPolicyList](#_accesspolicylist)<br> |
+
+### [POST] /workspaces/current/rbac/access-policies
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Policy created | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [DELETE] /workspaces/current/rbac/access-policies/{policy_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [GET] /workspaces/current/rbac/access-policies/{policy_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [PUT] /workspaces/current/rbac/access-policies/{policy_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [POST] /workspaces/current/rbac/access-policies/{policy_id}/copy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Policy copied | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| binding_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+
+### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| binding_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+
+### [DELETE] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AppAccessMatrix](#appaccessmatrix)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/user-access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/apps/{app_id}/users/{target_account_id}/access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [PUT] /workspaces/current/rbac/apps/{app_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [DELETE] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DatasetAccessMatrix](#datasetaccessmatrix)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/user-access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/datasets/{dataset_id}/users/{target_account_id}/access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [PUT] /workspaces/current/rbac/datasets/{dataset_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [GET] /workspaces/current/rbac/members/{member_id}/rbac-roles
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| member_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberRolesResponse](#memberrolesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/members/{member_id}/rbac-roles
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| member_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberRolesResponse](#memberrolesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/my-permissions
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MyPermissionsResponse](#mypermissionsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/role-permissions/catalog
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
+### [GET] /workspaces/current/rbac/role-permissions/catalog/app
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
+### [GET] /workspaces/current/rbac/role-permissions/catalog/dataset
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
+### [GET] /workspaces/current/rbac/roles
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_RBACRoleList](#_rbacrolelist)<br> |
+
+### [POST] /workspaces/current/rbac/roles
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Role created | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [DELETE] /workspaces/current/rbac/roles/{role_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [GET] /workspaces/current/rbac/roles/{role_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [PUT] /workspaces/current/rbac/roles/{role_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [POST] /workspaces/current/rbac/roles/{role_id}/copy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Role copied | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [GET] /workspaces/current/rbac/roles/{role_id}/members
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_MembersInRoleList](#_membersinrolelist)<br> |
+
+### [PUT] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/apps/access-policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+
+### [PUT] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/datasets/access-policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+
 ### [GET] /workspaces/current/tool-labels
 #### Responses
 
@@ -11146,6 +11850,84 @@ Default namespace
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### AccessMatrixItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accounts | [ [AccessPolicyAccount](#accesspolicyaccount) ] |  | No |
+| policy | [AccessPolicy](#accesspolicy) |  | No |
+| roles | [ [AccessPolicyRole](#accesspolicyrole) ] |  | No |
+
+#### AccessPolicy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | No |
+| created_at | integer |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| is_builtin | boolean |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| policy_key | string |  | No |
+| resource_type | string |  | Yes |
+| tenant_id | string |  | No |
+| updated_at | integer |  | No |
+
+#### AccessPolicyAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| account_name | string |  | Yes |
+| avatar | string |  | No |
+| binding_id | string |  | Yes |
+| email | string |  | No |
+| is_locked | boolean |  | No |
+
+#### AccessPolicyBindingState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding_id | string |  | Yes |
+| is_locked | boolean |  | No |
+
+#### AccessPolicyMemberBinding
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_id | string |  | Yes |
+| account_id | string |  | Yes |
+| account_name | string |  | No |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| resource_id | string |  | No |
+| resource_type | string |  | Yes |
+| tenant_id | string |  | No |
+
+#### AccessPolicyRole
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding_id | string |  | Yes |
+| is_locked | boolean |  | No |
+| role_id | string |  | Yes |
+| role_name | string |  | Yes |
+| role_tag | string |  | No |
+
+#### AccessPolicyRoleBinding
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_id | string |  | Yes |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| resource_id | string |  | No |
+| resource_type | string |  | Yes |
+| role_id | string |  | Yes |
+| role_name | string |  | No |
+| tenant_id | string |  | No |
+
 #### Account
 
 | Name | Type | Description | Required |
@@ -11256,6 +12038,7 @@ Default namespace
 | last_login_at | integer |  | No |
 | name | string |  | Yes |
 | role | string |  | Yes |
+| roles | [ object ] |  | No |
 | status | string |  | Yes |
 
 #### AccountWithRoleList
@@ -11277,9 +12060,9 @@ Default namespace
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | No |
-| interface_language | string |  | Yes |
-| name | string |  | Yes |
-| timezone | string |  | Yes |
+| interface_language | string |  | No |
+| name | string |  | No |
+| timezone | string |  | No |
 | token | string |  | Yes |
 | workspace_id | string |  | No |
 
@@ -11287,7 +12070,9 @@ Default namespace
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_status | string |  | No |
 | email | string |  | Yes |
+| requires_setup | boolean |  | No |
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
 
@@ -11356,6 +12141,31 @@ Default namespace
 | chat_prompt_config | object |  | No |
 | completion_prompt_config | object |  | No |
 
+#### AgentApiAccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key_count | integer |  | Yes |
+| api_rph | integer |  | Yes |
+| api_rpm | integer |  | Yes |
+| chat_endpoint | string |  | Yes |
+| conversations_endpoint | string |  | Yes |
+| enabled | boolean |  | Yes |
+| files_upload_endpoint | string |  | Yes |
+| info_endpoint | string |  | Yes |
+| messages_endpoint | string |  | Yes |
+| meta_endpoint | string |  | Yes |
+| parameters_endpoint | string |  | Yes |
+| service_api_base_url | string |  | Yes |
+| stop_endpoint | string |  | Yes |
+| streaming_only | boolean, <br>**Default:** true |  | No |
+
+#### AgentApiStatusPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enable_api | boolean | Enable or disable Agent service API | Yes |
+
 #### AgentAppComposerResponse
 
 | Name | Type | Description | Required |
@@ -11367,6 +12177,17 @@ Default namespace
 | validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 
+#### AgentAppCopyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Description for the copied agent | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| name | string | Name for the copied agent | No |
+| role | string | Role for the copied agent | No |
+
 #### AgentAppCreatePayload
 
 | Name | Type | Description | Required |
@@ -11377,6 +12198,42 @@ Default namespace
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Agent name | Yes |
 | role | string | Agent role | Yes |
+
+#### AgentAppDetailWithSite
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
+| api_base_url | string |  | No |
+| app_id | string |  | No |
+| bound_agent_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| debug_conversation_id | string |  | No |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
+| description | string |  | No |
+| enable_api | boolean |  | Yes |
+| enable_site | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| maintainer | string |  | No |
+| max_active_requests | integer |  | No |
+| mode | string |  | Yes |
+| model_config | [ModelConfig](#modelconfig) |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| role | string |  | No |
+| site | [Site](#site) |  | No |
+| tags | [ [Tag](#tag) ] |  | No |
+| tracing | [JSONValue](#jsonvalue) |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
 #### AgentAppFeaturesPayload
 
@@ -11417,6 +12274,7 @@ default (the config form sends the full desired feature state on save).
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| debug_conversation_id | string |  | No |
 | description | string |  | No |
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
@@ -11425,10 +12283,12 @@ default (the config form sends the full desired feature state on save).
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
+| maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | published_reference_count | integer |  | No |
 | published_references | [ [AgentAppPublishedReferenceResponse](#agentapppublishedreferenceresponse) ] |  | No |
 | role | string |  | No |
@@ -11577,23 +12437,6 @@ Risk marker for CLI tool bootstrap commands.
 | provider_id | string |  | No |
 | tools_count | integer |  | No |
 
-#### AgentComposerFileCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| drive_key | string |  | No |
-| file_id | string |  | No |
-| id | string |  | No |
-| kind | string, <br>**Default:** file |  | No |
-| name | string |  | No |
-| reference | string |  | No |
-| remote_url | string |  | No |
-| tenant_id | string |  | No |
-| transfer_method | string |  | No |
-| type | string |  | No |
-| upload_file_id | string |  | No |
-| url | string |  | No |
-
 #### AgentComposerImpactBindingResponse
 
 | Name | Type | Description | Required |
@@ -11618,22 +12461,6 @@ Risk marker for CLI tool bootstrap commands.
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | previous_node_outputs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 
-#### AgentComposerSkillCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| kind | string, <br>**Default:** skill |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
 #### AgentComposerSoulCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -11642,7 +12469,6 @@ Risk marker for CLI tool bootstrap commands.
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| skills_files | [  ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -11691,8 +12517,10 @@ Audit operation recorded for Agent Soul version/revision changes.
 | config_snapshot | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| display_version | integer |  | No |
 | id | string |  | Yes |
 | revisions | [ [AgentConfigRevisionResponse](#agentconfigrevisionresponse) ] |  | No |
+| snapshot_version | integer |  | No |
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
@@ -11703,6 +12531,13 @@ Audit operation recorded for Agent Soul version/revision changes.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) ] |  | Yes |
 
+#### AgentConfigSnapshotRestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot_id | string |  | Yes |
+| result | string |  | Yes |
+
 #### AgentConfigSnapshotSummaryResponse
 
 | Name | Type | Description | Required |
@@ -11710,7 +12545,9 @@ Audit operation recorded for Agent Soul version/revision changes.
 | agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| display_version | integer |  | No |
 | id | string |  | Yes |
+| snapshot_version | integer |  | No |
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
@@ -11736,6 +12573,12 @@ Audit operation recorded for Agent Soul version/revision changes.
 | date | string |  | Yes |
 | message_count | integer |  | Yes |
 
+#### AgentDebugConversationRefreshResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| debug_conversation_id | string |  | Yes |
+
 #### AgentDriveDeleteFileByAgentQuery
 
 | Name | Type | Description | Required |
@@ -11746,7 +12589,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_version_id | string |  | No |
 | removed_keys | [ string ] |  | No |
 | result | string |  | Yes |
 
@@ -11760,7 +12602,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_version_id | string |  | No |
 | file | [AgentDriveFileResponse](#agentdrivefileresponse) |  | Yes |
 
 #### AgentDriveFilePayload
@@ -11786,9 +12627,11 @@ Audit operation recorded for Agent Soul version/revision changes.
 | created_at | integer |  | No |
 | file_kind | string |  | Yes |
 | hash | string |  | No |
+| is_skill | boolean |  | No |
 | key | string |  | Yes |
 | mime_type | string |  | No |
 | size | integer |  | No |
+| skill_metadata | string |  | No |
 
 #### AgentDriveListResponse
 
@@ -11797,6 +12640,65 @@ Audit operation recorded for Agent Soul version/revision changes.
 | items | [ [AgentDriveItemResponse](#agentdriveitemresponse) ] |  | No |
 
 #### AgentDrivePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| key | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
+
+#### AgentDriveSkillFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_in_drive | boolean |  | Yes |
+| drive_key | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| type | string |  | Yes |
+
+#### AgentDriveSkillInspectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| created_at | integer |  | No |
+| description | string |  | Yes |
+| file_tree | [ object ] |  | No |
+| files | [ [AgentDriveSkillFileResponse](#agentdriveskillfileresponse) ] |  | No |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| skill_md | [AgentDriveSkillMarkdownResponse](#agentdriveskillmarkdownresponse) |  | Yes |
+| skill_md_key | string |  | Yes |
+| source | string |  | Yes |
+| warnings | [ string ] |  | No |
+
+#### AgentDriveSkillItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| created_at | integer |  | No |
+| description | string |  | Yes |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| skill_md_key | string |  | Yes |
+
+#### AgentDriveSkillListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [AgentDriveSkillItemResponse](#agentdriveskillitemresponse) ] |  | No |
+
+#### AgentDriveSkillMarkdownResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -12099,9 +13001,13 @@ the current roster/workflow APIs scoped to Dify Agent.
 | keyword | string | Search query, answer, or conversation name | No |
 | limit | integer, <br>**Default:** 20 | Page size | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
-| source | string | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No |
+| sort_by | string, <br>**Default:** updated_at | Sort by created_at or updated_at | No |
+| sort_order | string, <br>**Default:** desc | Sort order: asc or desc | No |
+| source | string | Deprecated single source filter | No |
+| sources | [ string ] | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No |
 | start | string | Start date (YYYY-MM-DD HH:MM) | No |
-| status | string | Filter by success, failed, or paused | No |
+| status | string | Deprecated single status filter | No |
+| statuses | [ string ] | Filter by one or more of success, failed, paused | No |
 
 #### AgentMemoryArtifactConfig
 
@@ -12281,34 +13187,12 @@ Visibility and lifecycle scope of an Agent record.
 | enabled | boolean |  | No |
 | type | string |  | No |
 
-#### AgentSkillRefConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
-#### AgentSkillStandardizeResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentSkillRefConfig](#agentskillrefconfig) |  | Yes |
-
 #### AgentSkillUploadResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentSkillRefConfig](#agentskillrefconfig) |  | Yes |
+| skill | [AgentUploadedSkillResponse](#agentuploadedskillresponse) |  | Yes |
 
 #### AgentSoulAppFeaturesConfig
 
@@ -12337,7 +13221,6 @@ Visibility and lifecycle scope of an Agent record.
 | prompt | [AgentSoulPromptConfig](#agentsoulpromptconfig) |  | No |
 | sandbox | [AgentSoulSandboxConfig](#agentsoulsandboxconfig) |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
-| skills_files | [AgentSoulSkillsFilesConfig](#agentsoulskillsfilesconfig) |  | No |
 | tools | [AgentSoulToolsConfig](#agentsoultoolsconfig) |  | No |
 
 #### AgentSoulDifyToolConfig
@@ -12453,13 +13336,6 @@ Reference to model credentials resolved only at runtime.
 | ---- | ---- | ----------- | -------- |
 | config | [AgentSandboxProviderConfig](#agentsandboxproviderconfig) |  | No |
 | provider | string |  | No |
-
-#### AgentSoulSkillsFilesConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
 
 #### AgentSoulToolsConfig
 
@@ -12591,6 +13467,16 @@ Soft lifecycle state for Agent records.
 | tool_name | string |  | Yes |
 | tool_output | object |  | Yes |
 | tool_parameters | object |  | Yes |
+
+#### AgentUploadedSkillResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| description | string |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| skill_md_key | string |  | Yes |
 
 #### AgentUserSatisfactionRateStatisticResponse
 
@@ -12830,6 +13716,13 @@ Enum class for api provider schema type.
 | schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
 | tool_name | string |  | Yes |
 
+#### AppAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
+
 #### AppApiStatusPayload
 
 | Name | Type | Description | Required |
@@ -12850,8 +13743,10 @@ Enum class for api provider schema type.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | id | string |  | Yes |
+| maintainer | string |  | No |
 | mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
 | updated_at | integer |  | No |
@@ -12864,7 +13759,6 @@ Enum class for api provider schema type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | bound_agent_id | string |  | No |
@@ -12879,11 +13773,12 @@ Enum class for api provider schema type.
 | icon_type | string |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
+| maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
-| role | string |  | No |
+| permission_keys | [ string ] |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
@@ -12977,10 +13872,10 @@ AppMCPServer Status Enum
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [AppPartial](#apppartial) ] |  | Yes |
+| data | [ [AppPartial](#apppartial) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### AppPartial
@@ -12988,25 +13883,26 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
-| app_model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
-| desc_or_prompt | string |  | No |
+| description | string |  | No |
 | has_draft_trigger | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
+| maintainer | string |  | No |
 | max_active_requests | integer |  | No |
-| mode_compatible_with_agent | string |  | Yes |
+| mode | string |  | Yes |
+| model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
-| role | string |  | No |
+| permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -13351,7 +14247,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### ChildChunkDetailResponse
 
@@ -13394,14 +14290,14 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
-| id | string |  | No |
+| content | string | Child chunk text content. | Yes |
+| id | string | Existing child chunk ID. Omit to create a new child chunk. | No |
 
 #### ChildChunkUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### CliToolSuggestion
 
@@ -13509,9 +14405,14 @@ Button styles for user actions.
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
 | binding | [ComposerBindingPayload](#composerbindingpayload) |  | No |
 | client_revision_id | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [AgentIconType](#agenticontype) |  | No |
 | idempotency_key | string |  | No |
 | new_agent_name | string |  | No |
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | No |
+| role | string |  | No |
 | save_strategy | [ComposerSaveStrategy](#composersavestrategy) |  | Yes |
 | soul_lock | [ComposerSoulLockPayload](#composersoullockpayload) |  | No |
 | variant | [ComposerVariant](#composervariant) |  | Yes |
@@ -13559,9 +14460,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
-| name | string |  | Yes |
-| value | string<br>[ string ]<br>integer<br>number |  | No |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | Comparison to apply. String operators (`contains`, `not contains`, `start with`, `end with`, `is`, `is not`, `empty`, `not empty`, `in`, `not in`) act on string or array metadata; numeric operators (`=`, `≠`, `>`, `<`, `≥`, `≤`) act on numeric metadata; time operators (`before`, `after`) act on time metadata.<br>*Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| name | string | Metadata field name to compare against. | Yes |
+| value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
 #### ConfigurateMethod
 
@@ -13703,8 +14604,8 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate | boolean |  | No |
-| name | string |  | No |
+| auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
+| name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
 #### ConversationVariableResponse
 
@@ -14002,6 +14903,13 @@ Model class for provider custom model configuration.
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
 
+#### DatasetAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_id | string |  | No |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
+
 #### DatasetAndDocumentResponse
 
 | Name | Type | Description | Required |
@@ -14050,6 +14958,7 @@ Model class for provider custom model configuration.
 | is_published | boolean |  | No |
 | name | string |  | No |
 | permission | string |  | No |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | No |
 | provider | string |  | No |
 | retrieval_model_dict | [DatasetRetrievalModel](#datasetretrievalmodel) |  | No |
@@ -14088,8 +14997,10 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -14128,9 +15039,11 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -14232,9 +15145,11 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | Yes |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -14681,15 +15596,15 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_ids | [ string (uuid) ] |  | Yes |
+| document_ids | [ string (uuid) ] | List of document IDs to include in the ZIP download. | Yes |
 
 #### DocumentMetadataOperation
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_id | string |  | Yes |
-| metadata_list | [ [MetadataDetail](#metadatadetail) ] |  | Yes |
-| partial_update | boolean |  | No |
+| document_id | string | Document ID whose metadata should be updated. | Yes |
+| metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
+| partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
 #### DocumentMetadataResponse
 
@@ -15106,6 +16021,34 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
 
+#### ExploreMessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ExploreMessageListItem](#exploremessagelistitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
+#### ExploreMessageListItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| error | string |  | No |
+| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| metadata | [JSONValueType](#jsonvaluetype) |  | No |
+| parent_message_id | string |  | No |
+| query | string |  | Yes |
+| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
+| status | string |  | Yes |
+
 #### ExternalApiTemplateListQuery
 
 | Name | Type | Description | Required |
@@ -15471,10 +16414,10 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] |  | No |
-| external_retrieval_model | object |  | No |
-| query | string |  | Yes |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
+| query | string | Search query text. | Yes |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
 
 #### HitTestingQuery
 
@@ -15660,6 +16603,7 @@ How Dify forwards the end-user's identity to an MCP server.
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
+| permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
 #### ImportStatus
@@ -15856,19 +16800,19 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data_source | [DataSource](#datasource) |  | No |
-| doc_form | string, <br>**Default:** text_model |  | No |
-| doc_language | string, <br>**Default:** English |  | No |
-| duplicate | boolean, <br>**Default:** true |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | *Enum:* `"economy"`, `"high_quality"` | Yes |
-| is_multimodal | boolean |  | No |
-| name | string |  | No |
-| original_document_id | string |  | No |
-| process_rule | [ProcessRule](#processrule) |  | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
-| summary_index_setting | object |  | No |
+| data_source | [DataSource](#datasource) | Document data source configuration. | No |
+| doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model", <br>**Default:** text_model | `text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, `qa_model` for question-answer pair extraction.<br>*Enum:* `"hierarchical_model"`, `"qa_model"`, `"text_model"` | No |
+| doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
+| duplicate | boolean, <br>**Default:** true | Whether duplicate document content is allowed. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted.<br>*Enum:* `"economy"`, `"high_quality"` | Yes |
+| is_multimodal | boolean | Whether the document uses multimodal indexing. | No |
+| name | string | Document name. | No |
+| original_document_id | string | Original document ID for replacement updates. | No |
+| process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked in this knowledge base. | No |
+| summary_index_setting | object | Summary index configuration. | No |
 
 #### KnowledgePipeline
 
@@ -16049,13 +16993,19 @@ Enum class for large language model mode.
 | result | string |  | Yes |
 | tenant_id | string |  | Yes |
 
+#### MemberBindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessPolicyMemberBinding](#accesspolicymemberbinding) ] |  | No |
+
 #### MemberInvitePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | emails | [ string ] |  | No |
 | language | string |  | No |
-| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+| role | string |  | Yes |
 
 #### MemberInviteResponse
 
@@ -16079,6 +17029,20 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | role | string |  | Yes |
+
+#### MemberRolesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| roles | [ [RBACRole](#rbacrole) ] |  | No |
+
+#### MembersInRole
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | No |
+| account_name | string |  | No |
 
 #### MessageDetail
 
@@ -16141,9 +17105,9 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
+| content | string | Optional text feedback providing additional detail. | No |
 | message_id | string | Message ID | Yes |
-| rating | string |  | No |
+| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 
@@ -16159,14 +17123,6 @@ Enum class for large language model mode.
 | upload_file_id | string |  | No |
 | url | string |  | No |
 
-#### MessageInfiniteScrollPagination
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [MessageListItem](#messagelistitem) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
-
 #### MessageInfiniteScrollPaginationResponse
 
 | Name | Type | Description | Required |
@@ -16175,47 +17131,28 @@ Enum class for large language model mode.
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 
-#### MessageListItem
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
-| answer | string |  | Yes |
-| conversation_id | string |  | Yes |
-| created_at | integer |  | No |
-| error | string |  | No |
-| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
-| feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
-| inputs | object |  | Yes |
-| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
-| parent_message_id | string |  | No |
-| query | string |  | Yes |
-| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
-| status | string |  | Yes |
-
 #### MessageListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Conversation UUID | Yes |
-| first_id | string | First message ID for pagination | No |
-| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
+| conversation_id | string | Conversation ID. | Yes |
+| first_id | string | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No |
+| limit | integer, <br>**Default:** 20 | Number of chat history messages to return per request. | No |
 
 #### MetadataArgs
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
-| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| name | string | Metadata field name. | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | `string` for text values, `number` for numeric values, `time` for date/time values.<br>*Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### MetadataDetail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| value | string<br>integer<br>number |  | No |
+| id | string | Metadata field ID. | Yes |
+| name | string | Metadata field name. | Yes |
+| value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
 #### MetadataFilteringCondition
 
@@ -16223,8 +17160,8 @@ Metadata Filtering Condition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conditions | [ [Condition](#condition) ] |  | No |
-| logical_operator | string |  | No |
+| conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
+| logical_operator | string | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -16232,13 +17169,13 @@ Metadata operation data
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] |  | Yes |
+| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] | Array of document metadata update operations. Each entry maps a document ID to its metadata values. | Yes |
 
 #### MetadataUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
+| name | string | New metadata field name. | Yes |
 
 #### ModelConfig
 
@@ -16390,11 +17327,20 @@ Model with provider entity.
 | ---- | ---- | ----------- | -------- |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | *Enum:* `"blocking"`, `"streaming"` | Yes |
 
+#### MyPermissionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
+| dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
+| workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
+
 #### NewAppResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | new_app_id | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 
 #### NodeIdQuery
 
@@ -16699,6 +17645,15 @@ output check fails and any configured retry attempts have been exhausted.
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
+
+#### Pagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_page | integer |  | No |
+| per_page | integer |  | No |
+| total_count | integer |  | No |
+| total_pages | integer |  | No |
 
 #### PaginationQuery
 
@@ -17075,6 +18030,29 @@ Enum class for parameter type.
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
 
+#### PermissionCatalogGroup
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| group_key | string |  | Yes |
+| group_name | string |  | Yes |
+| permissions | [ [PermissionCatalogItem](#permissioncatalogitem) ] |  | No |
+
+#### PermissionCatalogItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| key | string |  | Yes |
+| name | string |  | Yes |
+
+#### PermissionCatalogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| groups | [ [PermissionCatalogGroup](#permissioncataloggroup) ] |  | No |
+
 #### PermissionEnum
 
 Shared permission levels for resources (datasets, credentials, etc.)
@@ -17414,8 +18392,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
-| id | string |  | Yes |
+| enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
+| id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
 
 #### PreviewDetail
 
@@ -17440,8 +18418,8 @@ Serialized pricing info with codegen-safe decimal string patterns.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
-| rules | [Rule](#rule) |  | No |
+| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
+| rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
 
@@ -17633,6 +18611,29 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | QuotaUnit | string |  |  |
 
+#### RBACRole
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| is_builtin | boolean |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| role_tag | string |  | No |
+| tenant_id | string |  | No |
+| type | string |  | Yes |
+
+#### RBACRoleAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| account_name | string |  | No |
+| avatar | string |  | No |
+| email | string |  | No |
+
 #### RagPipelineDatasetImportPayload
 
 | Name | Type | Description | Required |
@@ -17794,12 +18795,53 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | url | string | URL to fetch | Yes |
 
+#### ReplaceUserAccessPoliciesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policies | [ [AccessPolicy](#accesspolicy) ] |  | No |
+
 #### RerankingModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
+| reranking_model_name | string | Name of the reranking model. | No |
+| reranking_provider_name | string | Provider name of the reranking model. | No |
+
+#### ResourcePermissionKeys
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| permission_keys | [ string ] |  | No |
+| resource_id | string |  | Yes |
+
+#### ResourcePermissionSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_permission_keys | [ string ] |  | No |
+| overrides | [ [ResourcePermissionKeys](#resourcepermissionkeys) ] |  | No |
+
+#### ResourceUserAccessPolicies
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policies | [ [AccessPolicy](#accesspolicy) ] |  | No |
+| account | [RBACRoleAccount](#rbacroleaccount) |  | Yes |
+| roles | [ [RBACRole](#rbacrole) ] |  | No |
+
+#### ResourceUserAccessPoliciesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
+| scope | string |  | Yes |
+
+#### ResourceWhitelist
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | No |
 
 #### RestrictModel
 
@@ -17825,15 +18867,15 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) |  | No |
-| reranking_enable | boolean |  | Yes |
-| reranking_mode | string |  | No |
-| reranking_model | [RerankingModel](#rerankingmodel) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | Yes |
-| search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
-| top_k | integer |  | Yes |
-| weights | [WeightModel](#weightmodel) |  | No |
+| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
+| reranking_enable | boolean | Whether reranking is enabled. | Yes |
+| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
+| score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
+| score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
+| search_method | [RetrievalMethod](#retrievalmethod) | Search method used for retrieval. | Yes |
+| top_k | integer | Maximum number of results to return. | Yes |
+| weights | [WeightModel](#weightmodel) | Weight configuration for hybrid search. | No |
 
 #### RetrievalSettingResponse
 
@@ -17863,6 +18905,12 @@ Model class for provider quota configuration.
 | summary | string |  | No |
 | word_count | integer |  | No |
 
+#### RoleBindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessPolicyRoleBinding](#accesspolicyrolebinding) ] |  | No |
+
 #### RosterListQuery
 
 | Name | Type | Description | Required |
@@ -17875,10 +18923,10 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string |  | No |
-| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] |  | No |
-| segmentation | [Segmentation](#segmentation) |  | No |
-| subchunk_segmentation | [Segmentation](#segmentation) |  | No |
+| parent_mode | string | Parent-child segmentation mode. | No |
+| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
+| segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
+| subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
 
 #### RuleCodeGeneratePayload
 
@@ -18082,10 +19130,10 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| chunk_overlap | integer |  | No |
-| max_tokens | integer |  | Yes |
+| chunk_overlap | integer | Token overlap between chunks. | No |
+| max_tokens | integer | Maximum token count per chunk. | Yes |
 | separator | string, <br>**Default:**
- |  | No |
+ | Custom separator for splitting text. | No |
 
 #### SelectInputConfig
 
@@ -18395,6 +19443,15 @@ Query parameters for listing snippet published workflows.
 | limit | integer, <br>**Default:** 10 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
+#### SnippetWorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [SnippetWorkflowResponse](#snippetworkflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
 #### SnippetWorkflowResponse
 
 | Name | Type | Description | Required |
@@ -18548,6 +19605,7 @@ Model class for provider system configuration response.
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
@@ -18558,6 +19616,7 @@ Model class for provider system configuration response.
 | max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
@@ -18689,10 +19748,10 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id | string | Message ID | No |
+| message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
-| text | string | Text to convert to audio | No |
-| voice | string | Voice to use for TTS | No |
+| text | string | Speech content to convert. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### TextToSpeechPayload
 
@@ -18831,6 +19890,7 @@ Enum class for tool provider
 | mode | string |  | No |
 | model_config | [TrialAppModelConfig](#trialappmodelconfig) |  | No |
 | name | string |  | No |
+| permission_keys | [ string ] |  | No |
 | site | [TrialSite](#trialsite) |  | No |
 | tags | [ [TrialTag](#trialtag) ] |  | No |
 | updated_at | long |  | No |
@@ -18889,6 +19949,7 @@ Enum class for tool provider
 | indexing_technique | string |  | No |
 | name | string |  | No |
 | permission | string |  | No |
+| permission_keys | [ string ] |  | No |
 
 #### TrialDatasetList
 
@@ -19262,23 +20323,23 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | Yes |
+| keyword_weight | number | Weight assigned to keyword search results. | Yes |
 
 #### WeightModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) |  | No |
-| vector_setting | [WeightVectorSetting](#weightvectorsetting) |  | No |
-| weight_type | string |  | No |
+| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
+| vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
+| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | Yes |
-| embedding_provider_name | string |  | Yes |
-| vector_weight | number |  | Yes |
+| embedding_model_name | string | Name of the embedding model used for vector search. | Yes |
+| embedding_provider_name | string | Provider of the embedding model used for vector search. | Yes |
+| vector_weight | number | Weight assigned to semantic vector search results. | Yes |
 
 #### WorkflowAgentBindingType
 
@@ -19524,6 +20585,14 @@ How a workflow node is bound to an Agent.
 | mentioned_user_ids | [ string ] | Mentioned user IDs. Omit to keep existing mentions. | No |
 | position_x | number | Comment X position | No |
 | position_y | number | Comment Y position | No |
+
+#### WorkflowComposerCopyFromRosterPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| idempotency_key | string |  | No |
+| source_agent_id | string |  | Yes |
+| source_snapshot_id | string |  | No |
 
 #### WorkflowConversationVariableResponse
 
@@ -19974,8 +21043,8 @@ can reuse its existing handler.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
+| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 
 #### WorkflowRunQuery
 
@@ -20090,6 +21159,13 @@ Workflow tool configuration
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
 
+#### WorkspaceAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
 #### WorkspaceCustomConfigPayload
 
 | Name | Type | Description | Required |
@@ -20157,6 +21233,19 @@ Workflow tool configuration
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
 
+#### WorkspacePermissionSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| permission_keys | [ string ] |  | No |
+
+#### _AccessPolicyList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessPolicy](#accesspolicy) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
 #### _AnonymousInlineModel_744ff9cc03e6
 
 | Name | Type | Description | Required |
@@ -20200,6 +21289,27 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
+
+#### _MembersInRoleList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [MembersInRole](#membersinrole) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
+#### _RBACRoleAccountList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RBACRoleAccount](#rbacroleaccount) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
+#### _RBACRoleList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RBACRole](#rbacrole) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
 
 #### core__tools__entities__common_entities__I18nObject
 

@@ -68,8 +68,9 @@ describe('E2E / difyctl get app <id> (single)', () => {
 
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  itWithSso('[P0] external SSO user get app <id> returns insufficient_scope error (3.55)', async () => {
-    // Spec 3.55: dfoe_ token on get app <id> → insufficient_scope, exit 1.
+  itWithSso('[P0] external SSO user can get a permitted app by id', async () => {
+    // A dfoe_ token resolves get app <id> via the permitted-external describe
+    // surface (apps:read:permitted-external scope), so a permitted app is returned.
     // Uses DIFY_E2E_SSO_TOKEN; skipped when not configured.
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
@@ -87,8 +88,8 @@ describe('E2E / difyctl get app <id> (single)', () => {
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
       const result = await run(['get', 'app', E.chatAppId], { configDir: ssoTmp.configDir })
-      expect(result.exitCode, 'SSO user get app <id> should exit non-zero').not.toBe(0)
-      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
+      assertExitCode(result, 0)
+      expect(result.stdout).toContain(E.chatAppId)
     }
     finally {
       await ssoTmp.cleanup()
@@ -153,13 +154,13 @@ describe('E2E / difyctl get app <id> (single)', () => {
   })
 
   it('[P1] get app <id> -o wide outputs extended columns (3.48)', async () => {
-    // Spec 3.48: -o wide → TAGS/UPDATED/AUTHOR columns, exit 0.
+    // Spec 3.48: -o wide → UPDATED/WORKSPACE columns, exit 0.
     const result = await withRetry(
       () => fx.r(['get', 'app', E.chatAppId, '-o', 'wide']),
       { attempts: 3, delayMs: 2000 },
     )
     assertExitCode(result, 0)
-    expect(result.stdout).toMatch(/AUTHOR|UPDATED|TAGS/i)
+    expect(result.stdout).toMatch(/UPDATED|WORKSPACE/i)
   })
 
   it('[P1] get app <id> -o json is pipe-friendly with no ANSI (3.49)', async () => {

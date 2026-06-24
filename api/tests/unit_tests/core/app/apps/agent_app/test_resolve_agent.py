@@ -44,7 +44,7 @@ def _snapshot() -> SimpleNamespace:
 
 
 class TestResolveAgentById:
-    def test_success_returns_agent_snapshot_soul(self, monkeypatch):
+    def test_success_returns_agent_snapshot_soul(self, monkeypatch: pytest.MonkeyPatch):
         agent = SimpleNamespace(id="agent-1")
         snapshot = _snapshot()
         _patch_session(monkeypatch, [agent, snapshot])
@@ -59,24 +59,24 @@ class TestResolveAgentById:
         assert soul.model is not None
         assert soul.model.model == "gpt-4o-mini"
 
-    def test_agent_missing_raises(self, monkeypatch):
+    def test_agent_missing_raises(self, monkeypatch: pytest.MonkeyPatch):
         _patch_session(monkeypatch, [None])
         with pytest.raises(AgentAppGeneratorError, match="Agent not found"):
             AgentAppGenerator._resolve_agent_by_id(tenant_id="t1", agent_id="x", snapshot_id="snap-1")
 
-    def test_no_published_version_raises(self, monkeypatch):
+    def test_no_published_version_raises(self, monkeypatch: pytest.MonkeyPatch):
         _patch_session(monkeypatch, [SimpleNamespace(id="agent-1")])
         with pytest.raises(AgentAppGeneratorError, match="no published version"):
             AgentAppGenerator._resolve_agent_by_id(tenant_id="t1", agent_id="agent-1", snapshot_id=None)
 
-    def test_snapshot_missing_raises(self, monkeypatch):
+    def test_snapshot_missing_raises(self, monkeypatch: pytest.MonkeyPatch):
         _patch_session(monkeypatch, [SimpleNamespace(id="agent-1"), None])
         with pytest.raises(AgentAppGeneratorError, match="published version not found"):
             AgentAppGenerator._resolve_agent_by_id(tenant_id="t1", agent_id="agent-1", snapshot_id="snap-1")
 
 
 class TestResolveAgent:
-    def test_success_chains_to_resolve_by_id(self, monkeypatch):
+    def test_success_chains_to_resolve_by_id(self, monkeypatch: pytest.MonkeyPatch):
         bound_agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="snap-1")
         inner_agent = SimpleNamespace(id="agent-1")
         snapshot = _snapshot()
@@ -90,7 +90,7 @@ class TestResolveAgent:
         assert snap is snapshot
         assert soul.model is not None
 
-    def test_unbound_app_raises(self, monkeypatch):
+    def test_unbound_app_raises(self, monkeypatch: pytest.MonkeyPatch):
         _patch_session(monkeypatch, [None])
         app_model = SimpleNamespace(id="app-1", tenant_id="t1")
         with pytest.raises(AgentAppGeneratorError, match="has no bound Agent"):

@@ -1,6 +1,8 @@
 import logging
 from unittest.mock import Mock, patch
 
+import pytest
+
 from core.app.layers.timeslice_layer import TimeSliceLayer
 from graphon.graph_engine.entities.commands import CommandType, GraphEngineCommand
 from services.workflow.entities import WorkflowScheduleCFSPlanEntity
@@ -65,7 +67,7 @@ class TestTimeSliceLayer:
 
         scheduler.remove_job.assert_called_once_with("job-1")
 
-    def test_checker_job_handles_resource_limit_without_command_channel(self, caplog):
+    def test_checker_job_handles_resource_limit_without_command_channel(self, caplog: pytest.LogCaptureFixture):
         scheduler = Mock()
         scheduler.running = True
         cfs_plan_scheduler = Mock(plan=Mock())

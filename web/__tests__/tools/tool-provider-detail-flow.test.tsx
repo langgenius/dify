@@ -48,6 +48,9 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
   }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: ['tool.manage', 'credential.create', 'credential.manage', 'credential.use'],
+  }),
 }))
 
 const mockSetShowModelModal = vi.fn()

@@ -1,11 +1,21 @@
-from typing import Any, Literal, override
+from typing import Annotated, Any, Literal, override
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, ConfigDict, Field, GetJsonSchemaHandler, RootModel, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    GetJsonSchemaHandler,
+    RootModel,
+    WithJsonSchema,
+    field_validator,
+    model_validator,
+)
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import (
     query_params_from_model,
@@ -33,7 +43,12 @@ from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import (
+    ExternalRetrievalModel,
+    KnowledgeProvider,
+    RetrievalModel,
+    SummaryIndexSetting,
+)
 from services.tag_service import (
     SaveTagPayload,
     TagBindingCreatePayload,
@@ -46,37 +61,148 @@ from services.tag_service import (
 
 register_enum_models(service_api_ns, DatasetPermissionEnum)
 
+PartialMemberList = Annotated[
+    list[dict[str, str]] | None,
+    WithJsonSchema(
+        {
+            "anyOf": [
+                {
+                    "items": {
+                        "properties": {
+                            "user_id": {
+                                "description": "ID of the team member to grant access.",
+                                "type": "string",
+                            }
+                        },
+                        "type": "object",
+                    },
+                    "type": "array",
+                },
+                {"type": "null"},
+            ]
+        }
+    ),
+]
+
+
+_SERVICE_DATASET_DETAIL_EXCLUDE = {"permission_keys"}
+_SERVICE_DATASET_LIST_EXCLUDE = {"data": {"__all__": _SERVICE_DATASET_DETAIL_EXCLUDE}}
+
+
+def _dump_service_dataset_detail(dataset: Any) -> dict[str, Any]:
+    return DatasetDetailResponse.model_validate(dataset, from_attributes=True).model_dump(
+        mode="json",
+        exclude=_SERVICE_DATASET_DETAIL_EXCLUDE,
+    )
+
+
+def _dump_service_dataset_list(response: dict[str, Any]) -> dict[str, Any]:
+    return DatasetListResponse.model_validate(response).model_dump(
+        mode="json",
+        exclude=_SERVICE_DATASET_LIST_EXCLUDE,
+    )
+
+
+def _dump_service_dataset_with_partial_members(data: dict[str, Any]) -> dict[str, Any]:
+    exclude: set[str] = set(_SERVICE_DATASET_DETAIL_EXCLUDE)
+    if "partial_member_list" not in data:
+        exclude.add("partial_member_list")
+
+    return DatasetDetailWithPartialMembersResponse.model_validate(data).model_dump(mode="json", exclude=exclude)
+
 
 class DatasetCreatePayload(BaseModel):
-    name: str = Field(..., min_length=1, max_length=40)
-    description: str = Field(default="", description="Dataset description (max 400 chars)", max_length=400)
-    indexing_technique: Literal["high_quality", "economy"] | None = None
-    permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
-    external_knowledge_api_id: str | None = None
-    provider: str = "vendor"
-    external_knowledge_id: str | None = None
-    retrieval_model: RetrievalModel | None = None
-    embedding_model: str | None = None
-    embedding_model_provider: str | None = None
-    summary_index_setting: dict | None = Field(default=None)
+    name: str = Field(..., min_length=1, max_length=40, description="Name of the knowledge base.")
+    description: str = Field(default="", description="Description of the knowledge base.", max_length=400)
+    indexing_technique: Literal["high_quality", "economy"] | None = Field(
+        default=None,
+        description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",
+    )
+    permission: DatasetPermissionEnum | None = Field(
+        default=DatasetPermissionEnum.ONLY_ME,
+        description=(
+            "Controls who can access this knowledge base. `only_me` restricts access to the creator, "
+            "`all_team_members` grants workspace-wide access, and `partial_members` grants access to specified "
+            "members."
+        ),
+    )
+    external_knowledge_api_id: str | None = Field(default=None, description="ID of the external knowledge API.")
+    provider: KnowledgeProvider = Field(
+        default="vendor",
+        description="Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.",
+    )
+    external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    summary_index_setting: SummaryIndexSetting = Field(
+        default=None,
+        description="Summary index configuration.",
+    )
 
 
 class DatasetUpdatePayload(BaseModel):
-    name: str | None = Field(default=None, min_length=1, max_length=40)
-    description: str | None = Field(default=None, description="Dataset description (max 400 chars)", max_length=400)
-    indexing_technique: Literal["high_quality", "economy"] | None = None
-    permission: DatasetPermissionEnum | None = None
-    embedding_model: str | None = None
-    embedding_model_provider: str | None = None
-    retrieval_model: RetrievalModel | None = None
-    partial_member_list: list[dict[str, str]] | None = None
-    external_retrieval_model: dict[str, Any] | None = Field(default=None)
-    external_knowledge_id: str | None = None
-    external_knowledge_api_id: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=40, description="Name of the knowledge base.")
+    description: str | None = Field(default=None, description="Description of the knowledge base.", max_length=400)
+    indexing_technique: Literal["high_quality", "economy"] | None = Field(
+        default=None,
+        description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",
+    )
+    permission: DatasetPermissionEnum | None = Field(
+        default=None,
+        description=(
+            "Controls who can access this knowledge base. `only_me` restricts access to the creator, "
+            "`all_team_members` grants workspace-wide access, and `partial_members` grants access to specified "
+            "members."
+        ),
+    )
+    embedding_model: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model name. Use the `model` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    embedding_model_provider: str | None = Field(
+        default=None,
+        description=(
+            "Embedding model provider. Use the `provider` field from "
+            "[Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`."
+        ),
+    )
+    retrieval_model: RetrievalModel | None = Field(
+        default=None,
+        description="Retrieval model configuration. Controls how chunks are searched and ranked.",
+    )
+    partial_member_list: PartialMemberList = Field(
+        default=None,
+        description="List of team members with access when `permission` is `partial_members`.",
+    )
+    external_retrieval_model: ExternalRetrievalModel = Field(
+        default=None,
+        description="Retrieval settings for external knowledge bases.",
+    )
+    external_knowledge_id: str | None = Field(default=None, description="ID of the external knowledge base.")
+    external_knowledge_api_id: str | None = Field(default=None, description="ID of the external knowledge API.")
 
 
 class DocumentStatusPayload(BaseModel):
-    document_ids: list[str] = Field(default_factory=list, description="Document IDs to update")
+    document_ids: list[str] = Field(default_factory=list, description="List of document IDs to update.")
 
 
 DOCUMENT_STATUS_ACTION_PARAM = {
@@ -87,7 +213,7 @@ DOCUMENT_STATUS_ACTION_PARAM = {
 
 
 class TagNamePayload(BaseModel):
-    name: str = Field(..., min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=50, description="Tag name.")
 
 
 class TagCreatePayload(TagNamePayload):
@@ -95,16 +221,16 @@ class TagCreatePayload(TagNamePayload):
 
 
 class TagUpdatePayload(TagNamePayload):
-    tag_id: str
+    tag_id: str = Field(description="Tag ID to update.")
 
 
 class TagDeletePayload(BaseModel):
-    tag_id: str
+    tag_id: str = Field(description="Tag ID to delete.")
 
 
 class TagBindingPayload(BaseModel):
-    tag_ids: list[str]
-    target_id: str
+    tag_ids: list[str] = Field(description="Tag IDs to bind.")
+    target_id: str = Field(description="Knowledge base ID to bind the tags to.")
 
     @field_validator("tag_ids")
     @classmethod
@@ -119,7 +245,7 @@ class TagUnbindingPayload(BaseModel):
 
     tag_ids: list[str] = Field(default_factory=list)
     tag_id: str | None = None
-    target_id: str
+    target_id: str = Field(description="Knowledge base ID.")
 
     @classmethod
     @override
@@ -134,7 +260,7 @@ class TagUnbindingPayload(BaseModel):
             "minItems": 1,
             "type": "array",
         }
-        target_id_property = {"title": "Target Id", "type": "string"}
+        target_id_property = {"description": "Knowledge base ID.", "title": "Target Id", "type": "string"}
         return {
             "anyOf": [
                 {
@@ -192,11 +318,14 @@ class KnowledgeTagListResponse(RootModel[list[KnowledgeTagResponse]]):
 
 
 class DatasetListQuery(BaseModel):
-    page: int = Field(default=1, description="Page number")
-    limit: int = Field(default=20, description="Number of items per page")
-    keyword: str | None = Field(default=None, description="Search keyword")
-    include_all: bool = Field(default=False, description="Include all datasets")
-    tag_ids: list[str] = Field(default_factory=list, description="Filter by tag IDs")
+    page: int = Field(default=1, description="Page number to retrieve.")
+    limit: int = Field(default=20, description="Number of items per page. Server caps at `100`.")
+    keyword: str | None = Field(default=None, description="Search keyword to filter by name.")
+    include_all: bool = Field(
+        default=False,
+        description="Whether to include all knowledge bases regardless of permissions.",
+    )
+    tag_ids: list[str] = Field(default_factory=list, description="Tag IDs to filter by.")
 
 
 class DatasetDetailWithPartialMembersResponse(DatasetDetailResponse):
@@ -281,7 +410,14 @@ class DatasetListApi(DatasetApiResource):
         # provider = request.args.get("provider", default="vendor")
 
         datasets, total = DatasetService.get_datasets(
-            query.page, query.limit, tenant_id, current_user, query.keyword, query.tag_ids, query.include_all
+            query.page,
+            query.limit,
+            db.session,
+            tenant_id,
+            current_user,
+            query.keyword,
+            query.tag_ids,
+            query.include_all,
         )
         # check embedding setting
         assert isinstance(current_user, Account)
@@ -296,7 +432,7 @@ class DatasetListApi(DatasetApiResource):
         for embedding_model in embedding_models:
             model_names.append(f"{embedding_model.model}:{embedding_model.provider.provider}")
 
-        data = [dump_response(DatasetDetailResponse, dataset) for dataset in datasets]
+        data = [_dump_service_dataset_detail(dataset) for dataset in datasets]
         for item in data:
             if item["indexing_technique"] == IndexTechniqueType.HIGH_QUALITY and item["embedding_model_provider"]:
                 item["embedding_model_provider"] = str(ModelProviderID(item["embedding_model_provider"]))
@@ -314,7 +450,7 @@ class DatasetListApi(DatasetApiResource):
             "total": total,
             "page": query.page,
         }
-        return dump_response(DatasetListResponse, response), 200
+        return _dump_service_dataset_list(response), 200
 
     @service_api_ns.doc(
         summary="Create an Empty Knowledge Base",
@@ -387,7 +523,7 @@ class DatasetListApi(DatasetApiResource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return dump_response(DatasetDetailResponse, dataset), 200
+        return _dump_service_dataset_detail(dataset), 200
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>")
@@ -409,7 +545,7 @@ class DatasetApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_dataset")
     @service_api_ns.doc(description="Get a specific dataset by ID")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Dataset retrieved successfully",
@@ -432,7 +568,7 @@ class DatasetApi(DatasetApiResource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        data = dump_response(DatasetDetailResponse, dataset)
+        data = _dump_service_dataset_detail(dataset)
         # check embedding setting
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -464,13 +600,7 @@ class DatasetApi(DatasetApiResource):
             part_users_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
             data.update({"partial_member_list": part_users_list})
 
-        return (
-            DatasetDetailWithPartialMembersResponse.model_validate(data).model_dump(
-                mode="json",
-                exclude={"partial_member_list"} if "partial_member_list" not in data else set(),
-            ),
-            200,
-        )
+        return _dump_service_dataset_with_partial_members(data), 200
 
     @service_api_ns.doc(
         summary="Update Knowledge Base",
@@ -488,7 +618,7 @@ class DatasetApi(DatasetApiResource):
     @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset")
     @service_api_ns.doc(description="Update an existing dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Dataset updated successfully",
@@ -539,20 +669,21 @@ class DatasetApi(DatasetApiResource):
                 retrieval_model.reranking_model.reranking_model_name,
             )
 
-        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
-        DatasetPermissionService.check_permission(
-            current_user,
-            dataset,
-            str(payload.permission) if payload.permission else None,
-            payload.partial_member_list,
-        )
+        if not dify_config.RBAC_ENABLED:
+            # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+            DatasetPermissionService.check_permission(
+                current_user,
+                dataset,
+                str(payload.permission) if payload.permission else None,
+                payload.partial_member_list,
+            )
 
         dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        result_data = dump_response(DatasetDetailResponse, dataset)
+        result_data = _dump_service_dataset_detail(dataset)
         assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
@@ -565,7 +696,7 @@ class DatasetApi(DatasetApiResource):
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
         result_data.update({"partial_member_list": partial_member_list})
 
-        return DatasetDetailWithPartialMembersResponse.model_validate(result_data).model_dump(mode="json"), 200
+        return _dump_service_dataset_with_partial_members(result_data), 200
 
     @service_api_ns.doc(
         summary="Delete Knowledge Base",
@@ -585,7 +716,7 @@ class DatasetApi(DatasetApiResource):
     )
     @service_api_ns.doc("delete_dataset")
     @service_api_ns.doc(description="Delete a dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             204: "Dataset deleted successfully",
@@ -648,7 +779,7 @@ class DocumentStatusApi(DatasetApiResource):
     @service_api_ns.doc(description="Batch update document status")
     @service_api_ns.doc(
         params={
-            "dataset_id": "Dataset ID",
+            "dataset_id": "Knowledge base ID.",
             "action": DOCUMENT_STATUS_ACTION_PARAM,
         }
     )
@@ -927,7 +1058,7 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
     )
     @service_api_ns.doc("get_dataset_tags_binding_status")
     @service_api_ns.doc(description="Get tags bound to a specific dataset")
-    @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
+    @service_api_ns.doc(params={"dataset_id": "Knowledge base ID."})
     @service_api_ns.doc(
         responses={
             200: "Tags retrieved successfully",

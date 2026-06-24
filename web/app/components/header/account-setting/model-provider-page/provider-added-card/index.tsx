@@ -14,10 +14,12 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { IS_CE_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useProviderContextSelector } from '@/context/provider-context'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { renderI18nObject } from '@/i18n-config'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
 import { useModelProviderListExpanded, useSetModelProviderListExpanded } from '../atoms'
 import { ConfigurationMethodEnum } from '../declarations'
 import { useLanguage } from '../hooks'
@@ -65,10 +67,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   }))
   const hasModelList = hasFetchedModelList && !!modelList.length
   const showCollapsedSection = !expanded || !hasFetchedModelList
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const showModelProvider = systemConfig.enabled && MODEL_PROVIDER_QUOTA_GET_PAID.includes(currentProviderName as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
-  const showCredential = supportsPredefinedModel && isCurrentWorkspaceManager
-  const showCustomModelActions = supportsCustomizableModel && isCurrentWorkspaceManager
+  const canManagePlugins = hasPermission(workspacePermissionKeys, 'plugin.manage')
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const canAccessCredentials = canUseCredential || canCreateCredential || canManageCredential
+  const showCredential = supportsPredefinedModel && canAccessCredentials
+  const showCustomModelActions = supportsCustomizableModel && canManagePlugins
 
   const refreshModelList = useCallback((targetProviderName: string) => {
     if (targetProviderName !== currentProviderName)
@@ -241,7 +246,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       </div>
       {
         showCollapsedSection && (
-          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-[11px] pl-2 system-xs-medium text-text-tertiary">
+          <div className="group flex items-center justify-between border-t border-t-divider-subtle py-1.5 pr-2.75 pl-2 system-xs-medium text-text-tertiary">
             {(showModelProvider || !notConfigured) && (
               <button
                 type="button"

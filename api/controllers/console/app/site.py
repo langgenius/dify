@@ -10,9 +10,12 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -85,9 +88,10 @@ class AppSite(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @account_initialization_required
-    @get_app_model
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
@@ -134,9 +138,10 @@ class AppSiteAccessTokenReset(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @account_initialization_required
-    @get_app_model
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 

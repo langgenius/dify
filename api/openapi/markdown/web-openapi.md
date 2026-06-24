@@ -471,9 +471,9 @@ Retrieve paginated list of messages from a conversation in a chat application.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| conversation_id | query | Conversation UUID | Yes | string |
-| first_id | query | First message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
+| conversation_id | query | Conversation ID. | Yes | string |
+| first_id | query | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No | string |
+| limit | query | Number of chat history messages to return per request. | No | integer, <br>**Default:** 20 |
 
 #### Responses
 
@@ -1091,8 +1091,8 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate | boolean |  | No |
-| name | string |  | No |
+| auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
+| name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
 #### EmailCodeLoginSendPayload
 
@@ -1281,7 +1281,7 @@ Parsed multipart form fields for HITL uploads.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string |  | Yes |
+| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### HumanInputFormSubmitResponse
@@ -1371,8 +1371,8 @@ Parsed multipart form fields for HITL uploads.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| rating | string |  | No |
+| content | string | Optional text feedback providing additional detail. | No |
+| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 
@@ -1392,9 +1392,9 @@ Parsed multipart form fields for HITL uploads.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Conversation UUID | Yes |
-| first_id | string | First message ID for pagination | No |
-| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
+| conversation_id | string | Conversation ID. | Yes |
+| first_id | string | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No |
+| limit | integer, <br>**Default:** 20 | Number of chat history messages to return per request. | No |
 
 #### MessageMoreLikeThisQuery
 
@@ -1603,6 +1603,7 @@ Default configuration for form inputs.
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
@@ -1613,6 +1614,7 @@ Default configuration for form inputs.
 | max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
@@ -1631,10 +1633,10 @@ Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id | string | Message ID | No |
+| message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
-| text | string | Text to convert to audio | No |
-| voice | string | Voice to use for TTS | No |
+| text | string | Speech content to convert. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### UserActionConfig
 
@@ -1711,5 +1713,5 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
+| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |

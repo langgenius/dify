@@ -15,7 +15,7 @@
   "conversion.confirm.content": "이 작업은 영구적입니다. 이전 방법으로 되돌릴 수 없습니다. 변환을 확인하시기 바랍니다.",
   "conversion.confirm.title": "확인",
   "conversion.descriptionChunk1": "이제 문서 처리에 지식 파이프라인을 사용하도록 기존 기술 자료를 변환할 수 있습니다",
-  "conversion.descriptionChunk2": "— 마켓플레이스의 플러그인에 액세스할 수 있는 보다 개방적이고 유연한 접근 방식입니다. 이렇게 하면 향후 모든 문서에 새로운 처리 방법이 적용됩니다.",
+  "conversion.descriptionChunk2": " — 마켓플레이스의 플러그인에 액세스할 수 있는 보다 개방적이고 유연한 접근 방식입니다. 이렇게 하면 향후 모든 문서에 새로운 처리 방법이 적용됩니다.",
   "conversion.errorMessage": "데이터 세트를 파이프라인으로 변환하지 못했습니다.",
   "conversion.successMessage": "데이터 세트를 파이프라인으로 성공적으로 변환했습니다.",
   "conversion.title": "지식 파이프라인으로 변환",

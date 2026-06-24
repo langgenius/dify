@@ -181,6 +181,8 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+    enable_learn_app: bool = True
+    rbac_enabled: bool = False
 
 
 class FeatureService:
@@ -247,6 +249,7 @@ class FeatureService:
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
+        system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
 
@@ -280,6 +283,7 @@ class FeatureService:
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
+        system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:

@@ -25,7 +25,10 @@ logger = logging.getLogger(__name__)
 
 
 class FilePreviewQuery(BaseModel):
-    as_attachment: bool = Field(default=False, description="Download as attachment")
+    as_attachment: bool = Field(
+        default=False,
+        description="If `true`, forces the file to download as an attachment instead of previewing in browser.",
+    )
 
 
 register_schema_model(service_api_ns, FilePreviewQuery)
@@ -83,7 +86,14 @@ class FilePreviewApi(Resource):
     @binary_response(service_api_ns, FILE_PREVIEW_RESPONSE_MEDIA_TYPES)
     @service_api_ns.doc("preview_file")
     @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
-    @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})
+    @service_api_ns.doc(
+        params={
+            "file_id": (
+                "The unique identifier of the file to preview, obtained from the "
+                "[Upload File](/api-reference/files/upload-file) API response."
+            )
+        }
+    )
     @service_api_ns.doc(
         responses={
             200: "File retrieved successfully",

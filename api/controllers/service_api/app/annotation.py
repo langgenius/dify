@@ -10,6 +10,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import Annotation, AnnotationList
 from fields.base import ResponseModel
@@ -23,20 +24,25 @@ from services.annotation_service import (
 
 
 class AnnotationCreatePayload(BaseModel):
-    question: str = Field(description="Annotation question")
-    answer: str = Field(description="Annotation answer")
+    question: str = Field(description="Annotation question.")
+    answer: str = Field(description="Annotation answer.")
 
 
 class AnnotationReplyActionPayload(BaseModel):
-    score_threshold: float = Field(description="Score threshold for annotation matching")
-    embedding_provider_name: str = Field(description="Embedding provider name")
-    embedding_model_name: str = Field(description="Embedding model name")
+    score_threshold: float = Field(
+        description=(
+            "Minimum similarity score for an annotation to be considered a match. Higher values require closer matches."
+        ),
+        json_schema_extra={"format": "float"},
+    )
+    embedding_provider_name: str = Field(description="Name of the embedding model provider.")
+    embedding_model_name: str = Field(description="Name of the embedding model to use for annotation matching.")
 
 
 class AnnotationListQuery(BaseModel):
-    page: int = Field(default=1, ge=1, description="Page number")
-    limit: int = Field(default=20, ge=1, description="Number of annotations per page")
-    keyword: str = Field(default="", description="Keyword to search annotations")
+    page: int = Field(default=1, ge=1, description="Page number for pagination.")
+    limit: int = Field(default=20, ge=1, description="Number of items per page.")
+    keyword: str = Field(default="", description="Keyword to filter annotations by question or answer content.")
 
 
 class AnnotationJobStatusResponse(ResponseModel):
@@ -46,7 +52,7 @@ class AnnotationJobStatusResponse(ResponseModel):
 
 
 ANNOTATION_REPLY_ACTION_PARAM = {
-    "description": "Action to perform: 'enable' or 'disable'",
+    "description": "Action to perform: `enable` or `disable`.",
     "enum": ["enable", "disable"],
     "type": "string",
 }
@@ -125,7 +131,15 @@ class AnnotationReplyActionStatusApi(Resource):
     )
     @service_api_ns.doc("get_annotation_reply_action_status")
     @service_api_ns.doc(description="Get the status of an annotation reply action job")
-    @service_api_ns.doc(params={"action": "Action type", "job_id": "Job ID"})
+    @service_api_ns.doc(
+        params={
+            "action": ANNOTATION_REPLY_ACTION_PARAM,
+            "job_id": (
+                "Job ID returned by "
+                "[Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply)."
+            ),
+        }
+    )
     @service_api_ns.doc(
         responses={
             200: "Job status retrieved successfully",
@@ -248,7 +262,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("update_annotation")
     @service_api_ns.doc(description="Update an existing annotation")
-    @service_api_ns.doc(params={"annotation_id": "Annotation ID"})
+    @service_api_ns.doc(params={"annotation_id": "The unique identifier of the annotation to update."})
     @service_api_ns.doc(
         responses={
             200: "Annotation updated successfully",
@@ -268,7 +282,9 @@ class AnnotationUpdateDeleteApi(Resource):
         """Update an existing annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(
+            update_args, app_model.id, str(annotation_id), db.session
+        )
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
@@ -284,7 +300,7 @@ class AnnotationUpdateDeleteApi(Resource):
     )
     @service_api_ns.doc("delete_annotation")
     @service_api_ns.doc(description="Delete an annotation")
-    @service_api_ns.doc(params={"annotation_id": "Annotation ID"})
+    @service_api_ns.doc(params={"annotation_id": "The unique identifier of the annotation to delete."})
     @service_api_ns.doc(
         responses={
             204: "Annotation deleted successfully",
@@ -297,5 +313,5 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     def delete(self, app_model: App, annotation_id: UUID):
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id))
+        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id), db.session)
         return "", 204

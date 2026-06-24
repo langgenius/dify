@@ -10,8 +10,28 @@ const config: KnipConfig = {
     'tsslint.config.ts',
     'dev-proxy.config.ts',
   ],
+  project: [
+    '**/*.{js,mjs,cjs,jsx,ts,tsx,mts,cts,css}!',
+    '!**/*.{bench,test,test-d,spec,spec-d}.?(c|m)[jt]s?(x)!',
+    '!**/*.test-utils.{ts,tsx}!',
+    '!**/__mocks__/**!',
+    '!**/__tests__/**!',
+    '!**/*.stories.{js,jsx,ts,tsx}!',
+    '!.storybook/**!',
+    '!context/provider-context-mock.tsx!',
+    '!eslint.constants.mjs!',
+    '!plugins/**!',
+    '!test/**!',
+    '!**/test-helpers.{ts,tsx}!',
+    '!**/test-utils.{ts,tsx}!',
+    '!vitest.setup.ts!',
+  ],
   ignore: [
     'public/**',
+  ],
+  ignoreFiles: [
+    'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
+    'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
   ],
   ignoreBinaries: [
     'only-allow',

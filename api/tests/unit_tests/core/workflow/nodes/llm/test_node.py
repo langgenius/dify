@@ -47,7 +47,12 @@ from graphon.model_runtime.entities.model_entities import (
     ParameterType,
 )
 from graphon.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from graphon.node_events import ModelInvokeCompletedEvent, RunRetrieverResourceEvent, StreamChunkEvent
+from graphon.node_events import (
+    ModelInvokeCompletedEvent,
+    RunRetrieverResourceEvent,
+    StreamChunkEvent,
+    StreamReasoningEvent,
+)
 from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.llm import llm_utils
 from graphon.nodes.llm.entities import (
@@ -1396,7 +1401,7 @@ class TestSaveMultimodalOutputAndConvertResultToMarkdown:
         mock_file_saver.save_binary_string.assert_not_called()
         mock_file_saver.save_remote_url.assert_not_called()
 
-    def test_unknown_item_type(self, llm_node_for_multimodal, caplog):
+    def test_unknown_item_type(self, llm_node_for_multimodal, caplog: pytest.LogCaptureFixture):
         llm_node, mock_file_saver = llm_node_for_multimodal
         unknown_item = self._UnknownItem()
 
@@ -1576,9 +1581,13 @@ def test_handle_invoke_result_streaming_collects_text_metrics_and_structured_out
 
     assert events[0] == first_chunk
 
-    assert events[1] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
+    assert events[1] == StreamReasoningEvent(selector=["node-1", "reasoning_content"], chunk="plan", is_final=False)
 
-    completed = events[2]
+    assert events[2] == StreamChunkEvent(selector=["node-1", "text"], chunk="answer", is_final=False)
+
+    assert events[3] == StreamReasoningEvent(selector=["node-1", "reasoning_content"], chunk="", is_final=True)
+
+    completed = events[4]
     assert isinstance(completed, ModelInvokeCompletedEvent)
     assert completed.text == "answer"
     assert completed.reasoning_content == "plan"

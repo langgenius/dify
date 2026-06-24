@@ -226,6 +226,7 @@
   "newAppFromTemplate.sidebar.Workflow": "گردش",
   "newAppFromTemplate.sidebar.Writing": "نوشتن",
   "noAccessPermission": "دسترسی به برنامه وب مجاز نیست",
+  "noAccessResourcePermission": "مجوز دسترسی به این منبع را ندارید",
   "noUserInputNode": "ورودی کاربر پیدا نشد",
   "notPublishedYet": "اپ هنوز منتشر نشده است",
   "openInExplore": "باز کردن در کاوش",

@@ -8,17 +8,25 @@ from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidator
+from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
+    AgentDriveFile,
     AgentScope,
     AgentStatus,
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import DeclaredOutputConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
+from services.agent.composer_validator import ComposerConfigValidator
+from services.entities.agent_entities import (
+    ComposerSavePayload,
+    ComposerSaveStrategy,
+    ComposerSoulLockPayload,
+    ComposerVariant,
+)
 
 
 class WorkflowAgentPublishService:
@@ -67,10 +75,130 @@ class WorkflowAgentPublishService:
     @classmethod
     def validate_agent_nodes_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
         WorkflowAgentNodeValidator.validate_published_workflow(session=session, workflow=draft_workflow)
+        cls._validate_composer_configs_for_publish(session=session, draft_workflow=draft_workflow)
 
     @classmethod
     def validate_agent_nodes_for_draft_sync(cls, *, session: Session, draft_workflow: Workflow) -> None:
         WorkflowAgentNodeValidator.validate_draft_workflow(session=session, workflow=draft_workflow)
+
+    @classmethod
+    def _validate_composer_configs_for_publish(cls, *, session: Session, draft_workflow: Workflow) -> None:
+        node_ids = {
+            node_id for node_id, _node_data in WorkflowAgentNodeValidator.iter_agent_v2_nodes(draft_workflow.graph_dict)
+        }
+        if not node_ids:
+            return
+
+        bindings = session.scalars(
+            select(WorkflowAgentNodeBinding).where(
+                WorkflowAgentNodeBinding.tenant_id == draft_workflow.tenant_id,
+                WorkflowAgentNodeBinding.app_id == draft_workflow.app_id,
+                WorkflowAgentNodeBinding.workflow_id == draft_workflow.id,
+                WorkflowAgentNodeBinding.workflow_version == draft_workflow.version,
+                WorkflowAgentNodeBinding.node_id.in_(node_ids),
+            )
+        ).all()
+        for binding in bindings:
+            cls._validate_binding_composer_config_for_publish(session=session, binding=binding)
+
+    @classmethod
+    def _validate_binding_composer_config_for_publish(
+        cls,
+        *,
+        session: Session,
+        binding: WorkflowAgentNodeBinding,
+    ) -> None:
+        if not binding.agent_id:
+            return
+
+        agent = session.scalar(
+            select(Agent)
+            .where(
+                Agent.tenant_id == binding.tenant_id,
+                Agent.id == binding.agent_id,
+            )
+            .limit(1)
+        )
+        if agent is None:
+            return
+
+        snapshot_id = (
+            agent.active_config_snapshot_id
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
+            else binding.current_snapshot_id
+        )
+        if snapshot_id is None:
+            return
+
+        snapshot = session.scalar(
+            select(AgentConfigSnapshot)
+            .where(
+                AgentConfigSnapshot.tenant_id == binding.tenant_id,
+                AgentConfigSnapshot.agent_id == agent.id,
+                AgentConfigSnapshot.id == snapshot_id,
+            )
+            .limit(1)
+        )
+        if snapshot is None:
+            return
+
+        agent_soul = AgentSoulConfig.model_validate(snapshot.config_snapshot_dict)
+        node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+        payload = ComposerSavePayload.model_construct(
+            variant=ComposerVariant.WORKFLOW,
+            save_strategy=ComposerSaveStrategy.NODE_JOB_ONLY,
+            soul_lock=ComposerSoulLockPayload(locked=False),
+            agent_soul=agent_soul,
+            node_job=node_job,
+        )
+        ComposerConfigValidator.validate_publish_payload(payload)
+        # ENG-623 §4.4: drive-backed refs must point at real drive rows before
+        # publishing. This stays out of composer save so autosave/save-draft can
+        # persist incomplete refs and surface them as non-blocking findings.
+        cls._require_drive_refs_resolved_for_publish(session=session, binding=binding, agent_soul=agent_soul)
+
+    @classmethod
+    def _require_drive_refs_resolved_for_publish(
+        cls,
+        *,
+        session: Session,
+        binding: WorkflowAgentNodeBinding,
+        agent_soul: AgentSoulConfig,
+    ) -> None:
+        from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
+        from services.agent_drive_service import decode_drive_mention_ref
+
+        wanted_keys: dict[str, tuple[str, str]] = {}
+        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
+            if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
+                continue
+            drive_key = decode_drive_mention_ref(mention.ref_id)
+            if not drive_key:
+                continue
+            code = "skill_ref_dangling" if mention.kind == MentionKind.SKILL else "file_ref_dangling"
+            wanted_keys[drive_key] = (code, mention.label or drive_key)
+        if not wanted_keys or not binding.agent_id:
+            return
+
+        existing_keys = set(
+            session.scalars(
+                select(AgentDriveFile.key).where(
+                    AgentDriveFile.tenant_id == binding.tenant_id,
+                    AgentDriveFile.agent_id == binding.agent_id,
+                    AgentDriveFile.key.in_(sorted(wanted_keys)),
+                )
+            ).all()
+        )
+        messages: list[str] = []
+        for key, (code, display) in wanted_keys.items():
+            if key in existing_keys:
+                continue
+            kind = "skill" if code == "skill_ref_dangling" else "file"
+            messages.append(f"{code}: {kind} '{display}' has no drive entry for key '{key}'.")
+        if messages:
+            raise WorkflowAgentNodeValidationError(
+                f"Workflow Agent node {binding.node_id} has invalid Agent Soul drive refs: {'; '.join(messages)}"
+            )
 
     @classmethod
     def sync_agent_bindings_for_draft(

@@ -35,7 +35,7 @@ export function CollapsibleTrigger({
   return (
     <BaseCollapsible.Trigger
       className={cn(
-        'group flex min-h-8 w-full touch-manipulation items-center justify-between gap-2 rounded-lg px-2.5 text-left system-sm-medium text-text-secondary outline-hidden select-none',
+        'group flex min-h-8 w-full touch-manipulation items-center justify-between gap-2 rounded-lg px-2.5 text-start system-sm-medium text-text-secondary outline-hidden select-none',
         'hover:not-data-disabled:bg-components-panel-on-panel-item-bg-hover hover:not-data-disabled:text-text-primary',
         'focus-visible:ring-2 focus-visible:ring-state-accent-solid',
         'data-panel-open:text-text-primary',

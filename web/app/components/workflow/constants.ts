@@ -121,13 +121,22 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.DocExtractor,
   BlockEnum.ListFilter,
   BlockEnum.Agent,
+  BlockEnum.AgentV2,
   BlockEnum.DataSource,
   BlockEnum.HumanInput,
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [
   {
-    variable: 'usage',
+    variable: 'text',
+    type: VarType.string,
+  },
+  {
+    variable: 'files',
+    type: VarType.arrayFile,
+  },
+  {
+    variable: 'json',
     type: VarType.object,
   },
 ]

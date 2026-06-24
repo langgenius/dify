@@ -696,7 +696,7 @@ export const zParameters = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
@@ -840,6 +840,7 @@ export const zSystemFeatureModel = z.object({
   enable_email_code_login: z.boolean().default(false),
   enable_email_password_login: z.boolean().default(true),
   enable_explore_banner: z.boolean().default(false),
+  enable_learn_app: z.boolean().default(true),
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
   enable_trial_app: z.boolean().default(false),
@@ -861,6 +862,7 @@ export const zSystemFeatureModel = z.object({
     restrict_to_marketplace_only: false,
   }),
   plugin_manager: zPluginManagerModel.default({ enabled: false }),
+  rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
   webapp_auth: zWebAppAuthModel.default({
@@ -906,7 +908,16 @@ export const zWebMessageInfiniteScrollPagination = z.object({
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
 

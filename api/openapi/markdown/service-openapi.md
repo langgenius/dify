@@ -29,7 +29,7 @@ Deprecated legacy alias for creating a new document by providing text content. U
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -55,8 +55,8 @@ Permanently delete a document and all its chunks from the knowledge base.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -77,9 +77,9 @@ Retrieve detailed information about a specific document, including its indexing 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| metadata | query | Metadata response mode | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| metadata | query | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_metadata`. | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
 
 #### Responses
 
@@ -98,8 +98,8 @@ Update an existing document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -126,8 +126,8 @@ Deprecated legacy alias for updating an existing document by providing text cont
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -156,8 +156,8 @@ Retrieve a paginated list of all feedback submitted for messages in this applica
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| limit | query | Number of feedbacks per page | No | integer, <br>**Default:** 20 |
-| page | query | Page number | No | integer, <br>**Default:** 1 |
+| limit | query | Number of records per page. | No | integer, <br>**Default:** 20 |
+| page | query | Page number for pagination. | No | integer, <br>**Default:** 1 |
 
 #### Responses
 
@@ -176,7 +176,7 @@ Submit feedback for a message. End users can rate messages as `like` or `dislike
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| message_id | path | Message ID | Yes | string (uuid) |
+| message_id | path | Message ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -205,7 +205,7 @@ Enables or disables the annotation reply feature. Requires embedding model confi
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable' or 'disable' | Yes | string, <br>**Available values:** "disable", "enable" |
+| action | path | Action to perform: `enable` or `disable`. | Yes | string, <br>**Available values:** "disable", "enable" |
 
 #### Request Body
 
@@ -230,8 +230,8 @@ Retrieves the status of an asynchronous annotation reply configuration job start
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action type | Yes | string |
-| job_id | path | Job ID | Yes | string (uuid) |
+| action | path | Action to perform: `enable` or `disable`. | Yes | string, <br>**Available values:** "disable", "enable" |
+| job_id | path | Job ID returned by [Configure Annotation Reply](/api-reference/annotations/configure-annotation-reply). | Yes | string (uuid) |
 
 #### Responses
 
@@ -252,9 +252,9 @@ Retrieves a paginated list of annotations for the application. Supports keyword 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| keyword | query | Keyword to search annotations | No | string |
-| limit | query | Number of annotations per page | No | integer, <br>**Default:** 20 |
-| page | query | Page number | No | integer, <br>**Default:** 1 |
+| keyword | query | Keyword to filter annotations by question or answer content. | No | string |
+| limit | query | Number of items per page. | No | integer, <br>**Default:** 20 |
+| page | query | Page number for pagination. | No | integer, <br>**Default:** 1 |
 
 #### Responses
 
@@ -292,7 +292,7 @@ Deletes an annotation and its associated hit history.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path | Annotation ID | Yes | string (uuid) |
+| annotation_id | path | The unique identifier of the annotation to delete. | Yes | string (uuid) |
 
 #### Responses
 
@@ -312,7 +312,7 @@ Updates the question and answer of an existing annotation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path | Annotation ID | Yes | string (uuid) |
+| annotation_id | path | The unique identifier of the annotation to update. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -411,7 +411,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | The ID of the task to stop | Yes | string |
+| task_id | path | Task ID, obtained from a streaming chunk returned by the Send Chat Message API. | Yes | string |
 
 #### Request Body
 
@@ -439,7 +439,7 @@ Get next questions suggestions for the current message.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | path | Message ID | Yes | string (uuid) |
-| user | query | End user identifier | Yes | string |
+| user | query | User identifier, used for end-user context. | Yes | string |
 
 #### Responses
 
@@ -461,10 +461,10 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | Workflow run ID | Yes | string |
-| continue_on_pause | query | Keep the stream open across workflow_paused events | No | boolean |
-| include_state_snapshot | query | Replay from persisted state snapshot | No | boolean |
-| user | query | End user identifier | Yes | string |
+| task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
+| continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
+| include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
+| user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
 
 #### Responses
 
@@ -485,14 +485,14 @@ Retrieve paginated workflow execution logs with filtering options.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| created_at__after | query |  | No | string |
-| created_at__before | query |  | No | string |
-| created_by_account | query |  | No | string |
-| created_by_end_user_session_id | query |  | No | string |
-| keyword | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 20 |
-| page | query |  | No | integer, <br>**Default:** 1 |
-| status | query |  | No | string, <br>**Available values:** "failed", "stopped", "succeeded" |
+| created_at__after | query | Filter logs created after this ISO 8601 timestamp. | No | dateTime |
+| created_at__before | query | Filter logs created before this ISO 8601 timestamp. | No | dateTime |
+| created_by_account | query | Filter by account ID. | No | string |
+| created_by_end_user_session_id | query | Filter by end user session ID. | No | string |
+| keyword | query | Keyword to search in logs. | No | string |
+| limit | query | Number of items per page. | No | integer, <br>**Default:** 20 |
+| page | query | Page number for pagination. | No | integer, <br>**Default:** 1 |
+| status | query | Filter by execution status. | No | string, <br>**Available values:** "failed", "stopped", "succeeded" |
 
 #### Responses
 
@@ -511,7 +511,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| workflow_run_id | path | Workflow run ID | Yes | string |
+| workflow_run_id | path | Workflow run ID, obtained from the workflow execution response or streaming events. | Yes | string |
 
 #### Responses
 
@@ -558,7 +558,7 @@ Stops a chat message generation task. Only supported in `streaming` mode.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | The ID of the task to stop | Yes | string |
+| task_id | path | Task ID, obtained from a streaming chunk returned by the Send Chat Message API. | Yes | string |
 
 #### Request Body
 
@@ -586,7 +586,7 @@ Get next questions suggestions for the current message.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | message_id | path | Message ID | Yes | string (uuid) |
-| user | query | End user identifier | Yes | string |
+| user | query | User identifier, used for end-user context. | Yes | string |
 
 #### Responses
 
@@ -634,7 +634,7 @@ Stops a completion message generation task. Only supported in `streaming` mode.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | The ID of the task to stop | Yes | string |
+| task_id | path | Task ID, obtained from a streaming chunk returned by the Send Completion Message API. | Yes | string |
 
 #### Request Body
 
@@ -664,10 +664,10 @@ Retrieve the conversation list for the current user, ordered by most recently ac
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| last_id | query | Last conversation ID for pagination | No | string |
-| limit | query | Number of conversations to return | No | integer, <br>**Default:** 20 |
-| sort_by | query | Sort order for conversations | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
-| user | query | End user identifier | No | string |
+| last_id | query | The ID of the last record on the current page. Used to fetch the next page. | No | string |
+| limit | query | Number of records to return. | No | integer, <br>**Default:** 20 |
+| sort_by | query | Sorting field. Use the `-` prefix for descending order. | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| user | query | User identifier, used for end-user context. | No | string |
 
 #### Responses
 
@@ -688,7 +688,7 @@ Delete a conversation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string (uuid) |
+| c_id | path | Conversation ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -715,7 +715,7 @@ Rename a conversation or auto-generate a name. The conversation name is used for
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string (uuid) |
+| c_id | path | Conversation ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -742,11 +742,11 @@ Retrieve variables from a specific conversation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string (uuid) |
-| last_id | query | Last variable ID for pagination | No | string |
-| limit | query | Number of variables to return | No | integer, <br>**Default:** 20 |
-| user | query | End user identifier | No | string |
-| variable_name | query | Filter variables by name | No | string |
+| c_id | path | Conversation ID. | Yes | string (uuid) |
+| last_id | query | The ID of the last record on the current page. Used to fetch the next page. | No | string |
+| limit | query | Number of records to return. | No | integer, <br>**Default:** 20 |
+| user | query | User identifier, used for end-user context. | No | string |
+| variable_name | query | Filter variables by a specific name. | No | string |
 
 #### Responses
 
@@ -767,8 +767,8 @@ Update the value of a specific conversation variable. The value must match the e
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path | Conversation ID | Yes | string (uuid) |
-| variable_id | path | Variable ID | Yes | string (uuid) |
+| c_id | path | Conversation ID. | Yes | string (uuid) |
+| variable_id | path | Variable ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -795,10 +795,10 @@ Returns historical chat records in a scrolling load format, with the first page 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| conversation_id | query | Conversation UUID | Yes | string |
-| first_id | query | First message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
-| user | query | End user identifier | No | string |
+| conversation_id | query | Conversation ID. | Yes | string |
+| first_id | query | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No | string |
+| limit | query | Number of chat history messages to return per request. | No | integer, <br>**Default:** 20 |
+| user | query | User identifier, used for end-user context. | No | string |
 
 #### Responses
 
@@ -822,11 +822,11 @@ Returns a paginated list of knowledge bases. Supports filtering by keyword and t
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| include_all | query | Include all datasets | No | boolean |
-| keyword | query | Search keyword | No | string |
-| limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
-| page | query | Page number | No | integer, <br>**Default:** 1 |
-| tag_ids | query | Filter by tag IDs | No | [ string ] |
+| include_all | query | Whether to include all knowledge bases regardless of permissions. | No | boolean |
+| keyword | query | Search keyword to filter by name. | No | string |
+| limit | query | Number of items per page. Server caps at `100`. | No | integer, <br>**Default:** 20 |
+| page | query | Page number to retrieve. | No | integer, <br>**Default:** 1 |
+| tag_ids | query | Tag IDs to filter by. | No | [ string ] |
 
 #### Responses
 
@@ -866,7 +866,7 @@ Permanently delete a knowledge base and all its documents. The knowledge base mu
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -887,7 +887,7 @@ Retrieve detailed information about a specific knowledge base, including its emb
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -907,7 +907,7 @@ Update the name, description, permissions, or retrieval settings of an existing 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -933,7 +933,7 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -961,7 +961,7 @@ Performs a search query against a knowledge base to retrieve the most relevant c
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1014,8 +1014,8 @@ List the datasource nodes configured in the knowledge pipeline. Each node includ
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| is_published | query |  | No | boolean, <br>**Default:** true |
-| dataset_id | path |  | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| is_published | query | Whether to retrieve nodes from the published or draft pipeline. `true` returns nodes from the published version, `false` returns nodes from the draft. | No | boolean, <br>**Default:** true |
 
 #### Responses
 
@@ -1035,8 +1035,8 @@ Execute a single datasource node within the knowledge pipeline. Returns a stream
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string (uuid) |
-| node_id | path |  | Yes | string |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| node_id | path | ID of the datasource node to execute. | Yes | string |
 
 #### Request Body
 
@@ -1062,7 +1062,7 @@ Execute the full knowledge pipeline for a knowledge base. Supports both streamin
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1200,7 +1200,7 @@ Returns the list of tags bound to a specific knowledge base.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1222,7 +1222,7 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1248,7 +1248,7 @@ Create a document from raw text content. The document is processed asynchronousl
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1277,7 +1277,7 @@ Create a document by uploading a file. Supports common document formats (PDF, TX
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1303,11 +1303,11 @@ Returns a paginated list of documents in the knowledge base. Supports filtering 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| keyword | query | Search keyword | No | string |
-| limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
-| page | query | Page number | No | integer, <br>**Default:** 1 |
-| status | query | Document status filter | No | string |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| keyword | query | Search keyword to filter by document name. | No | string |
+| limit | query | Number of items per page. Server caps at `100`. | No | integer, <br>**Default:** 20 |
+| page | query | Page number to retrieve. | No | integer, <br>**Default:** 1 |
+| status | query | Filter by display status. | No | string, <br>**Available values:** "archived", "available", "disabled", "error", "indexing", "paused", "queuing" |
 
 #### Responses
 
@@ -1327,7 +1327,7 @@ Download multiple uploaded-file documents as a single ZIP archive. Accepts up to
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1354,7 +1354,7 @@ Enable, disable, archive, or unarchive multiple documents at once.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path | Action to perform: 'enable', 'disable', 'archive', or 'un_archive' | Yes | string, <br>**Available values:** "archive", "disable", "enable", "un_archive" |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1381,8 +1381,8 @@ Check the indexing progress of documents in a batch. Returns the current process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| batch | path | Batch ID | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| batch | path | Batch ID. | Yes | string |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1402,8 +1402,8 @@ Permanently delete a document and all its chunks from the knowledge base.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1424,9 +1424,9 @@ Retrieve detailed information about a specific document, including its indexing 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| metadata | query | Metadata response mode | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| metadata | query | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_metadata`. | No | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all |
 
 #### Responses
 
@@ -1445,8 +1445,8 @@ Update an existing document by uploading a file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1472,8 +1472,8 @@ Get a signed download URL for a document's original uploaded file.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1496,8 +1496,8 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1524,8 +1524,8 @@ Update an existing document's text content, name, or processing configuration. R
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1555,8 +1555,8 @@ Update an existing document by uploading a new file. Re-triggers indexing — us
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1586,7 +1586,7 @@ Update metadata values for multiple documents at once. Each document in the requ
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1612,7 +1612,7 @@ Returns the list of all metadata fields (both custom and built-in) for the knowl
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1632,7 +1632,7 @@ Create a custom metadata field for the knowledge base. Metadata fields can be us
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1658,7 +1658,7 @@ Returns the list of built-in metadata fields provided by the system (e.g., docum
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1677,8 +1677,8 @@ Enable or disable built-in metadata fields for the knowledge base.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| action | path | Action to perform: 'enable' or 'disable' | Yes | string, <br>**Available values:** "disable", "enable" |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| action | path | `enable` to activate built-in metadata fields, `disable` to deactivate them. | Yes | string, <br>**Available values:** "disable", "enable" |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1698,8 +1698,8 @@ Permanently delete a custom metadata field. Documents using this field will lose
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| metadata_id | path | Metadata ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| metadata_id | path | Metadata field ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1719,8 +1719,8 @@ Rename a custom metadata field.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| metadata_id | path | Metadata ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| metadata_id | path | Metadata field ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1749,12 +1749,12 @@ Returns a paginated list of chunks within a document. Supports filtering by keyw
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| keyword | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 20 |
-| page | query |  | No | integer, <br>**Default:** 1 |
-| status | query |  | No | [ string ] |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| keyword | query | Search keyword. | No | string |
+| limit | query | Number of items per page. Server caps at `100`. | No | integer, <br>**Default:** 20 |
+| page | query | Page number to retrieve. | No | integer, <br>**Default:** 1 |
+| status | query | Filter chunks by indexing status, such as `completed`, `indexing`, or `error`. | No | [ string ] |
 
 #### Responses
 
@@ -1774,8 +1774,8 @@ Create one or more chunks within a document. Each chunk can include optional key
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1802,9 +1802,9 @@ Permanently delete a chunk from the document.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| segment_id | path | Segment ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| segment_id | path | Chunk ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1824,9 +1824,9 @@ Retrieve detailed information about a specific chunk, including its content, key
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| segment_id | path | Segment ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| segment_id | path | Chunk ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1846,9 +1846,9 @@ Update a chunk's content, keywords, or answer. Re-triggers indexing for the modi
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| segment_id | path | Segment ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| segment_id | path | Chunk ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1874,12 +1874,12 @@ Returns a paginated list of child chunks under a specific parent chunk.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| segment_id | path | Parent segment ID | Yes | string (uuid) |
-| keyword | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 20 |
-| page | query |  | No | integer, <br>**Default:** 1 |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| segment_id | path | Chunk ID. | Yes | string (uuid) |
+| keyword | query | Search keyword. | No | string |
+| limit | query | Number of items per page. Server caps at `100`. | No | integer, <br>**Default:** 20 |
+| page | query | Page number to retrieve. | No | integer, <br>**Default:** 1 |
 
 #### Responses
 
@@ -1899,9 +1899,9 @@ Create a child chunk under the specified segment.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| segment_id | path | Parent segment ID | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| segment_id | path | Chunk ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1928,10 +1928,10 @@ Permanently delete a child chunk from its parent chunk.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID | Yes | string (uuid) |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| segment_id | path | Parent segment ID | Yes | string (uuid) |
+| child_chunk_id | path | Child chunk ID. | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| segment_id | path | Chunk ID. | Yes | string (uuid) |
 
 #### Responses
 
@@ -1952,10 +1952,10 @@ Update the content of an existing child chunk.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID | Yes | string (uuid) |
-| dataset_id | path | Dataset ID | Yes | string (uuid) |
-| document_id | path | Document ID | Yes | string (uuid) |
-| segment_id | path | Parent segment ID | Yes | string (uuid) |
+| child_chunk_id | path | Child chunk ID. | Yes | string (uuid) |
+| dataset_id | path | Knowledge base ID. | Yes | string (uuid) |
+| document_id | path | Document ID. | Yes | string (uuid) |
+| segment_id | path | Chunk ID. | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2030,9 +2030,9 @@ Preview or download uploaded files previously uploaded via the [Upload File](/ap
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| file_id | path | UUID of the file to preview | Yes | string (uuid) |
-| as_attachment | query | Download as attachment | No | boolean |
-| user | query | End user identifier | No | string |
+| file_id | path | The unique identifier of the file to preview, obtained from the [Upload File](/api-reference/files/upload-file) API response. | Yes | string (uuid) |
+| as_attachment | query | If `true`, forces the file to download as an attachment instead of previewing in browser. | No | boolean |
+| user | query | User identifier, used for end-user context. | No | string |
 
 #### Responses
 
@@ -2166,10 +2166,10 @@ Resume the Server-Sent Events stream for a workflow run after a pause or a dropp
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | Workflow run ID | Yes | string |
-| continue_on_pause | query | Keep the stream open across workflow_paused events | No | boolean |
-| include_state_snapshot | query | Replay from persisted state snapshot | No | boolean |
-| user | query | End user identifier | Yes | string |
+| task_id | path | Workflow run ID returned by the original workflow run request. | Yes | string |
+| continue_on_pause | query | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No | boolean |
+| include_state_snapshot | query | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No | boolean |
+| user | query | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes | string |
 
 #### Responses
 
@@ -2190,14 +2190,14 @@ Retrieve paginated workflow execution logs with filtering options.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| created_at__after | query |  | No | string |
-| created_at__before | query |  | No | string |
-| created_by_account | query |  | No | string |
-| created_by_end_user_session_id | query |  | No | string |
-| keyword | query |  | No | string |
-| limit | query |  | No | integer, <br>**Default:** 20 |
-| page | query |  | No | integer, <br>**Default:** 1 |
-| status | query |  | No | string, <br>**Available values:** "failed", "stopped", "succeeded" |
+| created_at__after | query | Filter logs created after this ISO 8601 timestamp. | No | dateTime |
+| created_at__before | query | Filter logs created before this ISO 8601 timestamp. | No | dateTime |
+| created_by_account | query | Filter by account ID. | No | string |
+| created_by_end_user_session_id | query | Filter by end user session ID. | No | string |
+| keyword | query | Keyword to search in logs. | No | string |
+| limit | query | Number of items per page. | No | integer, <br>**Default:** 20 |
+| page | query | Page number for pagination. | No | integer, <br>**Default:** 1 |
+| status | query | Filter by execution status. | No | string, <br>**Available values:** "failed", "stopped", "succeeded" |
 
 #### Responses
 
@@ -2239,7 +2239,7 @@ Retrieve the current execution results of a workflow task based on the workflow 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| workflow_run_id | path | Workflow run ID | Yes | string |
+| workflow_run_id | path | Workflow run ID, obtained from the workflow execution response or streaming events. | Yes | string |
 
 #### Responses
 
@@ -2260,7 +2260,7 @@ Stop a running workflow task. Only supported in `streaming` mode.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| task_id | path | Task ID to stop | Yes | string |
+| task_id | path | Task ID, obtained from the streaming chunk returned by the Run Workflow API. | Yes | string |
 
 #### Request Body
 
@@ -2287,7 +2287,7 @@ Execute a specific workflow version identified by its ID. Useful for running a p
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| workflow_id | path | Workflow ID to execute | Yes | string |
+| workflow_id | path | Workflow ID of the specific version to execute. This value is returned in the `workflow_id` field of workflow run responses. | Yes | string |
 
 #### Request Body
 
@@ -2319,7 +2319,7 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| model_type | path | Type of model to retrieve | Yes | string |
+| model_type | path | Type of model to retrieve. | Yes | string, <br>**Available values:** "llm", "moderation", "rerank", "speech2text", "text-embedding", "tts" |
 
 #### Responses
 
@@ -2361,8 +2361,8 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string | Annotation answer | Yes |
-| question | string | Annotation question | Yes |
+| answer | string | Annotation answer. | Yes |
+| question | string | Annotation question. | Yes |
 
 #### AnnotationJobStatusResponse
 
@@ -2386,17 +2386,17 @@ Retrieve the list of available models by type. Primarily used to query `text-emb
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword | string | Keyword to search annotations | No |
-| limit | integer, <br>**Default:** 20 | Number of annotations per page | No |
-| page | integer, <br>**Default:** 1 | Page number | No |
+| keyword | string | Keyword to filter annotations by question or answer content. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. | No |
+| page | integer, <br>**Default:** 1 | Page number for pagination. | No |
 
 #### AnnotationReplyActionPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string | Embedding model name | Yes |
-| embedding_provider_name | string | Embedding provider name | Yes |
-| score_threshold | number | Score threshold for annotation matching | Yes |
+| embedding_model_name | string | Name of the embedding model to use for annotation matching. | Yes |
+| embedding_provider_name | string | Name of the embedding model provider. | Yes |
+| score_threshold | float | Minimum similarity score for an annotation to be considered a match. Higher values require closer matches. | Yes |
 
 #### AppFeedbackListResponse
 
@@ -2466,36 +2466,32 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate_name | boolean, <br>**Default:** true | Auto generate conversation name | No |
-| conversation_id | string | Conversation UUID | No |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
-| query | string |  | Yes |
-| response_mode | string |  | No |
-| retriever_from | string, <br>**Default:** dev |  | No |
-| trace_session_id | string | Trace session ID for observability grouping | No |
-| workflow_id | string | Workflow ID for advanced chat | No |
+| auto_generate_name | boolean, <br>**Default:** true | Auto-generate the conversation title. If `false`, use the Rename Conversation API with `auto_generate: true` to generate the title asynchronously. | No |
+| conversation_id | string | Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new conversation, then pass the returned `conversation_id` in subsequent requests. | No |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
+| query | string | User input or question content. | Yes |
+| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
+| workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
 #### ChatRequestPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate_name | boolean, <br>**Default:** true | Auto generate conversation name | No |
-| conversation_id | string | Conversation UUID | No |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
-| query | string |  | Yes |
-| response_mode | string |  | No |
-| retriever_from | string, <br>**Default:** dev |  | No |
-| trace_session_id | string | Trace session ID for observability grouping | No |
-| user | string | End user identifier | Yes |
-| workflow_id | string | Workflow ID for advanced chat | No |
+| auto_generate_name | boolean, <br>**Default:** true | Auto-generate the conversation title. If `false`, use the Rename Conversation API with `auto_generate: true` to generate the title asynchronously. | No |
+| conversation_id | string | Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new conversation, then pass the returned `conversation_id` in subsequent requests. | No |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
+| query | string | User input or question content. | Yes |
+| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream. | No |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
+| workflow_id | string | Published workflow version ID to execute for advanced chat. If omitted, the app's current published workflow is used. | No |
 
 #### ChildChunkCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### ChildChunkDetailResponse
 
@@ -2507,9 +2503,9 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword | string |  | No |
-| limit | integer, <br>**Default:** 20 |  | No |
-| page | integer, <br>**Default:** 1 |  | No |
+| keyword | string | Search keyword. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. Server caps at `100`. | No |
+| page | integer, <br>**Default:** 1 | Page number to retrieve. | No |
 
 #### ChildChunkListResponse
 
@@ -2538,30 +2534,26 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### CompletionRequestPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
-| query | string |  | No |
-| response_mode | string |  | No |
-| retriever_from | string, <br>**Default:** dev |  | No |
-| trace_session_id | string | Trace session ID for observability grouping | No |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
+| query | string | User input or prompt content. | No |
+| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
 
 #### CompletionRequestPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
-| query | string |  | No |
-| response_mode | string |  | No |
-| retriever_from | string, <br>**Default:** dev |  | No |
-| trace_session_id | string | Trace session ID for observability grouping | No |
-| user | string | End user identifier | Yes |
+| files | [ object ] | File list for multimodal understanding, including images, documents, audio, and video. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Values for app-defined variables. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected variable names and types. | Yes |
+| query | string | User input or prompt content. | No |
+| response_mode | string | Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, the request runs in blocking mode. | No |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### Condition
 
@@ -2569,9 +2561,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
-| name | string |  | Yes |
-| value | string<br>[ string ]<br>integer<br>number |  | No |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | Comparison to apply. String operators (`contains`, `not contains`, `start with`, `end with`, `is`, `is not`, `empty`, `not empty`, `in`, `not in`) act on string or array metadata; numeric operators (`=`, `≠`, `>`, `<`, `≥`, `≤`) act on numeric metadata; time operators (`before`, `after`) act on time metadata.<br>*Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| name | string | Metadata field name to compare against. | Yes |
+| value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
 #### ConversationInfiniteScrollPagination
 
@@ -2585,24 +2577,24 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id | string | Last conversation ID for pagination | No |
-| limit | integer, <br>**Default:** 20 | Number of conversations to return | No |
-| sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sort order for conversations<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
+| last_id | string | The ID of the last record on the current page. Used to fetch the next page. | No |
+| limit | integer, <br>**Default:** 20 | Number of records to return. | No |
+| sort_by | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at | Sorting field. Use the `-` prefix for descending order.<br>*Enum:* `"-created_at"`, `"-updated_at"`, `"created_at"`, `"updated_at"` | No |
 
 #### ConversationRenamePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate | boolean |  | No |
-| name | string |  | No |
+| auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
+| name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
 #### ConversationRenamePayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate | boolean |  | No |
-| name | string |  | No |
-| user | string | End user identifier | No |
+| auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
+| name | string | Conversation name. Required when `auto_generate` is `false`. | No |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
 
 #### ConversationVariableInfiniteScrollPaginationResponse
 
@@ -2628,22 +2620,22 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| value |  |  | Yes |
+| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariableUpdatePayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| user | string | End user identifier | No |
-| value |  |  | Yes |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
+| value |  | The new value for the variable. Must match the variable's expected type. | Yes |
 
 #### ConversationVariablesQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| last_id | string | Last variable ID for pagination | No |
-| limit | integer, <br>**Default:** 20 | Number of variables to return | No |
-| variable_name | string | Filter variables by name | No |
+| last_id | string | The ID of the last record on the current page. Used to fetch the next page. | No |
+| limit | integer, <br>**Default:** 20 | Number of records to return. | No |
+| variable_name | string | Filter variables by a specific name. | No |
 
 #### CustomConfigurationStatus
 
@@ -2671,17 +2663,17 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string | Dataset description (max 400 chars) | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_id | string |  | No |
-| indexing_technique | string |  | No |
-| name | string |  | Yes |
-| permission | [PermissionEnum](#permissionenum) |  | No |
-| provider | string, <br>**Default:** vendor |  | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
-| summary_index_setting | object |  | No |
+| description | string | Description of the knowledge base. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| external_knowledge_api_id | string | ID of the external knowledge API. | No |
+| external_knowledge_id | string | ID of the external knowledge base. | No |
+| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
+| name | string | Name of the knowledge base. | Yes |
+| permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
+| provider | string, <br>**Available values:** "external", "vendor", <br>**Default:** vendor | Knowledge base provider: `vendor` for internal knowledge bases, `external` for external ones.<br>*Enum:* `"external"`, `"vendor"` | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| summary_index_setting | object | Summary index configuration. | No |
 
 #### DatasetDetailResponse
 
@@ -2709,8 +2701,10 @@ Enum class for custom configuration status.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -2749,9 +2743,11 @@ Enum class for custom configuration status.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -2808,11 +2804,11 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| include_all | boolean | Include all datasets | No |
-| keyword | string | Search keyword | No |
-| limit | integer, <br>**Default:** 20 | Number of items per page | No |
-| page | integer, <br>**Default:** 1 | Page number | No |
-| tag_ids | [ string ] | Filter by tag IDs | No |
+| include_all | boolean | Whether to include all knowledge bases regardless of permissions. | No |
+| keyword | string | Search keyword to filter by name. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. Server caps at `100`. | No |
+| page | integer, <br>**Default:** 1 | Page number to retrieve. | No |
+| tag_ids | [ string ] | Tag IDs to filter by. | No |
 
 #### DatasetListResponse
 
@@ -2908,17 +2904,17 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| description | string | Dataset description (max 400 chars) | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_id | string |  | No |
-| external_retrieval_model | object |  | No |
-| indexing_technique | string |  | No |
-| name | string |  | No |
-| partial_member_list | [ object ] |  | No |
-| permission | [PermissionEnum](#permissionenum) |  | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| description | string | Description of the knowledge base. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| external_knowledge_api_id | string | ID of the external knowledge API. | No |
+| external_knowledge_id | string | ID of the external knowledge base. | No |
+| external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
+| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. | No |
+| name | string | Name of the knowledge base. | No |
+| partial_member_list | [ object ] | List of team members with access when `permission` is `partial_members`. | No |
+| permission | [PermissionEnum](#permissionenum) | Controls who can access this knowledge base. `only_me` restricts access to the creator, `all_team_members` grants workspace-wide access, and `partial_members` grants access to specified members. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
 
 #### DatasetVectorSettingResponse
 
@@ -2949,10 +2945,10 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credential_id | string |  | No |
-| datasource_type | string |  | Yes |
-| inputs | object |  | Yes |
-| is_published | boolean |  | Yes |
+| credential_id | string | Datasource credential ID. Uses the default if omitted. | No |
+| datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| inputs | object | Input variables for the datasource node. | Yes |
+| is_published | boolean | Whether to run the published or draft version of the node. `true` runs the published version, `false` runs the draft. | Yes |
 
 #### DatasourcePluginListResponse
 
@@ -2976,7 +2972,7 @@ Enum class for custom configuration status.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| is_published | boolean, <br>**Default:** true |  | No |
+| is_published | boolean, <br>**Default:** true | Whether to retrieve nodes from the published or draft pipeline. `true` returns nodes from the published version, `false` returns nodes from the draft. | No |
 
 #### DocumentAndBatchResponse
 
@@ -2991,7 +2987,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_ids | [ string (uuid) ] |  | Yes |
+| document_ids | [ string (uuid) ] | List of document IDs to include in the ZIP download. | Yes |
 
 #### DocumentDetailResponse
 
@@ -3033,16 +3029,16 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all | Metadata response mode<br>*Enum:* `"all"`, `"only"`, `"without"` | No |
+| metadata | string, <br>**Available values:** "all", "only", "without", <br>**Default:** all | `all` returns all fields including metadata. `only` returns only `id`, `doc_type`, and `doc_metadata`. `without` returns all fields except `doc_metadata`.<br>*Enum:* `"all"`, `"only"`, `"without"` | No |
 
 #### DocumentListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword | string | Search keyword | No |
-| limit | integer, <br>**Default:** 20 | Number of items per page | No |
-| page | integer, <br>**Default:** 1 | Page number | No |
-| status | string | Document status filter | No |
+| keyword | string | Search keyword to filter by document name. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. Server caps at `100`. | No |
+| page | integer, <br>**Default:** 1 | Page number to retrieve. | No |
+| status | string | Filter by display status. | No |
 
 #### DocumentListResponse
 
@@ -3058,9 +3054,9 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_id | string |  | Yes |
-| metadata_list | [ [MetadataDetail](#metadatadetail) ] |  | Yes |
-| partial_update | boolean |  | No |
+| document_id | string | Document ID whose metadata should be updated. | Yes |
+| metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
+| partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
 #### DocumentMetadataResponse
 
@@ -3110,7 +3106,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_ids | [ string ] | Document IDs to update | No |
+| document_ids | [ string ] | List of document IDs to update. | No |
 
 #### DocumentStatusResponse
 
@@ -3133,27 +3129,27 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| doc_form | string, <br>**Default:** text_model |  | No |
-| doc_language | string, <br>**Default:** English |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| indexing_technique | string |  | No |
-| name | string |  | Yes |
-| original_document_id | string |  | No |
-| process_rule | [ProcessRule](#processrule) |  | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
-| text | string |  | Yes |
+| doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model", <br>**Default:** text_model | `text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, `qa_model` for question-answer pair extraction.<br>*Enum:* `"hierarchical_model"`, `"qa_model"`, `"text_model"` | No |
+| doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| indexing_technique | string | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | No |
+| name | string | Document name. | Yes |
+| original_document_id | string | Original document ID for replacement. | No |
+| process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| text | string | Document text content. | Yes |
 
 #### DocumentTextUpdate
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| doc_form | string, <br>**Default:** text_model |  | No |
-| doc_language | string, <br>**Default:** English |  | No |
-| name | string |  | No |
-| process_rule | [ProcessRule](#processrule) |  | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
-| text | string |  | No |
+| doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model", <br>**Default:** text_model | `text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, `qa_model` for question-answer pair extraction.<br>*Enum:* `"hierarchical_model"`, `"qa_model"`, `"text_model"` | No |
+| doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
+| name | string | Document name. Required when `text` is provided. | No |
+| process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
+| text | string | Document text content. | No |
 
 #### EndUserDetail
 
@@ -3192,8 +3188,8 @@ Note: The SQLAlchemy model defines an `is_anonymous` property for Flask-Login se
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer, <br>**Default:** 20 | Number of feedbacks per page | No |
-| page | integer, <br>**Default:** 1 | Page number | No |
+| limit | integer, <br>**Default:** 20 | Number of records per page. | No |
+| page | integer, <br>**Default:** 1 | Page number for pagination. | No |
 
 #### FetchFrom
 
@@ -3228,7 +3224,7 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| as_attachment | boolean | Download as attachment | No |
+| as_attachment | boolean | If `true`, forces the file to download as an attachment instead of previewing in browser. | No |
 
 #### FileResponse
 
@@ -3308,10 +3304,10 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] |  | No |
-| external_retrieval_model | object |  | No |
-| query | string |  | Yes |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
+| query | string | Search query text. | Yes |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
 
 #### HitTestingQuery
 
@@ -3415,16 +3411,16 @@ Enum class for fetch from.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string |  | Yes |
+| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
 #### HumanInputFormSubmitPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| action | string |  | Yes |
+| action | string | ID of the action button the recipient selected. Must match one of the `id` values from the form's `user_actions` list. | Yes |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
-| user | string | End user identifier | Yes |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### HumanInputFormSubmitResponse
 
@@ -3491,16 +3487,16 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| rating | string |  | No |
+| content | string | Optional text feedback providing additional detail. | No |
+| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFeedbackPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
-| rating | string |  | No |
-| user | string | End user identifier | Yes |
+| content | string | Optional text feedback providing additional detail. | No |
+| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### MessageFile
 
@@ -3547,24 +3543,24 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Conversation UUID | Yes |
-| first_id | string | First message ID for pagination | No |
-| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
+| conversation_id | string | Conversation ID. | Yes |
+| first_id | string | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No |
+| limit | integer, <br>**Default:** 20 | Number of chat history messages to return per request. | No |
 
 #### MetadataArgs
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
-| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| name | string | Metadata field name. | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | `string` for text values, `number` for numeric values, `time` for date/time values.<br>*Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### MetadataDetail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| value | string<br>integer<br>number |  | No |
+| id | string | Metadata field ID. | Yes |
+| name | string | Metadata field name. | Yes |
+| value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
 #### MetadataFilteringCondition
 
@@ -3572,8 +3568,8 @@ Metadata Filtering Condition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conditions | [ [Condition](#condition) ] |  | No |
-| logical_operator | string |  | No |
+| conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
+| logical_operator | string | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -3581,13 +3577,13 @@ Metadata operation data
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] |  | Yes |
+| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] | Array of document metadata update operations. Each entry maps a document ID to its metadata values. | Yes |
 
 #### MetadataUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
+| name | string | New metadata field name. | Yes |
 
 #### ModelFeature
 
@@ -3625,7 +3621,7 @@ Enum class for model type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| user | string | End user identifier | No |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
 
 #### ParagraphInputConfig
 
@@ -3666,12 +3662,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| datasource_info_list | [ object ] |  | Yes |
-| datasource_type | string |  | Yes |
-| inputs | object |  | Yes |
-| is_published | boolean |  | Yes |
-| response_mode | string |  | Yes |
-| start_node_id | string |  | Yes |
+| datasource_info_list | [  ] | List of datasource objects to process. The expected item structure depends on `datasource_type`. | Yes |
+| datasource_type | string, <br>**Available values:** "local_file", "online_document", "online_drive", "website_crawl" | Type of the datasource. Determines which fields are expected in `datasource_info_list` items.<br>*Enum:* `"local_file"`, `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| inputs | object | Key-value pairs for pipeline input variables defined in the workflow. Pass `{}` if the pipeline has no input variables. | Yes |
+| is_published | boolean | Whether to run the published or draft version of the pipeline. `true` runs the latest published version; `false` runs the current draft (useful for testing unpublished changes). | Yes |
+| response_mode | string, <br>**Available values:** "blocking", "streaming" | Response mode. Use `streaming` for SSE or `blocking` for JSON.<br>*Enum:* `"blocking"`, `"streaming"` | Yes |
+| start_node_id | string | ID of the datasource node where the run starts. | Yes |
 
 #### PipelineUploadFileResponse
 
@@ -3689,15 +3685,15 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
-| id | string |  | Yes |
+| enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
+| id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
 
 #### ProcessRule
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
-| rules | [Rule](#rule) |  | No |
+| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
+| rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
 
@@ -3748,14 +3744,14 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| user | string | End user identifier | Yes |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### RerankingModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
+| reranking_model_name | string | Name of the reranking model. | No |
+| reranking_provider_name | string | Provider name of the reranking model. | No |
 
 #### ResultResponse
 
@@ -3773,15 +3769,15 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) |  | No |
-| reranking_enable | boolean |  | Yes |
-| reranking_mode | string |  | No |
-| reranking_model | [RerankingModel](#rerankingmodel) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | Yes |
-| search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
-| top_k | integer |  | Yes |
-| weights | [WeightModel](#weightmodel) |  | No |
+| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
+| reranking_enable | boolean | Whether reranking is enabled. | Yes |
+| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
+| score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
+| score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
+| search_method | [RetrievalMethod](#retrievalmethod) | Search method used for retrieval. | Yes |
+| top_k | integer | Maximum number of results to return. | Yes |
+| weights | [WeightModel](#weightmodel) | Weight configuration for hybrid search. | No |
 
 #### RetrieverResource
 
@@ -3809,10 +3805,10 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string |  | No |
-| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] |  | No |
-| segmentation | [Segmentation](#segmentation) |  | No |
-| subchunk_segmentation | [Segmentation](#segmentation) |  | No |
+| parent_mode | string | Parent-child segmentation mode. | No |
+| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
+| segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
+| subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
 
 #### SegmentAttachmentResponse
 
@@ -3829,10 +3825,10 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string |  | No |
-| attachment_ids | [ string ] |  | No |
-| content | string |  | Yes |
-| keywords | [ string ] |  | No |
+| answer | string | Answer content for QA mode. | No |
+| attachment_ids | [ string ] | Attachment file IDs. | No |
+| content | string | Chunk text content. | Yes |
+| keywords | [ string ] | Keywords for the chunk. | No |
 
 #### SegmentCreateListResponse
 
@@ -3845,7 +3841,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segments | [ [SegmentCreateItemPayload](#segmentcreateitempayload) ] |  | Yes |
+| segments | [ [SegmentCreateItemPayload](#segmentcreateitempayload) ] | Array of chunk objects to create. | Yes |
 
 #### SegmentDetailResponse
 
@@ -3858,10 +3854,10 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword | string |  | No |
-| limit | integer, <br>**Default:** 20 |  | No |
-| page | integer, <br>**Default:** 1 |  | No |
-| status | [ string ] |  | No |
+| keyword | string | Search keyword. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. Server caps at `100`. | No |
+| page | integer, <br>**Default:** 1 | Page number to retrieve. | No |
+| status | [ string ] | Filter chunks by indexing status, such as `completed`, `indexing`, or `error`. | No |
 
 #### SegmentListResponse
 
@@ -3910,28 +3906,28 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string |  | No |
-| attachment_ids | [ string ] |  | No |
-| content | string |  | No |
-| enabled | boolean |  | No |
-| keywords | [ string ] |  | No |
-| regenerate_child_chunks | boolean |  | No |
-| summary | string |  | No |
+| answer | string | Updated answer content for QA mode. | No |
+| attachment_ids | [ string ] | Attachment file IDs. | No |
+| content | string | Updated chunk text content. | No |
+| enabled | boolean | Whether the chunk is enabled. | No |
+| keywords | [ string ] | Updated keywords for the chunk. | No |
+| regenerate_child_chunks | boolean | Whether to regenerate child chunks after updating a parent chunk. | No |
+| summary | string | Summary content for summary index. | No |
 
 #### SegmentUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| segment | [SegmentUpdateArgs](#segmentupdateargs) |  | Yes |
+| segment | [SegmentUpdateArgs](#segmentupdateargs) | Chunk update payload. | Yes |
 
 #### Segmentation
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| chunk_overlap | integer |  | No |
-| max_tokens | integer |  | Yes |
+| chunk_overlap | integer | Token overlap between chunks. | No |
+| max_tokens | integer | Maximum token count per chunk. | Yes |
 | separator | string, <br>**Default:**
- |  | No |
+ | Custom separator for splitting text. | No |
 
 #### SelectInputConfig
 
@@ -4040,20 +4036,20 @@ Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| tag_ids | [ string ] |  | Yes |
-| target_id | string |  | Yes |
+| tag_ids | [ string ] | Tag IDs to bind. | Yes |
+| target_id | string | Knowledge base ID to bind the tags to. | Yes |
 
 #### TagCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
+| name | string | Tag name. | Yes |
 
 #### TagDeletePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| tag_id | string |  | Yes |
+| tag_id | string | Tag ID to delete. | Yes |
 
 #### TagUnbindingPayload
 
@@ -4067,27 +4063,27 @@ Accepts either the legacy tag_id payload or the normalized tag_ids payload.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
-| tag_id | string |  | Yes |
+| name | string | Tag name. | Yes |
+| tag_id | string | Tag ID to update. | Yes |
 
 #### TextToAudioPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id | string | Message ID | No |
+| message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
-| text | string | Text to convert to audio | No |
-| voice | string | Voice to use for TTS | No |
+| text | string | Speech content to convert. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### TextToAudioPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id | string | Message ID | No |
+| message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
 | streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
-| text | string | Text to convert to audio | No |
-| user | string | End user identifier | No |
-| voice | string | Voice to use for TTS | No |
+| text | string | Speech content to convert. | No |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### UrlResponse
 
@@ -4118,23 +4114,23 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | Yes |
+| keyword_weight | number | Weight assigned to keyword search results. | Yes |
 
 #### WeightModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) |  | No |
-| vector_setting | [WeightVectorSetting](#weightvectorsetting) |  | No |
-| weight_type | string |  | No |
+| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
+| vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
+| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | Yes |
-| embedding_provider_name | string |  | Yes |
-| vector_weight | number |  | Yes |
+| embedding_model_name | string | Name of the embedding model used for vector search. | Yes |
+| embedding_provider_name | string | Provider of the embedding model used for vector search. | Yes |
+| vector_weight | number | Weight assigned to semantic vector search results. | Yes |
 
 #### WorkflowAppLogPaginationResponse
 
@@ -4163,22 +4159,22 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| continue_on_pause | boolean | Keep the stream open across workflow_paused events | No |
-| include_state_snapshot | boolean | Replay from persisted state snapshot | No |
-| user | string | End user identifier | Yes |
+| continue_on_pause | boolean | Set to `true` to keep the stream open across multiple `workflow_paused` events, which is useful when the workflow has more than one Human Input node in sequence. By default, the stream closes after the first pause. | No |
+| include_state_snapshot | boolean | When `true`, replay from the persisted state snapshot to include a status summary of already-executed nodes before streaming new events. | No |
+| user | string | End-user identifier that originally triggered the run. Must match the creator of the run. | Yes |
 
 #### WorkflowLogQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_at__after | string |  | No |
-| created_at__before | string |  | No |
-| created_by_account | string |  | No |
-| created_by_end_user_session_id | string |  | No |
-| keyword | string |  | No |
-| limit | integer, <br>**Default:** 20 |  | No |
-| page | integer, <br>**Default:** 1 |  | No |
-| status | string |  | No |
+| created_at__after | string | Filter logs created after this ISO 8601 timestamp. | No |
+| created_at__before | string | Filter logs created before this ISO 8601 timestamp. | No |
+| created_by_account | string | Filter by account ID. | No |
+| created_by_end_user_session_id | string | Filter by end user session ID. | No |
+| keyword | string | Keyword to search in logs. | No |
+| limit | integer, <br>**Default:** 20 | Number of items per page. | No |
+| page | integer, <br>**Default:** 1 | Page number for pagination. | No |
+| status | string | Filter by execution status. | No |
 
 #### WorkflowRunForLogResponse
 
@@ -4200,20 +4196,18 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
-| response_mode | string |  | No |
-| trace_session_id | string | Trace session ID for observability grouping | No |
+| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
+| response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
 
 #### WorkflowRunPayloadWithUser
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
-| response_mode | string |  | No |
-| trace_session_id | string | Trace session ID for observability grouping | No |
-| user | string | End user identifier | Yes |
+| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
+| response_mode | string | Response mode. Use `blocking` for synchronous responses or `streaming` for Server-Sent Events. When omitted, the request runs in blocking mode. | No |
+| user | string | User identifier, unique within the application. This identifier scopes data access; resources created with one `user` value are only visible when queried with the same `user` value. | Yes |
 
 #### WorkflowRunResponse
 

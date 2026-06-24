@@ -14,6 +14,9 @@ import ToolProviderList from './tool-provider-list'
 
 type IntegrationSectionRendererProps = {
   canInstallPlugin?: boolean
+  canManagePlugin?: boolean
+  canUpdatePlugin?: boolean
+  canViewInstalledPlugins?: boolean
   description?: ReactNode
   onProviderSearchTextChange: (value: string) => void
   onSwitchToMarketplace?: () => void
@@ -26,6 +29,9 @@ type IntegrationSectionRendererProps = {
 
 const IntegrationSectionRenderer = ({
   canInstallPlugin = true,
+  canManagePlugin = true,
+  canUpdatePlugin = true,
+  canViewInstalledPlugins = true,
   description,
   onProviderSearchTextChange,
   onSwitchToMarketplace,
@@ -66,6 +72,19 @@ const IntegrationSectionRenderer = ({
       {body}
     </>
   )
+  const renderPluginCategoryPage = (category: PluginCategoryEnum) => (
+    <PluginCategoryPage
+      canInstall={canInstallPlugin}
+      canManagePlugin={canManagePlugin}
+      canUpdatePlugin={canUpdatePlugin}
+      canViewInstalledPlugins={canViewInstalledPlugins}
+      category={category}
+      layout={renderDirectLayout}
+      onSwitchToMarketplace={onSwitchToMarketplace}
+      toolbarAction={pluginCategoryToolbarAction}
+    />
+  )
+
   switch (section) {
     case 'provider':
       return (
@@ -78,7 +97,7 @@ const IntegrationSectionRenderer = ({
         />
       )
     case 'builtin':
-      return <PluginCategoryPage canInstall={canInstallPlugin} category={PluginCategoryEnum.tool} layout={renderDirectLayout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
+      return renderPluginCategoryPage(PluginCategoryEnum.tool)
     case 'mcp':
       return <ToolProviderList category="mcp" contentInset="compact" layout={renderDirectLayout} />
     case 'custom-tool':
@@ -92,11 +111,11 @@ const IntegrationSectionRenderer = ({
     case 'custom-endpoint':
       return <ApiBasedExtensionPage layout={renderScrollableLayout} />
     case 'trigger':
-      return <PluginCategoryPage canInstall={canInstallPlugin} category={PluginCategoryEnum.trigger} layout={renderDirectLayout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
+      return renderPluginCategoryPage(PluginCategoryEnum.trigger)
     case 'agent-strategy':
-      return <PluginCategoryPage canInstall={canInstallPlugin} category={PluginCategoryEnum.agent} layout={renderDirectLayout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
+      return renderPluginCategoryPage(PluginCategoryEnum.agent)
     case 'extension':
-      return <PluginCategoryPage canInstall={canInstallPlugin} category={PluginCategoryEnum.extension} layout={renderDirectLayout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={pluginCategoryToolbarAction} />
+      return renderPluginCategoryPage(PluginCategoryEnum.extension)
     default:
       return null
   }

@@ -4,35 +4,19 @@ import type {
   ModelItem,
   ModelLoadBalancingConfig,
   ModelParameterRule,
-  ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
-  UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
 import type {
-  AccountIntegrate,
-  CodeBasedExtension,
   CommonResponse,
-  DataSourceNotion,
-  FileUploadConfigResponse,
   ICurrentWorkspace,
   InitValidateStatusResponse,
   InvitationResponse,
-  LangGeniusVersionResponse,
-  Member,
-  ModerateResponse,
-  OauthResponse,
-  PluginProvider,
-  Provider,
-  ProviderAnthropicToken,
-  ProviderAzureToken,
   SetupStatusResponse,
-  UserProfileOriginResponse,
 } from '@/models/common'
-import type { RETRIEVE_METHOD } from '@/types/app'
-import { del, get, patch, post, put } from './base'
+import { del, get, patch, post } from './base'
 
 type LoginSuccess = {
   result: 'success'
@@ -67,54 +51,13 @@ export const fetchInitValidateStatus = (): Promise<InitValidateStatusResponse> =
 export const fetchSetupStatus = (): Promise<SetupStatusResponse> => {
   return get<SetupStatusResponse>('/setup')
 }
-
-export const fetchUserProfile = ({ url, params }: { url: string, params: Record<string, any> }): Promise<UserProfileOriginResponse> => {
-  return get<UserProfileOriginResponse>(url, params, { needAllResponseContent: true })
-}
-
 export const updateUserProfile = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse> => {
   return post<CommonResponse>(url, { body })
-}
-
-export const fetchLangGeniusVersion = ({ url, params }: { url: string, params: Record<string, any> }): Promise<LangGeniusVersionResponse> => {
-  return get<LangGeniusVersionResponse>(url, { params })
-}
-
-export const oauth = ({ url, params }: { url: string, params: Record<string, any> }): Promise<OauthResponse> => {
-  return get<OauthResponse>(url, { params })
-}
-
-export const oneMoreStep = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
-export const fetchMembers = ({ url, params }: { url: string, params: Record<string, any> }): Promise<{ accounts: Member[] | null }> => {
-  return get<{ accounts: Member[] | null }>(url, { params })
-}
-
-export const fetchProviders = ({ url, params }: { url: string, params: Record<string, any> }): Promise<Provider[] | null> => {
-  return get<Provider[] | null>(url, { params })
-}
-
-export const validateProviderKey = ({ url, body }: { url: string, body: { token: string } }): Promise<ValidateOpenAIKeyResponse> => {
-  return post<ValidateOpenAIKeyResponse>(url, { body })
-}
-export const updateProviderAIKey = ({ url, body }: { url: string, body: { token: string | ProviderAzureToken | ProviderAnthropicToken } }): Promise<UpdateOpenAIKeyResponse> => {
-  return post<UpdateOpenAIKeyResponse>(url, { body })
-}
-
-export const fetchAccountIntegrates = ({ url, params }: { url: string, params: Record<string, any> }): Promise<{ data: AccountIntegrate[] | null }> => {
-  return get<{ data: AccountIntegrate[] | null }>(url, { params })
 }
 
 export const inviteMember = ({ url, body }: { url: string, body: Record<string, any> }): Promise<InvitationResponse> => {
   return post<InvitationResponse>(url, { body })
 }
-
-export const updateMemberRole = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse> => {
-  return put<CommonResponse>(url, { body })
-}
-
 export const deleteMemberOrCancelInvitation = ({ url }: { url: string }): Promise<CommonResponse> => {
   return del<CommonResponse>(url)
 }
@@ -131,11 +74,6 @@ export const ownershipTransfer = (memberID: string, body: { token: string }): Pr
 export const fetchFilePreview = ({ fileID }: { fileID: string }): Promise<{ content: string }> => {
   return get<{ content: string }>(`/files/${fileID}/preview`)
 }
-
-export const fetchCurrentWorkspace = ({ url, params }: { url: string, params: Record<string, any> }): Promise<ICurrentWorkspace> => {
-  return post<ICurrentWorkspace>(url, { body: params })
-}
-
 export const updateCurrentWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<ICurrentWorkspace> => {
   return post<ICurrentWorkspace>(url, { body })
 }
@@ -144,41 +82,28 @@ export const updateWorkspaceInfo = ({ url, body }: { url: string, body: Record<s
   return post<ICurrentWorkspace>(url, { body })
 }
 
-export const fetchDataSource = ({ url }: { url: string }): Promise<{ data: DataSourceNotion[] }> => {
-  return get<{ data: DataSourceNotion[] }>(url)
+type InvitationCheckData = {
+  workspace_name: string
+  email: string
+  workspace_id: string
+  account_status?: string
+  requires_setup?: boolean
 }
 
-export const syncDataSourceNotion = ({ url }: { url: string }): Promise<CommonResponse> => {
-  return get<CommonResponse>(url)
+type ActivateMemberBody = {
+  token: string
+  name?: string
+  interface_language?: string
+  timezone?: string
 }
 
-export const updateDataSourceNotionAction = ({ url }: { url: string }): Promise<CommonResponse> => {
-  return patch<CommonResponse>(url)
+export const invitationCheck = ({ url, params }: { url: string, params: { workspace_id?: string, email?: string, token: string } }): Promise<CommonResponse & { is_valid: boolean, data: InvitationCheckData }> => {
+  return get<CommonResponse & { is_valid: boolean, data: InvitationCheckData }>(url, { params })
 }
 
-export const fetchPluginProviders = (url: string): Promise<PluginProvider[] | null> => {
-  return get<PluginProvider[] | null>(url)
-}
-
-export const validatePluginProviderKey = ({ url, body }: { url: string, body: { credentials: any } }): Promise<ValidateOpenAIKeyResponse> => {
-  return post<ValidateOpenAIKeyResponse>(url, { body })
-}
-export const updatePluginProviderAIKey = ({ url, body }: { url: string, body: { credentials: any } }): Promise<UpdateOpenAIKeyResponse> => {
-  return post<UpdateOpenAIKeyResponse>(url, { body })
-}
-
-export const invitationCheck = ({ url, params }: { url: string, params: { workspace_id?: string, email?: string, token: string } }): Promise<CommonResponse & { is_valid: boolean, data: { workspace_name: string, email: string, workspace_id: string } }> => {
-  return get<CommonResponse & { is_valid: boolean, data: { workspace_name: string, email: string, workspace_id: string } }>(url, { params })
-}
-
-export const activateMember = ({ url, body }: { url: string, body: any }): Promise<LoginResponse> => {
+export const activateMember = ({ url, body }: { url: string, body: ActivateMemberBody }): Promise<LoginResponse> => {
   return post<LoginResponse>(url, { body })
 }
-
-export const fetchModelProviders = (url: string): Promise<{ data: ModelProvider[] }> => {
-  return get<{ data: ModelProvider[] }>(url)
-}
-
 export type ModelProviderCredentials = {
   credentials?: Record<string, string | undefined | boolean>
   load_balancing: ModelLoadBalancingConfig
@@ -186,17 +111,6 @@ export type ModelProviderCredentials = {
 export const fetchModelProviderCredentials = (url: string): Promise<ModelProviderCredentials> => {
   return get<ModelProviderCredentials>(url)
 }
-
-export const fetchModelLoadBalancingConfig = (url: string): Promise<{
-  credentials?: Record<string, string | undefined | boolean>
-  load_balancing: ModelLoadBalancingConfig
-}> => {
-  return get<{
-    credentials?: Record<string, string | undefined | boolean>
-    load_balancing: ModelLoadBalancingConfig
-  }>(url)
-}
-
 export const fetchModelProviderModelList = (url: string): Promise<{ data: ModelItem[] }> => {
   return get<{ data: ModelItem[] }>(url)
 }
@@ -221,18 +135,6 @@ export const deleteModelProvider = ({ url, body }: { url: string, body?: any }):
   return del<CommonResponse>(url, { body })
 }
 
-export const changeModelProviderPriority = ({ url, body }: { url: string, body: any }): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
-export const setModelProviderModel = ({ url, body }: { url: string, body: any }): Promise<CommonResponse> => {
-  return post<CommonResponse>(url, { body })
-}
-
-export const deleteModelProviderModel = ({ url }: { url: string }): Promise<CommonResponse> => {
-  return del<CommonResponse>(url)
-}
-
 export const getPayUrl = (url: string): Promise<{ url: string }> => {
   return get<{ url: string }>(url)
 }
@@ -249,33 +151,6 @@ export const fetchModelParameterRules = (url: string): Promise<{ data: ModelPara
   return get<{ data: ModelParameterRule[] }>(url)
 }
 
-export const fetchFileUploadConfig = ({ url }: { url: string }): Promise<FileUploadConfigResponse> => {
-  return get<FileUploadConfigResponse>(url)
-}
-
-export const fetchNotionConnection = (url: string): Promise<{ data: string }> => {
-  return get<{ data: string }>(url)
-}
-
-export const fetchDataSourceNotionBinding = (url: string): Promise<{ result: string }> => {
-  return get<{ result: string }>(url)
-}
-
-export const fetchCodeBasedExtensionList = (url: string): Promise<CodeBasedExtension> => {
-  return get<CodeBasedExtension>(url)
-}
-
-export const moderate = (url: string, body: { app_id: string, text: string }): Promise<ModerateResponse> => {
-  return post<ModerateResponse>(url, { body })
-}
-
-type RetrievalMethodsRes = {
-  retrieval_method: RETRIEVE_METHOD[]
-}
-export const fetchSupportRetrievalMethods = (url: string): Promise<RetrievalMethodsRes> => {
-  return get<RetrievalMethodsRes>(url)
-}
-
 export const enableModel = (url: string, body: { model: string, model_type: ModelTypeEnum }): Promise<CommonResponse> =>
   patch<CommonResponse>(url, { body })
 
@@ -284,21 +159,8 @@ export const disableModel = (url: string, body: { model: string, model_type: Mod
 
 export const sendForgotPasswordEmail = ({ url, body }: { url: string, body: { email: string } }): Promise<CommonResponse & { data: string }> =>
   post<CommonResponse & { data: string }>(url, { body })
-
-export const verifyForgotPasswordToken = ({ url, body }: { url: string, body: { token: string } }): Promise<CommonResponse & { is_valid: boolean, email: string }> => {
-  return post<CommonResponse & { is_valid: boolean, email: string }>(url, { body })
-}
-
 export const changePasswordWithToken = ({ url, body }: { url: string, body: { token: string, new_password: string, password_confirm: string } }): Promise<CommonResponse> =>
   post<CommonResponse>(url, { body })
-
-export const sendWebAppForgotPasswordEmail = ({ url, body }: { url: string, body: { email: string } }): Promise<CommonResponse & { data: string }> =>
-  post<CommonResponse & { data: string }>(url, { body }, { isPublicAPI: true })
-
-export const verifyWebAppForgotPasswordToken = ({ url, body }: { url: string, body: { token: string } }): Promise<CommonResponse & { is_valid: boolean, email: string }> => {
-  return post<CommonResponse & { is_valid: boolean, email: string }>(url, { body }, { isPublicAPI: true })
-}
-
 export const changeWebAppPasswordWithToken = ({ url, body }: { url: string, body: { token: string, new_password: string, password_confirm: string } }): Promise<CommonResponse> =>
   post<CommonResponse>(url, { body }, { isPublicAPI: true })
 

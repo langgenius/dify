@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import NodeSelector from '@/app/components/workflow/block-selector'
@@ -10,7 +10,7 @@ import StartNodeOption from './start-node-option'
 
 type StartNodeSelectionPanelProps = {
   onSelectUserInput: () => void
-  onSelectTrigger: (nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => void
+  onSelectTrigger: (nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => void
 }
 
 const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
@@ -20,7 +20,7 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   const { t } = useTranslation()
   const [showTriggerSelector, setShowTriggerSelector] = useState(false)
 
-  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: PluginDefaultValue) => {
+  const handleTriggerSelect = useCallback((nodeType: BlockEnum, toolConfig?: BlockDefaultValue) => {
     setShowTriggerSelector(false)
     onSelectTrigger(nodeType, toolConfig)
   }, [onSelectTrigger])

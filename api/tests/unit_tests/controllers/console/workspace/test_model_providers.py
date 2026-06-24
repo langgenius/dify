@@ -20,10 +20,7 @@ VALID_UUID = "123e4567-e89b-12d3-a456-426614174000"
 INVALID_UUID = "123"
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from inspect import unwrap
 
 
 class TestModelProviderListApi:

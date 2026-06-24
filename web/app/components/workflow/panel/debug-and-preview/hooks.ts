@@ -7,6 +7,7 @@ import type {
 } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { IOtherOptions } from '@/service/base'
+import type { ReasoningChunkResponse } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
@@ -68,6 +69,7 @@ export const useChat = (
   const isRespondingRef = useRef(false)
   const workflowEventsAbortControllerRef = useRef<AbortController | null>(null)
   const configsMap = useHooksStore(s => s.configsMap)
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const invalidAllLastRun = useInvalidAllLastRun(configsMap?.flowType, configsMap?.flowId)
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
@@ -259,6 +261,9 @@ export const useChat = (
       onGetSuggestedQuestions,
     }: SendCallback,
   ) => {
+    if (canRun === false)
+      return false
+
     if (isRespondingRef.current) {
       toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return false
@@ -353,6 +358,22 @@ export const useChat = (
           taskIdRef.current = taskId
           if (messageId)
             responseItem.id = messageId
+
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
+        onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+          const { reasoning, node_id, is_final } = reasoningData
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
 
           updateCurrentQAOnTree({
             placeholderQuestionId,
@@ -665,7 +686,7 @@ export const useChat = (
         },
       },
     )
-  }, [threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
+  }, [canRun, threadMessages, chatTree.length, updateCurrentQAOnTree, handleResponding, formSettings?.inputsForm, handleRun, t, workflowStore, fetchInspectVars, invalidAllLastRun, config?.suggested_questions_after_answer?.enabled])
 
   const handleSubmitHumanInputForm = async (formToken: string, formData: HumanInputFormSubmitData) => {
     await submitHumanInputForm(formToken, formData)
@@ -707,6 +728,18 @@ export const useChat = (
         if (taskId)
           taskIdRef.current = taskId
       },
+      onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+        const { message_id, reasoning, node_id, is_final } = reasoningData
+        updateChatTreeNode(message_id, (responseItem) => {
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
+        })
+      },
+
       async onCompleted(hasError?: boolean) {
         const { workflowRunningData } = workflowStore.getState()
         handleResponding(false)

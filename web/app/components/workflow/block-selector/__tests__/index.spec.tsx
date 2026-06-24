@@ -53,6 +53,10 @@ const dataSource: ToolWithProvider = {
 }
 
 describe('NodeSelectorWrapper', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
   it('filters hidden block types from hooks store and forwards data sources', async () => {
     renderWorkflowComponent(
       <NodeSelectorWrapper

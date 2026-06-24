@@ -20,13 +20,13 @@ from unittest.mock import ANY, Mock, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden, NotFound
 
 
 class SessionMatcher:
     def __eq__(self, other):
-        return isinstance(other, Session)
+        return isinstance(other, (Session, scoped_session))
 
 
 import services
@@ -366,6 +366,7 @@ DATASET_DETAIL_KEYS = {
     "total_available_documents",
     "enable_api",
     "is_multimodal",
+    "maintainer",
 }
 
 
@@ -468,6 +469,7 @@ class TestDatasetListApiGet:
         mock_dataset_svc.get_datasets.assert_called_once_with(
             1,
             20,
+            SessionMatcher(),
             mock_tenant.id,
             mock_current_user,
             None,

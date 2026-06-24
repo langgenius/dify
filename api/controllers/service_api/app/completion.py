@@ -5,6 +5,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from pydantic.json_schema import SkipJsonSchema
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -20,7 +21,12 @@ from controllers.service_api.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.service_api.schema import expect_user_json, expect_with_user, json_or_event_stream_response
+from controllers.service_api.schema import (
+    InputFileList,
+    expect_user_json,
+    expect_with_user,
+    json_or_event_stream_response,
+)
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -52,24 +58,84 @@ def _resolve_agent_app_streaming(*, app_mode: AppMode, response_mode: str | None
 
 
 class CompletionRequestPayload(BaseModel):
-    inputs: dict[str, Any]
-    query: str = Field(default="")
-    files: list[dict[str, Any]] | None = Field(default=None)
-    response_mode: Literal["blocking", "streaming"] | None = None
-    retriever_from: str = Field(default="dev")
-    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+    inputs: dict[str, Any] = Field(
+        description=(
+            "Values for app-defined variables. Refer to the `user_input_form` field in the "
+            "[Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected "
+            "variable names and types."
+        )
+    )
+    query: str = Field(default="", description="User input or prompt content.")
+    files: InputFileList = Field(
+        default=None,
+        description=(
+            "File list for multimodal understanding, including images, documents, audio, and video. To attach a "
+            "local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned "
+            "`id` as `upload_file_id` with `transfer_method: local_file`."
+        ),
+    )
+    response_mode: Literal["blocking", "streaming"] | None = Field(
+        default=None,
+        description=(
+            "Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. When omitted, "
+            "the request runs in blocking mode."
+        ),
+    )
+    retriever_from: SkipJsonSchema[str] = Field(default="dev")
+    trace_session_id: SkipJsonSchema[str | None] = Field(
+        default=None, description="Trace session ID for observability grouping"
+    )
 
 
 class ChatRequestPayload(BaseModel):
-    inputs: dict[str, Any]
-    query: str
-    files: list[dict[str, Any]] | None = Field(default=None)
-    response_mode: Literal["blocking", "streaming"] | None = None
-    conversation_id: UUIDStrOrEmpty | None = Field(default=None, description="Conversation UUID")
-    retriever_from: str = Field(default="dev")
-    auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
-    workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
-    trace_session_id: str | None = Field(default=None, description="Trace session ID for observability grouping")
+    inputs: dict[str, Any] = Field(
+        description=(
+            "Values for app-defined variables. Refer to the `user_input_form` field in the "
+            "[Get App Parameters](/api-reference/applications/get-app-parameters) response to discover expected "
+            "variable names and types."
+        )
+    )
+    query: str = Field(description="User input or question content.")
+    files: InputFileList = Field(
+        default=None,
+        description=(
+            "File list for multimodal understanding, including images, documents, audio, and video. To attach a "
+            "local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned "
+            "`id` as `upload_file_id` with `transfer_method: local_file`."
+        ),
+    )
+    response_mode: Literal["blocking", "streaming"] | None = Field(
+        default=None,
+        description=(
+            "Response mode. `streaming` uses Server-Sent Events; `blocking` returns after completion. New Agent app "
+            "mode supports streaming only. When omitted, non-Agent apps run in blocking mode and new Agent apps stream."
+        ),
+    )
+    conversation_id: UUIDStrOrEmpty | None = Field(
+        default=None,
+        description=(
+            "Conversation ID to continue a conversation. Omit this field or pass an empty string to start a new "
+            "conversation, then pass the returned `conversation_id` in subsequent requests."
+        ),
+    )
+    retriever_from: SkipJsonSchema[str] = Field(default="dev")
+    auto_generate_name: bool = Field(
+        default=True,
+        description=(
+            "Auto-generate the conversation title. If `false`, use the Rename Conversation API with "
+            "`auto_generate: true` to generate the title asynchronously."
+        ),
+    )
+    workflow_id: str | None = Field(
+        default=None,
+        description=(
+            "Published workflow version ID to execute for advanced chat. If omitted, the app's current published "
+            "workflow is used."
+        ),
+    )
+    trace_session_id: SkipJsonSchema[str | None] = Field(
+        default=None, description="Trace session ID for observability grouping"
+    )
 
     @field_validator("conversation_id", mode="before")
     @classmethod
@@ -206,7 +272,9 @@ class CompletionStopApi(Resource):
     @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_completion")
     @service_api_ns.doc(description="Stop a running completion task")
-    @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})
+    @service_api_ns.doc(
+        params={"task_id": ("Task ID, obtained from a streaming chunk returned by the Send Completion Message API.")}
+    )
     @service_api_ns.doc(
         responses={
             200: "Task stopped successfully",
@@ -355,7 +423,9 @@ class ChatStopApi(Resource):
     @expect_user_json(service_api_ns)
     @service_api_ns.doc("stop_chat_message")
     @service_api_ns.doc(description="Stop a running chat message generation")
-    @service_api_ns.doc(params={"task_id": "The ID of the task to stop"})
+    @service_api_ns.doc(
+        params={"task_id": "Task ID, obtained from a streaming chunk returned by the Send Chat Message API."}
+    )
     @service_api_ns.doc(
         responses={
             200: "Task stopped successfully",

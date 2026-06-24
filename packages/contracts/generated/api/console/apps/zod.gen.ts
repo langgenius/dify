@@ -120,7 +120,6 @@ export const zAgentDrivePreviewResponse = z.object({
  * AgentDriveDeleteResponse
  */
 export const zAgentDriveDeleteResponse = z.object({
-  config_version_id: z.string().nullish(),
   removed_keys: z.array(z.string()).optional(),
   result: z.string(),
 })
@@ -270,6 +269,7 @@ export const zConvertToWorkflowPayload = z.object({
  */
 export const zNewAppResponse = z.object({
   new_app_id: z.string(),
+  permission_keys: z.array(z.string()).optional(),
 })
 
 /**
@@ -643,6 +643,15 @@ export const zHumanInputDeliveryTestPayload = z.object({
 export const zEmptyObjectResponse = z.record(z.string(), z.unknown())
 
 /**
+ * WorkflowComposerCopyFromRosterPayload
+ */
+export const zWorkflowComposerCopyFromRosterPayload = z.object({
+  idempotency_key: z.string().max(255).nullish(),
+  source_agent_id: z.string().min(1).max(255),
+  source_snapshot_id: z.string().max(255).nullish(),
+})
+
+/**
  * DraftWorkflowNodeRunPayload
  */
 export const zDraftWorkflowNodeRunPayload = z.object({
@@ -906,6 +915,7 @@ export const zImport = z.object({
   error: z.string().optional().default(''),
   id: z.string(),
   imported_dsl_version: z.string().optional().default(''),
+  permission_keys: z.array(z.string()).optional(),
   status: zImportStatus,
 })
 
@@ -916,9 +926,11 @@ export const zAgentDriveItemResponse = z.object({
   created_at: z.int().nullish(),
   file_kind: z.string(),
   hash: z.string().nullish(),
+  is_skill: z.boolean().nullish(),
   key: z.string(),
   mime_type: z.string().nullish(),
   size: z.int().nullish(),
+  skill_metadata: z.string().nullish(),
 })
 
 /**
@@ -926,6 +938,70 @@ export const zAgentDriveItemResponse = z.object({
  */
 export const zAgentDriveListResponse = z.object({
   items: z.array(zAgentDriveItemResponse).optional(),
+})
+
+/**
+ * AgentDriveSkillItemResponse
+ */
+export const zAgentDriveSkillItemResponse = z.object({
+  archive_key: z.string().nullish(),
+  created_at: z.int().nullish(),
+  description: z.string(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  size: z.int().nullish(),
+  skill_md_key: z.string(),
+})
+
+/**
+ * AgentDriveSkillListResponse
+ */
+export const zAgentDriveSkillListResponse = z.object({
+  items: z.array(zAgentDriveSkillItemResponse).optional(),
+})
+
+/**
+ * AgentDriveSkillFileResponse
+ */
+export const zAgentDriveSkillFileResponse = z.object({
+  available_in_drive: z.boolean(),
+  drive_key: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  type: z.string(),
+})
+
+/**
+ * AgentDriveSkillMarkdownResponse
+ */
+export const zAgentDriveSkillMarkdownResponse = z.object({
+  binary: z.boolean(),
+  key: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentDriveSkillInspectResponse
+ */
+export const zAgentDriveSkillInspectResponse = z.object({
+  archive_key: z.string().nullish(),
+  created_at: z.int().nullish(),
+  description: z.string(),
+  file_tree: z.array(z.record(z.string(), z.unknown())).optional(),
+  files: z.array(zAgentDriveSkillFileResponse).optional(),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string(),
+  path: z.string(),
+  size: z.int().nullish(),
+  skill_md: zAgentDriveSkillMarkdownResponse,
+  skill_md_key: z.string(),
+  source: z.string(),
+  warnings: z.array(z.string()).optional(),
 })
 
 /**
@@ -943,7 +1019,6 @@ export const zAgentDriveFileResponse = z.object({
  * AgentDriveFileCommitResponse
  */
 export const zAgentDriveFileCommitResponse = z.object({
-  config_version_id: z.string().nullish(),
   file: zAgentDriveFileResponse,
 })
 
@@ -975,27 +1050,14 @@ export const zSkillManifest = z.object({
 })
 
 /**
- * AgentSkillRefConfig
+ * AgentUploadedSkillResponse
  */
-export const zAgentSkillRefConfig = z.object({
-  description: z.string().nullish(),
-  file_id: z.string().max(255).nullish(),
-  full_archive_file_id: z.string().max(255).nullish(),
-  full_archive_key: z.string().max(512).nullish(),
-  id: z.string().max(255).nullish(),
-  manifest_files: z.array(z.string()).nullish(),
-  name: z.string().max(255).nullish(),
-  path: z.string().nullish(),
-  skill_md_file_id: z.string().max(255).nullish(),
-  skill_md_key: z.string().max(512).nullish(),
-})
-
-/**
- * AgentSkillStandardizeResponse
- */
-export const zAgentSkillStandardizeResponse = z.object({
-  manifest: zSkillManifest,
-  skill: zAgentSkillRefConfig,
+export const zAgentUploadedSkillResponse = z.object({
+  archive_key: z.string().nullish(),
+  description: z.string(),
+  name: z.string(),
+  path: z.string(),
+  skill_md_key: z.string(),
 })
 
 /**
@@ -1003,7 +1065,7 @@ export const zAgentSkillStandardizeResponse = z.object({
  */
 export const zAgentSkillUploadResponse = z.object({
   manifest: zSkillManifest,
-  skill: zAgentSkillRefConfig,
+  skill: zAgentUploadedSkillResponse,
 })
 
 /**
@@ -1493,6 +1555,7 @@ export const zAccountWithRole = z.object({
   last_login_at: z.int().nullish(),
   name: z.string(),
   role: z.string(),
+  roles: z.array(z.record(z.string(), z.string())).optional(),
   status: z.string(),
 })
 
@@ -1744,7 +1807,9 @@ export const zAgentConfigSnapshotSummaryResponse = z.object({
   agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  display_version: z.int().nullish(),
   id: z.string(),
+  snapshot_version: z.int().nullish(),
   summary: z.string().nullish(),
   version: z.int(),
   version_note: z.string().nullish(),
@@ -1778,6 +1843,13 @@ export const zComposerBindingPayload = z.object({
   binding_type: z.enum(['inline_agent', 'roster_agent']),
   current_snapshot_id: z.string().nullish(),
 })
+
+/**
+ * AgentIconType
+ *
+ * Supported icon storage formats for Agent roster entries.
+ */
+export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
 
 /**
  * ComposerSoulLockPayload
@@ -1946,25 +2018,26 @@ export const zModelConfigPartial = z.object({
  */
 export const zAppPartial = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   app_id: z.string().nullish(),
-  app_model_config: zModelConfigPartial.nullish(),
   author_name: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
   create_user_name: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
-  desc_or_prompt: z.string().nullish(),
+  description: z.string().nullish(),
   has_draft_trigger: z.boolean().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
+  icon_url: z.string().nullable(),
   id: z.string(),
   is_starred: z.boolean().optional().default(false),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
-  mode_compatible_with_agent: z.string(),
+  mode: z.string(),
+  model_config: zModelConfigPartial.nullish(),
   name: z.string(),
-  role: z.string().nullish(),
+  permission_keys: z.array(z.string()).optional(),
   tags: z.array(zTag).optional(),
   updated_at: z.int().nullish(),
   updated_by: z.string().nullish(),
@@ -1976,10 +2049,10 @@ export const zAppPartial = z.object({
  * AppPagination
  */
 export const zAppPagination = z.object({
-  has_next: z.boolean(),
-  items: z.array(zAppPartial),
+  data: z.array(zAppPartial),
+  has_more: z.boolean(),
+  limit: z.int(),
   page: z.int(),
-  per_page: z.int(),
   total: z.int(),
 })
 
@@ -2005,7 +2078,6 @@ export const zModelConfig = z.object({
  */
 export const zAppDetailWithSite = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
@@ -2020,11 +2092,12 @@ export const zAppDetailWithSite = z.object({
   icon_type: z.string().nullish(),
   icon_url: z.string().nullable(),
   id: z.string(),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
-  role: z.string().nullish(),
+  permission_keys: z.array(z.string()).optional(),
   site: zSite.nullish(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
@@ -2048,8 +2121,10 @@ export const zAppDetail = z.object({
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   id: z.string(),
+  maintainer: z.string().nullish(),
   mode_compatible_with_agent: z.string(),
   name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
   updated_at: z.int().nullish(),
@@ -2580,41 +2655,6 @@ export const zAgentKnowledgeDatasetConfig = z.object({
 })
 
 /**
- * AgentComposerSkillCandidateResponse
- */
-export const zAgentComposerSkillCandidateResponse = z.object({
-  description: z.string().nullish(),
-  file_id: z.string().max(255).nullish(),
-  full_archive_file_id: z.string().max(255).nullish(),
-  full_archive_key: z.string().max(512).nullish(),
-  id: z.string().max(255).nullish(),
-  kind: z.literal('skill').optional().default('skill'),
-  manifest_files: z.array(z.string()).nullish(),
-  name: z.string().max(255).nullish(),
-  path: z.string().nullish(),
-  skill_md_file_id: z.string().max(255).nullish(),
-  skill_md_key: z.string().max(512).nullish(),
-})
-
-/**
- * AgentComposerFileCandidateResponse
- */
-export const zAgentComposerFileCandidateResponse = z.object({
-  drive_key: z.string().max(512).nullish(),
-  file_id: z.string().max(255).nullish(),
-  id: z.string().max(255).nullish(),
-  kind: z.literal('file').optional().default('file'),
-  name: z.string().max(255).nullish(),
-  reference: z.string().max(255).nullish(),
-  remote_url: z.string().nullish(),
-  tenant_id: z.string().max(255).nullish(),
-  transfer_method: z.string().max(64).nullish(),
-  type: z.string().max(64).nullish(),
-  upload_file_id: z.string().max(255).nullish(),
-  url: z.string().nullish(),
-})
-
-/**
  * CheckResultView
  *
  * ``type_check`` / ``output_check`` per-output summary block.
@@ -2833,14 +2873,6 @@ export const zAgentFileRefConfig = z.object({
 })
 
 /**
- * AgentSoulSkillsFilesConfig
- */
-export const zAgentSoulSkillsFilesConfig = z.object({
-  files: z.array(zAgentFileRefConfig).optional(),
-  skills: z.array(zAgentSkillRefConfig).optional(),
-})
-
-/**
  * WorkflowNodeJobMetadata
  */
 export const zWorkflowNodeJobMetadata = z.object({
@@ -2994,22 +3026,6 @@ export const zAgentComposerSoulCandidatesResponse = z.object({
   dify_tools: z.array(zAgentComposerDifyToolCandidateResponse).optional(),
   human_contacts: z.array(zAgentHumanContactConfig).optional(),
   knowledge_datasets: z.array(zAgentKnowledgeDatasetConfig).optional(),
-  skills_files: z
-    .array(
-      z.union([
-        z
-          .object({
-            kind: z.literal('skill'),
-          })
-          .and(zAgentComposerSkillCandidateResponse),
-        z
-          .object({
-            kind: z.literal('file'),
-          })
-          .and(zAgentComposerFileCandidateResponse),
-      ]),
-    )
-    .optional(),
 })
 
 /**
@@ -3306,7 +3322,6 @@ export const zAgentSoulConfig = z.object({
   prompt: zAgentSoulPromptConfig.optional(),
   sandbox: zAgentSoulSandboxConfig.optional(),
   schema_version: z.int().optional().default(1),
-  skills_files: zAgentSoulSkillsFilesConfig.optional(),
   tools: zAgentSoulToolsConfig.optional(),
 })
 
@@ -3337,9 +3352,14 @@ export const zComposerSavePayload = z.object({
   agent_soul: zAgentSoulConfig.nullish(),
   binding: zComposerBindingPayload.nullish(),
   client_revision_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
   idempotency_key: z.string().nullish(),
   new_agent_name: z.string().min(1).max(255).nullish(),
   node_job: zWorkflowNodeJobConfig.nullish(),
+  role: z.string().max(255).nullish(),
   save_strategy: zComposerSaveStrategy,
   soul_lock: zComposerSoulLockPayload.optional(),
   variant: zComposerVariant,
@@ -3473,6 +3493,48 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 export const zGeneratedAppResponseWritable = zJsonValue
 
 /**
+ * AppPartial
+ */
+export const zAppPartialWritable = z.object({
+  access_mode: z.string().nullish(),
+  app_id: z.string().nullish(),
+  author_name: z.string().nullish(),
+  bound_agent_id: z.string().nullish(),
+  create_user_name: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string().nullish(),
+  has_draft_trigger: z.boolean().nullish(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  icon_type: z.string().nullish(),
+  id: z.string(),
+  is_starred: z.boolean().optional().default(false),
+  maintainer: z.string().nullish(),
+  max_active_requests: z.int().nullish(),
+  mode: z.string(),
+  model_config: zModelConfigPartial.nullish(),
+  name: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+  tags: z.array(zTag).optional(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_icon_as_answer_icon: z.boolean().nullish(),
+  workflow: zWorkflowPartial.nullish(),
+})
+
+/**
+ * AppPagination
+ */
+export const zAppPaginationWritable = z.object({
+  data: z.array(zAppPartialWritable),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
  * Site
  */
 export const zSiteWritable = z.object({
@@ -3496,7 +3558,6 @@ export const zSiteWritable = z.object({
  */
 export const zAppDetailWithSiteWritable = z.object({
   access_mode: z.string().nullish(),
-  active_config_is_published: z.boolean().optional().default(false),
   api_base_url: z.string().nullish(),
   app_id: z.string().nullish(),
   bound_agent_id: z.string().nullish(),
@@ -3510,11 +3571,12 @@ export const zAppDetailWithSiteWritable = z.object({
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   id: z.string(),
+  maintainer: z.string().nullish(),
   max_active_requests: z.int().nullish(),
   mode: z.string(),
   model_config: zModelConfig.nullish(),
   name: z.string(),
-  role: z.string().nullish(),
+  permission_keys: z.array(z.string()).optional(),
   site: zSiteWritable.nullish(),
   tags: z.array(zTag).optional(),
   tracing: zJsonValue.nullish(),
@@ -3874,6 +3936,35 @@ export const zGetAppsByAppIdAgentDriveFilesPreviewQuery = z.object({
  */
 export const zGetAppsByAppIdAgentDriveFilesPreviewResponse = zAgentDrivePreviewResponse
 
+export const zGetAppsByAppIdAgentDriveSkillsPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdAgentDriveSkillsQuery = z.object({
+  node_id: z.string().optional(),
+  prefix: z.string().optional().default(''),
+})
+
+/**
+ * Drive skills
+ */
+export const zGetAppsByAppIdAgentDriveSkillsResponse = zAgentDriveSkillListResponse
+
+export const zGetAppsByAppIdAgentDriveSkillsBySkillPathInspectPath = z.object({
+  app_id: z.uuid(),
+  skill_path: z.string(),
+})
+
+export const zGetAppsByAppIdAgentDriveSkillsBySkillPathInspectQuery = z.object({
+  node_id: z.string().optional(),
+})
+
+/**
+ * Drive skill inspect view
+ */
+export const zGetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse
+  = zAgentDriveSkillInspectResponse
+
 export const zDeleteAppsByAppIdAgentFilesPath = z.object({
   app_id: z.uuid(),
 })
@@ -3917,25 +4008,20 @@ export const zGetAppsByAppIdAgentLogsQuery = z.object({
  */
 export const zGetAppsByAppIdAgentLogsResponse = zAgentLogResponse
 
-export const zPostAppsByAppIdAgentSkillsStandardizePath = z.object({
-  app_id: z.uuid(),
+export const zPostAppsByAppIdAgentSkillsUploadBody = z.object({
+  file: z.custom<Blob | File>(),
 })
-
-export const zPostAppsByAppIdAgentSkillsStandardizeQuery = z.object({
-  node_id: z.string().optional(),
-})
-
-/**
- * Skill standardized into drive
- */
-export const zPostAppsByAppIdAgentSkillsStandardizeResponse = zAgentSkillStandardizeResponse
 
 export const zPostAppsByAppIdAgentSkillsUploadPath = z.object({
   app_id: z.uuid(),
 })
 
+export const zPostAppsByAppIdAgentSkillsUploadQuery = z.object({
+  node_id: z.string().optional(),
+})
+
 /**
- * Skill validated
+ * Skill uploaded into drive
  */
 export const zPostAppsByAppIdAgentSkillsUploadResponse = zAgentSkillUploadResponse
 
@@ -5276,6 +5362,20 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPa
  */
 export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
   = zAgentComposerCandidatesResponse
+
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterBody
+  = zWorkflowComposerCopyFromRosterPayload
+
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterPath = z.object({
+  app_id: z.uuid(),
+  node_id: z.string(),
+})
+
+/**
+ * Workflow roster agent copied to inline agent
+ */
+export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse
+  = zWorkflowAgentComposerResponse
 
 export const zPostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactBody
   = zComposerSavePayload

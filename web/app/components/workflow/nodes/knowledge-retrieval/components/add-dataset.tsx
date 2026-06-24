@@ -9,11 +9,13 @@ import SelectDataset from '@/app/components/app/configuration/dataset-config/sel
 
 type Props = Readonly<{
   selectedIds: string[]
+  modal?: boolean
   onChange: (dataSets: DataSet[]) => void
 }>
 
 const AddDataset: FC<Props> = ({
   selectedIds,
+  modal,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -38,6 +40,7 @@ const AddDataset: FC<Props> = ({
       </button>
       <SelectDataset
         isShow={isShowModal}
+        modal={modal}
         onClose={hideModal}
         selectedIds={selectedIds}
         onSelect={handleSelect}

@@ -12,6 +12,7 @@ import type {
   IOnDataMoreInfo,
   IOtherOptions,
 } from '@/service/base'
+import type { ReasoningChunkResponse } from '@/types/workflow'
 import { toast } from '@langgenius/dify-ui/toast'
 import { uniqBy } from 'es-toolkit/compat'
 import { noop } from 'es-toolkit/function'
@@ -64,10 +65,12 @@ export const useChat = (
   stopChat?: (taskId: string) => void,
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
+  initialConversationId?: string,
 ) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const conversationIdRef = useRef('')
+  const conversationIdRef = useRef(initialConversationId ?? '')
+  const initialConversationIdRef = useRef(initialConversationId ?? '')
   const hasStopRespondedRef = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
@@ -145,6 +148,12 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(() => {
+    initialConversationIdRef.current = initialConversationId ?? ''
+    if (initialConversationId && !conversationIdRef.current)
+      conversationIdRef.current = initialConversationId
+  }, [initialConversationId])
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback((targetId: string, operation: (node: ChatItemInTree) => void) => {
     return produce(chatTreeRef.current, (draft) => {
@@ -203,7 +212,7 @@ export const useChat = (
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback((cb?: any) => {
-    conversationIdRef.current = ''
+    conversationIdRef.current = initialConversationIdRef.current
     taskIdRef.current = ''
     handleStop()
     setChatTree([])
@@ -274,6 +283,17 @@ export const useChat = (
 
         if (taskId)
           taskIdRef.current = taskId
+      },
+      onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+        const { message_id, reasoning, node_id, is_final } = reasoningData
+        updateChatTreeNode(message_id, (responseItem) => {
+          const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+          const key = node_id || '_'
+          if (reasoning)
+            reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+          if (is_final)
+            responseItem.reasoningFinished = true
+        })
       },
       async onCompleted(hasError?: boolean) {
         handleResponding(false)
@@ -741,6 +761,22 @@ export const useChat = (
         taskIdRef.current = taskId
         if (messageId)
           responseItem.id = messageId
+
+        updateCurrentQAOnTree({
+          placeholderQuestionId,
+          questionItem,
+          responseItem,
+          parentId: data.parent_message_id,
+        })
+      },
+      onReasoning: ({ data: reasoningData }: ReasoningChunkResponse) => {
+        const { reasoning, node_id, is_final } = reasoningData
+        const reasoningContent = responseItem.reasoningContent || (responseItem.reasoningContent = {})
+        const key = node_id || '_'
+        if (reasoning)
+          reasoningContent[key] = (reasoningContent[key] || '') + reasoning
+        if (is_final)
+          responseItem.reasoningFinished = true
 
         updateCurrentQAOnTree({
           placeholderQuestionId,
