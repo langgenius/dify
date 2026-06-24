@@ -19,6 +19,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     Annotation,
@@ -388,7 +389,9 @@ class AnnotationUpdateDeleteApi(Resource):
             update_args["answer"] = args.answer
         if args.question is not None:
             update_args["question"] = args.question
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, str(app_id), str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(
+            update_args, str(app_id), str(annotation_id), db.session
+        )
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
@@ -398,7 +401,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @console_ns.response(204, "Annotation deleted successfully")
     def delete(self, app_id: UUID, annotation_id: UUID):
-        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
+        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id), db.session)
         return "", 204
 
 

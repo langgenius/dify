@@ -128,7 +128,7 @@ class WorkspaceSwitchApi(Resource):
         account = _load_account(auth_data.account_id)
 
         try:
-            TenantService.switch_tenant(account, workspace_id)
+            TenantService.switch_tenant(account, workspace_id, session=db.session)
         except AccountNotLinkTenantError:
             raise NotFound("workspace not found")
 
@@ -152,7 +152,7 @@ class WorkspaceMembersApi(Resource):
     @accepts(query=MemberListQuery)
     def get(self, workspace_id: str, *, auth_data: AuthData, query: MemberListQuery):
         tenant = _load_tenant(workspace_id)
-        members = TenantService.get_tenant_members(tenant)
+        members = TenantService.get_tenant_members(tenant, session=db.session)
         total = len(members)
         start = (query.page - 1) * query.limit
         page_items = members[start : start + query.limit]
@@ -184,6 +184,7 @@ class WorkspaceMembersApi(Resource):
                 language=None,
                 role=body.role,
                 inviter=inviter,
+                session=db.session,
             )
         except AccountAlreadyInTenantError as exc:
             raise BadRequest(str(exc))
@@ -232,7 +233,7 @@ class WorkspaceMemberApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.remove_member_from_tenant(tenant, member, operator)
+            TenantService.remove_member_from_tenant(tenant, member, operator, session=db.session)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
@@ -266,7 +267,7 @@ class WorkspaceMemberRoleApi(Resource):
             raise NotFound("member not found")
 
         try:
-            TenantService.update_member_role(tenant, member, body.role, operator)
+            TenantService.update_member_role(tenant, member, body.role, operator, session=db.session)
         except CannotOperateSelfError as exc:
             raise BadRequest(str(exc))
         except NoPermissionError as exc:
