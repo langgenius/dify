@@ -8,7 +8,7 @@ const navItemClassName = 'group relative flex h-8 w-full items-center gap-2 roun
 
 const activeNavItemClassName = cn(
   'main-nav-active-glass',
-  'z-[1]',
+  'z-1',
 )
 
 const inactiveNavItemClassName = 'system-md-medium bg-components-main-nav-nav-button-bg text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover hover:text-components-main-nav-nav-button-text'
