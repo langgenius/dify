@@ -264,8 +264,6 @@ class WorkflowAgentRuntimeRequestBuilder:
     @staticmethod
     def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
         """Return the transport plugin id expected by plugin-daemon headers."""
-        if plugin_id.count("/") == 1 and ":" not in plugin_id and "@" not in plugin_id:
-            return plugin_id
         if plugin_id.count("/") == 1:
             return plugin_id.split(":", 1)[0].split("@", 1)[0]
         if plugin_id:

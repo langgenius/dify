@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError
 from models.agent import (
@@ -32,7 +33,12 @@ from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.errors import AgentVersionConflictError, InvalidComposerConfigError
+from services.agent.errors import (
+    AgentNameConflictError,
+    AgentNotFoundError,
+    AgentVersionConflictError,
+    InvalidComposerConfigError,
+)
 from services.agent.roster_service import AgentRosterService
 from services.agent.workflow_publish_service import WorkflowAgentPublishService
 from services.app_service import AppListParams, AppService
@@ -1256,6 +1262,74 @@ def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytes
     assert created_params.mode == "agent"
     assert created_params.name == "Ready Agent"
     assert created_account.id == "account-1"
+
+
+def test_composer_require_account(monkeypatch: pytest.MonkeyPatch):
+    account = SimpleNamespace(id="account-1")
+    monkeypatch.setattr(composer_service.db, "session", SimpleNamespace(get=lambda model, account_id: account))
+
+    assert AgentComposerService._require_account(account_id="account-1") is account
+
+
+def test_composer_require_account_raises_when_missing(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(composer_service.db, "session", SimpleNamespace(get=lambda model, account_id: None))
+
+    with pytest.raises(ValueError, match="Account not found"):
+        AgentComposerService._require_account(account_id="missing-account")
+
+
+def test_composer_create_roster_agent_rolls_back_name_conflict(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+
+    class FakeAppService:
+        def create_app(self, tenant_id, params, account):
+            raise IntegrityError("insert apps", params, Exception("duplicate"))
+
+    monkeypatch.setattr(composer_service, "AppService", FakeAppService)
+    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: SimpleNamespace(id="account-1"))
+
+    with pytest.raises(AgentNameConflictError):
+        AgentComposerService._create_roster_agent_for_composer(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            name="Duplicate Agent",
+            agent_soul=_agent_soul_with_model(),
+            operation=AgentConfigRevisionOperation.CREATE_VERSION,
+            version_note=None,
+        )
+
+    assert fake_session.rollbacks == 1
+
+
+def test_composer_create_roster_agent_raises_when_backing_agent_missing(monkeypatch: pytest.MonkeyPatch):
+    fake_session = FakeSession()
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+
+    class FakeAppService:
+        def create_app(self, tenant_id, params, account):
+            return SimpleNamespace(id="app-agent-1")
+
+    class FakeAgentRosterService:
+        def __init__(self, session):
+            self.session = session
+
+        def get_app_backing_agent(self, *, tenant_id, app_id):
+            return None
+
+    monkeypatch.setattr(composer_service, "AppService", FakeAppService)
+    monkeypatch.setattr(composer_service, "AgentRosterService", FakeAgentRosterService)
+    monkeypatch.setattr(AgentComposerService, "_require_account", lambda **kwargs: SimpleNamespace(id="account-1"))
+
+    with pytest.raises(AgentNotFoundError):
+        AgentComposerService._create_roster_agent_for_composer(
+            tenant_id="tenant-1",
+            account_id="account-1",
+            name="Missing Backing Agent",
+            agent_soul=_agent_soul_with_model(),
+            operation=AgentConfigRevisionOperation.CREATE_VERSION,
+            version_note=None,
+        )
 
 
 def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPatch):
