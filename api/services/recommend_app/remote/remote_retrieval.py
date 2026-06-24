@@ -2,6 +2,7 @@ import logging
 from typing import Any, override
 
 import httpx
+from flask import has_request_context, request
 
 from configs import dify_config
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
@@ -10,6 +11,17 @@ from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType
 
 logger = logging.getLogger(__name__)
+
+
+def _current_origin_headers() -> dict[str, str]:
+    if not has_request_context():
+        return {}
+
+    origin = request.headers.get("Origin")
+    if not origin:
+        return {}
+
+    return {"Origin": origin}
 
 
 class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
@@ -60,7 +72,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps/{app_id}"
-        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
+        response = httpx.get(url, headers=_current_origin_headers(), timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             return None
         data: dict[str, Any] = response.json()
@@ -75,7 +87,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps?language={language}"
-        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
+        response = httpx.get(url, headers=_current_origin_headers(), timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             raise ValueError(f"fetch recommended apps failed, status code: {response.status_code}")
 
@@ -91,7 +103,7 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         """
         domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f"{domain}/apps/learn-dify?language={language}"
-        response = httpx.get(url, timeout=httpx.Timeout(10.0, connect=3.0))
+        response = httpx.get(url, headers=_current_origin_headers(), timeout=httpx.Timeout(10.0, connect=3.0))
         if response.status_code != 200:
             raise ValueError(f"fetch learn dify apps failed, status code: {response.status_code}")
 

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from flask import Flask
 
 from services.recommend_app.recommend_app_type import RecommendAppType
 from services.recommend_app.remote.remote_retrieval import RemoteRecommendAppRetrieval
@@ -144,6 +145,21 @@ class TestFetchFromDifyOfficial:
         result = RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
 
         assert "categories" not in result
+        assert mock_get.call_args.kwargs["headers"] == {}
+
+    @patch("services.recommend_app.remote.remote_retrieval.dify_config")
+    @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
+    def test_apps_forwards_request_origin_header(self, mock_get, mock_config):
+        mock_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN = "https://example.com"
+        mock_response = MagicMock(status_code=200)
+        mock_response.json.return_value = {"recommended_apps": []}
+        mock_get.return_value = mock_response
+
+        flask_app = Flask(__name__)
+        with flask_app.test_request_context(headers={"Origin": "https://cloud.example.com"}):
+            RemoteRecommendAppRetrieval.fetch_recommended_apps_from_dify_official("en-US")
+
+        assert mock_get.call_args.kwargs["headers"] == {"Origin": "https://cloud.example.com"}
 
     @patch("services.recommend_app.remote.remote_retrieval.dify_config")
     @patch("services.recommend_app.remote.remote_retrieval.httpx.get")
