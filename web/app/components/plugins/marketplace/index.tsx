@@ -1,4 +1,5 @@
 import type { SearchParams } from 'nuqs'
+import { PluginInstallPermissionProviderGuard } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import Description from './description'
 import { HydrateQueryClient } from './hydration-server'
@@ -17,7 +18,7 @@ type MarketplaceProps = {
 }
 
 const Marketplace = async ({
-  showInstallButton = true,
+  showInstallButton = false,
   pluginTypeSwitchClassName,
   isMarketplacePlatform = false,
   marketplaceNav,
@@ -26,20 +27,22 @@ const Marketplace = async ({
   return (
     <TanstackQueryInitializer>
       <HydrateQueryClient searchParams={searchParams}>
-        <Description
-          isMarketplacePlatform={isMarketplacePlatform}
-          marketplaceNav={marketplaceNav}
-        />
-        {
-          !isMarketplacePlatform && (
-            <StickySearchAndSwitchWrapper
-              pluginTypeSwitchClassName={pluginTypeSwitchClassName}
-            />
-          )
-        }
-        <ListWrapper
-          showInstallButton={showInstallButton}
-        />
+        <PluginInstallPermissionProviderGuard canInstallPlugin={showInstallButton}>
+          <Description
+            isMarketplacePlatform={isMarketplacePlatform}
+            marketplaceNav={marketplaceNav}
+          />
+          {
+            !isMarketplacePlatform && (
+              <StickySearchAndSwitchWrapper
+                pluginTypeSwitchClassName={pluginTypeSwitchClassName}
+              />
+            )
+          }
+          <ListWrapper
+            showInstallButton={showInstallButton}
+          />
+        </PluginInstallPermissionProviderGuard>
       </HydrateQueryClient>
     </TanstackQueryInitializer>
   )

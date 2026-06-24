@@ -13,7 +13,6 @@ type Props = Readonly<{
   published: boolean
   isLoading: boolean
   outdated: boolean
-  isCurrentWorkspaceManager: boolean
   onConfigure: () => void
   disabledReason?: string
 }>
@@ -23,7 +22,6 @@ const WorkflowToolConfigureButton = ({
   published,
   isLoading,
   outdated,
-  isCurrentWorkspaceManager,
   onConfigure,
   disabledReason,
 }: Props) => {
@@ -36,46 +34,30 @@ const WorkflowToolConfigureButton = ({
       {(!published || !isLoading) && (
         <div className={cn(
           'group rounded-lg bg-background-section-burn transition-colors',
-          disabled || !isCurrentWorkspaceManager ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
-          !disabled && !published && isCurrentWorkspaceManager && 'hover:bg-state-accent-hover',
+          disabled ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
+          !disabled && !published && 'hover:bg-state-accent-hover',
         )}
         >
-          {isCurrentWorkspaceManager
-            ? (
-                <div
-                  className="flex items-center justify-start gap-2 p-2 pl-2.5"
-                  onClick={() => {
-                    if (!disabled && !published)
-                      onConfigure()
-                  }}
-                >
-                  <span className={cn('relative i-ri-hammer-line size-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
-                  <div
-                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
-                    className={cn('shrink grow basis-0 truncate system-sm-medium text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
-                  >
-                    {t('common.workflowAsTool', { ns: 'workflow' })}
-                  </div>
-                  {!published && (
-                    <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-                      {t('common.configureRequired', { ns: 'workflow' })}
-                    </span>
-                  )}
-                </div>
-              )
-            : (
-                <div
-                  className="flex items-center justify-start gap-2 p-2 pl-2.5"
-                >
-                  <span className="i-ri-hammer-line size-4 text-text-tertiary" />
-                  <div
-                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
-                    className="shrink grow basis-0 truncate system-sm-medium text-text-tertiary"
-                  >
-                    {t('common.workflowAsTool', { ns: 'workflow' })}
-                  </div>
-                </div>
-              )}
+          <div
+            className="flex items-center justify-start gap-2 p-2 pl-2.5"
+            onClick={() => {
+              if (!disabled && !published)
+                onConfigure()
+            }}
+          >
+            <span className={cn('relative i-ri-hammer-line size-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
+            <div
+              title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
+              className={cn('shrink grow basis-0 truncate system-sm-medium text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
+            >
+              {t('common.workflowAsTool', { ns: 'workflow' })}
+            </div>
+            {!published && (
+              <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+                {t('common.configureRequired', { ns: 'workflow' })}
+              </span>
+            )}
+          </div>
           {disabledReason && (
             <div className="mt-1 px-2.5 pb-2 text-xs leading-[18px] text-text-tertiary">
               {disabledReason}
@@ -88,7 +70,7 @@ const WorkflowToolConfigureButton = ({
                   size="small"
                   className="w-[140px]"
                   onClick={onConfigure}
-                  disabled={!isCurrentWorkspaceManager || disabled}
+                  disabled={disabled}
                 >
                   {t('common.configure', { ns: 'workflow' })}
                   {outdated && <StatusDot className="ml-1" status="warning" />}

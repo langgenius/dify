@@ -1,6 +1,8 @@
 import logging
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import controllers.console.version as version_module
 
 
@@ -19,7 +21,7 @@ class TestHasNewVersion:
         )
         assert result is False
 
-    def test_has_new_version_invalid_version(self, caplog):
+    def test_has_new_version_invalid_version(self, caplog: pytest.LogCaptureFixture):
         with caplog.at_level(logging.WARNING, logger="controllers.console.version"):
             result = version_module._has_new_version(
                 latest_version="invalid",

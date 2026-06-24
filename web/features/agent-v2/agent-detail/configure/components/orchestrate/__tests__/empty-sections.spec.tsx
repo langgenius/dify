@@ -8,6 +8,14 @@ import { AgentKnowledgeRetrieval } from '../knowledge'
 import { AgentSkills } from '../skills'
 import { AgentTools } from '../tools'
 
+vi.mock('../drive-context', () => ({
+  FILES_DRIVE_PREFIX: 'files/',
+  getAgentDriveFileName: (key: string) => key.split('/').pop() ?? key,
+  useAgentDriveApiContext: () => ({ agentId: 'agent-1' }),
+  useAgentDriveFiles: () => ({ files: [], query: { refetch: vi.fn() } }),
+  useAgentDriveSkills: () => ({ skills: [], query: { refetch: vi.fn() } }),
+}))
+
 function renderEmptySections() {
   const queryClient = new QueryClient()
 
@@ -16,13 +24,11 @@ function renderEmptySections() {
       <AgentComposerProvider
         initialDraft={{
           ...defaultAgentSoulConfigFormState,
-          files: [],
           knowledgeRetrievals: [],
-          skills: [],
           tools: [],
         }}
       >
-        <AgentSkills agentId="agent-1" />
+        <AgentSkills />
         <AgentFiles />
         <AgentTools />
         <AgentKnowledgeRetrieval />

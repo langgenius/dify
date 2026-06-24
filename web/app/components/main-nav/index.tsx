@@ -4,7 +4,6 @@ import type { MainNavItem, MainNavProps } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -29,11 +28,11 @@ import { MainNavSearchButton } from './components/search-button'
 import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
+import { useDetailSidebarMode } from './storage'
 
 const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'connect'])
 const DATASET_DOCUMENT_CREATION_ROUTES = new Set(['create', 'create-from-pipeline'])
 const DEPLOYMENT_COLLECTION_ROUTES = new Set(['create'])
-const DETAIL_SIDEBAR_STORAGE_KEY = 'app-detail-collapse-or-expand'
 const secondarySidebarHelpTriggerIcon = <span aria-hidden className="i-ri-question-line size-4 shrink-0" />
 
 function SecondarySidebarHelpMenu({
@@ -98,14 +97,12 @@ const MainNav = ({
   const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
   const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
   const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation
-  const { hasAppDetail, appSidebarExpand, setAppDetail, setAppSidebarExpand } = useAppStore(useShallow(state => ({
+  const { hasAppDetail, setAppDetail } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
-    appSidebarExpand: state.appSidebarExpand,
     setAppDetail: state.setAppDetail,
-    setAppSidebarExpand: state.setAppSidebarExpand,
   })))
-  const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useLocalStorage<string>(DETAIL_SIDEBAR_STORAGE_KEY, 'expand', { raw: true })
-  const detailNavigationMode = appSidebarExpand === 'collapse' || (!appSidebarExpand && storedDetailSidebarExpand === 'collapse') ? 'collapse' : 'expand'
+  const [storedDetailSidebarExpand, setStoredDetailSidebarExpand] = useDetailSidebarMode()
+  const detailNavigationMode = storedDetailSidebarExpand === 'collapse' ? 'collapse' : 'expand'
   const detailNavigationExpanded = detailNavigationMode === 'expand'
   const isCollapsedDetailNavigation = showDetailNavigation && !detailNavigationExpanded
   const [detailNavigationHoverPreviewOpen, setDetailNavigationHoverPreviewOpen] = useState(false)
@@ -124,16 +121,17 @@ const MainNav = ({
 
       setDetailNavigationTransitionDisabled(true)
       setDetailNavigationHoverPreviewOpen(false)
-      setAppSidebarExpand('expand')
+      setStoredDetailSidebarExpand('expand')
       detailNavigationTransitionTimerRef.current = setTimeout(() => {
         setDetailNavigationTransitionDisabled(false)
       }, 200)
       return
     }
 
+    const nextMode = detailNavigationExpanded ? 'collapse' : 'expand'
     setDetailNavigationHoverPreviewOpen(false)
-    setAppSidebarExpand(detailNavigationExpanded ? 'collapse' : 'expand')
-  }, [detailNavigationExpanded, isDetailNavigationHoverPreviewOpen, setAppSidebarExpand])
+    setStoredDetailSidebarExpand(nextMode)
+  }, [detailNavigationExpanded, isDetailNavigationHoverPreviewOpen, setStoredDetailSidebarExpand])
   const openDetailNavigationHoverPreview = useCallback(() => {
     if (!isCollapsedDetailNavigation)
       return
@@ -162,13 +160,6 @@ const MainNav = ({
   }, [])
 
   useEffect(() => {
-    if (!showDetailNavigation)
-      return
-
-    setStoredDetailSidebarExpand(detailNavigationMode)
-  }, [detailNavigationMode, setStoredDetailSidebarExpand, showDetailNavigation])
-
-  useEffect(() => {
     if (pathname.startsWith('/app/') || !hasAppDetail)
       return
 
@@ -190,7 +181,7 @@ const MainNav = ({
       agentV2Enabled,
       canUseAppDeploy,
       isCurrentWorkspaceDatasetOperator,
-      isCurrentWorkspaceEditor,
+      marketplaceEnabled: systemFeatures.enable_marketplace,
     }))
     .map(route => ({
       href: route.href,
@@ -198,7 +189,7 @@ const MainNav = ({
       active: route.active,
       icon: route.icon,
       activeIcon: route.activeIcon,
-    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor, t])
+    })), [agentV2Enabled, canUseAppDeploy, isCurrentWorkspaceDatasetOperator, systemFeatures.enable_marketplace, t])
 
   const renderLogo = () => {
     const appTitle = systemFeatures.branding.enabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'
@@ -306,7 +297,7 @@ const MainNav = ({
               ? null
               : (
                   <>
-                    <nav className="flex flex-col gap-px p-2">
+                    <nav className="isolate flex flex-col gap-px p-2">
                       {navItems.map(item => (
                         <MainNavLink key={item.href} item={item} pathname={pathname} />
                       ))}

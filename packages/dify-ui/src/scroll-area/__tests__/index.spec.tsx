@@ -120,6 +120,7 @@ describe('scroll-area wrapper', () => {
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveAttribute('data-orientation', 'vertical')
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveAttribute('data-dify-scrollbar')
       await expect.element(screen.getByTestId('scroll-area-vertical-scrollbar')).toHaveClass(
+        'group/scrollbar',
         'flex',
         'overflow-clip',
         'p-1',
@@ -144,6 +145,9 @@ describe('scroll-area wrapper', () => {
         'transition-[background-color]',
         'motion-reduce:transition-none',
         'data-[orientation=vertical]:w-1',
+        'group-data-hovering/scrollbar:bg-state-base-handle-hover',
+        'data-scrolling:bg-state-base-handle-hover',
+        'active:bg-state-base-handle-hover',
       )
     })
 
@@ -153,6 +157,7 @@ describe('scroll-area wrapper', () => {
       await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveAttribute('data-orientation', 'horizontal')
       await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveAttribute('data-dify-scrollbar')
       await expect.element(screen.getByTestId('scroll-area-horizontal-scrollbar')).toHaveClass(
+        'group/scrollbar',
         'flex',
         'overflow-clip',
         'p-1',
@@ -177,6 +182,9 @@ describe('scroll-area wrapper', () => {
         'transition-[background-color]',
         'motion-reduce:transition-none',
         'data-[orientation=horizontal]:h-1',
+        'group-data-hovering/scrollbar:bg-state-base-handle-hover',
+        'data-scrolling:bg-state-base-handle-hover',
+        'active:bg-state-base-handle-hover',
       )
     })
   })

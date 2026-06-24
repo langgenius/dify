@@ -15,7 +15,7 @@
   "conversion.confirm.content": "此動作是永久性的。您將無法恢復到以前的方法。請確認轉換。",
   "conversion.confirm.title": "證實",
   "conversion.descriptionChunk1": "您現在可以轉換現有的知識庫，以使用知識流水線進行文件處理",
-  "conversion.descriptionChunk2": "— 一種更開放和靈活的方法，可以訪問我們市場中的插件。這會將新的處理方法套用至所有未來的文件。",
+  "conversion.descriptionChunk2": "— 一種更開放和靈活的方法，可以訪問 Marketplace 中的集成。這會將新的處理方法套用至所有未來的文件。",
   "conversion.errorMessage": "無法將資料集轉換成流水線",
   "conversion.successMessage": "已成功將資料集轉換成流水線",
   "conversion.title": "轉換為知識流水線",

@@ -61,7 +61,7 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   eeIt('[EE][P0] -o wide output contains WORKSPACE column and JSON has workspace_id (3.92)', async () => {
     // Spec 3.92: WORKSPACE column (priority:1) appears only in -o wide mode.
-    // Default table shows priority:0 columns only (NAME/ID/MODE/TAGS/UPDATED).
+    // Default table shows priority:0 columns only (NAME/ID/MODE/UPDATED).
     const wideResult = await withRetry(
       () => fx.r(['get', 'app', '-A', '-o', 'wide']),
       { attempts: 3, delayMs: 2000 },
@@ -151,15 +151,15 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
 
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  itWithSso('[P0] external SSO user get app -A returns insufficient_scope error (3.103)', async () => {
-    // Spec 3.103: dfoe_ token on -A → insufficient_scope, exit non-0.
-    // Merged from two duplicate fake-token cases; now uses real DIFY_E2E_SSO_TOKEN.
+  itWithSso('[P0] external SSO user get app -A is rejected as an invalid flag', async () => {
+    // --all-workspaces is meaningless for external SSO users (no workspace
+    // scope), so the CLI rejects it client-side with usage_invalid_flag (exit 2).
+    // Uses real DIFY_E2E_SSO_TOKEN; skipped when not configured.
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
     const ssoTmp = await withTempConfig()
     try {
       await mkdir(ssoTmp.configDir, { recursive: true })
-      // Use minimal SSO hosts.yml (no workspace) so CLI hits the scope/auth error path.
       const hostsYml = `${[
         `current_host: ${E.host}`,
         `token_storage: file`,
@@ -171,8 +171,8 @@ describe('E2E / difyctl get app -A (all-workspaces)', () => {
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
       const result = await run(['get', 'app', '-A'], { configDir: ssoTmp.configDir })
-      expect(result.exitCode, 'SSO user -A should exit non-zero').not.toBe(0)
-      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth|missing/i)
+      assertExitCode(result, 2)
+      expect(result.stderr).toMatch(/--all-workspaces is not available for external logins/)
     }
     finally {
       await ssoTmp.cleanup()

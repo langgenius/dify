@@ -19,7 +19,6 @@ import {
   useBoolean,
   useSessionStorageState,
 } from 'ahooks'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -31,6 +30,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import { generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
+import { useAutoGenModel } from '../auto-gen-model-storage'
 import IdeaOutput from '../automatic/idea-output'
 import InstructionEditor from '../automatic/instruction-editor-in-workflow'
 import ResPlaceholder from '../automatic/res-placeholder'
@@ -40,7 +40,6 @@ import { GeneratorType } from '../automatic/types'
 import useGenData from '../automatic/use-gen-data'
 
 const i18nPrefix = 'generate'
-const AUTO_GEN_MODEL_STORAGE_KEY = 'auto-gen-model'
 const defaultCompletionParams = {
   temperature: 0.7,
   max_tokens: 0,
@@ -75,7 +74,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   },
 ) => {
   const { t } = useTranslation()
-  const [storedModel, setStoredModel] = useLocalStorage<Model>(AUTO_GEN_MODEL_STORAGE_KEY)
+  const [storedModel, setStoredModel] = useAutoGenModel()
   const [model, setModel] = React.useState<Model>(storedModel || {
     name: '',
     provider: '',

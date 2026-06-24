@@ -13,6 +13,7 @@ import {
   buildMarketplaceUrlPathByIntegrationSection,
   toolCategoryBySection,
 } from '@/app/components/integrations/routes'
+import { useCanManageMCP, useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { useDocLink } from '@/context/i18n'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
@@ -104,9 +105,14 @@ export default function IntegrationsPage({
   const docLink = useDocLink()
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
+  const canManageMCP = useCanManageMCP()
+  const canManageTools = useCanManageTools()
   const {
-    canManagement,
     canDebugger,
+    canInstallPlugin,
+    canManagePlugin,
+    canUpdatePlugin,
+    canViewInstalledPlugins,
     handlePermissionChange,
     isPluginCategory,
     permission,
@@ -114,7 +120,7 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const showInstallAction = canManagement
+  const showInstallAction = canInstallPlugin
   const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
@@ -124,7 +130,7 @@ export default function IntegrationsPage({
     providerItem,
     secondaryItems,
     toolItems,
-  } = useIntegrationNav(section)
+  } = useIntegrationNav(section, { canManageMCP, canManageTools })
   const isToolSection = Boolean(toolCategoryBySection[section])
   const [isToolsExpanded, setIsToolsExpanded] = useState(isToolSection)
   const useFillLayout = section === 'provider' || section === 'data-source' || section === 'custom-endpoint' || isToolSection || isPluginCategory
@@ -193,6 +199,11 @@ export default function IntegrationsPage({
     </>
   )
 
+  if (section === 'mcp' && !canManageMCP)
+    return null
+  if ((section === 'custom-tool' || section === 'workflow-tool') && !canManageTools)
+    return null
+
   return (
     <div className="flex h-full min-h-0 w-full flex-1 bg-components-panel-bg" style={sidebarWidthStyle}>
       <aside className={cn(
@@ -217,7 +228,7 @@ export default function IntegrationsPage({
           </div>
           {showInstallAction && (
             <IntegrationSidebarActions
-              canManagement={canManagement}
+              canManagement={canInstallPlugin}
               installContextCategory={getPluginCategoryBySection(section)}
               onSwitchToMarketplace={handleSwitchToMarketplace}
             />
@@ -281,7 +292,10 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canManagePlugin={canManagePlugin}
+                  canUpdatePlugin={canUpdatePlugin}
+                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -304,7 +318,10 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canManagePlugin={canManagePlugin}
+                  canUpdatePlugin={canUpdatePlugin}
+                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

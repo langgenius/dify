@@ -13,7 +13,9 @@ from extensions.ext_database import db
 from models import App
 
 
-def test_run_chat_dispatches_to_chat_handler(flask_app, account_token, app_in_workspace, monkeypatch):
+def test_run_chat_dispatches_to_chat_handler(
+    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+):
     captured = {}
 
     def _fake_generate(*, app_model, user, args, invoke_from, streaming):
@@ -78,7 +80,9 @@ def app_with_mode(flask_app: Flask, workspace_account):
         db.session.commit()
 
 
-def test_run_chat_without_query_returns_422(flask_app, account_token, app_in_workspace, monkeypatch):
+def test_run_chat_without_query_returns_422(
+    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+):
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}/run",
@@ -89,7 +93,9 @@ def test_run_chat_without_query_returns_422(flask_app, account_token, app_in_wor
     assert b"query_required_for_chat" in res.data
 
 
-def test_run_completion_dispatches_to_completion_handler(flask_app, account_token, app_with_mode, monkeypatch):
+def test_run_completion_dispatches_to_completion_handler(
+    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+):
     app = app_with_mode("completion")
 
     captured: dict = {}
@@ -119,7 +125,9 @@ def test_run_completion_dispatches_to_completion_handler(flask_app, account_toke
     assert captured["mode"] == "completion"
 
 
-def test_run_workflow_with_query_returns_422(flask_app, account_token, app_with_mode, monkeypatch):
+def test_run_workflow_with_query_returns_422(
+    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+):
     app = app_with_mode("workflow")
     client = flask_app.test_client()
     res = client.post(
@@ -131,7 +139,9 @@ def test_run_workflow_with_query_returns_422(flask_app, account_token, app_with_
     assert b"query_not_supported_for_workflow" in res.data
 
 
-def test_run_workflow_no_query_dispatches_to_workflow_handler(flask_app, account_token, app_with_mode, monkeypatch):
+def test_run_workflow_no_query_dispatches_to_workflow_handler(
+    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+):
     app = app_with_mode("workflow")
 
     def _fake_generate(*, app_model, user, args, invoke_from, streaming):
@@ -154,7 +164,9 @@ def test_run_workflow_no_query_dispatches_to_workflow_handler(flask_app, account
     assert body["workflow_run_id"] == "wfr"
 
 
-def test_run_unsupported_mode_returns_422(flask_app, account_token, app_with_mode, monkeypatch):
+def test_run_unsupported_mode_returns_422(
+    flask_app: Flask, account_token, app_with_mode, monkeypatch: pytest.MonkeyPatch
+):
     app = app_with_mode("channel")
     client = flask_app.test_client()
     res = client.post(
@@ -166,7 +178,7 @@ def test_run_unsupported_mode_returns_422(flask_app, account_token, app_with_mod
     assert b"mode_not_runnable" in res.data
 
 
-def test_run_without_bearer_returns_401(flask_app, app_in_workspace):
+def test_run_without_bearer_returns_401(flask_app: Flask, app_in_workspace):
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}/run",
@@ -175,7 +187,9 @@ def test_run_without_bearer_returns_401(flask_app, app_in_workspace):
     assert res.status_code == 401
 
 
-def test_run_with_insufficient_scope_returns_403(flask_app, account_token, app_in_workspace, monkeypatch):
+def test_run_with_insufficient_scope_returns_403(
+    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+):
     """Stub the authenticator to return an AuthContext with empty scopes."""
     from libs import oauth_bearer
 
@@ -198,7 +212,7 @@ def test_run_with_insufficient_scope_returns_403(flask_app, account_token, app_i
     assert res.status_code == 403
 
 
-def test_run_with_unknown_app_returns_404(flask_app, account_token):
+def test_run_with_unknown_app_returns_404(flask_app: Flask, account_token):
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{uuid.uuid4()}/run",
@@ -208,7 +222,9 @@ def test_run_with_unknown_app_returns_404(flask_app, account_token):
     assert res.status_code == 404
 
 
-def test_run_streaming_returns_event_stream(flask_app, account_token, app_in_workspace, monkeypatch):
+def test_run_streaming_returns_event_stream(
+    flask_app: Flask, account_token, app_in_workspace, monkeypatch: pytest.MonkeyPatch
+):
     def _stream() -> Generator[str, None, None]:
         yield 'event: message\ndata: {"x": 1}\n\n'
 
@@ -228,7 +244,7 @@ def test_run_streaming_returns_event_stream(flask_app, account_token, app_in_wor
     assert b"event: message" in res.data
 
 
-def test_run_without_inputs_returns_422(flask_app, account_token, app_in_workspace):
+def test_run_without_inputs_returns_422(flask_app: Flask, account_token, app_in_workspace):
     client = flask_app.test_client()
     res = client.post(
         f"/openapi/v1/apps/{app_in_workspace.id}/run",

@@ -40,7 +40,6 @@ export function useAgentConfigureSync({
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
   const setOriginalDraft = useSetAtom(agentComposerOriginalDraftAtom)
   const setPublishedDraft = useSetAtom(agentComposerPublishedDraftAtom)
-  const [isPublishing, setIsPublishing] = useState(false)
   const [draftSavedAt, setDraftSavedAt] = useState<number | undefined>(undefined)
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
@@ -60,13 +59,19 @@ export function useAgentConfigureSync({
   const saveComposerMutation = useMutation(
     consoleQuery.agent.byAgentId.composer.put.mutationOptions(),
   )
+  const publishComposerMutation = useMutation(
+    consoleQuery.agent.byAgentId.composer.put.mutationOptions(),
+  )
 
   const saveComposer = useSerialAsyncCallback(async (
     saveStrategy: ComposerSaveStrategy,
     configSnapshot: AgentSoulConfig,
   ) => {
     const savedDraftKey = JSON.stringify(configSnapshot)
-    const composerState = await saveComposerMutation.mutateAsync({
+    const composerMutation = saveStrategy === 'save_as_new_version'
+      ? publishComposerMutation
+      : saveComposerMutation
+    const composerState = await composerMutation.mutateAsync({
       params: {
         agent_id: agentId,
       },
@@ -87,6 +92,18 @@ export function useAgentConfigureSync({
     queryClient.setQueryData(
       consoleQuery.agent.byAgentId.composer.get.queryKey({ input: { params: { agent_id: agentId } } }),
       composerState,
+    )
+    queryClient.setQueryData(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+      (agentDetail) => {
+        if (!agentDetail)
+          return agentDetail
+
+        return {
+          ...agentDetail,
+          active_config_is_published: true,
+        }
+      },
     )
     void queryClient.invalidateQueries({
       queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
@@ -140,21 +157,17 @@ export function useAgentConfigureSync({
 
   const publishDraft = useCallback(async (payload: AgentConfigurePublishPayload) => {
     debouncedSaveDraft.cancel?.()
-    setIsPublishing(true)
     try {
       await saveComposer('save_as_new_version', payload.config_snapshot)
     }
     catch {
       // Draft sync follows workflow autosave behavior: save failures are silent and keep the local draft intact.
     }
-    finally {
-      setIsPublishing(false)
-    }
   }, [debouncedSaveDraft, saveComposer])
 
   return {
     draftSavedAt,
-    isPublishing,
+    isPublishing: publishComposerMutation.isPending,
     publishDraft,
     saveDraft,
   }

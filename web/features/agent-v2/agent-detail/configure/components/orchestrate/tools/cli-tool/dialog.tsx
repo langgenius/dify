@@ -127,10 +127,10 @@ export function CliToolDialog({
   }, [onDeleteCliTool, onOpenChange, tool])
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange} disablePointerDismissal>
       <DialogContent className="flex max-h-[calc(100dvh-2rem)] w-[640px] flex-col overflow-hidden p-0">
         <div className="relative px-6 pt-6 pb-3">
-          <DialogCloseButton className="top-5 right-5" />
+          <DialogCloseButton />
           <DialogTitle className="title-2xl-semi-bold text-text-primary">
             {t(mode === 'edit' ? 'agentDetail.configure.tools.cliDialog.editTitle' : 'agentDetail.configure.tools.cliDialog.title')}
           </DialogTitle>

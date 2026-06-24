@@ -10,6 +10,7 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import Link from '@/next/link'
@@ -27,6 +28,7 @@ const InstallFromMarketplace = ({
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
   const {
     plugins: allPlugins,
@@ -73,7 +75,7 @@ const InstallFromMarketplace = ({
             marketplaceCollections={[]}
             marketplaceCollectionPluginsMap={{}}
             plugins={allPlugins}
-            showInstallButton
+            showInstallButton={canInstallPlugin}
             cardContainerClassName="grid grid-cols-3 gap-2"
             cardRender={cardRender}
             emptyClassName="h-auto"

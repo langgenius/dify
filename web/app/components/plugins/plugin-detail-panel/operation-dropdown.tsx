@@ -28,6 +28,8 @@ type Props = Readonly<{
   popupClassName?: string
   triggerSize?: 'm' | 'xs'
   destructiveRemove?: boolean
+  showCheckVersion?: boolean
+  showRemove?: boolean
 }>
 
 const operationMenuPopupClassName = 'w-[192px] py-1'
@@ -47,12 +49,22 @@ const OperationDropdown: FC<Props> = ({
   popupClassName,
   triggerSize = 'm',
   destructiveRemove = false,
+  showCheckVersion = true,
+  showRemove = true,
 }) => {
   const { t } = useTranslation()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
+  const showInfo = source === PluginSource.github
+  const showCheckVersionAction = showCheckVersion && source === PluginSource.github
+  const showMarketplaceDetail = (source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace
+  const showRemoveAction = showRemove
+  const showSeparator = showRemoveAction && (showMarketplaceDetail || !!onViewReadme)
+
+  if (!showInfo && !showCheckVersionAction && !showMarketplaceDetail && !onViewReadme && !showRemoveAction)
+    return null
 
   return (
     <DropdownMenu>
@@ -67,18 +79,28 @@ const OperationDropdown: FC<Props> = ({
         alignOffset={alignOffset}
         popupClassName={cn(operationMenuPopupClassName, popupClassName)}
       >
-        {source === PluginSource.github && (
+        {showInfo && (
           <DropdownMenuItem className={operationMenuItemClassName} onClick={onInfo}>
             <span className={operationMenuLabelClassName}>{t('detailPanel.operation.info', { ns: 'plugin' })}</span>
           </DropdownMenuItem>
         )}
-        {source === PluginSource.github && (
+        {showCheckVersionAction && (
           <DropdownMenuItem className={operationMenuItemClassName} onClick={onCheckVersion}>
             <span className={operationMenuLabelClassName}>{t('detailPanel.operation.checkUpdate', { ns: 'plugin' })}</span>
           </DropdownMenuItem>
         )}
-        {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
-          <DropdownMenuItem className={operationMenuItemClassName} render={<a href={detailUrl} target="_blank" rel="noopener noreferrer" />}>
+        {showMarketplaceDetail && (
+          <DropdownMenuItem
+            className={operationMenuItemClassName}
+            render={(
+              <a
+                href={detailUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('detailPanel.operation.viewDetail', { ns: 'plugin' })}
+              />
+            )}
+          >
             <span className={operationMenuLabelClassName}>{t('detailPanel.operation.viewDetail', { ns: 'plugin' })}</span>
             <span className="i-ri-arrow-right-up-line size-3.5 shrink-0 text-text-tertiary" />
           </DropdownMenuItem>
@@ -88,20 +110,22 @@ const OperationDropdown: FC<Props> = ({
             <span className={operationMenuLabelClassName}>{t('detailPanel.operation.viewReadme', { ns: 'plugin' })}</span>
           </DropdownMenuItem>
         )}
-        {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
+        {showSeparator && (
           <DropdownMenuSeparator className="my-0" />
         )}
-        <DropdownMenuItem
-          className={cn(
-            operationMenuItemClassName,
-            destructiveRemove && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
-          )}
-          onClick={onRemove}
-        >
-          <span className={cn(operationMenuLabelClassName, destructiveRemove && 'text-inherit')}>
-            {t('detailPanel.operation.remove', { ns: 'plugin' })}
-          </span>
-        </DropdownMenuItem>
+        {showRemoveAction && (
+          <DropdownMenuItem
+            className={cn(
+              operationMenuItemClassName,
+              destructiveRemove && 'data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive',
+            )}
+            onClick={onRemove}
+          >
+            <span className={cn(operationMenuLabelClassName, destructiveRemove && 'text-inherit')}>
+              {t('detailPanel.operation.remove', { ns: 'plugin' })}
+            </span>
+          </DropdownMenuItem>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

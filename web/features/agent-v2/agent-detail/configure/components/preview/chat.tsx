@@ -5,21 +5,30 @@ import type {
   AgentIconType,
   AgentSoulConfig,
   AgentSoulDifyToolConfig,
+  AgentThought,
+  MessageDetailResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Inputs } from '@/models/debug'
+import type { MessageRating } from '@/models/log'
+import type { FileResponse } from '@/types/workflow'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
-import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import Loading from '@/app/components/base/loading'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
@@ -149,6 +158,121 @@ const fetchAgentConversationMessages = (agentId: string, conversationId: string)
       conversation_id: conversationId,
     },
   })
+}
+
+const toFileResponse = (file: NonNullable<MessageDetailResponse['message_files']>[number]): FileResponse => ({
+  related_id: file.id ?? file.upload_file_id,
+  extension: '',
+  filename: file.filename,
+  size: file.size ?? 0,
+  mime_type: file.mime_type ?? '',
+  transfer_method: file.transfer_method as TransferMethod,
+  type: file.type,
+  url: file.url ?? '',
+  upload_file_id: file.upload_file_id ?? '',
+  remote_url: file.url ?? '',
+})
+
+const toLogMessages = (message: MessageDetailResponse['message'], answer: string, files: MessageDetailResponse['message_files']) => {
+  if (!Array.isArray(message))
+    return []
+
+  const logMessages = message as IChatItem['log']
+  if (logMessages?.at(-1)?.role === 'assistant')
+    return logMessages
+
+  return [
+    ...(logMessages ?? []),
+    {
+      role: 'assistant',
+      text: answer,
+      files: getProcessedFilesFromResponse((files?.filter(file => file.belongs_to === 'assistant') || []).map(toFileResponse)),
+    },
+  ]
+}
+
+const toAgentThoughtItem = (thought: AgentThought, conversationId: string): ThoughtItem => ({
+  id: thought.id,
+  tool: thought.tool ?? '',
+  thought: thought.thought ?? '',
+  tool_input: thought.tool_input ?? '',
+  message_id: thought.message_id,
+  conversation_id: conversationId,
+  observation: thought.observation ?? '',
+  position: thought.position,
+  files: thought.files,
+})
+
+const toFeedback = (feedback: NonNullable<MessageDetailResponse['feedbacks']>[number] | undefined): FeedbackType | undefined => {
+  if (!feedback)
+    return undefined
+
+  const rating = feedback.rating as MessageRating
+  if (rating !== 'like' && rating !== 'dislike' && rating !== null)
+    return undefined
+
+  return {
+    rating,
+    content: feedback.content,
+  }
+}
+
+type AgentDebugMessageWithLegacyAnswer = MessageDetailResponse & {
+  answer?: string | null
+}
+
+const getAgentDebugMessageAnswer = (message: MessageDetailResponse) => {
+  const legacyAnswer = (message as AgentDebugMessageWithLegacyAnswer).answer
+
+  return message.re_sign_file_url_answer ?? legacyAnswer ?? ''
+}
+
+function getFormattedAgentDebugChatTree(messages: MessageDetailResponse[]): ChatItemInTree[] {
+  const chatList: IChatItem[] = []
+
+  messages.forEach((item) => {
+    const answer = getAgentDebugMessageAnswer(item)
+    const questionFiles = item.message_files?.filter(file => file.belongs_to === 'user') || []
+    const answerFiles = item.message_files?.filter(file => file.belongs_to === 'assistant') || []
+    const answerTokens = item.answer_tokens ?? 0
+    const messageTokens = item.message_tokens ?? 0
+    const latency = item.provider_response_latency ?? 0
+
+    chatList.push({
+      id: `question-${item.id}`,
+      content: item.query,
+      isAnswer: false,
+      message_files: getProcessedFilesFromResponse(questionFiles.map(toFileResponse)),
+      parentMessageId: item.parent_message_id || undefined,
+    })
+    chatList.push({
+      id: item.id,
+      content: answer,
+      agent_thoughts: addFileInfos(
+        sortAgentSorts((item.agent_thoughts ?? []).map(thought => toAgentThoughtItem(thought, item.conversation_id))),
+        item.message_files as unknown as FileEntity[],
+      ),
+      feedback: toFeedback(item.feedbacks?.find(feedback => feedback.from_source === 'user')),
+      isAnswer: true,
+      log: toLogMessages(item.message, answer, item.message_files),
+      message_files: getProcessedFilesFromResponse(answerFiles.map(toFileResponse)),
+      parentMessageId: `question-${item.id}`,
+      workflow_run_id: item.workflow_run_id ?? undefined,
+      conversationId: item.conversation_id,
+      input: {
+        inputs: item.inputs,
+        query: item.query,
+      },
+      more: {
+        time: '',
+        tokens: answerTokens + messageTokens,
+        latency: latency.toFixed(2),
+        tokens_per_second: latency > 0 ? (answerTokens / latency).toFixed(2) : undefined,
+      },
+    })
+  })
+
+  return buildChatItemTree(chatList)
 }
 
 const fetchAgentSuggestedQuestions = (agentId: string, messageId: string) => {
@@ -302,6 +426,7 @@ export function AgentPreviewChat({
   agentName,
   agentSoulConfig,
   clearChatList,
+  debugConversationId,
   onClearChatListChange,
   onSaveDraftBeforeRun,
 }: {
@@ -312,6 +437,68 @@ export function AgentPreviewChat({
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
+  debugConversationId?: string | null
+  onClearChatListChange: (clearChatList: boolean) => void
+  onSaveDraftBeforeRun?: () => Promise<void>
+}) {
+  const historyQuery = useQuery({
+    queryKey: ['agent-preview-debug-conversation', agentId, debugConversationId],
+    queryFn: () => fetchAgentConversationMessages(agentId, debugConversationId!),
+    enabled: !!debugConversationId,
+  })
+  const initialChatTree = useMemo(
+    () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
+    [historyQuery.data?.data],
+  )
+
+  if (debugConversationId && historyQuery.isPending) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading type="app" />
+      </div>
+    )
+  }
+
+  return (
+    <AgentPreviewChatSession
+      key={`${debugConversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`}
+      agentId={agentId}
+      agentIcon={agentIcon}
+      agentIconBackground={agentIconBackground}
+      agentIconType={agentIconType}
+      agentName={agentName}
+      agentSoulConfig={agentSoulConfig}
+      clearChatList={clearChatList}
+      debugConversationId={debugConversationId}
+      initialChatTree={initialChatTree}
+      onClearChatListChange={onClearChatListChange}
+      onSaveDraftBeforeRun={onSaveDraftBeforeRun}
+    />
+  )
+}
+
+function AgentPreviewChatSession({
+  agentId,
+  agentIcon,
+  agentIconBackground,
+  agentIconType,
+  agentName,
+  agentSoulConfig,
+  clearChatList,
+  debugConversationId,
+  initialChatTree,
+  onClearChatListChange,
+  onSaveDraftBeforeRun,
+}: {
+  agentId: string
+  agentIcon?: string | null
+  agentIconBackground?: string | null
+  agentIconType?: AgentIconType | null
+  agentName?: string
+  agentSoulConfig?: AgentSoulConfig
+  clearChatList: boolean
+  debugConversationId?: string | null
+  initialChatTree: ChatItemInTree[]
   onClearChatListChange: (clearChatList: boolean) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }) {
@@ -349,12 +536,13 @@ export function AgentPreviewChat({
       inputs,
       inputsForm,
     },
-    [],
+    initialChatTree,
     (taskId) => {
       void stopAgentChatMessageResponding(agentId, taskId)
     },
     clearChatList,
     onClearChatListChange,
+    debugConversationId ?? undefined,
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {

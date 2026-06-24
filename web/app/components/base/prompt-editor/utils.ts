@@ -1,14 +1,11 @@
 import type { EntityMatch } from '@lexical/text'
 import type {
-  ElementNode,
   Klass,
   LexicalEditor,
   LexicalNode,
-  RangeSelection,
   TextNode,
 } from 'lexical'
 import type { MenuTextMatch } from './types'
-import { $isAtNodeEnd } from '@lexical/selection'
 import {
   $createTextNode,
   $getSelection,
@@ -16,23 +13,6 @@ import {
   $isTextNode,
 } from 'lexical'
 import { CustomTextNode } from './plugins/custom-text/node'
-
-export function getSelectedNode(
-  selection: RangeSelection,
-): TextNode | ElementNode {
-  const anchor = selection.anchor
-  const focus = selection.focus
-  const anchorNode = selection.anchor.getNode()
-  const focusNode = selection.focus.getNode()
-  if (anchorNode === focusNode)
-    return anchorNode
-
-  const isBackward = selection.isBackward()
-  if (isBackward)
-    return $isAtNodeEnd(focus) ? anchorNode : focusNode
-  else
-    return $isAtNodeEnd(anchor) ? anchorNode : focusNode
-}
 
 export function registerLexicalTextEntity<T extends TextNode>(
   editor: LexicalEditor,

@@ -37,7 +37,7 @@ export function ConfigureSectionConfigurableItem({
             type="button"
             aria-label={editAriaLabel}
             onClick={onEdit}
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-ri-equalizer-2-line size-4" />
           </button>
@@ -45,7 +45,7 @@ export function ConfigureSectionConfigurableItem({
             type="button"
             aria-label={removeAriaLabel}
             onClick={onRemove}
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
           >
             <span aria-hidden className="i-ri-delete-bin-line size-4" />
           </button>

@@ -1,7 +1,5 @@
 'use client'
 
-import type { AppInstance } from '@dify/contracts/enterprise/types.gen'
-import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -9,18 +7,43 @@ import {
   DialogContent,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Input } from '@langgenius/dify-ui/input'
+import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
+import {
+  deploymentActionAppInstanceIdAtom,
+  deploymentActionAppInstanceQueryAtom,
+  editDeploymentDialogOpenAtom,
+} from './state'
 
 type EditDeploymentFormValues = {
   name: string
   description: string
+}
+
+function normalizedEditDeploymentFormValues(value: EditDeploymentFormValues) {
+  return {
+    name: value.name.trim(),
+    description: value.description.trim(),
+  }
+}
+
+function canSubmitEditDeploymentForm(initialValues: EditDeploymentFormValues, value: EditDeploymentFormValues) {
+  const normalizedValues = normalizedEditDeploymentFormValues(value)
+
+  return Boolean(
+    normalizedValues.name
+    && (
+      normalizedValues.name !== initialValues.name
+      || normalizedValues.description !== initialValues.description
+    ),
+  )
 }
 
 function EditDeploymentFormSkeleton() {
@@ -43,114 +66,29 @@ function EditDeploymentFormSkeleton() {
 }
 
 function EditDeploymentForm({
-  app,
-  isSaving,
-  onClose,
-  onSubmit,
+  initialValues,
 }: {
-  app: AppInstance
-  isSaving: boolean
-  onClose: () => void
-  onSubmit: (values: EditDeploymentFormValues) => void
+  initialValues: EditDeploymentFormValues
 }) {
   const { t } = useTranslation('deployments')
-  const initialName = app.displayName
-  const initialDescription = app.description
-  const [name, setName] = useState(initialName)
-  const [description, setDescription] = useState(initialDescription)
-  const normalizedName = name.trim()
-  const normalizedDescription = description.trim()
-  const canSave = Boolean(normalizedName && (normalizedName !== initialName || normalizedDescription !== initialDescription) && !isSaving)
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!canSave)
-      return
-
-    onSubmit({
-      name: normalizedName,
-      description: normalizedDescription,
-    })
-  }
-
-  return (
-    <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-2">
-        <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="deployment-edit-name">
-          {t('settings.name')}
-        </label>
-        <Input
-          id="deployment-edit-name"
-          type="text"
-          value={name}
-          onChange={event => setName(event.target.value)}
-          className="h-8"
-        />
-      </div>
-      <div className="flex flex-col gap-2">
-        <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="deployment-edit-description">
-          {t('settings.description')}
-        </label>
-        <Textarea
-          id="deployment-edit-description"
-          value={description}
-          onValueChange={setDescription}
-          className="min-h-24"
-        />
-      </div>
-      <div className="flex justify-end gap-2 pt-2">
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={isSaving}
-          onClick={onClose}
-        >
-          {t('createModal.cancel')}
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          disabled={!canSave}
-          loading={isSaving}
-        >
-          {t('settings.save')}
-        </Button>
-      </div>
-    </form>
-  )
-}
-
-export function EditDeploymentDialog({
-  appInstanceId,
-  open,
-  onOpenChange,
-}: {
-  appInstanceId: string
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}) {
-  const { t } = useTranslation('deployments')
+  const nameLabel = t('settings.name')
+  const appInstanceId = useAtomValue(deploymentActionAppInstanceIdAtom)
+  const setOpen = useSetAtom(editDeploymentDialogOpenAtom)
   const updateInstance = useMutation(consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions())
-  const instanceQuery = useQuery(consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
-    enabled: open,
-  }))
-  const app = instanceQuery.data?.appInstance
-  const formKey = app ? `${app.id}-${app.displayName}-${app.description}` : 'loading'
-
-  function handleOpenChange(nextOpen: boolean) {
-    if (!nextOpen && updateInstance.isPending)
-      return
-    onOpenChange(nextOpen)
-  }
 
   function handleClose() {
-    handleOpenChange(false)
+    if (updateInstance.isPending)
+      return
+
+    setOpen(false)
   }
 
   function handleSubmit(values: EditDeploymentFormValues) {
+    if (!canSubmitEditDeploymentForm(initialValues, values))
+      return
+
+    const normalizedValues = normalizedEditDeploymentFormValues(values)
+
     updateInstance.mutate(
       {
         params: {
@@ -158,14 +96,14 @@ export function EditDeploymentDialog({
         },
         body: {
           appInstanceId,
-          displayName: values.name,
-          description: values.description || undefined,
+          displayName: normalizedValues.name,
+          description: normalizedValues.description,
         },
       },
       {
         onSuccess: () => {
           toast.success(t('settings.updated'))
-          onOpenChange(false)
+          setOpen(false)
         },
         onError: () => {
           toast.error(t('settings.updateFailed'))
@@ -175,31 +113,94 @@ export function EditDeploymentDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <>
+      <DialogCloseButton disabled={updateInstance.isPending} />
+      <Form<EditDeploymentFormValues> className="flex flex-col gap-4" onFormSubmit={handleSubmit}>
+        <FieldRoot name="name" className="gap-2">
+          <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
+            {nameLabel}
+          </FieldLabel>
+          <FieldControl
+            type="text"
+            required
+            defaultValue={initialValues.name}
+            className="h-8"
+          />
+          <FieldError match="valueMissing">{t('errorMsg.fieldRequired', { ns: 'common', field: nameLabel })}</FieldError>
+        </FieldRoot>
+        <FieldRoot name="description" className="gap-2">
+          <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
+            {t('settings.description')}
+          </FieldLabel>
+          <Textarea
+            defaultValue={initialValues.description}
+            className="min-h-24"
+          />
+        </FieldRoot>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={updateInstance.isPending}
+            onClick={handleClose}
+          >
+            {t('createModal.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            disabled={updateInstance.isPending}
+            loading={updateInstance.isPending}
+          >
+            {t('settings.save')}
+          </Button>
+        </div>
+      </Form>
+    </>
+  )
+}
+
+function EditDeploymentDialogContent() {
+  const { t } = useTranslation('deployments')
+  const instanceQuery = useAtomValue(deploymentActionAppInstanceQueryAtom)
+  const app = instanceQuery.data?.appInstance
+
+  return (
+    <>
+      {!app && <DialogCloseButton />}
+      <div className="border-b border-divider-subtle px-6 py-5">
+        <DialogTitle className="title-xl-semi-bold text-text-primary">
+          {t('card.menu.editInfo')}
+        </DialogTitle>
+      </div>
+      <div className="px-6 py-5">
+        {instanceQuery.isLoading
+          ? <EditDeploymentFormSkeleton />
+          : instanceQuery.isError
+            ? <div className="system-sm-regular text-text-tertiary">{t('common.loadFailed')}</div>
+            : app
+              ? (
+                  <EditDeploymentForm
+                    key={`${app.id}-${app.displayName}-${app.description}`}
+                    initialValues={{
+                      name: app.displayName,
+                      description: app.description,
+                    }}
+                  />
+                )
+              : <div className="system-sm-regular text-text-tertiary">{t('detail.notFound')}</div>}
+      </div>
+    </>
+  )
+}
+
+export function EditDeploymentDialog() {
+  const [open, setOpen] = useAtom(editDeploymentDialogOpenAtom)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="w-120 max-w-[calc(100vw-32px)] p-0">
-        <DialogCloseButton disabled={updateInstance.isPending} />
-        <div className="border-b border-divider-subtle px-6 py-5">
-          <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {t('card.menu.editInfo')}
-          </DialogTitle>
-        </div>
-        <div className="px-6 py-5">
-          {instanceQuery.isLoading
-            ? <EditDeploymentFormSkeleton />
-            : instanceQuery.isError
-              ? <div className="system-sm-regular text-text-tertiary">{t('common.loadFailed')}</div>
-              : app
-                ? (
-                    <EditDeploymentForm
-                      key={formKey}
-                      app={app}
-                      isSaving={updateInstance.isPending}
-                      onClose={handleClose}
-                      onSubmit={handleSubmit}
-                    />
-                  )
-                : <div className="system-sm-regular text-text-tertiary">{t('detail.notFound')}</div>}
-        </div>
+        <EditDeploymentDialogContent />
       </DialogContent>
     </Dialog>
   )

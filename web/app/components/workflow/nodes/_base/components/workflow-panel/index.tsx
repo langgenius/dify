@@ -13,7 +13,6 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import {
   cloneElement,
@@ -58,13 +57,14 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
+import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
+  getNodeCatalogType,
   hasErrorHandleNode,
   hasRetryNode,
   isSupportCustomRunForm,
@@ -165,7 +165,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
   const pendingSingleRun = useStore(s => s.pendingSingleRun)
   const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
-  const setNodePanelWidthStorage = useSetLocalStorage<string>('workflow-node-panel-width', { raw: true })
+  const setNodePanelWidthStorage = useSetWorkflowNodePanelWidth()
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -178,7 +178,7 @@ const BasePanel: FC<BasePanelProps> = ({
     const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
-      setNodePanelWidthStorage(`${newValue}`)
+      setNodePanelWidthStorage(newValue)
 
     setNodePanelWidth(newValue)
   }, [maxNodePanelWidth, setNodePanelWidth, setNodePanelWidthStorage])
@@ -210,7 +210,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const { handleNodeSelect } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const toolIcon = useToolIcon(data)
 
   const { saveStateToHistory } = useWorkflowHistory()
@@ -230,7 +230,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
-  const nodeMetaType = isAgentV2NodeData(data) ? BlockEnum.AgentV2 : data.type
+  const nodeMetaType = getNodeCatalogType(data)
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 
@@ -267,6 +267,7 @@ const BasePanel: FC<BasePanelProps> = ({
   } = useNodesMetaData()
 
   const configsMap = useHooksStore(s => s.configsMap)
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -580,7 +581,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {
-                isSupportSingleRun && !nodesReadOnly && (
+                isSupportSingleRun && canRun && !nodesReadOnly && (
                   <Tooltip disabled={isSingleRunning}>
                     <TooltipTrigger
                       render={(

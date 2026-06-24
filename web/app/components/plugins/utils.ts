@@ -1,21 +1,6 @@
-import type {
-  TagKey,
-} from './constants'
 import type { Plugin } from './types'
 
 import { API_PREFIX, MARKETPLACE_API_PREFIX } from '@/config'
-import {
-  categoryKeys,
-  tagKeys,
-} from './constants'
-
-export const getValidTagKeys = (tags: TagKey[]) => {
-  return tags.filter(tag => tagKeys.includes(tag))
-}
-
-export const getValidCategoryKeys = (category?: string) => {
-  return categoryKeys.find(key => key === category)
-}
 
 const hasUrlProtocol = (value: string) => /^[a-z][a-z\d+.-]*:/i.test(value)
 

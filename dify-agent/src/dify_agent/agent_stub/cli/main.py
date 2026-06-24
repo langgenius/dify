@@ -21,9 +21,14 @@ from dify_agent.agent_stub.cli._drive import (
     pull_drive_from_environment,
     push_drive_from_environment,
 )
-from dify_agent.agent_stub.cli._env import MissingAgentStubEnvironmentError, has_agent_stub_environment
+from dify_agent.agent_stub.cli._env import (
+    MissingAgentStubEnvironmentError,
+    has_agent_stub_environment,
+    read_agent_stub_drive_base,
+)
 from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
 from dify_agent.agent_stub.client._errors import AgentStubClientError
+from dify_agent.agent_stub.protocol.agent_stub import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
 
 
 app = typer.Typer(
@@ -78,11 +83,22 @@ def drive_list(
 
 @drive_app.command("pull")
 def drive_pull(
-    path_prefix: str = typer.Argument("", metavar="PATH_PREFIX"),
-    drive_base: str = typer.Option("/mnt/drive", "--drive-base", help="Local base directory for pulled drive files."),
+    targets: list[str] = typer.Argument(None, metavar="TARGET"),
+    drive_base: str | None = typer.Option(
+        None,
+        "--drive-base",
+        help=(
+            f"Local base directory for pulled drive files. Defaults to ${AGENT_STUB_DRIVE_BASE_ENV_VAR} "
+            f"or {DEFAULT_AGENT_STUB_DRIVE_BASE}."
+        ),
+    ),
 ) -> None:
-    """Pull drive files into one local directory tree."""
-    _run_drive_pull(path_prefix=path_prefix, drive_base=drive_base)
+    """Pull one or more drive keys/prefixes into one local directory tree.
+
+    Passing no ``TARGET`` preserves the historical whole-drive behavior by
+    pulling from the empty prefix.
+    """
+    _run_drive_pull(targets=targets, drive_base=drive_base)
 
 
 @drive_app.command("push")
@@ -207,9 +223,9 @@ def _run_drive_list(*, path_prefix: str, json_output: bool) -> None:
     typer.echo(response)
 
 
-def _run_drive_pull(*, path_prefix: str, drive_base: str) -> None:
+def _run_drive_pull(*, targets: list[str] | None, drive_base: str | None) -> None:
     try:
-        response = pull_drive_from_environment(prefix=path_prefix, drive_base=drive_base)
+        response = pull_drive_from_environment(targets=targets, drive_base=drive_base or read_agent_stub_drive_base())
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc

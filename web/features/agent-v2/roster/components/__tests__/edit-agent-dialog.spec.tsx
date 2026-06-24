@@ -75,6 +75,7 @@ const renderDialog = (agent = createAgent()) => {
   render(
     <EditAgentDialog
       agent={agent}
+      formKey={0}
       open
       onOpenChange={onOpenChange}
     />,
@@ -111,9 +112,10 @@ describe('EditAgentDialog', () => {
         icon_background: '#F5F3FF',
       },
     }, expect.objectContaining({
-      onError: expect.any(Function),
       onSuccess: expect.any(Function),
     }))
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
+    expect(mutationOptions).not.toHaveProperty('onError')
   })
 
   it('submits the full agent payload when only the role changes', async () => {
@@ -138,9 +140,10 @@ describe('EditAgentDialog', () => {
         icon_background: '#F5F3FF',
       },
     }, expect.objectContaining({
-      onError: expect.any(Function),
       onSuccess: expect.any(Function),
     }))
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
+    expect(mutationOptions).not.toHaveProperty('onError')
   })
 
   it('submits selected icon fields when the roster icon changes', async () => {
@@ -165,9 +168,10 @@ describe('EditAgentDialog', () => {
         icon_background: '#E0F2FE',
       },
     }, expect.objectContaining({
-      onError: expect.any(Function),
       onSuccess: expect.any(Function),
     }))
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
+    expect(mutationOptions).not.toHaveProperty('onError')
   })
 
   it('shows a field error when saving with an empty name', async () => {
@@ -217,5 +221,20 @@ describe('EditAgentDialog', () => {
     expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
+  })
+
+  it('keeps the form open when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    const { onOpenChange } = renderDialog()
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.editDialog.title' })
+    const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
+    await user.click(backdrop)
+
+    expect(onOpenChange).not.toHaveBeenCalledWith(false)
+    expect(dialog).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 })

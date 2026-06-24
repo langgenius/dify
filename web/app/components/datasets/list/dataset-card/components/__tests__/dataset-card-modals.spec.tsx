@@ -71,10 +71,12 @@ describe('DatasetCardModals', () => {
     modalState: {
       showRenameModal: false,
       showConfirmDelete: false,
+      showAccessConfig: false,
       confirmMessage: '',
     },
     onCloseRename: vi.fn(),
     onCloseConfirm: vi.fn(),
+    onCloseAccessConfig: vi.fn(),
     onConfirmDelete: vi.fn(),
     onSuccess: vi.fn(),
   }
@@ -209,6 +211,7 @@ describe('DatasetCardModals', () => {
           modalState={{
             showRenameModal: true,
             showConfirmDelete: true,
+            showAccessConfig: false,
             confirmMessage: 'Delete this dataset?',
           }}
         />,

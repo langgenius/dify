@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CreateAgentDialog } from '../create-agent-dialog'
 
@@ -61,9 +61,10 @@ describe('CreateAgentDialog', () => {
         icon_background: '#F5F3FF',
       },
     }, expect.objectContaining({
-      onError: expect.any(Function),
       onSuccess: expect.any(Function),
     }))
+    const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
+    expect(mutationOptions).not.toHaveProperty('onError')
   })
 
   it('shows a field error when creating with an empty name', async () => {
@@ -110,5 +111,23 @@ describe('CreateAgentDialog', () => {
     expect(await within(dialog).findByText('agentV2.roster.createForm.roleRequired')).toBeInTheDocument()
     expect(toastMock.error).not.toHaveBeenCalled()
     expect(mutationMock.mutate).not.toHaveBeenCalled()
+  })
+
+  it('keeps the form open when the backdrop is clicked', async () => {
+    const user = userEvent.setup()
+    render(<CreateAgentDialog />)
+
+    await user.click(screen.getByRole('button', { name: /agentV2\.roster\.createAgent/ }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'agentV2.roster.createDialog.title' })
+    const backdrop = document.body.querySelector('.bg-background-overlay') as HTMLElement
+    await user.click(backdrop)
+
+    expect(dialog).toBeInTheDocument()
+
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'agentV2.roster.createDialog.title' })).not.toBeInTheDocument()
+    })
   })
 })

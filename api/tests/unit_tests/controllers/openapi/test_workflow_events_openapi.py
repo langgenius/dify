@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import NotFound
 
 from controllers.openapi.auth.data import AuthData
@@ -51,7 +52,7 @@ class TestOpenApiWorkflowEventsApi:
 
         return OpenApiWorkflowEventsApi()
 
-    def test_not_found_when_run_missing(self, app, bypass_pipeline, monkeypatch):
+    def test_not_found_when_run_missing(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         module = sys.modules["controllers.openapi.workflow_events"]
         repo_mock = Mock()
         repo_mock.get_workflow_run_by_id_and_tenant_id.return_value = None
@@ -76,7 +77,9 @@ class TestOpenApiWorkflowEventsApi:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_not_found_when_run_belongs_to_different_app(self, app, bypass_pipeline, monkeypatch):
+    def test_not_found_when_run_belongs_to_different_app(
+        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+    ):
         module = sys.modules["controllers.openapi.workflow_events"]
         run = _make_workflow_run(app_id="other-app")
         repo_mock = Mock()
@@ -102,7 +105,9 @@ class TestOpenApiWorkflowEventsApi:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_account_caller_checks_created_by_account(self, app, bypass_pipeline, monkeypatch):
+    def test_account_caller_checks_created_by_account(
+        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+    ):
         """Account caller must match created_by == caller.id and role == ACCOUNT."""
         module = sys.modules["controllers.openapi.workflow_events"]
         run = _make_workflow_run(created_by_role=CreatorUserRole.ACCOUNT, created_by="acct-1")
@@ -141,7 +146,9 @@ class TestOpenApiWorkflowEventsApi:
             )
         assert resp.mimetype == "text/event-stream"
 
-    def test_account_caller_rejected_for_end_user_run(self, app, bypass_pipeline, monkeypatch):
+    def test_account_caller_rejected_for_end_user_run(
+        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+    ):
         module = sys.modules["controllers.openapi.workflow_events"]
         run = _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1")
         repo_mock = Mock()
@@ -167,7 +174,9 @@ class TestOpenApiWorkflowEventsApi:
                     auth_data=_make_auth_data(app_model, caller, "account"),
                 )
 
-    def test_end_user_caller_checks_created_by_end_user(self, app, bypass_pipeline, monkeypatch):
+    def test_end_user_caller_checks_created_by_end_user(
+        self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+    ):
         """End-user caller must match created_by == caller.id and role == END_USER."""
         module = sys.modules["controllers.openapi.workflow_events"]
         run = _make_workflow_run(created_by_role=CreatorUserRole.END_USER, created_by="eu-1")
@@ -202,7 +211,7 @@ class TestOpenApiWorkflowEventsApi:
             )
         assert resp.mimetype == "text/event-stream"
 
-    def test_finished_run_returns_single_sse_event(self, app, bypass_pipeline, monkeypatch):
+    def test_finished_run_returns_single_sse_event(self, app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
         """A finished run returns a single done-event SSE response without streaming."""
         from datetime import UTC, datetime
 

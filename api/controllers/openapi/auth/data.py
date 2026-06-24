@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import InternalServerError
 
 from configs import dify_config
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
@@ -35,6 +36,14 @@ class ExternalIdentity(BaseModel):
     issuer: str | None = None
 
 
+class RBACRequirement(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    resource_type: RBACResourceScope
+    scene: RBACPermission
+    resource_required: bool = True
+
+
 class RequestContext(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -43,6 +52,7 @@ class RequestContext(BaseModel):
     path_params: dict[str, str]
     workspace_membership: bool = False
     allowed_roles: frozenset[TenantAccountRole] | None = None
+    rbac: RBACRequirement | None = None
 
 
 class AuthData(BaseModel):
@@ -59,6 +69,7 @@ class AuthData(BaseModel):
     path_params: dict[str, str] = Field(default_factory=dict)
 
     allowed_roles: frozenset[TenantAccountRole] | None = None
+    rbac: RBACRequirement | None = None
 
     app: App | None = None
     tenant: Tenant | None = None

@@ -28,7 +28,6 @@ describe('Log', () => {
   beforeEach(() => {
     vi.mocked(useAppStore).mockImplementation(selector => selector({
       // State properties
-      appSidebarExpand: 'expand',
       currentLogModalActiveTab: 'question',
       showPromptLogModal: false,
       showAgentLogModal: false,

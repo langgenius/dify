@@ -9,6 +9,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
+from extensions.ext_database import db
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from models.model import App, EndUser
@@ -42,7 +43,9 @@ class SavedMessageListApi(WebApiResource):
         raw_args = request.args.to_dict()
         query = SavedMessageListQuery.model_validate(raw_args)
 
-        pagination = SavedMessageService.pagination_by_last_id(app_model, end_user, query.last_id, query.limit)
+        pagination = SavedMessageService.pagination_by_last_id(
+            db.session(), app_model, end_user, query.last_id, query.limit
+        )
         adapter = TypeAdapter(SavedMessageItem)
         items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
         return SavedMessageInfiniteScrollPagination(
@@ -77,7 +80,7 @@ class SavedMessageListApi(WebApiResource):
         payload = SavedMessageCreatePayload.model_validate(web_ns.payload or {})
 
         try:
-            SavedMessageService.save(app_model, end_user, payload.message_id)
+            SavedMessageService.save(db.session(), app_model, end_user, payload.message_id)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -105,6 +108,6 @@ class SavedMessageApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, end_user, message_id_str)
+        SavedMessageService.delete(db.session(), app_model, end_user, message_id_str)
 
         return "", 204

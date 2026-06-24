@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "विवरण",
   "versions.releaseDescriptionPlaceholder": "इस रिलीज़ का वर्णन करें",
   "versions.releaseHistory": "रिलीज़ इतिहास",
+  "versions.releaseNameConflict": "इस नाम वाली रिलीज़ पहले से मौजूद है। कोई दूसरा नाम चुनें।",
   "versions.releaseNameLabel": "रिलीज़ नाम",
   "versions.releaseNamePlaceholder": "रिलीज़ नाम",
   "versions.releaseNameRequired": "एक रिलीज़ नाम दर्ज करें।",

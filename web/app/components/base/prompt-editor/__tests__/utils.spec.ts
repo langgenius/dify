@@ -2,7 +2,6 @@ import type {
   Klass,
   LexicalEditor,
   LexicalNode,
-  RangeSelection,
   TextNode,
 } from 'lexical'
 import type { CustomTextNode } from '../plugins/custom-text/node'
@@ -10,19 +9,13 @@ import type { MenuTextMatch } from '../types'
 import {
   $splitNodeContainingQuery,
   decoratorTransform,
-  getSelectedNode,
   registerLexicalTextEntity,
   textToEditorState,
 } from '../utils'
 
 const mockState = vi.hoisted(() => ({
-  isAtNodeEnd: false,
   selection: null as unknown,
   createTextNode: vi.fn(),
-}))
-
-vi.mock('@lexical/selection', () => ({
-  $isAtNodeEnd: () => mockState.isAtNodeEnd,
 }))
 
 vi.mock('lexical', async (importOriginal) => {
@@ -43,7 +36,6 @@ vi.mock('./plugins/custom-text/node', () => ({
 describe('prompt-editor/utils', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockState.isAtNodeEnd = false
     mockState.selection = null
   })
   function makeEditor() {
@@ -56,74 +48,6 @@ describe('prompt-editor/utils', () => {
     const editor = { registerNodeTransform } as unknown as LexicalEditor
     return { editor, registerNodeTransform }
   }
-
-  // ---------------------------------------------------------------------------
-  // getSelectedNode
-  // ---------------------------------------------------------------------------
-  describe('getSelectedNode', () => {
-    it('should return anchor node when anchor and focus are the same node', () => {
-      const sharedNode = { id: 'same' }
-      const selection = {
-        anchor: { getNode: () => sharedNode },
-        focus: { getNode: () => sharedNode },
-        isBackward: () => false,
-      } as unknown as RangeSelection
-
-      expect(getSelectedNode(selection)).toBe(sharedNode)
-    })
-
-    it('should return anchor node for backward selection when focus IS at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => true,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = true
-      expect(getSelectedNode(selection)).toBe(anchorNode)
-    })
-
-    it('should return focus node for backward selection when focus is NOT at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => true,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = false
-      expect(getSelectedNode(selection)).toBe(focusNode)
-    })
-
-    it('should return anchor node for forward selection when anchor IS at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => false,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = true
-      expect(getSelectedNode(selection)).toBe(anchorNode)
-    })
-
-    it('should return focus node for forward selection when anchor is NOT at node end', () => {
-      const anchorNode = { id: 'anchor' }
-      const focusNode = { id: 'focus' }
-      const selection = {
-        anchor: { getNode: () => anchorNode },
-        focus: { getNode: () => focusNode },
-        isBackward: () => false,
-      } as unknown as RangeSelection
-
-      mockState.isAtNodeEnd = false
-      expect(getSelectedNode(selection)).toBe(focusNode)
-    })
-  })
 
   // ---------------------------------------------------------------------------
   // registerLexicalTextEntity

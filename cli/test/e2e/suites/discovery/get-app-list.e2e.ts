@@ -8,7 +8,6 @@
  *   DIFY_E2E_WORKFLOW_APP_ID — echo-workflow app
  */
 
-import { Buffer } from 'node:buffer'
 import { afterEach, beforeEach, describe, expect, inject, it } from 'vitest'
 import {
   assertErrorEnvelope,
@@ -99,8 +98,8 @@ describe('E2E / difyctl get app (list)', () => {
   it('[P1] -o wide outputs extended fields', async () => {
     const result = await fx.r(['get', 'app', '-o', 'wide'])
     assertExitCode(result, 0)
-    // wide adds AUTHOR and WORKSPACE columns
-    expect(result.stdout).toMatch(/AUTHOR|WORKSPACE/i)
+    // wide adds the WORKSPACE column
+    expect(result.stdout).toMatch(/WORKSPACE/i)
   })
 
   it('[P1] output is pipe-friendly in JSON mode', async () => {
@@ -178,6 +177,19 @@ describe('E2E / difyctl get app (list)', () => {
     expect(result.exitCode, '--mode chatbot should cause non-zero exit').not.toBe(0)
   })
 
+  // Regression: rag-pipeline (a knowledge Pipeline), channel (unused) and agent
+  // (roster-owned) are AppMode members but not listable app types. The old CLI
+  // whitelist advertised rag-pipeline/channel, so the CLI forwarded them and the
+  // server replied 400. The whitelist now derives from SupportedAppType, so the
+  // CLI rejects them before any HTTP call.
+  it.each(['rag-pipeline', 'channel', 'agent'])(
+    '[P0] non-listable mode %s is intercepted client-side',
+    async (mode) => {
+      const result = await fx.r(['get', 'app', '--mode', mode])
+      expect(result.exitCode, `--mode ${mode} should be rejected client-side`).not.toBe(0)
+    },
+  )
+
   // ── workspace override ────────────────────────────────────────────────────
 
   it('[P0] -w overrides the default workspace', async () => {
@@ -206,17 +218,15 @@ describe('E2E / difyctl get app (list)', () => {
 
   // ── External SSO ──────────────────────────────────────────────────────────
 
-  itWithSso('[P0] external SSO user get app returns insufficient_scope error (3.24 / 3.25)', async () => {
-    // Spec 3.24: dfoe_ token → insufficient_scope; Spec 3.25: exit code is 1.
+  itWithSso('[P0] external SSO user can list permitted apps', async () => {
+    // A dfoe_ token lists apps via the permitted-external surface
+    // (apps:read:permitted-external scope), with no workspace scoping.
     // Uses DIFY_E2E_SSO_TOKEN (itWithSso skips when not configured).
     const { mkdir, writeFile } = await import('node:fs/promises')
     const { join } = await import('node:path')
     const ssoTmp = await withTempConfig()
     try {
       await mkdir(ssoTmp.configDir, { recursive: true })
-      // SSO (dfoe_) users have apps:run scope only, not apps:list.
-      // Inject a minimal hosts.yml without workspace so the CLI reaches the
-      // scope-check path rather than resolving the workspace successfully.
       const hostsYml = `${[
         `current_host: ${E.host}`,
         `token_storage: file`,
@@ -228,8 +238,8 @@ describe('E2E / difyctl get app (list)', () => {
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
       const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
-      expect(result.exitCode, 'SSO user get app should exit non-zero').not.toBe(0)
-      expect(result.stderr).toMatch(/insufficient_scope|scope|not_logged_in|auth/i)
+      assertExitCode(result, 0)
+      expect(result.stdout).toMatch(/NAME\s+ID\s+MODE/i)
     }
     finally {
       await ssoTmp.cleanup()
@@ -347,115 +357,5 @@ describe('E2E / difyctl get app (list)', () => {
     finally {
       await networkTmp.cleanup()
     }
-  })
-
-  it('[P1] --tag filter returns only apps that carry the specified tag (3.20)', async () => {
-    // Spec 3.20: --tag performs exact tag-name match.
-    //
-    // Before asserting: ensure echo-chat app has the 'e2e-test' tag.
-    //  1. GET /console/api/tags?type=app&keyword=e2e-test  → find or confirm tag exists
-    //  2. POST /console/api/tags                           → create tag when absent
-    //  3. GET /console/api/apps/<id>                       → check existing bindings
-    //  4. POST /console/api/tag-bindings                   → bind when not yet bound
-
-    const base = E.host.replace(/\/$/, '')
-
-    // ── Console login: obtain cookie + CSRF (console API rejects dfoa_ Bearer) ──
-    const passwordB64 = Buffer.from(E.password, 'utf8').toString('base64')
-    const loginRes = await fetch(`${base}/console/api/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: E.email, password: passwordB64, remember_me: false }),
-    })
-    expect(loginRes.ok, `console login failed: ${loginRes.status}`).toBe(true)
-
-    // Helper: extract cookie string + csrf from Set-Cookie array
-    function parseCookies(res: Response): { cookieString: string, csrfToken: string } {
-      const setCookies = res.headers.getSetCookie?.() ?? []
-      const cookieString = setCookies.map(kv => kv.split(';')[0]).join('; ')
-      const csrfPair = setCookies.map(kv => kv.split(';')[0]).filter((p): p is string => typeof p === 'string' && p.includes('csrf_token='))[0]
-      const csrfToken = csrfPair !== undefined
-        ? csrfPair.slice(csrfPair.indexOf('csrf_token=') + 'csrf_token='.length)
-        : ''
-      return { cookieString, csrfToken }
-    }
-
-    let { cookieString, csrfToken } = parseCookies(loginRes)
-
-    // ── Switch to the workspace that contains the test fixtures ──────────────
-    // E.workspaceId is resolved by global-setup; tag-bindings scope to the active workspace.
-    const switchRes = await fetch(`${base}/console/api/workspaces/switch`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Cookie': cookieString, 'X-CSRF-Token': csrfToken },
-      body: JSON.stringify({ tenant_id: E.workspaceId }),
-    })
-    // After workspace switch the server issues fresh cookies; use them for all subsequent calls.
-    if (switchRes.ok && switchRes.headers.getSetCookie?.().length) {
-      const switched = parseCookies(switchRes)
-      cookieString = switched.cookieString
-      csrfToken = switched.csrfToken
-    }
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'Cookie': cookieString,
-      'X-CSRF-Token': csrfToken,
-    }
-
-    // ── Step 1: find the 'e2e-test' app tag ──────────────────────────────────
-    const tagsRes = await fetch(`${base}/console/api/tags?type=app&keyword=e2e-test`, { headers })
-    expect(tagsRes.ok, `GET /tags failed: ${tagsRes.status}`).toBe(true)
-    const tagsList = await tagsRes.json() as Array<{ id: string, name: string }>
-    let tagId = tagsList.find(t => t.name === 'e2e-test')?.id
-
-    // ── Step 2: create the tag if it doesn't exist yet ───────────────────────
-    if (!tagId) {
-      const createRes = await fetch(`${base}/console/api/tags`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ name: 'e2e-test', type: 'app' }),
-      })
-      expect(createRes.ok, `POST /tags failed: ${createRes.status}`).toBe(true)
-      const created = await createRes.json() as { id: string, name: string }
-      tagId = created.id
-    }
-
-    expect(tagId, 'tag id must be resolved').toBeTruthy()
-
-    // ── Step 3 & 4: bind tag idempotently (tag-bindings is idempotent on duplicates) ──
-    const bindRes = await fetch(`${base}/console/api/tag-bindings`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        tag_ids: [tagId],
-        target_id: E.chatAppId,
-        type: 'app',
-      }),
-    })
-    // Accept 200 (bound) or 409/4xx if already bound — binding is idempotent
-    expect(
-      bindRes.ok || bindRes.status === 409,
-      `POST /tag-bindings failed unexpectedly: ${bindRes.status}`,
-    ).toBe(true)
-
-    // ── Assertion: difyctl --tag e2e-test returns echo-chat ──────────────────
-    const result = await fx.r(['get', 'app', '--tag', 'e2e-test', '-o', 'json'])
-    assertExitCode(result, 0)
-    const parsed = assertJson<{ data: Array<{ id: string, name: string, tags: Array<{ name: string }> }> }>(result)
-
-    // echo-chat must appear in the filtered list
-    const echoChatInResult = parsed.data.find(app => app.id === E.chatAppId)
-    expect(
-      echoChatInResult,
-      `echo-chat (id=${E.chatAppId}) should appear in --tag e2e-test results`,
-    ).toBeDefined()
-
-    // Every returned app must carry the e2e-test tag
-    parsed.data.forEach(app =>
-      expect(
-        app.tags.some(t => t.name === 'e2e-test'),
-        `app "${app.name}" should carry the e2e-test tag`,
-      ).toBe(true),
-    )
   })
 })

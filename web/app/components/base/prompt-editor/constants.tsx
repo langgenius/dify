@@ -30,13 +30,6 @@ export const checkHasQueryBlock = (text: string) => {
     return false
   return text.includes(QUERY_PLACEHOLDER_TEXT)
 }
-
-export const checkHasRequestURLBlock = (text: string) => {
-  if (!text)
-    return false
-  return text.includes(REQUEST_URL_PLACEHOLDER_TEXT)
-}
-
 /*
 * {{#1711617514996.name#}} => [1711617514996, name]
 * {{#1711617514996.sys.query#}} => [sys, query]

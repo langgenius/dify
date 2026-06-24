@@ -82,6 +82,17 @@ vi.mock('@/app/components/workflow/store', () => {
   }
 })
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canImportExportDSL: boolean, canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canImportExportDSL: true,
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
+
 const {
   mockHandlePaneContextmenuCancel,
   mockExportCheck,
@@ -206,6 +217,24 @@ vi.mock('@/service/use-base', () => ({
 vi.mock('@/service/knowledge/use-dataset', () => ({
   datasetDetailQueryKeyPrefix: ['dataset-detail'],
   useInvalidDatasetList: () => vi.fn(),
+}))
+
+let mockDatasetDetailState = {
+  dataset: {
+    permission_keys: ['dataset.acl.edit'],
+    maintainer: 'maintainer-id',
+  },
+}
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: typeof mockDatasetDetailState) => unknown) => selector(mockDatasetDetailState),
+}))
+
+let mockAppContextState = {
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: [] as string[],
+}
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: typeof mockAppContextState) => unknown) => selector(mockAppContextState),
 }))
 
 vi.mock('@/service/workflow', () => ({
@@ -374,6 +403,16 @@ function getAppIcon() {
 describe('Conversion', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockDatasetDetailState = {
+      dataset: {
+        permission_keys: ['dataset.acl.edit'],
+        maintainer: 'maintainer-id',
+      },
+    }
+    mockAppContextState = {
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: [],
+    }
   })
 
   describe('Rendering', () => {

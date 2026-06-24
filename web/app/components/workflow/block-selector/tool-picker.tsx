@@ -18,6 +18,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
+import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import {
@@ -66,15 +67,18 @@ export function ToolPickerContent({
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
   const [tags, setTags] = useState<string[]>([])
+  const canManageTools = useCanManageTools()
 
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
   })
   const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
+  const shouldFetchCustomTools = scope !== 'plugins' && scope !== 'workflow'
+  const { data: customTools } = useAllCustomTools(shouldFetchCustomTools)
   const invalidateCustomTools = useInvalidateAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
+  const shouldFetchWorkflowTools = scope !== 'plugins' && scope !== 'custom'
+  const { data: workflowTools } = useAllWorkflowTools(shouldFetchWorkflowTools)
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
   const invalidateWorkflowTools = useInvalidateAllWorkflowTools()
@@ -130,13 +134,16 @@ export function ToolPickerContent({
   }] = useBoolean(false)
 
   const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    if (!canManageTools)
+      return
+
     await createCustomCollection(data)
     toast.success(t('api.actionSuccess', { ns: 'common' }))
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
   }
 
-  if (isShowEditCollectionToolModal) {
+  if (isShowEditCollectionToolModal && canManageTools) {
     return (
       <EditCustomToolModal
         dialogClassName="bg-background-overlay"
@@ -156,7 +163,7 @@ export function ToolPickerContent({
           tags={tags}
           onTagsChange={setTags}
           placeholder={t('searchTools', { ns: 'plugin' })!}
-          supportAddCustomTool={supportAddCustomTool}
+          supportAddCustomTool={supportAddCustomTool && canManageTools}
           onAddedCustomTool={handleAddedCustomTool}
           onShowAddCustomCollectionModal={showEditCustomCollectionModal}
           // The picker replaces the focused menu item inside an already-open popover.

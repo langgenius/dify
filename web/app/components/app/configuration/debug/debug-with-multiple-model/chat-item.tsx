@@ -44,6 +44,7 @@ const ChatItem: FC<ChatItemProps> = ({
     appId,
     inputs,
     collectionList,
+    canTestAndRun = false,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures(s => s.features)
@@ -84,6 +85,8 @@ const ChatItem: FC<ChatItemProps> = ({
   useFormattingChangedSubscription(chatList)
 
   const doSend: OnSend = useCallback((message, files) => {
+    if (!canTestAndRun)
+      return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelAndParameter.provider)
     const currentModel = currentProvider?.models.find(model => model.model === modelAndParameter.model)
     const supportVision = currentModel?.features?.includes(ModelFeatureEnum.vision)
@@ -116,7 +119,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
+  }, [appId, canTestAndRun, chatList, config, handleSend, inputs, modelAndParameter.model, modelAndParameter.parameters, modelAndParameter.provider, textGenerationModelList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

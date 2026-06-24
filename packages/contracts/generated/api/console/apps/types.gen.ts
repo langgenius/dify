@@ -37,10 +37,12 @@ export type AppDetailWithSite = {
   icon_type?: string | null
   readonly icon_url: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -69,6 +71,7 @@ export type Import = {
   error?: string
   id: string
   imported_dsl_version?: string
+  permission_keys?: Array<string>
   status: ImportStatus
 }
 
@@ -190,8 +193,30 @@ export type AgentDrivePreviewResponse = {
   truncated: boolean
 }
 
+export type AgentDriveSkillListResponse = {
+  items?: Array<AgentDriveSkillItemResponse>
+}
+
+export type AgentDriveSkillInspectResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  file_tree?: Array<{
+    [key: string]: unknown
+  }>
+  files?: Array<AgentDriveSkillFileResponse>
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md: AgentDriveSkillMarkdownResponse
+  skill_md_key: string
+  source: string
+  warnings?: Array<string>
+}
+
 export type AgentDriveDeleteResponse = {
-  config_version_id?: string | null
   removed_keys?: Array<string>
   result: string
 }
@@ -201,7 +226,6 @@ export type AgentDriveFilePayload = {
 }
 
 export type AgentDriveFileCommitResponse = {
-  config_version_id?: string | null
   file: AgentDriveFileResponse
 }
 
@@ -213,7 +237,7 @@ export type AgentLogResponse = {
 
 export type AgentSkillUploadResponse = {
   manifest: SkillManifest
-  skill: AgentSkillRefConfig
+  skill: AgentUploadedSkillResponse
 }
 
 export type SkillToolInferenceResult = {
@@ -312,8 +336,10 @@ export type AppDetail = {
   icon?: string | null
   icon_background?: string | null
   id: string
+  maintainer?: string | null
   mode_compatible_with_agent: string
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -413,6 +439,7 @@ export type ConvertToWorkflowPayload = {
 
 export type NewAppResponse = {
   new_app_id: string
+  permission_keys?: Array<string>
 }
 
 export type CopyAppPayload = {
@@ -959,9 +986,14 @@ export type ComposerSavePayload = {
   agent_soul?: AgentSoulConfig | null
   binding?: ComposerBindingPayload | null
   client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
   idempotency_key?: string | null
   new_agent_name?: string | null
   node_job?: WorkflowNodeJobConfig | null
+  role?: string | null
   save_strategy: ComposerSaveStrategy
   soul_lock?: ComposerSoulLockPayload
   variant: ComposerVariant
@@ -974,6 +1006,12 @@ export type AgentComposerCandidatesResponse = {
   capabilities?: ComposerCandidateCapabilities
   truncated?: boolean
   variant: ComposerVariant
+}
+
+export type WorkflowComposerCopyFromRosterPayload = {
+  idempotency_key?: string | null
+  source_agent_id: string
+  source_snapshot_id?: string | null
 }
 
 export type AgentComposerImpactResponse = {
@@ -1163,10 +1201,12 @@ export type AppPartial = {
   readonly icon_url: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -1266,9 +1306,39 @@ export type AgentDriveItemResponse = {
   created_at?: number | null
   file_kind: string
   hash?: string | null
+  is_skill?: boolean | null
   key: string
   mime_type?: string | null
   size?: number | null
+  skill_metadata?: string | null
+}
+
+export type AgentDriveSkillItemResponse = {
+  archive_key?: string | null
+  created_at?: number | null
+  description: string
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  path: string
+  size?: number | null
+  skill_md_key: string
+}
+
+export type AgentDriveSkillFileResponse = {
+  available_in_drive: boolean
+  drive_key?: string | null
+  name: string
+  path: string
+  type: string
+}
+
+export type AgentDriveSkillMarkdownResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
 }
 
 export type AgentDriveFileResponse = {
@@ -1309,18 +1379,12 @@ export type SkillManifest = {
   size: number
 }
 
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
+export type AgentUploadedSkillResponse = {
+  archive_key?: string | null
+  description: string
+  name: string
+  path: string
+  skill_md_key: string
 }
 
 export type CliToolSuggestion = {
@@ -1616,6 +1680,9 @@ export type AccountWithRole = {
   last_login_at?: number | null
   name: string
   role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
   status: string
 }
 
@@ -1739,7 +1806,6 @@ export type AgentSoulConfig = {
   prompt?: AgentSoulPromptConfig
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
-  skills_files?: AgentSoulSkillsFilesConfig
   tools?: AgentSoulToolsConfig
 }
 
@@ -1818,6 +1884,8 @@ export type ComposerBindingPayload = {
   current_snapshot_id?: string | null
 }
 
+export type AgentIconType = 'emoji' | 'image' | 'link'
+
 export type ComposerSoulLockPayload = {
   locked?: boolean
   unlocked_from_version_id?: string | null
@@ -1836,14 +1904,6 @@ export type AgentComposerSoulCandidatesResponse = {
   dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
   human_contacts?: Array<AgentHumanContactConfig>
   knowledge_datasets?: Array<AgentKnowledgeDatasetConfig>
-  skills_files?: Array<
-    | ({
-      kind: 'skill'
-    } & AgentComposerSkillCandidateResponse)
-    | ({
-      kind: 'file'
-    } & AgentComposerFileCandidateResponse)
-  >
 }
 
 export type ComposerCandidateCapabilities = {
@@ -2105,11 +2165,6 @@ export type AgentSoulSandboxConfig = {
   provider?: string | null
 }
 
-export type AgentSoulSkillsFilesConfig = {
-  files?: Array<AgentFileRefConfig>
-  skills?: Array<AgentSkillRefConfig>
-}
-
 export type AgentSoulToolsConfig = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentSoulDifyToolConfig>
@@ -2240,37 +2295,6 @@ export type AgentKnowledgeDatasetConfig = {
   description?: string | null
   id?: string | null
   name?: string | null
-  [key: string]: unknown
-}
-
-export type AgentComposerSkillCandidateResponse = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  kind?: 'skill'
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
-}
-
-export type AgentComposerFileCandidateResponse = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  kind?: 'file'
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
   [key: string]: unknown
 }
 
@@ -2424,21 +2448,6 @@ export type AgentSandboxProviderConfig = {
   [key: string]: unknown
 }
 
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
-}
-
 export type AgentSoulDifyToolConfig = {
   credential_ref?: AgentSoulDifyToolCredentialRef | null
   credential_type?: 'api-key' | 'oauth2' | 'unauthorized'
@@ -2462,6 +2471,21 @@ export type AgentSoulDifyToolConfig = {
       | null
   }
   tool_name?: string | null
+}
+
+export type AgentFileRefConfig = {
+  drive_key?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
 }
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'
@@ -2592,10 +2616,12 @@ export type AppDetailWithSiteWritable = {
   icon_background?: string | null
   icon_type?: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfig | null
   name: string
+  permission_keys?: Array<string>
   site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
@@ -2643,10 +2669,12 @@ export type AppPartialWritable = {
   icon_type?: string | null
   id: string
   is_starred?: boolean
+  maintainer?: string | null
   max_active_requests?: number | null
   mode: string
   model_config?: ModelConfigPartial | null
   name: string
+  permission_keys?: Array<string>
   tags?: Array<Tag>
   updated_at?: number | null
   updated_by?: string | null
@@ -3109,6 +3137,44 @@ export type GetAppsByAppIdAgentDriveFilesPreviewResponses = {
 
 export type GetAppsByAppIdAgentDriveFilesPreviewResponse
   = GetAppsByAppIdAgentDriveFilesPreviewResponses[keyof GetAppsByAppIdAgentDriveFilesPreviewResponses]
+
+export type GetAppsByAppIdAgentDriveSkillsData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    node_id?: string
+    prefix?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponses = {
+  200: AgentDriveSkillListResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsResponse
+  = GetAppsByAppIdAgentDriveSkillsResponses[keyof GetAppsByAppIdAgentDriveSkillsResponses]
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    skill_path: string
+  }
+  query?: {
+    node_id?: string
+  }
+  url: '/apps/{app_id}/agent/drive/skills/{skill_path}/inspect'
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses = {
+  200: AgentDriveSkillInspectResponse
+}
+
+export type GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponse
+  = GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses[keyof GetAppsByAppIdAgentDriveSkillsBySkillPathInspectResponses]
 
 export type DeleteAppsByAppIdAgentFilesData = {
   body?: never
@@ -5361,6 +5427,23 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResp
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse
   = GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponses]
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterData = {
+  body: WorkflowComposerCopyFromRosterPayload
+  path: {
+    app_id: string
+    node_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster'
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses = {
+  200: WorkflowAgentComposerResponse
+}
+
+export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponse
+  = PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses[keyof PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCopyFromRosterResponses]
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerImpactData = {
   body: ComposerSavePayload

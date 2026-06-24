@@ -8,7 +8,6 @@ import type {
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { RiApps2AddLine } from '@remixicon/react'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   memo,
@@ -29,7 +28,8 @@ import {
   useNodesSyncDraft,
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
-import { hasValidRosterAgentBinding, isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import {
   useStore,
   useWorkflowStore,
@@ -42,8 +42,8 @@ import {
 } from '@/app/components/workflow/types'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
-import { fetchAppDetail } from '@/service/apps'
 import { consoleQuery } from '@/service/client'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppTriggers } from '@/service/use-tools'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
 
@@ -55,8 +55,8 @@ const FeaturesTrigger = () => {
   const queryClient = useQueryClient()
   const appDetail = useAppStore(s => s.appDetail)
   const appID = appDetail?.id
-  const setAppDetail = useAppStore(s => s.setAppDetail)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const canReleaseAndVersion = useHooksStore(s => s.accessControl.canReleaseAndVersion)
   const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
@@ -64,6 +64,20 @@ const FeaturesTrigger = () => {
   const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
 
   const nodes = useNodes()
+  const rosterAgentIds = useMemo(() => {
+    return Array.from(new Set(nodes.flatMap((node) => {
+      const binding = isAgentV2NodeData(node.data) ? node.data.agent_binding : undefined
+      if (
+        binding?.binding_type !== 'roster_agent'
+        || typeof binding.agent_id !== 'string'
+        || binding.agent_id.length === 0
+      ) {
+        return []
+      }
+
+      return [binding.agent_id]
+    })))
+  }, [nodes])
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const endNode = nodes.find(node => node.data.type === BlockEnum.End)
@@ -134,13 +148,12 @@ const FeaturesTrigger = () => {
 
   const updateAppDetail = useCallback(async () => {
     try {
-      const res = await fetchAppDetail({ url: '/apps', id: appID! })
-      setAppDetail({ ...res })
+      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appID!] })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appID, setAppDetail])
+  }, [appID, queryClient])
 
   const { mutateAsync: publishWorkflow } = usePublishWorkflow()
   // const { validateBeforeRun } = useWorkflowRunValidation()
@@ -170,10 +183,19 @@ const FeaturesTrigger = () => {
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
-        if (nodes.some(node => isAgentV2NodeData(node.data) && hasValidRosterAgentBinding(node.data))) {
+        if (rosterAgentIds.length > 0) {
           void queryClient.invalidateQueries({
             queryKey: consoleQuery.agent.get.key(),
           })
+          void Promise.all(rosterAgentIds.map(agentId => queryClient.invalidateQueries({
+            queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+              input: {
+                params: {
+                  agent_id: agentId,
+                },
+              },
+            }).queryKey,
+          })))
         }
         workflowStore.getState().setPublishedAt(res.created_at)
         workflowStore.getState().setLastPublishedHasUserInput(hasUserInputNode)
@@ -183,7 +205,7 @@ const FeaturesTrigger = () => {
     else {
       throw new Error('Checklist failed')
     }
-  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, invalidateAppTriggers, nodes, queryClient, workflowStore, hasUserInputNode, resetWorkflowVersionHistory])
+  }, [needWarningNodes, handleCheckBeforePublish, publishWorkflow, appID, t, updatePublishedWorkflow, updateAppDetail, invalidateAppTriggers, rosterAgentIds, queryClient, workflowStore, hasUserInputNode, resetWorkflowVersionHistory])
 
   const onPublisherToggle = useCallback((state: boolean) => {
     if (state)
@@ -205,7 +227,7 @@ const FeaturesTrigger = () => {
           )}
           onClick={handleShowFeatures}
         >
-          <RiApps2AddLine className="mr-1 size-4 text-components-button-secondary-text" />
+          <span className="mr-1 i-ri-apps-2-add-line size-4 text-components-button-secondary-text" />
           {t('common.features', { ns: 'workflow' })}
         </Button>
       )}
@@ -213,7 +235,7 @@ const FeaturesTrigger = () => {
         {...{
           publishedAt,
           draftUpdatedAt,
-          disabled: nodesReadOnly || !hasWorkflowNodes,
+          disabled: nodesReadOnly || !hasWorkflowNodes || !canReleaseAndVersion,
           toolPublished,
           inputs: variables,
           outputs: endVariables,
@@ -225,7 +247,7 @@ const FeaturesTrigger = () => {
           missingStartNode: !startNode,
           hasTriggerNode,
           startNodeLimitExceeded,
-          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
+          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded || !canReleaseAndVersion,
           hasHumanInputNode,
         }}
       />

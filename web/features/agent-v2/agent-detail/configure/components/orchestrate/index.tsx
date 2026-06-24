@@ -1,13 +1,15 @@
 'use client'
 
-import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse, AgentPublishedReferenceResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigurePublishPayload } from './publish-bar'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
+import { AgentDriveApiContextProvider } from './drive-context'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
 import { AgentKnowledgeRetrieval } from './knowledge'
@@ -20,6 +22,9 @@ import { AgentTools } from './tools'
 
 type AgentOrchestratePanelProps = {
   agentId: string
+  appId?: string
+  nodeId?: string
+  activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
@@ -27,19 +32,22 @@ type AgentOrchestratePanelProps = {
   textGenerationModelList: Model[]
   draftSavedAt?: number
   isPublishing?: boolean
-  publishedReferenceCount?: number
-  publishedReferences?: AgentPublishedReferenceResponse[]
   className?: string
   readOnly?: boolean
+  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   showHeader?: boolean
   showPublishBar?: boolean
   onSelectModel: (model: DefaultModel) => void
   onPublish: (payload: AgentConfigurePublishPayload) => void | Promise<void>
+  onExitVersions?: () => void
   onOpenVersions: () => void
 }
 
 export function AgentOrchestratePanel({
   agentId,
+  appId,
+  nodeId,
+  activeConfigIsPublished,
   activeConfigSnapshot,
   agentSoulConfig,
   agentName,
@@ -47,22 +55,31 @@ export function AgentOrchestratePanel({
   textGenerationModelList,
   draftSavedAt,
   isPublishing,
-  publishedReferenceCount,
-  publishedReferences,
   className,
   readOnly = false,
+  selectedVersionSnapshot,
   showHeader = true,
   showPublishBar = true,
   onSelectModel,
   onPublish,
+  onExitVersions,
   onOpenVersions,
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
   const orchestrateLabel = t('agentDetail.configure.orchestrate')
+  const driveApiContext = useMemo(() => appId && nodeId
+    ? {
+        agentId,
+        workflow: {
+          appId,
+          nodeId,
+        },
+      }
+    : { agentId }, [agentId, appId, nodeId])
 
   return (
-    <div className={cn('flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
+    <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
       {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} />}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
@@ -76,22 +93,25 @@ export function AgentOrchestratePanel({
             labelledBy={showHeader ? orchestrateHeadingId : undefined}
             slotClassNames={{
               viewport: 'overscroll-contain',
-              content: 'min-h-full px-4 py-3',
+              content: cn('min-h-full px-4 py-3', showPublishBar && 'pb-20'),
+              scrollbar: showPublishBar ? 'z-20' : undefined,
             }}
           >
-            <AgentOrchestrateAddActionsProvider>
-              <AgentModelField
-                currentModel={currentModel}
-                textGenerationModelList={textGenerationModelList}
-                onSelect={onSelectModel}
-              />
-              <AgentPromptEditor />
-              <AgentSkills agentId={agentId} />
-              <AgentFiles />
-              <AgentTools />
-              <AgentKnowledgeRetrieval />
-              <AgentAdvancedSettings />
-            </AgentOrchestrateAddActionsProvider>
+            <AgentDriveApiContextProvider value={driveApiContext}>
+              <AgentOrchestrateAddActionsProvider>
+                <AgentModelField
+                  currentModel={currentModel}
+                  textGenerationModelList={textGenerationModelList}
+                  onSelect={onSelectModel}
+                />
+                <AgentPromptEditor />
+                <AgentSkills />
+                <AgentFiles />
+                <AgentTools />
+                <AgentKnowledgeRetrieval />
+                <AgentAdvancedSettings />
+              </AgentOrchestrateAddActionsProvider>
+            </AgentDriveApiContextProvider>
           </ScrollArea>
         </div>
       </AgentOrchestrateReadOnlyContext>
@@ -99,15 +119,16 @@ export function AgentOrchestratePanel({
       {showPublishBar && (
         <AgentConfigurePublishBar
           agentId={agentId}
+          activeConfigIsPublished={activeConfigIsPublished}
           activeConfigSnapshot={activeConfigSnapshot}
           agentSoulConfig={agentSoulConfig}
           agentName={agentName}
           currentModel={currentModel}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
-          publishedReferenceCount={publishedReferenceCount}
-          publishedReferences={publishedReferences}
+          selectedVersionSnapshot={selectedVersionSnapshot}
           onPublish={onPublish}
+          onExitVersions={onExitVersions}
           onOpenVersions={onOpenVersions}
         />
       )}
