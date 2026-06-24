@@ -4476,11 +4476,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/provider/detail.tsx": {
-    "jsx-a11y/anchor-has-content": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/provider/tool-item.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
