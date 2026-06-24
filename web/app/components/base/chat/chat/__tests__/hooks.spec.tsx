@@ -6,6 +6,10 @@ import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
 
+const useTimestampMock = vi.hoisted(() =>
+  vi.fn(() => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') })),
+)
+
 vi.mock('@/service/base', () => ({
   sseGet: vi.fn(),
   ssePost: vi.fn(),
@@ -31,7 +35,7 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  default: () => ({ formatTime: vi.fn().mockReturnValue('10:00 AM') }),
+  default: useTimestampMock,
 }))
 
 vi.mock('@/next/navigation', () => ({
@@ -89,6 +93,21 @@ describe('useChat', () => {
     expect(result.current.chatList).toEqual([])
     expect(result.current.isResponding).toBe(false)
     expect(result.current.suggestedQuestions).toEqual([])
+  })
+
+  it('should pass timestamp options to timestamp formatter', () => {
+    renderHook(() => useChat(
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { timezone: 'UTC' },
+    ))
+
+    expect(useTimestampMock).toHaveBeenCalledWith({ timezone: 'UTC' })
   })
 
   it('should initialize with opening statement and suggested questions', () => {

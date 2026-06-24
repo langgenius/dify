@@ -6,14 +6,6 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import useTimestamp from './use-timestamp'
 
-const navigationMocks = vi.hoisted(() => ({
-  pathname: '/apps',
-}))
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => navigationMocks.pathname,
-}))
-
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(() => ({
     userProfile: {
@@ -50,10 +42,6 @@ const createEmptyQueryWrapper = () => {
 }
 
 describe('useTimestamp', () => {
-  beforeEach(() => {
-    navigationMocks.pathname = '/apps'
-  })
-
   describe('formatTime', () => {
     it('should format unix timestamp correctly', () => {
       const { result } = renderHook(() => useTimestamp(), { wrapper: createAccountProfileQueryWrapper() })
@@ -96,13 +84,12 @@ describe('useTimestamp', () => {
     })
   })
 
-  it('should not request account profile on public webapp routes', () => {
-    navigationMocks.pathname = '/chatbot/share-token'
+  it('should not request account profile when timezone is provided', () => {
     const { queryClient, wrapper } = createEmptyQueryWrapper()
 
-    const { result } = renderHook(() => useTimestamp(), { wrapper })
+    const { result } = renderHook(() => useTimestamp({ timezone: 'UTC' }), { wrapper })
 
-    expect(result.current.formatTime(1704132000, 'YYYY')).toBe('2024')
+    expect(result.current.formatTime(1704132000, 'YYYY-MM-DD HH:mm')).toBe('2024-01-01 18:00')
     expect(queryClient.isFetching({ queryKey: userProfileQueryOptions().queryKey })).toBe(0)
     expect(queryClient.getQueryState(userProfileQueryOptions().queryKey)?.fetchStatus).toBe('idle')
   })
