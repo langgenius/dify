@@ -66,6 +66,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
+from services.enterprise.rbac_service import RBACService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
@@ -1787,6 +1788,9 @@ class TenantService:
                 tenant.id,
                 account_id,
             )
+
+        if dify_config.RBAC_ENABLED:
+            RBACService.MemberRoles.delete_rbac_bindings(tenant_id=tenant.id, account_id=account_id)
 
     @staticmethod
     def update_member_role(
