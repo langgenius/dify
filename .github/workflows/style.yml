@@ -109,6 +109,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: vp run knip:production
 
+      - name: Web production unused declarations check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip:production-unused-check
+
   ts-common-style:
     name: TS Common
     runs-on: depot-ubuntu-24.04

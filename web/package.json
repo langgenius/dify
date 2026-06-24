@@ -35,6 +35,7 @@
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "knip": "knip",
     "knip:production": "knip --production --include files",
+    "knip:production-unused-check": "node ./scripts/check-production-unused-after-knip-fix.mjs",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
     "refactor-component": "node ./scripts/refactor-component.js",
