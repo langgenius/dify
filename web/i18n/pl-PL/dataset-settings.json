@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Liczba słów kluczowych",
   "form.onSearchResults": "Żaden członek nie pasuje do Twojego zapytania.\nSpróbuj ponownie wyszukać.",
   "form.permissions": "Uprawnienia",
+  "form.permissionsAccessConfig": "Przejdź do konfiguracji dostępu",
   "form.permissionsAllMember": "Wszyscy członkowie zespołu",
   "form.permissionsInvitedMembers": "Częściowi członkowie zespołu",
   "form.permissionsOnlyMe": "Tylko ja",

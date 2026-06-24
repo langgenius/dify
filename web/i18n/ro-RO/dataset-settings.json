@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Număr de cuvinte cheie",
   "form.onSearchResults": "Niciun membru nu corespunde interogării de căutare.\nÎncercați din nou căutarea.",
   "form.permissions": "Permisiuni",
+  "form.permissionsAccessConfig": "Mergi la configurarea accesului",
   "form.permissionsAllMember": "Toți membrii echipei",
   "form.permissionsInvitedMembers": "Membri parțiali ai echipei",
   "form.permissionsOnlyMe": "Doar eu",

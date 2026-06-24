@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "關鍵字數量",
   "form.onSearchResults": "沒有成員符合您的搜尋查詢。\n請再次嘗試搜尋。",
   "form.permissions": "可見許可權",
+  "form.permissionsAccessConfig": "前往存取設定",
   "form.permissionsAllMember": "所有團隊成員",
   "form.permissionsInvitedMembers": "部分團隊成員",
   "form.permissionsOnlyMe": "只有我",

@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Кількість ключових слів",
   "form.onSearchResults": "Жодні учасники не відповідають вашому пошуковому запиту.\nСпробуйте виконати пошук ще раз.",
   "form.permissions": "Дозволи",
+  "form.permissionsAccessConfig": "Перейти до конфігурації доступу",
   "form.permissionsAllMember": "Усі члени команди",
   "form.permissionsInvitedMembers": "Часткові члени команди",
   "form.permissionsOnlyMe": "Тільки я",

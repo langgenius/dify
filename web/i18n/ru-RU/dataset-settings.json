@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Количество ключевых слов",
   "form.onSearchResults": "Ни один участник не соответствует вашему поисковому запросу.\nПовторите попытку поиска.",
   "form.permissions": "Разрешения",
+  "form.permissionsAccessConfig": "Перейти к настройке доступа",
   "form.permissionsAllMember": "Все участники команды",
   "form.permissionsInvitedMembers": "Отдельные участники команды",
   "form.permissionsOnlyMe": "Только я",

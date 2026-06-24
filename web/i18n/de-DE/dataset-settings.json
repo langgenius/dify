@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Anzahl der Schlüsselwörter",
   "form.onSearchResults": "Kein Mitglied stimmt mit Ihrer Suchanfrage überein.\nVersuchen Sie Ihre Suche erneut.",
   "form.permissions": "Berechtigungen",
+  "form.permissionsAccessConfig": "Zur Zugriffskonfiguration wechseln",
   "form.permissionsAllMember": "Alle Teammitglieder",
   "form.permissionsInvitedMembers": "Teilweise Teammitglieder",
   "form.permissionsOnlyMe": "Nur ich",

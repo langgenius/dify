@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "عدد الكلمات الرئيسية",
   "form.onSearchResults": "لا يوجد أعضاء يطابقون استعلام البحث الخاص بك.\nحاول البحث مرة أخرى.",
   "form.permissions": "أذونات",
+  "form.permissionsAccessConfig": "الانتقال إلى تكوين الوصول",
   "form.permissionsAllMember": "جميع أعضاء الفريق",
   "form.permissionsInvitedMembers": "أعضاء الفريق الجزئيين",
   "form.permissionsOnlyMe": "أنا فقط",
