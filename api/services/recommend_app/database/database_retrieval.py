@@ -50,6 +50,11 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         return result
 
     @override
+    def get_learn_dify_apps(self, language: str) -> RecommendedAppsResultDict:
+        result = self.fetch_learn_dify_apps_from_db(language)
+        return result
+
+    @override
     def get_recommend_app_detail(self, app_id: str) -> RecommendedAppDetailDict | None:
         result = self.fetch_recommended_app_detail_from_db(app_id)
         return result
