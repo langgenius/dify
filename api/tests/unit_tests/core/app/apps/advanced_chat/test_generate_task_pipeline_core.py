@@ -29,6 +29,7 @@ from core.app.entities.queue_entities import (
     QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueuePingEvent,
+    QueueReasoningChunkEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
@@ -46,6 +47,7 @@ from core.app.entities.task_entities import (
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     PingStreamResponse,
+    ReasoningChunkStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
@@ -196,6 +198,42 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert pipeline._task_state.answer == "hi"
         assert responses
 
+    def test_handle_reasoning_chunk_event_emits_on_nonempty(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="pondering", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        assert response.data.message_id == pipeline._message_id
+        assert response.data.reasoning == "pondering"
+        assert response.data.node_id == "llm-1"
+        assert response.data.is_final is False
+        # reasoning never touches the answer stream
+        assert pipeline._task_state.answer == ""
+
+    def test_handle_reasoning_chunk_event_drops_empty_nonfinal(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=False)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert responses == []
+
+    def test_handle_reasoning_chunk_event_emits_empty_final_marker(self):
+        pipeline = _make_pipeline()
+        event = QueueReasoningChunkEvent(reasoning="", from_node_id="llm-1", is_final=True)
+
+        responses = list(pipeline._handle_reasoning_chunk_event(event))
+
+        assert len(responses) == 1
+        response = responses[0]
+        assert isinstance(response, ReasoningChunkStreamResponse)
+        assert response.data.reasoning == ""
+        assert response.data.is_final is True
+
     def test_listen_audio_msg_returns_audio_stream(self):
         pipeline = _make_pipeline()
         publisher = SimpleNamespace(check_and_get_audio=lambda: AudioTrunk(status="stream", audio="data"))
@@ -318,6 +356,43 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert responses == ["done"]
         assert pipeline._recorded_files
+
+    def test_handle_node_succeeded_event_records_llm_reasoning(self):
+        pipeline = _make_pipeline()
+        pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: []
+        pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
+        pipeline._save_output_for_event = lambda event, node_execution_id: None
+
+        event = SimpleNamespace(
+            node_type=BuiltinNodeTypes.LLM,
+            outputs={"reasoning_content": "first pass "},
+            node_execution_id="exec",
+            node_id="llm-1",
+        )
+
+        list(pipeline._handle_node_succeeded_event(event))
+
+        assert pipeline._task_state.metadata.reasoning == {"llm-1": "first pass "}
+
+    def test_handle_node_succeeded_event_accumulates_reasoning_across_passes(self):
+        pipeline = _make_pipeline()
+        pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: []
+        pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
+        pipeline._save_output_for_event = lambda event, node_execution_id: None
+
+        def _llm_event(reasoning: str):
+            return SimpleNamespace(
+                node_type=BuiltinNodeTypes.LLM,
+                outputs={"reasoning_content": reasoning},
+                node_execution_id="exec",
+                node_id="llm-1",
+            )
+
+        # Same node id across iteration/loop passes must accumulate, not overwrite.
+        list(pipeline._handle_node_succeeded_event(_llm_event("pass one ")))
+        list(pipeline._handle_node_succeeded_event(_llm_event("pass two")))
+
+        assert pipeline._task_state.metadata.reasoning == {"llm-1": "pass one pass two"}
 
     def test_iteration_and_loop_handlers(self):
         pipeline = _make_pipeline()

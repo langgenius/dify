@@ -56,12 +56,17 @@ def mock_response_receiver(monkeypatch: pytest.MonkeyPatch) -> mock.Mock:
     return mock_log_request_finished
 
 
-
-
-
 @pytest.fixture
 def enable_request_logging(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(dify_config, "ENABLE_REQUEST_LOGGING", True)
+
+
+def _captured_records(caplog: pytest.LogCaptureFixture, level: int) -> list[logging.LogRecord]:
+    return [
+        record
+        for record in caplog.records
+        if record.name == ext_request_logging.logger.name and record.levelno == level
+    ]
 
 
 class TestRequestLoggingExtension:
@@ -107,70 +112,72 @@ class TestLoggingLevel:
     def test_logging_should_be_skipped_if_level_is_above_debug(
         self, enable_request_logging, caplog: pytest.LogCaptureFixture
     ):
-        caplog.set_level(logging.INFO, logger=ext_request_logging.__name__)
+        caplog.set_level(logging.INFO, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", json={_KEY_NEEDLE: _VALUE_NEEDLE})
-
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
-        assert len(debug_records) == 0
+        assert not _captured_records(caplog, logging.DEBUG)
 
 
 @pytest.mark.usefixtures("enable_request_logging", "mock_response_receiver")
 class TestRequestReceiverLogging:
-    def test_non_json_request(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_non_json_request(self, enable_request_logging, caplog: pytest.LogCaptureFixture, mock_response_receiver):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", data="plain text")
-
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        debug_records = _captured_records(caplog, logging.DEBUG)
         assert len(debug_records) == 1
-        msg = debug_records[0].getMessage()
-        assert "Received Request" in msg
-        assert "POST" in msg
-        assert "/" in msg
-        assert "Request Body" not in msg
+        record = debug_records[0]
+        assert "Received Request" in record.msg
+        assert record.args == ("POST", "/")
+        assert "Request Body" not in record.msg
 
-    def test_json_request(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_json_request(self, enable_request_logging, caplog: pytest.LogCaptureFixture, mock_response_receiver):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", json={_KEY_NEEDLE: _VALUE_NEEDLE})
-
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        debug_records = _captured_records(caplog, logging.DEBUG)
         assert len(debug_records) == 1
-        msg = debug_records[0].getMessage()
-        assert "Received Request" in msg
-        assert "Request Body" in msg
-        assert "POST" in msg
-        assert "/" in msg
-        assert _KEY_NEEDLE in msg
+        record = debug_records[0]
+        assert "Received Request" in record.msg
+        assert "Request Body" in record.msg
+        assert record.args[0] == "POST"
+        assert record.args[1] == "/"
+        assert _KEY_NEEDLE in record.args[2]
 
-    def test_json_request_with_empty_body(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_json_request_with_empty_body(
+        self, enable_request_logging, caplog: pytest.LogCaptureFixture, mock_response_receiver
+    ):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
 
         with app.test_client() as client:
             client.post("/", headers={"Content-Type": "application/json"})
 
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        debug_records = _captured_records(caplog, logging.DEBUG)
         assert len(debug_records) == 1
-        msg = debug_records[0].getMessage()
-        assert "Received Request" in msg
-        assert "Request Body" not in msg
-        assert "POST" in msg
-        assert "/" in msg
+        record = debug_records[0]
+        assert "Received Request" in record.msg
+        assert "Request Body" not in record.msg
+        assert record.args == ("POST", "/")
 
-    def test_json_request_with_invalid_json_as_body(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_json_request_with_invalid_json_as_body(
+        self, enable_request_logging, caplog: pytest.LogCaptureFixture, mock_response_receiver
+    ):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         init_app(app)
 
@@ -180,52 +187,53 @@ class TestRequestReceiverLogging:
                 headers={"Content-Type": "application/json"},
                 data="{",
             )
-
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
-        assert len(debug_records) == 0
-        exception_records = [rec for rec in caplog.records if rec.levelno == logging.ERROR]
-        assert len(exception_records) == 1
-        assert "Failed to parse JSON request" in exception_records[0].getMessage()
+        assert not _captured_records(caplog, logging.DEBUG)
+        error_records = _captured_records(caplog, logging.ERROR)
+        assert len(error_records) == 1
+        assert error_records[0].message == "Failed to parse JSON request"
 
 
 class TestResponseReceiverLogging:
-    def test_non_json_response(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_non_json_response(self, enable_request_logging, caplog: pytest.LogCaptureFixture):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         response = Response(
             "OK",
             headers={"Content-Type": "text/plain"},
         )
         _log_request_finished(app, response)
-
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        debug_records = _captured_records(caplog, logging.DEBUG)
         assert len(debug_records) == 1
-        msg = debug_records[0].getMessage()
-        assert "Response" in msg
-        assert "200" in msg
-        assert "text/plain" in msg
-        assert "Response Body" not in msg
+        record = debug_records[0]
+        assert "Response" in record.msg
+        assert "200" in record.args[0]
+        assert record.args[1] == "text/plain"
+        assert "Response Body" not in record.msg
 
-    def test_json_response(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_json_response(self, enable_request_logging, caplog: pytest.LogCaptureFixture, mock_response_receiver):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
         response = Response(
             json.dumps({_KEY_NEEDLE: _VALUE_NEEDLE}),
             headers={"Content-Type": "application/json"},
         )
         _log_request_finished(app, response)
-
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
+        debug_records = _captured_records(caplog, logging.DEBUG)
         assert len(debug_records) == 1
-        msg = debug_records[0].getMessage()
-        assert "Response" in msg
-        assert "Response Body" in msg
-        assert "200" in msg
-        assert "application/json" in msg
-        assert _KEY_NEEDLE in msg
+        record = debug_records[0]
+        assert "Response" in record.msg
+        assert "Response Body" in record.msg
+        assert "200" in record.args[0]
+        assert record.args[1] == "application/json"
+        assert _KEY_NEEDLE in record.args[2]
 
-    def test_json_request_with_invalid_json_as_body(self, caplog: pytest.LogCaptureFixture):
-        caplog.set_level(logging.DEBUG, logger=ext_request_logging.__name__)
+    @pytest.mark.usefixtures("enable_request_logging")
+    def test_json_request_with_invalid_json_as_body(
+        self, enable_request_logging, caplog: pytest.LogCaptureFixture, mock_response_receiver
+    ):
+        caplog.set_level(logging.DEBUG, logger=ext_request_logging.logger.name)
         app = _get_test_app()
 
         response = Response(
@@ -233,12 +241,10 @@ class TestResponseReceiverLogging:
             headers={"Content-Type": "application/json"},
         )
         _log_request_finished(app, response)
-
-        debug_records = [rec for rec in caplog.records if rec.levelno == logging.DEBUG]
-        assert len(debug_records) == 0
-        exception_records = [rec for rec in caplog.records if rec.levelno == logging.ERROR]
-        assert len(exception_records) == 1
-        assert "Failed to parse JSON response" in exception_records[0].getMessage()
+        assert not _captured_records(caplog, logging.DEBUG)
+        error_records = _captured_records(caplog, logging.ERROR)
+        assert len(error_records) == 1
+        assert error_records[0].message == "Failed to parse JSON response"
 
 
 class TestResponseUnmodified:
@@ -272,7 +278,7 @@ class TestResponseUnmodified:
 
 class TestRequestFinishedInfoAccessLine:
     def test_info_access_log_includes_method_path_status_duration_trace_id(
-        self, monkeypatch: pytest.MonkeyPatch, caplog
+        self, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
     ):
         """Ensure INFO access line contains expected fields with computed duration and trace id."""
         app = _get_test_app()

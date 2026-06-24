@@ -135,7 +135,6 @@ class Agent(DefaultFieldsMixin, Base):
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
         Index("agent_active_config_snapshot_id_idx", "active_config_snapshot_id"),
-        Index("agent_debug_conversation_id_idx", "debug_conversation_id"),
         Index(
             "agent_tenant_invitable_idx",
             "tenant_id",
@@ -163,7 +162,6 @@ class Agent(DefaultFieldsMixin, Base):
     scope: Mapped[AgentScope] = mapped_column(EnumText(AgentScope, length=32), nullable=False)
     source: Mapped[AgentSource] = mapped_column(EnumText(AgentSource, length=32), nullable=False)
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    debug_conversation_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
@@ -182,6 +180,34 @@ class Agent(DefaultFieldsMixin, Base):
     updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class AgentDebugConversation(DefaultFieldsMixin, Base):
+    """Per-account console debug conversation for an Agent App.
+
+    Agent App preview state must be isolated by editor account. The Agent row is
+    shared by everyone in the workspace, so this table owns the user-specific
+    conversation pointer used by console debug chat.
+    """
+
+    __tablename__ = "agent_debug_conversations"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="agent_debug_conversation_pkey"),
+        UniqueConstraint(
+            "tenant_id",
+            "agent_id",
+            "account_id",
+            name="agent_debug_conversation_agent_account_unique",
+        ),
+        Index("agent_debug_conversation_conversation_idx", "conversation_id"),
+        Index("agent_debug_conversation_account_idx", "tenant_id", "account_id"),
+    )
+
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
 class AgentConfigSnapshot(DefaultFieldsMixin, Base):

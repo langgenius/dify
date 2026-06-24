@@ -71,7 +71,7 @@
   "permissionSet.modal.view.dataset.description": "この権限セットの名前、説明、付与される権限を表示します。",
   "permissionSet.modal.view.dataset.title": "ナレッジベース権限セットを表示",
   "permissionSet.nameLabel": "権限セット名",
-  "permissionSet.namePlaceholder": "例: DSL をエクスポート可能",
+  "permissionSet.namePlaceholder": "例: 運用権限セット",
   "permissionSet.permissions": "権限",
   "role.addRole": "ロールを作成",
   "role.copyMembersDescription_one": "「{{name}}」は {{count}} 人のメンバーに割り当てられています。新しいロールのコピーに同じメンバーを含めますか？",

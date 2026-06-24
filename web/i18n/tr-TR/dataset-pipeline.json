@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Bu eylem kalıcıdır. Önceki yönteme geri dönemezsiniz. Dönüştürmek için lütfen onaylayın.",
   "conversion.confirm.title": "Onay",
   "conversion.descriptionChunk1": "Artık mevcut bilgi bankanızı belge işleme için Bilgi İşlem Hattı'nı kullanacak şekilde dönüştürebilirsiniz",
-  "conversion.descriptionChunk2": "— Pazarımızdaki eklentilere erişim ile daha açık ve esnek bir yaklaşım. Bu, yeni işleme yöntemini gelecekteki tüm belgelere uygulayacaktır.",
+  "conversion.descriptionChunk2": " — Pazar Yeri'ndeki eklentilere erişim sağlayan, daha açık ve esnek bir yaklaşım. Bu, yeni işleme yöntemini gelecekteki tüm belgelere uygulayacaktır.",
   "conversion.errorMessage": "Veri kümesi işlem hattına dönüştürülemedi",
   "conversion.successMessage": "Veri kümesi başarıyla işlem hattına dönüştürüldü",
   "conversion.title": "Bilgi İşlem Hattına Dönüştür",

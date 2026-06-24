@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "คำอธิบาย",
   "versions.releaseDescriptionPlaceholder": "อธิบายรีลีสนี้",
   "versions.releaseHistory": "ประวัติรีลีส",
+  "versions.releaseNameConflict": "มีรีลีสชื่อนี้อยู่แล้ว โปรดเลือกชื่ออื่น",
   "versions.releaseNameLabel": "ชื่อรีลีส",
   "versions.releaseNamePlaceholder": "ชื่อรีลีส",
   "versions.releaseNameRequired": "ป้อนชื่อรีลีส",

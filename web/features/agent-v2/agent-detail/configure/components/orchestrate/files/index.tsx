@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentFileApiContext } from './api-context'
+import type { AgentDriveApiContext } from '../drive-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
@@ -12,29 +12,18 @@ import {
   FileTreeGuide,
 } from '@langgenius/dify-ui/file-tree'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { useAtom } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
+import { FILES_DRIVE_PREFIX, useAgentDriveApiContext, useAgentDriveFiles } from '../drive-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
-import { getDriveFileIconType } from './file-icon'
 import { AgentFileTree } from './tree'
 import { AgentFileUploadDialog } from './upload-dialog'
-
-const removeFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[] => files
-  .filter(file => file.id !== fileId)
-  .map(file => ({
-    ...file,
-    children: file.children ? removeFileNode(file.children, fileId) : undefined,
-  }))
-
-const FILES_DRIVE_PREFIX = 'files/'
 
 const getAgentFilePreviewKey = (file: AgentFileNode) => file.driveKey ?? file.id
 
@@ -49,26 +38,6 @@ const findAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNod
   }
 }
 
-const getAgentDriveFileName = (key: string) => {
-  const normalizedKey = key.endsWith('/') ? key.slice(0, -1) : key
-  return normalizedKey.split('/').pop() || normalizedKey
-}
-
-const toAgentFileNodeFromDriveItem = (item: {
-  file_kind: string
-  key: string
-  mime_type?: string | null
-}): AgentFileNode => ({
-  id: item.key,
-  name: getAgentDriveFileName(item.key),
-  icon: getDriveFileIconType({
-    fileKind: item.file_kind,
-    fileName: getAgentDriveFileName(item.key),
-    mimeType: item.mime_type,
-  }),
-  driveKey: item.key,
-})
-
 function AgentFileItem({
   children,
   depth,
@@ -82,7 +51,7 @@ function AgentFileItem({
   depth: number
   file: AgentFileNode
   files: AgentFileNode[]
-  apiContext: AgentFileApiContext
+  apiContext: AgentDriveApiContext
   onRemove: (fileId: string) => void
   selected: boolean
 }) {
@@ -217,68 +186,20 @@ function AgentFileItem({
   )
 }
 
-export function AgentFiles({
-  agentId,
-  appId,
-  nodeId,
-}: {
-  agentId: string
-  appId?: string
-  nodeId?: string
-}) {
+export function AgentFiles() {
   const { t } = useTranslation('agentV2')
-  const [draftFiles, setDraftFiles] = useAtom(agentComposerFilesAtom)
   const filesTip = t('agentDetail.configure.files.tip')
   const filesTreeId = 'agent-configure-files-tree'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
-  const apiContext: AgentFileApiContext = useMemo(() => appId && nodeId
-    ? {
-        agentId,
-        workflow: {
-          appId,
-          nodeId,
-        },
-      }
-    : { agentId }, [agentId, appId, nodeId])
-  const agentDriveFilesQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-        },
-        query: {
-          prefix: FILES_DRIVE_PREFIX,
-        },
-      },
-    }),
-    enabled: !apiContext.workflow,
-  })
-  const workflowDriveFilesQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.files.get.queryOptions({
-      input: {
-        params: {
-          app_id: appId ?? '',
-        },
-        query: {
-          node_id: nodeId,
-          prefix: FILES_DRIVE_PREFIX,
-        },
-      },
-    }),
-    enabled: !!apiContext.workflow,
-  })
-  const driveFilesQuery = apiContext.workflow ? workflowDriveFilesQuery : agentDriveFilesQuery
+  const apiContext = useAgentDriveApiContext()
+  const { query: driveFilesQuery, files } = useAgentDriveFiles({ prefix: FILES_DRIVE_PREFIX })
   const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.files.delete.mutationOptions())
   const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.files.delete.mutationOptions())
-  const files = driveFilesQuery.isSuccess
-    ? (driveFilesQuery.data.items ?? []).map(toAgentFileNodeFromDriveItem)
-    : draftFiles
   const removeFile = useCallback((fileId: string) => {
     const file = findAgentFileNode(files, fileId)
     const driveKey = file?.driveKey
 
-    setDraftFiles(removeFileNode(draftFiles, fileId))
     if (!driveKey)
       return
 
@@ -306,18 +227,17 @@ export function AgentFiles({
         key: driveKey,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, draftFiles, driveFilesQuery, files, setDraftFiles])
+  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, driveFilesQuery, files])
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
   }, [])
   useRegisterAgentOrchestrateAddAction('files', handleOpenUpload)
   const handleUploaded = useCallback((file: AgentFileNode) => {
-    setDraftFiles([...draftFiles, file])
     void driveFilesQuery.refetch()
     promptAddCallbackRef.current?.(file)
     promptAddCallbackRef.current = undefined
-  }, [draftFiles, driveFilesQuery, setDraftFiles])
+  }, [driveFilesQuery])
   const handleUploadOpenChange = useCallback((open: boolean) => {
     if (!open)
       promptAddCallbackRef.current = undefined

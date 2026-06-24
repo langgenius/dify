@@ -10,6 +10,7 @@ from controllers.common.schema import query_params_from_model, register_response
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import Annotation, AnnotationList
 from fields.base import ResponseModel
@@ -281,7 +282,9 @@ class AnnotationUpdateDeleteApi(Resource):
         """Update an existing annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, app_model.id, str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(
+            update_args, app_model.id, str(annotation_id), db.session
+        )
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
@@ -310,5 +313,5 @@ class AnnotationUpdateDeleteApi(Resource):
     @edit_permission_required
     def delete(self, app_model: App, annotation_id: UUID):
         """Delete an annotation."""
-        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id))
+        AppAnnotationService.delete_app_annotation(app_model.id, str(annotation_id), db.session)
         return "", 204

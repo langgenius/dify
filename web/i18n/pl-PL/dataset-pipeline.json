@@ -15,7 +15,7 @@
   "conversion.confirm.content": "To działanie jest trwałe. Nie będzie można powrócić do poprzedniej metody. Potwierdź, aby przekonwertować.",
   "conversion.confirm.title": "Potwierdzenie",
   "conversion.descriptionChunk1": "Teraz możesz przekonwertować istniejącą bazę wiedzy tak, aby używała potoku wiedzy do przetwarzania dokumentów",
-  "conversion.descriptionChunk2": "— bardziej otwarte i elastyczne podejście z dostępem do wtyczek z naszego rynku. Spowoduje to zastosowanie nowej metody przetwarzania do wszystkich przyszłych dokumentów.",
+  "conversion.descriptionChunk2": " — bardziej otwarte i elastyczne podejście z dostępem do integracji z Marketplace. Spowoduje to zastosowanie nowej metody przetwarzania do wszystkich przyszłych dokumentów.",
   "conversion.errorMessage": "Nie można przekonwertować zestawu danych na potok",
   "conversion.successMessage": "Pomyślnie przekonwertowano zestaw danych na potok",
   "conversion.title": "Konwertuj na potok wiedzy",

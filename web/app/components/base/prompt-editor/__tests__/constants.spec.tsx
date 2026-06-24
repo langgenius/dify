@@ -3,7 +3,6 @@ import {
   checkHasContextBlock,
   checkHasHistoryBlock,
   checkHasQueryBlock,
-  checkHasRequestURLBlock,
   CONTEXT_PLACEHOLDER_TEXT,
   CURRENT_PLACEHOLDER_TEXT,
   ERROR_MESSAGE_PLACEHOLDER_TEXT,
@@ -54,12 +53,6 @@ describe('prompt-editor constants', () => {
       expect(checkHasQueryBlock('')).toBe(false)
       expect(checkHasQueryBlock('plain text')).toBe(false)
       expect(checkHasQueryBlock(`before ${QUERY_PLACEHOLDER_TEXT} after`)).toBe(true)
-    })
-
-    it('should detect request url placeholder only when present', () => {
-      expect(checkHasRequestURLBlock('')).toBe(false)
-      expect(checkHasRequestURLBlock('plain text')).toBe(false)
-      expect(checkHasRequestURLBlock(`before ${REQUEST_URL_PLACEHOLDER_TEXT} after`)).toBe(true)
     })
   })
 

@@ -50,17 +50,15 @@ function AgentNodeAvatarPlaceholder() {
 function AgentNodeModel({
   data,
   agent,
-  inlineAgentName,
   isLoading,
 }: {
   data: AgentV2NodeType
   agent?: ReturnType<typeof useAgentRosterDetail>['data']
-  inlineAgentName?: string
   isLoading: boolean
 }) {
   const { t } = useTranslation()
   const isInlineAgent = hasInlineAgentBinding(data)
-  const name = isInlineAgent ? (inlineAgentName || t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' })) : agent?.name
+  const name = isInlineAgent ? t('nodes.agent.roster.inlineSetup.name', { ns: 'workflow' }) : agent?.name
   const role = isInlineAgent ? t('nodes.agent.roster.inlineSetup.type', { ns: 'workflow' }) : ''
   const showPlaceholder = isLoading || (!isInlineAgent && !agent)
 
@@ -110,7 +108,7 @@ export function AgentV2Node({ id, data }: NodeProps<AgentV2NodeType>) {
   const isInlineAgentDetailLoading = isInlineAgent && !!inlineAgentId && inlineAgentQuery.isPending
 
   if (isInlineAgent || hasValidAgent)
-    return <AgentNodeModel data={data} agent={rosterAgentQuery.data} inlineAgentName={inlineAgentQuery.data?.agent?.name} isLoading={isInlineAgentDetailLoading} />
+    return <AgentNodeModel data={data} agent={rosterAgentQuery.data} isLoading={isInlineAgentDetailLoading} />
 
   return (
     <div className="mb-1 space-y-1 px-3">

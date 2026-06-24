@@ -328,7 +328,7 @@ class AccountNameApi(Resource):
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
-        updated_account = AccountService.update_account(current_user, name=args.name)
+        updated_account = AccountService.update_account(current_user, session=db.session, name=args.name)
 
         return _serialize_account(updated_account)
 
@@ -374,7 +374,7 @@ class AccountAvatarApi(Resource):
         payload = console_ns.payload or {}
         args = AccountAvatarPayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, avatar=args.avatar)
+        updated_account = AccountService.update_account(current_user, session=db.session, avatar=args.avatar)
 
         return _serialize_account(updated_account)
 
@@ -391,7 +391,9 @@ class AccountInterfaceLanguageApi(Resource):
         payload = console_ns.payload or {}
         args = AccountInterfaceLanguagePayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
+        updated_account = AccountService.update_account(
+            current_user, session=db.session, interface_language=args.interface_language
+        )
 
         return _serialize_account(updated_account)
 
@@ -408,7 +410,9 @@ class AccountInterfaceThemeApi(Resource):
         payload = console_ns.payload or {}
         args = AccountInterfaceThemePayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, interface_theme=args.interface_theme)
+        updated_account = AccountService.update_account(
+            current_user, session=db.session, interface_theme=args.interface_theme
+        )
 
         return _serialize_account(updated_account)
 
@@ -425,7 +429,7 @@ class AccountTimezoneApi(Resource):
         payload = console_ns.payload or {}
         args = AccountTimezonePayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, timezone=args.timezone)
+        updated_account = AccountService.update_account(current_user, session=db.session, timezone=args.timezone)
 
         return _serialize_account(updated_account)
 
@@ -443,7 +447,8 @@ class AccountPasswordApi(Resource):
         args = AccountPasswordPayload.model_validate(payload)
 
         try:
-            AccountService.update_account_password(current_user, args.password, args.new_password)
+            assert args.password is not None
+            AccountService.update_account_password(current_user, args.password, args.new_password, session=db.session)
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
@@ -731,7 +736,7 @@ class ChangeEmailResetApi(Resource):
         if AccountService.is_account_in_freeze(normalized_new_email):
             raise AccountInFreezeError()
 
-        if not AccountService.check_email_unique(normalized_new_email):
+        if not AccountService.check_email_unique(normalized_new_email, session=db.session):
             raise EmailAlreadyInUseError()
 
         reset_data = AccountService.get_change_email_data(args.token)
@@ -755,7 +760,9 @@ class ChangeEmailResetApi(Resource):
         # legitimately verified token.
         AccountService.revoke_change_email_token(args.token)
 
-        updated_account = AccountService.update_account_email(current_user, email=normalized_new_email)
+        updated_account = AccountService.update_account_email(
+            current_user, email=normalized_new_email, session=db.session
+        )
 
         AccountService.send_change_email_completed_notify_email(
             email=normalized_new_email,
@@ -775,6 +782,6 @@ class CheckEmailUnique(Resource):
         normalized_email = args.email.lower()
         if AccountService.is_account_in_freeze(normalized_email):
             raise AccountInFreezeError()
-        if not AccountService.check_email_unique(normalized_email):
+        if not AccountService.check_email_unique(normalized_email, session=db.session):
             raise EmailAlreadyInUseError()
         return {"result": "success"}
