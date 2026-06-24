@@ -4,7 +4,7 @@ import type { Attachment, ChildChunkDetail, ParentMode, SegmentDetailModel } fro
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
 import { ChunkingMode } from '@/models/datasets'
-import SegmentCard from '../index'
+import SegmentCard, { canToggleSegmentStatus } from '../index'
 
 // Context Mocks - need to control test scenarios
 
@@ -780,7 +780,7 @@ describe('SegmentCard', () => {
       expect(() => fireEvent.click(card)).not.toThrow()
     })
 
-    it('should handle switch being disabled when status is not completed', () => {
+    it('should handle switch being disabled when an enabled segment status is not completed', () => {
       const detail = createMockSegmentDetail({ status: 'indexing' })
 
       render(
@@ -794,6 +794,30 @@ describe('SegmentCard', () => {
 
       const switchElement = screen.getByRole('switch')
       expect(switchElement).toHaveAttribute('aria-disabled', 'true')
+    })
+
+    it('should allow enabling a disabled segment when status is not completed', async () => {
+      const onChangeSwitch = vi.fn().mockResolvedValue(undefined)
+      const detail = createMockSegmentDetail({ id: 'test-segment-id', enabled: false, status: 'indexing' })
+
+      render(
+        <SegmentCard
+          loading={false}
+          detail={detail}
+          onChangeSwitch={onChangeSwitch}
+          embeddingAvailable={true}
+          focused={defaultFocused}
+        />,
+      )
+
+      const switchElement = screen.getByRole('switch')
+      expect(switchElement).not.toHaveAttribute('aria-disabled', 'true')
+
+      fireEvent.click(switchElement)
+
+      await waitFor(() => {
+        expect(onChangeSwitch).toHaveBeenCalledWith(true, 'test-segment-id')
+      })
     })
 
     it('should handle zero word count', () => {
@@ -909,6 +933,23 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
       expect(screen.getByText(/Chunk-12/i)).toBeInTheDocument()
+    })
+  })
+
+  describe('canToggleSegmentStatus', () => {
+    it('should allow disabled segments to be toggled on from non-completed states', () => {
+      expect(canToggleSegmentStatus({ enabled: false, status: 'indexing' })).toBe(true)
+      expect(canToggleSegmentStatus({ enabled: false, status: 'waiting' })).toBe(true)
+      expect(canToggleSegmentStatus({ enabled: false, status: 'error' })).toBe(true)
+    })
+
+    it('should keep enabled non-completed segments locked while indexing', () => {
+      expect(canToggleSegmentStatus({ enabled: true, status: 'indexing' })).toBe(false)
+      expect(canToggleSegmentStatus({ enabled: true, status: 'completed' })).toBe(true)
+    })
+
+    it('should not allow archived segments to be toggled', () => {
+      expect(canToggleSegmentStatus({ archived: true, enabled: false, status: 'completed' })).toBe(false)
     })
   })
 
