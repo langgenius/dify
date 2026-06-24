@@ -7,7 +7,6 @@ from typing import Any, Literal, Protocol, assert_never, cast
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.drive import (
-    DifyDriveFileConfig,
     DifyDriveLayerConfig,
     DifyDriveSkillConfig,
 )
@@ -55,10 +54,13 @@ from models.agent_config_entities import (
 )
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import (
+    MentionKind,
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
     expand_prompt_mentions,
+    parse_prompt_mentions,
 )
+from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
@@ -153,9 +155,6 @@ class WorkflowAgentRuntimeRequestBuilder:
             expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
             or "Run this workflow Agent Node for the current run."
         )
-        soul_prompt = expand_prompt_mentions(
-            agent_soul.prompt.system_prompt, build_soul_mention_resolver(agent_soul)
-        ).strip()
         user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
@@ -182,9 +181,20 @@ class WorkflowAgentRuntimeRequestBuilder:
             }
 
         drive_config: DifyDriveLayerConfig | None = None
+        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent.id)
+            drive_config, drive_warnings = build_drive_layer_config(
+                agent_soul,
+                tenant_id=context.dify_context.tenant_id,
+                agent_id=context.agent.id,
+            )
             append_runtime_warnings(metadata, drive_warnings)
+            soul_prompt_resolver = build_drive_aware_soul_mention_resolver(
+                agent_soul,
+                tenant_id=context.dify_context.tenant_id,
+                agent_id=context.agent.id,
+            )
+        soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_workflow_node(
@@ -255,7 +265,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
         """Return the transport plugin id expected by plugin-daemon headers."""
         if plugin_id.count("/") == 1:
-            return plugin_id
+            return plugin_id.split(":", 1)[0].split("@", 1)[0]
         if plugin_id:
             return ModelProviderID(plugin_id).plugin_id
         return ModelProviderID(model_provider).plugin_id
@@ -292,10 +302,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             "agent_config_snapshot_id": context.snapshot.id,
             "binding_id": context.binding.id,
             "workflow_node_job_mode": node_job.mode.value,
-            "runtime_support": build_runtime_feature_manifest(
-                agent_soul,
-                drive_manifest_enabled=dify_config.AGENT_DRIVE_MANIFEST_ENABLED,
-            ),
+            "runtime_support": build_runtime_feature_manifest(agent_soul),
         }
 
     def _build_workflow_context_prompt(
@@ -603,76 +610,107 @@ def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, s
             existing.extend(warnings)
 
 
+def build_drive_aware_soul_mention_resolver(
+    agent_soul: AgentSoulConfig,
+    *,
+    tenant_id: str,
+    agent_id: str,
+):
+    """Resolve skill/file mentions against the agent drive and everything else via Agent Soul."""
+
+    base_resolver = build_soul_mention_resolver(agent_soul)
+    drive_service = AgentDriveService()
+    skill_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
+    skill_names_by_key = {skill["skill_md_key"]: skill["name"] for skill in skill_catalog}
+    drive_keys = {item["key"] for item in drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)}
+
+    def _resolve(mention: object) -> str | None:
+        if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
+            return None
+        kind = cast(MentionKind, mention.kind)
+        ref_id = cast(str, mention.ref_id)
+        label = cast(str | None, getattr(mention, "label", None))
+        if kind == MentionKind.SKILL:
+            decoded_key = decode_drive_mention_ref(ref_id)
+            return skill_names_by_key.get(decoded_key) or label or decoded_key
+        if kind == MentionKind.FILE:
+            decoded_key = decode_drive_mention_ref(ref_id)
+            if decoded_key in drive_keys:
+                return decoded_key.rsplit("/", 1)[-1]
+            return label or decoded_key
+        return base_resolver(cast(Any, mention))
+
+    return _resolve
+
+
 def build_drive_layer_config(
     agent_soul: AgentSoulConfig,
     *,
+    tenant_id: str,
     agent_id: str | None,
 ) -> tuple[DifyDriveLayerConfig | None, list[dict[str, str]]]:
-    """Catalog the soul's drive-backed Skills & Files into the dify.drive declaration.
+    """Derive drive runtime catalog + prompt-mentioned eager-pull keys from the drive."""
 
-    Returns ``(config, warnings)`` — ``config is None`` means nothing to inject
-    (no skills/files configured, or no agent identity to address the drive by).
-    Refs that predate standardization (no drive key) are skipped with a warning
-    instead of failing the run, so historic souls keep running.
-    """
-    skill_refs = agent_soul.skills_files.skills
-    file_refs = agent_soul.skills_files.files
-    if not skill_refs and not file_refs:
-        return None, []
-
-    warnings: list[dict[str, str]] = []
+    mentioned_drive_refs = [
+        decode_drive_mention_ref(mention.ref_id)
+        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt)
+        if mention.kind in {MentionKind.SKILL, MentionKind.FILE}
+    ]
+    ordered_mentions = list(dict.fromkeys(ref for ref in mentioned_drive_refs if ref))
     if not agent_id:
+        if not ordered_mentions:
+            return None, []
+        return None, [
+            {
+                "section": "agent_soul.prompt.system_prompt",
+                "code": "drive_ref_dangling",
+                "message": "drive mentions are configured but the run has no bound agent to address a drive by.",
+            }
+        ]
+
+    drive_service = AgentDriveService()
+    skills_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
+    manifest_items = drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)
+    manifest_by_key = {item["key"]: item for item in manifest_items}
+    skill_keys = {skill["skill_md_key"] for skill in skills_catalog}
+    warnings: list[dict[str, str]] = []
+    mentioned_skill_keys: list[str] = []
+    mentioned_file_keys: list[str] = []
+    for drive_key in ordered_mentions:
+        if drive_key in skill_keys:
+            mentioned_skill_keys.append(drive_key)
+            continue
+        if drive_key in manifest_by_key:
+            mentioned_file_keys.append(drive_key)
+            continue
         warnings.append(
             {
-                "section": "agent_soul.skills_files",
-                "code": "skill_ref_dangling",
-                "message": "skills_files is configured but the run has no bound agent to address a drive by.",
+                "section": "agent_soul.prompt.system_prompt",
+                "code": "mention_target_missing",
+                "message": f"drive mention '{drive_key}' has no matching drive entry.",
             }
         )
-        return None, warnings
 
-    skills: list[DifyDriveSkillConfig] = []
-    for skill in skill_refs:
-        if not skill.skill_md_key:
-            warnings.append(
-                {
-                    "section": "agent_soul.skills_files",
-                    "code": "skill_ref_dangling",
-                    "message": (
-                        f"skill_ref_dangling: skill '{skill.name or skill.id or 'unknown'}' has no drive key; "
-                        "re-standardize it to expose it at runtime."
-                    ),
-                }
-            )
-            continue
-        skills.append(
-            DifyDriveSkillConfig(
-                name=skill.name or skill.skill_md_key.split("/", 1)[0],
-                description=skill.description or "",
-                skill_md_key=skill.skill_md_key,
-                archive_key=skill.full_archive_key,
-            )
+    skills = [
+        DifyDriveSkillConfig(
+            path=skill["path"],
+            name=skill["name"],
+            description=skill["description"],
+            skill_md_key=skill["skill_md_key"],
+            archive_key=skill["archive_key"],
         )
+        for skill in skills_catalog
+    ]
 
-    files: list[DifyDriveFileConfig] = []
-    for file in file_refs:
-        if not file.drive_key:
-            # Plain upload references (pre-ENG-625) are not drive-backed; they are
-            # simply invisible to the manifest rather than a defect worth warning on.
-            continue
-        size = file.get("size")
-        files.append(
-            DifyDriveFileConfig(
-                name=file.name or file.drive_key.rsplit("/", 1)[-1],
-                key=file.drive_key,
-                size=size if isinstance(size, int) else None,
-                mime_type=file.type,
-            )
-        )
-
-    if not skills and not files:
-        return None, warnings
-    return DifyDriveLayerConfig(drive_ref=f"agent-{agent_id}", skills=skills, files=files), warnings
+    return (
+        DifyDriveLayerConfig(
+            drive_ref=f"agent-{agent_id}",
+            skills=skills,
+            mentioned_skill_keys=mentioned_skill_keys,
+            mentioned_file_keys=mentioned_file_keys,
+        ),
+        warnings,
+    )
 
 
 def _cli_tool_enabled(item: object) -> bool:

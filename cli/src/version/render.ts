@@ -1,10 +1,13 @@
+import type { Channel } from './info'
 import type { VersionReport } from './probe'
 import { colorScheme } from '@/sys/io/color'
 
-const RC_WARNING_LINES = [
-  'WARNING: This build is a release candidate. It is in beta test, not stable,',
-  '         and may have bugs. For production use, install the stable channel.',
-] as const
+function prereleaseWarning(channel: Channel): readonly string[] {
+  return [
+    `WARNING: This build is a ${channel} release. It is not stable`,
+    '         and may have bugs. For production use, install or wait for the stable channel.',
+  ]
+}
 
 export type RenderOptions = {
   readonly color?: boolean
@@ -49,9 +52,9 @@ export function renderVersionText(report: VersionReport, opts: RenderOptions = {
   const verdictText = `Compatibility: ${COMPAT_LABEL[compat.status]} — ${compat.detail}`
   lines.push(compat.status === 'unsupported' ? c.yellow(verdictText) : verdictText)
 
-  if (client.channel === 'rc') {
+  if (client.channel !== 'stable') {
     lines.push('')
-    for (const line of RC_WARNING_LINES)
+    for (const line of prereleaseWarning(client.channel))
       lines.push(c.yellow(line))
   }
 

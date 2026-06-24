@@ -54,6 +54,18 @@ describe('useAvailableNodesMetaData', () => {
     })
   })
 
+  it('should use explicit docs pages and skip nodes without generated docs pages', () => {
+    mockUseIsChatMode.mockReturnValue(false)
+
+    const { result } = renderHook(() => useAvailableNodesMetaData())
+
+    expect(result.current.nodesMap?.[BlockEnum.End]?.metaData.helpLinkUri).toBe('/docs/use-dify/nodes/output')
+    expect(result.current.nodesMap?.[BlockEnum.IterationStart]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopStart]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.LoopEnd]?.metaData.helpLinkUri).toBeUndefined()
+    expect(result.current.nodesMap?.[BlockEnum.Start]?.metaData.helpLinkUri).toBe('/docs/use-dify/nodes/user-input')
+  })
+
   it('should expose Agent v2 instead of legacy Agent when Agent v2 is enabled', () => {
     mockUseIsChatMode.mockReturnValue(false)
 

@@ -1,11 +1,11 @@
 'use client'
 
-import type { ListAppInstanceSummariesResponse } from '@dify/contracts/enterprise/types.gen'
-import type { InfiniteData, QueryKey } from '@tanstack/react-query'
+import type { ReactNode } from 'react'
 import { keepPreviousData } from '@tanstack/react-query'
 import { atom } from 'jotai'
-import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
-import { parseAsString } from 'nuqs'
+import { atomWithInfiniteQuery } from 'jotai-tanstack-query'
+import { useHydrateAtoms } from 'jotai/utils'
+import { parseAsString, useQueryState } from 'nuqs'
 import { consoleQuery } from '@/service/client'
 import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../../shared/domain/pagination'
 import { deploymentStatusPollingInterval } from '../../shared/domain/runtime-status'
@@ -13,43 +13,49 @@ import { deploymentStatusPollingInterval } from '../../shared/domain/runtime-sta
 export const envFilterQueryState = parseAsString.withOptions({ history: 'push' })
 export const keywordsQueryState = parseAsString.withDefault('').withOptions({ history: 'push' })
 
-export const deploymentsListKeywordsAtom = atom('')
-export const deploymentsListEnvironmentIdAtom = atom<string | null>(null)
+// Mirrors nuqs URL state. DeploymentsListStateBoundary force-hydrates these
+// atoms on render so query atoms can read URL filters through Jotai.
+const deploymentsListKeywordsAtom = atom('')
+const deploymentsListEnvironmentIdAtom = atom<string | null>(null)
 
-function listDeploymentStatusPollingInterval(data?: InfiniteData<ListAppInstanceSummariesResponse>) {
-  const rows = data?.pages?.flatMap(page =>
-    page.appInstanceSummaries.flatMap(summary => summary.environmentDeployments),
-  ) ?? []
+export function DeploymentsListStateBoundary({ children }: {
+  children: ReactNode
+}) {
+  const [envFilter] = useQueryState('env', envFilterQueryState)
+  const [keywords] = useQueryState('keywords', keywordsQueryState)
 
-  return deploymentStatusPollingInterval(rows)
+  useHydrateAtoms([
+    [deploymentsListEnvironmentIdAtom, envFilter],
+    [deploymentsListKeywordsAtom, keywords],
+  ] as const, { dangerouslyForceHydrate: true })
+
+  return children
 }
 
-export const deploymentsListQueryAtom = atomWithInfiniteQuery<
-  ListAppInstanceSummariesResponse,
-  Error,
-  InfiniteData<ListAppInstanceSummariesResponse>,
-  QueryKey,
-  number
->((get) => {
+export const deploymentsListQueryAtom = atomWithInfiniteQuery((get) => {
   const queryKeywords = get(deploymentsListKeywordsAtom).trim()
   const queryEnvironmentId = get(deploymentsListEnvironmentIdAtom) ?? undefined
 
-  return {
-    ...consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          pageNumber: Number(pageParam),
-          resultsPerPage: SOURCE_APPS_PAGE_SIZE,
-          ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
-          ...(queryKeywords ? { displayName: queryKeywords } : {}),
-        },
-      }),
-      getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
+  return consoleQuery.enterprise.appInstanceService.listAppInstanceSummaries.infiniteOptions({
+    input: pageParam => ({
+      query: {
+        pageNumber: Number(pageParam),
+        resultsPerPage: SOURCE_APPS_PAGE_SIZE,
+        ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
+        ...(queryKeywords ? { displayName: queryKeywords } : {}),
+      },
     }),
-    refetchInterval: query => listDeploymentStatusPollingInterval(query.state.data),
-  }
+    getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
+    initialPageParam: 1,
+    placeholderData: keepPreviousData,
+    refetchInterval: (query) => {
+      const rows = query.state.data?.pages.flatMap(page =>
+        page.appInstanceSummaries.flatMap(summary => summary.environmentDeployments),
+      ) ?? []
+
+      return deploymentStatusPollingInterval(rows)
+    },
+  })
 })
 
 export const deploymentsListRowsAtom = atom((get) => {
@@ -72,16 +78,3 @@ export const deploymentsListShowEmptyStateAtom = atom((get) => {
 export const deploymentsListHasFilterAtom = atom((get) => {
   return Boolean(get(deploymentsListKeywordsAtom).trim() || get(deploymentsListEnvironmentIdAtom))
 })
-
-export const environmentsFilterQueryAtom = atomWithQuery(() =>
-  consoleQuery.enterprise.environmentService.listEnvironments.queryOptions({
-    input: {
-      query: {
-        // The filter lists every deployable environment; environment count is
-        // capped well below the 100-per-page maximum.
-        pageNumber: 1,
-        resultsPerPage: 100,
-      },
-    },
-  }),
-)

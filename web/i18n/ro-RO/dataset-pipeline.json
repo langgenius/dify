@@ -15,7 +15,7 @@
   "conversion.confirm.content": "Această acțiune este permanentă. Nu veți putea reveni la metoda anterioară. Vă rugăm să confirmați pentru a converti.",
   "conversion.confirm.title": "Confirmare",
   "conversion.descriptionChunk1": "Acum puteți converti baza de cunoștințe existentă pentru a utiliza Pipeline de cunoștințe pentru procesarea documentelor",
-  "conversion.descriptionChunk2": "— o abordare mai deschisă și mai flexibilă, cu acces la plugin-uri de pe piața noastră. Aceasta va aplica noua metodă de procesare tuturor documentelor viitoare.",
+  "conversion.descriptionChunk2": " — o abordare mai deschisă și mai flexibilă, cu acces la plugin-uri din Marketplace. Aceasta va aplica noua metodă de procesare tuturor documentelor viitoare.",
   "conversion.errorMessage": "Nu s-a reușit să se convertească setul de date într-o conductă",
   "conversion.successMessage": "Conversia cu succes a setului de date într-o conductă",
   "conversion.title": "Conversia în Knowledge Pipeline",

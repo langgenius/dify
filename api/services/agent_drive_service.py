@@ -1,4 +1,4 @@
-"""Agent 网盘 (agent drive) service — list/manifest + commit with lifecycle (ENG-591).
+"""Agent 网盘 (agent drive) service — manifest/catalog + commit lifecycle.
 
 The agent drive is a per-agent path-like KV index over existing UploadFile /
 ToolFile records (see ``AgentDriveFile``). This service is the control plane:
@@ -8,11 +8,13 @@ ToolFile records (see ``AgentDriveFile``). This service is the control plane:
   ``FileAccessScope`` (Agent Files §3.1.2). We reuse the standard
   ``file_factory.build_from_mapping`` + ``resolve_file_url`` rebuild, which always
   filters by ``tenant_id`` in the builders, so omitting the scope is safe.
-* ``commit`` binds a batch of existing file refs to keys. Source ToolFiles must
+* ``commit`` is the single mutation entry point for writes and removals.
+  ``file_ref=None`` removes an exact key idempotently; otherwise the service
+  binds the referenced UploadFile/ToolFile to the key. Source ToolFiles must
   belong to the current run user. Overwriting a key whose previous value is
   ``value_owned_by_drive`` physically cleans the old value (storage + record),
   unless another drive entry still references it. Re-committing the same
-  ``key -> file_ref`` is idempotent.
+  ``key -> file_ref`` is idempotent and still refreshes skill metadata.
 """
 
 from __future__ import annotations
@@ -30,7 +32,6 @@ from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from core.app.file_access.controller import DatabaseFileAccessController
-from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
 from factories import file_factory
@@ -93,7 +94,7 @@ class DriveCommitItem(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     key: str
-    file_ref: DriveFileRef
+    file_ref: DriveFileRef | None = None
     # Drive-owned values may be physically cleaned on overwrite/removal; refs to
     # files shared with other business records should set this False.
     value_owned_by_drive: bool = True
@@ -385,6 +386,15 @@ class AgentDriveService:
         pending_storage_deletes: list[str],
     ) -> dict[str, Any]:
         key = normalize_drive_key(item.key)
+        if item.file_ref is None:
+            return self._remove_one(
+                session,
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                key=key,
+                pending_storage_deletes=pending_storage_deletes,
+            )
+
         skill_metadata = self._validate_skill_commit_fields(key=key, item=item)
         file_kind = AgentDriveFileKind(item.file_ref.kind)
         file_id = item.file_ref.id
@@ -446,6 +456,45 @@ class AgentDriveService:
         )
         session.add(row)
         return self._row_dict(row)
+
+    def _remove_one(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        pending_storage_deletes: list[str],
+    ) -> dict[str, Any]:
+        existing = session.scalar(
+            select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+                AgentDriveFile.key == key,
+            )
+        )
+        if existing is None:
+            return {"key": key, "removed": True, "noop": True}
+        result = {
+            "key": key,
+            "removed": True,
+            "file_kind": existing.file_kind.value,
+            "file_id": existing.file_id,
+            "value_owned_by_drive": existing.value_owned_by_drive,
+            "is_skill": existing.is_skill,
+            "skill_metadata": existing.skill_metadata,
+        }
+        if existing.value_owned_by_drive:
+            self._cleanup_value(
+                session,
+                tenant_id=tenant_id,
+                file_kind=existing.file_kind,
+                file_id=existing.file_id,
+                exclude_row_id=existing.id,
+                pending_storage_deletes=pending_storage_deletes,
+            )
+        session.delete(existing)
+        return result
 
     @staticmethod
     def _row_dict(row: AgentDriveFile) -> dict[str, Any]:
@@ -750,6 +799,11 @@ class AgentDriveService:
         else:
             mapping = {"transfer_method": "local_file", "upload_file_id": file_id}
         controller = DatabaseFileAccessController()
+        # Keep workflow runtime wiring lazy: importing this service is part of
+        # Agent v2 node bootstrap, while ``core.app.workflow`` re-exports the
+        # node factory. A module-level import here would close that cycle.
+        from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+
         runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
         try:
             if file_kind == AgentDriveFileKind.UPLOAD_FILE:

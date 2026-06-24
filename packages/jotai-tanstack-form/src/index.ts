@@ -106,6 +106,44 @@ function createFormInstance<TValues, TSubmitMeta = never>(
   }
 }
 
+function setFormFieldValue<
+  TValues,
+  TSubmitMeta,
+  TField extends DeepKeys<TValues>,
+>(
+  form: FormAtomInstance<TValues, TSubmitMeta>,
+  name: TField,
+  value: Updater<DeepValue<TValues, TField>>,
+  options?: UpdateMetaOptions,
+) {
+  const shouldValidate = !options?.dontValidate
+    && !(options?.dontUpdateMeta && !form.api.getFieldMeta(name)?.isTouched)
+
+  form.api.setFieldValue(name, value, shouldValidate ? options : { ...(options ?? {}), dontValidate: true })
+
+  if (!shouldValidate)
+    return
+
+  const fieldMeta = form.api.getFieldMeta(name)
+  if (!fieldMeta?.errorMap.onSubmit)
+    return
+
+  if (fieldMeta.errorMap.onChange || fieldMeta.errorMap.onDynamic)
+    return
+
+  form.api.setFieldMeta(name, prev => ({
+    ...prev,
+    errorMap: {
+      ...prev.errorMap,
+      onSubmit: undefined,
+    },
+    errorSourceMap: {
+      ...prev.errorSourceMap,
+      onSubmit: undefined,
+    },
+  }))
+}
+
 export function atomWithForm<TValues, TSubmitMeta = never>(
   options: FormOptionsInput<TValues, TSubmitMeta>,
 ): FormAtom<TValues, TSubmitMeta> {
@@ -129,7 +167,7 @@ export function createFormAtoms<TValues, TSubmitMeta = never>(
   })
 
   const setFieldAtom = atom<null, [FormFieldUpdate<TValues>], void>(null, (get, _set, update) => {
-    get(formAtom).api.setFieldValue(update.name, update.value, update.options)
+    setFormFieldValue(get(formAtom), update.name, update.value, update.options)
   })
 
   function fieldAtom<TField extends DeepKeys<TValues>>(
@@ -151,7 +189,7 @@ export function createFormAtoms<TValues, TSubmitMeta = never>(
         }
       },
       (get, _set, value, options) => {
-        get(formAtom).api.setFieldValue(name, value, options)
+        setFormFieldValue(get(formAtom), name, value, options)
       },
     )
   }

@@ -84,6 +84,8 @@ import {
   zPostAgentByAgentIdCopyBody,
   zPostAgentByAgentIdCopyPath,
   zPostAgentByAgentIdCopyResponse,
+  zPostAgentByAgentIdDebugConversationRefreshPath,
+  zPostAgentByAgentIdDebugConversationRefreshResponse,
   zPostAgentByAgentIdFeaturesBody,
   zPostAgentByAgentIdFeaturesPath,
   zPostAgentByAgentIdFeaturesResponse,
@@ -356,6 +358,25 @@ export const copy = {
   post: post5,
 }
 
+export const post6 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postAgentByAgentIdDebugConversationRefresh',
+    path: '/agent/{agent_id}/debug-conversation/refresh',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zPostAgentByAgentIdDebugConversationRefreshPath }))
+  .output(zPostAgentByAgentIdDebugConversationRefreshResponse)
+
+export const refresh = {
+  post: post6,
+}
+
+export const debugConversation = {
+  refresh,
+}
+
 /**
  * Time-limited external signed URL for one Agent App drive value
  */
@@ -481,7 +502,7 @@ export const drive = {
 /**
  * Update an Agent App's presentation features (opener, follow-up, citations, ...)
  */
-export const post6 = oc
+export const post7 = oc
   .route({
     description: 'Update an Agent App\'s presentation features (opener, follow-up, citations, ...)',
     inputStructure: 'detailed',
@@ -496,13 +517,13 @@ export const post6 = oc
   .output(zPostAgentByAgentIdFeaturesResponse)
 
 export const features = {
-  post: post6,
+  post: post7,
 }
 
 /**
  * Create or update Agent App message feedback
  */
-export const post7 = oc
+export const post8 = oc
   .route({
     description: 'Create or update Agent App message feedback',
     inputStructure: 'detailed',
@@ -517,7 +538,7 @@ export const post7 = oc
   .output(zPostAgentByAgentIdFeedbacksResponse)
 
 export const feedbacks = {
-  post: post7,
+  post: post8,
 }
 
 /**
@@ -540,7 +561,7 @@ export const delete2 = oc
 /**
  * Commit an uploaded file into the Agent App drive under files/<name>
  */
-export const post8 = oc
+export const post9 = oc
   .route({
     description: 'Commit an uploaded file into the Agent App drive under files/<name>',
     inputStructure: 'detailed',
@@ -555,7 +576,7 @@ export const post8 = oc
 
 export const files2 = {
   delete: delete2,
-  post: post8,
+  post: post9,
 }
 
 export const get13 = oc
@@ -684,7 +705,7 @@ export const read = {
 /**
  * Upload one Agent App sandbox file as a Dify ToolFile mapping
  */
-export const post9 = oc
+export const post10 = oc
   .route({
     description: 'Upload one Agent App sandbox file as a Dify ToolFile mapping',
     inputStructure: 'detailed',
@@ -702,7 +723,7 @@ export const post9 = oc
   .output(zPostAgentByAgentIdSandboxFilesUploadResponse)
 
 export const upload = {
-  post: post9,
+  post: post10,
 }
 
 /**
@@ -738,7 +759,7 @@ export const sandbox = {
 /**
  * Upload + standardize a Skill into an Agent App drive
  */
-export const post10 = oc
+export const post11 = oc
   .route({
     description: 'Upload + standardize a Skill into an Agent App drive',
     inputStructure: 'detailed',
@@ -757,13 +778,13 @@ export const post10 = oc
   .output(zPostAgentByAgentIdSkillsUploadResponse)
 
 export const upload2 = {
-  post: post10,
+  post: post11,
 }
 
 /**
  * Infer CLI tool + ENV suggestions from a standardized Agent App skill
  */
-export const post11 = oc
+export const post12 = oc
   .route({
     description: 'Infer CLI tool + ENV suggestions from a standardized Agent App skill',
     inputStructure: 'detailed',
@@ -776,7 +797,7 @@ export const post11 = oc
   .output(zPostAgentByAgentIdSkillsBySlugInferToolsResponse)
 
 export const inferTools = {
-  post: post11,
+  post: post12,
 }
 
 /**
@@ -828,7 +849,7 @@ export const statistics = {
   summary,
 }
 
-export const post12 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -840,7 +861,7 @@ export const post12 = oc
   .output(zPostAgentByAgentIdVersionsByVersionIdRestoreResponse)
 
 export const restore = {
-  post: post12,
+  post: post13,
 }
 
 export const get21 = oc
@@ -919,6 +940,7 @@ export const byAgentId = {
   chatMessages,
   composer,
   copy,
+  debugConversation,
   drive,
   features,
   feedbacks,
@@ -944,7 +966,7 @@ export const get24 = oc
   .input(z.object({ query: zGetAgentQuery.optional() }))
   .output(zGetAgentResponse)
 
-export const post13 = oc
+export const post14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -958,7 +980,7 @@ export const post13 = oc
 
 export const agent = {
   get: get24,
-  post: post13,
+  post: post14,
   inviteOptions,
   byAgentId,
 }

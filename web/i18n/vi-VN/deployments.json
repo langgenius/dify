@@ -613,6 +613,7 @@
   "versions.releaseDescriptionLabel": "Mô tả",
   "versions.releaseDescriptionPlaceholder": "Mô tả bản phát hành này",
   "versions.releaseHistory": "Lịch sử bản phát hành",
+  "versions.releaseNameConflict": "Tên bản phát hành này đã tồn tại. Hãy chọn tên khác.",
   "versions.releaseNameLabel": "Tên bản phát hành",
   "versions.releaseNamePlaceholder": "Tên bản phát hành",
   "versions.releaseNameRequired": "Vui lòng nhập tên bản phát hành.",
