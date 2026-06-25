@@ -421,6 +421,10 @@ export type Parameters = {
   user_input_form: Array<JsonObject>
 }
 
+export type PassportAccessTokenResponse = {
+  access_token: string
+}
+
 export type PassportQuery = {
   user_id?: string | null
 }
@@ -1281,7 +1285,7 @@ export type GetPassportErrors = {
 }
 
 export type GetPassportResponses = {
-  200: AccessTokenData
+  200: PassportAccessTokenResponse
 }
 
 export type GetPassportResponse = GetPassportResponses[keyof GetPassportResponses]

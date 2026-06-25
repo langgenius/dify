@@ -600,7 +600,7 @@ Get authentication passport for web application access
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Passport retrieved successfully | **application/json**: [AccessTokenData](#accesstokendata)<br> |
+| 200 | Passport retrieved successfully | **application/json**: [PassportAccessTokenResponse](#passportaccesstokenresponse)<br> |
 | 401 | Unauthorized - missing app code or invalid authentication |  |
 | 404 | Application or user not found |  |
 
@@ -1428,6 +1428,12 @@ Form input definition.
 | system_parameters | [SystemParameters](#systemparameters) |  | Yes |
 | text_to_speech | [JSONObject](#jsonobject) |  | Yes |
 | user_input_form | [ [JSONObject](#jsonobject) ] |  | Yes |
+
+#### PassportAccessTokenResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | Yes |
 
 #### PassportQuery
 
