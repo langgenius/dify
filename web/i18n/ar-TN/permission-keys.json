@@ -45,7 +45,7 @@
   "plugin.delete": "حذف الإضافات",
   "plugin.install": "تثبيت الإضافات وتحديثها",
   "plugin.model_config": "تكوين النماذج",
-  "plugin.plugin_preferences": "إدارة تفضيلات الإضافات",
+  "plugin.plugin_preferences": "تكوين التحديثات التلقائية",
   "snippets.create_and_modify": "إنشاء المقتطفات وتعديلها",
   "snippets.management": "إدارة المقتطفات",
   "tool.manage": "إدارة الأدوات",

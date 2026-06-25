@@ -45,7 +45,7 @@
   "plugin.delete": "حذف افزونه‌ها",
   "plugin.install": "نصب و به‌روزرسانی افزونه‌ها",
   "plugin.model_config": "پیکربندی مدل‌ها",
-  "plugin.plugin_preferences": "مدیریت ترجیحات افزونه",
+  "plugin.plugin_preferences": "پیکربندی به‌روزرسانی‌های خودکار",
   "snippets.create_and_modify": "ایجاد و اصلاح قطعه‌کدها",
   "snippets.management": "مدیریت قطعه‌کدها",
   "tool.manage": "مدیریت ابزارها",

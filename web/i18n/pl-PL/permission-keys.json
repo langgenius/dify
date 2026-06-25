@@ -45,7 +45,7 @@
   "plugin.delete": "Usuń wtyczki",
   "plugin.install": "Instaluj i aktualizuj wtyczki",
   "plugin.model_config": "Konfiguruj modele",
-  "plugin.plugin_preferences": "Zarządzaj preferencjami wtyczek",
+  "plugin.plugin_preferences": "Konfiguruj automatyczne aktualizacje",
   "snippets.create_and_modify": "Twórz i modyfikuj fragmenty kodu",
   "snippets.management": "Zarządzaj fragmentami kodu",
   "tool.manage": "Zarządzaj narzędziami",

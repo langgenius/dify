@@ -45,7 +45,7 @@
   "plugin.delete": "Удаление плагинов",
   "plugin.install": "Установка и обновление плагинов",
   "plugin.model_config": "Настройка моделей",
-  "plugin.plugin_preferences": "Управление настройками плагинов",
+  "plugin.plugin_preferences": "Настройка автообновлений",
   "snippets.create_and_modify": "Создание и изменение сниппетов",
   "snippets.management": "Управление сниппетами",
   "tool.manage": "Управление инструментами",

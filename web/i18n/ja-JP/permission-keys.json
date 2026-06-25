@@ -45,7 +45,7 @@
   "plugin.delete": "プラグインを削除",
   "plugin.install": "プラグインのインストールと更新",
   "plugin.model_config": "モデルを設定",
-  "plugin.plugin_preferences": "プラグイン設定を管理",
+  "plugin.plugin_preferences": "自動更新を設定",
   "snippets.create_and_modify": "スニペットの作成と変更",
   "snippets.management": "スニペットを管理",
   "tool.manage": "ツールを管理",

@@ -45,7 +45,7 @@
   "plugin.delete": "刪除插件",
   "plugin.install": "安裝與更新插件",
   "plugin.model_config": "設定模型",
-  "plugin.plugin_preferences": "管理插件偏好設定",
+  "plugin.plugin_preferences": "設定自動更新",
   "snippets.create_and_modify": "建立和修改 Snippets",
   "snippets.management": "管理 Snippets",
   "tool.manage": "管理工具",

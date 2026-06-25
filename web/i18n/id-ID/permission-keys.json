@@ -45,7 +45,7 @@
   "plugin.delete": "Hapus plugin",
   "plugin.install": "Instal dan perbarui plugin",
   "plugin.model_config": "Konfigurasi model",
-  "plugin.plugin_preferences": "Kelola preferensi plugin",
+  "plugin.plugin_preferences": "Konfigurasi pembaruan otomatis",
   "snippets.create_and_modify": "Buat dan ubah snippet",
   "snippets.management": "Kelola snippet",
   "tool.manage": "Kelola alat",

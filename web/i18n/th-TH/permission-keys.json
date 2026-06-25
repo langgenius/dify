@@ -45,7 +45,7 @@
   "plugin.delete": "ลบปลั๊กอิน",
   "plugin.install": "ติดตั้งและอัปเดตปลั๊กอิน",
   "plugin.model_config": "กำหนดค่าโมเดล",
-  "plugin.plugin_preferences": "จัดการการตั้งค่าปลั๊กอิน",
+  "plugin.plugin_preferences": "กำหนดค่าการอัปเดตอัตโนมัติ",
   "snippets.create_and_modify": "สร้างและแก้ไขสนิปเปต",
   "snippets.management": "จัดการสนิปเปต",
   "tool.manage": "จัดการเครื่องมือ",

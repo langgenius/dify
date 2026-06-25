@@ -45,7 +45,7 @@
   "plugin.delete": "Brisanje vtičnikov",
   "plugin.install": "Namesti in posodobi vtičnike",
   "plugin.model_config": "Konfiguriranje modelov",
-  "plugin.plugin_preferences": "Upravljanje nastavitev vtičnikov",
+  "plugin.plugin_preferences": "Konfiguriranje samodejnih posodobitev",
   "snippets.create_and_modify": "Ustvarjanje in spreminjanje izsekov",
   "snippets.management": "Upravljanje izsekov",
   "tool.manage": "Upravljanje orodij",

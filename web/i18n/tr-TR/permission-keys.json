@@ -45,7 +45,7 @@
   "plugin.delete": "Eklentileri sil",
   "plugin.install": "Eklentileri yükle ve güncelle",
   "plugin.model_config": "Modelleri yapılandır",
-  "plugin.plugin_preferences": "Eklenti tercihlerini yönet",
+  "plugin.plugin_preferences": "Otomatik güncellemeleri yapılandır",
   "snippets.create_and_modify": "Snippet oluştur ve değiştir",
   "snippets.management": "Snippet'leri yönet",
   "tool.manage": "Araçları yönet",

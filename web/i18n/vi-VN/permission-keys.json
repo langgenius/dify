@@ -45,7 +45,7 @@
   "plugin.delete": "Xóa plugin",
   "plugin.install": "Cài đặt và cập nhật plugin",
   "plugin.model_config": "Cấu hình mô hình",
-  "plugin.plugin_preferences": "Quản lý tùy chọn plugin",
+  "plugin.plugin_preferences": "Cấu hình cập nhật tự động",
   "snippets.create_and_modify": "Tạo và chỉnh sửa đoạn mã",
   "snippets.management": "Quản lý đoạn mã",
   "tool.manage": "Quản lý công cụ",

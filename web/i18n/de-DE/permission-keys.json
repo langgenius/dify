@@ -45,7 +45,7 @@
   "plugin.delete": "Plugins löschen",
   "plugin.install": "Plugins installieren und aktualisieren",
   "plugin.model_config": "Modelle konfigurieren",
-  "plugin.plugin_preferences": "Plugin-Einstellungen verwalten",
+  "plugin.plugin_preferences": "Automatische Updates konfigurieren",
   "snippets.create_and_modify": "Snippets erstellen und ändern",
   "snippets.management": "Snippets verwalten",
   "tool.manage": "Tools verwalten",

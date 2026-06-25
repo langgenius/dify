@@ -45,7 +45,7 @@
   "plugin.delete": "플러그인 삭제",
   "plugin.install": "플러그인 설치 및 업데이트",
   "plugin.model_config": "모델 구성",
-  "plugin.plugin_preferences": "플러그인 환경설정 관리",
+  "plugin.plugin_preferences": "자동 업데이트 구성",
   "snippets.create_and_modify": "스니펫 생성 및 수정",
   "snippets.management": "스니펫 관리",
   "tool.manage": "도구 관리",

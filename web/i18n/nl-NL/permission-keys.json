@@ -45,7 +45,7 @@
   "plugin.delete": "Plug-ins verwijderen",
   "plugin.install": "Plug-ins installeren en bijwerken",
   "plugin.model_config": "Modellen configureren",
-  "plugin.plugin_preferences": "Plug-invoorkeuren beheren",
+  "plugin.plugin_preferences": "Automatische updates configureren",
   "snippets.create_and_modify": "Snippets maken en wijzigen",
   "snippets.management": "Snippets beheren",
   "tool.manage": "Tools beheren",
