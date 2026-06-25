@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
+from controllers.common.controller_schemas import WorkflowUpdatePayload
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -96,6 +97,7 @@ register_schema_models(
     SnippetLoopNodeRunPayload,
     SnippetWorkflowListQuery,
     WorkflowRunQuery,
+    WorkflowUpdatePayload,
     PublishWorkflowPayload,
 )
 register_response_schema_models(
@@ -409,6 +411,50 @@ class SnippetDraftWorkflowRestoreApi(Resource):
             "hash": workflow.unique_hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
+
+
+@console_ns.route("/snippets/<uuid:snippet_id>/workflows/<string:workflow_id>")
+class SnippetWorkflowByIdApi(Resource):
+    @console_ns.doc("update_snippet_workflow_by_id")
+    @console_ns.doc(description="Update published snippet workflow attributes")
+    @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Workflow ID"})
+    @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
+    @console_ns.response(200, "Workflow updated successfully", console_ns.models[SnippetWorkflowResponse.__name__])
+    @console_ns.response(400, "No valid fields to update")
+    @console_ns.response(404, "Workflow not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @get_snippet
+    @edit_permission_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
+    )
+    def patch(self, current_user: Account, snippet: CustomizedSnippet, workflow_id: str):
+        """Update a published snippet workflow version's display metadata."""
+        payload = WorkflowUpdatePayload.model_validate(console_ns.payload or {})
+        update_data = payload.model_dump(exclude_unset=True)
+
+        if not update_data:
+            return {"message": "No valid fields to update"}, 400
+
+        snippet_service = _snippet_service()
+        with Session(db.engine) as session:
+            workflow = snippet_service.update_workflow(
+                session=session,
+                snippet=snippet,
+                workflow_id=workflow_id,
+                account=current_user,
+                data=update_data,
+            )
+            if not workflow:
+                raise NotFound("Workflow not found")
+            session.commit()
+
+        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response["input_fields"] = snippet.input_fields_list
+        return response
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs")
