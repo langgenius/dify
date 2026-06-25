@@ -33,26 +33,6 @@ def test_apply_drive_commit_records_skill_and_file_refs_in_agent_soul():
             "is_skill": False,
         },
     )
-    AgentSoulFilesService._apply_commit_item(
-        agent_soul=soul,
-        item={
-            "key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-            "file_kind": "tool_file",
-            "file_id": "archive-file",
-            "mime_type": "application/zip",
-            "is_skill": False,
-        },
-    )
-    AgentSoulFilesService._apply_commit_item(
-        agent_soul=soul,
-        item={
-            "key": "tender-analyzer/src/main.py",
-            "file_kind": "tool_file",
-            "file_id": "member-file",
-            "mime_type": "text/x-python",
-            "is_skill": False,
-        },
-    )
 
     assert [skill.model_dump(mode="json", exclude_none=True) for skill in soul.files.skills] == [
         {
@@ -64,34 +44,7 @@ def test_apply_drive_commit_records_skill_and_file_refs_in_agent_soul():
             "skill_md_key": "tender-analyzer/SKILL.md",
             "skill_md_file_id": "skill-md-file",
             "full_archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-            "full_archive_file_id": "archive-file",
             "manifest_files": ["SKILL.md", "src/main.py"],
-            "file_refs": [
-                {
-                    "id": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                    "file_id": "archive-file",
-                    "name": ".DIFY-SKILL-FULL.zip",
-                    "type": "application/zip",
-                    "transfer_method": "tool_file",
-                    "drive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                },
-                {
-                    "id": "tender-analyzer/SKILL.md",
-                    "file_id": "skill-md-file",
-                    "name": "SKILL.md",
-                    "type": "",
-                    "transfer_method": "tool_file",
-                    "drive_key": "tender-analyzer/SKILL.md",
-                },
-                {
-                    "id": "tender-analyzer/src/main.py",
-                    "file_id": "member-file",
-                    "name": "main.py",
-                    "type": "text/x-python",
-                    "transfer_method": "tool_file",
-                    "drive_key": "tender-analyzer/src/main.py",
-                },
-            ],
         }
     ]
     assert [file_ref.model_dump(mode="json", exclude_none=True) for file_ref in soul.files.files] == [
@@ -118,23 +71,6 @@ def test_apply_drive_commit_removes_refs_without_touching_unrelated_entries():
                         "path": "tender-analyzer",
                         "skill_md_key": "tender-analyzer/SKILL.md",
                         "full_archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                        "file_refs": [
-                            {
-                                "id": "tender-analyzer/SKILL.md",
-                                "file_id": "skill-md-file",
-                                "name": "SKILL.md",
-                                "type": "",
-                                "transfer_method": "tool_file",
-                                "drive_key": "tender-analyzer/SKILL.md",
-                            },
-                            {
-                                "id": "tender-analyzer/src/main.py",
-                                "file_id": "member-file",
-                                "name": "main.py",
-                                "transfer_method": "tool_file",
-                                "drive_key": "tender-analyzer/src/main.py",
-                            },
-                        ],
                     }
                 ],
                 "files": [
@@ -180,32 +116,3 @@ def test_drive_copy_and_access_scopes_come_from_agent_soul_files():
     assert prefixes == {"tender-analyzer/"}
     assert AgentSoulFilesService.key_allowed_by_soul(agent_soul=soul, key="tender-analyzer/src/main.py") is True
     assert AgentSoulFilesService.key_allowed_by_soul(agent_soul=soul, key="files/other.pdf") is False
-
-
-def test_file_ref_for_key_resolves_skill_member_refs():
-    soul = AgentSoulConfig.model_validate(
-        {
-            "files": {
-                "skills": [
-                    {
-                        "path": "tender-analyzer",
-                        "skill_md_key": "tender-analyzer/SKILL.md",
-                        "file_refs": [
-                            {
-                                "id": "tender-analyzer/src/main.py",
-                                "file_id": "member-file",
-                                "name": "main.py",
-                                "transfer_method": "tool_file",
-                                "drive_key": "tender-analyzer/src/main.py",
-                            }
-                        ],
-                    }
-                ]
-            }
-        }
-    )
-
-    file_ref = AgentSoulFilesService.file_ref_for_key(agent_soul=soul, key="tender-analyzer/src/main.py")
-
-    assert file_ref is not None
-    assert file_ref.file_id == "member-file"

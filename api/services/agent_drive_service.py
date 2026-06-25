@@ -838,24 +838,6 @@ class AgentDriveService:
         except ValueError:
             return None
 
-    @classmethod
-    def resolve_download_url_for_ref(
-        cls,
-        *,
-        tenant_id: str,
-        file_kind: AgentDriveFileKind,
-        file_id: str,
-        for_external: bool = False,
-        as_attachment: bool = False,
-    ) -> str | None:
-        return cls._resolve_download_url(
-            tenant_id=tenant_id,
-            file_kind=file_kind,
-            file_id=file_id,
-            for_external=for_external,
-            as_attachment=as_attachment,
-        )
-
     # ── console drive inspector (ENG-624) ────────────────────────────────────
 
     # SKILL.md is the primary preview use case; 64 KiB covers it with headroom
@@ -1035,33 +1017,6 @@ class AgentDriveService:
                 break
         return self._preview_bytes(key=response_key, size=size, payload=bytes(data))
 
-    def preview_file_ref(
-        self,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        key: str,
-        file_kind: AgentDriveFileKind,
-        file_id: str,
-        size: int | None = None,
-    ) -> dict[str, Any]:
-        """Preview a concrete versioned file ref recorded in Agent Soul."""
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            storage_key = self._storage_key_for_ref(
-                session,
-                tenant_id=tenant_id,
-                file_kind=file_kind,
-                file_id=file_id,
-            )
-
-        data = bytearray()
-        for chunk in storage.load_stream(storage_key):
-            data.extend(chunk)
-            if len(data) > self.PREVIEW_MAX_BYTES:
-                break
-        return self._preview_bytes(key=key, size=size, payload=bytes(data))
-
     def preview_archive_member_for_ref(
         self,
         *,
@@ -1139,27 +1094,6 @@ class AgentDriveService:
             for_external=for_external,
             as_attachment=True,
         )
-
-    def download_url_for_ref(
-        self,
-        *,
-        tenant_id: str,
-        agent_id: str,
-        file_kind: AgentDriveFileKind,
-        file_id: str,
-    ) -> str:
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            url = self._resolve_download_url(
-                tenant_id=tenant_id,
-                file_kind=file_kind,
-                file_id=file_id,
-                for_external=True,
-                as_attachment=True,
-            )
-        if url is None:
-            raise AgentDriveError("drive_key_not_found", "drive value cannot be resolved", status_code=404)
-        return url
 
     @staticmethod
     def _secret_key() -> bytes:
@@ -1289,7 +1223,6 @@ class AgentDriveService:
         mime_type = mimetypes.guess_type(member_path)[0] or "application/octet-stream"
         filename = normalize_drive_key(key).rsplit("/", 1)[-1]
         return payload, mime_type, filename
-
 
 __all__ = [
     "AgentDriveError",

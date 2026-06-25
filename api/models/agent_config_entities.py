@@ -160,10 +160,6 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     # Zip member path listing from standardization (ENG-371): lets infer-tools
     # show the model strong signals like ``scripts/*.sh`` without unpacking.
     manifest_files: list[str] | None = None
-    # Versioned drive KV entries that belong to this skill package. The drive
-    # table remains the storage index, but Agent Soul owns which concrete file
-    # ids are visible for a snapshot/version.
-    file_refs: list[AgentFileRefConfig] = Field(default_factory=list)
 
 
 class AgentSoulFilesConfig(BaseModel):

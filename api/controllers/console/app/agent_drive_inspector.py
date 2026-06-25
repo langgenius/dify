@@ -31,7 +31,6 @@ from controllers.console.wraps import account_initialization_required, setup_req
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
-from models.agent import AgentDriveFileKind
 from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.soul_files_service import AgentSoulFilesService
@@ -168,12 +167,7 @@ def _versioned_manifest(*, tenant_id: str, agent_id: str, prefix: str = "") -> l
     normalized_prefix = prefix.strip().lstrip("/")
     skill_prefixes = AgentSoulFilesService.allowed_skill_prefixes(agent_soul)
     if normalized_prefix and any(normalized_prefix.startswith(p) for p in skill_prefixes):
-        return AgentSoulFilesService.list_manifest_items(
-            session=db.session,
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            prefix=normalized_prefix,
-        )
+        return AgentDriveService().manifest(tenant_id=tenant_id, agent_id=agent_id, prefix=normalized_prefix)
     return AgentSoulFilesService.list_files(
         session=db.session,
         tenant_id=tenant_id,
@@ -194,108 +188,6 @@ def _assert_key_in_active_soul(*, tenant_id: str, agent_id: str, key: str) -> No
             "drive key is not part of the active Agent Soul version",
             status_code=404,
         )
-
-
-def _file_ref_for_active_soul(*, tenant_id: str, agent_id: str, key: str):
-    agent_soul = AgentSoulFilesService.active_agent_soul(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
-    file_ref = AgentSoulFilesService.file_ref_for_key(agent_soul=agent_soul, key=key)
-    if file_ref is None and not AgentSoulFilesService.key_allowed_by_soul(agent_soul=agent_soul, key=key):
-        raise AgentDriveError(
-            "drive_key_not_in_agent_soul",
-            "drive key is not part of the active Agent Soul version",
-            status_code=404,
-        )
-    return file_ref
-
-
-def _archive_member_ref_for_active_soul(
-    *, tenant_id: str, agent_id: str, key: str
-) -> tuple[AgentDriveFileKind, str, str] | None:
-    agent_soul = AgentSoulFilesService.active_agent_soul(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
-    normalized_key = key.strip().lstrip("/")
-    for skill in agent_soul.files.skills:
-        skill_path = skill.path or (
-            AgentSoulFilesService.skill_path_from_key(skill.skill_md_key) if skill.skill_md_key else None
-        )
-        if not skill_path or not normalized_key.startswith(f"{skill_path}/"):
-            continue
-        member_path = normalized_key.removeprefix(f"{skill_path}/")
-        if member_path == ".DIFY-SKILL-FULL.zip":
-            return None
-        manifest_files = {str(path).strip().lstrip("/") for path in (skill.manifest_files or [])}
-        if manifest_files and member_path not in manifest_files:
-            return None
-        archive_file_id = skill.full_archive_file_id
-        if not archive_file_id:
-            return None
-        return AgentDriveFileKind.TOOL_FILE, archive_file_id, member_path
-    return None
-
-
-def _file_kind_from_ref(file_ref) -> AgentDriveFileKind | None:
-    raw = file_ref.transfer_method or ("upload_file" if file_ref.upload_file_id else None)
-    if raw is None:
-        return None
-    try:
-        return AgentDriveFileKind(raw)
-    except ValueError as exc:
-        raise AgentDriveError("invalid_drive_file_ref", "Agent Soul file ref has invalid transfer method") from exc
-
-
-def _preview_versioned_file(*, tenant_id: str, agent_id: str, key: str) -> dict[str, Any]:
-    file_ref = _file_ref_for_active_soul(tenant_id=tenant_id, agent_id=agent_id, key=key)
-    if file_ref is None:
-        archive_member = _archive_member_ref_for_active_soul(tenant_id=tenant_id, agent_id=agent_id, key=key)
-        if archive_member is not None:
-            archive_file_kind, archive_file_id, member_path = archive_member
-            return AgentDriveService().preview_archive_member_for_ref(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                key=key,
-                archive_file_kind=archive_file_kind,
-                archive_file_id=archive_file_id,
-                member_path=member_path,
-            )
-        return AgentDriveService().preview(tenant_id=tenant_id, agent_id=agent_id, key=key)
-    file_kind = _file_kind_from_ref(file_ref)
-    file_id = file_ref.file_id or file_ref.upload_file_id
-    if file_kind is None or not file_id:
-        raise AgentDriveError("invalid_drive_file_ref", "Agent Soul file ref is missing file id", status_code=404)
-    return AgentDriveService().preview_file_ref(
-        tenant_id=tenant_id,
-        agent_id=agent_id,
-        key=key,
-        file_kind=file_kind,
-        file_id=file_id,
-        size=file_ref.get("size"),
-    )
-
-
-def _download_versioned_file(*, tenant_id: str, agent_id: str, key: str) -> str:
-    file_ref = _file_ref_for_active_soul(tenant_id=tenant_id, agent_id=agent_id, key=key)
-    if file_ref is None:
-        archive_member = _archive_member_ref_for_active_soul(tenant_id=tenant_id, agent_id=agent_id, key=key)
-        if archive_member is not None:
-            archive_file_kind, archive_file_id, member_path = archive_member
-            return AgentDriveService().download_url_archive_member_for_ref(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                key=key,
-                archive_file_kind=archive_file_kind,
-                archive_file_id=archive_file_id,
-                member_path=member_path,
-            )
-        return AgentDriveService().download_url(tenant_id=tenant_id, agent_id=agent_id, key=key)
-    file_kind = _file_kind_from_ref(file_ref)
-    file_id = file_ref.file_id or file_ref.upload_file_id
-    if file_kind is None or not file_id:
-        raise AgentDriveError("invalid_drive_file_ref", "Agent Soul file ref is missing file id", status_code=404)
-    return AgentDriveService().download_url_for_ref(
-        tenant_id=tenant_id,
-        agent_id=agent_id,
-        file_kind=file_kind,
-        file_id=file_id,
-    )
 
 
 def _assert_skill_in_active_soul(*, tenant_id: str, agent_id: str, skill_path: str) -> None:
@@ -402,7 +294,8 @@ class AgentDrivePreviewByAgentApi(Resource):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
         resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            return _preview_versioned_file(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
+            _assert_key_in_active_soul(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
+            return AgentDriveService().preview(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)
 
@@ -421,7 +314,8 @@ class AgentDriveDownloadByAgentApi(Resource):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
         resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            url = _download_versioned_file(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
+            _assert_key_in_active_soul(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
+            url = AgentDriveService().download_url(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)
         return {"url": url}
@@ -523,7 +417,8 @@ class AgentDrivePreviewApi(Resource):
         if not agent_id:
             return _agent_not_bound()
         try:
-            return _preview_versioned_file(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
+            _assert_key_in_active_soul(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
+            return AgentDriveService().preview(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)
 
@@ -544,7 +439,8 @@ class AgentDriveDownloadApi(Resource):
         if not agent_id:
             return _agent_not_bound()
         try:
-            url = _download_versioned_file(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
+            _assert_key_in_active_soul(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
+            url = AgentDriveService().download_url(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)
         return {"url": url}
