@@ -1,37 +1,29 @@
-"""Runtime Dify drive layer with eager pull for prompt-mentioned targets.
+"""Runtime Dify drive layer with shell-backed eager pulls.
 
 The API backend sends the full drive skill catalog plus the ordered drive keys
 mentioned in the prompt. When the layer enters a run context it eagerly pulls
-those mentioned skills/files from the Dify inner drive bridge, materializes them
-under the fixed Agent Stub drive base for ``drive_ref``, and contributes a
+those mentioned skills/files through the already-active shell layer by running
+the sandbox-visible ``dify-agent drive pull`` command, then contributes a
 concise prompt block describing what was loaded. It also contributes a suffix
 prompt with the remaining skill catalog plus ``dify-agent drive`` and
 ``dify-agent file`` usage so the model has concrete Agent Stub commands for
-materializing drive content and workflow files when a shell layer is available.
+materializing drive content and workflow files.
 """
 
 from __future__ import annotations
 
-import asyncio
+import shlex
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, ClassVar, cast
+from typing import ClassVar
 
-import httpx
 from typing_extensions import Self, override
 
-from agenton.layers import EmptyRuntimeState, Layer, LayerDeps, PlainLayer
-from dify_agent.agent_stub._drive_materialization import (
-    DriveDownloadPayload,
-    DriveMaterializationTransferError,
-    DriveMaterializationValidationError,
-    materialize_drive_downloads,
-)
+from agenton.layers import EmptyRuntimeState, LayerDeps, PlainLayer
 from dify_agent.agent_stub.protocol import agent_stub_drive_base_for_ref
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubDriveItem, AgentStubDriveManifestResponse
 from dify_agent.layers.drive.configs import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveLayerConfig
+from dify_agent.layers.shell.layer import DifyShellLayer
 
-_DOWNLOAD_CONCURRENCY = 4
 _AGENT_STUB_CLI_USAGE_PROMPT = """Agent Stub CLI usage is available inside shell jobs:
 
 Drive assets are Agent Soul versioned assets:
@@ -59,40 +51,23 @@ class DifyDriveLayerError(RuntimeError):
 
 
 class DifyDriveDeps(LayerDeps):
-    execution_context: Layer[Any, Any, Any, Any, Any, Any]  # pyright: ignore[reportUninitializedInstanceVariable]
+    shell: DifyShellLayer  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
 @dataclass(slots=True)
 class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntimeState]):
-    """Drive runtime layer that eagerly materializes prompt-mentioned drive targets."""
+    """Drive runtime layer that materializes prompt-mentioned targets via shell."""
 
     type_id: ClassVar[str | None] = DIFY_DRIVE_LAYER_TYPE_ID
 
     config: DifyDriveLayerConfig
-    inner_api_url: str
-    inner_api_key: str
     _loaded_skill_bodies: dict[str, str] = field(default_factory=dict)
     _pulled_file_paths: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     @override
     def from_config(cls, config: DifyDriveLayerConfig) -> Self:
-        del config
-        raise TypeError("DifyDriveLayer requires server-side Dify API settings and must use a provider factory.")
-
-    @classmethod
-    def from_config_with_settings(
-        cls,
-        config: DifyDriveLayerConfig,
-        *,
-        inner_api_url: str,
-        inner_api_key: str,
-    ) -> Self:
-        return cls(
-            config=DifyDriveLayerConfig.model_validate(config),
-            inner_api_url=inner_api_url.rstrip("/"),
-            inner_api_key=inner_api_key,
-        )
+        return cls(config=DifyDriveLayerConfig.model_validate(config))
 
     @property
     @override
@@ -127,9 +102,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             if pulled_skill_path is None:
                 continue
             local_path = Path(pulled_skill_path).parent
-            loaded_skill_sections.append(
-                f"Path: {skill.path}\nLocal path: {local_path}\nSKILL.md:\n{body}"
-            )
+            loaded_skill_sections.append(f"Path: {skill.path}\nLocal path: {local_path}\nSKILL.md:\n{body}")
         if loaded_skill_sections:
             sections.append("Loaded mentioned skills:\n\n" + "\n\n".join(loaded_skill_sections))
 
@@ -154,12 +127,16 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             if skill.skill_md_key not in mentioned_skill_keys
         ]
         if other_skills:
+            pull_and_read_command = (
+                '`skill_dir="$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)"; '
+                + 'printf "%s\\n" "$skill_dir"; cat "$skill_dir/SKILL.md"`'
+            )
             sections.append(
                 "Other available skills:\n"
                 + "\n".join(other_skills)
                 + "\n\nTo use one, pull it and read its SKILL.md in one command: "
-                '`skill_dir="$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)"; '
-                'printf "%s\\n" "$skill_dir"; cat "$skill_dir/SKILL.md"`.'
+                + pull_and_read_command
+                + "."
             )
         sections.append(_AGENT_STUB_CLI_USAGE_PROMPT)
         return "\n\n".join(sections)
@@ -167,113 +144,106 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     async def _pull_mentioned_targets(self) -> None:
         self._loaded_skill_bodies = {}
         self._pulled_file_paths = {}
-        targets: list[tuple[str, bool]] = [
-            (self._skill_prefix(skill_key), False) for skill_key in self.config.mentioned_skill_keys
-        ] + [(file_key, True) for file_key in self.config.mentioned_file_keys]
+        targets = self._mentioned_pull_targets()
         if not targets:
             return
 
-        tenant_id = self._require_tenant_id()
-        manifest_items = await self._fetch_manifest_items(tenant_id=tenant_id, targets=targets)
-        written_paths = await self._download_items(manifest_items)
+        script = self._build_shell_pull_script(targets=targets)
+        result = await self.deps.shell.run_remote_script(script, inject_agent_stub_env=True)
+        if result.exit_code != 0:
+            raise DifyDriveLayerError(
+                f"drive mentioned pull failed in shell: {result.status} exit_code={result.exit_code}\n{result.output}"
+            )
+        if result.truncated:
+            raise DifyDriveLayerError("drive mentioned pull output was truncated before SKILL.md content was loaded")
+
+        written_paths, skill_bodies = self._parse_shell_pull_output(result.output)
+        self._record_pulled_paths(written_paths)
+        for skill_key in self.config.mentioned_skill_keys:
+            body = skill_bodies.get(skill_key)
+            if body is None:
+                raise DifyDriveLayerError(f"missing pulled SKILL.md content for mentioned skill {skill_key}")
+            self._loaded_skill_bodies[skill_key] = body
+
+    def _build_shell_pull_script(self, *, targets: list[tuple[str, bool]]) -> str:
+        pull_targets = list(dict.fromkeys(prefix for prefix, _exact in targets))
+        base_path = agent_stub_drive_base_for_ref(self.config.drive_ref)
+        lines = [
+            "set -eu",
+            f"base={shlex.quote(base_path)}",
+            "dify-agent drive pull "
+            + " ".join(shlex.quote(target) for target in pull_targets)
+            + ' --to "$base"',
+        ]
+        for skill_key in self.config.mentioned_skill_keys:
+            skill_path = self._shell_local_path(skill_key)
+            lines.extend(
+                [
+                    f"test -f {shlex.quote(skill_path)}",
+                    f"printf '\\n__DIFY_DRIVE_MENTIONED_PATH__\\t%s\\t%s\\n' {shlex.quote(skill_key)} {shlex.quote(skill_path)}",
+                    f"printf '__DIFY_DRIVE_SKILL_BEGIN__\\t%s\\n' {shlex.quote(skill_key)}",
+                    f"cat {shlex.quote(skill_path)}",
+                    f"printf '\\n__DIFY_DRIVE_SKILL_END__\\t%s\\n' {shlex.quote(skill_key)}",
+                ]
+            )
+        for file_key in self.config.mentioned_file_keys:
+            file_path = self._shell_local_path(file_key)
+            lines.extend(
+                [
+                    f"test -e {shlex.quote(file_path)}",
+                    f"printf '\\n__DIFY_DRIVE_MENTIONED_PATH__\\t%s\\t%s\\n' {shlex.quote(file_key)} {shlex.quote(file_path)}",
+                ]
+            )
+        return "\n".join(lines)
+
+    def _parse_shell_pull_output(self, output: str) -> tuple[dict[str, str], dict[str, str]]:
+        written_paths: dict[str, str] = {}
+        skill_bodies: dict[str, str] = {}
+        current_skill_key: str | None = None
+        current_skill_body: list[str] = []
+
+        for line in output.splitlines(keepends=True):
+            stripped_line = line.rstrip("\n")
+            if current_skill_key is not None:
+                if stripped_line == f"__DIFY_DRIVE_SKILL_END__\t{current_skill_key}":
+                    skill_bodies[current_skill_key] = "".join(current_skill_body)
+                    current_skill_key = None
+                    current_skill_body = []
+                    continue
+                current_skill_body.append(line)
+                continue
+
+            if stripped_line.startswith("__DIFY_DRIVE_MENTIONED_PATH__\t"):
+                parts = stripped_line.split("\t", 2)
+                if len(parts) != 3:
+                    raise DifyDriveLayerError("drive mentioned pull emitted an invalid path marker")
+                _marker, key, path = parts
+                written_paths[key] = path
+                continue
+            if stripped_line.startswith("__DIFY_DRIVE_SKILL_BEGIN__\t"):
+                current_skill_key = stripped_line.split("\t", 1)[1]
+                current_skill_body = []
+
+        if current_skill_key is not None:
+            raise DifyDriveLayerError(f"drive mentioned pull omitted SKILL.md end marker for {current_skill_key}")
+        return written_paths, skill_bodies
+
+    def _record_pulled_paths(self, written_paths: dict[str, str]) -> None:
         self._pulled_file_paths = written_paths
         for file_key in self.config.mentioned_file_keys:
             if file_key not in written_paths:
                 raise DifyDriveLayerError(f"missing pulled file for mentioned drive key {file_key}")
         for skill_key in self.config.mentioned_skill_keys:
-            skill_path = written_paths.get(skill_key)
-            if skill_path is None:
+            if skill_key not in written_paths:
                 raise DifyDriveLayerError(f"missing pulled SKILL.md for mentioned skill {skill_key}")
-            try:
-                self._loaded_skill_bodies[skill_key] = Path(skill_path).read_text(encoding="utf-8")
-            except (OSError, UnicodeError) as exc:
-                raise DifyDriveLayerError(f"failed to load pulled SKILL.md for mentioned skill {skill_key}") from exc
 
-    async def _fetch_manifest_items(
-        self,
-        *,
-        tenant_id: str,
-        targets: list[tuple[str, bool]],
-    ) -> list[AgentStubDriveItem]:
-        semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
+    def _mentioned_pull_targets(self) -> list[tuple[str, bool]]:
+        return [(self._skill_prefix(skill_key), False) for skill_key in self.config.mentioned_skill_keys] + [
+            (file_key, True) for file_key in self.config.mentioned_file_keys
+        ]
 
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, trust_env=False) as client:
-
-            async def fetch_one(target: tuple[str, bool]) -> list[AgentStubDriveItem]:
-                prefix, exact = target
-                try:
-                    async with semaphore:
-                        response = await client.get(
-                            f"{self.inner_api_url}/inner/api/drive/{self.config.drive_ref}/manifest",
-                            params={
-                                "tenant_id": tenant_id,
-                                "prefix": prefix,
-                                "include_download_url": "true",
-                            },
-                            headers={"X-Inner-Api-Key": self.inner_api_key},
-                        )
-                except (httpx.InvalidURL, httpx.TimeoutException, httpx.RequestError) as exc:
-                    raise DifyDriveLayerError(f"drive manifest request failed for {prefix}") from exc
-                if response.is_error:
-                    raise DifyDriveLayerError(f"drive manifest request failed for {prefix}: {response.status_code}")
-                try:
-                    payload = AgentStubDriveManifestResponse.model_validate(response.json())
-                except (ValueError, TypeError) as exc:
-                    raise DifyDriveLayerError(f"drive manifest response is invalid for {prefix}") from exc
-                manifest_items: list[AgentStubDriveItem] = []
-                for item in payload.items:
-                    if not item.download_url:
-                        raise DifyDriveLayerError(f"drive manifest item is missing download_url for {prefix}")
-                    if exact and item.key != prefix:
-                        continue
-                    manifest_items.append(item)
-                return manifest_items
-
-            grouped_items = await asyncio.gather(*(fetch_one(target) for target in targets))
-
-        deduplicated: dict[str, AgentStubDriveItem] = {}
-        for items in grouped_items:
-            for item in items:
-                deduplicated.setdefault(item.key, item)
-        return [deduplicated[key] for key in sorted(deduplicated)]
-
-    async def _download_items(self, items: list[AgentStubDriveItem]) -> dict[str, str]:
-        base_path = Path(agent_stub_drive_base_for_ref(self.config.drive_ref))
-        semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
-
-        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, trust_env=False) as client:
-
-            async def download_one(item: AgentStubDriveItem) -> DriveDownloadPayload:
-                download_url = item.download_url
-                if not download_url:
-                    raise DifyDriveLayerError(f"drive manifest item is missing download_url for {item.key}")
-                try:
-                    async with semaphore:
-                        response = await client.get(download_url)
-                except (httpx.InvalidURL, httpx.TimeoutException, httpx.RequestError) as exc:
-                    raise DifyDriveLayerError(f"drive download failed for {item.key}") from exc
-                if response.is_error:
-                    raise DifyDriveLayerError(f"drive download failed for {item.key}: {response.status_code}")
-                return DriveDownloadPayload(key=item.key, payload=response.content, size=item.size)
-
-            downloads = await asyncio.gather(*(download_one(item) for item in items))
-
-        try:
-            written_paths = materialize_drive_downloads(
-                base_path=base_path,
-                downloads=downloads,
-            )
-        except (DriveMaterializationValidationError, DriveMaterializationTransferError) as exc:
-            raise DifyDriveLayerError(str(exc)) from exc
-
-        return {download.key: str(path) for download, path in zip(downloads, written_paths, strict=True)}
-
-    def _require_tenant_id(self) -> str:
-        execution_context = self.deps.execution_context.config
-        tenant_id = getattr(execution_context, "tenant_id", None)
-        if not isinstance(tenant_id, str) or not tenant_id.strip():
-            raise DifyDriveLayerError("DifyDriveLayer requires execution_context.tenant_id")
-        return cast(str, tenant_id).strip()
+    def _shell_local_path(self, drive_key: str) -> str:
+        return f"{agent_stub_drive_base_for_ref(self.config.drive_ref).rstrip('/')}/{drive_key.lstrip('/')}"
 
     @staticmethod
     def _skill_prefix(skill_key: str) -> str:

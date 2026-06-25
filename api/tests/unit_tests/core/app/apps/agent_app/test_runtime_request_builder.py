@@ -85,6 +85,49 @@ class _NoToolsBuilder:
         del kwargs
 
 
+def _mock_empty_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
+        lambda self, *, tenant_id, agent_id: [],
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
+        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
+    )
+
+
+def _mock_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
+        lambda self, *, tenant_id, agent_id: [
+            {
+                "path": "tender-analyzer",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+                "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+                "size": 123,
+                "mime_type": "text/markdown",
+                "hash": "hash-1",
+                "created_at": 1,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
+        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
+            {"key": "tender-analyzer/SKILL.md", "is_skill": True},
+            {"key": "tender-analyzer/.DIFY-SKILL-FULL.zip", "is_skill": False},
+            {"key": "files/sample.pdf", "is_skill": False},
+        ],
+    )
+
+
+@pytest.fixture(autouse=True)
+def _mock_default_agent_app_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    _mock_empty_drive_catalog(monkeypatch)
+
+
 def _ctx(soul: AgentSoulConfig, *, query: str = "hello") -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
@@ -128,7 +171,15 @@ class TestAgentAppRuntimeRequestBuilder:
         req = result.request
         assert req.purpose == "agent_app"
         names = [layer.name for layer in req.composition.layers]
-        assert names == ["agent_soul_prompt", "agent_app_user_prompt", "execution_context", "drive", "history", "llm"]
+        assert names == [
+            "agent_soul_prompt",
+            "agent_app_user_prompt",
+            "execution_context",
+            "shell",
+            "drive",
+            "history",
+            "llm",
+        ]
         # plugin_id / provider normalized for plugin-daemon transport.
         llm = next(layer for layer in req.composition.layers if layer.name == "llm")
         assert llm.config.plugin_id == "langgenius/openai"
@@ -278,6 +329,7 @@ class TestAgentAppDriveLayer:
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
+        _mock_drive_catalog(monkeypatch)
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -287,15 +339,18 @@ class TestAgentAppDriveLayer:
 
         drive = next(layer for layer in result.request.composition.layers if layer.name == "drive")
         assert drive.type == "dify.drive"
-        assert drive.deps == {"execution_context": "execution_context"}
+        assert drive.deps == {"shell": DIFY_SHELL_LAYER_ID}
         assert drive.config.drive_ref == "agent-agent-1"
         assert [skill.skill_md_key for skill in drive.config.skills] == ["tender-analyzer/SKILL.md"]
         assert drive.config.mentioned_skill_keys == ["tender-analyzer/SKILL.md"]
-        # injected right after execution_context, mirroring the workflow surface
+        # shell enters first; drive uses that shell to materialize mentioned targets.
         names = [layer.name for layer in result.request.composition.layers]
-        assert names.index("drive") == names.index("execution_context") + 1
+        assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 1
+        assert names.index("drive") == names.index(DIFY_SHELL_LAYER_ID) + 1
 
-    def test_drive_layer_injected_with_empty_catalog_and_shell_depends_on_it(self, monkeypatch: pytest.MonkeyPatch):
+    def test_drive_layer_injected_with_empty_catalog_and_drive_depends_on_shell(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
@@ -310,10 +365,9 @@ class TestAgentAppDriveLayer:
         layers = {layer.name: layer for layer in result.request.composition.layers}
         assert layers["drive"].config.drive_ref == "agent-agent-1"
         assert layers["drive"].config.skills == []
-        assert layers[DIFY_SHELL_LAYER_ID].deps == {
-            "execution_context": "execution_context",
-            "drive": "drive",
-        }
+        assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": "execution_context"}
+        assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref == "agent-agent-1"
+        assert layers["drive"].deps == {"shell": DIFY_SHELL_LAYER_ID}
 
     def test_no_drive_layer_when_flag_disabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
@@ -333,6 +387,7 @@ class TestAgentAppDriveLayer:
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
+        _mock_drive_catalog(monkeypatch)
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
             "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."
@@ -355,6 +410,7 @@ class TestAgentAppDriveLayer:
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
+        _mock_drive_catalog(monkeypatch)
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
             "Use [§skill:ghost%2FSKILL.md:Ghost Skill§], [§file:files%2Fghost.txt:Ghost File§], "
@@ -375,6 +431,7 @@ class TestAgentAppDriveLayer:
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
+        _mock_drive_catalog(monkeypatch)
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
             "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]"

@@ -1032,10 +1032,9 @@ def test_workflow_run_request_contains_drive_layer_with_empty_catalog(monkeypatc
         "mentioned_skill_keys": [],
         "mentioned_file_keys": [],
     }
-    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {
-        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
-        "drive": "drive",
-    }
+    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID]["config"]["agent_stub_drive_ref"] == "agent-agent-1"
+    assert layers["drive"]["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
 
 
 def test_build_drive_layer_config_requires_agent_identity():
@@ -1061,11 +1060,12 @@ def test_workflow_run_request_contains_drive_layer_when_flag_enabled(monkeypatch
     dumped = result.request.model_dump(mode="json")
     layer_names = [layer["name"] for layer in dumped["composition"]["layers"]]
     assert "drive" in layer_names
-    # injected right after execution_context, before history/llm
-    assert layer_names.index("drive") == layer_names.index("execution_context") + 1
+    # shell enters first; drive uses that shell to materialize mentioned targets.
+    assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 1
+    assert layer_names.index("drive") == layer_names.index(DIFY_SHELL_LAYER_ID) + 1
     drive = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "drive")
     assert drive["type"] == "dify.drive"
-    assert drive["deps"] == {"execution_context": "execution_context"}
+    assert drive["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
     assert drive["config"]["drive_ref"] == "agent-agent-1"
     assert drive["config"]["skills"] == [
         {

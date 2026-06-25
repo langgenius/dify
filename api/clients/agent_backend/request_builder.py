@@ -78,11 +78,22 @@ def _filter_snapshot_to_specs(
     return CompositorSessionSnapshot(schema_version=snapshot.schema_version, layers=filtered_layers)
 
 
-def _shell_layer_deps(*, include_drive: bool) -> dict[str, str]:
-    deps = {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    if include_drive:
-        deps["drive"] = DIFY_DRIVE_LAYER_ID
-    return deps
+def _shell_layer_deps() -> dict[str, str]:
+    return {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+
+
+def _drive_layer_deps() -> dict[str, str]:
+    return {"shell": DIFY_SHELL_LAYER_ID}
+
+
+def _shell_config_with_drive_ref(
+    shell_config: DifyShellLayerConfig | None,
+    drive_config: DifyDriveLayerConfig | None,
+) -> DifyShellLayerConfig:
+    config = shell_config or DifyShellLayerConfig()
+    if drive_config is None:
+        return config
+    return config.model_copy(update={"agent_stub_drive_ref": drive_config.drive_ref})
 
 
 class AgentBackendModelConfig(BaseModel):
@@ -263,14 +274,29 @@ class AgentBackendRunRequestBuilder:
             ]
         )
 
+        include_shell = run_input.include_shell or run_input.drive_config is not None
+        if include_shell:
+            # Sandboxed bash workspace (dify.shell). It enters before drive so
+            # drive can materialize mentioned targets with `dify-agent drive pull`
+            # in the same shell-visible filesystem used by model commands.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_SHELL_LAYER_ID,
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps=_shell_layer_deps(),
+                    metadata=run_input.metadata,
+                    config=_shell_config_with_drive_ref(run_input.shell_config, run_input.drive_config),
+                )
+            )
+
         if run_input.drive_config is not None:
-            # Drive Skills & Files declaration (dify.drive): a config-only index;
-            # the agent pulls listed entries through the back proxy by drive_ref.
+            # Drive Skills & Files declaration (dify.drive): the catalog plus
+            # prompt-mentioned entries eagerly pulled through the shell layer.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=_drive_layer_deps(),
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )
@@ -333,21 +359,6 @@ class AgentBackendRunRequestBuilder:
                     type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
                     config=run_input.ask_human_config,
-                )
-            )
-
-        if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). Depends on execution_context
-            # so the agent server can mint per-command Agent Stub env, and on
-            # drive when present so that env points at /mnt/drive/<drive_ref>.
-            # shellctl connection itself is server-injected.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps=_shell_layer_deps(include_drive=run_input.drive_config is not None),
-                    metadata=run_input.metadata,
-                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 
@@ -462,14 +473,29 @@ class AgentBackendRunRequestBuilder:
             ]
         )
 
+        include_shell = run_input.include_shell or run_input.drive_config is not None
+        if include_shell:
+            # Sandboxed bash workspace (dify.shell). It enters before drive so
+            # drive can materialize mentioned targets with `dify-agent drive pull`
+            # in the same shell-visible filesystem used by model commands.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_SHELL_LAYER_ID,
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps=_shell_layer_deps(),
+                    metadata=run_input.metadata,
+                    config=_shell_config_with_drive_ref(run_input.shell_config, run_input.drive_config),
+                )
+            )
+
         if run_input.drive_config is not None:
-            # Drive Skills & Files declaration (dify.drive): a config-only index;
-            # the agent pulls listed entries through the back proxy by drive_ref.
+            # Drive Skills & Files declaration (dify.drive): the catalog plus
+            # prompt-mentioned entries eagerly pulled through the shell layer.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    deps=_drive_layer_deps(),
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )
@@ -534,21 +560,6 @@ class AgentBackendRunRequestBuilder:
                     type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
                     config=run_input.ask_human_config,
-                )
-            )
-
-        if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). Depends on execution_context
-            # so the agent server can mint per-command Agent Stub env, and on
-            # drive when present so that env points at /mnt/drive/<drive_ref>.
-            # shellctl connection itself is server-injected.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps=_shell_layer_deps(include_drive=run_input.drive_config is not None),
-                    metadata=run_input.metadata,
-                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 
