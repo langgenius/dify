@@ -246,7 +246,6 @@ export type AgentThought = {
   created_at?: number | null
   files: Array<string>
   id: string
-  message_chain_id?: string | null
   message_id: string
   observation?: string | null
   position: number

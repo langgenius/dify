@@ -1782,7 +1782,7 @@ Get status of annotation reply action job
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/annotation-setting
@@ -1891,7 +1891,7 @@ Batch import annotations from CSV file with rate limiting and security checks
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch import started successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 200 | Batch import started successfully | **application/json**: [AnnotationBatchImportResponse](#annotationbatchimportresponse)<br> |
 | 400 | No file uploaded or too many files |  |
 | 403 | Insufficient permissions |  |
 | 413 | File too large |  |
@@ -1911,7 +1911,7 @@ Get status of batch import job
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusResponse](#annotationjobstatusresponse)<br> |
+| 200 | Job status retrieved successfully | **application/json**: [AnnotationJobStatusDetailResponse](#annotationjobstatusdetailresponse)<br> |
 | 403 | Insufficient permissions |  |
 
 ### [GET] /apps/{app_id}/annotations/count
@@ -2227,11 +2227,11 @@ Generate completion message for debugging
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Completion generated successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Invalid request parameters |  |
-| 404 | App not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Completion generated successfully |
+| 400 | Invalid request parameters |
+| 404 | App not found |
 
 ### [POST] /apps/{app_id}/completion-messages/{task_id}/stop
 Stop a running completion message generation
@@ -2790,10 +2790,10 @@ Convert text to speech for chat messages
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Text to speech conversion successful | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
-| 400 | Bad request - Invalid parameters |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Text to speech conversion successful |
+| 400 | Bad request - Invalid parameters |
 
 ### [GET] /apps/{app_id}/text-to-audio/voices
 Get available TTS voices for a specific language
@@ -13430,7 +13430,6 @@ Soft lifecycle state for Agent records.
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |
 | id | string |  | Yes |
-| message_chain_id | string |  | No |
 | message_id | string |  | Yes |
 | observation | string |  | No |
 | position | integer |  | Yes |
@@ -13502,18 +13501,20 @@ Soft lifecycle state for Agent records.
 | id | string |  | Yes |
 | question | string |  | No |
 
+#### AnnotationBatchImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error_msg | string |  | No |
+| job_id | string |  | No |
+| job_status | string |  | No |
+| record_count | integer |  | No |
+
 #### AnnotationCountResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | count | integer | Number of annotations | Yes |
-
-#### AnnotationEmbeddingModelResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
 
 #### AnnotationExportList
 
@@ -13556,14 +13557,20 @@ Soft lifecycle state for Agent records.
 | limit | integer, <br>**Default:** 20 | Page size | No |
 | page | integer, <br>**Default:** 1 | Page number | No |
 
-#### AnnotationJobStatusResponse
+#### AnnotationJobStatusDetailResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | error_msg | string |  | No |
-| job_id | string |  | No |
-| job_status | string |  | No |
-| record_count | integer |  | No |
+| job_id | string |  | Yes |
+| job_status | string<br>string |  | Yes |
+
+#### AnnotationJobStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| job_id | string |  | Yes |
+| job_status | string<br>string |  | Yes |
 
 #### AnnotationList
 
@@ -13597,11 +13604,18 @@ Soft lifecycle state for Agent records.
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "disable", "enable" | *Enum:* `"disable"`, `"enable"` | Yes |
 
+#### AnnotationSettingEmbeddingModelResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| embedding_model_name | string |  | No |
+| embedding_provider_name | string |  | No |
+
 #### AnnotationSettingResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model | [AnnotationEmbeddingModelResponse](#annotationembeddingmodelresponse) |  | No |
+| embedding_model | [AnnotationSettingEmbeddingModelResponse](#annotationsettingembeddingmodelresponse) |  | No |
 | enabled | boolean |  | Yes |
 | id | string |  | No |
 | score_threshold | number |  | No |
@@ -14525,13 +14539,13 @@ Enum class for configurate method of provider model.
 | admin_feedback_stats | [FeedbackStat](#feedbackstat) |  | No |
 | annotation | [ConversationAnnotation](#conversationannotation) |  | No |
 | created_at | integer |  | No |
-| first_message | [SimpleMessageDetail](#simplemessagedetail) |  | No |
 | from_account_id | string |  | No |
 | from_account_name | string |  | No |
 | from_end_user_id | string |  | No |
 | from_end_user_session_id | string |  | No |
 | from_source | string |  | Yes |
 | id | string |  | Yes |
+| message | [SimpleMessageDetail](#simplemessagedetail) |  | No |
 | model_config | [SimpleModelConfig](#simplemodelconfig) |  | No |
 | read_at | integer |  | No |
 | status | string |  | Yes |
@@ -14553,8 +14567,8 @@ Enum class for configurate method of provider model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | annotation_create_account | [SimpleAccount](#simpleaccount) |  | No |
+| annotation_id | string |  | Yes |
 | created_at | integer |  | No |
-| id | string |  | Yes |
 
 #### ConversationDetail
 
@@ -14595,11 +14609,11 @@ Enum class for configurate method of provider model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| first_message | [MessageDetail](#messagedetail) |  | No |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | from_source | string |  | Yes |
 | id | string |  | Yes |
+| message | [MessageDetail](#messagedetail) |  | No |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | status | string |  | Yes |
 
@@ -14607,10 +14621,10 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [Conversation](#conversation) ] |  | Yes |
+| data | [ [Conversation](#conversation) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### ConversationRenamePayload
@@ -14663,7 +14677,7 @@ Enum class for configurate method of provider model.
 | read_at | integer |  | No |
 | status | string |  | Yes |
 | status_count | [StatusCount](#statuscount) |  | No |
-| summary_or_query | string |  | Yes |
+| summary | string |  | Yes |
 | updated_at | integer |  | No |
 | user_feedback_stats | [FeedbackStat](#feedbackstat) |  | No |
 
@@ -14671,10 +14685,10 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| has_next | boolean |  | Yes |
-| items | [ [ConversationWithSummary](#conversationwithsummary) ] |  | Yes |
+| data | [ [ConversationWithSummary](#conversationwithsummary) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
 | page | integer |  | Yes |
-| per_page | integer |  | Yes |
 | total | integer |  | Yes |
 
 #### ConvertToWorkflowPayload
@@ -14847,10 +14861,10 @@ Model class for provider custom model configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| currency | string |  | Yes |
+| currency | string |  | No |
 | date | string |  | Yes |
-| token_count | integer |  | Yes |
-| total_price | string<br>number |  | Yes |
+| token_count | integer |  | No |
+| total_price | string |  | No |
 
 #### DailyTokenCostStatisticResponse
 
@@ -17064,6 +17078,7 @@ Enum class for large language model mode.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | annotation | [ConversationAnnotation](#conversationannotation) |  | No |
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
+| answer | string |  | Yes |
 | answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
@@ -17076,12 +17091,11 @@ Enum class for large language model mode.
 | inputs | object |  | Yes |
 | message | [JSONValue](#jsonvalue) |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
-| message_metadata_dict | [JSONValue](#jsonvalue) |  | Yes |
 | message_tokens | integer |  | Yes |
+| metadata | [JSONValue](#jsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
 | provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
-| re_sign_file_url_answer | string |  | Yes |
 | status | string |  | Yes |
 | workflow_run_id | string |  | No |
 
@@ -17089,28 +17103,28 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| agent_thoughts | [ [AgentThought](#agentthought) ] |  | No |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | annotation | [ConversationAnnotation](#conversationannotation) |  | No |
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
-| answer_tokens | integer |  | No |
+| answer | string |  | Yes |
+| answer_tokens | integer |  | Yes |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | No |
-| feedbacks | [ [Feedback](#feedback) ] |  | No |
+| feedbacks | [ [Feedback](#feedback) ] |  | Yes |
 | from_account_id | string |  | No |
 | from_end_user_id | string |  | No |
 | from_source | string |  | Yes |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
-| message | [JSONValue](#jsonvalue) |  | No |
-| message_files | [ [MessageFile](#messagefile) ] |  | No |
-| message_metadata_dict | [JSONValue](#jsonvalue) |  | No |
-| message_tokens | integer |  | No |
+| message | [JSONValue](#jsonvalue) |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| message_tokens | integer |  | Yes |
+| metadata | [JSONValue](#jsonvalue) |  | Yes |
 | parent_message_id | string |  | No |
-| provider_response_latency | number |  | No |
+| provider_response_latency | number |  | Yes |
 | query | string |  | Yes |
-| re_sign_file_url_answer | string |  | Yes |
 | status | string |  | Yes |
 | workflow_run_id | string |  | No |
 
@@ -19216,7 +19230,7 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| model_dict | [JSONValue](#jsonvalue) |  | No |
+| model | [JSONValue](#jsonvalue) |  | No |
 | pre_prompt | string |  | No |
 
 #### SimpleProviderEntityResponse
@@ -19786,15 +19800,24 @@ Tag type
 
 #### TextToSpeechVoiceListResponse
 
+Available voices
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| TextToSpeechVoiceListResponse | array |  |  |
+| TextToSpeechVoiceListResponse | array | Available voices |  |
 
 #### TextToSpeechVoiceQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | language | string | Language code | Yes |
+
+#### TextToSpeechVoiceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string | Voice display name | Yes |
+| value | string | Voice identifier | Yes |
 
 #### TokensPerSecondStatisticItem
 

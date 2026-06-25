@@ -217,14 +217,8 @@ const toFeedback = (feedback: NonNullable<MessageDetailResponse['feedbacks']>[nu
   }
 }
 
-type AgentDebugMessageWithLegacyAnswer = MessageDetailResponse & {
-  answer?: string | null
-}
-
 const getAgentDebugMessageAnswer = (message: MessageDetailResponse) => {
-  const legacyAnswer = (message as AgentDebugMessageWithLegacyAnswer).answer
-
-  return message.re_sign_file_url_answer ?? legacyAnswer ?? ''
+  return message.answer ?? ''
 }
 
 function getFormattedAgentDebugChatTree(messages: MessageDetailResponse[]): ChatItemInTree[] {

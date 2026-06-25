@@ -144,10 +144,17 @@ export const zAnnotationReplyPayload = z.object({
  * AnnotationJobStatusResponse
  */
 export const zAnnotationJobStatusResponse = z.object({
-  error_msg: z.string().nullish(),
-  job_id: z.string().nullish(),
-  job_status: z.string().nullish(),
-  record_count: z.int().nullish(),
+  job_id: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+})
+
+/**
+ * AnnotationJobStatusDetailResponse
+ */
+export const zAnnotationJobStatusDetailResponse = z.object({
+  error_msg: z.string().optional().default(''),
+  job_id: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
 })
 
 /**
@@ -188,6 +195,16 @@ export const zAnnotationList = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * AnnotationBatchImportResponse
+ */
+export const zAnnotationBatchImportResponse = z.object({
+  error_msg: z.string().nullish(),
+  job_id: z.string().nullish(),
+  job_status: z.string().nullish(),
+  record_count: z.int().nullish(),
 })
 
 /**
@@ -240,18 +257,6 @@ export const zSuggestedQuestionsResponse = z.object({
  */
 export const zSimpleResultResponse = z.object({
   result: z.string(),
-})
-
-/**
- * CompletionMessagePayload
- */
-export const zCompletionMessagePayload = z.object({
-  files: z.array(z.unknown()).nullish(),
-  inputs: z.record(z.string(), z.unknown()),
-  model_config: z.record(z.string(), z.unknown()).optional(),
-  query: z.string().optional().default(''),
-  response_mode: z.enum(['blocking', 'streaming']).optional().default('blocking'),
-  retriever_from: z.string().optional().default('dev'),
 })
 
 /**
@@ -392,26 +397,6 @@ export const zAppSiteResponse = z.object({
 export const zAppSiteStatusPayload = z.object({
   enable_site: z.boolean(),
 })
-
-/**
- * TextToSpeechPayload
- */
-export const zTextToSpeechPayload = z.object({
-  message_id: z.string().nullish(),
-  streaming: z.boolean().nullish(),
-  text: z.string(),
-  voice: z.string().nullish(),
-})
-
-/**
- * AudioBinaryResponse
- */
-export const zAudioBinaryResponse = z.custom<Blob | File>()
-
-/**
- * TextToSpeechVoiceListResponse
- */
-export const zTextToSpeechVoiceListResponse = z.array(z.record(z.string(), z.unknown()))
 
 /**
  * AppTraceResponse
@@ -1082,9 +1067,9 @@ export const zAgentSkillUploadResponse = z.object({
 })
 
 /**
- * AnnotationEmbeddingModelResponse
+ * AnnotationSettingEmbeddingModelResponse
  */
-export const zAnnotationEmbeddingModelResponse = z.object({
+export const zAnnotationSettingEmbeddingModelResponse = z.object({
   embedding_model_name: z.string().nullish(),
   embedding_provider_name: z.string().nullish(),
 })
@@ -1093,7 +1078,7 @@ export const zAnnotationEmbeddingModelResponse = z.object({
  * AnnotationSettingResponse
  */
 export const zAnnotationSettingResponse = z.object({
-  embedding_model: zAnnotationEmbeddingModelResponse.nullish(),
+  embedding_model: zAnnotationSettingEmbeddingModelResponse.nullish(),
   enabled: z.boolean(),
   id: z.string().nullish(),
   score_threshold: z.number().nullish(),
@@ -1163,7 +1148,6 @@ export const zAgentThought = z.object({
   created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
-  message_chain_id: z.string().nullish(),
   message_id: z.string(),
   observation: z.string().nullish(),
   position: z.int(),
@@ -1288,10 +1272,13 @@ export const zDailyMessageStatisticResponse = z.object({
  * DailyTokenCostStatisticItem
  */
 export const zDailyTokenCostStatisticItem = z.object({
-  currency: z.string(),
+  currency: z.string().nullish(),
   date: z.string(),
-  token_count: z.int(),
-  total_price: z.union([z.string(), z.number()]),
+  token_count: z.int().nullish(),
+  total_price: z
+    .string()
+    .regex(/^(?![-+.]*$)[+-]?\d*(?:\.\d*)?$/)
+    .nullish(),
 })
 
 /**
@@ -1330,6 +1317,21 @@ export const zUserSatisfactionRateStatisticItem = z.object({
 export const zUserSatisfactionRateStatisticResponse = z.object({
   data: z.array(zUserSatisfactionRateStatisticItem),
 })
+
+/**
+ * TextToSpeechVoiceResponse
+ */
+export const zTextToSpeechVoiceResponse = z.object({
+  name: z.string(),
+  value: z.string(),
+})
+
+/**
+ * TextToSpeechVoiceListResponse
+ *
+ * Available voices
+ */
+export const zTextToSpeechVoiceListResponse = z.array(zTextToSpeechVoiceResponse)
 
 /**
  * SimpleAccount
@@ -1384,8 +1386,8 @@ export const zConversationAnnotation = z.object({
  */
 export const zConversationAnnotationHitHistory = z.object({
   annotation_create_account: zSimpleAccount.nullish(),
+  annotation_id: z.string(),
   created_at: z.int().nullish(),
-  id: z.string(),
 })
 
 /**
@@ -1406,6 +1408,7 @@ export const zMessageDetail = z.object({
   agent_thoughts: z.array(zAgentThought),
   annotation: zConversationAnnotation.nullish(),
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
+  answer: z.string(),
   answer_tokens: z.int(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
@@ -1418,12 +1421,11 @@ export const zMessageDetail = z.object({
   inputs: z.record(z.string(), zJsonValue),
   message: zJsonValue,
   message_files: z.array(zMessageFile),
-  message_metadata_dict: zJsonValue,
   message_tokens: z.int(),
+  metadata: zJsonValue,
   parent_message_id: z.string().nullish(),
   provider_response_latency: z.number(),
   query: z.string(),
-  re_sign_file_url_answer: z.string(),
   status: z.string(),
   workflow_run_id: z.string().nullish(),
 })
@@ -2170,11 +2172,11 @@ export const zConversationDetail = z.object({
  */
 export const zConversationMessageDetail = z.object({
   created_at: z.int().nullish(),
-  first_message: zMessageDetail.nullish(),
   from_account_id: z.string().nullish(),
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
+  message: zMessageDetail.nullish(),
   model_config: zModelConfig.nullish(),
   status: z.string(),
 })
@@ -2320,7 +2322,7 @@ export const zSkillToolInferenceResult = z.object({
  * SimpleModelConfig
  */
 export const zSimpleModelConfig = z.object({
-  model_dict: zJsonValue.nullish(),
+  model: zJsonValue.nullish(),
   pre_prompt: z.string().nullish(),
 })
 
@@ -2353,7 +2355,7 @@ export const zConversationWithSummary = z.object({
   read_at: z.int().nullish(),
   status: z.string(),
   status_count: zStatusCount.nullish(),
-  summary_or_query: z.string(),
+  summary: z.string(),
   updated_at: z.int().nullish(),
   user_feedback_stats: zFeedbackStat.nullish(),
 })
@@ -2362,10 +2364,10 @@ export const zConversationWithSummary = z.object({
  * ConversationWithSummaryPagination
  */
 export const zConversationWithSummaryPagination = z.object({
-  has_next: z.boolean(),
-  items: z.array(zConversationWithSummary),
+  data: z.array(zConversationWithSummary),
+  has_more: z.boolean(),
+  limit: z.int(),
   page: z.int(),
-  per_page: z.int(),
   total: z.int(),
 })
 
@@ -2386,13 +2388,13 @@ export const zConversation = z.object({
   admin_feedback_stats: zFeedbackStat.nullish(),
   annotation: zConversationAnnotation.nullish(),
   created_at: z.int().nullish(),
-  first_message: zSimpleMessageDetail.nullish(),
   from_account_id: z.string().nullish(),
   from_account_name: z.string().nullish(),
   from_end_user_id: z.string().nullish(),
   from_end_user_session_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
+  message: zSimpleMessageDetail.nullish(),
   model_config: zSimpleModelConfig.nullish(),
   read_at: z.int().nullish(),
   status: z.string(),
@@ -2404,10 +2406,10 @@ export const zConversation = z.object({
  * ConversationPagination
  */
 export const zConversationPagination = z.object({
-  has_next: z.boolean(),
-  items: z.array(zConversation),
+  data: z.array(zConversation),
+  has_more: z.boolean(),
+  limit: z.int(),
   page: z.int(),
-  per_page: z.int(),
   total: z.int(),
 })
 
@@ -3465,28 +3467,28 @@ export const zHumanInputContent = z.object({
  * MessageDetailResponse
  */
 export const zMessageDetailResponse = z.object({
-  agent_thoughts: z.array(zAgentThought).optional(),
+  agent_thoughts: z.array(zAgentThought),
   annotation: zConversationAnnotation.nullish(),
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
-  answer_tokens: z.int().nullish(),
+  answer: z.string(),
+  answer_tokens: z.int(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
   error: z.string().nullish(),
   extra_contents: z.array(zHumanInputContent).optional(),
-  feedbacks: z.array(zFeedback).optional(),
+  feedbacks: z.array(zFeedback),
   from_account_id: z.string().nullish(),
   from_end_user_id: z.string().nullish(),
   from_source: z.string(),
   id: z.string(),
   inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue.nullish(),
-  message_files: z.array(zMessageFile).optional(),
-  message_metadata_dict: zJsonValue.nullish(),
-  message_tokens: z.int().nullish(),
+  message: zJsonValue,
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int(),
+  metadata: zJsonValue,
   parent_message_id: z.string().nullish(),
-  provider_response_latency: z.number().nullish(),
+  provider_response_latency: z.number(),
   query: z.string(),
-  re_sign_file_url_answer: z.string(),
   status: z.string(),
   workflow_run_id: z.string().nullish(),
 })
@@ -4088,7 +4090,7 @@ export const zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdPath = z.object(
  * Job status retrieved successfully
  */
 export const zGetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse
-  = zAnnotationJobStatusResponse
+  = zAnnotationJobStatusDetailResponse
 
 export const zGetAppsByAppIdAnnotationSettingPath = z.object({
   app_id: z.uuid(),
@@ -4155,7 +4157,7 @@ export const zPostAppsByAppIdAnnotationsBatchImportPath = z.object({
 /**
  * Batch import started successfully
  */
-export const zPostAppsByAppIdAnnotationsBatchImportResponse = zAnnotationJobStatusResponse
+export const zPostAppsByAppIdAnnotationsBatchImportResponse = zAnnotationBatchImportResponse
 
 export const zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdPath = z.object({
   app_id: z.uuid(),
@@ -4166,7 +4168,7 @@ export const zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdPath = z.object({
  * Job status retrieved successfully
  */
 export const zGetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse
-  = zAnnotationJobStatusResponse
+  = zAnnotationJobStatusDetailResponse
 
 export const zGetAppsByAppIdAnnotationsCountPath = z.object({
   app_id: z.uuid(),
@@ -4357,17 +4359,6 @@ export const zGetAppsByAppIdCompletionConversationsByConversationIdPath = z.obje
  */
 export const zGetAppsByAppIdCompletionConversationsByConversationIdResponse
   = zConversationMessageDetail
-
-export const zPostAppsByAppIdCompletionMessagesBody = zCompletionMessagePayload
-
-export const zPostAppsByAppIdCompletionMessagesPath = z.object({
-  app_id: z.uuid(),
-})
-
-/**
- * Completion generated successfully
- */
-export const zPostAppsByAppIdCompletionMessagesResponse = zGeneratedAppResponse
 
 export const zPostAppsByAppIdCompletionMessagesByTaskIdStopPath = z.object({
   app_id: z.uuid(),
@@ -4701,17 +4692,6 @@ export const zGetAppsByAppIdStatisticsUserSatisfactionRateQuery = z.object({
  */
 export const zGetAppsByAppIdStatisticsUserSatisfactionRateResponse
   = zUserSatisfactionRateStatisticResponse
-
-export const zPostAppsByAppIdTextToAudioBody = zTextToSpeechPayload
-
-export const zPostAppsByAppIdTextToAudioPath = z.object({
-  app_id: z.uuid(),
-})
-
-/**
- * Text to speech conversion successful
- */
-export const zPostAppsByAppIdTextToAudioResponse = zAudioBinaryResponse
 
 export const zGetAppsByAppIdTextToAudioVoicesPath = z.object({
   app_id: z.uuid(),
