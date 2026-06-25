@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Remover da equipe",
   "members.removeFromTeamConfirmDescription": "Confirme a remoção deste membro. Esta ação não pode ser desfeita.",
   "members.removeFromTeamConfirmTitle": "Remover {{memberName}} da equipe",
-  "members.role": "FUNÇÕES",
+  "members.role": "FUNÇÃO",
   "members.roles": "FUNÇÕES",
   "members.selectRole": "Selecione uma função",
   "members.sendInvite": "Enviar Convite",

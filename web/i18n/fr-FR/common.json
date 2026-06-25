@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Retirer de l'équipe",
   "members.removeFromTeamConfirmDescription": "Confirmez le retrait de ce membre. Cette action est irréversible.",
   "members.removeFromTeamConfirmTitle": "Retirer {{memberName}} de l'équipe",
-  "members.role": "RÔLES",
+  "members.role": "RÔLE",
   "members.roles": "RÔLES",
   "members.selectRole": "Sélectionner un rôle",
   "members.sendInvite": "Envoyer une invitation",

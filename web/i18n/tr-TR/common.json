@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Takımdan Kaldır",
   "members.removeFromTeamConfirmDescription": "Bu üyeyi kaldırmayı onaylayın. Bu işlem geri alınamaz.",
   "members.removeFromTeamConfirmTitle": "{{memberName}} adlı üyeyi takımdan kaldır",
-  "members.role": "ROLLER",
+  "members.role": "ROL",
   "members.roles": "ROLLER",
   "members.selectRole": "Bir rol seçin",
   "members.sendInvite": "Davet Gönder",
