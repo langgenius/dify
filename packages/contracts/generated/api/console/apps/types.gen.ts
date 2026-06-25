@@ -119,10 +119,9 @@ export type HumanInputFormPreviewPayload = {
 }
 
 export type HumanInputFormPreviewResponse = {
-  actions?: Array<{
-    [key: string]: unknown
-  }>
-  display_in_ui?: boolean | null
+  TYPE?: 'human_input_required'
+  actions?: Array<HumanInputUserActionResponse>
+  display_in_ui?: boolean
   expiration_time?: number | null
   form_content: string
   form_id: string
@@ -135,46 +134,6 @@ export type HumanInputFormPreviewResponse = {
   resolved_default_values?: {
     [key: string]: unknown
   }
-}
-
-export type HumanInputFormSubmitPayload = {
-  action: string
-  form_inputs: {
-    [key: string]: unknown
-  }
-  inputs: {
-    [key: string]: unknown
-  }
-}
-
-export type HumanInputFormSubmitResponse = {
-  [key: string]: unknown
-}
-
-export type IterationNodeRunPayload = {
-  inputs?: {
-    [key: string]: unknown
-  } | null
-}
-
-export type GeneratedAppResponse = JsonValue
-
-export type LoopNodeRunPayload = {
-  inputs?: {
-    [key: string]: unknown
-  } | null
-}
-
-export type AdvancedChatWorkflowRunPayload = {
-  conversation_id?: string | null
-  files?: Array<{
-    [key: string]: unknown
-  }> | null
-  inputs?: {
-    [key: string]: unknown
-  } | null
-  parent_message_id?: string | null
-  query?: string
 }
 
 export type AgentDriveListResponse = {
@@ -407,19 +366,6 @@ export type ConversationMessageDetail = {
   id: string
   model_config?: ModelConfig | null
   status: string
-}
-
-export type CompletionMessagePayload = {
-  files?: Array<unknown> | null
-  inputs: {
-    [key: string]: unknown
-  }
-  model_config?: {
-    [key: string]: unknown
-  }
-  query?: string
-  response_mode?: 'blocking' | 'streaming'
-  retriever_from?: string
 }
 
 export type PaginatedConversationVariableResponse = {
@@ -731,7 +677,7 @@ export type WorkflowRunPaginationResponse = {
 
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -799,7 +745,7 @@ export type WorkflowCommentCreate = {
 }
 
 export type WorkflowCommentMentionUsersPayload = {
-  users: Array<AccountWithRole>
+  users: Array<AccountWithRoleResponse>
 }
 
 export type WorkflowCommentDetail = {
@@ -876,18 +822,10 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
-
-export type DefaultBlockConfigResponse = {
-  [key: string]: unknown
-}
-
 export type WorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount | null
+  created_by?: SimpleAccountResponse | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -902,7 +840,7 @@ export type WorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount | null
+  updated_by?: SimpleAccountResponse | null
   version: string
 }
 
@@ -923,9 +861,9 @@ export type SyncDraftWorkflowPayload = {
 }
 
 export type SyncDraftWorkflowResponse = {
-  hash?: string
-  result?: string
-  updated_at?: string
+  hash: string
+  result: string
+  updated_at: number
 }
 
 export type WorkflowDraftVariableList = {
@@ -961,7 +899,7 @@ export type HumanInputDeliveryTestPayload = {
   }
 }
 
-export type EmptyObjectResponse = {
+export type HumanInputDeliveryTestResponse = {
   [key: string]: unknown
 }
 
@@ -1029,7 +967,7 @@ export type AgentComposerValidateResponse = {
 
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -1062,17 +1000,6 @@ export type DraftWorkflowNodeRunPayload = {
   query?: string
 }
 
-export type DraftWorkflowRunPayload = {
-  datasource_info_list: Array<{
-    [key: string]: unknown
-  }>
-  datasource_type: string
-  inputs: {
-    [key: string]: unknown
-  }
-  start_node_id: string
-}
-
 export type WorkflowRunSnapshotView = {
   node_outputs?: Array<NodeOutputsView>
   workflow_run_id: string
@@ -1097,14 +1024,6 @@ export type OutputPreviewView = {
   status: NodeOutputStatus
   type?: DeclaredOutputType | null
   value?: unknown
-}
-
-export type DraftWorkflowTriggerRunRequest = {
-  node_id: string
-}
-
-export type DraftWorkflowTriggerRunAllPayload = {
-  node_ids: Array<string>
 }
 
 export type WorkflowDraftVariableListWithoutValue = {
@@ -1143,12 +1062,11 @@ export type WorkflowDraftVariableUpdatePayload = {
 }
 
 export type PublishWorkflowPayload = {
-  knowledge_base_setting?: {
-    [key: string]: unknown
-  } | null
+  marked_comment?: string | null
+  marked_name?: string | null
 }
 
-export type WorkflowPublishResponse = {
+export type PublishWorkflowResponse = {
   created_at: number
   result: string
 }
@@ -1165,12 +1083,6 @@ export type WebhookTriggerResponse = {
 export type WorkflowUpdatePayload = {
   marked_comment?: string | null
   marked_name?: string | null
-}
-
-export type WorkflowRestoreResponse = {
-  hash: string
-  result: string
-  updated_at: number
 }
 
 export type ApiKeyList = {
@@ -1223,12 +1135,30 @@ export type DeletedTool = {
 }
 
 export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+  agent_mode?: JsonValue | null
+  annotation_reply?: JsonValue | null
+  chat_prompt_config?: JsonValue | null
+  completion_prompt_config?: JsonValue | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: JsonValue | null
+  dataset_query_variable?: string | null
+  external_data_tools?: JsonValue | null
+  file_upload?: JsonValue | null
+  model?: JsonValue | null
+  more_like_this?: JsonValue | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: JsonValue | null
+  sensitive_word_avoidance?: JsonValue | null
+  speech_to_text?: JsonValue | null
+  suggested_questions?: JsonValue | null
+  suggested_questions_after_answer?: JsonValue | null
+  text_to_speech?: JsonValue | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: JsonValue | null
 }
 
 export type Site = {
@@ -1254,16 +1184,7 @@ export type Tag = {
   type: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type WorkflowPartial = {
   created_at?: number | null
@@ -1289,7 +1210,7 @@ export type WorkflowOnlineUsersByApp = {
 export type AdvancedChatWorkflowRunForListResponse = {
   conversation_id?: string | null
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -1300,6 +1221,12 @@ export type AdvancedChatWorkflowRunForListResponse = {
   total_steps?: number | null
   total_tokens?: number | null
   version?: string | null
+}
+
+export type HumanInputUserActionResponse = {
+  button_style?: string
+  id: string
+  title: string
 }
 
 export type AgentDriveItemResponse = {
@@ -1596,7 +1523,7 @@ export type UserSatisfactionRateStatisticItem = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -1607,7 +1534,7 @@ export type WorkflowAppLogPartialResponse = {
 
 export type WorkflowArchivedLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   id: string
   trigger_metadata?: unknown
@@ -1616,7 +1543,7 @@ export type WorkflowArchivedLogPartialResponse = {
 
 export type WorkflowRunForListResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -1628,7 +1555,7 @@ export type WorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1671,7 +1598,7 @@ export type WorkflowCommentBasic = {
   updated_at?: number | null
 }
 
-export type AccountWithRole = {
+export type AccountWithRoleResponse = {
   avatar?: string | null
   created_at?: number | null
   email: string
@@ -1982,8 +1909,6 @@ export type ModelConfigPartial = {
   updated_by?: string | null
 }
 
-export type LlmMode = 'chat' | 'completion'
-
 export type Type = 'github' | 'marketplace' | 'package'
 
 export type Github = {
@@ -2052,6 +1977,12 @@ export type SimpleMessageDetail = {
   }
   message: string
   query: string
+}
+
+export type SimpleAccount = {
+  email: string
+  id: string
+  name: string
 }
 
 export type HumanInputFormDefinition = {
@@ -2631,8 +2562,6 @@ export type AppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type GeneratedAppResponseWritable = JsonValue
-
 export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
 }
@@ -2652,6 +2581,10 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type HumanInputDeliveryTestResponseWritable = {
+  [key: string]: unknown
 }
 
 export type AppPartialWritable = {
@@ -2998,88 +2931,6 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse
   = PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
-  body: HumanInputFormSubmitPayload
-  path: {
-    app_id: string
-    node_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/run'
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
-  200: HumanInputFormSubmitResponse
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunData = {
-  body: IterationNodeRunPayload
-  path: {
-    app_id: string
-    node_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/advanced-chat/workflows/draft/iteration/nodes/{node_id}/run'
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses]
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunData = {
-  body: LoopNodeRunPayload
-  path: {
-    app_id: string
-    node_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run'
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses]
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunData = {
-  body: AdvancedChatWorkflowRunPayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/advanced-chat/workflows/draft/run'
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
-  400: unknown
-  403: unknown
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse
-  = PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses]
 
 export type GetAppsByAppIdAgentDriveFilesData = {
   body?: never
@@ -3830,27 +3681,6 @@ export type GetAppsByAppIdCompletionConversationsByConversationIdResponses = {
 
 export type GetAppsByAppIdCompletionConversationsByConversationIdResponse
   = GetAppsByAppIdCompletionConversationsByConversationIdResponses[keyof GetAppsByAppIdCompletionConversationsByConversationIdResponses]
-
-export type PostAppsByAppIdCompletionMessagesData = {
-  body: CompletionMessagePayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/completion-messages'
-}
-
-export type PostAppsByAppIdCompletionMessagesErrors = {
-  400: unknown
-  404: unknown
-}
-
-export type PostAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdCompletionMessagesResponse
-  = PostAppsByAppIdCompletionMessagesResponses[keyof PostAppsByAppIdCompletionMessagesResponses]
 
 export type PostAppsByAppIdCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -5114,45 +4944,6 @@ export type GetAppsByAppIdWorkflowsResponses = {
 export type GetAppsByAppIdWorkflowsResponse
   = GetAppsByAppIdWorkflowsResponses[keyof GetAppsByAppIdWorkflowsResponses]
 
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
-  body?: never
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflows/default-workflow-block-configs'
-}
-
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
-  200: DefaultBlockConfigsResponse
-}
-
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse
-  = GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses]
-
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeData = {
-  body?: never
-  path: {
-    app_id: string
-    block_type: string
-  }
-  query?: {
-    q?: string
-  }
-  url: '/apps/{app_id}/workflows/default-workflow-block-configs/{block_type}'
-}
-
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors = {
-  404: unknown
-}
-
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
-  200: DefaultBlockConfigResponse
-}
-
-export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
-  = GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses[keyof GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses]
-
 export type GetAppsByAppIdWorkflowsDraftData = {
   body?: never
   path: {
@@ -5293,7 +5084,7 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestData
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses = {
-  200: EmptyObjectResponse
+  200: HumanInputDeliveryTestResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse
@@ -5315,67 +5106,6 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewRespo
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse
   = PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponses]
-
-export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
-  body: HumanInputFormSubmitPayload
-  path: {
-    app_id: string
-    node_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflows/draft/human-input/nodes/{node_id}/form/run'
-}
-
-export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
-  200: HumanInputFormSubmitResponse
-}
-
-export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
-  = PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses[keyof PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses]
-
-export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunData = {
-  body: IterationNodeRunPayload
-  path: {
-    app_id: string
-    node_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflows/draft/iteration/nodes/{node_id}/run'
-}
-
-export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse
-  = PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses]
-
-export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunData = {
-  body: LoopNodeRunPayload
-  path: {
-    app_id: string
-    node_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflows/draft/loop/nodes/{node_id}/run'
-}
-
-export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
-  403: unknown
-  404: unknown
-}
-
-export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse
-  = PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses[keyof PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses]
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
   body?: never
@@ -5556,7 +5286,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses = {
-  200: GeneratedAppResponse
+  200: WorkflowRunNodeExecutionResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse
@@ -5595,26 +5325,6 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse
   = GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses]
-
-export type PostAppsByAppIdWorkflowsDraftRunData = {
-  body: DraftWorkflowRunPayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflows/draft/run'
-}
-
-export type PostAppsByAppIdWorkflowsDraftRunErrors = {
-  403: unknown
-}
-
-export type PostAppsByAppIdWorkflowsDraftRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdWorkflowsDraftRunResponse
-  = PostAppsByAppIdWorkflowsDraftRunResponses[keyof PostAppsByAppIdWorkflowsDraftRunResponses]
 
 export type GetAppsByAppIdWorkflowsDraftRunsByRunIdNodeOutputsData = {
   body?: never
@@ -5719,48 +5429,6 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponses = {
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponse
   = GetAppsByAppIdWorkflowsDraftSystemVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesResponses]
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
-  body: DraftWorkflowTriggerRunRequest
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflows/draft/trigger/run'
-}
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
-  403: unknown
-  500: unknown
-}
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunResponse
-  = PostAppsByAppIdWorkflowsDraftTriggerRunResponses[keyof PostAppsByAppIdWorkflowsDraftTriggerRunResponses]
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunAllData = {
-  body: DraftWorkflowTriggerRunAllPayload
-  path: {
-    app_id: string
-  }
-  query?: never
-  url: '/apps/{app_id}/workflows/draft/trigger/run-all'
-}
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
-  403: unknown
-  500: unknown
-}
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponse
-  = PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses[keyof PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses]
 
 export type DeleteAppsByAppIdWorkflowsDraftVariablesData = {
   body?: never
@@ -5908,7 +5576,7 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishResponses = {
-  200: WorkflowPublishResponse
+  200: PublishWorkflowResponse
 }
 
 export type PostAppsByAppIdWorkflowsPublishResponse
@@ -6077,7 +5745,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: WorkflowRestoreResponse
+  200: SyncDraftWorkflowResponse
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse

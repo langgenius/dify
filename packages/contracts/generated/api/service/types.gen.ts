@@ -567,7 +567,7 @@ export type DatasourceNodeRunPayload = {
 export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
 
 export type DatasourcePluginResponse = {
-  credentials: Array<DatasourceCredentialInfoResponse>
+  credentials?: Array<DatasourceCredentialInfoResponse>
   datasource_type?: string | null
   node_id?: string | null
   plugin_id?: string | null
@@ -841,8 +841,6 @@ export type FormInputConfig
     type: 'file-list'
   } & FileListInputConfig)
 
-export type GeneratedAppResponse = JsonValue
-
 export type HitTestingChildChunk = {
   content: string
   id: string
@@ -1004,16 +1002,7 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type JsonValueType = unknown
 
@@ -1414,7 +1403,7 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1572,7 +1561,7 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -1672,8 +1661,6 @@ export type WorkflowRunResponse = {
   total_tokens?: number | null
   workflow_id: string
 }
-
-export type GeneratedAppResponseWritable = JsonValue
 
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
@@ -1893,16 +1880,32 @@ export type PostChatMessagesData = {
 }
 
 export type PostChatMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
+
 export type PostChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -1938,16 +1941,33 @@ export type PostCompletionMessagesData = {
 }
 
 export type PostCompletionMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostCompletionMessagesError
+  = PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
+
 export type PostCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostCompletionMessagesResponse
@@ -3188,13 +3208,24 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
 }
 
+export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunError
+  = PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors]
+
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
@@ -3210,14 +3241,27 @@ export type PostDatasetsByDatasetIdPipelineRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostDatasetsByDatasetIdPipelineRunError
+  = PostDatasetsByDatasetIdPipelineRunErrors[keyof PostDatasetsByDatasetIdPipelineRunErrors]
+
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse
@@ -3622,16 +3666,32 @@ export type PostWorkflowsRunData = {
 }
 
 export type PostWorkflowsRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
+
 export type PostWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -3692,16 +3752,33 @@ export type PostWorkflowsByWorkflowIdRunData = {
 }
 
 export type PostWorkflowsByWorkflowIdRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostWorkflowsByWorkflowIdRunError
+  = PostWorkflowsByWorkflowIdRunErrors[keyof PostWorkflowsByWorkflowIdRunErrors]
+
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse

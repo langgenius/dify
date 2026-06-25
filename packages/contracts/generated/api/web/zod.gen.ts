@@ -347,16 +347,7 @@ export const zHumanInputUploadTokenResponse = z.object({
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zJsonValue = z.unknown()
 
 /**
  * AgentThought
@@ -374,11 +365,6 @@ export const zAgentThought = z.object({
   tool_input: z.string().nullish(),
   tool_labels: zJsonValue,
 })
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 export const zJsonValueType = z.unknown()
 
@@ -926,13 +912,6 @@ export const zWorkflowRunPayload = z.object({
  */
 export const zPostAudioToTextResponse = zAudioTranscriptResponse
 
-export const zPostChatMessagesBody = zChatMessagePayload
-
-/**
- * Success
- */
-export const zPostChatMessagesResponse = zGeneratedAppResponse
-
 export const zPostChatMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
 })
@@ -941,13 +920,6 @@ export const zPostChatMessagesByTaskIdStopPath = z.object({
  * Success
  */
 export const zPostChatMessagesByTaskIdStopResponse = zSimpleResultResponse
-
-export const zPostCompletionMessagesBody = zCompletionMessagePayload
-
-/**
- * Success
- */
-export const zPostCompletionMessagesResponse = zGeneratedAppResponse
 
 export const zPostCompletionMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -1139,19 +1111,6 @@ export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
  */
 export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
-export const zGetMessagesByMessageIdMoreLikeThisPath = z.object({
-  message_id: z.uuid(),
-})
-
-export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
-  response_mode: z.enum(['blocking', 'streaming']),
-})
-
-/**
- * Success
- */
-export const zGetMessagesByMessageIdMoreLikeThisResponse = zGeneratedAppResponse
-
 export const zGetMessagesByMessageIdSuggestedQuestionsPath = z.object({
   message_id: z.uuid(),
 })
@@ -1270,13 +1229,6 @@ export const zGetWorkflowByTaskIdEventsPath = z.object({
  * SSE event stream
  */
 export const zGetWorkflowByTaskIdEventsResponse = zEventStreamResponse
-
-export const zPostWorkflowsRunBody = zWorkflowRunPayload
-
-/**
- * Success
- */
-export const zPostWorkflowsRunResponse = zGeneratedAppResponse
 
 export const zPostWorkflowsTasksByTaskIdStopPath = z.object({
   task_id: z.string(),

@@ -698,7 +698,7 @@ export const zDatasourceNodeRunPayload = z.object({
  * DatasourcePluginResponse
  */
 export const zDatasourcePluginResponse = z.object({
-  credentials: z.array(zDatasourceCredentialInfoResponse),
+  credentials: z.array(zDatasourceCredentialInfoResponse).optional(),
   datasource_type: z.string().nullish(),
   node_id: z.string().nullish(),
   plugin_id: z.string().nullish(),
@@ -1114,16 +1114,7 @@ export const zIndexInfoResponse = z.object({
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zJsonValue = z.unknown()
 
 /**
  * AgentThought
@@ -1141,11 +1132,6 @@ export const zAgentThought = z.object({
   tool_input: z.string().nullish(),
   tool_labels: zJsonValue,
 })
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 export const zJsonValueType = z.unknown()
 
@@ -1676,9 +1662,9 @@ export const zProcessRule = z.object({
 })
 
 /**
- * SimpleAccount
+ * SimpleAccountResponse
  */
-export const zSimpleAccount = z.object({
+export const zSimpleAccountResponse = z.object({
   email: z.string(),
   id: z.string(),
   name: z.string(),
@@ -2196,7 +2182,7 @@ export const zWorkflowRunForLogResponse = z.object({
  */
 export const zWorkflowAppLogPartialResponse = z.object({
   created_at: z.int().nullish(),
-  created_by_account: zSimpleAccount.nullish(),
+  created_by_account: zSimpleAccountResponse.nullish(),
   created_by_end_user: zSimpleEndUser.nullish(),
   created_by_role: z.string().nullish(),
   created_from: z.string().nullish(),
@@ -2287,11 +2273,6 @@ export const zWorkflowRunResponse = z.object({
   total_tokens: z.int().nullish(),
   workflow_id: z.string(),
 })
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponseWritable = zJsonValue
 
 /**
  * HumanInputFormSubmitResponse
@@ -2409,7 +2390,7 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
-export const zPostChatMessagesResponse = zGeneratedAppResponse
+export const zPostChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2430,7 +2411,7 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
-export const zPostCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -3061,8 +3042,10 @@ export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunPath = z.
 /**
  * Streaming response with node execution events.
  */
-export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
-  = zGeneratedAppResponse
+export const zPostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
 
 export const zPostDatasetsByDatasetIdPipelineRunBody = zPipelineRunApiEntity
 
@@ -3073,7 +3056,7 @@ export const zPostDatasetsByDatasetIdPipelineRunPath = z.object({
 /**
  * Pipeline execution result. Format depends on `response_mode`: streaming returns a `text/event-stream`, blocking returns a JSON object.
  */
-export const zPostDatasetsByDatasetIdPipelineRunResponse = zGeneratedAppResponse
+export const zPostDatasetsByDatasetIdPipelineRunResponse = z.record(z.string(), z.unknown())
 
 export const zPostDatasetsByDatasetIdRetrieveBody = zHitTestingPayload
 
@@ -3250,7 +3233,7 @@ export const zPostWorkflowsRunBody = zWorkflowRunPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
   workflow_run_id: z.string(),
@@ -3284,7 +3267,7 @@ export const zPostWorkflowsByWorkflowIdRunPath = z.object({
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsByWorkflowIdRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsByWorkflowIdRunResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),

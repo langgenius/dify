@@ -256,8 +256,6 @@ export type FormInputConfig
     type: 'file-list'
   } & FileListInputConfig)
 
-export type GeneratedAppResponse = JsonValue
-
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
   form_submission_data?: HumanInputFormSubmissionData | null
@@ -329,16 +327,7 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type JsonValueType = unknown
 
@@ -674,27 +663,6 @@ export type PostAudioToTextResponses = {
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
 
-export type PostChatMessagesData = {
-  body: ChatMessagePayload
-  path?: never
-  query?: never
-  url: '/chat-messages'
-}
-
-export type PostChatMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type PostChatMessagesResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
-
 export type PostChatMessagesByTaskIdStopData = {
   body?: never
   path: {
@@ -718,28 +686,6 @@ export type PostChatMessagesByTaskIdStopResponses = {
 
 export type PostChatMessagesByTaskIdStopResponse
   = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
-
-export type PostCompletionMessagesData = {
-  body: CompletionMessagePayload
-  path?: never
-  query?: never
-  url: '/completion-messages'
-}
-
-export type PostCompletionMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type PostCompletionMessagesResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostCompletionMessagesResponse
-  = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -1174,32 +1120,6 @@ export type PostMessagesByMessageIdFeedbacksResponses = {
 export type PostMessagesByMessageIdFeedbacksResponse
   = PostMessagesByMessageIdFeedbacksResponses[keyof PostMessagesByMessageIdFeedbacksResponses]
 
-export type GetMessagesByMessageIdMoreLikeThisData = {
-  body?: never
-  path: {
-    message_id: string
-  }
-  query: {
-    response_mode: 'blocking' | 'streaming'
-  }
-  url: '/messages/{message_id}/more-like-this'
-}
-
-export type GetMessagesByMessageIdMoreLikeThisErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type GetMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
-}
-
-export type GetMessagesByMessageIdMoreLikeThisResponse
-  = GetMessagesByMessageIdMoreLikeThisResponses[keyof GetMessagesByMessageIdMoreLikeThisResponses]
-
 export type GetMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
   path: {
@@ -1517,27 +1437,6 @@ export type GetWorkflowByTaskIdEventsResponses = {
 
 export type GetWorkflowByTaskIdEventsResponse
   = GetWorkflowByTaskIdEventsResponses[keyof GetWorkflowByTaskIdEventsResponses]
-
-export type PostWorkflowsRunData = {
-  body: WorkflowRunPayload
-  path?: never
-  query?: never
-  url: '/workflows/run'
-}
-
-export type PostWorkflowsRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
-}
-
-export type PostWorkflowsRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
   body?: never

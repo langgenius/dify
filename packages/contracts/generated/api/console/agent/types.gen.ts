@@ -405,12 +405,30 @@ export type DeletedTool = {
 }
 
 export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+  agent_mode?: JsonValue | null
+  annotation_reply?: JsonValue | null
+  chat_prompt_config?: JsonValue | null
+  completion_prompt_config?: JsonValue | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: JsonValue | null
+  dataset_query_variable?: string | null
+  external_data_tools?: JsonValue | null
+  file_upload?: JsonValue | null
+  model?: JsonValue | null
+  more_like_this?: JsonValue | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: JsonValue | null
+  sensitive_word_avoidance?: JsonValue | null
+  speech_to_text?: JsonValue | null
+  suggested_questions?: JsonValue | null
+  suggested_questions_after_answer?: JsonValue | null
+  text_to_speech?: JsonValue | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: JsonValue | null
 }
 
 export type Site = {
@@ -436,16 +454,7 @@ export type Tag = {
   type: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type WorkflowPartial = {
   created_at?: number | null
@@ -878,8 +887,6 @@ export type AgentAppPublishedReferenceResponse = {
   app_id: string
   app_name: string
 }
-
-export type LlmMode = 'chat' | 'completion'
 
 export type AgentKind = 'dify_agent'
 
