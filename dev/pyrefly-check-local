@@ -44,7 +44,7 @@ run_pyrefly() {
   local pyrefly_status=$?
   set -e
 
-  uv run --directory api python libs/pyrefly_diagnostics.py < "$tmp_output"
+  uv run --directory api python libs/pyrefly_diagnostics.py --status "$pyrefly_status" < "$tmp_output"
   rm -f "$tmp_output"
   return "$pyrefly_status"
 }
