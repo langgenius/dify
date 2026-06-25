@@ -113,8 +113,8 @@ def pull_drive_from_environment(
             When omitted, the historical Agent Stub drive base is used.
 
     Returns:
-        A structured JSON-ready result with downloaded drive keys and their
-        written local paths.
+        A structured JSON-ready result with requested drive targets/prefixes
+        that matched at least one manifest item and their local paths.
 
     Observable behavior:
         Requests a manifest with ``include_download_url=True``, requires every
@@ -129,8 +129,9 @@ def pull_drive_from_environment(
         archive validates successfully. Successfully extracted skill archives
         are deleted from disk.
 
-        Extracted files are materialized on disk but are not added to the
-        returned item list.
+        Downloaded files and extracted files are materialized on disk but are
+        not enumerated in the returned item list; prefix pulls return the local
+        path corresponding to the requested prefix.
 
     Raises:
         AgentStubValidationError: if a manifest item omits ``download_url``, a
@@ -157,6 +158,17 @@ def pull_drive_from_environment(
         responses = list(executor.map(_fetch_manifest, manifest_targets))
     downloads: list[DriveDownloadPayload] = []
     resolved_base_path = Path(local_base or DEFAULT_AGENT_STUB_DRIVE_BASE).expanduser().resolve()
+    result_items: list[DrivePullResult.Item] = []
+    seen_result_targets: set[str] = set()
+    for target, response in zip(manifest_targets, responses, strict=True):
+        if not response.items or target in seen_result_targets:
+            continue
+        seen_result_targets.add(target)
+        try:
+            local_path = resolve_drive_destination(resolved_base_path, target)
+        except DriveMaterializationValidationError as exc:
+            raise AgentStubValidationError(str(exc)) from exc
+        result_items.append(DrivePullResult.Item(key=target, local_path=str(local_path)))
     deduplicated_items = {item.key: item for response in responses for item in response.items}
     for item in [deduplicated_items[key] for key in sorted(deduplicated_items)]:
         download_url = item.download_url
@@ -170,7 +182,7 @@ def pull_drive_from_environment(
         downloads.append(DriveDownloadPayload(key=item.key, payload=payload, size=item.size))
 
     try:
-        written_paths = materialize_drive_downloads(
+        _ = materialize_drive_downloads(
             base_path=resolved_base_path,
             downloads=downloads,
         )
@@ -179,12 +191,7 @@ def pull_drive_from_environment(
     except DriveMaterializationTransferError as exc:
         raise AgentStubTransferError(str(exc)) from exc
 
-    return DrivePullResult(
-        items=[
-            DrivePullResult.Item(key=download.key, local_path=str(path))
-            for download, path in zip(downloads, written_paths, strict=True)
-        ]
-    )
+    return DrivePullResult(items=result_items)
 
 
 def push_drive_from_environment(

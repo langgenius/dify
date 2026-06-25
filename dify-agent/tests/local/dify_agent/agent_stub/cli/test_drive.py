@@ -133,9 +133,9 @@ def test_pull_drive_from_environment_writes_files_under_drive_base(
     result = pull_drive_from_environment(targets=["skills/"], local_base=str(tmp_path))
 
     assert result.model_dump() == {
-        "items": [{"key": "skills/example/SKILL.md", "local_path": str(tmp_path / "skills" / "example" / "SKILL.md")}]
+        "items": [{"key": "skills/", "local_path": str(tmp_path / "skills")}]
     }
-    assert Path(result.items[0].local_path).read_bytes() == b"hello world"
+    assert (tmp_path / "skills" / "example" / "SKILL.md").read_bytes() == b"hello world"
     assert captured["prefix"] == "skills/"
     assert captured["include_download_url"] is True
 
@@ -177,7 +177,7 @@ def test_pull_drive_from_environment_auto_extracts_skill_archive(
 
     archive_path = tmp_path / "skills" / "foo" / ".DIFY-SKILL-FULL.zip"
     assert result.model_dump() == {
-        "items": [{"key": "skills/foo/.DIFY-SKILL-FULL.zip", "local_path": str(archive_path)}]
+        "items": [{"key": "skills/foo", "local_path": str(tmp_path / "skills" / "foo")}]
     }
     assert not archive_path.exists()
     assert (tmp_path / "skills" / "foo" / "SKILL.md").read_text(encoding="utf-8") == "# Example\n"
@@ -475,7 +475,7 @@ def test_pull_drive_from_environment_requests_multiple_targets_and_deduplicates_
     assert len(captured_prefixes) == 2
     assert {(item.key, item.local_path) for item in result.items} == {
         ("files/a.txt", str(tmp_path / "files" / "a.txt")),
-        ("skills/foo/SKILL.md", str(tmp_path / "skills" / "foo" / "SKILL.md")),
+        ("skills/foo", str(tmp_path / "skills" / "foo")),
     }
     assert set(downloaded_urls) == {"https://files.example.com/a-txt", "https://files.example.com/skill-md"}
     assert len(downloaded_urls) == 2
