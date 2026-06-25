@@ -1004,6 +1004,9 @@ class WorkflowService:
         """
         Build a human input form preview for a draft workflow.
 
+        Preview responses are non-actionable: they mirror the live pause payload
+        shape without creating a persisted form, recipient token, or expiration.
+
         Args:
             app_model: Target application model.
             account: Current account.
