@@ -17,8 +17,6 @@ import {
   zGetSnippetsBySnippetIdWorkflowRunsPath,
   zGetSnippetsBySnippetIdWorkflowRunsQuery,
   zGetSnippetsBySnippetIdWorkflowRunsResponse,
-  zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath,
-  zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse,
   zGetSnippetsBySnippetIdWorkflowsDraftConfigPath,
   zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse,
   zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesPath,
@@ -65,7 +63,6 @@ import {
   zPostSnippetsBySnippetIdWorkflowsDraftRunBody,
   zPostSnippetsBySnippetIdWorkflowsDraftRunPath,
   zPostSnippetsBySnippetIdWorkflowsDraftRunResponse,
-  zPostSnippetsBySnippetIdWorkflowsPublishBody,
   zPostSnippetsBySnippetIdWorkflowsPublishPath,
   zPostSnippetsBySnippetIdWorkflowsPublishResponse,
   zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath,
@@ -170,28 +167,9 @@ export const workflowRuns = {
 }
 
 /**
- * Get default block configurations for snippet workflow
- */
-export const get4 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
-    operationId: 'getSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigs',
-    path: '/snippets/{snippet_id}/workflows/default-workflow-block-configs',
-    summary: 'Get default block configurations for snippet workflow',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath }))
-  .output(zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse)
-
-export const defaultWorkflowBlockConfigs = {
-  get: get4,
-}
-
-/**
  * Get snippet draft workflow configuration limits
  */
-export const get5 = oc
+export const get4 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -204,13 +182,13 @@ export const get5 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse)
 
 export const config = {
-  get: get5,
+  get: get4,
 }
 
 /**
  * Conversation variables are not used in snippet workflows; returns an empty list for API parity
  */
-export const get6 = oc
+export const get5 = oc
   .route({
     description:
       'Conversation variables are not used in snippet workflows; returns an empty list for API parity',
@@ -224,13 +202,13 @@ export const get6 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse)
 
 export const conversationVariables = {
-  get: get6,
+  get: get5,
 }
 
 /**
  * Get environment variables from snippet draft workflow graph
  */
-export const get7 = oc
+export const get6 = oc
   .route({
     description: 'Get environment variables from snippet draft workflow graph',
     inputStructure: 'detailed',
@@ -243,7 +221,7 @@ export const get7 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesResponse)
 
 export const environmentVariables = {
-  get: get7,
+  get: get6,
 }
 
 /**
@@ -337,7 +315,7 @@ export const loop = {
  * Returns the most recent execution record for the given node,
  * including status, inputs, outputs, and timing information.
  */
-export const get8 = oc
+export const get7 = oc
   .route({
     description:
       'Get last run result for a node in snippet draft workflow\nReturns the most recent execution record for the given node,\nincluding status, inputs, outputs, and timing information.',
@@ -352,7 +330,7 @@ export const get8 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunResponse)
 
 export const lastRun = {
-  get: get8,
+  get: get7,
 }
 
 /**
@@ -404,7 +382,7 @@ export const delete_ = oc
 /**
  * Get variables for a specific node (snippet draft workflow)
  */
-export const get9 = oc
+export const get8 = oc
   .route({
     description: 'Get variables for a specific node (snippet draft workflow)',
     inputStructure: 'detailed',
@@ -418,7 +396,7 @@ export const get9 = oc
 
 export const variables = {
   delete: delete_,
-  get: get9,
+  get: get8,
 }
 
 export const byNodeId3 = {
@@ -463,7 +441,7 @@ export const run4 = {
 /**
  * System variables are not used in snippet workflows; returns an empty list for API parity
  */
-export const get10 = oc
+export const get9 = oc
   .route({
     description:
       'System variables are not used in snippet workflows; returns an empty list for API parity',
@@ -477,7 +455,7 @@ export const get10 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse)
 
 export const systemVariables = {
-  get: get10,
+  get: get9,
 }
 
 /**
@@ -518,7 +496,7 @@ export const delete2 = oc
 /**
  * Get a specific draft workflow variable (snippet scope)
  */
-export const get11 = oc
+export const get10 = oc
   .route({
     description: 'Get a specific draft workflow variable (snippet scope)',
     inputStructure: 'detailed',
@@ -552,7 +530,7 @@ export const patch = oc
 
 export const byVariableId = {
   delete: delete2,
-  get: get11,
+  get: get10,
   patch,
   reset,
 }
@@ -576,7 +554,7 @@ export const delete3 = oc
 /**
  * List draft workflow variables without values (paginated, snippet scope)
  */
-export const get12 = oc
+export const get11 = oc
   .route({
     description: 'List draft workflow variables without values (paginated, snippet scope)',
     inputStructure: 'detailed',
@@ -595,14 +573,14 @@ export const get12 = oc
 
 export const variables2 = {
   delete: delete3,
-  get: get12,
+  get: get11,
   byVariableId,
 }
 
 /**
  * Get draft workflow for snippet
  */
-export const get13 = oc
+export const get12 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -635,7 +613,7 @@ export const post6 = oc
   .output(zPostSnippetsBySnippetIdWorkflowsDraftResponse)
 
 export const draft = {
-  get: get13,
+  get: get12,
   post: post6,
   config,
   conversationVariables,
@@ -651,7 +629,7 @@ export const draft = {
 /**
  * Get published workflow for snippet
  */
-export const get14 = oc
+export const get13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -675,16 +653,11 @@ export const post7 = oc
     summary: 'Publish snippet workflow',
     tags: ['console'],
   })
-  .input(
-    z.object({
-      body: zPostSnippetsBySnippetIdWorkflowsPublishBody,
-      params: zPostSnippetsBySnippetIdWorkflowsPublishPath,
-    }),
-  )
+  .input(z.object({ params: zPostSnippetsBySnippetIdWorkflowsPublishPath }))
   .output(zPostSnippetsBySnippetIdWorkflowsPublishResponse)
 
 export const publish = {
-  get: get14,
+  get: get13,
   post: post7,
 }
 
@@ -719,7 +692,7 @@ export const byWorkflowId = {
  *
  * Get all published workflows for a snippet
  */
-export const get15 = oc
+export const get14 = oc
   .route({
     description: 'Get all published workflows for a snippet',
     inputStructure: 'detailed',
@@ -738,8 +711,7 @@ export const get15 = oc
   .output(zGetSnippetsBySnippetIdWorkflowsResponse)
 
 export const workflows = {
-  get: get15,
-  defaultWorkflowBlockConfigs,
+  get: get14,
   draft,
   publish,
   byWorkflowId,

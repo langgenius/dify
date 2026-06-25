@@ -3,25 +3,12 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Any
 
 import pytest
 from flask import Flask
-from flask_restx import marshal
 
 from controllers.console.app import workflow_run as workflow_run_module
 from models import Account
-
-
-def _serialize_200_response(handler, payload: Any) -> Any:
-    response_doc = getattr(handler, "__apidoc__", {}).get("responses", {}).get("200")
-    if response_doc is None:
-        return payload
-
-    response_model = response_doc[1]
-    if isinstance(response_model, dict):
-        return marshal(payload, response_model)
-    return payload
 
 
 def _account() -> SimpleNamespace:
@@ -100,11 +87,9 @@ def test_workflow_run_list_returns_frontend_history_contract(app: Flask, monkeyp
     with app.test_request_context("/apps/app-1/workflow-runs?limit=10", method="GET"):
         payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
 
-    response = _serialize_200_response(api.get, payload)
-
-    assert response["limit"] == 10
-    assert response["has_more"] is False
-    assert response["data"][0] == {
+    assert payload["limit"] == 10
+    assert payload["has_more"] is False
+    assert payload["data"][0] == {
         "id": "run-1",
         "version": "v1",
         "status": "succeeded",
@@ -141,10 +126,8 @@ def test_advanced_chat_workflow_run_list_keeps_message_fields(app: Flask, monkey
     with app.test_request_context("/apps/app-1/advanced-chat/workflow-runs?limit=1", method="GET"):
         payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"))
 
-    response = _serialize_200_response(api.get, payload)
-
-    assert response["data"][0]["conversation_id"] == "conversation-1"
-    assert response["data"][0]["message_id"] == "message-1"
+    assert payload["data"][0]["conversation_id"] == "conversation-1"
+    assert payload["data"][0]["message_id"] == "message-1"
 
 
 def test_workflow_run_detail_returns_frontend_detail_contract(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -180,9 +163,7 @@ def test_workflow_run_detail_returns_frontend_detail_contract(app: Flask, monkey
     with app.test_request_context("/apps/app-1/workflow-runs/run-1", method="GET"):
         payload = handler(api, app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"), run_id="run-1")
 
-    response = _serialize_200_response(api.get, payload)
-
-    assert response == {
+    assert payload == {
         "id": "run-1",
         "version": "v1",
         "graph": {"nodes": []},
@@ -219,9 +200,7 @@ def test_workflow_run_node_executions_return_frontend_trace_contract(
             api, _current_account(), app_model=SimpleNamespace(id="app-1", tenant_id="tenant-1"), run_id="run-1"
         )
 
-    response = _serialize_200_response(api.get, payload)
-
-    assert response == {
+    assert payload == {
         "data": [
             {
                 "id": "node-exec-1",

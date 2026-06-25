@@ -769,16 +769,7 @@ export type Feedback = {
   rating: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type MessageFile = {
   belongs_to?: string | null

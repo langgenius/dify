@@ -618,16 +618,7 @@ export const zAgentLogMessageListResponse = z.object({
   total: z.int(),
 })
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zJsonValue = z.unknown()
 
 /**
  * AgentThought
