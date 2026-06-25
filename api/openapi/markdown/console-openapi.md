@@ -20168,11 +20168,19 @@ Model class for provider quota configuration.
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 
+#### SchemaDefinitionItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | Yes |
+| name | string |  | Yes |
+| schema | object |  | Yes |
+
 #### SchemaDefinitionsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| SchemaDefinitionsResponse |  |  |  |
+| SchemaDefinitionsResponse | array |  |  |
 
 #### SegmentAttachmentResponse
 

@@ -9,7 +9,17 @@ class TestSpecSchemaDefinitionsApi:
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 
-        schema_definitions = [{"type": "string"}]
+        schema_definitions = [
+            {
+                "name": "conversation-variable",
+                "label": "Conversation variable",
+                "schema": {
+                    "type": "object",
+                    "properties": {"name": {"type": "string"}},
+                    "required": ["name"],
+                },
+            }
+        ]
 
         with patch.object(
             spec_module,
@@ -21,6 +31,12 @@ class TestSpecSchemaDefinitionsApi:
 
         assert status == 200
         assert resp == schema_definitions
+        assert spec_module.SchemaDefinitionsResponse.model_validate(resp).model_dump(mode="json") == schema_definitions
+
+    def test_get_documents_tight_response_model(self):
+        response = spec_module.SpecSchemaDefinitionsApi.get.__apidoc__["responses"]["200"]
+
+        assert response[1].name == spec_module.SchemaDefinitionsResponse.__name__
 
     def test_get_exception_returns_empty_list(self):
         api = spec_module.SpecSchemaDefinitionsApi()
