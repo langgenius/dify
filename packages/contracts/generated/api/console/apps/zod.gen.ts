@@ -5507,6 +5507,10 @@ export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath = z.obj
   node_id: z.string(),
 })
 
+export const zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerQuery = z.object({
+  snapshot_id: z.string().max(255).optional(),
+})
+
 /**
  * Workflow agent composer state
  */

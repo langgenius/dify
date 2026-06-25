@@ -5497,7 +5497,9 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerData = {
     app_id: string
     node_id: string
   }
-  query?: never
+  query?: {
+    snapshot_id?: string
+  }
   url: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer'
 }
 
