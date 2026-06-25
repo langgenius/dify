@@ -381,6 +381,21 @@ class TestNotionBlocks:
         assert "| H1 |  |" in markdown
         assert "| R2C1 | R2C2 |" in markdown
 
+    def test_read_table_rows_returns_empty_for_empty_results(self, mocker: MockerFixture):
+        extractor = notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type="page",
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+        mocker.patch(
+            "httpx.request",
+            return_value=_mock_response({"results": [], "next_cursor": None}),
+        )
+
+        assert extractor._read_table_rows("tbl-1") == ""
+
 
 class TestNotionMetadataAndCredentialMethods:
     def test_update_last_edited_time_no_document_model(self):
