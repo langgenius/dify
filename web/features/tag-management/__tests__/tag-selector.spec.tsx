@@ -90,6 +90,7 @@ vi.mock('../hooks/use-tag-mutations', () => ({
 
 const i18n = {
   addTag: 'common.tag.addTag',
+  noTag: 'common.tag.noTag',
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   manageTags: 'common.tag.manageTags',
   modifiedSuccessfully: 'common.actionMsg.modifiedSuccessfully',
@@ -122,8 +123,15 @@ describe('TagSelector', () => {
     expect(screen.getByText('Frontend')).toBeInTheDocument()
   })
 
-  it('renders the add tag trigger when no current tag is visible in the workspace tag list', () => {
+  it('renders the no tag trigger when no current tag is visible and binding is unavailable', () => {
     render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: 0 }]} />)
+    expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
+    expect(screen.getByText(i18n.noTag)).toBeInTheDocument()
+    expect(screen.queryByText(i18n.addTag)).not.toBeInTheDocument()
+  })
+
+  it('renders the add tag trigger when no current tag is visible and binding is available', () => {
+    render(<TagSelector {...defaultProps} value={[{ id: 'orphan', name: 'Orphan', type: 'app', binding_count: 0 }]} canBindOrUnbindTags />)
     expect(screen.queryByText('Orphan')).not.toBeInTheDocument()
     expect(screen.getByText(i18n.addTag)).toBeInTheDocument()
   })
@@ -242,7 +250,7 @@ describe('TagSelector', () => {
     const user = userEvent.setup()
     render(<TagSelector {...defaultProps} type="knowledge" value={[]} />)
 
-    await user.click(screen.getByRole('combobox', { name: i18n.addTag }))
+    await user.click(screen.getByRole('combobox', { name: i18n.noTag }))
     await user.type(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder }), 'NewKnowledgeTag')
     await user.click(await screen.findByRole('option', { name: /NewKnowledgeTag/i }))
 
@@ -273,6 +281,22 @@ describe('TagSelector', () => {
 
     expect(await screen.findByRole('combobox', { name: i18n.selectorPlaceholder })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+  })
+
+  it('applies added tags with binding capability even without workspace tag management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<TagSelector {...defaultProps} canBindOrUnbindTags />)
+
+    const trigger = screen.getByRole('combobox', { name: /Frontend/i })
+    await user.click(trigger)
+    await user.click(await screen.findByRole('option', { name: /Backend/i }))
+    await user.click(trigger)
+
+    await waitFor(() => {
+      expect(bindTag).toHaveBeenCalledWith(['tag-2'], 'target-1', 'app')
+    })
   })
 
   it('does not create new tags when only binding capability is available', async () => {

@@ -2042,7 +2042,9 @@ def test_get_custom_provider_models_skips_schema_models_with_mismatched_type() -
     assert all(model.model != "embed-model" for model in models)
 
 
-def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none() -> None:
+def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     configuration = _build_provider_configuration()
     configuration.custom_configuration.models = [
         CustomModelConfiguration(model="error-custom", model_type=ModelType.LLM, credentials={"k": "v"}),
@@ -2064,7 +2066,7 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
             return None
         return _build_ai_model(model)
 
-    with patch("core.entities.provider_configuration.logger.warning") as mock_warning:
+    with caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"):
         with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema):
             models = configuration._get_custom_provider_models(
                 model_types=[ModelType.LLM],
@@ -2072,6 +2074,6 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
                 model_setting_map={},
             )
 
-    assert mock_warning.call_count == 1
+    assert "get custom model schema failed, boom" in caplog.messages
     assert any(model.model == "ok-custom" for model in models)
     assert all(model.model != "none-custom" for model in models)

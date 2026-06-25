@@ -309,7 +309,8 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "customization.manage",
     "plugin.install",
     "plugin.plugin_preferences",
-    "plugin.manage",
+    "plugin.model_config",
+    "plugin.delete",
     "plugin.debug",
     "credential.use",
     "credential.create",
@@ -330,8 +331,6 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
-    "snippets.create_and_modify",
-    "snippets.management",
 ]
 
 _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
@@ -342,7 +341,8 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "customization.manage",
     "plugin.install",
     "plugin.plugin_preferences",
-    "plugin.manage",
+    "plugin.model_config",
+    "plugin.delete",
     "plugin.debug",
     "credential.use",
     "credential.create",
@@ -361,8 +361,6 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "snippets.management",
     "tool.manage",
     "mcp.manage",
-    "snippets.create_and_modify",
-    "snippets.management",
 ]
 
 _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
@@ -378,7 +376,6 @@ _LEGACY_WORKSPACE_EDITOR_KEYS: list[str] = [
     "dataset.external.connect",
     "snippets.create_and_modify",
     "tool.manage",
-    "snippets.create_and_modify",
     "billing.view",
     "billing.subscription.manage",
     "billing.manage",
@@ -410,6 +407,8 @@ _LEGACY_APP_OWNER_KEYS: list[str] = [
     "app.acl.release_and_version",
     "app.acl.monitor",
     "app.acl.access_config",
+    "app.acl.tracing_config",
+    "app.acl.log_and_annotation",
 ]
 
 _LEGACY_APP_ADMIN_KEYS: list[str] = [
@@ -422,6 +421,9 @@ _LEGACY_APP_ADMIN_KEYS: list[str] = [
     "app.acl.release_and_version",
     "app.acl.monitor",
     "app.acl.access_config",
+    "app.acl.access_config",
+    "app.acl.tracing_config",
+    "app.acl.log_and_annotation",
 ]
 
 _LEGACY_APP_EDITOR_KEYS: list[str] = [
@@ -437,9 +439,6 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
 ]
 
 _LEGACY_APP_NORMAL_KEYS: list[str] = [
-    "app.acl.preview",
-    "app.acl.view_layout",
-    "app.acl.test_and_run",
     "app.acl.monitor",
 ]
 
@@ -1684,6 +1683,17 @@ class RBACService:
                 json={"role_ids": role_ids},
             )
             return MemberRolesResponse.model_validate(data or {})
+
+        @staticmethod
+        def delete_rbac_bindings(tenant_id: str, account_id: str):
+            data = _inner_call(
+                "DELETE",
+                f"{_INNER_PREFIX}/members/rbac-bindings",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"account_id": account_id},
+            )
+            return data
 
     class CheckAccess:
         """Call the ``/inner/api/rbac/check-access`` endpoint."""

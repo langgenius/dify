@@ -621,6 +621,7 @@ class TestMyPermissions:
 
         mock_send.assert_not_called()
         assert out.workspace.permission_keys == workspace_keys
+        assert len(out.workspace.permission_keys) == len(set(out.workspace.permission_keys))
         assert out.app.default_permission_keys == app_keys
         assert out.dataset.default_permission_keys == dataset_keys
         assert out.app.overrides == []

@@ -114,6 +114,39 @@ describe('RoleSelector', () => {
     expect(getRoleOption('Editor')).toHaveAttribute('aria-checked', 'true')
   })
 
+  it('should show legacy descriptions for built-in roles without descriptions', async () => {
+    const user = userEvent.setup()
+
+    mockUseWorkspaceRoleList({
+      pages: [{
+        data: [
+          createRole({ id: 'admin', name: 'admin', description: '' }),
+          createRole({ id: 'editor', name: 'editor', description: '' }),
+          createRole({ id: 'normal', name: 'normal', description: '' }),
+          createRole({ id: 'dataset_operator', name: 'dataset_operator', description: '' }),
+        ],
+        pagination: {
+          total_count: 4,
+          per_page: 20,
+          current_page: 1,
+          total_pages: 1,
+        },
+      }],
+    })
+
+    render(<RoleSelectorWrapper initialRole="" />)
+
+    await user.click(getTrigger())
+
+    const roleMenu = getRoleMenu()
+
+    expect(within(roleMenu).getByText(/common\.members\.adminTip/i)).toBeInTheDocument()
+    expect(within(roleMenu).getByText(/common\.members\.editorTip/i)).toBeInTheDocument()
+    expect(within(roleMenu).getByText(/common\.members\.normalTip/i)).toBeInTheDocument()
+    expect(within(roleMenu).getByText(/common\.members\.datasetOperatorTip/i)).toBeInTheDocument()
+    expect(within(roleMenu).queryByText(/permission\.role\.noDescription/i)).not.toBeInTheDocument()
+  })
+
   it('should update selected role name after user chooses a role', async () => {
     const user = userEvent.setup()
 
