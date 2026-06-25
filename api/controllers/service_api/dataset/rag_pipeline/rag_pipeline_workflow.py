@@ -12,6 +12,7 @@ from controllers.common.errors import FilenameNotExistsError, NoFileUploadedErro
 from controllers.common.fields import GeneratedAppResponse
 from controllers.common.schema import (
     query_params_from_model,
+    query_params_from_request,
     register_response_schema_models,
     register_schema_model,
     register_schema_models,
@@ -150,12 +151,11 @@ class DatasourcePluginsApi(DatasetApiResource):
         if not dataset:
             raise NotFound("Dataset not found.")
 
-        # Get query parameter to determine published or draft
-        is_published: bool = request.args.get("is_published", default=True, type=bool)
+        query = query_params_from_request(DatasourcePluginsQuery)
 
         rag_pipeline_service: RagPipelineService = RagPipelineService()
         datasource_plugins: list[dict[Any, Any]] = rag_pipeline_service.get_datasource_plugins(
-            tenant_id=tenant_id, dataset_id=dataset_id_str, is_published=is_published
+            tenant_id=tenant_id, dataset_id=dataset_id_str, is_published=query.is_published
         )
         return datasource_plugins, 200
 
