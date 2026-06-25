@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import BaseModel
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from graphon.entities import WorkflowStartReason
@@ -16,6 +17,7 @@ from models.enums import CreatorUserRole
 from models.model import App, AppMode, Conversation
 from models.workflow import Workflow, WorkflowRun
 from repositories.sqlalchemy_api_workflow_run_repository import _WorkflowRunError
+from tasks.app_generate import workflow_execute_task as workflow_execute_task_module
 from tasks.app_generate.workflow_execute_task import (
     AppExecutionParams,
     _AppRunner,
@@ -35,6 +37,11 @@ class _FakeSessionContext:
 
     def __exit__(self, exc_type, exc, tb) -> bool:
         return False
+
+
+class _StreamEventModel(BaseModel):
+    event: object | None = None
+    task_id: object | None = None
 
 
 def _build_advanced_chat_generate_entity(conversation_id: str | None) -> AdvancedChatAppGenerateEntity:
@@ -72,6 +79,38 @@ def _decode_published_payload(payload: bytes) -> dict[str, object] | str:
 
 def _published_payloads(topic: MagicMock) -> list[dict[str, object] | str]:
     return [_decode_published_payload(call.args[0]) for call in topic.publish.call_args_list]
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        ({"event": "workflow_started"}, "workflow_started"),
+        ({"event": 123}, "123"),
+        (_StreamEventModel(event="workflow_started"), "workflow_started"),
+        (_StreamEventModel(event=123), "123"),
+        ({}, None),
+        (_StreamEventModel(), None),
+        ("workflow_started", None),
+    ],
+)
+def test_get_event_name(event: object, expected: str | None):
+    assert workflow_execute_task_module._get_event_name(event) == expected
+
+
+@pytest.mark.parametrize(
+    ("event", "expected"),
+    [
+        ({"task_id": "task-id"}, "task-id"),
+        (_StreamEventModel(task_id="task-id"), "task-id"),
+        ({"task_id": 123}, None),
+        (_StreamEventModel(task_id=123), None),
+        ({"task_id": ""}, None),
+        (_StreamEventModel(), None),
+        ("task-id", None),
+    ],
+)
+def test_get_task_id(event: object, expected: str | None):
+    assert workflow_execute_task_module._get_task_id(event) == expected
 
 
 @pytest.fixture

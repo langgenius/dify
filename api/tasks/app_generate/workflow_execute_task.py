@@ -311,6 +311,34 @@ def _publish_failed_workflow_terminal_events(exc: Exception, exec_params: AppExe
     topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
 
 
+def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    if isinstance(event, BaseModel):
+        # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
+        # str / Mapping responses.
+        event_name = getattr(event, "event", None)
+    elif isinstance(event, Mapping):
+        event_name = event.get("event")
+    else:
+        return None
+
+    if event_name is None:
+        return None
+    return str(event_name)
+
+
+def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
+    if isinstance(event, BaseModel):
+        # Temporary compatibility for legacy BaseModel stream events; remove after confirming generators always emit
+        # str / Mapping responses.
+        task_id = getattr(event, "task_id", None)
+    elif isinstance(event, Mapping):
+        task_id = event.get("task_id")
+    else:
+        return None
+
+    return task_id if isinstance(task_id, str) and task_id else None
+
+
 def _publish_streaming_response(
     response_stream: Generator[str | Mapping[str, Any] | BaseModel, None, None],
     workflow_run_id: str | uuid.UUID,
@@ -326,28 +354,6 @@ def _publish_streaming_response(
     place that can guarantee SSE consumers eventually see a terminal workflow
     lifecycle event.
     """
-
-    def _get_event_name(event: str | Mapping[str, Any] | BaseModel) -> str | None:
-        if isinstance(event, BaseModel):
-            event_name = getattr(event, "event", None)
-        elif isinstance(event, Mapping):
-            event_name = event.get("event")
-        else:
-            return None
-
-        if event_name is None:
-            return None
-        return str(event_name)
-
-    def _get_task_id(event: str | Mapping[str, Any] | BaseModel) -> str | None:
-        if isinstance(event, BaseModel):
-            task_id = getattr(event, "task_id", None)
-        elif isinstance(event, Mapping):
-            task_id = event.get("task_id")
-        else:
-            return None
-
-        return task_id if isinstance(task_id, str) and task_id else None
 
     def _publish_failed_terminal_event(error_message: str, task_id: str, publish_started: bool) -> None:
         timestamp = to_timestamp(naive_utc_now())
