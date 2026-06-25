@@ -1030,6 +1030,12 @@ class DatasetRetrieval:
     ):
         """
         Persist dataset query audit rows for retrieval requests.
+
+        Stages audit rows on the current scoped session without committing.
+        The caller (or Flask request teardown) is responsible for the final
+        commit so that the audit rows participate in the same transaction as
+        the surrounding retrieval workflow.  This prevents partial commits
+        when a downstream step fails after the query log is written.
         """
         if not query and not attachment_ids:
             return
@@ -1059,9 +1065,8 @@ class DatasetRetrieval:
                     created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
-            if dataset_queries:
-                db.session.add_all(dataset_queries)
-        db.session.commit()
+        if dataset_queries:
+            db.session.add_all(dataset_queries)
 
     def _retriever(
         self,
