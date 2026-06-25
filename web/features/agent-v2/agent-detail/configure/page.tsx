@@ -16,6 +16,7 @@ import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel
 import { AgentPreviewHeader } from './components/preview/header'
 import { AgentPreviewChat } from './components/preview/preview-chat'
 import { AgentPreviewVersionsPanel } from './components/preview/versions-panel'
+import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from './components/workspace'
 import { useAgentConfigureData, useAgentConfigureModelOptions, useAgentPreviewSoulConfig } from './hooks'
 import { useAgentConfigureBuildDraftActions, useAgentConfigureBuildDraftData } from './use-agent-configure-build-draft'
 import { useAgentConfigureSync } from './use-agent-configure-sync'
@@ -90,6 +91,7 @@ function AgentConfigurePageLoadedContent({
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const [rightPanelMode, setRightPanelMode] = useState<AgentConfigureRightPanelMode>('build')
+  const [hideBuildDraftBarUntilRefresh, setHideBuildDraftBarUntilRefresh] = useState(false)
   const {
     agentQuery,
     composerQuery,
@@ -113,6 +115,7 @@ function AgentConfigurePageLoadedContent({
     isViewingVersion,
     normalAgentSoulConfig: agentSoulConfig,
   })
+  const showBuildDraftBar = buildDraft.isActive && !hideBuildDraftBarUntilRefresh
   const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
     onSuccess: ({ debug_conversation_id }) => {
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
@@ -162,16 +165,6 @@ function AgentConfigurePageLoadedContent({
       [mode]: conversationId,
     }))
   }
-  const restartCurrentChat = () => {
-    if (rightPanelChatMode === 'build')
-      refreshDebugConversation(conversationIds.build ?? '')
-
-    setConversationIds(current => ({
-      ...current,
-      [rightPanelChatMode]: null,
-    }))
-    setClearPreviewChat(true)
-  }
   const resetBuildChatSession = useCallback(async () => {
     await refreshDebugConversationAsync(conversationIds.build ?? '')
     setConversationIds(current => ({
@@ -215,6 +208,21 @@ function AgentConfigurePageLoadedContent({
     buildDraft.setSoulSourceOverride(versionId ? 'view-version' : null)
     onSelectVersion(versionId)
   }, [buildDraft, onSelectVersion])
+  const restartCurrentChat = () => {
+    if (rightPanelChatMode === 'build' && buildDraft.isActive) {
+      void buildDraftActions.discardBuildDraft()
+      return
+    }
+
+    if (rightPanelChatMode === 'build')
+      refreshDebugConversation(conversationIds.build ?? '')
+
+    setConversationIds(current => ({
+      ...current,
+      [rightPanelChatMode]: null,
+    }))
+    setClearPreviewChat(true)
+  }
 
   if (buildDraft.isPending) {
     return (
@@ -229,62 +237,60 @@ function AgentConfigurePageLoadedContent({
   }
 
   return (
-    <section
-      aria-label={t('agentDetail.sections.configure')}
+    <AgentConfigureWorkspace
       aria-busy={agentQuery.isFetching}
-      className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden bg-background-body p-1"
-    >
-      <AgentOrchestratePanel
-        agentId={agentId}
-        activeConfigIsPublished={agentQuery.data?.active_config_is_published}
-        activeConfigSnapshot={activeConfigSnapshot}
-        agentSoulConfig={buildDraft.agentSoulConfig}
-        agentName={agentQuery.data?.name}
-        currentModel={currentModel}
-        textGenerationModelList={textGenerationModelList}
-        draftSavedAt={draftSavedAt}
-        isPublishing={isPublishing}
-        readOnly={isViewingVersion || buildDraft.isActive}
-        selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
-        isBuildDraftActive={buildDraft.isActive}
-        showPublishBar={!buildDraft.isActive}
-        bottomBar={buildDraft.isActive
-          ? (
-              <AgentBuildDraftBar
-                changesCount={buildDraft.changesCount}
-                isApplying={buildDraftActions.isApplyingBuildDraft}
-                isDiscarding={buildDraftActions.isDiscardingBuildDraft}
-                onApply={() => {
-                  void buildDraftActions.applyBuildDraft()
-                }}
-                onDiscard={() => {
-                  void buildDraftActions.discardBuildDraft()
-                }}
-              />
-            )
-          : undefined}
-        onSelectModel={setConfigureModel}
-        onPublish={publishDraft}
-        onOpenVersions={() => setShowPreviewVersions(true)}
-        onExitVersions={() => selectVersion(null)}
-      />
-
-      {/* Preview area */}
-      <div className="flex min-w-105 flex-1 gap-1 overflow-hidden">
-        <div className="relative isolate flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
-          <AgentBuildPanelBackground visible={rightPanelChatMode === 'build'} />
-          <AgentPreviewHeader
-            mode={rightPanelChatMode}
-            previewEnabled={false}
-            isChatFeaturesOpen={showChatFeatures}
-            onModeChange={setRightPanelMode}
-            onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
-            onOpenVersions={() => setShowPreviewVersions(true)}
-            onRefresh={restartCurrentChat}
-            refreshDisabled={isRefreshingDebugConversation}
-          />
-
-          <div className="relative z-1 min-h-0 flex-1">
+      leftPanel={(
+        <AgentOrchestratePanel
+          agentId={agentId}
+          activeConfigIsPublished={agentQuery.data?.active_config_is_published}
+          activeConfigSnapshot={activeConfigSnapshot}
+          agentSoulConfig={buildDraft.agentSoulConfig}
+          agentName={agentQuery.data?.name}
+          currentModel={currentModel}
+          textGenerationModelList={textGenerationModelList}
+          draftSavedAt={draftSavedAt}
+          isPublishing={isPublishing}
+          readOnly={isViewingVersion || buildDraft.isActive}
+          selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
+          isBuildDraftActive={buildDraft.isActive}
+          showPublishBar={!buildDraft.isActive}
+          bottomBar={showBuildDraftBar
+            ? (
+                <AgentBuildDraftBar
+                  changesCount={buildDraft.changesCount}
+                  isApplying={buildDraftActions.isApplyingBuildDraft}
+                  isDiscarding={buildDraftActions.isDiscardingBuildDraft}
+                  onApply={() => {
+                    void buildDraftActions.applyBuildDraft()
+                  }}
+                  onDiscard={() => {
+                    void buildDraftActions.discardBuildDraft()
+                  }}
+                />
+              )
+            : undefined}
+          onSelectModel={setConfigureModel}
+          onPublish={publishDraft}
+          onOpenVersions={() => setShowPreviewVersions(true)}
+          onExitVersions={() => selectVersion(null)}
+        />
+      )}
+      rightPanel={(
+        <AgentConfigurePreviewSurface
+          background={<AgentBuildPanelBackground visible={rightPanelChatMode === 'build'} />}
+          header={(
+            <AgentPreviewHeader
+              mode={rightPanelChatMode}
+              previewEnabled={false}
+              isChatFeaturesOpen={showChatFeatures}
+              onModeChange={setRightPanelMode}
+              onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
+              onOpenVersions={() => setShowPreviewVersions(true)}
+              onRefresh={restartCurrentChat}
+              refreshDisabled={isRefreshingDebugConversation || buildDraftActions.isDiscardingBuildDraft}
+            />
+          )}
+          chat={(
             <AgentRightPanelChatWithDraftConfig
               agentId={agentId}
               agentIcon={agentQuery.data?.icon}
@@ -297,29 +303,40 @@ function AgentConfigurePageLoadedContent({
               draftType={rightPanelChatMode === 'build' ? 'debug_build' : undefined}
               mode={rightPanelChatMode}
               onClearChatListChange={setClearPreviewChat}
-              onConversationComplete={buildDraftActions.refreshBuildDraftAfterBuildChat}
+              onConversationComplete={(mode) => {
+                if (mode === 'build')
+                  buildDraftActions.refreshBuildDraftAfterBuildChat(() => setHideBuildDraftBarUntilRefresh(false))
+              }}
               onConversationIdChange={updateConversationId}
-              onSaveDraftBeforeRun={rightPanelChatMode === 'build' ? buildDraftActions.prepareBuildDraftBeforeRun : saveDraft}
+              onSaveDraftBeforeRun={rightPanelChatMode === 'build'
+                ? async () => {
+                  setHideBuildDraftBarUntilRefresh(true)
+                  await buildDraftActions.prepareBuildDraftBeforeRun()
+                }
+                : saveDraft}
             />
-          </div>
-        </div>
-
-        {showPreviewVersions && (
-          <AgentPreviewVersionsPanel
-            agentId={agentId}
-            activeVersionId={activeVersionId}
-            onSelectVersion={selectVersion}
-            onClose={() => setShowPreviewVersions(false)}
-          />
-        )}
-        <AgentChatFeaturesPanel
-          show={showChatFeatures}
-          appFeatures={agentSoulConfig?.app_features}
-          disabled={versionQuery.isPending}
-          onClose={() => setShowChatFeatures(false)}
+          )}
         />
-      </div>
-    </section>
+      )}
+      sidePanels={(
+        <>
+          {showPreviewVersions && (
+            <AgentPreviewVersionsPanel
+              agentId={agentId}
+              activeVersionId={activeVersionId}
+              onSelectVersion={selectVersion}
+              onClose={() => setShowPreviewVersions(false)}
+            />
+          )}
+          <AgentChatFeaturesPanel
+            show={showChatFeatures}
+            appFeatures={agentSoulConfig?.app_features}
+            disabled={versionQuery.isPending}
+            onClose={() => setShowChatFeatures(false)}
+          />
+        </>
+      )}
+    />
   )
 }
 

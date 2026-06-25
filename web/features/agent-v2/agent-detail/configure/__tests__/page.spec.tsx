@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentConfigurePage } from '../page'
 
@@ -196,12 +196,25 @@ vi.mock('../components/orchestrate/build-draft-bar', () => ({
 vi.mock('../components/preview/build-chat', () => ({
   AgentBuildChat: (props: {
     conversationId?: string | null
+    onConversationComplete?: () => void
     onConversationIdChange?: (conversationId: string) => void
+    onSaveDraftBeforeRun?: () => Promise<void>
   }) => (
     <div role="region" aria-label="build-chat">
       <span>{`build:${props.conversationId ?? 'none'}`}</span>
       <button type="button" onClick={() => props.onConversationIdChange?.('build-conversation-new')}>
         save build conversation
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          void props.onSaveDraftBeforeRun?.()
+        }}
+      >
+        send build message
+      </button>
+      <button type="button" onClick={() => props.onConversationComplete?.()}>
+        complete build conversation
       </button>
     </div>
   ),
@@ -308,6 +321,10 @@ describe('AgentConfigurePage', () => {
       isSuccess: false,
       refetch: vi.fn(),
     }
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   describe('Loading state', () => {
@@ -485,6 +502,120 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('publish:no')
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+    })
+
+    it('should show the build draft bar after a new build conversation refresh completes', async () => {
+      vi.useFakeTimers()
+      const queryClient = new QueryClient()
+      const refetchBuildDraft = vi.fn().mockResolvedValue({})
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchBuildDraft,
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+
+      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+
+      expect(refetchBuildDraft).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(refetchBuildDraft).toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+    })
+
+    it('should discard the build draft when restarting build mode with a build draft', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {},
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'restart preview' }))
+
+      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+        expect.any(Object),
+      ))
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          debug_conversation_id: 'debug-conversation-old',
+        },
+      }, expect.any(Object))
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
 
     it('should switch soul source to view version when selecting a version from build draft mode', async () => {

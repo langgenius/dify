@@ -157,13 +157,14 @@ export function useAgentConfigureBuildDraftActions({
     setSoulSourceOverride('build-draft')
   }, [agentId, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isActive, queryClient, saveDraft, setSoulSourceOverride])
 
-  const refreshBuildDraftAfterBuildChat = useCallback(() => {
+  const refreshBuildDraftAfterBuildChat = useCallback((onRefreshed?: () => void) => {
     if (buildDraftRefreshTimerRef.current)
       clearTimeout(buildDraftRefreshTimerRef.current)
 
-    buildDraftRefreshTimerRef.current = setTimeout(() => {
+    buildDraftRefreshTimerRef.current = setTimeout(async () => {
       buildDraftRefreshTimerRef.current = null
-      void refetchBuildDraft()
+      await refetchBuildDraft()
+      onRefreshed?.()
     }, 1000)
   }, [refetchBuildDraft])
 

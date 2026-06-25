@@ -35,6 +35,7 @@ export function AgentPreviewHeader({
   onOpenVersions,
   onRefresh,
   refreshDisabled,
+  showChatFeaturesAction = true,
 }: {
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
@@ -44,6 +45,7 @@ export function AgentPreviewHeader({
   onOpenVersions: () => void
   onRefresh: () => void
   refreshDisabled?: boolean
+  showChatFeaturesAction?: boolean
 }) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
@@ -129,20 +131,24 @@ export function AgentPreviewHeader({
             </button>
           )}
         </div>
-        <SegmentedControlDivider className="mx-3" />
-        <button
-          type="button"
-          aria-pressed={isChatFeaturesOpen}
-          onClick={onToggleChatFeatures}
-          className={cn(
-            'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-            isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
-          )}
-          aria-label={t('agentDetail.configure.preview.chatFeatures')}
-        >
-          <span aria-hidden className="i-ri-chat-settings-line size-4" />
-          <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
-        </button>
+        {showChatFeaturesAction && (
+          <>
+            <SegmentedControlDivider className="mx-3" />
+            <button
+              type="button"
+              aria-pressed={isChatFeaturesOpen}
+              onClick={onToggleChatFeatures}
+              className={cn(
+                'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+                isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
+              )}
+              aria-label={t('agentDetail.configure.preview.chatFeatures')}
+            >
+              <span aria-hidden className="i-ri-chat-settings-line size-4" />
+              <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
+            </button>
+          </>
+        )}
       </div>
     </div>
   )
