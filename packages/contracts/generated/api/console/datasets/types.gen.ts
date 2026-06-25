@@ -854,7 +854,7 @@ export type HitTestingRecord = {
   score: number | null
   segment: HitTestingSegment
   summary: string | null
-  tsne_position: unknown | null
+  tsne_position: unknown
 }
 
 export type DatasetMetadataListItemResponse = {
@@ -1092,7 +1092,7 @@ export type WeightVectorSetting = {
 
 export type HitTestingDocument = {
   data_source_type: string
-  doc_metadata: unknown | null
+  doc_metadata: unknown
   doc_type: string | null
   id: string
   name: string

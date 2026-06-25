@@ -718,7 +718,7 @@ export const zWorkflowDraftVariableList = z.object({
  */
 export const zWorkflowDraftVariableUpdatePayload = z.object({
   name: z.string().nullish(),
-  value: z.unknown().nullish(),
+  value: z.unknown().optional(),
 })
 
 /**
