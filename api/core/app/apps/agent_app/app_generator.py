@@ -16,7 +16,7 @@ from collections.abc import Generator, Mapping
 from typing import Any
 
 from flask import Flask, current_app
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 
 from clients.agent_backend import AgentBackendRunEventAdapter
 from clients.agent_backend.factory import create_agent_backend_run_client
@@ -448,12 +448,21 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         user: Account | EndUser,
     ) -> tuple[Agent, str, AgentSoulConfig]:
         agent = db.session.scalar(
-            select(Agent).where(
-                Agent.app_id == app_model.id,
-                Agent.scope == AgentScope.ROSTER,
-                Agent.source == AgentSource.AGENT_APP,
+            select(Agent)
+            .where(
+                Agent.tenant_id == app_model.tenant_id,
                 Agent.status == AgentStatus.ACTIVE,
+                or_(
+                    and_(
+                        Agent.app_id == app_model.id,
+                        Agent.scope == AgentScope.ROSTER,
+                        Agent.source == AgentSource.AGENT_APP,
+                    ),
+                    Agent.backing_app_id == app_model.id,
+                ),
             )
+            .order_by(Agent.created_at.desc())
+            .limit(1)
         )
         if agent is None:
             raise AgentAppGeneratorError("Agent App has no bound Agent")

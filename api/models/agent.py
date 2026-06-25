@@ -145,6 +145,7 @@ class Agent(DefaultFieldsMixin, Base):
         Index("agent_tenant_scope_idx", "tenant_id", "scope"),
         Index("agent_tenant_workflow_id_idx", "tenant_id", "workflow_id"),
         Index("agent_tenant_app_id_idx", "tenant_id", "app_id"),
+        Index("agent_tenant_backing_app_id_idx", "tenant_id", "backing_app_id"),
         Index("agent_active_config_snapshot_id_idx", "active_config_snapshot_id"),
         Index(
             "agent_tenant_invitable_idx",
@@ -173,6 +174,14 @@ class Agent(DefaultFieldsMixin, Base):
     scope: Mapped[AgentScope] = mapped_column(EnumText(AgentScope, length=32), nullable=False)
     source: Mapped[AgentSource] = mapped_column(EnumText(AgentSource, length=32), nullable=False)
     app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    backing_app_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        comment=(
+            "Runtime Agent App used for chat/log/monitoring. For workflow-only agents, "
+            "app_id remains the parent workflow app id and this points to the hidden backing app."
+        ),
+    )
     workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     workflow_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     active_config_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
