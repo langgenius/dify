@@ -31,6 +31,7 @@
   "menu.editInfo": "編輯訊息",
   "menu.exportSnippet": "導出片段",
   "panelTitle": "輸入欄位",
+  "publishButton": "發布",
   "publishFailed": "無法發布片段",
   "publishMenuCurrentDraft": "當前草案未發布",
   "publishSuccess": "已發布片段",

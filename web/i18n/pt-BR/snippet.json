@@ -31,6 +31,7 @@
   "menu.editInfo": "Editar informações",
   "menu.exportSnippet": "Exportar trecho",
   "panelTitle": "Campo de entrada",
+  "publishButton": "Publicar",
   "publishFailed": "Falha ao publicar o snippet",
   "publishMenuCurrentDraft": "Rascunho atual não publicado",
   "publishSuccess": "Trecho publicado",

@@ -31,6 +31,7 @@
   "menu.editInfo": "Bewerk informatie",
   "menu.exportSnippet": "Fragment exporteren",
   "panelTitle": "Invoerveld",
+  "publishButton": "Publiceren",
   "publishFailed": "Kan fragment niet publiceren",
   "publishMenuCurrentDraft": "Huidig concept niet gepubliceerd",
   "publishSuccess": "Fragment gepubliceerd",

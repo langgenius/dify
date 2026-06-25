@@ -31,6 +31,7 @@
   "menu.editInfo": "情 の編集",
   "menu.exportSnippet": "スニペットのエクスポート",
   "panelTitle": "入力フィールド",
+  "publishButton": "公開",
   "publishFailed": "スニペットの公開に失敗しました",
   "publishMenuCurrentDraft": "現在のドラフトは未公開です",
   "publishSuccess": "スニペットが公開されました",

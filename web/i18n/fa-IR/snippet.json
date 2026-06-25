@@ -31,6 +31,7 @@
   "menu.editInfo": "ویرایش اطلاعات",
   "menu.exportSnippet": "صادرات قطعه",
   "panelTitle": "فیلد ورودی",
+  "publishButton": "انتشار",
   "publishFailed": "انتشار قطعه ناموفق بود",
   "publishMenuCurrentDraft": "پیش نویس فعلی منتشر نشده است",
   "publishSuccess": "قطعه منتشر شد",

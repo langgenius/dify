@@ -31,6 +31,7 @@
   "menu.editInfo": "تحرير المعلومات",
   "menu.exportSnippet": "تصدير مقتطف",
   "panelTitle": "حقل الإدخال",
+  "publishButton": "نشر",
   "publishFailed": "فشل نشر المقتطف",
   "publishMenuCurrentDraft": "المسودة الحالية غير منشورة",
   "publishSuccess": "تم نشر المقتطف",
