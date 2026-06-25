@@ -19,10 +19,18 @@ ToolFile records (see ``AgentDriveFile``). This service is the control plane:
 
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
+import io
 import json
 import logging
+import mimetypes
+import os
 import re
+import time
 import urllib.parse
+import zipfile
 from typing import Any, Literal, TypedDict
 from urllib.parse import unquote
 
@@ -31,6 +39,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from configs import dify_config
 from core.app.file_access.controller import DatabaseFileAccessController
 from core.db.session_factory import session_factory
 from extensions.ext_storage import storage
@@ -46,6 +55,7 @@ _MAX_KEY_LENGTH = 512
 _DRIVE_REF_PREFIX = "agent-"
 _SKILL_MD_SUFFIX = "/SKILL.md"
 _SKILL_ARCHIVE_NAME = ".DIFY-SKILL-FULL.zip"
+_ARCHIVE_MEMBER_DOWNLOAD_PURPOSE = "agent-drive-archive-member"
 
 
 class AgentDriveError(Exception):
@@ -365,6 +375,7 @@ class AgentDriveService:
             skill_md_key=skill_md_key,
             manifest_files=manifest_files,
             drive_keys=drive_keys,
+            archive_available=catalog["archive_key"] in drive_keys if catalog["archive_key"] else False,
         )
         return {
             **catalog,
@@ -598,6 +609,7 @@ class AgentDriveService:
         skill_md_key: str,
         manifest_files: list[str] | None,
         drive_keys: set[str],
+        archive_available: bool = False,
     ) -> tuple[list[AgentDriveSkillFileInfo], list[str]]:
         warnings: list[str] = []
         if manifest_files:
@@ -617,13 +629,14 @@ class AgentDriveService:
             if path == _SKILL_ARCHIVE_NAME:
                 continue
             drive_key = f"{skill_path}/{path}"
+            available_in_drive = drive_key in drive_keys or (archive_available and path != _SKILL_ARCHIVE_NAME)
             files.append(
                 {
                     "path": path,
                     "name": path.rsplit("/", 1)[-1],
                     "type": "file",
-                    "drive_key": drive_key if drive_key in drive_keys else None,
-                    "available_in_drive": drive_key in drive_keys,
+                    "drive_key": drive_key if available_in_drive else None,
+                    "available_in_drive": available_in_drive,
                 }
             )
         if "SKILL.md" not in {file["path"] for file in files}:
@@ -891,36 +904,138 @@ class AgentDriveService:
             raise AgentDriveError("drive_key_not_found", "drive value record is missing", status_code=404)
         return upload_file.key
 
-    def preview(self, *, tenant_id: str, agent_id: str, key: str) -> dict[str, Any]:
-        """Truncated text preview of one drive value (binary-safe, never 500s on size)."""
-        with session_factory.create_session() as session:
-            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
-            storage_key = self._storage_key_for_row(session, tenant_id=tenant_id, row=row)
-            size = row.size
+    def _archive_member_for_key(
+        self,
+        session: Session,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+    ) -> tuple[AgentDriveFile, str]:
+        normalized_key = normalize_drive_key(key)
+        if "/" not in normalized_key:
+            raise AgentDriveError("drive_key_not_found", "no drive entry for this key", status_code=404)
+        skill_path, member_path = normalized_key.split("/", 1)
+        if member_path in {_SKILL_ARCHIVE_NAME, ""}:
+            raise AgentDriveError("drive_key_not_found", "no archive member for this key", status_code=404)
 
-        data = bytearray()
-        for chunk in storage.load_stream(storage_key):
-            data.extend(chunk)
-            if len(data) > self.PREVIEW_MAX_BYTES:
-                break
-        truncated = len(data) > self.PREVIEW_MAX_BYTES
-        sample = bytes(data[: self.PREVIEW_MAX_BYTES])
-        # Same semantics as the sandbox read endpoint: NUL or undecodable -> binary.
+        skill_md_key = f"{skill_path}{_SKILL_MD_SUFFIX}"
+        skill_row = session.scalar(
+            select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+                AgentDriveFile.key == skill_md_key,
+                AgentDriveFile.is_skill.is_(True),
+            )
+        )
+        if skill_row is None:
+            raise AgentDriveError("drive_key_not_found", "no drive entry for this key", status_code=404)
+        metadata = self._parse_skill_metadata(skill_row.key, skill_row.skill_metadata)
+        manifest_files = {normalize_drive_key(path) for path in (metadata.manifest_files or [])}
+        if member_path not in manifest_files:
+            raise AgentDriveError("drive_key_not_found", "archive member is not part of this skill", status_code=404)
+        archive_row = session.scalar(
+            select(AgentDriveFile).where(
+                AgentDriveFile.tenant_id == tenant_id,
+                AgentDriveFile.agent_id == agent_id,
+                AgentDriveFile.key == self._skill_archive_key(skill_md_key),
+            )
+        )
+        if archive_row is None:
+            raise AgentDriveError("drive_key_not_found", "skill archive is missing", status_code=404)
+        return archive_row, member_path
+
+    def _load_archive_member_bytes(
+        self,
+        *,
+        tenant_id: str,
+        archive_file_kind: AgentDriveFileKind,
+        archive_file_id: str,
+        member_path: str,
+    ) -> bytes:
+        member_path = normalize_drive_key(member_path)
+        with session_factory.create_session() as session:
+            storage_key = self._storage_key_for_ref(
+                session,
+                tenant_id=tenant_id,
+                file_kind=archive_file_kind,
+                file_id=archive_file_id,
+            )
+        archive_bytes = b"".join(storage.load_stream(storage_key))
+        try:
+            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                member = next(
+                    (
+                        info
+                        for info in archive.infolist()
+                        if not info.is_dir() and normalize_drive_key(info.filename) == member_path
+                    ),
+                    None,
+                )
+                if member is None:
+                    raise AgentDriveError(
+                        "drive_key_not_found", "archive member is missing from the skill archive", status_code=404
+                    )
+                return archive.read(member)
+        except zipfile.BadZipFile as exc:
+            raise AgentDriveError("invalid_skill_archive", "skill archive is not a valid zip", status_code=500) from exc
+
+    @classmethod
+    def _preview_bytes(cls, *, key: str, size: int | None, payload: bytes) -> dict[str, Any]:
+        truncated = len(payload) > cls.PREVIEW_MAX_BYTES
+        sample = payload[: cls.PREVIEW_MAX_BYTES]
         if b"\x00" in sample:
-            return {"key": row.key, "size": size, "truncated": truncated, "binary": True, "text": None}
+            return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
         try:
             text = sample.decode("utf-8")
         except UnicodeDecodeError:
             if truncated:
-                # A multi-byte char may sit on the cut point; retry without the tail.
                 try:
                     text = sample[:-3].decode("utf-8", errors="strict")
                 except UnicodeDecodeError:
-                    return {"key": row.key, "size": size, "truncated": truncated, "binary": True, "text": None}
+                    return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
             else:
-                return {"key": row.key, "size": size, "truncated": truncated, "binary": True, "text": None}
-        return {"key": row.key, "size": size, "truncated": truncated, "binary": False, "text": text}
+                return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
+        return {"key": key, "size": size, "truncated": truncated, "binary": False, "text": text}
+
+    def preview(self, *, tenant_id: str, agent_id: str, key: str) -> dict[str, Any]:
+        """Truncated text preview of one drive value (binary-safe, never 500s on size)."""
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+            try:
+                row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
+                storage_key = self._storage_key_for_row(session, tenant_id=tenant_id, row=row)
+                size = row.size
+                response_key = row.key
+                archive_ref: tuple[AgentDriveFile, str] | None = None
+            except AgentDriveError:
+                archive_ref = self._archive_member_for_key(
+                    session,
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    key=key,
+                )
+                storage_key = None
+                size = None
+                response_key = normalize_drive_key(key)
+
+        if archive_ref is not None:
+            archive_row, member_path = archive_ref
+            payload = self._load_archive_member_bytes(
+                tenant_id=tenant_id,
+                archive_file_kind=archive_row.file_kind,
+                archive_file_id=archive_row.file_id,
+                member_path=member_path,
+            )
+            return self._preview_bytes(key=response_key, size=len(payload), payload=payload)
+
+        data = bytearray()
+        assert storage_key is not None
+        for chunk in storage.load_stream(storage_key):
+            data.extend(chunk)
+            if len(data) > self.PREVIEW_MAX_BYTES:
+                break
+        return self._preview_bytes(key=response_key, size=size, payload=bytes(data))
 
     def preview_file_ref(
         self,
@@ -947,27 +1062,51 @@ class AgentDriveService:
             data.extend(chunk)
             if len(data) > self.PREVIEW_MAX_BYTES:
                 break
-        truncated = len(data) > self.PREVIEW_MAX_BYTES
-        sample = bytes(data[: self.PREVIEW_MAX_BYTES])
-        if b"\x00" in sample:
-            return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
-        try:
-            text = sample.decode("utf-8")
-        except UnicodeDecodeError:
-            if truncated:
-                try:
-                    text = sample[:-3].decode("utf-8", errors="strict")
-                except UnicodeDecodeError:
-                    return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
-            else:
-                return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
-        return {"key": key, "size": size, "truncated": truncated, "binary": False, "text": text}
+        return self._preview_bytes(key=key, size=size, payload=bytes(data))
+
+    def preview_archive_member_for_ref(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        archive_file_kind: AgentDriveFileKind,
+        archive_file_id: str,
+        member_path: str,
+    ) -> dict[str, Any]:
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        payload = self._load_archive_member_bytes(
+            tenant_id=tenant_id,
+            archive_file_kind=archive_file_kind,
+            archive_file_id=archive_file_id,
+            member_path=member_path,
+        )
+        return self._preview_bytes(key=normalize_drive_key(key), size=len(payload), payload=payload)
 
     def download_url(self, *, tenant_id: str, agent_id: str, key: str) -> str:
         """External signed URL for a browser download of one drive value."""
         with session_factory.create_session() as session:
             self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
-            row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
+            try:
+                row = self._require_row(session, tenant_id=tenant_id, agent_id=agent_id, key=key)
+            except AgentDriveError:
+                archive_row, member_path = self._archive_member_for_key(
+                    session,
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    key=key,
+                )
+                return self.sign_archive_member_url(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    key=key,
+                    archive_file_kind=archive_row.file_kind,
+                    archive_file_id=archive_row.file_id,
+                    member_path=member_path,
+                    for_external=True,
+                    as_attachment=True,
+                )
             url = self._resolve_download_url(
                 tenant_id=tenant_id,
                 file_kind=row.file_kind,
@@ -978,6 +1117,30 @@ class AgentDriveService:
         if url is None:
             raise AgentDriveError("drive_key_not_found", "drive value cannot be resolved", status_code=404)
         return url
+
+    def download_url_archive_member_for_ref(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        archive_file_kind: AgentDriveFileKind,
+        archive_file_id: str,
+        member_path: str,
+        for_external: bool = True,
+    ) -> str:
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        return self.sign_archive_member_url(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            key=key,
+            archive_file_kind=archive_file_kind,
+            archive_file_id=archive_file_id,
+            member_path=member_path,
+            for_external=for_external,
+            as_attachment=True,
+        )
 
     def download_url_for_ref(
         self,
@@ -999,6 +1162,135 @@ class AgentDriveService:
         if url is None:
             raise AgentDriveError("drive_key_not_found", "drive value cannot be resolved", status_code=404)
         return url
+
+    @staticmethod
+    def _secret_key() -> bytes:
+        return dify_config.SECRET_KEY.encode()
+
+    @classmethod
+    def _archive_member_signature_payload(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        archive_file_kind: AgentDriveFileKind,
+        archive_file_id: str,
+        member_path: str,
+        timestamp: str,
+        nonce: str,
+    ) -> str:
+        return "|".join(
+            [
+                _ARCHIVE_MEMBER_DOWNLOAD_PURPOSE,
+                tenant_id,
+                agent_id,
+                normalize_drive_key(key),
+                archive_file_kind.value,
+                archive_file_id,
+                normalize_drive_key(member_path),
+                timestamp,
+                nonce,
+            ]
+        )
+
+    @classmethod
+    def _sign_archive_member_payload(cls, payload: str) -> str:
+        digest = hmac.new(cls._secret_key(), payload.encode(), hashlib.sha256).digest()
+        return base64.urlsafe_b64encode(digest).decode()
+
+    @classmethod
+    def sign_archive_member_url(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        archive_file_kind: AgentDriveFileKind,
+        archive_file_id: str,
+        member_path: str,
+        for_external: bool,
+        as_attachment: bool = False,
+    ) -> str:
+        base_url = dify_config.FILES_URL if for_external else (dify_config.INTERNAL_FILES_URL or dify_config.FILES_URL)
+        timestamp = str(int(time.time()))
+        nonce = os.urandom(16).hex()
+        payload = cls._archive_member_signature_payload(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            key=key,
+            archive_file_kind=archive_file_kind,
+            archive_file_id=archive_file_id,
+            member_path=member_path,
+            timestamp=timestamp,
+            nonce=nonce,
+        )
+        query = urllib.parse.urlencode(
+            {
+                "tenant_id": tenant_id,
+                "agent_id": agent_id,
+                "key": normalize_drive_key(key),
+                "archive_file_kind": archive_file_kind.value,
+                "archive_file_id": archive_file_id,
+                "member_path": normalize_drive_key(member_path),
+                "timestamp": timestamp,
+                "nonce": nonce,
+                "sign": cls._sign_archive_member_payload(payload),
+                "as_attachment": str(as_attachment).lower(),
+            }
+        )
+        return f"{base_url}/files/agent-drive/archive-member?{query}"
+
+    @classmethod
+    def verify_archive_member_signature(
+        cls,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        archive_file_kind: AgentDriveFileKind,
+        archive_file_id: str,
+        member_path: str,
+        timestamp: str,
+        nonce: str,
+        sign: str,
+    ) -> bool:
+        payload = cls._archive_member_signature_payload(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            key=key,
+            archive_file_kind=archive_file_kind,
+            archive_file_id=archive_file_id,
+            member_path=member_path,
+            timestamp=timestamp,
+            nonce=nonce,
+        )
+        if sign != cls._sign_archive_member_payload(payload):
+            return False
+        current_time = int(time.time())
+        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+    def load_archive_member_for_signed_request(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        key: str,
+        archive_file_kind: AgentDriveFileKind,
+        archive_file_id: str,
+        member_path: str,
+    ) -> tuple[bytes, str, str]:
+        with session_factory.create_session() as session:
+            self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        payload = self._load_archive_member_bytes(
+            tenant_id=tenant_id,
+            archive_file_kind=archive_file_kind,
+            archive_file_id=archive_file_id,
+            member_path=member_path,
+        )
+        mime_type = mimetypes.guess_type(member_path)[0] or "application/octet-stream"
+        filename = normalize_drive_key(key).rsplit("/", 1)[-1]
+        return payload, mime_type, filename
 
 
 __all__ = [
