@@ -1,8 +1,7 @@
 from types import SimpleNamespace
 
-from flask_restx import marshal
-
-from fields.snippet_fields import snippet_list_fields
+from fields.snippet_fields import SnippetListItemResponse
+from libs.helper import dump_response
 
 
 def test_snippet_list_fields_include_author_name() -> None:
@@ -23,6 +22,6 @@ def test_snippet_list_fields_include_author_name() -> None:
         updated_at=None,
     )
 
-    result = marshal(snippet, snippet_list_fields)
+    result = dump_response(SnippetListItemResponse, snippet)
 
     assert result["author_name"] == "Alice"
