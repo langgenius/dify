@@ -12,10 +12,6 @@ export function useMarketplaceSort() {
 export function useMarketplaceSortValue() {
   return useAtomValue(marketplaceSortAtom)
 }
-export function useSetMarketplaceSort() {
-  return useSetAtom(marketplaceSortAtom)
-}
-
 export function useSearchPluginText() {
   return useQueryState('q', marketplaceSearchParamsParsers.q)
 }

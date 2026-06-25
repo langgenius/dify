@@ -7,13 +7,13 @@ import { PipelineInputVarType } from '@/models/pipeline'
 
 export const TEXT_MAX_LENGTH = 256
 
-export const TransferMethod = z.enum([
+const TransferMethod = z.enum([
   'all',
   'local_file',
   'remote_url',
 ])
 
-export const SupportedFileTypes = z.enum([
+const SupportedFileTypes = z.enum([
   'image',
   'document',
   'video',

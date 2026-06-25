@@ -45,6 +45,9 @@ const MembersPage = () => {
   const [detailsMember, setDetailsMember] = useState<Member | null>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
+  const roleColumnLabel = systemFeatures.rbac_enabled
+    ? t('members.roles', { ns: 'common' })
+    : t('members.role', { ns: 'common' })
 
   const handleOpenDetails = useCallback((member: Member) => {
     setDetailsMember(member)
@@ -151,7 +154,7 @@ const MembersPage = () => {
           <div className="flex min-w-120 items-center border-b border-divider-regular py-1.75">
             <div className="w-65 shrink-0 px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.name', { ns: 'common' })}</div>
             <div className="w-30 shrink-0 system-xs-medium-uppercase text-text-tertiary">{t('members.lastActive', { ns: 'common' })}</div>
-            <div className="min-w-0 grow px-3 system-xs-medium-uppercase text-text-tertiary">{t('members.role', { ns: 'common' })}</div>
+            <div className="min-w-0 grow px-3 system-xs-medium-uppercase text-text-tertiary">{roleColumnLabel}</div>
           </div>
           <div className="relative min-w-120">
             {accounts.map(account => (

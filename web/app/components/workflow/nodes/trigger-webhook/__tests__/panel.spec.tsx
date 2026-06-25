@@ -175,7 +175,6 @@ const mockConfigState = {
 vi.mock('../use-config', () => ({
   DEFAULT_STATUS_CODE: 200,
   MAX_STATUS_CODE: 399,
-  normalizeStatusCode: (statusCode: number) => Math.min(Math.max(statusCode, 200), 399),
   useConfig: () => ({
     readOnly: mockConfigState.readOnly,
     inputs: mockConfigState.inputs,

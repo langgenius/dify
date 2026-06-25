@@ -14,6 +14,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
+from extensions.ext_database import db
 from libs.exception import BaseHTTPException
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveResponse
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError, InnerKnowledgeRetrievalServiceError
@@ -81,7 +82,7 @@ class InnerKnowledgeRetrieveApi(Resource):
             ) from exc
 
         try:
-            response = InnerKnowledgeRetrievalService().retrieve(payload)
+            response = InnerKnowledgeRetrievalService().retrieve(payload, session=db.session)
         except InnerKnowledgeRetrievalServiceError as exc:
             raise InnerKnowledgeRetrievalHttpError(
                 error_code=exc.error_code,

@@ -263,6 +263,7 @@ function List({
                 onCreateBlank={openCreateBlankModal}
                 onCreateTemplate={openCreateTemplateDialog}
                 onImportDSL={openCreateFromDSLModal}
+                showLearnDify={systemFeatures.enable_learn_app}
               />
             )
           : (

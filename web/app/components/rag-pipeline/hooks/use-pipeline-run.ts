@@ -1,3 +1,6 @@
+import type {
+  useNodesSyncDraft,
+} from './use-nodes-sync-draft'
 import type { IOtherOptions } from '@/service/base'
 import type { VersionHistory } from '@/types/workflow'
 import { produce } from 'immer'
@@ -16,7 +19,6 @@ import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service
 import { stopWorkflowRun } from '@/service/workflow'
 import { FlowType } from '@/types/common'
 import {
-  useNodesSyncDraft,
   useNodesSyncDraftByCanEdit,
 } from './use-nodes-sync-draft'
 
@@ -322,12 +324,6 @@ const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
 export const usePipelineRunByCanEdit = (canEdit: boolean) => {
   const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
-
-  return usePipelineRunBase(doSyncWorkflowDraft)
-}
-
-export const usePipelineRun = () => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   return usePipelineRunBase(doSyncWorkflowDraft)
 }

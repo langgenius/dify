@@ -142,15 +142,31 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
     defaultValue: allCategoriesEn,
   })
 
+  const visibleCategories = useMemo(() => {
+    if (!homeQueries.appListData)
+      return []
+
+    const categoriesWithApps = new Set<string>()
+    homeQueries.appListData.allList.forEach((app) => {
+      app.categories.forEach(category => categoriesWithApps.add(category))
+    })
+
+    return homeQueries.appListData.categories.filter(category => categoriesWithApps.has(category))
+  }, [homeQueries.appListData])
+
+  const activeCategory = visibleCategories.includes(currCategory)
+    ? currCategory
+    : allCategoriesEn
+
   const filteredList = useMemo(() => {
     if (!homeQueries.appListData)
       return []
     return homeQueries.appListData.allList.filter(
       item =>
-        currCategory === allCategoriesEn
-        || item.categories?.includes(currCategory),
+        activeCategory === allCategoriesEn
+        || item.categories?.includes(activeCategory),
     )
-  }, [homeQueries.appListData, currCategory, allCategoriesEn])
+  }, [homeQueries.appListData, activeCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -292,8 +308,8 @@ const Apps = ({ onSuccess }: { onSuccess?: () => void }) => {
 
                 <ExploreAppListHeader
                   allCategoriesEn={allCategoriesEn}
-                  categories={homeQueries.appListData?.categories ?? []}
-                  currCategory={currCategory}
+                  categories={visibleCategories}
+                  currCategory={activeCategory}
                   keywords={keywords}
                   onCategoryChange={setCurrCategory}
                   onKeywordsChange={handleKeywordsChange}

@@ -164,7 +164,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canDebugger).toBe(false)
     })
 
-    it('should use plugin keys even when legacy admin permission is configured', () => {
+    it('should use plugin keys even when legacy admin permission is configured and RBAC is enabled', () => {
       vi.mocked(useAppContext).mockReturnValue({
         isCurrentWorkspaceManager: false,
         isCurrentWorkspaceOwner: false,
@@ -179,10 +179,39 @@ describe('useReferenceSetting Hook', () => {
         },
       } as ReturnType<typeof usePluginPermissionSettings>)
 
-      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: true },
+      })
 
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canDebugger).toBe(true)
+    })
+
+    it('should apply legacy noOne plugin permissions when RBAC is disabled', () => {
+      vi.mocked(useAppContext).mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        isCurrentWorkspaceOwner: false,
+        langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
+        workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.debug'],
+      } as ReturnType<typeof useAppContext>)
+      vi.mocked(usePluginPermissionSettings).mockReturnValue({
+        data: {
+          install_permission: PermissionType.noOne,
+          debug_permission: PermissionType.noOne,
+        },
+      } as ReturnType<typeof usePluginPermissionSettings>)
+
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool), {
+        systemFeatures: { rbac_enabled: false },
+      })
+
+      expect(result.current.canInstallPlugin).toBe(false)
+      expect(result.current.canManagement).toBe(false)
+      expect(result.current.canUpdatePlugin).toBe(false)
+      expect(result.current.canViewInstalledPlugins).toBe(true)
+      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canDebugPlugin).toBe(false)
+      expect(result.current.canDebugger).toBe(false)
     })
   })
 
@@ -446,13 +475,31 @@ describe('useCanInstallPluginFromMarketplace Hook', () => {
     expect(result.current.canInstallPluginFromMarketplace).toBe(false)
   })
 
-  it('should not fetch legacy plugin permissions or category auto-upgrade settings', () => {
+  it('should fetch legacy plugin permissions but not category auto-upgrade settings', () => {
     renderHook(() => useCanInstallPluginFromMarketplace(), {
       systemFeatures: { enable_marketplace: true },
     })
 
-    expect(usePluginPermissionSettings).not.toHaveBeenCalled()
+    expect(usePluginPermissionSettings).toHaveBeenCalled()
     expect(usePluginAutoUpgradeSettings).not.toHaveBeenCalled()
+  })
+
+  it('should return false when legacy install permission is noOne and RBAC is disabled', () => {
+    vi.mocked(usePluginPermissionSettings).mockReturnValue({
+      data: {
+        install_permission: PermissionType.noOne,
+        debug_permission: PermissionType.everyone,
+      },
+    } as ReturnType<typeof usePluginPermissionSettings>)
+
+    const { result } = renderHook(() => useCanInstallPluginFromMarketplace(), {
+      systemFeatures: {
+        enable_marketplace: true,
+        rbac_enabled: false,
+      },
+    })
+
+    expect(result.current.canInstallPluginFromMarketplace).toBe(false)
   })
 
   it('should use plugin.install when marketplace and RBAC are enabled', () => {

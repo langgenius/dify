@@ -7,6 +7,7 @@ import { collect, HitlPauseError } from '@/commands/run/app/sse-collector'
 import { formatted, stringifyOutput } from '@/framework/output'
 import { handle, unhandle } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { reasoningBlocksFromMetadata } from '@/sys/io/reasoning'
 import { startSpinner } from '@/sys/io/spinner'
 import { extractThinkBlocks, filterThinkInOutputs, stripThinkBlocks } from '@/sys/io/think-filter'
 
@@ -97,6 +98,13 @@ export class StreamingStructuredStrategy implements RunStrategy {
           processedResp = { ...processedResp, data: { ...(data as Record<string, unknown>), outputs } }
         }
       }
+    }
+
+    // Surface separated-mode reasoning (carried in message_end metadata) to stderr under --think.
+    if (ctx.think) {
+      const reasoningBlocks = reasoningBlocksFromMetadata(processedResp.metadata)
+      if (reasoningBlocks !== '')
+        deps.io.err.write(`${reasoningBlocks}\n`)
     }
 
     const respMode = typeof processedResp.mode === 'string' && processedResp.mode !== '' ? processedResp.mode : mode
