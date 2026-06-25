@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "키워드 수",
   "form.onSearchResults": "검색어와 일치하는 구성원이 없습니다.\n검색을 다시 시도합니다.",
   "form.permissions": "권한",
+  "form.permissionsAccessConfig": "접근 구성으로 이동",
   "form.permissionsAllMember": "모든 팀 멤버",
   "form.permissionsInvitedMembers": "부분 팀 구성원",
   "form.permissionsOnlyMe": "나만",

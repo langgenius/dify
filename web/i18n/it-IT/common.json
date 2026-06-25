@@ -525,7 +525,7 @@
   "settings.preferences": "Preferences",
   "settings.provider": "Fornitore di Modelli",
   "settings.resourceAccess": "Accesso alle risorse",
-  "settings.resourceAccessDescription": "Configura le regole di autorizzazione che app e basi di conoscenza possono usare. Le regole di autorizzazione possono essere assegnate ai membri in configurazioni specifiche di accesso alle risorse.",
+  "settings.resourceAccessDescription": "Configura le regole di autorizzazione che le app e le basi di conoscenza possono utilizzare. Le regole di autorizzazione possono essere assegnate ai membri in configurazioni specifiche di accesso alle risorse.",
   "settings.rolesAndPermissions": "Ruoli e autorizzazioni",
   "settings.settings": "Settings",
   "settings.swaggerAPIAsTool": "Swagger API as Tool",

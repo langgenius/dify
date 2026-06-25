@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Número de palavras-chave",
   "form.onSearchResults": "Nenhum membro corresponde à sua consulta de pesquisa.\nTente sua pesquisa novamente.",
   "form.permissions": "Permissões",
+  "form.permissionsAccessConfig": "Ir para a configuração de acesso",
   "form.permissionsAllMember": "Todos os membros da equipe",
   "form.permissionsInvitedMembers": "Membros parciais da equipe",
   "form.permissionsOnlyMe": "Apenas eu",

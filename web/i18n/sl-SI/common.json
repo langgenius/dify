@@ -217,7 +217,7 @@
   "members.alreadyInTeam": "Že v ekipi",
   "members.alreadyInTeamTip": "Ti uporabniki že imajo dostop do tega delovnega prostora.",
   "members.assignRoles": "Dodeli vloge",
-  "members.assignRolesModal.description": "Izberite vloge, ki jih želite dodeliti temu članu. Vsa dovoljenja izbranih vlog bodo združena.",
+  "members.assignRolesModal.description": "Izberite vloge za dodelitev temu članu. Vsa dovoljenja izbranih vlog bodo združena.",
   "members.assignRolesModal.selectedCount": "{{count}} izbranih",
   "members.assignRolesModal.singleDescription": "Izberite eno vlogo, ki jo želite dodeliti temu članu.",
   "members.assignRolesModal.title": "Dodeli vloge",
