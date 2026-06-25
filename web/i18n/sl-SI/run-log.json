@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Dnevniki dejanj",
   "circularInvocationTip": "V trenutnem poteku dela obstaja krožno sklicevanje orodij / vozlišč.",
   "detail": "PODROBNOSTI",
   "input": "VNOS",
@@ -10,7 +9,6 @@
   "meta.time": "Pretečeni čas",
   "meta.title": "METAPODATKI",
   "meta.tokens": "Skupni žetoni",
-  "meta.version": "Različica",
   "result": "REZULTAT",
   "resultEmpty.link": "panel podrobnosti",
   "resultEmpty.tipLeft": "prosimo, pojdite na ",

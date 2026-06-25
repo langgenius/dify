@@ -139,7 +139,7 @@ async function mountedStore() {
     },
   })
   store.set(queryClientAtom, queryClient)
-  const unsubscribe = store.sub(state.createReleaseFormValuesAtom, () => undefined)
+  const unsubscribe = store.sub(state.createReleaseFormIsSubmittingAtom, () => undefined)
 
   return {
     state,

@@ -3274,7 +3274,7 @@
   },
   "web/app/components/develop/code.tsx": {
     "ts/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "web/app/components/develop/doc.tsx": {
@@ -3284,9 +3284,6 @@
   },
   "web/app/components/develop/md.tsx": {
     "jsx-a11y/no-redundant-roles": {
-      "count": 1
-    },
-    "ts/no-empty-object-type": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -4473,11 +4470,6 @@
   },
   "web/app/components/tools/mcp/mcp-server-param-item.tsx": {
     "ts/no-explicit-any": {
-      "count": 1
-    }
-  },
-  "web/app/components/tools/provider/detail.tsx": {
-    "jsx-a11y/anchor-has-content": {
       "count": 1
     }
   },
@@ -7227,7 +7219,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 13
+      "count": 9
     }
   },
   "web/service/datasets.ts": {

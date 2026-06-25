@@ -25,7 +25,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
   const locale = useLocale()
-  const { canManagePlugin, canUpdatePlugin } = usePluginSettingsAccess()
+  const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
 
   const { source, version, latest_version, latest_unique_identifier, meta } = detail
   const author = detail.declaration?.author ?? ''
@@ -49,7 +49,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
     modalStates,
     versionPicker,
     isFromMarketplace,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
     onUpdate,
   })
@@ -137,7 +137,7 @@ const ProviderCardActions: FC<Props> = ({ detail, onUpdate }) => {
         placement="bottom-start"
         destructiveRemove
         showCheckVersion={canUpdatePlugin}
-        showRemove={canManagePlugin}
+        showRemove={canDeletePlugin}
       />
 
       <HeaderModals
