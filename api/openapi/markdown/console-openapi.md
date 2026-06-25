@@ -9097,7 +9097,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippets retrieved successfully | **application/json**: [SnippetPagination](#snippetpagination)<br> |
+| 200 | Snippets retrieved successfully | **application/json**: [SnippetPaginationResponse](#snippetpaginationresponse)<br> |
 
 ### [POST] /workspaces/current/customized-snippets
 **Create a new customized snippet**
@@ -9112,7 +9112,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Snippet created successfully | **application/json**: [Snippet](#snippet)<br> |
+| 201 | Snippet created successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 
 ### [POST] /workspaces/current/customized-snippets/imports
@@ -9128,8 +9128,8 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet imported successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
-| 202 | Import pending confirmation | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
+| 200 | Snippet imported successfully | **application/json**: [SnippetImportInfo](#snippetimportinfo)<br> |
+| 202 | Import pending confirmation | **application/json**: [SnippetImportInfo](#snippetimportinfo)<br> |
 | 400 | Import failed |  |
 
 ### [POST] /workspaces/current/customized-snippets/imports/{import_id}/confirm
@@ -9145,7 +9145,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Import confirmed successfully | **application/json**: [SnippetImportResponse](#snippetimportresponse)<br> |
+| 200 | Import confirmed successfully | **application/json**: [SnippetImportInfo](#snippetimportinfo)<br> |
 | 400 | Import failed |  |
 
 ### [DELETE] /workspaces/current/customized-snippets/{snippet_id}
@@ -9177,7 +9177,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet retrieved successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet retrieved successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 404 | Snippet not found |  |
 
 ### [PATCH] /workspaces/current/customized-snippets/{snippet_id}
@@ -9199,7 +9199,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Snippet updated successfully | **application/json**: [Snippet](#snippet)<br> |
+| 200 | Snippet updated successfully | **application/json**: [SnippetResponse](#snippetresponse)<br> |
 | 400 | Invalid request |  |
 | 404 | Snippet not found |  |
 
@@ -9216,7 +9216,7 @@ Get list of available agent providers
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Dependencies checked successfully | **application/json**: [SnippetDependencyCheckResponse](#snippetdependencycheckresponse)<br> |
+| 200 | Dependencies checked successfully | **application/json**: [CheckDependenciesResult](#checkdependenciesresult)<br> |
 | 404 | Snippet not found |  |
 
 ### [GET] /workspaces/current/customized-snippets/{snippet_id}/export
@@ -9233,10 +9233,10 @@ Export snippet configuration as DSL
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Snippet exported successfully | **application/json**: [TextFileResponse](#textfileresponse)<br> |
-| 404 | Snippet not found |  |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Snippet exported successfully |
+| 404 | Snippet not found |
 
 ### [POST] /workspaces/current/customized-snippets/{snippet_id}/use-count/increment
 **Increment snippet use count when it is inserted into a workflow**
@@ -9253,7 +9253,7 @@ Increment snippet use count by 1
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Use count incremented successfully | **application/json**: [SnippetUseCountResponse](#snippetusecountresponse)<br> |
+| 200 | Use count incremented successfully | **application/json**: [SnippetUseCountIncrementResponse](#snippetusecountincrementresponse)<br> |
 | 404 | Snippet not found |  |
 
 ### [GET] /workspaces/current/dataset-operators
@@ -18742,8 +18742,16 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+<<<<<<< HEAD
 | created_at | integer |  | Yes |
 | result | string |  | Yes |
+||||||| 48dfbd60d6
+| knowledge_base_setting | object |  | No |
+=======
+| knowledge_base_setting | object |  | No |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+>>>>>>> chariri/refac-basemodel-snippets
 
 #### PublishedWorkflowRunPayload
 
@@ -19506,32 +19514,6 @@ Validated metadata extracted from a Skill package.
 | inferable | boolean |  | Yes |
 | reason | string |  | No |
 
-#### Snippet
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | long |  | No |
-| created_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| description | string |  | No |
-| graph | object |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| input_fields | object |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | [_AnonymousInlineModel_b0fd3f86d9d5](#_anonymousinlinemodel_b0fd3f86d9d5) |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
-
-#### SnippetDependencyCheckResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| SnippetDependencyCheckResponse | object |  |  |
-
 #### SnippetDraftConfigResponse
 
 | Name | Type | Description | Required |
@@ -19568,6 +19550,17 @@ Payload for syncing snippet draft workflow.
 | hash | string |  | No |
 | input_fields | [ object ] |  | No |
 
+#### SnippetImportInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_dsl_version | string, <br>**Default:** 0.1.0 |  | No |
+| error | string |  | No |
+| id | string |  | Yes |
+| imported_dsl_version | string |  | No |
+| snippet_id | string |  | No |
+| status | [ImportStatus](#importstatus) |  | Yes |
+
 #### SnippetImportPayload
 
 Payload for importing snippet from DSL.
@@ -19581,12 +19574,6 @@ Payload for importing snippet from DSL.
 | yaml_content | string | YAML content (required for yaml-content mode) | No |
 | yaml_url | string | YAML URL (required for yaml-url mode) | No |
 
-#### SnippetImportResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| SnippetImportResponse | object |  |  |
-
 #### SnippetIterationNodeRunPayload
 
 Payload for running an iteration node in snippet draft workflow.
@@ -19595,24 +19582,24 @@ Payload for running an iteration node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetList
+#### SnippetListItemResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | author_name | string |  | No |
-| created_at | long |  | No |
+| created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | No |
 | icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
+| id | string |  | Yes |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | No |
+| type | string |  | Yes |
+| updated_at | integer |  | No |
 | updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
 
 #### SnippetListQuery
 
@@ -19635,17 +19622,45 @@ Payload for running a loop node in snippet draft workflow.
 | ---- | ---- | ----------- | -------- |
 | inputs | object |  | No |
 
-#### SnippetPagination
+#### SnippetPaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_744ff9cc03e6](#_anonymousinlinemodel_744ff9cc03e6) ] |  | No |
-| has_more | boolean |  | No |
-| limit | integer |  | No |
-| page | integer |  | No |
-| total | integer |  | No |
+| data | [ [SnippetListItemResponse](#snippetlistitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
 
-#### SnippetUseCountResponse
+#### SnippetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| description | string |  | No |
+| graph | object |  | No |
+| icon_info | object |  | No |
+| id | string |  | Yes |
+| input_fields | [ object ] |  | No |
+| is_published | boolean |  | Yes |
+| name | string |  | Yes |
+| tags | [ [SnippetTagResponse](#snippettagresponse) ] |  | No |
+| type | string |  | Yes |
+| updated_at | integer |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| use_count | integer |  | Yes |
+| version | integer |  | Yes |
+
+#### SnippetTagResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### SnippetUseCountIncrementResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21551,41 +21566,6 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | data | [ [AccessPolicy](#accesspolicy) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
-
-#### _AnonymousInlineModel_744ff9cc03e6
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
-
-#### _AnonymousInlineModel_7b8b49ca164e
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
-#### _AnonymousInlineModel_b0fd3f86d9d5
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| email | string |  | No |
-| id | string |  | No |
-| name | string |  | No |
 
 #### _AnonymousInlineModel_b1954337d565
 
