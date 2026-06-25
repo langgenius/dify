@@ -263,6 +263,7 @@
   "menus.exploreMarketplace": "Khám phá Marketplace",
   "menus.plugins": "Tích hợp",
   "menus.roster": "Danh sách tác nhân",
+  "menus.status": "beta",
   "menus.tools": "Công cụ",
   "model.capabilities": "Khả năng đa phương thức",
   "model.params.stop_sequencesPlaceholder": "Nhập chuỗi và nhấn Tab",

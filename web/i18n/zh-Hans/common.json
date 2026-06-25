@@ -278,6 +278,7 @@
   "menus.exploreMarketplace": "探索 Marketplace",
   "menus.plugins": "集成",
   "menus.roster": "智能体名册",
+  "menus.status": "beta",
   "menus.tools": "工具",
   "model.capabilities": "多模态能力",
   "model.params.stop_sequencesPlaceholder": "输入序列并按 Tab 键",

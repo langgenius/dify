@@ -263,6 +263,7 @@
   "menus.exploreMarketplace": "Explora el mercado",
   "menus.plugins": "Integraciones",
   "menus.roster": "Directorio de agentes",
+  "menus.status": "beta",
   "menus.tools": "Herramientas",
   "model.capabilities": "Capacidades multimodales",
   "model.params.stop_sequencesPlaceholder": "Ingresa la secuencia y presiona Tab",

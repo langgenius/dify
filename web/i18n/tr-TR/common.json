@@ -263,6 +263,7 @@
   "menus.exploreMarketplace": "Pazar Yeri'ni Keşfedin",
   "menus.plugins": "Entegrasyonlar",
   "menus.roster": "Ajan listesi",
+  "menus.status": "beta",
   "menus.tools": "Araçlar",
   "model.capabilities": "MultiModal Yetenekler",
   "model.params.stop_sequencesPlaceholder": "Sıra girin ve Tab tuşuna basın",

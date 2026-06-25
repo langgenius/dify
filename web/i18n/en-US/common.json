@@ -278,6 +278,7 @@
   "menus.exploreMarketplace": "Explore Marketplace",
   "menus.plugins": "Integrations",
   "menus.roster": "Roster",
+  "menus.status": "beta",
   "menus.tools": "Tools",
   "model.capabilities": "MultiModal Capabilities",
   "model.params.stop_sequencesPlaceholder": "Enter sequence and press Tab",
