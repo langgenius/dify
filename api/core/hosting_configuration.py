@@ -240,7 +240,8 @@ class HostingConfiguration:
         if len(quotas) > 0:
             credentials = {
                 "dashscope_api_key": dify_config.HOSTED_TONGYI_API_KEY,
-                "use_international_endpoint": dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT,
+                # SNP-494: keep temporary compatibility with tongyi plugin string credential checks.
+                "use_international_endpoint": str(dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT).lower(),
             }
 
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)

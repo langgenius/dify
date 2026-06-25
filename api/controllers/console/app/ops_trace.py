@@ -70,7 +70,7 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def get(self, app_model: App):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore

@@ -1,5 +1,4 @@
 'use client'
-import type { PropsWithChildren } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 
 type IChildrenProps = {
@@ -138,11 +137,5 @@ export function SubProperty({ name, type, children }: ISubProperty) {
         </dd>
       </dl>
     </li>
-  )
-}
-
-export function PropertyInstruction({ children }: PropsWithChildren<{ }>) {
-  return (
-    <li className="m-0 px-0 py-4 italic first:pt-0">{children}</li>
   )
 }

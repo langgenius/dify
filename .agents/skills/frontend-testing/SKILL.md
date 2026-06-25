@@ -102,11 +102,11 @@ describe('ComponentName', () => {
     })
   })
 
-  // Props tests (REQUIRED)
+  // Props tests (REQUIRED when props change observable behavior)
   describe('Props', () => {
-    it('should apply custom className', () => {
-      render(<Component className="custom" />)
-      expect(screen.getByRole('button')).toHaveClass('custom')
+    it('should disable the action when disabled', () => {
+      render(<Component disabled />)
+      expect(screen.getByRole('button')).toBeDisabled()
     })
   })
 
@@ -220,6 +220,7 @@ Every test should clearly separate:
 ### 2. Black-Box Testing
 
 - Test observable behavior, not implementation details
+- Test product contracts, not cosmetic implementation. Do not add or expand unit tests only to lock pure style classes, spacing, colors, backgrounds, or layout micro-adjustments. Cover visual-only fixes with browser/manual verification, screenshots, or E2E/visual checks when risk justifies it. Add unit tests only when the change affects user-observable behavior, accessibility semantics, state, data flow, routing, or a stable component API contract.
 - Use semantic queries (`getByRole` with accessible `name`, `getByLabelText`, `getByPlaceholderText`, `getByText`, and scoped `within(...)`)
 - Treat `getByTestId` as a last resort. If a control cannot be found by role/name, label, landmark, or dialog scope, fix the component accessibility first instead of adding or relying on `data-testid`.
 - Remove production `data-testid` attributes when semantic selectors can cover the behavior. Keep them only for non-visual mocked boundaries, editor/browser shims such as Monaco, canvas/chart output, or third-party widgets with no accessible DOM in the test environment.
@@ -273,7 +274,7 @@ it('should disable input when isReadOnly is true')
 ### Always Required (All Components)
 
 1. **Rendering**: Component renders without crashing
-1. **Props**: Required props, optional props, default values
+1. **Props**: Required props, optional props, default values that change observable behavior. Do not test pass-through styling props such as `className` unless they are an explicit, stable component API whose absence would break a real integration contract.
 1. **Edge Cases**: null, undefined, empty values, boundary conditions
 
 ### Conditional (When Present)
