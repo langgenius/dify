@@ -218,7 +218,7 @@ const toFeedback = (feedback: NonNullable<MessageDetailResponse['feedbacks']>[nu
 }
 
 const getAgentDebugMessageAnswer = (message: MessageDetailResponse) => {
-  return message.answer ?? ''
+  return message.re_sign_file_url_answer ?? ''
 }
 
 function getFormattedAgentDebugChatTree(messages: MessageDetailResponse[]): ChatItemInTree[] {
