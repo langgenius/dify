@@ -31,12 +31,12 @@ export type AgentProviderListResponse = Array<{
   [key: string]: unknown
 }>
 
-export type SnippetPagination = {
-  data?: Array<AnonymousInlineModel744Ff9Cc03E6>
-  has_more?: boolean
-  limit?: number
-  page?: number
-  total?: number
+export type SnippetPaginationResponse = {
+  data: Array<SnippetListItemResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type CreateSnippetPayload = {
@@ -50,28 +50,28 @@ export type CreateSnippetPayload = {
   type?: 'group' | 'node'
 }
 
-export type Snippet = {
-  created_at?: number
-  created_by?: AnonymousInlineModelB0Fd3F86D9D5
-  description?: string
+export type SnippetResponse = {
+  created_at?: number | null
+  created_by?: SimpleAccountResponse | null
+  description?: string | null
   graph?: {
     [key: string]: unknown
-  }
+  } | null
   icon_info?: {
     [key: string]: unknown
-  }
-  id?: string
-  input_fields?: {
+  } | null
+  id: string
+  input_fields?: Array<{
     [key: string]: unknown
-  }
-  is_published?: boolean
-  name?: string
-  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
-  type?: string
-  updated_at?: number
-  updated_by?: AnonymousInlineModelB0Fd3F86D9D5
-  use_count?: number
-  version?: number
+  }> | null
+  is_published: boolean
+  name: string
+  tags?: Array<SnippetTagResponse>
+  type: string
+  updated_at?: number | null
+  updated_by?: SimpleAccountResponse | null
+  use_count: number
+  version: number
 }
 
 export type SnippetImportPayload = {
@@ -83,8 +83,13 @@ export type SnippetImportPayload = {
   yaml_url?: string | null
 }
 
-export type SnippetImportResponse = {
-  [key: string]: unknown
+export type SnippetImportInfo = {
+  current_dsl_version?: string
+  error?: string
+  id: string
+  imported_dsl_version?: string
+  snippet_id?: string | null
+  status: ImportStatus
 }
 
 export type UpdateSnippetPayload = {
@@ -93,13 +98,11 @@ export type UpdateSnippetPayload = {
   name?: string | null
 }
 
-export type SnippetDependencyCheckResponse = {
-  [key: string]: unknown
+export type CheckDependenciesResult = {
+  leaked_dependencies?: Array<PluginDependency>
 }
 
-export type TextFileResponse = string
-
-export type SnippetUseCountResponse = {
+export type SnippetUseCountIncrementResponse = {
   result: string
   use_count: number
 }
@@ -845,23 +848,23 @@ export type WorkspaceCustomConfigResponse = {
   replace_webapp_logo?: string | null
 }
 
-export type AnonymousInlineModel744Ff9Cc03E6 = {
-  author_name?: string
-  created_at?: number
-  created_by?: string
-  description?: string
+export type SnippetListItemResponse = {
+  author_name?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  description?: string | null
   icon_info?: {
     [key: string]: unknown
-  }
-  id?: string
-  is_published?: boolean
-  name?: string
-  tags?: Array<AnonymousInlineModel7B8B49Ca164e>
-  type?: string
-  updated_at?: number
-  updated_by?: string
-  use_count?: number
-  version?: number
+  } | null
+  id: string
+  is_published: boolean
+  name: string
+  tags?: Array<SnippetTagResponse>
+  type: string
+  updated_at?: number | null
+  updated_by?: string | null
+  use_count: number
+  version: number
 }
 
 export type IconInfo = {
@@ -882,16 +885,24 @@ export type InputFieldDefinition = {
   type?: string | null
 }
 
-export type AnonymousInlineModelB0Fd3F86D9D5 = {
-  email?: string
-  id?: string
-  name?: string
+export type SimpleAccountResponse = {
+  email: string
+  id: string
+  name: string
 }
 
-export type AnonymousInlineModel7B8B49Ca164e = {
-  id?: string
-  name?: string
-  type?: string
+export type SnippetTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type PluginDependency = {
+  current_identifier?: string | null
+  type: Type
+  value: Github | Marketplace | Package
 }
 
 export type AccountWithRoleResponse = {
@@ -1187,6 +1198,32 @@ export type WorkflowToolParameterConfiguration = {
   description: string
   form: ToolParameterForm
   name: string
+}
+
+export type Type
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
+
+export type Github = {
+  github_plugin_unique_identifier: string
+  package: string
+  repo: string
+  version: string
+}
+
+export type Marketplace = {
+  marketplace_plugin_unique_identifier: string
+  version?: string | null
+}
+
+export type Package = {
+  plugin_unique_identifier: string
+  version?: string | null
 }
 
 export type SimpleProviderEntityResponse = {
@@ -1524,15 +1561,6 @@ export type ModelSelectorScope
 
 export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
 
-export type Type
-  = | 'app-selector'
-    | 'array[tools]'
-    | 'boolean'
-    | 'model-selector'
-    | 'secret-input'
-    | 'select'
-    | 'text-input'
-
 export type FormOption = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   show_on?: Array<FormShowOnObject>
@@ -1645,7 +1673,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsData = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsResponses = {
-  200: SnippetPagination
+  200: SnippetPaginationResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsResponse
@@ -1663,7 +1691,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsErrors = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsResponses = {
-  201: Snippet
+  201: SnippetResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsResponse
@@ -1681,8 +1709,8 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsErrors = {
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponses = {
-  200: SnippetImportResponse
-  202: SnippetImportResponse
+  200: SnippetImportInfo
+  202: SnippetImportInfo
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsResponse
@@ -1702,7 +1730,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmError
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponses = {
-  200: SnippetImportResponse
+  200: SnippetImportInfo
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
@@ -1742,7 +1770,7 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  200: Snippet
+  200: SnippetResponse
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -1763,7 +1791,7 @@ export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdErrors = {
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponses = {
-  200: Snippet
+  200: SnippetResponse
 }
 
 export type PatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse
@@ -1783,33 +1811,11 @@ export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesEr
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses = {
-  200: SnippetDependencyCheckResponse
+  200: CheckDependenciesResult
 }
 
 export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse
   = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponses]
-
-export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportData = {
-  body?: never
-  path: {
-    snippet_id: string
-  }
-  query?: {
-    include_secret?: string
-  }
-  url: '/workspaces/current/customized-snippets/{snippet_id}/export'
-}
-
-export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportErrors = {
-  404: unknown
-}
-
-export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses = {
-  200: TextFileResponse
-}
-
-export type GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse
-  = GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses[keyof GetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponses]
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementData = {
   body?: never
@@ -1825,7 +1831,7 @@ export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementE
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponses = {
-  200: SnippetUseCountResponse
+  200: SnippetUseCountIncrementResponse
 }
 
 export type PostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
