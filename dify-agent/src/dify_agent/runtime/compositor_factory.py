@@ -47,6 +47,7 @@ from dify_agent.layers.knowledge.layer import DifyKnowledgeBaseLayer
 from dify_agent.layers.output.output_layer import DifyOutputLayer
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer, create_shellctl_client_factory
+from dify_agent.layers.user_prompt.layer import DifyUserPromptLayer
 
 type DifyAgentLayerProvider = LayerProvider[Any]
 
@@ -87,6 +88,7 @@ def create_default_layer_providers(
         agent_stub_token_factory = build_agent_stub_token
     return (
         LayerProvider.from_layer_type(PromptLayer),
+        LayerProvider.from_layer_type(DifyUserPromptLayer),
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),

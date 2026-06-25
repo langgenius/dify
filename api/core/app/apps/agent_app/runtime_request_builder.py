@@ -10,9 +10,10 @@ used by workflow runs.
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
@@ -20,6 +21,7 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
     DifyExecutionContextUserFrom,
 )
+from dify_agent.layers.user_prompt import DifyUserPromptFileConfig
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
 
 from clients.agent_backend import (
@@ -42,6 +44,7 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
+from graphon.file import File, FileType, FileUploadConfig, file_manager
 from models.agent_config_entities import AgentSoulConfig
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import build_soul_mention_resolver, expand_prompt_mentions
@@ -68,6 +71,8 @@ class AgentAppRuntimeBuildContext:
     conversation_id: str
     user_query: str
     idempotency_key: str
+    files: tuple[File, ...] = ()
+    file_upload_config: FileUploadConfig | None = None
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
     deferred_tool_results: DeferredToolResultsPayload | None = None
@@ -168,6 +173,7 @@ class AgentAppRuntimeRequestBuilder:
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
                 user_prompt=context.user_query,
+                user_files=self._build_user_files(context.files, context.file_upload_config),
                 tools=tools_layer,
                 knowledge=knowledge_config,
                 drive_config=drive_config,
@@ -216,6 +222,51 @@ class AgentAppRuntimeRequestBuilder:
             else:
                 normalized[key] = str(value)
         return normalized
+
+    @staticmethod
+    def _build_user_files(
+        files: tuple[File, ...],
+        file_upload_config: FileUploadConfig | None,
+    ) -> list[DifyUserPromptFileConfig]:
+        detail = _image_detail(file_upload_config)
+        return [_build_user_file(file, detail=detail) for file in files]
+
+
+def _build_user_file(file: File, *, detail: Literal["low", "high"] | None) -> DifyUserPromptFileConfig:
+    file_type = file.type.value if isinstance(file.type, FileType) else str(file.type)
+    if file_type not in {"image", "document", "audio", "video"}:
+        raise AgentAppRuntimeRequestBuildError(
+            "agent_user_file_unsupported",
+            f"Agent App does not support file type '{file_type}' in user prompt.",
+        )
+    mime_type = file.mime_type or "application/octet-stream"
+    return DifyUserPromptFileConfig(
+        filename=file.filename or "file",
+        mime_type=mime_type,
+        format=_file_format(file),
+        type=cast(Any, file_type),
+        base64_data=base64.b64encode(file_manager.download(file)).decode(),
+        detail=detail if file_type == "image" else None,
+    )
+
+
+def _file_format(file: File) -> str:
+    extension = (file.extension or "").lstrip(".").lower()
+    if extension:
+        return extension
+    mime_type = file.mime_type or ""
+    if "/" in mime_type:
+        return mime_type.rsplit("/", 1)[-1].lower()
+    return "bin"
+
+
+def _image_detail(file_upload_config: FileUploadConfig | None) -> Literal["low", "high"] | None:
+    image_config = file_upload_config.image_config if file_upload_config is not None else None
+    detail = image_config.detail if image_config is not None else None
+    if detail is None:
+        return None
+    detail_value = getattr(detail, "value", detail)
+    return cast(Literal["low", "high"], detail_value) if detail_value in {"low", "high"} else None
 
 
 __all__ = [

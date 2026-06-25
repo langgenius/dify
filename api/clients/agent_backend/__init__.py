@@ -31,6 +31,7 @@ from clients.agent_backend.event_adapter import (
 from clients.agent_backend.factory import create_agent_backend_run_client
 from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAgentBackendScenario
 from clients.agent_backend.request_builder import (
+    AGENT_APP_USER_PROMPT_LAYER_ID,
     AGENT_SOUL_PROMPT_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_KNOWLEDGE_BASE_LAYER_ID,
@@ -46,6 +47,7 @@ from clients.agent_backend.request_builder import (
 )
 
 __all__ = [
+    "AGENT_APP_USER_PROMPT_LAYER_ID",
     "AGENT_SOUL_PROMPT_LAYER_ID",
     "DIFY_EXECUTION_CONTEXT_LAYER_ID",
     "DIFY_KNOWLEDGE_BASE_LAYER_ID",
