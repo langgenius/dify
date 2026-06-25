@@ -5,7 +5,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
 type AgentConfigureTipContentProps = {
-  type: 'prompt' | 'skills' | 'files' | 'tools'
+  type: 'prompt' | 'skills' | 'files' | 'tools' | 'env'
 }
 
 function DocsLink({
@@ -30,6 +30,20 @@ function DocsLink({
 export function AgentConfigureTipContent({ type }: AgentConfigureTipContentProps) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
+
+  if (type === 'env') {
+    return (
+      <span className="whitespace-pre-line">
+        <Trans
+          i18nKey="agentDetail.configure.advancedSettings.envEditor.richTip"
+          ns="agentV2"
+          components={{
+            docLink: <DocsLink href={docLink('/use-dify/build/agent')} />,
+          }}
+        />
+      </span>
+    )
+  }
 
   if (type === 'skills') {
     return (

@@ -1,5 +1,6 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 
 type AgentConfigureRightPanelMode = 'build' | 'preview'
@@ -24,6 +25,9 @@ export function AgentPreviewHeader({
   refreshDisabled?: boolean
 }) {
   const { t } = useTranslation('agentV2')
+  const modeTipTitle = t(`agentDetail.configure.rightPanel.${mode}TipTitle`)
+  const modeTipBody = t(`agentDetail.configure.rightPanel.${mode}TipBody`)
+  const modeTip = `${modeTipTitle}. ${modeTipBody}`
 
   return (
     <div className="relative z-1 flex h-12 shrink-0 items-center gap-3 py-2 pr-3 pl-4">
@@ -50,7 +54,23 @@ export function AgentPreviewHeader({
             {t('agentDetail.configure.rightPanel.preview')}
           </SegmentedControlItem>
         </SegmentedControl>
-        <span aria-hidden className="i-ri-question-line size-4 shrink-0 text-text-quaternary" />
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <button
+                type="button"
+                aria-label={modeTip}
+                className="flex size-5 shrink-0 items-center justify-center rounded-md text-text-quaternary hover:bg-state-base-hover hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              >
+                <span aria-hidden className="i-ri-question-line size-4" />
+              </button>
+            )}
+          />
+          <TooltipContent className="max-w-64">
+            <div className="system-xs-semibold text-text-primary">{modeTipTitle}</div>
+            <div className="mt-1 system-xs-regular text-text-secondary">{modeTipBody}</div>
+          </TooltipContent>
+        </Tooltip>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <button
