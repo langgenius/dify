@@ -47,7 +47,7 @@ const Panel: FC = () => {
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
   }), [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys])
-  const canConfigTracing = appACLCapabilities.canMonitor
+  const canConfigTracing = appACLCapabilities.canConfigureTracing
   const readOnly = !canConfigTracing
 
   const [isLoaded, {
