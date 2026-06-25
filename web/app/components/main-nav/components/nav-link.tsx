@@ -36,7 +36,7 @@ const MainNavLink = ({
       className={cn(
         'group relative flex h-8 w-full items-center gap-2 rounded-[10px] px-2 py-1.5 outline-hidden transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
         'not-aria-[current=page]:bg-components-main-nav-nav-button-bg not-aria-[current=page]:system-md-medium not-aria-[current=page]:text-components-main-nav-nav-button-text not-aria-[current=page]:hover:bg-components-main-nav-nav-button-bg-hover not-aria-[current=page]:hover:text-components-main-nav-nav-button-text',
-        'aria-[current=page]:main-nav-active-glass aria-[current=page]:z-1',
+        'aria-[current=page]:dify-blue-glass-surface aria-[current=page]:z-1',
       )}
     >
       <NavIcon icon={item.icon} className="group-aria-[current=page]:hidden" />

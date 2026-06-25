@@ -30,7 +30,7 @@ function AgentBuildChatEmptyState({
   return (
     <div className="flex h-full items-center justify-center">
       <div className="flex w-full max-w-150 flex-col items-start p-3 text-left">
-        <div className="main-nav-active-glass relative flex h-[50px] w-12 items-center justify-center rounded-xl p-2">
+        <div className="dify-blue-glass-surface relative flex h-[50px] w-12 items-center justify-center rounded-xl p-2">
           <div className="absolute inset-x-px inset-y-0.5 grid grid-cols-[repeat(8,4px)] grid-rows-[repeat(8,4px)] gap-0.5 opacity-25">
             {buildIconGridCells.map(cell => (
               <span
