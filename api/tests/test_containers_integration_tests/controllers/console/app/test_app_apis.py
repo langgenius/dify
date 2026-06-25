@@ -62,7 +62,6 @@ from controllers.console.app.workflow_statistic import WorkflowStatisticQuery
 from controllers.console.app.workflow_trigger import Parser, ParserEnable
 from models.account import Account, AccountStatus
 from models.model import AppMode
-from services.workflow_draft_variable_service import WorkflowDraftVariableList
 from tests.test_containers_integration_tests.controllers.console.helpers import (
     authenticate_console_client,
     create_console_account_and_tenant,
