@@ -38,7 +38,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/change-email
 #### Request Body
@@ -77,7 +77,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/change-email/validity
 #### Request Body
@@ -141,9 +141,9 @@ Get account avatar url
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -198,7 +198,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/interface-theme
 #### Request Body
@@ -211,7 +211,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/name
 #### Request Body
@@ -224,7 +224,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/password
 #### Request Body
@@ -237,14 +237,14 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [GET] /account/profile
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /account/timezone
 #### Request Body
@@ -257,7 +257,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Account](#account)<br> |
+| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
 
 ### [POST] /activate
 Activate account with invitation token
@@ -1050,7 +1050,7 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceListResponse](#workspacelistresponse)<br> |
+| 200 | Success | **application/json**: [WorkspacePaginationResponse](#workspacepaginationresponse)<br> |
 
 ### [GET] /api-based-extension
 Get all API-based extensions for current tenant
@@ -9268,7 +9268,7 @@ Increment snippet use count by 1
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
+| 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
 
 ### [GET] /workspaces/current/default-model
 #### Parameters
@@ -9309,7 +9309,7 @@ Create a new plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
+| 200 | Endpoint created successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### ~~[POST] /workspaces/current/endpoints/create~~
@@ -9328,7 +9328,7 @@ Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/cur
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
+| 200 | Endpoint created successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### ~~[POST] /workspaces/current/endpoints/delete~~
@@ -9347,7 +9347,7 @@ Deprecated legacy alias for deleting a plugin endpoint. Use DELETE /workspaces/c
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
+| 200 | Endpoint deleted successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [POST] /workspaces/current/endpoints/disable
@@ -9363,7 +9363,7 @@ Disable a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint disabled successfully | **application/json**: [EndpointDisableResponse](#endpointdisableresponse)<br> |
+| 200 | Endpoint disabled successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [POST] /workspaces/current/endpoints/enable
@@ -9379,7 +9379,7 @@ Enable a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint enabled successfully | **application/json**: [EndpointEnableResponse](#endpointenableresponse)<br> |
+| 200 | Endpoint enabled successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [GET] /workspaces/current/endpoints/list
@@ -9413,7 +9413,7 @@ List endpoints for a specific plugin
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginEndpointListResponse](#pluginendpointlistresponse)<br> |
+| 200 | Success | **application/json**: [EndpointListResponse](#endpointlistresponse)<br> |
 
 ### ~~[POST] /workspaces/current/endpoints/update~~
 
@@ -9431,7 +9431,7 @@ Deprecated legacy alias for updating a plugin endpoint. Use PATCH /workspaces/cu
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
+| 200 | Endpoint updated successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [DELETE] /workspaces/current/endpoints/{id}
@@ -9447,7 +9447,7 @@ Delete a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
+| 200 | Endpoint deleted successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [PATCH] /workspaces/current/endpoints/{id}
@@ -9469,7 +9469,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
+| 200 | Endpoint updated successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [GET] /workspaces/current/members
@@ -9477,7 +9477,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountWithRoleList](#accountwithrolelist)<br> |
+| 200 | Success | **application/json**: [AccountWithRoleListResponse](#accountwithrolelistresponse)<br> |
 
 ### [POST] /workspaces/current/members/invite-email
 #### Request Body
@@ -9529,7 +9529,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MemberActionTenantResponse](#memberactiontenantresponse)<br> |
+| 200 | Success | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
 
 ### [POST] /workspaces/current/members/{member_id}/owner-transfer
 #### Parameters
@@ -11739,9 +11739,15 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
 
 ### [POST] /workspaces/custom-config/webapp-logo/upload
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -11759,7 +11765,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
 
 ### [POST] /workspaces/switch
 #### Request Body
@@ -11928,23 +11934,6 @@ Default namespace
 | role_name | string |  | No |
 | tenant_id | string |  | No |
 
-#### Account
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| avatar | string |  | No |
-| avatar_url | string |  | Yes |
-| created_at | integer |  | No |
-| email | string |  | Yes |
-| id | string |  | Yes |
-| interface_language | string |  | No |
-| interface_theme | string |  | No |
-| is_password_set | boolean |  | Yes |
-| last_login_at | integer |  | No |
-| last_login_ip | string |  | No |
-| name | string |  | Yes |
-| timezone | string |  | No |
-
 #### AccountAvatarPayload
 
 | Name | Type | Description | Required |
@@ -12020,17 +12009,41 @@ Default namespace
 | password | string |  | No |
 | repeat_new_password | string |  | Yes |
 
+#### AccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| avatar_url | string |  | Yes |
+| created_at | integer |  | No |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| interface_language | string |  | No |
+| interface_theme | string |  | No |
+| is_password_set | boolean |  | Yes |
+| last_login_at | integer |  | No |
+| last_login_ip | string |  | No |
+| name | string |  | Yes |
+| timezone | string |  | No |
+
 #### AccountTimezonePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | timezone | string |  | Yes |
 
-#### AccountWithRole
+#### AccountWithRoleListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accounts | [ [AccountWithRoleResponse](#accountwithroleresponse) ] |  | Yes |
+
+#### AccountWithRoleResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | No |
+| avatar_url | string |  | Yes |
 | created_at | integer |  | No |
 | email | string |  | Yes |
 | id | string |  | Yes |
@@ -12040,12 +12053,6 @@ Default namespace
 | role | string |  | Yes |
 | roles | [ object ] |  | No |
 | status | string |  | Yes |
-
-#### AccountWithRoleList
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| accounts | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
 
 #### ActivateCheckQuery
 
@@ -12095,7 +12102,7 @@ Default namespace
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string |  | No |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -13908,6 +13915,12 @@ AppMCPServer Status Enum
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
+
+#### AppSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSelectorScope | string |  |  |
 
 #### AppSiteResponse
 
@@ -15782,12 +15795,6 @@ Request payload for bulk downloading documents as a zip archive.
 | role | string |  | Yes |
 | token | string |  | Yes |
 
-#### EducationActivateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| EducationActivateResponse | object |  |  |
-
 #### EducationAutocompleteQuery
 
 | Name | Type | Description | Required |
@@ -15897,29 +15904,32 @@ Request payload for bulk downloading documents as a zip archive.
 | plugin_unique_identifier | string |  | Yes |
 | settings | object |  | Yes |
 
-#### EndpointCreateResponse
+#### EndpointDeclaration
+
+declaration of an endpoint
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
+| hidden | boolean |  | No |
+| method | string |  | Yes |
+| path | string |  | Yes |
 
-#### EndpointDeleteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
-
-#### EndpointDisableResponse
+#### EndpointEntityWithInstance
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
-
-#### EndpointEnableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
+| created_at | dateTime |  | Yes |
+| declaration | [EndpointProviderDeclaration](#endpointproviderdeclaration) |  | No |
+| enabled | boolean |  | Yes |
+| expired_at | dateTime |  | Yes |
+| hook_id | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plugin_id | string |  | Yes |
+| settings | object |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| url | string |  | Yes |
 
 #### EndpointIdPayload
 
@@ -15946,7 +15956,23 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| endpoints | [ object ] | Endpoint information | Yes |
+| endpoints | [ [EndpointEntityWithInstance](#endpointentitywithinstance) ] | Endpoint information | Yes |
+
+#### EndpointProviderDeclaration
+
+declaration of an endpoint group
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoints | [ [EndpointDeclaration](#endpointdeclaration) ] |  | No |
+| settings | [ [ProviderConfig](#providerconfig) ] |  | No |
+
+#### EndpointSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| settings | object |  | Yes |
 
 #### EndpointUpdatePayload
 
@@ -15954,12 +15980,6 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 | settings | object |  | Yes |
-
-#### EndpointUpdateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
 
 #### EnvSuggestion
 
@@ -16986,12 +17006,12 @@ Enum class for large language model mode.
 | marketplace_plugin_unique_identifier | string |  | Yes |
 | version | string |  | No |
 
-#### MemberActionTenantResponse
+#### MemberActionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
-| tenant_id | string |  | Yes |
+| tenant_id | string |  | No |
 
 #### MemberBindingsResponse
 
@@ -17280,6 +17300,12 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
+
+#### ModelSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelSelectorScope | string |  |  |
 
 #### ModelStatus
 
@@ -17587,6 +17613,13 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | OpaqueObjectResponse | object |  |  |
+
+#### Option
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
 
 #### OutputErrorStrategy
 
@@ -18287,12 +18320,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | options |  |  | Yes |
 
-#### PluginEndpointListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| endpoints | [ object ] | Endpoint information | Yes |
-
 #### PluginInstallationPermissionModel
 
 | Name | Type | Description | Required |
@@ -18428,6 +18455,24 @@ Dataset Process Rule Mode
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
+
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [Type](#type) | The type of the credentials | Yes |
+| url | string |  | No |
 
 #### ProviderCredentialResponse
 
@@ -19151,6 +19196,14 @@ Model class for provider quota configuration.
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### SimpleAccountResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
 #### SimpleConversation
 
 | Name | Type | Description | Required |
@@ -19458,7 +19511,7 @@ Query parameters for listing snippet published workflows.
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
 | features | object |  | Yes |
 | graph | object |  | Yes |
@@ -19470,7 +19523,7 @@ Query parameters for listing snippet published workflows.
 | rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
 | tool_published | boolean |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 
 #### StarredAppListQuery
@@ -19722,6 +19775,7 @@ Tag type
 | created_at | integer |  | No |
 | current | boolean |  | Yes |
 | id | string |  | Yes |
+| last_opened_at | integer |  | No |
 | name | string |  | No |
 | plan | string |  | No |
 | status | string |  | No |
@@ -19840,6 +19894,12 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolProviderType | string | Enum class for tool provider |  |
+
+#### ToolSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolSelectorScope | string |  |  |
 
 #### TraceAppConfigResponse
 
@@ -20390,7 +20450,7 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | created_from | string |  | No |
@@ -20427,7 +20487,7 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | id | string |  | Yes |
 | trigger_metadata |  |  | No |
@@ -20528,7 +20588,7 @@ How a workflow node is bound to an Agent.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| users | [ [AccountWithRole](#accountwithrole) ] |  | Yes |
+| users | [ [AccountWithRoleResponse](#accountwithroleresponse) ] |  | Yes |
 
 #### WorkflowCommentReply
 
@@ -20877,7 +20937,7 @@ can reuse its existing handler.
 | ---- | ---- | ----------- | -------- |
 | conversation_variables | [ [WorkflowConversationVariableResponse](#workflowconversationvariableresponse) ] |  | Yes |
 | created_at | integer |  | Yes |
-| created_by | [SimpleAccount](#simpleaccount) |  | No |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | environment_variables | [ [WorkflowEnvironmentVariableResponse](#workflowenvironmentvariableresponse) ] |  | Yes |
 | features | object |  | Yes |
 | graph | object |  | Yes |
@@ -20888,7 +20948,7 @@ can reuse its existing handler.
 | rag_pipeline_variables | [ [PipelineVariableResponse](#pipelinevariableresponse) ] |  | Yes |
 | tool_published | boolean |  | Yes |
 | updated_at | integer |  | Yes |
-| updated_by | [SimpleAccount](#simpleaccount) |  | No |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | version | string |  | Yes |
 
 #### WorkflowRestoreResponse
@@ -20923,7 +20983,7 @@ can reuse its existing handler.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
@@ -20962,7 +21022,7 @@ can reuse its existing handler.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | elapsed_time | number |  | No |
 | exceptions_count | integer |  | No |
 | finished_at | integer |  | No |
@@ -21009,7 +21069,7 @@ can reuse its existing handler.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | created_at | integer |  | No |
-| created_by_account | [SimpleAccount](#simpleaccount) |  | No |
+| created_by_account | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
 | created_by_end_user | [SimpleEndUser](#simpleenduser) |  | No |
 | created_by_role | string |  | No |
 | elapsed_time | number |  | No |
@@ -21202,7 +21262,13 @@ Workflow tool configuration
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
-#### WorkspaceListResponse
+#### WorkspaceLogoUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+
+#### WorkspacePaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21211,19 +21277,6 @@ Workflow tool configuration
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
-
-#### WorkspaceLogoUploadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-
-#### WorkspaceMutationResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
-| tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
 
 #### WorkspacePermissionResponse
 
@@ -21238,6 +21291,13 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
+
+#### WorkspaceTenantResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+| tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
 
 #### _AccessPolicyList
 

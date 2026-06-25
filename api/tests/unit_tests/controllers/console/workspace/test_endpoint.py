@@ -1,4 +1,5 @@
 import inspect
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
@@ -16,7 +17,30 @@ from controllers.console.workspace.endpoint import (
     EndpointListApi,
     EndpointListForSinglePluginApi,
 )
+from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.impl.exc import PluginPermissionDeniedError
+
+
+def _endpoint_entity() -> EndpointEntityWithInstance:
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    return EndpointEntityWithInstance(
+        id="e1",
+        created_at=now,
+        updated_at=now,
+        tenant_id="t1",
+        plugin_id="p1",
+        settings={
+            "secret": "value",
+            "enabled": True,
+            "ids": ["a", "b"],
+            "nested": {"limit": 3},
+        },
+        expired_at=now,
+        name="endpoint",
+        enabled=True,
+        url="https://example.test/hook-1",
+        hook_id="hook-1",
+    )
 
 
 class TestEndpointCollectionApi:
@@ -102,12 +126,34 @@ class TestEndpointListApi:
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
-            patch("controllers.console.workspace.endpoint.EndpointService.list_endpoints", return_value=[{"id": "e1"}]),
+            patch(
+                "controllers.console.workspace.endpoint.EndpointService.list_endpoints",
+                return_value=[_endpoint_entity()],
+            ),
         ):
             result = method(api, "t1", "u1")
 
-        assert "endpoints" in result
-        assert len(result["endpoints"]) == 1
+        assert result["endpoints"] == [
+            {
+                "id": "e1",
+                "created_at": "2026-01-01T00:00:00Z",
+                "updated_at": "2026-01-01T00:00:00Z",
+                "settings": {
+                    "secret": "value",
+                    "enabled": True,
+                    "ids": ["a", "b"],
+                    "nested": {"limit": 3},
+                },
+                "tenant_id": "t1",
+                "plugin_id": "p1",
+                "expired_at": "2026-01-01T00:00:00Z",
+                "declaration": {"settings": [], "endpoints": []},
+                "name": "endpoint",
+                "enabled": True,
+                "url": "https://example.test/hook-1",
+                "hook_id": "hook-1",
+            }
+        ]
 
     def test_list_invalid_query(self, app: Flask):
         api = EndpointListApi()
@@ -129,12 +175,13 @@ class TestEndpointListForSinglePluginApi:
             app.test_request_context("/?page=1&page_size=10&plugin_id=p1"),
             patch(
                 "controllers.console.workspace.endpoint.EndpointService.list_endpoints_for_single_plugin",
-                return_value=[{"id": "e1"}],
+                return_value=[_endpoint_entity()],
             ),
         ):
             result = method(api, "t1", "u1")
 
-        assert "endpoints" in result
+        assert result["endpoints"][0]["id"] == "e1"
+        assert result["endpoints"][0]["settings"]["nested"] == {"limit": 3}
 
     def test_list_for_plugin_missing_param(self, app: Flask):
         api = EndpointListForSinglePluginApi()

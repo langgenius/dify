@@ -66,9 +66,9 @@ export const zEndpointCreatePayload = z.object({
 })
 
 /**
- * EndpointCreateResponse
+ * SuccessResponse
  */
-export const zEndpointCreateResponse = z.object({
+export const zSuccessResponse = z.object({
   success: z.boolean(),
 })
 
@@ -80,54 +80,12 @@ export const zEndpointIdPayload = z.object({
 })
 
 /**
- * EndpointDeleteResponse
- */
-export const zEndpointDeleteResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
- * EndpointDisableResponse
- */
-export const zEndpointDisableResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
- * EndpointEnableResponse
- */
-export const zEndpointEnableResponse = z.object({
-  success: z.boolean(),
-})
-
-/**
- * EndpointListResponse
- */
-export const zEndpointListResponse = z.object({
-  endpoints: z.array(z.record(z.string(), z.unknown())),
-})
-
-/**
- * PluginEndpointListResponse
- */
-export const zPluginEndpointListResponse = z.object({
-  endpoints: z.array(z.record(z.string(), z.unknown())),
-})
-
-/**
  * LegacyEndpointUpdatePayload
  */
 export const zLegacyEndpointUpdatePayload = z.object({
   endpoint_id: z.string(),
   name: z.string().min(1),
   settings: z.record(z.string(), z.unknown()),
-})
-
-/**
- * EndpointUpdateResponse
- */
-export const zEndpointUpdateResponse = z.object({
-  success: z.boolean(),
 })
 
 /**
@@ -180,11 +138,11 @@ export const zSimpleResultDataResponse = z.object({
 })
 
 /**
- * MemberActionTenantResponse
+ * MemberActionResponse
  */
-export const zMemberActionTenantResponse = z.object({
+export const zMemberActionResponse = z.object({
   result: z.string(),
-  tenant_id: z.string(),
+  tenant_id: z.string().optional().default(''),
 })
 
 /**
@@ -303,13 +261,6 @@ export const zBinaryFileResponse = z.custom<Blob | File>()
  */
 export const zPluginAutoUpgradeChangeResponse = z.object({
   message: z.string().nullish(),
-  success: z.boolean(),
-})
-
-/**
- * SuccessResponse
- */
-export const zSuccessResponse = z.object({
   success: z.boolean(),
 })
 
@@ -694,6 +645,7 @@ export const zTenantListItemResponse = z.object({
   created_at: z.int().nullish(),
   current: z.boolean(),
   id: z.string(),
+  last_opened_at: z.int().nullish(),
   name: z.string().nullish(),
   plan: z.string().nullish(),
   status: z.string().nullish(),
@@ -733,9 +685,9 @@ export const zTenantInfoResponse = z.object({
 })
 
 /**
- * WorkspaceMutationResponse
+ * WorkspaceTenantResultResponse
  */
-export const zWorkspaceMutationResponse = z.object({
+export const zWorkspaceTenantResultResponse = z.object({
   result: z.string(),
   tenant: zTenantInfoResponse,
 })
@@ -889,10 +841,11 @@ export const zSnippetPagination = z.object({
 })
 
 /**
- * AccountWithRole
+ * AccountWithRoleResponse
  */
-export const zAccountWithRole = z.object({
+export const zAccountWithRoleResponse = z.object({
   avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
@@ -905,10 +858,10 @@ export const zAccountWithRole = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleList = z.object({
-  accounts: z.array(zAccountWithRole),
+export const zAccountWithRoleListResponse = z.object({
+  accounts: z.array(zAccountWithRoleResponse),
 })
 
 /**
@@ -1793,6 +1746,17 @@ export const zWorkflowToolUpdatePayload = z.object({
 })
 
 /**
+ * EndpointDeclaration
+ *
+ * declaration of an endpoint
+ */
+export const zEndpointDeclaration = z.object({
+  hidden: z.boolean().optional().default(false),
+  method: z.string(),
+  path: z.string(),
+})
+
+/**
  * UnaddedModelConfiguration
  *
  * Model class for provider unadded model configuration.
@@ -1932,6 +1896,104 @@ export const zModelWithProviderEntityResponse = z.object({
  */
 export const zModelWithProviderListResponse = z.object({
   data: z.array(zModelWithProviderEntityResponse),
+})
+
+/**
+ * Option
+ */
+export const zOption = z.object({
+  label: zI18nObject,
+  value: z.string(),
+})
+
+/**
+ * AppSelectorScope
+ */
+export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'])
+
+/**
+ * ModelSelectorScope
+ */
+export const zModelSelectorScope = z.enum([
+  'llm',
+  'moderation',
+  'rerank',
+  'speech2text',
+  'text-embedding',
+  'tts',
+  'vision',
+])
+
+/**
+ * ToolSelectorScope
+ */
+export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
+
+/**
+ * Type
+ */
+export const zType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
+
+/**
+ * ProviderConfig
+ *
+ * Model class for common provider settings like credentials
+ */
+export const zProviderConfig = z.object({
+  default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
+  help: zI18nObject.nullish(),
+  label: zI18nObject.nullish(),
+  multiple: z.boolean().optional().default(false),
+  name: z.string(),
+  options: z.array(zOption).nullish(),
+  placeholder: zI18nObject.nullish(),
+  required: z.boolean().optional().default(false),
+  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
+  type: zType,
+  url: z.string().nullish(),
+})
+
+/**
+ * EndpointProviderDeclaration
+ *
+ * declaration of an endpoint group
+ */
+export const zEndpointProviderDeclaration = z.object({
+  endpoints: z.array(zEndpointDeclaration).nullish(),
+  settings: z.array(zProviderConfig).optional(),
+})
+
+/**
+ * EndpointEntityWithInstance
+ */
+export const zEndpointEntityWithInstance = z.object({
+  created_at: z.iso.datetime(),
+  declaration: zEndpointProviderDeclaration.optional(),
+  enabled: z.boolean(),
+  expired_at: z.iso.datetime(),
+  hook_id: z.string(),
+  id: z.string(),
+  name: z.string(),
+  plugin_id: z.string(),
+  settings: z.record(z.string(), z.unknown()),
+  tenant_id: z.string(),
+  updated_at: z.iso.datetime(),
+  url: z.string(),
+})
+
+/**
+ * EndpointListResponse
+ */
+export const zEndpointListResponse = z.object({
+  endpoints: z.array(zEndpointEntityWithInstance),
 })
 
 /**
@@ -2148,6 +2210,29 @@ export const zModelProviderListResponse = z.object({
 })
 
 /**
+ * AccountWithRoleResponse
+ */
+export const zAccountWithRoleResponseWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  last_active_at: z.int().nullish(),
+  last_login_at: z.int().nullish(),
+  name: z.string(),
+  role: z.string(),
+  roles: z.array(z.record(z.string(), z.string())).optional(),
+  status: z.string(),
+})
+
+/**
+ * AccountWithRoleListResponse
+ */
+export const zAccountWithRoleListResponseWritable = z.object({
+  accounts: z.array(zAccountWithRoleResponseWritable),
+})
+
+/**
  * Success
  */
 export const zGetWorkspacesResponse = zTenantListResponse
@@ -2274,7 +2359,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncremen
 /**
  * Success
  */
-export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleListResponse
 
 export const zGetWorkspacesCurrentDefaultModelQuery = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
@@ -2297,35 +2382,35 @@ export const zPostWorkspacesCurrentEndpointsBody = zEndpointCreatePayload
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsResponse = zEndpointCreateResponse
+export const zPostWorkspacesCurrentEndpointsResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsCreateBody = zEndpointCreatePayload
 
 /**
  * Endpoint created successfully
  */
-export const zPostWorkspacesCurrentEndpointsCreateResponse = zEndpointCreateResponse
+export const zPostWorkspacesCurrentEndpointsCreateResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsDeleteBody = zEndpointIdPayload
 
 /**
  * Endpoint deleted successfully
  */
-export const zPostWorkspacesCurrentEndpointsDeleteResponse = zEndpointDeleteResponse
+export const zPostWorkspacesCurrentEndpointsDeleteResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsDisableBody = zEndpointIdPayload
 
 /**
  * Endpoint disabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsDisableResponse = zEndpointDisableResponse
+export const zPostWorkspacesCurrentEndpointsDisableResponse = zSuccessResponse
 
 export const zPostWorkspacesCurrentEndpointsEnableBody = zEndpointIdPayload
 
 /**
  * Endpoint enabled successfully
  */
-export const zPostWorkspacesCurrentEndpointsEnableResponse = zEndpointEnableResponse
+export const zPostWorkspacesCurrentEndpointsEnableResponse = zSuccessResponse
 
 export const zGetWorkspacesCurrentEndpointsListQuery = z.object({
   page: z.int().gte(1),
@@ -2346,14 +2431,14 @@ export const zGetWorkspacesCurrentEndpointsListPluginQuery = z.object({
 /**
  * Success
  */
-export const zGetWorkspacesCurrentEndpointsListPluginResponse = zPluginEndpointListResponse
+export const zGetWorkspacesCurrentEndpointsListPluginResponse = zEndpointListResponse
 
 export const zPostWorkspacesCurrentEndpointsUpdateBody = zLegacyEndpointUpdatePayload
 
 /**
  * Endpoint updated successfully
  */
-export const zPostWorkspacesCurrentEndpointsUpdateResponse = zEndpointUpdateResponse
+export const zPostWorkspacesCurrentEndpointsUpdateResponse = zSuccessResponse
 
 export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
   id: z.string(),
@@ -2362,7 +2447,7 @@ export const zDeleteWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint deleted successfully
  */
-export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zEndpointDeleteResponse
+export const zDeleteWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
 
 export const zPatchWorkspacesCurrentEndpointsByIdBody = zEndpointUpdatePayload
 
@@ -2373,12 +2458,12 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
 /**
  * Endpoint updated successfully
  */
-export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointUpdateResponse
+export const zPatchWorkspacesCurrentEndpointsByIdResponse = zSuccessResponse
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleListResponse
 
 export const zPostWorkspacesCurrentMembersInviteEmailBody = zMemberInvitePayload
 
@@ -2410,7 +2495,7 @@ export const zDeleteWorkspacesCurrentMembersByMemberIdPath = z.object({
 /**
  * Success
  */
-export const zDeleteWorkspacesCurrentMembersByMemberIdResponse = zMemberActionTenantResponse
+export const zDeleteWorkspacesCurrentMembersByMemberIdResponse = zMemberActionResponse
 
 export const zPostWorkspacesCurrentMembersByMemberIdOwnerTransferBody = zOwnerTransferPayload
 
@@ -3952,7 +4037,11 @@ export const zPostWorkspacesCustomConfigBody = zWorkspaceCustomConfigPayload
 /**
  * Success
  */
-export const zPostWorkspacesCustomConfigResponse = zWorkspaceMutationResponse
+export const zPostWorkspacesCustomConfigResponse = zWorkspaceTenantResultResponse
+
+export const zPostWorkspacesCustomConfigWebappLogoUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+})
 
 /**
  * Logo uploaded
@@ -3964,7 +4053,7 @@ export const zPostWorkspacesInfoBody = zWorkspaceInfoPayload
 /**
  * Success
  */
-export const zPostWorkspacesInfoResponse = zWorkspaceMutationResponse
+export const zPostWorkspacesInfoResponse = zWorkspaceTenantResultResponse
 
 export const zPostWorkspacesSwitchBody = zSwitchWorkspacePayload
 

@@ -12,7 +12,7 @@ export type AccountAvatarPayload = {
   avatar: string
 }
 
-export type Account = {
+export type AccountResponse = {
   avatar?: string | null
   readonly avatar_url: string | null
   created_at?: number | null
@@ -81,16 +81,6 @@ export type EducationStatusResponse = {
   result?: boolean | null
 }
 
-export type EducationActivatePayload = {
-  institution: string
-  role: string
-  token: string
-}
-
-export type EducationActivateResponse = {
-  [key: string]: unknown
-}
-
 export type EducationAutocompleteResponse = {
   curr_page?: number | null
   data?: Array<string>
@@ -140,7 +130,7 @@ export type AccountIntegrateResponse = {
   provider: string
 }
 
-export type AccountWritable = {
+export type AccountResponseWritable = {
   avatar?: string | null
   created_at?: number | null
   email: string
@@ -177,7 +167,7 @@ export type PostAccountAvatarData = {
 }
 
 export type PostAccountAvatarResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountAvatarResponse = PostAccountAvatarResponses[keyof PostAccountAvatarResponses]
@@ -218,7 +208,7 @@ export type PostAccountChangeEmailResetData = {
 }
 
 export type PostAccountChangeEmailResetResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountChangeEmailResetResponse
@@ -293,20 +283,6 @@ export type GetAccountEducationResponses = {
 export type GetAccountEducationResponse
   = GetAccountEducationResponses[keyof GetAccountEducationResponses]
 
-export type PostAccountEducationData = {
-  body: EducationActivatePayload
-  path?: never
-  query?: never
-  url: '/account/education'
-}
-
-export type PostAccountEducationResponses = {
-  200: EducationActivateResponse
-}
-
-export type PostAccountEducationResponse
-  = PostAccountEducationResponses[keyof PostAccountEducationResponses]
-
 export type GetAccountEducationAutocompleteData = {
   body?: never
   path?: never
@@ -374,7 +350,7 @@ export type PostAccountInterfaceLanguageData = {
 }
 
 export type PostAccountInterfaceLanguageResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountInterfaceLanguageResponse
@@ -388,7 +364,7 @@ export type PostAccountInterfaceThemeData = {
 }
 
 export type PostAccountInterfaceThemeResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountInterfaceThemeResponse
@@ -402,7 +378,7 @@ export type PostAccountNameData = {
 }
 
 export type PostAccountNameResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountNameResponse = PostAccountNameResponses[keyof PostAccountNameResponses]
@@ -415,7 +391,7 @@ export type PostAccountPasswordData = {
 }
 
 export type PostAccountPasswordResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountPasswordResponse
@@ -429,7 +405,7 @@ export type GetAccountProfileData = {
 }
 
 export type GetAccountProfileResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type GetAccountProfileResponse = GetAccountProfileResponses[keyof GetAccountProfileResponses]
@@ -442,7 +418,7 @@ export type PostAccountTimezoneData = {
 }
 
 export type PostAccountTimezoneResponses = {
-  200: Account
+  200: AccountResponse
 }
 
 export type PostAccountTimezoneResponse

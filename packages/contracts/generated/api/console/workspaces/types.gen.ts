@@ -104,8 +104,8 @@ export type SnippetUseCountResponse = {
   use_count: number
 }
 
-export type AccountWithRoleList = {
-  accounts: Array<AccountWithRole>
+export type AccountWithRoleListResponse = {
+  accounts: Array<AccountWithRoleResponse>
 }
 
 export type DefaultModelDataResponse = {
@@ -128,7 +128,7 @@ export type EndpointCreatePayload = {
   }
 }
 
-export type EndpointCreateResponse = {
+export type SuccessResponse = {
   success: boolean
 }
 
@@ -136,28 +136,8 @@ export type EndpointIdPayload = {
   endpoint_id: string
 }
 
-export type EndpointDeleteResponse = {
-  success: boolean
-}
-
-export type EndpointDisableResponse = {
-  success: boolean
-}
-
-export type EndpointEnableResponse = {
-  success: boolean
-}
-
 export type EndpointListResponse = {
-  endpoints: Array<{
-    [key: string]: unknown
-  }>
-}
-
-export type PluginEndpointListResponse = {
-  endpoints: Array<{
-    [key: string]: unknown
-  }>
+  endpoints: Array<EndpointEntityWithInstance>
 }
 
 export type LegacyEndpointUpdatePayload = {
@@ -166,10 +146,6 @@ export type LegacyEndpointUpdatePayload = {
   settings: {
     [key: string]: unknown
   }
-}
-
-export type EndpointUpdateResponse = {
-  success: boolean
 }
 
 export type EndpointUpdatePayload = {
@@ -211,9 +187,9 @@ export type SimpleResultDataResponse = {
   result: string
 }
 
-export type MemberActionTenantResponse = {
+export type MemberActionResponse = {
   result: string
-  tenant_id: string
+  tenant_id?: string
 }
 
 export type OwnerTransferPayload = {
@@ -389,10 +365,6 @@ export type PluginAutoUpgradeChangeResponse = {
 export type ParserExcludePlugin = {
   category: PluginCategory
   plugin_id: string
-}
-
-export type SuccessResponse = {
-  success: boolean
 }
 
 export type PluginAutoUpgradeFetchResponse = {
@@ -836,7 +808,7 @@ export type WorkspaceCustomConfigPayload = {
   replace_webapp_logo?: string | null
 }
 
-export type WorkspaceMutationResponse = {
+export type WorkspaceTenantResultResponse = {
   result: string
   tenant: TenantInfoResponse
 }
@@ -862,6 +834,7 @@ export type TenantListItemResponse = {
   created_at?: number | null
   current: boolean
   id: string
+  last_opened_at?: number | null
   name?: string | null
   plan?: string | null
   status?: string | null
@@ -921,8 +894,9 @@ export type AnonymousInlineModel7B8B49Ca164e = {
   type?: string
 }
 
-export type AccountWithRole = {
+export type AccountWithRoleResponse = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -946,6 +920,23 @@ export type Inner = {
   model?: string | null
   model_type: ModelType
   provider?: string | null
+}
+
+export type EndpointEntityWithInstance = {
+  created_at: string
+  declaration?: EndpointProviderDeclaration
+  enabled: boolean
+  expired_at: string
+  hook_id: string
+  id: string
+  name: string
+  plugin_id: string
+  settings: {
+    [key: string]: unknown
+  }
+  tenant_id: string
+  updated_at: string
+  url: string
 }
 
 export type MemberInviteResultResponse = {
@@ -1209,6 +1200,11 @@ export type SimpleProviderEntityResponse = {
   tenant_id: string
 }
 
+export type EndpointProviderDeclaration = {
+  endpoints?: Array<EndpointDeclaration> | null
+  settings?: Array<ProviderConfig>
+}
+
 export type ConfigurateMethod = 'customizable-model' | 'predefined-model'
 
 export type CustomConfigurationResponse = {
@@ -1419,6 +1415,26 @@ export type AiModelEntityResponse = {
   pricing?: PriceConfigResponse | null
 }
 
+export type EndpointDeclaration = {
+  hidden?: boolean
+  method: string
+  path: string
+}
+
+export type ProviderConfig = {
+  default?: number | string | number | boolean | null
+  help?: I18nObject | null
+  label?: I18nObject | null
+  multiple?: boolean
+  name: string
+  options?: Array<Option> | null
+  placeholder?: I18nObject | null
+  required?: boolean
+  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
+  type: Type
+  url?: string | null
+}
+
 export type UnaddedModelConfiguration = {
   model: string
   model_type: ModelType
@@ -1490,6 +1506,33 @@ export type PriceConfigResponse = {
   unit: string
 }
 
+export type Option = {
+  label: I18nObject
+  value: string
+}
+
+export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
+
+export type ModelSelectorScope
+  = | 'llm'
+    | 'moderation'
+    | 'rerank'
+    | 'speech2text'
+    | 'text-embedding'
+    | 'tts'
+    | 'vision'
+
+export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
+
+export type Type
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
+
 export type FormOption = {
   label: GraphonModelRuntimeEntitiesCommonEntitiesI18nObject
   show_on?: Array<FormShowOnObject>
@@ -1509,6 +1552,25 @@ export type RestrictModel = {
   base_model_name?: string | null
   model: string
   model_type: ModelType
+}
+
+export type AccountWithRoleListResponseWritable = {
+  accounts: Array<AccountWithRoleResponseWritable>
+}
+
+export type AccountWithRoleResponseWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  last_active_at?: number | null
+  last_login_at?: number | null
+  name: string
+  role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
+  status: string
 }
 
 export type GetWorkspacesData = {
@@ -1777,7 +1839,7 @@ export type GetWorkspacesCurrentDatasetOperatorsData = {
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentDatasetOperatorsResponse
@@ -1825,7 +1887,7 @@ export type PostWorkspacesCurrentEndpointsErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsResponses = {
-  200: EndpointCreateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsResponse
@@ -1843,7 +1905,7 @@ export type PostWorkspacesCurrentEndpointsCreateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponses = {
-  200: EndpointCreateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsCreateResponse
@@ -1861,7 +1923,7 @@ export type PostWorkspacesCurrentEndpointsDeleteErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponses = {
-  200: EndpointDeleteResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDeleteResponse
@@ -1879,7 +1941,7 @@ export type PostWorkspacesCurrentEndpointsDisableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponses = {
-  200: EndpointDisableResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsDisableResponse
@@ -1897,7 +1959,7 @@ export type PostWorkspacesCurrentEndpointsEnableErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponses = {
-  200: EndpointEnableResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsEnableResponse
@@ -1932,7 +1994,7 @@ export type GetWorkspacesCurrentEndpointsListPluginData = {
 }
 
 export type GetWorkspacesCurrentEndpointsListPluginResponses = {
-  200: PluginEndpointListResponse
+  200: EndpointListResponse
 }
 
 export type GetWorkspacesCurrentEndpointsListPluginResponse
@@ -1950,7 +2012,7 @@ export type PostWorkspacesCurrentEndpointsUpdateErrors = {
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponses = {
-  200: EndpointUpdateResponse
+  200: SuccessResponse
 }
 
 export type PostWorkspacesCurrentEndpointsUpdateResponse
@@ -1970,7 +2032,7 @@ export type DeleteWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponses = {
-  200: EndpointDeleteResponse
+  200: SuccessResponse
 }
 
 export type DeleteWorkspacesCurrentEndpointsByIdResponse
@@ -1990,7 +2052,7 @@ export type PatchWorkspacesCurrentEndpointsByIdErrors = {
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponses = {
-  200: EndpointUpdateResponse
+  200: SuccessResponse
 }
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse
@@ -2004,7 +2066,7 @@ export type GetWorkspacesCurrentMembersData = {
 }
 
 export type GetWorkspacesCurrentMembersResponses = {
-  200: AccountWithRoleList
+  200: AccountWithRoleListResponse
 }
 
 export type GetWorkspacesCurrentMembersResponse
@@ -2062,7 +2124,7 @@ export type DeleteWorkspacesCurrentMembersByMemberIdData = {
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdResponses = {
-  200: MemberActionTenantResponse
+  200: MemberActionResponse
 }
 
 export type DeleteWorkspacesCurrentMembersByMemberIdResponse
@@ -4597,14 +4659,16 @@ export type PostWorkspacesCustomConfigData = {
 }
 
 export type PostWorkspacesCustomConfigResponses = {
-  200: WorkspaceMutationResponse
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesCustomConfigResponse
   = PostWorkspacesCustomConfigResponses[keyof PostWorkspacesCustomConfigResponses]
 
 export type PostWorkspacesCustomConfigWebappLogoUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/workspaces/custom-config/webapp-logo/upload'
@@ -4625,7 +4689,7 @@ export type PostWorkspacesInfoData = {
 }
 
 export type PostWorkspacesInfoResponses = {
-  200: WorkspaceMutationResponse
+  200: WorkspaceTenantResultResponse
 }
 
 export type PostWorkspacesInfoResponse
