@@ -37,6 +37,13 @@ def _stream_with_request_context(response: object) -> Any:
     return cast(Any, stream_with_context)(response)
 
 
+def to_timestamp(value: datetime | int | None) -> int | None:
+    """Normalize API response timestamp values to epoch seconds."""
+    if isinstance(value, datetime):
+        return int(value.timestamp())
+    return value
+
+
 def escape_like_pattern(pattern: str) -> str:
     """
     Escape special characters in a string for safe use in SQL LIKE patterns.
