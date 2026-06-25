@@ -26,6 +26,7 @@ export type AgentAppDetailWithSite = {
   active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
+  backing_app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -34,6 +35,7 @@ export type AgentAppDetailWithSite = {
   description?: string | null
   enable_api: boolean
   enable_site: boolean
+  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -168,7 +170,11 @@ export type AgentAppComposerResponse = {
   active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
   agent: AgentComposerAgentResponse
   agent_soul: AgentSoulConfig
+  app_id?: string | null
+  backing_app_id?: string | null
+  chat_endpoint?: string | null
   draft?: AgentConfigDraftSummaryResponse | null
+  hidden_app_backed?: boolean
   save_options: Array<ComposerSaveStrategy>
   validation?: ComposerValidationFindingsResponse | null
   variant: 'agent_app'
@@ -410,6 +416,7 @@ export type AgentAppPartial = {
   active_config_is_published?: boolean
   app_id?: string | null
   author_name?: string | null
+  backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
@@ -417,6 +424,7 @@ export type AgentAppPartial = {
   debug_conversation_id?: string | null
   description?: string | null
   has_draft_trigger?: boolean | null
+  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -516,10 +524,12 @@ export type AgentInviteOptionResponse = {
   app_id?: string | null
   archived_at?: number | null
   archived_by?: string | null
+  backing_app_id?: string | null
   created_at?: number | null
   created_by?: string | null
   description: string
   existing_node_ids?: Array<string>
+  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: AgentIconType | null
@@ -602,7 +612,10 @@ export type AgentConfigSnapshotSummaryResponse = {
 
 export type AgentComposerAgentResponse = {
   active_config_snapshot_id?: string | null
+  app_id?: string | null
+  backing_app_id?: string | null
   description: string
+  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -610,6 +623,7 @@ export type AgentComposerAgentResponse = {
   name: string
   role?: string | null
   scope: AgentScope
+  source?: AgentSource | null
   status: AgentStatus
 }
 
@@ -1672,6 +1686,7 @@ export type AgentAppDetailWithSiteWritable = {
   active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
+  backing_app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -1680,6 +1695,7 @@ export type AgentAppDetailWithSiteWritable = {
   description?: string | null
   enable_api: boolean
   enable_site: boolean
+  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -1705,6 +1721,7 @@ export type AgentAppPartialWritable = {
   active_config_is_published?: boolean
   app_id?: string | null
   author_name?: string | null
+  backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
@@ -1712,6 +1729,7 @@ export type AgentAppPartialWritable = {
   debug_conversation_id?: string | null
   description?: string | null
   has_draft_trigger?: boolean | null
+  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null

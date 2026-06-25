@@ -970,8 +970,11 @@ export type WorkflowAgentComposerResponse = {
   agent?: AgentComposerAgentResponse | null
   agent_soul: AgentSoulConfig
   app_id?: string | null
+  backing_app_id?: string | null
   binding?: AgentComposerBindingResponse | null
+  chat_endpoint?: string | null
   effective_declared_outputs?: Array<DeclaredOutputConfig>
+  hidden_app_backed?: boolean
   impact_summary?: AgentComposerImpactResponse | null
   node_id?: string | null
   node_job: WorkflowNodeJobConfig
@@ -1797,7 +1800,10 @@ export type AgentConfigSnapshotSummaryResponse = {
 
 export type AgentComposerAgentResponse = {
   active_config_snapshot_id?: string | null
+  app_id?: string | null
+  backing_app_id?: string | null
   description: string
+  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -1805,6 +1811,7 @@ export type AgentComposerAgentResponse = {
   name: string
   role?: string | null
   scope: AgentScope
+  source?: AgentSource | null
   status: AgentStatus
 }
 
@@ -2120,6 +2127,8 @@ export type WorkflowRunForArchivedLogResponse = {
 }
 
 export type AgentScope = 'roster' | 'workflow_only'
+
+export type AgentSource = 'agent_app' | 'imported' | 'roster' | 'system' | 'workflow'
 
 export type AgentStatus = 'active' | 'archived'
 

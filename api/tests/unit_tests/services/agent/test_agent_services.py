@@ -28,8 +28,8 @@ from models.agent_config_entities import (
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
-from models.enums import ConversationFromSource, ConversationStatus
-from models.model import Conversation, IconType
+from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.model import App, AppMode, Conversation, IconType
 from models.workflow import Workflow
 from services.agent import composer_service, roster_service
 from services.agent.agent_soul_state import agent_soul_has_model
@@ -369,7 +369,7 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
     monkeypatch.setattr(AgentComposerService, "_save_agent_draft", lambda **kwargs: saved_draft)
-    monkeypatch.setattr(AgentComposerService, "load_agent_app_composer", lambda **kwargs: {"loaded": True})
+    monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **kwargs: {"loaded": True})
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP.value,
@@ -396,6 +396,10 @@ def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.Mon
         active_config_snapshot_id="version-1",
         updated_by="account-1",
         created_by="account-1",
+        app_id="app-1",
+        backing_app_id="app-1",
+        scope=AgentScope.ROSTER,
+        status=AgentStatus.ACTIVE,
     )
     draft = SimpleNamespace(config_snapshot_dict={"prompt": {"system_prompt": "x"}})
 
@@ -441,7 +445,7 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
         "_save_agent_draft",
         lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1"),
     )
-    monkeypatch.setattr(AgentComposerService, "load_agent_app_composer", lambda **kwargs: {"loaded": True})
+    monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **kwargs: {"loaded": True})
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP.value,
@@ -581,14 +585,14 @@ def test_agent_app_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatc
         raise ValueError("draft workflow not found")
 
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", _no_draft_workflow)
-    monkeypatch.setattr(AgentComposerService, "_load_agent_app_soul", lambda **kwargs: None)
+    monkeypatch.setattr(AgentComposerService, "_load_agent_soul", lambda **kwargs: None)
     monkeypatch.setattr(AgentComposerService, "_workspace_dify_tools", lambda **kwargs: [])
 
     workflow_candidates = AgentComposerService.get_workflow_candidates(
         tenant_id="tenant-1", app_id="app-1", node_id="node-1", user_id="account-1"
     )
     agent_app_candidates = AgentComposerService.get_agent_app_candidates(
-        tenant_id="tenant-1", app_id="app-1", user_id="account-1"
+        tenant_id="tenant-1", agent_id="agent-1", user_id="account-1"
     )
     impact = AgentComposerService.calculate_impact(tenant_id="tenant-1", current_snapshot_id="version-1")
 
@@ -1446,6 +1450,7 @@ def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytes
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     created_apps = []
+    hidden_backing_apps = []
     backing_agent = Agent(
         id="roster-agent-1",
         tenant_id="tenant-1",
@@ -1464,6 +1469,10 @@ def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytes
     class FakeAgentRosterService:
         def __init__(self, session):
             self.session = session
+
+        def create_hidden_backing_app_for_workflow_agent(self, **kwargs):
+            hidden_backing_apps.append(kwargs)
+            return SimpleNamespace(id="hidden-app-1")
 
         def get_app_backing_agent(self, *, tenant_id, app_id):
             assert tenant_id == "tenant-1"
@@ -1503,6 +1512,8 @@ def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytes
 
     assert workflow_agent.active_config_snapshot_id == "version-with-model"
     assert workflow_agent.active_config_has_model is True
+    assert workflow_agent.backing_app_id == "hidden-app-1"
+    assert hidden_backing_apps[0]["name"] == "Workflow Agent node-1"
     assert roster_agent.active_config_snapshot_id == "version-with-model"
     assert roster_agent.active_config_has_model is True
     assert roster_agent.source == AgentSource.AGENT_APP
@@ -2079,6 +2090,42 @@ def test_roster_create_detail_and_lookup_helpers(monkeypatch: pytest.MonkeyPatch
     assert loaded_versions["version-1"].agent_id == "agent-1"
 
 
+def test_get_agent_runtime_app_model_creates_hidden_backing_app_for_existing_inline_agent():
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        app_id="workflow-app-1",
+        workflow_id="workflow-1",
+        workflow_node_id="node-1",
+        name="Inline Agent",
+        description="desc",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+        created_by="account-1",
+        updated_by="account-1",
+    )
+    backing_app = App(
+        id="generated-1",
+        tenant_id="tenant-1",
+        name="Inline Agent",
+        mode=AppMode.AGENT,
+        status=AppStatus.NORMAL,
+    )
+    session = FakeSession(scalar=[agent, backing_app])
+    service = AgentRosterService(session)
+
+    resolved_app = service.get_agent_runtime_app_model(tenant_id="tenant-1", agent_id="agent-1")
+
+    assert resolved_app is backing_app
+    assert agent.backing_app_id == "generated-1"
+    assert session.commits == 1
+    created_app = next(value for value in session.added if isinstance(value, App))
+    assert created_app.enable_site is False
+    assert created_app.enable_api is False
+
+
 def test_agent_app_debug_conversation_create_reuse_and_recreate():
     agent = Agent(
         id="agent-1",
@@ -2314,6 +2361,18 @@ def test_app_list_all_excludes_agent_apps_by_default():
     sql = " ".join(str(filter_) for filter_ in filters)
 
     assert "apps.mode != :mode_1" in sql
+
+
+def test_app_list_agent_mode_requires_visible_roster_backing_agent():
+    filters = AppService._build_app_list_filters(
+        "account-1", "tenant-1", AppListParams(mode="agent"), FakeSession(scalar=None, scalars=None)
+    )
+    sql = " ".join(str(filter_) for filter_ in filters)
+
+    assert "EXISTS" in sql
+    assert "agents.app_id = apps.id" in sql
+    assert "agents.scope" in sql
+    assert "agents.source" in sql
 
 
 def test_validator_dict_helpers_wrap_validation_errors():

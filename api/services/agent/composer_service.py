@@ -305,6 +305,15 @@ class AgentComposerService:
     @classmethod
     def load_agent_app_composer(cls, *, tenant_id: str, app_id: str) -> dict[str, Any]:
         agent = cls._require_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
+        return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent)
+
+    @classmethod
+    def load_agent_composer(cls, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
+        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
+        return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent)
+
+    @classmethod
+    def _load_agent_composer_for_agent(cls, *, tenant_id: str, agent: Agent) -> dict[str, Any]:
         draft = cls._get_or_create_agent_draft(
             tenant_id=tenant_id,
             agent=agent,
@@ -322,6 +331,10 @@ class AgentComposerService:
             "draft": cls._serialize_draft(draft),
             "agent_soul": draft.config_snapshot_dict,
             "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
+            "app_id": agent.app_id,
+            "backing_app_id": agent.backing_app_id or agent.app_id,
+            "hidden_app_backed": bool(agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
+            "chat_endpoint": f"/console/api/agent/{agent.id}/chat-messages",
         }
 
     @classmethod
@@ -334,11 +347,11 @@ class AgentComposerService:
             raise InvalidComposerConfigError(
                 "Agent App composer only saves the normal draft. Use the publish endpoint to create a version."
             )
+        if payload.agent_soul is None:
+            raise ValueError("agent_soul is required")
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
         cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
-        if payload.agent_soul is None:
-            raise ValueError("agent_soul is required")
 
         agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
         if not agent:
@@ -350,6 +363,7 @@ class AgentComposerService:
                 scope=AgentScope.ROSTER,
                 source=AgentSource.AGENT_APP,
                 app_id=app_id,
+                backing_app_id=app_id,
                 status=AgentStatus.ACTIVE,
                 created_by=account_id,
                 updated_by=account_id,
@@ -360,6 +374,47 @@ class AgentComposerService:
             except IntegrityError as exc:
                 db.session.rollback()
                 raise AgentNameConflictError() from exc
+        return cls._save_agent_composer_for_agent(
+            tenant_id=tenant_id,
+            agent=agent,
+            account_id=account_id,
+            payload=payload,
+        )
+
+    @classmethod
+    def save_agent_composer(
+        cls, *, tenant_id: str, agent_id: str, account_id: str, payload: ComposerSavePayload
+    ) -> dict[str, Any]:
+        if payload.variant != ComposerVariant.AGENT_APP:
+            raise ValueError("Agent composer endpoint only accepts agent_app variant")
+        if payload.save_strategy != ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
+            raise InvalidComposerConfigError(
+                "Agent composer only saves the normal draft. Use the publish endpoint to create a version."
+            )
+        if payload.agent_soul is None:
+            raise ValueError("agent_soul is required")
+        _backfill_cli_tool_ids(payload.agent_soul)
+        _validate_composer_payload_for_strategy(payload)
+        cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
+        agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
+        return cls._save_agent_composer_for_agent(
+            tenant_id=tenant_id,
+            agent=agent,
+            account_id=account_id,
+            payload=payload,
+        )
+
+    @classmethod
+    def _save_agent_composer_for_agent(
+        cls, *, tenant_id: str, agent: Agent, account_id: str, payload: ComposerSavePayload
+    ) -> dict[str, Any]:
+        if payload.agent_soul is None:
+            raise ValueError("agent_soul is required")
+        payload.agent_soul = cls._preserve_active_soul_files(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            agent_soul=payload.agent_soul,
+        )
         cls._save_agent_draft(
             tenant_id=tenant_id,
             agent=agent,
@@ -371,7 +426,7 @@ class AgentComposerService:
         agent.updated_by = account_id
 
         db.session.commit()
-        state = cls.load_agent_app_composer(tenant_id=tenant_id, app_id=app_id)
+        state = cls.load_agent_composer(tenant_id=tenant_id, agent_id=agent.id)
         state["validation"] = cls.collect_validation_findings(
             tenant_id=tenant_id,
             payload=payload,
@@ -430,8 +485,6 @@ class AgentComposerService:
         cls, *, tenant_id: str, agent_id: str, account_id: str, force: bool = False
     ) -> dict[str, Any]:
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id)
-        if agent.scope != AgentScope.ROSTER or agent.source != AgentSource.AGENT_APP:
-            raise AgentNotFoundError()
         normal_draft = cls._get_or_create_agent_draft(
             tenant_id=tenant_id,
             agent=agent,
@@ -713,11 +766,11 @@ class AgentComposerService:
         return response.model_dump(mode="json")
 
     @classmethod
-    def get_agent_app_candidates(cls, *, tenant_id: str, app_id: str, user_id: str) -> dict[str, Any]:
+    def get_agent_app_candidates(cls, *, tenant_id: str, agent_id: str, user_id: str) -> dict[str, Any]:
         """Slash-menu data source for the Agent App (Console) composer (ENG-615)."""
         from services.agent.composer_candidates import soul_candidates
 
-        agent_soul = cls._load_agent_app_soul(tenant_id=tenant_id, app_id=app_id)
+        agent_soul = cls._load_agent_soul(tenant_id=tenant_id, agent_id=agent_id)
         soul_lists, truncated = soul_candidates(
             agent_soul=agent_soul,
             dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(tenant_id=tenant_id, dataset_ids=ids),
@@ -752,8 +805,8 @@ class AgentComposerService:
         return cls._parse_soul_snapshot(version)
 
     @classmethod
-    def _load_agent_app_soul(cls, *, tenant_id: str, app_id: str) -> AgentSoulConfig | None:
-        agent = cls._get_agent_app_agent(tenant_id=tenant_id, app_id=app_id)
+    def _load_agent_soul(cls, *, tenant_id: str, agent_id: str) -> AgentSoulConfig | None:
+        agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=agent_id)
         if agent is None:
             return None
         draft = cls._get_or_create_agent_draft(
@@ -1182,6 +1235,15 @@ class AgentComposerService:
         icon: str | None = None,
         icon_background: str | None = None,
     ) -> Agent:
+        backing_app = AgentRosterService(db.session).create_hidden_backing_app_for_workflow_agent(
+            tenant_id=tenant_id,
+            account_id=account_id,
+            name=name or f"Workflow Agent {node_id}",
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+        )
         agent = Agent(
             tenant_id=tenant_id,
             name=name or f"Workflow Agent {node_id}",
@@ -1194,6 +1256,7 @@ class AgentComposerService:
             scope=AgentScope.WORKFLOW_ONLY,
             source=AgentSource.WORKFLOW,
             app_id=app_id,
+            backing_app_id=backing_app.id,
             workflow_id=workflow_id,
             workflow_node_id=node_id,
             status=AgentStatus.ACTIVE,
@@ -1762,6 +1825,12 @@ class AgentComposerService:
             "impact_summary": cls.calculate_impact(tenant_id=binding.tenant_id, current_snapshot_id=version.id)
             if version
             else None,
+            "app_id": binding.app_id,
+            "backing_app_id": agent.backing_app_id if agent else None,
+            "hidden_app_backed": bool(agent and agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
+            "chat_endpoint": f"/console/api/agent/{agent.id}/chat-messages" if agent else None,
+            "workflow_id": binding.workflow_id,
+            "node_id": binding.node_id,
         }
 
     @classmethod
@@ -1775,6 +1844,10 @@ class AgentComposerService:
             "icon": agent.icon,
             "icon_background": agent.icon_background,
             "scope": agent.scope.value,
+            "source": agent.source.value,
+            "app_id": agent.app_id,
+            "backing_app_id": agent.backing_app_id or agent.app_id,
+            "hidden_app_backed": bool(agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
             "status": agent.status.value,
             "active_config_snapshot_id": agent.active_config_snapshot_id,
         }

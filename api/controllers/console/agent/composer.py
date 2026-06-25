@@ -5,7 +5,6 @@ from flask_restx import Resource
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
@@ -46,10 +45,6 @@ register_response_schema_models(
     AgentComposerValidateResponse,
     WorkflowAgentComposerResponse,
 )
-
-
-def _resolve_agent_app_id(*, tenant_id: str, agent_id: UUID) -> str:
-    return resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id).id
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer")
@@ -239,10 +234,9 @@ class AgentComposerApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
-        app_id = _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             AgentAppComposerResponse,
-            AgentComposerService.load_agent_app_composer(tenant_id=tenant_id, app_id=app_id),
+            AgentComposerService.load_agent_composer(tenant_id=tenant_id, agent_id=str(agent_id)),
         )
 
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
@@ -255,13 +249,12 @@ class AgentComposerApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def put(self, tenant_id: str, account_id: str, agent_id: UUID):
-        app_id = _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         return dump_response(
             AgentAppComposerResponse,
-            AgentComposerService.save_agent_app_composer(
+            AgentComposerService.save_agent_composer(
                 tenant_id=tenant_id,
-                app_id=app_id,
+                agent_id=str(agent_id),
                 account_id=account_id,
                 payload=payload,
             ),
@@ -279,7 +272,7 @@ class AgentComposerValidateApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, agent_id: UUID):
-        _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
+        AgentComposerService.load_agent_composer(tenant_id=tenant_id, agent_id=str(agent_id))
         payload = ComposerSavePayload.model_validate(console_ns.payload or {})
         ComposerConfigValidator.validate_publish_payload(payload)
         AgentComposerService.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)
@@ -302,12 +295,11 @@ class AgentComposerCandidatesApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user_id: str, agent_id: UUID):
-        app_id = _resolve_agent_app_id(tenant_id=tenant_id, agent_id=agent_id)
         return dump_response(
             AgentComposerCandidatesResponse,
             AgentComposerService.get_agent_app_candidates(
                 tenant_id=tenant_id,
-                app_id=app_id,
+                agent_id=str(agent_id),
                 user_id=current_user_id,
             ),
         )
