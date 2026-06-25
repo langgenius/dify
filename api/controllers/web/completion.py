@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
@@ -87,7 +87,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(web_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(web_ns, SimpleResultResponse)
 
 
 # define completion api for user
@@ -106,7 +106,7 @@ class CompletionApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @web_ns.response(200, "Success")
     def post(self, app_model: App, end_user: EndUser):
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
@@ -122,6 +122,7 @@ class CompletionApi(WebApiResource):
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -172,7 +173,7 @@ class CompletionStopApi(WebApiResource):
             app_mode=AppMode.value_of(app_model.mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @web_ns.route("/chat-messages")
@@ -190,7 +191,7 @@ class ChatApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @web_ns.response(200, "Success", web_ns.models[GeneratedAppResponse.__name__])
+    @web_ns.response(200, "Success")
     def post(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT}:
@@ -213,6 +214,7 @@ class ChatApi(WebApiResource):
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -266,4 +268,4 @@ class ChatStopApi(WebApiResource):
             app_mode=app_mode,
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200

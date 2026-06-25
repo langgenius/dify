@@ -149,7 +149,7 @@ describe('AgentPreviewChat', () => {
           id: 'message-1',
           conversation_id: 'debug-conversation-1',
           query: 'previous question',
-          answer: 'previous answer',
+          re_sign_file_url_answer: 'previous answer',
           inputs: {},
           message: [],
           message_files: [],
