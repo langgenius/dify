@@ -171,9 +171,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
         lines = [
             "set -eu",
             f"base={shlex.quote(base_path)}",
-            "dify-agent drive pull "
-            + " ".join(shlex.quote(target) for target in pull_targets)
-            + ' --to "$base"',
+            "dify-agent drive pull " + " ".join(shlex.quote(target) for target in pull_targets) + ' --to "$base"',
         ]
         for skill_key in self.config.mentioned_skill_keys:
             skill_path = self._shell_local_path(skill_key)
