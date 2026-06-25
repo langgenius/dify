@@ -243,9 +243,11 @@ describe('AccountSetting', () => {
       expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
       expect(screen.queryByText('common.settings.customEndpoint'))!.not.toBeInTheDocument()
       expect(screen.getByText('custom.custom'))!.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'custom.custom' }).compareDocumentPosition(screen.getByRole('button', { name: 'appLog.archives.title' }))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
     })
 
@@ -359,6 +361,7 @@ describe('AccountSetting', () => {
       expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.billing' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.preferences' })).toBeInTheDocument()
     })
@@ -396,6 +399,7 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.queryByText('common.settings.provider')).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
     })
@@ -545,6 +549,10 @@ describe('AccountSetting', () => {
       fireEvent.click(screen.getByText('custom.custom'))
       // Custom Page uses 'custom.custom' key as well.
       expect(screen.getAllByText('custom.custom').length).toBeGreaterThan(1)
+
+      // Workflow Log Archives
+      fireEvent.click(screen.getByRole('button', { name: 'appLog.archives.title' }))
+      expect(screen.getByTestId('workflow-log-archives-page')).toBeInTheDocument()
 
       // Members
       fireEvent.click(screen.getAllByText('common.settings.members')[0]!)

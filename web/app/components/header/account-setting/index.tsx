@@ -25,6 +25,7 @@ import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
+import WorkflowLogArchivesPage from './workflow-log-archives-page'
 
 const iconClassName = `
   w-4 h-4 mr-2
@@ -54,15 +55,18 @@ export default function AccountSetting({
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { workspacePermissionKeys } = useAppContext()
+  const { isCurrentWorkspaceManager, workspacePermissionKeys } = useAppContext()
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
+  const canViewWorkflowLogArchives = isCurrentWorkspaceManager || canManageWorkspaceRoles
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab = activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
   const activeMenu = (() => {
     if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
+    if (normalizedActiveTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && !canViewWorkflowLogArchives)
+      return ACCOUNT_SETTING_TAB.MEMBERS
     if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
       return ACCOUNT_SETTING_TAB.MEMBERS
     return normalizedActiveTab
@@ -101,6 +105,13 @@ export default function AccountSetting({
       description: t('plansCommon.receiptInfo', { ns: 'billing' }),
       icon: <span className={cn('i-ri-money-dollar-circle-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-money-dollar-circle-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES,
+      name: t('archives.title', { ns: 'appLog' }),
+      description: t('archives.description', { ns: 'appLog' }),
+      icon: <span className={cn('i-ri-archive-drawer-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-archive-drawer-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
@@ -145,6 +156,9 @@ export default function AccountSetting({
 
     if (enableReplaceWebAppLogo || enableBilling)
       visibleTabs.push(ACCOUNT_SETTING_TAB.CUSTOM)
+
+    if (canViewWorkflowLogArchives)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES)
 
     return visibleTabs
       .map(tab => settingItems.find(item => item.key === tab))
@@ -265,6 +279,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={scrollContainerRef} />}
               {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && <WorkflowLogArchivesPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.CUSTOM && <CustomPage />}
