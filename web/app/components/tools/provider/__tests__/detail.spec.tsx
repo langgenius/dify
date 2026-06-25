@@ -192,7 +192,11 @@ describe('ProviderDetail', () => {
 
       const dialog = screen.getByRole('dialog')
 
+      expect(document.querySelector('.absolute.inset-0.z-50.bg-transparent')).not.toBeInTheDocument()
+      expect(dialog.closest('.pointer-events-none')).toBeInTheDocument()
       expect(dialog).toHaveClass(
+        'pointer-events-auto',
+        'touch-auto',
         'data-[swipe-direction=right]:top-2',
         'data-[swipe-direction=right]:right-2',
         'data-[swipe-direction=right]:bottom-2',

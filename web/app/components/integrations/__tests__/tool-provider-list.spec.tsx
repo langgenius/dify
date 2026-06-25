@@ -477,7 +477,7 @@ describe('ProviderList', () => {
 
       fireEvent.click(screen.getByTestId('card-google-search'))
 
-      expect(screen.getByTestId('card-google-search')).toHaveClass('outline-[1.5px]', 'outline-components-option-card-option-selected-border')
+      expect(screen.getByTestId('card-google-search')).toHaveClass('after:ring-[1.5px]', 'after:ring-components-option-card-option-selected-border', 'after:ring-inset')
     })
   })
 
