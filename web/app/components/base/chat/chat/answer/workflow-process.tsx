@@ -102,11 +102,25 @@ const WorkflowProcessItem = ({
       {
         !collapse && (
           <div className="mt-1.5">
-            <TracingPanel
-              list={data.tracing}
-              hideNodeInfo={hideInfo}
-              hideNodeProcessDetail={hideProcessDetail}
-            />
+            {
+              failed && data.error && (
+                <div
+                  className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-bg px-2 py-1.5 system-xs-regular text-text-destructive"
+                  data-testid="workflow-process-error"
+                >
+                  {data.error}
+                </div>
+              )
+            }
+            {
+              data.tracing.length > 0 && (
+                <TracingPanel
+                  list={data.tracing}
+                  hideNodeInfo={hideInfo}
+                  hideNodeProcessDetail={hideProcessDetail}
+                />
+              )
+            }
           </div>
         )
       }

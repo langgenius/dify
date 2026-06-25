@@ -31,6 +31,21 @@ describe('WorkflowProcessItem', () => {
     expect(screen.getByTestId('tracing-panel')).toBeInTheDocument()
   })
 
+  it('should render workflow error message when failed without node tracing details', () => {
+    render(
+      <WorkflowProcessItem
+        data={{
+          status: WorkflowRunningStatus.Failed,
+          tracing: [],
+          error: 'Invalid upload file',
+        } as WorkflowProcess}
+        expand={true}
+      />,
+    )
+
+    expect(screen.getByText('Invalid upload file')).toBeInTheDocument()
+  })
+
   it('should toggle collapse state on header click', async () => {
     const user = userEvent.setup()
     render(<WorkflowProcessItem data={mockData as WorkflowProcess} expand={false} />)

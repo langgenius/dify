@@ -385,7 +385,11 @@ export const useChat = (
         hasStopRespondedRef.current = false
         updateChatTreeNode(messageId, (responseItem) => {
           if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
-            responseItem.workflowProcess.status = WorkflowRunningStatus.Running
+            responseItem.workflowProcess = {
+              ...responseItem.workflowProcess,
+              status: WorkflowRunningStatus.Running,
+              error: undefined,
+            }
           }
           else {
             taskIdRef.current = task_id
@@ -399,8 +403,13 @@ export const useChat = (
       },
       onWorkflowFinished: ({ data: workflowFinishedData }) => {
         updateChatTreeNode(messageId, (responseItem) => {
-          if (responseItem.workflowProcess)
-            responseItem.workflowProcess.status = workflowFinishedData.status as WorkflowRunningStatus
+          if (responseItem.workflowProcess) {
+            responseItem.workflowProcess = {
+              ...responseItem.workflowProcess,
+              status: workflowFinishedData.status as WorkflowRunningStatus,
+              error: workflowFinishedData.error,
+            }
+          }
         })
       },
       onIterationStart: ({ data: iterationStartedData }) => {
@@ -935,7 +944,11 @@ export const useChat = (
         }
 
         if (responseItem.workflowProcess && responseItem.workflowProcess.tracing.length > 0) {
-          responseItem.workflowProcess.status = WorkflowRunningStatus.Running
+          responseItem.workflowProcess = {
+            ...responseItem.workflowProcess,
+            status: WorkflowRunningStatus.Running,
+            error: undefined,
+          }
         }
         else {
           taskIdRef.current = task_id
@@ -955,7 +968,11 @@ export const useChat = (
       onWorkflowFinished: ({ data: workflowFinishedData }) => {
         if (pausedStateRef.current)
           pausedStateRef.current = false
-        responseItem.workflowProcess!.status = workflowFinishedData.status as WorkflowRunningStatus
+        responseItem.workflowProcess = {
+          ...responseItem.workflowProcess!,
+          status: workflowFinishedData.status as WorkflowRunningStatus,
+          error: workflowFinishedData.error,
+        }
         updateCurrentQAOnTree({
           placeholderQuestionId,
           questionItem,
