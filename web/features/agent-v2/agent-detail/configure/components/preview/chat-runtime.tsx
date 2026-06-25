@@ -13,6 +13,7 @@ import type {
 } from 'react'
 import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
+import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Inputs } from '@/models/debug'
@@ -31,7 +32,7 @@ import Loading from '@/app/components/base/loading'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
@@ -70,6 +71,7 @@ const defaultSystemParameters: ChatConfig['system_parameters'] = {
 }
 
 const disabledFileUploadConfig = {
+  enabled: false,
   allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
   allowed_file_types: [],
   fileUploadConfig: defaultSystemParameters,
@@ -84,6 +86,39 @@ const disabledFileUploadConfig = {
   number_limits: 0,
 } as ChatConfig['file_upload'] & {
   fileUploadConfig: ChatConfig['system_parameters']
+}
+
+const defaultFileUploadMethods = [TransferMethod.local_file, TransferMethod.remote_url]
+
+const toPreviewFileUploadConfig = (fileUpload: FileUpload | undefined) => {
+  if (!fileUpload?.enabled)
+    return disabledFileUploadConfig
+
+  const allowedFileUploadMethods = fileUpload.allowed_file_upload_methods?.length
+    ? fileUpload.allowed_file_upload_methods
+    : defaultFileUploadMethods
+  const numberLimits = fileUpload.number_limits ?? fileUpload.image?.number_limits ?? 3
+
+  return {
+    ...disabledFileUploadConfig,
+    ...fileUpload,
+    enabled: true,
+    allowed_file_types: fileUpload.allowed_file_types?.length
+      ? fileUpload.allowed_file_types
+      : [SupportUploadFileTypes.image],
+    allowed_file_upload_methods: allowedFileUploadMethods,
+    number_limits: numberLimits,
+    fileUploadConfig: fileUpload.fileUploadConfig ?? defaultSystemParameters,
+    image: {
+      ...disabledFileUploadConfig.image,
+      ...fileUpload.image,
+      enabled: fileUpload.image?.enabled ?? true,
+      transfer_methods: fileUpload.image?.transfer_methods?.length
+        ? fileUpload.image.transfer_methods
+        : allowedFileUploadMethods,
+      number_limits: numberLimits,
+    },
+  } as ChatConfig['file_upload']
 }
 
 const getModelSettings = (agentSoulConfig?: AgentSoulConfig) => agentSoulConfig?.model?.model_settings ?? {}
@@ -385,7 +420,7 @@ const buildChatConfig = ({
       },
     },
     dataset_configs: toLegacyPreviewDatasetConfigs(agentSoulConfig?.knowledge),
-    file_upload: disabledFileUploadConfig,
+    file_upload: toPreviewFileUploadConfig(appFeatures.file_upload as FileUpload | undefined),
     system_parameters: defaultSystemParameters,
     supportCitationHitInfo: true,
   }
