@@ -19,7 +19,6 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import CopyFeedback from '@/app/components/base/copy-feedback'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -122,10 +121,6 @@ const SecretKeyModal = ({
       : t('apiKeyModal.scopeBoundDataset', { ns: 'appApi' })
   }
 
-  const generateToken = (token: string) => {
-    return `${token.slice(0, 3)}...${token.slice(-20)}`
-  }
-
   const handleDeleteConfirmOpenChange = (open: boolean) => {
     if (open)
       return
@@ -154,7 +149,9 @@ const SecretKeyModal = ({
           </DialogTitle>
 
           <div className="-mt-6 -mr-2 mb-4 flex justify-end">
-            <span className="i-heroicons-x-mark-20-solid size-6 cursor-pointer text-text-tertiary" onClick={handleClose} />
+            <button type="button" aria-label={t('operation.cancel', { ns: 'common' })} className="border-none bg-transparent p-0 text-text-tertiary" onClick={handleClose}>
+              <span className="i-heroicons-x-mark-20-solid size-6 cursor-pointer" />
+            </button>
           </div>
           <p className="mt-1 shrink-0 text-[13px] leading-5 font-normal text-text-tertiary">{t('apiKeyModal.apiSecretKeyTips', { ns: 'appApi' })}</p>
           {isApiKeysLoading && <div className="mt-4"><Loading /></div>}
@@ -171,12 +168,11 @@ const SecretKeyModal = ({
                 <div className="grow overflow-x-hidden overflow-y-auto">
                   {apiKeysList.data.map(api => (
                     <div className="flex h-9 items-center border-b border-divider-regular text-sm font-normal text-text-secondary" key={api.id}>
-                      <div className="min-w-0 flex-[1.8] truncate px-3 font-mono">{generateToken(api.token)}</div>
+                      <div className="min-w-0 flex-[1.8] truncate px-3 font-mono">{api.token}</div>
                       {!appId && <div className="min-w-0 flex-[1.3] truncate px-3" title={getScopeLabel(api.dataset_id)}>{getScopeLabel(api.dataset_id)}</div>}
                       <div className="min-w-0 flex-[1.8] truncate px-3">{formatTime(Number(api.created_at), t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
                       <div className="min-w-0 flex-[1.8] truncate px-3">{api.last_used_at ? formatTime(Number(api.last_used_at), t('dateTimeFormat', { ns: 'appLog' }) as string) : t('never', { ns: 'appApi' })}</div>
-                      <div className="flex w-20 shrink-0 space-x-2 px-3">
-                        <CopyFeedback content={api.token} />
+                      <div className="flex w-20 shrink-0 justify-end space-x-2 px-3">
                         {canManage && (
                           <ActionButton
                             onClick={() => {

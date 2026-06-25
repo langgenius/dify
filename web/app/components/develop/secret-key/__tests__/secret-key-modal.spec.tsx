@@ -177,7 +177,7 @@ describe('SecretKeyModal', () => {
 
     it('should render API keys when available', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
-      expect(screen.getByText('sk-...k-abc123def456ghi789')).toBeInTheDocument()
+      expect(screen.getByText('sk-abc123def456ghi789')).toBeInTheDocument()
     })
 
     it('should render created time for keys', async () => {
@@ -236,7 +236,7 @@ describe('SecretKeyModal', () => {
 
     it('should render dataset API keys when no appId', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} />)
-      expect(screen.getByText('dk-...k-abc123def456ghi789')).toBeInTheDocument()
+      expect(screen.getByText('dk-abc123def456ghi789')).toBeInTheDocument()
     })
   })
 
@@ -445,14 +445,14 @@ describe('SecretKeyModal', () => {
     it('should render delete button for permitted users', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      const actionButtons = screen.getAllByRole('button')
-      expect(actionButtons.length).toBeGreaterThanOrEqual(3)
+      const actionButtons = document.body.querySelectorAll('button.action-btn')
+      expect(actionButtons.length).toBeGreaterThanOrEqual(1)
     })
 
     it('should render API key row with actions', async () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      expect(screen.getByText('sk-...k-abc123def456ghi789')).toBeInTheDocument()
+      expect(screen.getByText('sk-abc123def456ghi789')).toBeInTheDocument()
     })
 
     it('should have action buttons in the key row', async () => {
@@ -475,7 +475,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       expect(deleteButton).toBeInTheDocument()
 
       await act(async () => {
@@ -495,7 +495,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -525,7 +525,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -552,7 +552,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -581,7 +581,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -617,7 +617,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -652,7 +652,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} datasetId="dataset-123" />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -697,7 +697,7 @@ describe('SecretKeyModal', () => {
       await renderModal(<SecretKeyModal {...defaultProps} />)
 
       const actionButtons = document.body.querySelectorAll('button.action-btn')
-      const deleteButton = actionButtons[1]
+      const deleteButton = actionButtons[0]
       await act(async () => {
         await user.click(deleteButton!)
         vi.runAllTimers()
@@ -720,16 +720,16 @@ describe('SecretKeyModal', () => {
     })
   })
 
-  describe('token truncation', () => {
-    it('should truncate token correctly', async () => {
+  describe('token display', () => {
+    it('should display the token exactly as provided by the API (no client-side reveal)', async () => {
       const apiKeys = [
-        { id: 'key-1', token: 'sk-abcdefghijklmnopqrstuvwxyz1234567890', created_at: 1700000000, last_used_at: null },
+        { id: 'key-1', token: 'sk-...7890', created_at: 1700000000, last_used_at: null },
       ]
       mockAppApiKeysData.mockReturnValue({ data: apiKeys })
 
       await renderModal(<SecretKeyModal {...defaultProps} appId="app-123" />)
 
-      expect(screen.getByText('sk-...qrstuvwxyz1234567890')).toBeInTheDocument()
+      expect(screen.getByText('sk-...7890')).toBeInTheDocument()
     })
   })
 

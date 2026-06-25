@@ -1759,14 +1759,14 @@ class TestDatasetApiKeyApi:
         mock_key_1.id = "key-1"
         mock_key_1.type = "dataset"
         mock_key_1.dataset_id = None
-        mock_key_1.token = "ds-abc"
+        mock_key_1.token = "dataset-aaaa1111bbbb"
         mock_key_1.last_used_at = None
         mock_key_1.created_at = None
         mock_key_2 = MagicMock(spec=ApiToken)
         mock_key_2.id = "key-2"
         mock_key_2.type = "dataset"
         mock_key_2.dataset_id = None
-        mock_key_2.token = "ds-def"
+        mock_key_2.token = "dataset-cccc2222dddd"
         mock_key_2.last_used_at = None
         mock_key_2.created_at = None
 
@@ -1781,10 +1781,11 @@ class TestDatasetApiKeyApi:
 
         assert "data" in response
         assert len(response["data"]) == 2
+        # reveal-once: the list returns masked tokens, never the full secret
         assert response["data"][0]["id"] == "key-1"
-        assert response["data"][0]["token"] == "ds-abc"
+        assert response["data"][0]["token"] == "datas...bbbb"
         assert response["data"][1]["id"] == "key-2"
-        assert response["data"][1]["token"] == "ds-def"
+        assert response["data"][1]["token"] == "datas...dddd"
 
     def test_post_create_api_key_success(self, app: Flask):
         api = DatasetApiKeyApi()

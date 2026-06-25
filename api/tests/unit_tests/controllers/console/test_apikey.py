@@ -9,7 +9,13 @@ from unittest.mock import patch
 import pytest
 from werkzeug.exceptions import Forbidden
 
-from controllers.console.apikey import BaseApiKeyListResource, BaseApiKeyResource, DatasetApiKeyListResource
+from controllers.console.apikey import (
+    BaseApiKeyListResource,
+    BaseApiKeyResource,
+    DatasetApiKeyListResource,
+    build_masked_api_key_list,
+    mask_api_token,
+)
 from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import Dataset
@@ -45,12 +51,37 @@ def _make_account(role: TenantAccountRole) -> Account:
     return account
 
 
+def test_mask_api_token_reveals_only_a_fragment() -> None:
+    # full secret must never be reproducible from the masked value
+    masked = mask_api_token("dataset-mqxAkpML14jRmgsb6Z7DBnVq")
+    assert masked == "datas...BnVq"
+    assert "mqxAkpML" not in masked
+    # very short tokens are fully hidden
+    assert mask_api_token("short") == "***"
+
+
+def test_build_masked_api_key_list_masks_every_token() -> None:
+    keys = [
+        SimpleNamespace(
+            id="key-1",
+            type=ApiTokenType.DATASET,
+            token="dataset-aaaabbbbccccdddd",
+            dataset_id="ds-1",
+            last_used_at=None,
+            created_at=None,
+        ),
+    ]
+    result = build_masked_api_key_list(keys)
+    assert result.data[0].token == "datas...dddd"
+    assert result.data[0].dataset_id == "ds-1"
+
+
 def test_list_api_keys_uses_injected_tenant_id() -> None:
     resource = _make_list_resource()
     api_key = SimpleNamespace(
         id="key-1",
         type=ApiTokenType.APP,
-        token="app-token",
+        token="app-1234567890abcdef",
         last_used_at=None,
         created_at=None,
     )
@@ -68,8 +99,9 @@ def test_list_api_keys_uses_injected_tenant_id() -> None:
         "data": [
             {
                 "id": "key-1",
+                # reveal-once: the list never returns the full secret, only a masked fragment
                 "type": "app",
-                "token": "app-token",
+                "token": "app-1...cdef",
                 "dataset_id": None,
                 "last_used_at": None,
                 "created_at": None,
