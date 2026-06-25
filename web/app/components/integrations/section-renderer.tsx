@@ -16,7 +16,6 @@ type IntegrationSectionRendererProps = {
   canInstallPlugin?: boolean
   canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
   description?: ReactNode
   onProviderSearchTextChange: (value: string) => void
   onSwitchToMarketplace?: () => void
@@ -31,7 +30,6 @@ const IntegrationSectionRenderer = ({
   canInstallPlugin = true,
   canDeletePlugin = true,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   description,
   onProviderSearchTextChange,
   onSwitchToMarketplace,
@@ -77,7 +75,6 @@ const IntegrationSectionRenderer = ({
       canInstall={canInstallPlugin}
       canDeletePlugin={canDeletePlugin}
       canUpdatePlugin={canUpdatePlugin}
-      canViewInstalledPlugins={canViewInstalledPlugins}
       category={category}
       layout={renderDirectLayout}
       onSwitchToMarketplace={onSwitchToMarketplace}

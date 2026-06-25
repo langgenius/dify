@@ -17,7 +17,6 @@ type PluginCategoryPageProps = {
   canInstall?: boolean
   canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
   category: PluginCategoryEnum
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   onSwitchToMarketplace?: () => void
@@ -30,7 +29,6 @@ const PluginCategoryPageContent = ({
   canInstall = true,
   canDeletePlugin = true,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -75,7 +73,6 @@ const PluginCategoryPageContent = ({
         canInstall={canInstall}
         canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
-        canViewInstalledPlugins={canViewInstalledPlugins}
         contentInset="compact"
         fixedCategory={category}
         layout={layout}
@@ -112,7 +109,6 @@ const PluginCategoryPage = ({
   canInstall = true,
   canDeletePlugin = true,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -130,7 +126,6 @@ const PluginCategoryPage = ({
         canInstall={canInstall}
         canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
-        canViewInstalledPlugins={canViewInstalledPlugins}
         category={category}
         layout={layout}
         onSwitchToMarketplace={onSwitchToMarketplace}

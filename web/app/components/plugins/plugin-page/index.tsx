@@ -58,7 +58,6 @@ type PluginPanelPermissionProps = {
   canInstall?: boolean
   canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
 }
 const PluginPage = ({
   plugins,
@@ -89,7 +88,6 @@ const PluginPage = ({
     referenceSetting,
     canInstallPlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     canDeletePlugin,
     canDebugger,
     canSetPermissions,
@@ -186,9 +184,8 @@ const PluginPage = ({
       canInstall: canInstallPlugin,
       canDeletePlugin,
       canUpdatePlugin,
-      canViewInstalledPlugins,
     })
-  }, [canInstallPlugin, canDeletePlugin, canUpdatePlugin, canViewInstalledPlugins, plugins])
+  }, [canInstallPlugin, canDeletePlugin, canUpdatePlugin, plugins])
 
   return (
     <div

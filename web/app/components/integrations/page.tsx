@@ -109,7 +109,6 @@ export default function IntegrationsPage({
     canInstallPlugin,
     canDeletePlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     handlePermissionChange,
     isPluginCategory,
     permission,
@@ -287,7 +286,6 @@ export default function IntegrationsPage({
                   canInstallPlugin={canInstallPlugin}
                   canDeletePlugin={canDeletePlugin}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -313,7 +311,6 @@ export default function IntegrationsPage({
                   canInstallPlugin={canInstallPlugin}
                   canDeletePlugin={canDeletePlugin}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

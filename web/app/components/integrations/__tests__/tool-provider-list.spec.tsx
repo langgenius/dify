@@ -144,7 +144,6 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
     canSetPluginPreferences: mockCanSetPermissions(),
     canDeletePlugin: true,
     canUpdatePlugin: true,
-    canViewInstalledPlugins: true,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),

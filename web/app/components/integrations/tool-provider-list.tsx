@@ -91,7 +91,6 @@ const ProviderList = ({
     canDeletePlugin,
     canSetPluginPreferences,
     canUpdatePlugin,
-    canViewInstalledPlugins,
   } = usePluginSettingsAccess()
   const canManageTools = useCanManageTools()
   const canManageMCP = useCanManageMCP()
@@ -158,7 +157,7 @@ const ProviderList = ({
   }, [currentProviderId, filteredCollectionList])
   const { data: checkedInstalledData } = useCheckInstalled({
     pluginIds: currentProvider?.plugin_id ? [currentProvider.plugin_id] : [],
-    enabled: canViewInstalledPlugins && !!currentProvider?.plugin_id,
+    enabled: !!currentProvider?.plugin_id,
   })
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginDetail = useMemo(() => {

@@ -74,6 +74,12 @@ describe('useReferenceSetting Hook', () => {
   })
 
   describe('permission key access', () => {
+    it('should not expose installed plugin list viewing as a permission capability', () => {
+      const { result } = renderHook(() => useReferenceSetting(PluginCategoryEnum.tool))
+
+      expect('canViewInstalledPlugins' in result.current).toBe(false)
+    })
+
     it('should return false without plugin permission keys', () => {
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -208,7 +214,6 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(false)
       expect(result.current.canManagement).toBe(false)
       expect(result.current.canUpdatePlugin).toBe(false)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
       expect(result.current.canDeletePlugin).toBe(false)
       expect(result.current.canDebugPlugin).toBe(false)
       expect(result.current.canDebugger).toBe(false)
@@ -370,7 +375,6 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(true)
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canUpdatePlugin).toBe(true)
-      expect(result.current.canViewInstalledPlugins).toBe(true)
       expect(result.current.canDeletePlugin).toBe(true)
       expect(result.current.canDebugPlugin).toBe(true)
       expect(result.current.canDebugger).toBe(true)
@@ -393,7 +397,6 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canInstallPlugin).toBe(false)
       expect(result.current.canManagement).toBe(false)
       expect(result.current.canUpdatePlugin).toBe(false)
-      expect(result.current.canViewInstalledPlugins).toBe(false)
       expect(result.current.canDeletePlugin).toBe(false)
       expect(result.current.canDebugPlugin).toBe(false)
       expect(result.current.canDebugger).toBe(false)

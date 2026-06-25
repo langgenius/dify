@@ -9,8 +9,6 @@ import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, us
 import { hasPermission } from '@/utils/permission'
 import { hasLegacyPluginPermissionAccess } from '../plugin-permissions'
 
-const pluginReadAndUpdatePermissionKeys = ['plugin.install']
-
 const useCanSetPluginSettings = () => {
   const { workspacePermissionKeys } = useAppContext()
   const { data: rbacEnabled } = useSuspenseQuery({
@@ -52,8 +50,7 @@ export const usePluginSettingsAccess = () => {
     rbacEnabled,
   })
   const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
-  const canUpdatePlugin = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys) && legacyCanInstallPlugin
-  const canViewInstalledPlugins = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
+  const canUpdatePlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
   const canDeletePlugin = hasPermission(workspacePermissionKeys, 'plugin.delete') && legacyCanInstallPlugin
   const canDebugPlugin = hasPermission(workspacePermissionKeys, 'plugin.debug') && legacyCanDebugPlugin
 
@@ -62,7 +59,6 @@ export const usePluginSettingsAccess = () => {
     setPluginPermissionSettings,
     canInstallPlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     canDeletePlugin,
     canDebugPlugin,
     canSetPluginPreferences,
@@ -103,7 +99,6 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     canDebugger: permissionAccess.canDebugger,
     canInstallPlugin: permissionAccess.canInstallPlugin,
     canUpdatePlugin: permissionAccess.canUpdatePlugin,
-    canViewInstalledPlugins: permissionAccess.canViewInstalledPlugins,
     canDeletePlugin: permissionAccess.canDeletePlugin,
     canDebugPlugin: permissionAccess.canDebugPlugin,
     canSetPermissions: permissionAccess.canSetPermissions,

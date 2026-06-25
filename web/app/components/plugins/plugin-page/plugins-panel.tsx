@@ -54,7 +54,6 @@ type PluginsPanelProps = {
   canInstall?: boolean
   canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
   contentInset?: PluginPageContentInset
   fixedCategory?: PluginCategoryEnum
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
@@ -66,7 +65,6 @@ const PluginsPanel = ({
   canInstall = true,
   canDeletePlugin = true,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   contentInset = 'default',
   fixedCategory,
   layout,
@@ -88,7 +86,7 @@ const PluginsPanel = ({
     select: s => s.enable_marketplace,
   })
   const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList(
-    !canViewInstalledPlugins,
+    false,
     100,
     fixedCategory
       ? {
