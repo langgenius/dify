@@ -284,10 +284,7 @@ class AgentComposerService:
             "active_config_snapshot": cls._serialize_version(version),
             "draft": cls._serialize_draft(draft),
             "agent_soul": draft.config_snapshot_dict,
-            "save_options": [
-                ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
-                ComposerSaveStrategy.SAVE_AS_NEW_VERSION.value,
-            ],
+            "save_options": [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value],
         }
 
     @classmethod
@@ -296,6 +293,10 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         if payload.variant != ComposerVariant.AGENT_APP:
             raise ValueError("Agent App composer endpoint only accepts agent_app variant")
+        if payload.save_strategy != ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION:
+            raise InvalidComposerConfigError(
+                "Agent App composer only saves the normal draft. Use the publish endpoint to create a version."
+            )
         _backfill_cli_tool_ids(payload.agent_soul)
         _validate_composer_payload_for_strategy(payload)
         cls.validate_knowledge_datasets(tenant_id=tenant_id, agent_soul=payload.agent_soul)

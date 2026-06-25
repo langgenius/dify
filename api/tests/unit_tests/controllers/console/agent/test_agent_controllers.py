@@ -99,7 +99,7 @@ def _agent_app_composer_response() -> dict:
         },
         "active_config_snapshot": _version_response(),
         "agent_soul": {},
-        "save_options": ["save_to_current_version", "save_as_new_version"],
+        "save_options": ["save_to_current_version"],
     }
 
 
