@@ -88,7 +88,7 @@ const ProviderList = ({
   const { t } = useTranslation()
   const { getTagLabel } = useTags()
   const {
-    canManagePlugin,
+    canDeletePlugin,
     canSetPluginPreferences,
     canUpdatePlugin,
     canViewInstalledPlugins,
@@ -262,7 +262,7 @@ const ProviderList = ({
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={() => setCurrentProviderId(undefined)}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
       />
     </>

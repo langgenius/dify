@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useAppContext } from '@/context/app-context'
 import { hasPermission } from '@/utils/permission'
 
-const pluginReadAndUpdatePermissionKeys = ['plugin.install', 'plugin.manage']
+const pluginReadAndUpdatePermissionKeys = ['plugin.install']
 
 const useWorkspacePluginInstallPermission = () => {
   const {
@@ -22,8 +22,8 @@ const useWorkspacePluginInstallPermission = () => {
     return hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
   }, [workspacePermissionKeys])
 
-  const canManagePlugin = useMemo(() => {
-    return hasPermission(workspacePermissionKeys, 'plugin.manage')
+  const canDeletePlugin = useMemo(() => {
+    return hasPermission(workspacePermissionKeys, 'plugin.delete')
   }, [workspacePermissionKeys])
 
   const canDebugPlugin = useMemo(() => {
@@ -38,7 +38,7 @@ const useWorkspacePluginInstallPermission = () => {
     canInstallPlugin,
     canUpdatePlugin,
     canViewInstalledPlugins,
-    canManagePlugin,
+    canDeletePlugin,
     canDebugPlugin,
     canSetPluginPreferences,
     currentDifyVersion: langGeniusVersionInfo?.current_version,

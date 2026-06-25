@@ -9,7 +9,7 @@ import { useInvalidateReferenceSettings, useMutationPluginPermissionSettings, us
 import { hasPermission } from '@/utils/permission'
 import { hasLegacyPluginPermissionAccess } from '../plugin-permissions'
 
-const pluginReadAndUpdatePermissionKeys = ['plugin.install', 'plugin.manage']
+const pluginReadAndUpdatePermissionKeys = ['plugin.install']
 
 const useCanSetPluginSettings = () => {
   const { workspacePermissionKeys } = useAppContext()
@@ -54,7 +54,7 @@ export const usePluginSettingsAccess = () => {
   const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
   const canUpdatePlugin = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys) && legacyCanInstallPlugin
   const canViewInstalledPlugins = hasPermission(workspacePermissionKeys, pluginReadAndUpdatePermissionKeys)
-  const canManagePlugin = hasPermission(workspacePermissionKeys, 'plugin.manage') && legacyCanInstallPlugin
+  const canDeletePlugin = hasPermission(workspacePermissionKeys, 'plugin.delete') && legacyCanInstallPlugin
   const canDebugPlugin = hasPermission(workspacePermissionKeys, 'plugin.debug') && legacyCanDebugPlugin
 
   return {
@@ -63,7 +63,7 @@ export const usePluginSettingsAccess = () => {
     canInstallPlugin,
     canUpdatePlugin,
     canViewInstalledPlugins,
-    canManagePlugin,
+    canDeletePlugin,
     canDebugPlugin,
     canSetPluginPreferences,
     canManagement: canInstallPlugin,
@@ -104,7 +104,7 @@ const useReferenceSetting = (category: PluginCategoryEnum) => {
     canInstallPlugin: permissionAccess.canInstallPlugin,
     canUpdatePlugin: permissionAccess.canUpdatePlugin,
     canViewInstalledPlugins: permissionAccess.canViewInstalledPlugins,
-    canManagePlugin: permissionAccess.canManagePlugin,
+    canDeletePlugin: permissionAccess.canDeletePlugin,
     canDebugPlugin: permissionAccess.canDebugPlugin,
     canSetPermissions: permissionAccess.canSetPermissions,
     canSetPluginPreferences: permissionAccess.canSetPluginPreferences,

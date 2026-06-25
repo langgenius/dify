@@ -192,7 +192,7 @@ describe('useReferenceSetting Hook', () => {
         isCurrentWorkspaceManager: true,
         isCurrentWorkspaceOwner: false,
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
-        workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.debug'],
+        workspacePermissionKeys: ['plugin.install', 'plugin.delete', 'plugin.debug'],
       } as ReturnType<typeof useAppContext>)
       vi.mocked(usePluginPermissionSettings).mockReturnValue({
         data: {
@@ -209,7 +209,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canManagement).toBe(false)
       expect(result.current.canUpdatePlugin).toBe(false)
       expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canDeletePlugin).toBe(false)
       expect(result.current.canDebugPlugin).toBe(false)
       expect(result.current.canDebugger).toBe(false)
     })
@@ -351,7 +351,7 @@ describe('useReferenceSetting Hook', () => {
         langGeniusVersionInfo: { current_version: '1.0.0', latest_version: '', version: '' },
         workspacePermissionKeys: [
           'plugin.install',
-          'plugin.manage',
+          'plugin.delete',
           'plugin.debug',
           'plugin.plugin_preferences',
         ],
@@ -371,7 +371,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canManagement).toBe(true)
       expect(result.current.canUpdatePlugin).toBe(true)
       expect(result.current.canViewInstalledPlugins).toBe(true)
-      expect(result.current.canManagePlugin).toBe(true)
+      expect(result.current.canDeletePlugin).toBe(true)
       expect(result.current.canDebugPlugin).toBe(true)
       expect(result.current.canDebugger).toBe(true)
       expect(result.current.canSetPermissions).toBe(false)
@@ -394,7 +394,7 @@ describe('useReferenceSetting Hook', () => {
       expect(result.current.canManagement).toBe(false)
       expect(result.current.canUpdatePlugin).toBe(false)
       expect(result.current.canViewInstalledPlugins).toBe(false)
-      expect(result.current.canManagePlugin).toBe(false)
+      expect(result.current.canDeletePlugin).toBe(false)
       expect(result.current.canDebugPlugin).toBe(false)
       expect(result.current.canDebugger).toBe(false)
       expect(result.current.canSetPermissions).toBe(false)

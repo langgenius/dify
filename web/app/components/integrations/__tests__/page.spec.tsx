@@ -53,7 +53,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     permission: mockReferenceSetting().permission,
     canInstallPlugin: mockCanManagement(),
-    canManagePlugin: true,
+    canDeletePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
@@ -65,7 +65,7 @@ vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   default: () => ({
     referenceSetting: mockReferenceSetting(),
     canInstallPlugin: mockCanManagement(),
-    canManagePlugin: true,
+    canDeletePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),

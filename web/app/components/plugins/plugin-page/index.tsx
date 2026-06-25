@@ -56,7 +56,7 @@ export type PluginPageProps = {
 }
 type PluginPanelPermissionProps = {
   canInstall?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   canViewInstalledPlugins?: boolean
 }
@@ -90,7 +90,7 @@ const PluginPage = ({
     canInstallPlugin,
     canUpdatePlugin,
     canViewInstalledPlugins,
-    canManagePlugin,
+    canDeletePlugin,
     canDebugger,
     canSetPermissions,
     canSetPluginPreferences,
@@ -184,11 +184,11 @@ const PluginPage = ({
 
     return cloneElement(plugins as React.ReactElement<PluginPanelPermissionProps>, {
       canInstall: canInstallPlugin,
-      canManagePlugin,
+      canDeletePlugin,
       canUpdatePlugin,
       canViewInstalledPlugins,
     })
-  }, [canInstallPlugin, canManagePlugin, canUpdatePlugin, canViewInstalledPlugins, plugins])
+  }, [canInstallPlugin, canDeletePlugin, canUpdatePlugin, canViewInstalledPlugins, plugins])
 
   return (
     <div

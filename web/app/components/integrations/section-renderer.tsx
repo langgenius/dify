@@ -14,7 +14,7 @@ import ToolProviderList from './tool-provider-list'
 
 type IntegrationSectionRendererProps = {
   canInstallPlugin?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   canViewInstalledPlugins?: boolean
   description?: ReactNode
@@ -29,7 +29,7 @@ type IntegrationSectionRendererProps = {
 
 const IntegrationSectionRenderer = ({
   canInstallPlugin = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   canViewInstalledPlugins = true,
   description,
@@ -75,7 +75,7 @@ const IntegrationSectionRenderer = ({
   const renderPluginCategoryPage = (category: PluginCategoryEnum) => (
     <PluginCategoryPage
       canInstall={canInstallPlugin}
-      canManagePlugin={canManagePlugin}
+      canDeletePlugin={canDeletePlugin}
       canUpdatePlugin={canUpdatePlugin}
       canViewInstalledPlugins={canViewInstalledPlugins}
       category={category}

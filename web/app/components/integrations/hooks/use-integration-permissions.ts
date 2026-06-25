@@ -12,7 +12,7 @@ export function useIntegrationPermissions(section: IntegrationSection) {
     permission,
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canSetPluginPreferences,
     canSetPermissions,
     canUpdatePlugin,
@@ -38,7 +38,7 @@ export function useIntegrationPermissions(section: IntegrationSection) {
   return {
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canSetPluginPreferences,
     canUpdatePlugin,
     canViewInstalledPlugins,

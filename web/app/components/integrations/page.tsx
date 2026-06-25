@@ -107,7 +107,7 @@ export default function IntegrationsPage({
   const {
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
     canViewInstalledPlugins,
     handlePermissionChange,
@@ -285,7 +285,7 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
                   canUpdatePlugin={canUpdatePlugin}
                   canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
@@ -311,7 +311,7 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
                   canUpdatePlugin={canUpdatePlugin}
                   canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}

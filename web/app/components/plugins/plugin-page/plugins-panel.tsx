@@ -52,7 +52,7 @@ const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, q
 
 type PluginsPanelProps = {
   canInstall?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   canViewInstalledPlugins?: boolean
   contentInset?: PluginPageContentInset
@@ -64,7 +64,7 @@ type PluginsPanelProps = {
 
 const PluginsPanel = ({
   canInstall = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   canViewInstalledPlugins = true,
   contentInset = 'default',
@@ -223,7 +223,7 @@ const PluginsPanel = ({
                   scrollAreaLabel={scrollAreaLabel}
                   setCurrentBuiltinToolID={setCurrentBuiltinToolID}
                   tagFilterValue={filters.tags}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
                   canUpdatePlugin={canUpdatePlugin}
                 />
               )
@@ -259,7 +259,7 @@ const PluginsPanel = ({
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={handleHide}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
       />
       {currentBuiltinTool && !currentBuiltinTool.plugin_id && (

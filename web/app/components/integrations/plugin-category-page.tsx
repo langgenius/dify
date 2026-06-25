@@ -15,7 +15,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type PluginCategoryPageProps = {
   canInstall?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   canViewInstalledPlugins?: boolean
   category: PluginCategoryEnum
@@ -28,7 +28,7 @@ const supportedLocalPackageExtensions = SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS.sp
 
 const PluginCategoryPageContent = ({
   canInstall = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   canViewInstalledPlugins = true,
   category,
@@ -73,7 +73,7 @@ const PluginCategoryPageContent = ({
     <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-components-panel-bg">
       <PluginsPanel
         canInstall={canInstall}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
         canViewInstalledPlugins={canViewInstalledPlugins}
         contentInset="compact"
@@ -110,7 +110,7 @@ const PluginCategoryPageContent = ({
 
 const PluginCategoryPage = ({
   canInstall = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   canViewInstalledPlugins = true,
   category,
@@ -128,7 +128,7 @@ const PluginCategoryPage = ({
     <PluginPageContextProvider key={category} initialFilters={initialFilters}>
       <PluginCategoryPageContent
         canInstall={canInstall}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
         canViewInstalledPlugins={canViewInstalledPlugins}
         category={category}
