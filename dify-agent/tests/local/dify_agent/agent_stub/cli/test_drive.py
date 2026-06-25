@@ -132,9 +132,7 @@ def test_pull_drive_from_environment_writes_files_under_drive_base(
 
     result = pull_drive_from_environment(targets=["skills/"], local_base=str(tmp_path))
 
-    assert result.model_dump() == {
-        "items": [{"key": "skills/", "local_path": str(tmp_path / "skills")}]
-    }
+    assert result.model_dump() == {"items": [{"key": "skills/", "local_path": str(tmp_path / "skills")}]}
     assert (tmp_path / "skills" / "example" / "SKILL.md").read_bytes() == b"hello world"
     assert captured["prefix"] == "skills/"
     assert captured["include_download_url"] is True
@@ -176,9 +174,7 @@ def test_pull_drive_from_environment_auto_extracts_skill_archive(
     result = pull_drive_from_environment(targets=["skills/foo"], local_base=str(tmp_path))
 
     archive_path = tmp_path / "skills" / "foo" / ".DIFY-SKILL-FULL.zip"
-    assert result.model_dump() == {
-        "items": [{"key": "skills/foo", "local_path": str(tmp_path / "skills" / "foo")}]
-    }
+    assert result.model_dump() == {"items": [{"key": "skills/foo", "local_path": str(tmp_path / "skills" / "foo")}]}
     assert not archive_path.exists()
     assert (tmp_path / "skills" / "foo" / "SKILL.md").read_text(encoding="utf-8") == "# Example\n"
     assert (tmp_path / "skills" / "foo" / "nested" / "helper.py").read_text(encoding="utf-8") == "print('x')\n"
