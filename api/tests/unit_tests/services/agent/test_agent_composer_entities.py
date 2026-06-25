@@ -27,6 +27,24 @@ def test_workflow_variant_rejects_agent_app_only_fields():
         )
 
 
+def test_workflow_variant_accepts_agent_soul_files_section():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY,
+            "agent_soul": {
+                "schema_version": 1,
+                "prompt": {"system_prompt": "jjjj"},
+                "files": {"skills": [], "files": []},
+            },
+        }
+    )
+
+    assert payload.agent_soul is not None
+    assert payload.agent_soul.files.skills == []
+    assert payload.agent_soul.files.files == []
+
+
 def test_agent_app_variant_rejects_workflow_node_job():
     with pytest.raises(ValueError):
         ComposerSavePayload.model_validate(

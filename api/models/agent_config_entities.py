@@ -162,6 +162,11 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     manifest_files: list[str] | None = None
 
 
+class AgentSoulFilesConfig(BaseModel):
+    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
+    files: list[AgentFileRefConfig] = Field(default_factory=list)
+
+
 class AgentPermissionConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -677,6 +682,7 @@ class AgentSoulConfig(BaseModel):
     knowledge: AgentSoulKnowledgeConfig = Field(default_factory=AgentSoulKnowledgeConfig)
     human: AgentSoulHumanConfig = Field(default_factory=AgentSoulHumanConfig)
     env: AgentSoulEnvConfig = Field(default_factory=AgentSoulEnvConfig)
+    files: AgentSoulFilesConfig = Field(default_factory=AgentSoulFilesConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
     model: AgentSoulModelConfig | None = None

@@ -1812,6 +1812,7 @@ export type AgentSoulConfig = {
   app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
   env?: AgentSoulEnvConfig
+  files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
@@ -1821,6 +1822,11 @@ export type AgentSoulConfig = {
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
   tools?: AgentSoulToolsConfig
+}
+
+export type AgentSoulFilesConfig = {
+  files?: Array<AgentFileRefConfig>
+  skills?: Array<AgentSkillRefConfig>
 }
 
 export type AgentComposerBindingResponse = {
@@ -2498,6 +2504,20 @@ export type AgentFileRefConfig = {
   type?: string | null
   upload_file_id?: string | null
   url?: string | null
+  [key: string]: unknown
+}
+
+export type AgentSkillRefConfig = {
+  description?: string | null
+  file_id?: string | null
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
+  id?: string | null
+  manifest_files?: Array<string> | null
+  name?: string | null
+  path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
   [key: string]: unknown
 }
 
