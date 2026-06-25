@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Usuń z zespołu",
   "members.removeFromTeamConfirmDescription": "Potwierdź usunięcie tego członka. Tej czynności nie można cofnąć.",
   "members.removeFromTeamConfirmTitle": "Usuń {{memberName}} z zespołu",
-  "members.role": "ROLE",
+  "members.role": "ROLA",
   "members.roles": "ROLE",
   "members.selectRole": "Wybierz rolę",
   "members.sendInvite": "Wyślij zaproszenie",
