@@ -32,8 +32,9 @@ const WorkflowProcessItem = ({
   const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
   const fallbackTitle = t('common.workflowProcess', { ns: 'workflow' })
+  const hasTracing = data.tracing.length > 0
   const collapsedTitle = failed
-    ? data.error || latestNode?.error || latestNode?.title || fallbackTitle
+    ? (hasTracing ? (latestNode?.title || latestNode?.error) : data.error) || latestNode?.title || fallbackTitle
     : latestNode?.title || fallbackTitle
 
   useEffect(() => {
@@ -98,7 +99,7 @@ const WorkflowProcessItem = ({
         <div
           className={cn(
             'min-w-0 grow truncate system-xs-medium',
-            collapse && failed && data.error ? 'text-text-destructive' : 'text-text-secondary',
+            collapse && failed && data.error && !hasTracing ? 'text-text-destructive' : 'text-text-secondary',
           )}
           data-testid="workflow-process-title"
         >
