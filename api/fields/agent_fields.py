@@ -85,6 +85,8 @@ class AgentRosterResponse(ResponseModel):
     scope: AgentScope
     source: AgentSource
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     workflow_id: str | None = None
     workflow_node_id: str | None = None
     active_config_snapshot_id: str | None = None
@@ -318,7 +320,11 @@ class AgentComposerAgentResponse(ResponseModel):
     icon: str | None = None
     icon_background: str | None = None
     scope: AgentScope
+    source: AgentSource | None = None
     status: AgentStatus
+    app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     active_config_snapshot_id: str | None = None
 
 
@@ -362,6 +368,9 @@ class WorkflowAgentComposerResponse(ResponseModel):
     impact_summary: AgentComposerImpactResponse | None = None
     validation: "ComposerValidationFindingsResponse | None" = None
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
+    chat_endpoint: str | None = None
     workflow_id: str | None = None
     node_id: str | None = None
 
@@ -374,6 +383,10 @@ class AgentAppComposerResponse(ResponseModel):
     agent_soul: AgentSoulConfig
     save_options: list[ComposerSaveStrategy]
     validation: "ComposerValidationFindingsResponse | None" = None
+    app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
+    chat_endpoint: str | None = None
 
 
 class ComposerValidationWarningResponse(ResponseModel):

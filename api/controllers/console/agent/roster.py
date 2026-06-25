@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_app_model, resolve_agent_runtime_app_model
 from controllers.console.apikey import ApiKeyItem, ApiKeyList, BaseApiKeyListResource, BaseApiKeyResource
 from controllers.console.app.app import (
     AppDetailWithSite as GenericAppDetailWithSite,
@@ -54,6 +54,7 @@ from libs.datetime_utils import parse_time_range
 from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
+from models.agent import Agent, AgentStatus
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, IconType
 from services.agent.composer_service import AgentComposerService
@@ -233,6 +234,8 @@ class AgentStatisticsQuery(BaseModel):
 
 class AgentAppPartial(GenericAppPartial):
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
@@ -242,6 +245,8 @@ class AgentAppPartial(GenericAppPartial):
 
 class AgentAppDetailWithSite(GenericAppDetailWithSite):
     app_id: str | None = None
+    backing_app_id: str | None = None
+    hidden_app_backed: bool = False
     debug_conversation_id: str | None = None
     role: str | None = None
     active_config_is_published: bool = False
@@ -332,7 +337,7 @@ def _agent_roster_service() -> AgentRosterService:
     return AgentRosterService(db.session)
 
 
-def _serialize_agent_app_detail(app_model, *, current_user: Account) -> dict:
+def _serialize_agent_app_detail(app_model, *, current_user: Account, agent_id: str | None = None) -> dict:
     """Serialize an Agent App detail using roster-only DTOs.
 
     `/agent` responses are roster-shaped rather than raw app-shaped: `id`
@@ -349,11 +354,23 @@ def _serialize_agent_app_detail(app_model, *, current_user: Account) -> dict:
 
     roster_service = _agent_roster_service()
     payload = AgentAppDetailWithSite.model_validate(app_model, from_attributes=True).model_dump(mode="json")
-    agent = roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
+    agent = (
+        db.session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == app_model.tenant_id,
+                Agent.id == agent_id,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent_id
+        else roster_service.get_app_backing_agent(tenant_id=app_model.tenant_id, app_id=str(app_model.id))
+    )
     if not agent:
         raise AgentNotFoundError()
     payload.pop("bound_agent_id", None)
-    payload["app_id"] = str(app_model.id)
+    payload["app_id"] = agent.app_id
+    payload["backing_app_id"] = roster_service.runtime_backing_app_id(agent)
+    payload["hidden_app_backed"] = bool(agent.backing_app_id and agent.backing_app_id != agent.app_id)
     payload["id"] = agent.id
     payload["debug_conversation_id"] = roster_service.get_or_create_agent_app_debug_conversation_id(
         tenant_id=app_model.tenant_id,
@@ -403,6 +420,8 @@ def _serialize_agent_app_pagination(app_pagination, *, tenant_id: str, current_u
         agent = agents_by_app_id.get(app_id)
         if agent:
             item["app_id"] = app_id
+            item["backing_app_id"] = agent.backing_app_id or app_id
+            item["hidden_app_backed"] = False
             item["id"] = agent.id
             item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
             item["role"] = agent.role or ""
@@ -554,8 +573,8 @@ class AgentAppApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_app_detail(app_model, current_user=current_user)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        return _serialize_agent_app_detail(app_model, current_user=current_user, agent_id=str(agent_id))
 
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
     @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
@@ -856,7 +875,7 @@ class AgentLogsApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
         query_data["sources"] = _multi_query_values("sources", "source")
         query_data["statuses"] = _multi_query_values("statuses", "status")
@@ -893,7 +912,7 @@ class AgentLogMessagesApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
         query_data["sources"] = _multi_query_values("sources", "source")
         query_data["statuses"] = _multi_query_values("statuses", "status")
@@ -930,7 +949,7 @@ class AgentLogSourcesApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         payload = _agent_observability_service().list_log_sources(app=app_model, agent_id=str(agent_id))
         return dump_response(AgentLogSourceListResponse, payload)
 
@@ -949,7 +968,7 @@ class AgentStatisticsSummaryApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = AgentStatisticsQuery.model_validate(request.args.to_dict(flat=True))
         timezone = current_user.timezone or "UTC"
         start, end = _parse_observability_time_range(query.start, query.end, current_user)

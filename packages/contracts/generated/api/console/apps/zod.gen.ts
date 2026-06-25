@@ -2497,6 +2497,13 @@ export const zWorkflowArchivedLogPaginationResponse = z.object({
 export const zAgentScope = z.enum(['roster', 'workflow_only'])
 
 /**
+ * AgentSource
+ *
+ * Origin that created or imported the Agent.
+ */
+export const zAgentSource = z.enum(['agent_app', 'imported', 'roster', 'system', 'workflow'])
+
+/**
  * AgentStatus
  *
  * Soft lifecycle state for Agent records.
@@ -2508,7 +2515,10 @@ export const zAgentStatus = z.enum(['active', 'archived'])
  */
 export const zAgentComposerAgentResponse = z.object({
   active_config_snapshot_id: z.string().nullish(),
+  app_id: z.string().nullish(),
+  backing_app_id: z.string().nullish(),
   description: z.string(),
+  hidden_app_backed: z.boolean().optional().default(false),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
@@ -2516,6 +2526,7 @@ export const zAgentComposerAgentResponse = z.object({
   name: z.string(),
   role: z.string().nullish(),
   scope: zAgentScope,
+  source: zAgentSource.nullish(),
   status: zAgentStatus,
 })
 
@@ -3643,8 +3654,11 @@ export const zWorkflowAgentComposerResponse = z.object({
   agent: zAgentComposerAgentResponse.nullish(),
   agent_soul: zAgentSoulConfig,
   app_id: z.string().nullish(),
+  backing_app_id: z.string().nullish(),
   binding: zAgentComposerBindingResponse.nullish(),
+  chat_endpoint: z.string().nullish(),
   effective_declared_outputs: z.array(zDeclaredOutputConfig).optional(),
+  hidden_app_backed: z.boolean().optional().default(false),
   impact_summary: zAgentComposerImpactResponse.nullish(),
   node_id: z.string().nullish(),
   node_job: zWorkflowNodeJobConfig,

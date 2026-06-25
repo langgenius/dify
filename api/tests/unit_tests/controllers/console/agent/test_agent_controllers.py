@@ -1228,13 +1228,11 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
         "agent_soul": {"prompt": {"system_prompt": "x"}},
     }
 
-    monkeypatch.setattr(composer_controller, "resolve_agent_app_model", lambda **kwargs: SimpleNamespace(id="app-1"))
-
-    def load_agent_app_composer(**kwargs: object) -> dict:
+    def load_agent_composer(**kwargs: object) -> dict:
         captured["load"] = kwargs
         return _agent_app_composer_response()
 
-    def save_agent_app_composer(**kwargs: object) -> dict:
+    def save_agent_composer(**kwargs: object) -> dict:
         captured["save"] = kwargs
         return _agent_app_composer_response()
 
@@ -1248,13 +1246,13 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
 
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
-        "load_agent_app_composer",
-        load_agent_app_composer,
+        "load_agent_composer",
+        load_agent_composer,
     )
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
-        "save_agent_app_composer",
-        save_agent_app_composer,
+        "save_agent_composer",
+        save_agent_composer,
     )
     monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
     monkeypatch.setattr(
@@ -1269,13 +1267,13 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     )
 
     assert unwrap(AgentComposerApi.get)(AgentComposerApi(), "tenant-1", agent_id)["variant"] == "agent_app"
-    assert cast(dict[str, object], captured["load"])["app_id"] == "app-1"
+    assert cast(dict[str, object], captured["load"])["agent_id"] == agent_id
 
     with app.test_request_context(json=payload):
         assert (
             unwrap(AgentComposerApi.put)(AgentComposerApi(), "tenant-1", account_id, agent_id)["variant"] == "agent_app"
         )
-        assert cast(dict[str, object], captured["save"])["app_id"] == "app-1"
+        assert cast(dict[str, object], captured["save"])["agent_id"] == agent_id
         assert unwrap(AgentComposerValidateApi.post)(AgentComposerValidateApi(), "tenant-1", agent_id) == {
             "result": "success",
             "errors": [],
@@ -1286,7 +1284,7 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
 
     candidates = unwrap(AgentComposerCandidatesApi.get)(AgentComposerCandidatesApi(), "tenant-1", account_id, agent_id)
     assert candidates["variant"] == "agent_app"
-    assert cast(dict[str, object], captured["candidates"])["app_id"] == "app-1"
+    assert cast(dict[str, object], captured["candidates"])["agent_id"] == agent_id
 
 
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
@@ -1308,7 +1306,7 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
         captured["stop"] = kwargs
         return {"result": "success"}, 200
 
-    monkeypatch.setattr(completion_controller, "resolve_agent_app_model", resolve_agent_app_model)
+    monkeypatch.setattr(completion_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
     monkeypatch.setattr(completion_controller, "_create_chat_message", create_chat_message)
     monkeypatch.setattr(completion_controller, "_stop_chat_message", stop_chat_message)
 
@@ -1511,7 +1509,7 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(app: Flask, monkeyp
         captured["detail"] = kwargs
         return {"id": message_id}
 
-    monkeypatch.setattr(message_controller, "resolve_agent_app_model", resolve_agent_app_model)
+    monkeypatch.setattr(message_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
     monkeypatch.setattr(message_controller, "_list_chat_messages", list_chat_messages)
     monkeypatch.setattr(message_controller, "_update_message_feedback", update_message_feedback)
     monkeypatch.setattr(message_controller, "_get_message_suggested_questions", get_message_suggested_questions)
