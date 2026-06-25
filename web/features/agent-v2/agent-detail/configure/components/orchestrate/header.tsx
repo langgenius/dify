@@ -14,7 +14,7 @@ export function AgentOrchestrateHeader({
   const { t } = useTranslation('agentV2')
 
   return (
-    <div className="flex h-[68px] shrink-0 flex-col justify-center gap-1 px-4 py-3">
+    <div className="h-[68px] shrink-0 px-4 py-3">
       <div className="flex min-w-0 items-center gap-2">
         <h2 id={headingId} className="truncate title-xl-semi-bold text-text-primary">
           {t('agentDetail.configure.title')}
@@ -26,7 +26,7 @@ export function AgentOrchestrateHeader({
         )}
       </div>
       {isBuildDraftActive && (
-        <p className="w-full truncate system-xs-regular text-text-tertiary">
+        <p className="mt-1 w-full system-xs-regular text-text-tertiary">
           {t('agentDetail.configure.buildDraft.modeDescription')}
         </p>
       )}
