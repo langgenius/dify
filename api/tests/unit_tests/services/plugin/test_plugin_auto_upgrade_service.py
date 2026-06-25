@@ -281,6 +281,5 @@ class TestBackfillStrategyCategories:
         assert model_strategy.include_plugins == ["model-plugin"]
         assert (
             "Skipped unknown plugin IDs while backfilling plugin auto-upgrade strategies: "
-            "tenant_id=t1, field=exclude_plugins, plugin_ids=['unknown-plugin']"
-            in caplog.messages
+            "tenant_id=t1, field=exclude_plugins, plugin_ids=['unknown-plugin']" in caplog.messages
         )

@@ -9,8 +9,8 @@ This module tests the document indexing task functionality including:
 - Task cancellation and cleanup
 """
 
-import uuid
 import logging
+import uuid
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
