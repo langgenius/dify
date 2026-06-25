@@ -68,6 +68,7 @@ logger = logging.getLogger(__name__)
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS = 300
+_PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS = 360
 _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:version"
 _PROVIDER_CONFIGURATION_CACHE_SOURCE_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:v:{version}"
 
@@ -387,9 +388,9 @@ class _ProviderConfigurationSourceCache:
             if sources is None:
                 sources = _PROVIDER_CONFIGURATION_SOURCES
             for source in sources:
-                redis_client.incr(
-                    _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY.format(tenant_id=tenant_id, source=source.value)
-                )
+                version_key = _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY.format(tenant_id=tenant_id, source=source.value)
+                redis_client.incr(version_key)
+                redis_client.expire(version_key, _PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS)
         except Exception:
             logger.warning("Failed to invalidate provider configuration source cache", exc_info=True)
 
@@ -398,7 +399,9 @@ class _ProviderConfigurationSourceCache:
         version_key = _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY.format(tenant_id=tenant_id, source=source.value)
         version = redis_client.get(version_key)
         if version is None:
+            redis_client.set(version_key, "0", ex=_PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS)
             return "0"
+        redis_client.expire(version_key, _PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS)
         return version.decode("utf-8") if isinstance(version, bytes) else str(version)
 
     @staticmethod

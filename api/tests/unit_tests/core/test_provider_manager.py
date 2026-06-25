@@ -33,17 +33,27 @@ def _build_session_context(session: Mock) -> MagicMock:
 class _FakeRedis:
     def __init__(self) -> None:
         self.store: dict[str, str] = {}
+        self.expirations: dict[str, int] = {}
 
     def get(self, key: str):
         return self.store.get(key)
 
+    def set(self, key: str, value: str, *, ex: int | None = None) -> None:
+        self.store[key] = value
+        if ex is not None:
+            self.expirations[key] = ex
+
     def setex(self, key: str, time: int, value: str) -> None:
         self.store[key] = value
+        self.expirations[key] = time
 
     def incr(self, key: str) -> int:
         value = int(self.store.get(key, "0")) + 1
         self.store[key] = str(value)
         return value
+
+    def expire(self, key: str, time: int) -> None:
+        self.expirations[key] = time
 
 
 class _FakeScalarResult:
@@ -662,6 +672,7 @@ def test_invalidate_configurations_cache_bumps_selected_source_version() -> None
         )
 
     assert fake_redis.store["provider_configurations:tenant:tenant-id:source:provider_credentials:version"] == "2"
+    assert fake_redis.expirations["provider_configurations:tenant:tenant-id:source:provider_credentials:version"] == 360
     assert "provider_configurations:tenant:tenant-id:source:provider_models:version" not in fake_redis.store
 
 
@@ -685,6 +696,8 @@ def test_provider_model_credentials_cache_returns_cache_entries() -> None:
         second = ProviderManager._get_all_provider_model_credentials("tenant-id")
 
     assert session.scalars.call_count == 1
+    version_key = "provider_configurations:tenant:tenant-id:source:provider_model_credentials:version"
+    assert fake_redis.expirations[version_key] == 360
     assert first["openai"][0] is not credential_record
     assert second["openai"][0].credential_name == "primary"
     assert second["openai"][0].model_type == ModelType.LLM
