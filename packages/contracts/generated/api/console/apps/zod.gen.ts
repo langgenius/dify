@@ -2854,6 +2854,30 @@ export const zAgentFileRefConfig = z.object({
 })
 
 /**
+ * AgentSkillRefConfig
+ */
+export const zAgentSkillRefConfig = z.object({
+  description: z.string().nullish(),
+  file_id: z.string().max(255).nullish(),
+  full_archive_file_id: z.string().max(255).nullish(),
+  full_archive_key: z.string().max(512).nullish(),
+  id: z.string().max(255).nullish(),
+  manifest_files: z.array(z.string()).nullish(),
+  name: z.string().max(255).nullish(),
+  path: z.string().nullish(),
+  skill_md_file_id: z.string().max(255).nullish(),
+  skill_md_key: z.string().max(512).nullish(),
+})
+
+/**
+ * AgentSoulFilesConfig
+ */
+export const zAgentSoulFilesConfig = z.object({
+  files: z.array(zAgentFileRefConfig).optional(),
+  skills: z.array(zAgentSkillRefConfig).optional(),
+})
+
+/**
  * WorkflowNodeJobMetadata
  */
 export const zWorkflowNodeJobMetadata = z.object({
@@ -3599,6 +3623,7 @@ export const zAgentSoulConfig = z.object({
   app_features: zAgentSoulAppFeaturesConfig.optional(),
   app_variables: z.array(zAppVariableConfig).optional(),
   env: zAgentSoulEnvConfig.optional(),
+  files: zAgentSoulFilesConfig.optional(),
   human: zAgentSoulHumanConfig.optional(),
   knowledge: zAgentSoulKnowledgeConfig.optional(),
   memory: zAgentSoulMemoryConfig.optional(),
