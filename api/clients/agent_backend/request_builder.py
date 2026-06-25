@@ -35,11 +35,6 @@ from dify_agent.layers.execution_context import (
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
-from dify_agent.layers.user_prompt import (
-    DIFY_USER_PROMPT_LAYER_TYPE_ID,
-    DifyUserPromptFileConfig,
-    DifyUserPromptLayerConfig,
-)
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -195,7 +190,6 @@ class AgentBackendAgentAppRunInput(BaseModel):
     model: AgentBackendModelConfig
     execution_context: DifyExecutionContextLayerConfig
     user_prompt: str
-    user_files: list[DifyUserPromptFileConfig] = Field(default_factory=list)
     agent_soul_prompt: str | None = None
     purpose: RunPurpose = "agent_app"
     idempotency_key: str | None = None
@@ -256,9 +250,9 @@ class AgentBackendRunRequestBuilder:
             [
                 RunLayerSpec(
                     name=AGENT_APP_USER_PROMPT_LAYER_ID,
-                    type=DIFY_USER_PROMPT_LAYER_TYPE_ID,
+                    type=PLAIN_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "agent_app_user_prompt"},
-                    config=DifyUserPromptLayerConfig(text=run_input.user_prompt, files=run_input.user_files),
+                    config=PromptLayerConfig(user=run_input.user_prompt),
                 ),
                 RunLayerSpec(
                     name=DIFY_EXECUTION_CONTEXT_LAYER_ID,
@@ -585,7 +579,7 @@ class AgentBackendRunRequestBuilder:
         )
 
 
-_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key", "base64_data")
+_SENSITIVE_KEY_PARTS = ("secret", "credential", "token", "password", "api_key")
 
 
 def redact_for_agent_backend_log(value: object) -> object:

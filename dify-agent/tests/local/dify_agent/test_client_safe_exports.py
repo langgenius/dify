@@ -77,7 +77,6 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         plugin_module = importlib.import_module("dify_agent.layers.dify_plugin")
         ask_human_module = importlib.import_module("dify_agent.layers.ask_human")
         output_module = importlib.import_module("dify_agent.layers.output")
-        user_prompt_module = importlib.import_module("dify_agent.layers.user_prompt")
 
         assert agenton_layers.ExitIntent is not None
         assert agenton_layers.LayerConfig is not None
@@ -98,7 +97,6 @@ def test_client_public_exports_work_with_default_dependencies_only(tmp_path: Pat
         assert plugin_module.DifyPluginLLMLayerConfig is not None
         assert ask_human_module.DifyAskHumanLayerConfig is not None
         assert output_module.DifyOutputLayerConfig is not None
-        assert user_prompt_module.DifyUserPromptLayerConfig is not None
 
         grpc_error = importlib.import_module("dify_agent.agent_stub.client._errors").AgentStubMissingGRPCDependencyError
         try:

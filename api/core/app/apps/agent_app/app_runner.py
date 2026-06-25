@@ -45,7 +45,6 @@ from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEnd
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
-from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from models.agent_config_entities import AgentSoulConfig
@@ -163,8 +162,6 @@ class AgentAppRunner:
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
-        files: list[File] | None = None,
-        file_upload_config: FileUploadConfig | None = None,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
     ) -> None:
         if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):
@@ -195,8 +192,6 @@ class AgentAppRunner:
                 conversation_id=conversation_id,
                 user_query=query,
                 idempotency_key=message_id,
-                files=tuple(files or ()),
-                file_upload_config=file_upload_config,
                 session_snapshot=session_snapshot,
                 deferred_tool_results=deferred_tool_results,
             )

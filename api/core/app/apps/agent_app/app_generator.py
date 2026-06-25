@@ -23,7 +23,6 @@ from clients.agent_backend.factory import create_agent_backend_run_client
 from configs import dify_config
 from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
-from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_app.app_config_manager import AgentAppConfigManager
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.generate_response_converter import AgentAppGenerateResponseConverter
@@ -42,7 +41,6 @@ from core.app.entities.app_invoke_entities import (
 from core.app.llm.model_access import build_dify_model_access
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
-from factories import file_factory
 from models import Account, App, EndUser, Message
 from models.agent import (
     Agent,
@@ -111,18 +109,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
         )
         model_conf = ModelConfigConverter.convert(app_config)
-        with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
-            raw_files = args.get("files") or []
-            file_extra_config = FileUploadConfigManager.convert(app_config.app_model_config_dict, is_vision=True)
-            if raw_files:
-                file_objs = file_factory.build_from_mappings(
-                    mappings=raw_files,
-                    tenant_id=app_model.tenant_id,
-                    config=file_extra_config,
-                    access_controller=self._file_access_controller,
-                )
-            else:
-                file_objs = []
 
         trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
 
@@ -130,13 +116,12 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             model_conf=model_conf,
-            file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
             inputs=self._prepare_user_inputs(
                 user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
-            files=list(file_objs),
+            files=[],
             parent_message_id=(
                 args.get("parent_message_id")
                 if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
@@ -379,8 +364,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     message_id=message.id,
                     model_name=application_generate_entity.model_conf.model,
                     queue_manager=queue_manager,
-                    files=list(application_generate_entity.files),
-                    file_upload_config=application_generate_entity.file_upload_config,
                     session_scope_snapshot_id=application_generate_entity.agent_runtime_session_snapshot_id,
                 )
             except GenerateTaskStoppedError:

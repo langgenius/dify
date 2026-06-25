@@ -3,14 +3,12 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
-import core.app.apps.agent_app.runtime_request_builder as runtime_request_builder_module
 from clients.agent_backend import (
     AgentBackendAgentAppRunInput,
     AgentBackendModelConfig,
@@ -23,7 +21,6 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuildError,
 )
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig, ImageConfig
 from models.agent_config_entities import AgentSoulConfig
 
 
@@ -107,19 +104,6 @@ def _ctx(soul: AgentSoulConfig, *, query: str = "hello") -> AgentAppRuntimeBuild
     )
 
 
-def _image_file() -> File:
-    return File(
-        transfer_method=FileTransferMethod.LOCAL_FILE,
-        id="file-1",
-        type=FileType.IMAGE,
-        filename="red.png",
-        extension=".png",
-        mime_type="image/png",
-        size=3,
-        reference="upload-file-id",
-    )
-
-
 def _soul_with_model() -> AgentSoulConfig:
     return AgentSoulConfig.model_validate(
         {
@@ -159,40 +143,6 @@ class TestAgentAppRuntimeRequestBuilder:
         # credentials are redacted in the log-safe view.
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
-
-    def test_build_maps_uploaded_files_to_user_prompt_layer(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(runtime_request_builder_module.file_manager, "download", lambda file: b"red")
-        builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
-        )
-        ctx = replace(
-            _ctx(_soul_with_model()),
-            files=(_image_file(),),
-            file_upload_config=FileUploadConfig(image_config=ImageConfig(detail="high")),
-        )
-
-        result = builder.build(ctx)
-
-        user_prompt = next(
-            layer for layer in result.request.composition.layers if layer.name == "agent_app_user_prompt"
-        )
-        dumped = user_prompt.config.model_dump(mode="json")
-        assert dumped["text"] == "hello"
-        assert dumped["files"][0] == {
-            "filename": "red.png",
-            "mime_type": "image/png",
-            "format": "png",
-            "type": "image",
-            "base64_data": "cmVk",
-            "detail": "high",
-        }
-        redacted_user_prompt = next(
-            layer
-            for layer in result.redacted_request["composition"]["layers"]
-            if layer["name"] == "agent_app_user_prompt"
-        )
-        assert redacted_user_prompt["config"]["files"][0]["base64_data"] == "[REDACTED]"
 
     def test_build_normalizes_marketplace_model_plugin_id(self):
         soul = _soul_with_model()
