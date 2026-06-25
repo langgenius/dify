@@ -181,9 +181,7 @@ class TestTencentDataTrace:
         mock_trace_utils.convert_to_trace_id.return_value = 123
         mock_trace_utils.create_link.return_value = "link"
 
-        with patch.object(tencent_data_trace, "_get_user_id", return_value="user-1"):
-            with patch.object(tencent_data_trace, "_process_workflow_nodes") as mock_proc:
-                with patch.object(tencent_data_trace, "_record_workflow_trace_duration") as mock_dur:
+        with patch.object(tencent_data_trace, "_get_user_id", return_value="user-1"), patch.object(tencent_data_trace, "_process_workflow_nodes") as mock_proc,patch.object(tencent_data_trace, "_record_workflow_trace_duration") as mock_dur:
                     mock_span_builder.build_workflow_spans.return_value = [MagicMock(), MagicMock()]
 
                     tencent_data_trace.workflow_trace(trace_info)
@@ -195,14 +193,13 @@ class TestTencentDataTrace:
                     mock_proc.assert_called_once_with(trace_info, 123)
                     mock_dur.assert_called_once_with(trace_info)
 
-    def test_workflow_trace_exception(self, tencent_data_trace, caplog):
+    def test_workflow_trace_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.workflow_run_id = "run-id"
 
         with patch(
             "dify_trace_tencent.tencent_trace.TencentTraceUtils.convert_to_trace_id", side_effect=Exception("error")
-        ):
-            with caplog.at_level(logging.ERROR):
+        ), caplog.at_level(logging.ERROR):
                 tencent_data_trace.workflow_trace(trace_info)
         assert "[Tencent APM] Failed to process workflow trace" in caplog.text
 
@@ -214,9 +211,7 @@ class TestTencentDataTrace:
         mock_trace_utils.convert_to_trace_id.return_value = 123
         mock_trace_utils.create_link.return_value = "link"
 
-        with patch.object(tencent_data_trace, "_get_user_id", return_value="user-1"):
-            with patch.object(tencent_data_trace, "_record_message_llm_metrics") as mock_metrics:
-                with patch.object(tencent_data_trace, "_record_message_trace_duration") as mock_dur:
+        with patch.object(tencent_data_trace, "_get_user_id", return_value="user-1"), patch.object(tencent_data_trace, "_record_message_llm_metrics") as mock_metrics,patch.object(tencent_data_trace, "_record_message_trace_duration") as mock_dur:
                     mock_span_builder.build_message_span.return_value = MagicMock()
 
                     tencent_data_trace.message_trace(trace_info)
@@ -228,13 +223,12 @@ class TestTencentDataTrace:
                     mock_metrics.assert_called_once_with(trace_info)
                     mock_dur.assert_called_once_with(trace_info)
 
-    def test_message_trace_exception(self, tencent_data_trace, caplog):
+    def test_message_trace_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=MessageTraceInfo)
 
         with patch(
             "dify_trace_tencent.tencent_trace.TencentTraceUtils.convert_to_trace_id", side_effect=Exception("error")
-        ):
-            with caplog.at_level(logging.ERROR):
+        ), caplog.at_level(logging.ERROR):
                 tencent_data_trace.message_trace(trace_info)
         assert "[Tencent APM] Failed to process message trace" in caplog.text
 
@@ -259,14 +253,13 @@ class TestTencentDataTrace:
         tencent_data_trace.tool_trace(trace_info)
         tencent_data_trace.trace_client.add_span.assert_not_called()
 
-    def test_tool_trace_exception(self, tencent_data_trace, caplog):
+    def test_tool_trace_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=ToolTraceInfo)
         trace_info.message_id = "msg-id"
 
         with patch(
             "dify_trace_tencent.tencent_trace.TencentTraceUtils.convert_to_span_id", side_effect=Exception("error")
-        ):
-            with caplog.at_level(logging.ERROR):
+        ), caplog.at_level(logging.ERROR):
                 tencent_data_trace.tool_trace(trace_info)
         assert "[Tencent APM] Failed to process tool trace" in caplog.text
 
@@ -291,24 +284,23 @@ class TestTencentDataTrace:
         tencent_data_trace.dataset_retrieval_trace(trace_info)
         tencent_data_trace.trace_client.add_span.assert_not_called()
 
-    def test_dataset_retrieval_trace_exception(self, tencent_data_trace, caplog):
+    def test_dataset_retrieval_trace_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=DatasetRetrievalTraceInfo)
         trace_info.message_id = "msg-id"
 
         with patch(
             "dify_trace_tencent.tencent_trace.TencentTraceUtils.convert_to_span_id", side_effect=Exception("error")
-        ):
-            with caplog.at_level(logging.ERROR):
+        ), caplog.at_level(logging.ERROR):
                 tencent_data_trace.dataset_retrieval_trace(trace_info)
         assert "[Tencent APM] Failed to process dataset retrieval trace" in caplog.text
 
-    def test_suggested_question_trace(self, tencent_data_trace, caplog):
+    def test_suggested_question_trace(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=SuggestedQuestionTraceInfo)
         with caplog.at_level(logging.INFO):
             tencent_data_trace.suggested_question_trace(trace_info)
         assert "[Tencent APM] Processing suggested question trace" in caplog.text
 
-    def test_suggested_question_trace_exception(self, tencent_data_trace, monkeypatch, caplog):
+    def test_suggested_question_trace_exception(self, tencent_data_trace, monkeypatch, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=SuggestedQuestionTraceInfo)
         target_logger = logging.getLogger("dify_trace_tencent.tencent_trace")
         monkeypatch.setattr(target_logger, "info", MagicMock(side_effect=Exception("error")))
@@ -328,28 +320,24 @@ class TestTencentDataTrace:
         node2.id = "n2"
         node2.node_type = BuiltinNodeTypes.TOOL
 
-        with patch.object(tencent_data_trace, "_get_workflow_node_executions", return_value=[node1, node2]):
-            with patch.object(tencent_data_trace, "_build_workflow_node_span", side_effect=["span1", "span2"]):
-                with patch.object(tencent_data_trace, "_record_llm_metrics") as mock_metrics:
+        with patch.object(tencent_data_trace, "_get_workflow_node_executions", return_value=[node1, node2]), patch.object(tencent_data_trace, "_build_workflow_node_span", side_effect=["span1", "span2"]),patch.object(tencent_data_trace, "_record_llm_metrics") as mock_metrics:
                     tencent_data_trace._process_workflow_nodes(trace_info, 123)
 
                     assert tencent_data_trace.trace_client.add_span.call_count == 2
                     mock_metrics.assert_called_once_with(node1)
 
-    def test_process_workflow_nodes_node_exception(self, tencent_data_trace, mock_trace_utils, caplog):
+    def test_process_workflow_nodes_node_exception(self, tencent_data_trace, mock_trace_utils, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         mock_trace_utils.convert_to_span_id.return_value = 111
 
         node = MagicMock(spec=WorkflowNodeExecution)
         node.id = "n1"
 
-        with patch.object(tencent_data_trace, "_get_workflow_node_executions", return_value=[node]):
-            with patch.object(tencent_data_trace, "_build_workflow_node_span", side_effect=Exception("node error")):
-                with caplog.at_level(logging.ERROR):
+        with patch.object(tencent_data_trace, "_get_workflow_node_executions", return_value=[node]), patch.object(tencent_data_trace, "_build_workflow_node_span", side_effect=Exception("node error")),caplog.at_level(logging.ERROR):
                     tencent_data_trace._process_workflow_nodes(trace_info, 123)
         assert "[Tencent APM] Failed to process workflow nodes" in caplog.text
 
-    def test_process_workflow_nodes_exception(self, tencent_data_trace, mock_trace_utils, caplog):
+    def test_process_workflow_nodes_exception(self, tencent_data_trace, mock_trace_utils, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         mock_trace_utils.convert_to_span_id.side_effect = Exception("outer error")
 
@@ -377,7 +365,7 @@ class TestTencentDataTrace:
             assert result == "span"
             builder_method.assert_called_once_with(123, 456, trace_info, node)
 
-    def test_build_workflow_node_span_exception(self, tencent_data_trace, mock_span_builder, caplog):
+    def test_build_workflow_node_span_exception(self, tencent_data_trace, mock_span_builder, caplog: pytest.LogCaptureFixture):
         node = MagicMock(spec=WorkflowNodeExecution)
         node.node_type = BuiltinNodeTypes.LLM
         node.id = "n1"
@@ -419,7 +407,7 @@ class TestTencentDataTrace:
                     assert results == mock_executions
                     account.set_tenant_id.assert_called_once_with("tenant-1")
 
-    def test_get_workflow_node_executions_no_app_id(self, tencent_data_trace, caplog):
+    def test_get_workflow_node_executions_no_app_id(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.metadata = {}
 
@@ -428,7 +416,7 @@ class TestTencentDataTrace:
         assert results == []
         assert len([r for r in caplog.records if r.levelno == logging.ERROR]) >= 1
 
-    def test_get_workflow_node_executions_app_not_found(self, tencent_data_trace, caplog):
+    def test_get_workflow_node_executions_app_not_found(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.metadata = {"app_id": "app-1"}
 
@@ -449,8 +437,7 @@ class TestTencentDataTrace:
         trace_info.tenant_id = "tenant-1"
         trace_info.metadata = {"user_id": "user-1"}
 
-        with patch("dify_trace_tencent.tencent_trace.sessionmaker", side_effect=Exception("Database error")):
-            with patch("dify_trace_tencent.tencent_trace.db") as mock_db:
+        with patch("dify_trace_tencent.tencent_trace.sessionmaker", side_effect=Exception("Database error")), patch("dify_trace_tencent.tencent_trace.db") as mock_db:
                 mock_db.init_app = MagicMock()
                 mock_db.engine = MagicMock()
 
@@ -471,13 +458,12 @@ class TestTencentDataTrace:
         user_id = tencent_data_trace._get_user_id(trace_info)
         assert user_id == "anonymous"
 
-    def test_get_user_id_exception(self, tencent_data_trace, caplog):
+    def test_get_user_id_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.tenant_id = "t"
         trace_info.metadata = {"user_id": "u"}
 
-        with patch("dify_trace_tencent.tencent_trace.sessionmaker", side_effect=Exception("error")):
-            with caplog.at_level(logging.ERROR):
+        with patch("dify_trace_tencent.tencent_trace.sessionmaker", side_effect=Exception("error")), caplog.at_level(logging.ERROR):
                 user_id = tencent_data_trace._get_user_id(trace_info)
         assert user_id == "unknown"
         assert "[Tencent APM] Failed to get user ID" in caplog.text
@@ -514,7 +500,7 @@ class TestTencentDataTrace:
         tencent_data_trace.trace_client.record_llm_duration.assert_called_once()
         tencent_data_trace.trace_client.record_token_usage.assert_called_once()
 
-    def test_record_llm_metrics_exception(self, tencent_data_trace, caplog):
+    def test_record_llm_metrics_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         node = MagicMock(spec=WorkflowNodeExecution)
         node.process_data = None
         node.outputs = None
@@ -553,7 +539,7 @@ class TestTencentDataTrace:
         tencent_data_trace._record_message_llm_metrics(trace_info)
         tencent_data_trace.trace_client.record_llm_duration.assert_called_once()
 
-    def test_record_message_llm_metrics_exception(self, tencent_data_trace, caplog):
+    def test_record_message_llm_metrics_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=MessageTraceInfo)
         trace_info.metadata = None
 
@@ -605,7 +591,7 @@ class TestTencentDataTrace:
             attributes = kwargs["attributes"] if "attributes" in kwargs else args[1] if len(args) > 1 else {}
             assert attributes["has_conversation"] == "false"
 
-    def test_record_workflow_trace_duration_exception(self, tencent_data_trace, caplog):
+    def test_record_workflow_trace_duration_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=WorkflowTraceInfo)
         trace_info.start_time = MagicMock()  # This might cause total_seconds() to fail if not mocked right
 
@@ -627,7 +613,7 @@ class TestTencentDataTrace:
             2.0, {"conversation_mode": "chat", "stream": "true"}
         )
 
-    def test_record_message_trace_duration_exception(self, tencent_data_trace, caplog):
+    def test_record_message_trace_duration_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         trace_info = MagicMock(spec=MessageTraceInfo)
         trace_info.start_time = None
 
@@ -647,7 +633,7 @@ class TestTencentDataTrace:
 
         client.shutdown.assert_called_once()
 
-    def test_close_exception(self, tencent_data_trace, caplog):
+    def test_close_exception(self, tencent_data_trace, caplog: pytest.LogCaptureFixture):
         tencent_data_trace.trace_client.shutdown.side_effect = Exception("error")
         with caplog.at_level(logging.ERROR):
             tencent_data_trace.close()
