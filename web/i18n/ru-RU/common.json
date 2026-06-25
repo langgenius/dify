@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Сведения об участнике",
   "members.name": "ИМЯ",
   "members.noNewInvitationsSent": "Новые приглашения не отправлены",
+  "members.normalTip": "Может только использовать приложения, не может создавать приложения",
   "members.ok": "ОК",
   "members.pending": "Ожидание...",
   "members.removeFromTeam": "Удалить из команды",

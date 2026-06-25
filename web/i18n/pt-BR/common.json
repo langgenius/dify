@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Detalhes do membro",
   "members.name": "NOME",
   "members.noNewInvitationsSent": "Nenhum novo convite enviado",
+  "members.normalTip": "Só pode usar aplicativos, não pode criar aplicativos",
   "members.ok": "OK",
   "members.pending": "Pendente...",
   "members.removeFromTeam": "Remover da equipe",

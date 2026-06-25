@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Podrobnosti člana",
   "members.name": "IME",
   "members.noNewInvitationsSent": "Nova povabila niso bila poslana",
+  "members.normalTip": "Lahko uporablja samo aplikacije, ne more ustvarjati aplikacij",
   "members.ok": "V redu",
   "members.pending": "V teku...",
   "members.removeFromTeam": "Odstrani iz ekipe",

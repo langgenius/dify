@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Відомості про учасника",
   "members.name": "ІМ'Я",
   "members.noNewInvitationsSent": "Нові запрошення не надіслано",
+  "members.normalTip": "Може лише використовувати програми, не може створювати програми",
   "members.ok": "ОК",
   "members.pending": "В очікуванні...",
   "members.removeFromTeam": "Видалити з команди",

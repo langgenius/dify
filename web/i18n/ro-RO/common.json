@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Detalii membru",
   "members.name": "NUME",
   "members.noNewInvitationsSent": "Nu au fost trimise invitații noi",
+  "members.normalTip": "Poate doar utiliza aplicații, nu poate construi aplicații",
   "members.ok": "OK",
   "members.pending": "În așteptare...",
   "members.removeFromTeam": "Elimină din echipă",

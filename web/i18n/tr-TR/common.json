@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Üye Ayrıntıları",
   "members.name": "İSİM",
   "members.noNewInvitationsSent": "Yeni davet gönderilmedi",
+  "members.normalTip": "Sadece uygulamaları kullanabilir, uygulama oluşturamaz",
   "members.ok": "Tamam",
   "members.pending": "Beklemede...",
   "members.removeFromTeam": "Takımdan Kaldır",

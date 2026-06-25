@@ -117,8 +117,16 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
 
     const legacyRoleDescriptionKey = getLegacyRoleDescriptionKey(role)
 
-    if (legacyRoleDescriptionKey)
-      return t(LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey], { ns: 'common' })
+    switch (legacyRoleDescriptionKey) {
+      case 'admin':
+        return t('members.adminTip', { ns: 'common' })
+      case 'editor':
+        return t('members.editorTip', { ns: 'common' })
+      case 'normal':
+        return t('members.normalTip', { ns: 'common' })
+      case 'dataset_operator':
+        return t('members.datasetOperatorTip', { ns: 'common' })
+    }
 
     return t('role.noDescription', { ns: 'permission' })
   }

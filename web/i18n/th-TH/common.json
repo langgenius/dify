@@ -250,6 +250,7 @@
   "members.memberDetails.title": "รายละเอียดสมาชิก",
   "members.name": "ชื่อ",
   "members.noNewInvitationsSent": "ไม่มีการส่งคำเชิญใหม่",
+  "members.normalTip": "ใช้ได้เฉพาะแอพ สร้างแอพไม่ได้",
   "members.ok": "ตกลง, ได้",
   "members.pending": "รอ   ",
   "members.removeFromTeam": "ลบออกจากทีม",

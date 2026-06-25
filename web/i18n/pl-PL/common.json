@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Szczegóły członka",
   "members.name": "NAZWA",
   "members.noNewInvitationsSent": "Nie wysłano nowych zaproszeń",
+  "members.normalTip": "Może tylko korzystać z aplikacji, nie może tworzyć aplikacji",
   "members.ok": "OK",
   "members.pending": "Oczekujący...",
   "members.removeFromTeam": "Usuń z zespołu",

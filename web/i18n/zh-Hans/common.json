@@ -250,6 +250,7 @@
   "members.memberDetails.title": "成员详情",
   "members.name": "姓名",
   "members.noNewInvitationsSent": "没有新的邀请发送",
+  "members.normalTip": "只能使用应用程序，不能建立应用程序",
   "members.ok": "好的",
   "members.pending": "待定...",
   "members.removeFromTeam": "移出团队",

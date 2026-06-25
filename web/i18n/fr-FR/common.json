@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Détails du membre",
   "members.name": "NOM",
   "members.noNewInvitationsSent": "Aucune nouvelle invitation envoyée",
+  "members.normalTip": "Peut seulement utiliser des applications, ne peut pas construire des applications",
   "members.ok": "D'accord",
   "members.pending": "En attente...",
   "members.removeFromTeam": "Retirer de l'équipe",

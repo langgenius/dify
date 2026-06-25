@@ -250,6 +250,7 @@
   "members.memberDetails.title": "멤버 세부 정보",
   "members.name": "이름",
   "members.noNewInvitationsSent": "새 초대가 전송되지 않았습니다",
+  "members.normalTip": "앱 사용만 가능하고 앱 빌드는 불가능",
   "members.ok": "확인",
   "members.pending": "대기 중...",
   "members.removeFromTeam": "팀에서 제거",

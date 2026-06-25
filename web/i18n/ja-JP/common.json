@@ -250,6 +250,7 @@
   "members.memberDetails.title": "メンバー詳細",
   "members.name": "名前",
   "members.noNewInvitationsSent": "新しい招待は送信されませんでした",
+  "members.normalTip": "アプリの使用のみが可能で、アプリの構築はできません",
   "members.ok": "OK",
   "members.pending": "保留中...",
   "members.removeFromTeam": "チームから削除",

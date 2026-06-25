@@ -250,6 +250,7 @@
   "members.memberDetails.title": "تفاصيل العضو",
   "members.name": "الاسم",
   "members.noNewInvitationsSent": "لم يتم إرسال دعوات جديدة",
+  "members.normalTip": "يمكنه استخدام التطبيقات فقط، ولا يمكنه بناء التطبيقات",
   "members.ok": "موافق",
   "members.pending": "قيد الانتظار...",
   "members.removeFromTeam": "إزالة من الفريق",

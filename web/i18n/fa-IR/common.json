@@ -250,6 +250,7 @@
   "members.memberDetails.title": "جزئیات عضو",
   "members.name": "نام",
   "members.noNewInvitationsSent": "هیچ دعوت‌نامه جدیدی ارسال نشد",
+  "members.normalTip": "فقط می‌تواند از برنامه‌ها استفاده کند، نمی‌تواند برنامه بسازد",
   "members.ok": "تایید",
   "members.pending": "در انتظار...",
   "members.removeFromTeam": "حذف از تیم",

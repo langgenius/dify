@@ -250,6 +250,7 @@
   "members.memberDetails.title": "Mitgliedsdetails",
   "members.name": "NAME",
   "members.noNewInvitationsSent": "Keine neuen Einladungen gesendet",
+  "members.normalTip": "Kann nur Apps verwenden, kann keine Apps erstellen",
   "members.ok": "OK",
   "members.pending": "Ausstehend...",
   "members.removeFromTeam": "Vom Team entfernen",
