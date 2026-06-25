@@ -7,19 +7,14 @@ to the agent drive (Agent Files §5.4 / §4):
 * ``<slug>/.DIFY-SKILL-FULL.zip`` — the full archive, kept only to restore the
   complete skill contents.
 
-Both are stored as ``ToolFile`` records and bound via ``AgentDriveService.commit``
-with ``value_owned_by_drive=True`` (the drive owns their lifecycle). The returned
-payload is the slim drive-derived skill DTO the UI needs to work with the drive
-catalog — ``name``, ``description``, ``path``, ``skill_md_key``, and
-``archive_key`` — plus the extracted manifest for upload feedback. The console
-``/skills/upload`` endpoints delegate to this service so "upload" now always means
-drive-backed skill normalization rather than Agent Soul binding.
+The archive's member list is stored in skill metadata and resolved lazily for
+inspect/preview/runtime. Upload must not eagerly materialize every archive member
+as a separate ToolFile; small archives with many files would otherwise perform
+hundreds of storage writes and DB commits inside the request.
 """
 
 from __future__ import annotations
 
-import mimetypes
-import posixpath
 import re
 from typing import Any
 
@@ -65,8 +60,8 @@ class SkillStandardizeService:
         skill_md_bytes = self._package.read_member_bytes(content=content, member_path=manifest.entry_path)
         slug = slugify_skill_name(manifest.name)
 
-        # Drive-owned files: canonical SKILL.md, every inspectable archive file,
-        # and the full archive for future restore/export.
+        # Drive-owned files: canonical SKILL.md and the full archive. The
+        # archive member tree is preserved in metadata and resolved lazily.
         md_tool_file = self._tool_files.create_file_by_raw(
             user_id=user_id,
             tenant_id=tenant_id,
@@ -86,30 +81,6 @@ class SkillStandardizeService:
 
         skill_md_key = f"{slug}/{_SKILL_MD_NAME}"
         archive_key = f"{slug}/{_FULL_ARCHIVE_NAME}"
-        member_items: list[DriveCommitItem] = []
-        for member_path in sorted(set(manifest.files)):
-            member_key = f"{slug}/{member_path}"
-            if member_key in {skill_md_key, archive_key}:
-                continue
-
-            member_bytes = self._package.read_member_bytes(content=content, member_path=member_path)
-            mimetype = mimetypes.guess_type(member_path)[0] or "application/octet-stream"
-            member_tool_file = self._tool_files.create_file_by_raw(
-                user_id=user_id,
-                tenant_id=tenant_id,
-                conversation_id=None,
-                file_binary=member_bytes,
-                mimetype=mimetype,
-                filename=posixpath.basename(member_path),
-            )
-            member_items.append(
-                DriveCommitItem(
-                    key=member_key,
-                    file_ref=DriveFileRef(kind="tool_file", id=member_tool_file.id),
-                    value_owned_by_drive=True,
-                )
-            )
-
         committed_items = self._drive.commit(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -131,7 +102,6 @@ class SkillStandardizeService:
                     file_ref=DriveFileRef(kind="tool_file", id=archive_tool_file.id),
                     value_owned_by_drive=True,
                 ),
-                *member_items,
             ],
         )
         self.last_committed_items = committed_items
