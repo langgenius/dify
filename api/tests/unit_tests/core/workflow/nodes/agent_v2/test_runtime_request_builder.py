@@ -36,6 +36,13 @@ class FakeCredentialsProvider:
         return {"api_key": "secret-key"}
 
 
+@pytest.fixture(autouse=True)
+def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
+    )
+
+
 class CapturingCredentialsProvider:
     def __init__(self) -> None:
         self.provider_name: str | None = None
@@ -1128,7 +1135,7 @@ def test_workflow_runtime_missing_drive_mentions_fall_back_to_label_then_decoded
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
+    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and files/no-label.txt."
     assert "[§" not in soul_prompt.config.prefix
 
 
