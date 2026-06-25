@@ -149,10 +149,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
         sections: list[str] = []
         mentioned_skill_keys = set(self.config.mentioned_skill_keys)
         other_skills = [
-            (
-                f"- {skill.path}: {skill.name} — {skill.description}. "
-                f"Pull with `dify-agent drive pull {self._skill_prefix(skill.skill_md_key)}`."
-            )
+            f"- {skill.path}: {skill.name} — {skill.description}"
             for skill in self.config.skills
             if skill.skill_md_key not in mentioned_skill_keys
         ]
@@ -160,7 +157,8 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             sections.append(
                 "Other available skills:\n"
                 + "\n".join(other_skills)
-                + "\n\nIf you want to use one, pull it first with `dify-agent drive pull <SKILL_PATH>/`."
+                + "\n\nIf you want to use one, pull it with `dify-agent drive pull <SKILL_PATH>/`, "
+                "then read the pulled skill content before using it."
             )
         sections.append(_AGENT_STUB_CLI_USAGE_PROMPT)
         return "\n\n".join(sections)
