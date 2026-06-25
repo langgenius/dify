@@ -328,7 +328,7 @@ describe('AgentConfigurePage', () => {
   })
 
   describe('Loading state', () => {
-    it('should show loading instead of the configure panels while composer data is pending', () => {
+    it('should show the configure shell instead of the panels while composer data is pending', () => {
       const queryClient = new QueryClient()
 
       render(
@@ -337,7 +337,10 @@ describe('AgentConfigurePage', () => {
         </QueryClientProvider>,
       )
 
-      expect(screen.getByRole('status', { name: 'appApi.loading' })).toBeInTheDocument()
+      const configureSection = screen.getByRole('region', { name: 'agentV2.agentDetail.sections.configure' })
+      expect(configureSection).toHaveAttribute('aria-busy', 'true')
+      expect(configureSection).toHaveClass('gap-1', 'overflow-hidden', 'bg-background-body')
+      expect(screen.queryByRole('status', { name: 'appApi.loading' })).not.toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'orchestrate-panel' })).not.toBeInTheDocument()
     })
   })

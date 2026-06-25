@@ -4,7 +4,6 @@ import type { AgentAppDetailWithSite, AgentIconType, AgentSoulConfig } from '@di
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
@@ -58,13 +57,7 @@ function AgentConfigurePageContent({
 
   if (isConfigureDataPending) {
     return (
-      <section
-        aria-label={t('agentDetail.sections.configure')}
-        aria-busy
-        className="flex h-full min-w-0 flex-1 items-center justify-center p-1"
-      >
-        <Loading type="app" />
-      </section>
+      <AgentConfigurePageSkeleton label={t('agentDetail.sections.configure')} />
     )
   }
 
@@ -226,13 +219,7 @@ function AgentConfigurePageLoadedContent({
 
   if (buildDraft.isPending) {
     return (
-      <section
-        aria-label={t('agentDetail.sections.configure')}
-        aria-busy
-        className="flex h-full min-w-0 flex-1 items-center justify-center p-1"
-      >
-        <Loading type="app" />
-      </section>
+      <AgentConfigurePageSkeleton label={t('agentDetail.sections.configure')} />
     )
   }
 
@@ -382,4 +369,56 @@ function AgentRightPanelChatWithDraftConfig({
           onConversationIdChange={handleConversationIdChange}
         />
       )
+}
+
+function AgentConfigurePageSkeleton({
+  label,
+}: {
+  label: string
+}) {
+  return (
+    <section
+      aria-label={label}
+      aria-busy
+      className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden bg-background-body p-1"
+    >
+      <div
+        aria-hidden
+        className="relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg"
+      >
+        <div className="h-[68px] shrink-0" />
+        <div className="min-h-0 flex-1 overflow-hidden px-4 py-3">
+          <div className="relative overflow-hidden">
+            <div className="flex flex-col gap-4 py-1">
+              {[
+                { id: 'model', labelClassName: 'w-20', controlClassName: 'h-8' },
+                { id: 'prompt', labelClassName: 'w-24', controlClassName: 'h-24' },
+                { id: 'skills', labelClassName: 'w-16', controlClassName: 'h-8' },
+                { id: 'files', labelClassName: 'w-18', controlClassName: 'h-8 opacity-60' },
+              ].map(row => (
+                <div
+                  key={row.id}
+                  className="flex flex-col gap-1 opacity-20"
+                >
+                  <div className={`h-3 animate-pulse rounded-xs bg-text-quaternary motion-reduce:animate-none ${row.labelClassName}`} />
+                  <div className={`animate-pulse rounded-lg bg-components-input-bg-normal motion-reduce:animate-none ${row.controlClassName}`} />
+                </div>
+              ))}
+            </div>
+            <div className="pointer-events-none absolute inset-0 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+          </div>
+        </div>
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-[72px] flex-col items-center justify-end px-4 pt-4 pb-2">
+          <div className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-components-panel-bg to-components-panel-bg-transparent [mask-image:linear-gradient(to_top,black,transparent)] backdrop-blur-[2px] [-webkit-mask-image:linear-gradient(to_top,black,transparent)]" />
+          <div className="relative z-10 h-12 w-full max-w-[506px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]" />
+        </div>
+      </div>
+      <div aria-hidden className="flex min-w-105 flex-1 gap-1 overflow-hidden">
+        <div className="relative isolate flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
+          <div className="relative z-1 h-12 shrink-0" />
+          <div className="relative z-1 min-h-0 flex-1" />
+        </div>
+      </div>
+    </section>
+  )
 }
