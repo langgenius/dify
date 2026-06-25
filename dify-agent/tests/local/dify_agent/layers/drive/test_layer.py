@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 import pytest
 
 from agenton.layers import EmptyRuntimeState, LayerConfig, NoLayerDeps, PlainLayer
@@ -15,10 +16,15 @@ class _FakeExecutionContextConfig(LayerConfig):
 
 
 class _FakeExecutionContextLayer(PlainLayer[NoLayerDeps, _FakeExecutionContextConfig, EmptyRuntimeState]):
-    type_id = None
+    type_id: ClassVar[str | None] = None
 
-    def __init__(self, tenant_id: str) -> None:
-        self.config = _FakeExecutionContextConfig(tenant_id=tenant_id)
+    config: _FakeExecutionContextConfig
+
+    def __new__(cls) -> _FakeExecutionContextLayer:
+        return super().__new__(cls)
+
+    def __init__(self) -> None:
+        self.config = _FakeExecutionContextConfig(tenant_id="tenant-1")
 
 
 def _build_layer(tmp_path: Path) -> DifyDriveLayer:
@@ -47,8 +53,22 @@ def _build_layer(tmp_path: Path) -> DifyDriveLayer:
         inner_api_url="https://api.example.com",
         inner_api_key="secret",
     )
-    layer.bind_deps({"execution_context": _FakeExecutionContextLayer("tenant-1")})
+    layer.bind_deps({"execution_context": _FakeExecutionContextLayer()})
     return layer
+
+
+def test_drive_layer_exposes_agent_stub_cli_usage_suffix_prompt(tmp_path: Path) -> None:
+    layer = _build_layer(tmp_path)
+
+    assert len(layer.suffix_prompts) == 1
+    prompt = layer.suffix_prompts[0]
+    assert "dify-agent drive list [PATH_PREFIX]" in prompt
+    assert "dify-agent drive pull TARGET ..." in prompt
+    assert "--drive-base ." in prompt
+    assert "dify-agent drive push LOCAL_PATH DRIVE_PATH" in prompt
+    assert "dify-agent file download TRANSFER_METHOD REFERENCE_OR_URL [DIR]" in prompt
+    assert "dify-agent file upload PATH" in prompt
+    assert '{"transfer_method":"tool_file","reference":"..."}' in prompt
 
 
 @pytest.mark.anyio

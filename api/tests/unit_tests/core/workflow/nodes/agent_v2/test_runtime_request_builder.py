@@ -181,7 +181,8 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
-    assert result.redacted_request["composition"]["layers"][5]["config"]["credentials"] == "[REDACTED]"
+    redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
+    assert redacted_layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["credentials"] == "[REDACTED]"
 
 
 def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
@@ -262,7 +263,7 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert report_schema["oneOf"][3]["required"] == ["transfer_method", "url"]
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
-    assert dumped["composition"]["layers"][5]["config"]["model_settings"] == {"temperature": 0.2}
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}
     assert result.metadata["runtime_support"]["reserved_status"]["tools.dify_tools"] == "supported_when_config_valid"
     assert result.metadata["runtime_support"]["reserved_status"]["tools.cli_tools"] == "supported_by_shell_bootstrap"
     assert result.metadata["runtime_support"]["unsupported_runtime_warnings"] == []
@@ -1103,11 +1104,14 @@ def test_workflow_runtime_missing_drive_mentions_fall_back_to_label_then_decoded
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and files/no-label.txt."
+    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
     assert "[§" not in soul_prompt.config.prefix
 
 
-def test_workflow_run_request_has_no_drive_layer_when_flag_disabled():
+def test_workflow_run_request_has_no_drive_layer_when_flag_disabled(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
+    )
     context = _context()
     context.snapshot.config_snapshot = _soul_with_drive_skill()
 
