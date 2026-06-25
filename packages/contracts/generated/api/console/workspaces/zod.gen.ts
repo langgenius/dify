@@ -27,24 +27,9 @@ export const zSnippetImportPayload = z.object({
 })
 
 /**
- * SnippetImportResponse
+ * SnippetUseCountIncrementResponse
  */
-export const zSnippetImportResponse = z.record(z.string(), z.unknown())
-
-/**
- * SnippetDependencyCheckResponse
- */
-export const zSnippetDependencyCheckResponse = z.record(z.string(), z.unknown())
-
-/**
- * TextFileResponse
- */
-export const zTextFileResponse = z.string()
-
-/**
- * SnippetUseCountResponse
- */
-export const zSnippetUseCountResponse = z.object({
+export const zSnippetUseCountIncrementResponse = z.object({
   result: z.string(),
   use_count: z.int(),
 })
@@ -801,97 +786,97 @@ export const zCreateSnippetPayload = z.object({
   type: z.enum(['group', 'node']).optional().default('node'),
 })
 
-export const zAnonymousInlineModelB0Fd3F86D9D5 = z.object({
-  email: z.string().optional(),
-  id: z.string().optional(),
-  name: z.string().optional(),
-})
-
-export const zAnonymousInlineModel7B8B49Ca164e = z.object({
-  id: z.string().optional(),
-  name: z.string().optional(),
-  type: z.string().optional(),
-})
-
-export const zSnippet = z.object({
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: zAnonymousInlineModelB0Fd3F86D9D5.optional(),
-  description: z.string().optional(),
-  graph: z.record(z.string(), z.unknown()).optional(),
-  icon_info: z.record(z.string(), z.unknown()).optional(),
-  id: z.string().optional(),
-  input_fields: z.record(z.string(), z.unknown()).optional(),
-  is_published: z.boolean().optional(),
-  name: z.string().optional(),
-  tags: z.array(zAnonymousInlineModel7B8B49Ca164e).optional(),
-  type: z.string().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: zAnonymousInlineModelB0Fd3F86D9D5.optional(),
-  use_count: z.int().optional(),
-  version: z.int().optional(),
-})
-
-export const zAnonymousInlineModel744Ff9Cc03E6 = z.object({
-  author_name: z.string().optional(),
-  created_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  created_by: z.string().optional(),
-  description: z.string().optional(),
-  icon_info: z.record(z.string(), z.unknown()).optional(),
-  id: z.string().optional(),
-  is_published: z.boolean().optional(),
-  name: z.string().optional(),
-  tags: z.array(zAnonymousInlineModel7B8B49Ca164e).optional(),
-  type: z.string().optional(),
-  updated_at: z.coerce
-    .bigint()
-    .min(BigInt('-9223372036854775808'), {
-      error: 'Invalid value: Expected int64 to be >= -9223372036854775808',
-    })
-    .max(BigInt('9223372036854775807'), {
-      error: 'Invalid value: Expected int64 to be <= 9223372036854775807',
-    })
-    .optional(),
-  updated_by: z.string().optional(),
-  use_count: z.int().optional(),
-  version: z.int().optional(),
-})
-
-export const zSnippetPagination = z.object({
-  data: z.array(zAnonymousInlineModel744Ff9Cc03E6).optional(),
-  has_more: z.boolean().optional(),
-  limit: z.int().optional(),
-  page: z.int().optional(),
-  total: z.int().optional(),
+/**
+ * SimpleAccountResponse
+ */
+export const zSimpleAccountResponse = z.object({
+  email: z.string(),
+  id: z.string(),
+  name: z.string(),
 })
 
 /**
- * AccountWithRole
+ * SnippetTagResponse
  */
-export const zAccountWithRole = z.object({
+export const zSnippetTagResponse = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+})
+
+/**
+ * SnippetResponse
+ */
+export const zSnippetResponse = z.object({
+  created_at: z.int().nullish(),
+  created_by: zSimpleAccountResponse.nullish(),
+  description: z.string().nullish(),
+  graph: z.record(z.string(), z.unknown()).nullish(),
+  icon_info: z.record(z.string(), z.unknown()).nullish(),
+  id: z.string(),
+  input_fields: z.array(z.record(z.string(), z.unknown())).nullish(),
+  is_published: z.boolean(),
+  name: z.string(),
+  tags: z.array(zSnippetTagResponse).optional(),
+  type: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  use_count: z.int(),
+  version: z.int(),
+})
+
+/**
+ * SnippetListItemResponse
+ */
+export const zSnippetListItemResponse = z.object({
+  author_name: z.string().nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  description: z.string().nullish(),
+  icon_info: z.record(z.string(), z.unknown()).nullish(),
+  id: z.string(),
+  is_published: z.boolean(),
+  name: z.string(),
+  tags: z.array(zSnippetTagResponse).optional(),
+  type: z.string(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  use_count: z.int(),
+  version: z.int(),
+})
+
+/**
+ * SnippetPaginationResponse
+ */
+export const zSnippetPaginationResponse = z.object({
+  data: z.array(zSnippetListItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
+/**
+ * ImportStatus
+ */
+export const zImportStatus = z.enum(['completed', 'completed-with-warnings', 'failed', 'pending'])
+
+/**
+ * SnippetImportInfo
+ */
+export const zSnippetImportInfo = z.object({
+  current_dsl_version: z.string().optional().default('0.1.0'),
+  error: z.string().optional().default(''),
+  id: z.string(),
+  imported_dsl_version: z.string().optional().default(''),
+  snippet_id: z.string().nullish(),
+  status: zImportStatus,
+})
+
+/**
+ * AccountWithRoleResponse
+ */
+export const zAccountWithRoleResponse = z.object({
   avatar: z.string().nullish(),
   created_at: z.int().nullish(),
   email: z.string(),
@@ -905,10 +890,10 @@ export const zAccountWithRole = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleList = z.object({
-  accounts: z.array(zAccountWithRole),
+export const zAccountWithRoleListResponse = z.object({
+  accounts: z.array(zAccountWithRoleResponse),
 })
 
 /**
@@ -1372,6 +1357,53 @@ export const zMcpProviderUpdatePayload = z.object({
   provider_id: z.string(),
   server_identifier: z.string(),
   server_url: z.string(),
+})
+
+/**
+ * Type
+ */
+export const zType = z.enum(['github', 'marketplace', 'package'])
+
+/**
+ * Github
+ */
+export const zGithub = z.object({
+  github_plugin_unique_identifier: z.string(),
+  package: z.string(),
+  repo: z.string(),
+  version: z.string(),
+})
+
+/**
+ * Marketplace
+ */
+export const zMarketplace = z.object({
+  marketplace_plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * Package
+ */
+export const zPackage = z.object({
+  plugin_unique_identifier: z.string(),
+  version: z.string().nullish(),
+})
+
+/**
+ * PluginDependency
+ */
+export const zPluginDependency = z.object({
+  current_identifier: z.string().nullish(),
+  type: zType,
+  value: z.union([zGithub, zMarketplace, zPackage]),
+})
+
+/**
+ * CheckDependenciesResult
+ */
+export const zCheckDependenciesResult = z.object({
+  leaked_dependencies: z.array(zPluginDependency).optional(),
 })
 
 /**
@@ -2183,21 +2215,21 @@ export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
 /**
  * Snippets retrieved successfully
  */
-export const zGetWorkspacesCurrentCustomizedSnippetsResponse = zSnippetPagination
+export const zGetWorkspacesCurrentCustomizedSnippetsResponse = zSnippetPaginationResponse
 
 export const zPostWorkspacesCurrentCustomizedSnippetsBody = zCreateSnippetPayload
 
 /**
  * Snippet created successfully
  */
-export const zPostWorkspacesCurrentCustomizedSnippetsResponse = zSnippet
+export const zPostWorkspacesCurrentCustomizedSnippetsResponse = zSnippetResponse
 
 export const zPostWorkspacesCurrentCustomizedSnippetsImportsBody = zSnippetImportPayload
 
 /**
  * Snippet imported successfully
  */
-export const zPostWorkspacesCurrentCustomizedSnippetsImportsResponse = zSnippetImportResponse
+export const zPostWorkspacesCurrentCustomizedSnippetsImportsResponse = zSnippetImportInfo
 
 export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPath = z.object({
   import_id: z.string(),
@@ -2207,7 +2239,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmPat
  * Import confirmed successfully
  */
 export const zPostWorkspacesCurrentCustomizedSnippetsImportsByImportIdConfirmResponse
-  = zSnippetImportResponse
+  = zSnippetImportInfo
 
 export const zDeleteWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
   snippet_id: z.uuid(),
@@ -2225,7 +2257,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object({
 /**
  * Snippet retrieved successfully
  */
-export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippet
+export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippetResponse
 
 export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdBody = zUpdateSnippetPayload
 
@@ -2236,7 +2268,7 @@ export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdPath = z.object
 /**
  * Snippet updated successfully
  */
-export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippet
+export const zPatchWorkspacesCurrentCustomizedSnippetsBySnippetIdResponse = zSnippetResponse
 
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesPath = z.object({
   snippet_id: z.uuid(),
@@ -2246,20 +2278,7 @@ export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependencies
  * Dependencies checked successfully
  */
 export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdCheckDependenciesResponse
-  = zSnippetDependencyCheckResponse
-
-export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportPath = z.object({
-  snippet_id: z.uuid(),
-})
-
-export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportQuery = z.object({
-  include_secret: z.string().optional().default('false'),
-})
-
-/**
- * Snippet exported successfully
- */
-export const zGetWorkspacesCurrentCustomizedSnippetsBySnippetIdExportResponse = zTextFileResponse
+  = zCheckDependenciesResult
 
 export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementPath = z.object({
   snippet_id: z.uuid(),
@@ -2269,12 +2288,12 @@ export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncremen
  * Use count incremented successfully
  */
 export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncrementResponse
-  = zSnippetUseCountResponse
+  = zSnippetUseCountIncrementResponse
 
 /**
  * Success
  */
-export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleListResponse
 
 export const zGetWorkspacesCurrentDefaultModelQuery = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
@@ -2378,7 +2397,7 @@ export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointUpdateRespo
 /**
  * Success
  */
-export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleListResponse
 
 export const zPostWorkspacesCurrentMembersInviteEmailBody = zMemberInvitePayload
 
