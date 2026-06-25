@@ -3,16 +3,16 @@ import { describe, expect, it, vi } from 'vitest'
 import { AccessMode } from '@/models/access-control'
 import { DeploymentAccessControlDialog } from '../deployment-access-control-dialog'
 
-const mockUseSearchForWhiteListCandidates = vi.hoisted(() => vi.fn())
+const mockUseSearchAccessSubjects = vi.hoisted(() => vi.fn())
 
-vi.mock('@/service/access-control/use-app-access-control', () => ({
-  useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+vi.mock('@/service/access-control/use-access-subjects', () => ({
+  useSearchAccessSubjects: (...args: unknown[]) => mockUseSearchAccessSubjects(...args),
 }))
 
 describe('DeploymentAccessControlDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseSearchForWhiteListCandidates.mockReturnValue({
+    mockUseSearchAccessSubjects.mockReturnValue({
       data: { pages: [] },
       fetchNextPage: vi.fn(),
       isFetchingNextPage: false,

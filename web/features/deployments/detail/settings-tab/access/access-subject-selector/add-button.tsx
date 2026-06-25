@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { useSearchForWhiteListCandidates } from '@/service/access-control/use-app-access-control'
+import { useSearchAccessSubjects } from '@/service/access-control/use-access-subjects'
 import { SelectedGroupsBreadCrumb, SubjectItem } from './subject-options'
 import {
   getSubjectLabel,
@@ -56,7 +56,7 @@ export function AccessSubjectAddButton({
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
 
   const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
-  const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchForWhiteListCandidates({
+  const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchAccessSubjects({
     keyword: debouncedKeyword,
     groupId: lastAvailableGroup?.id,
     resultsPerPage: 10,
