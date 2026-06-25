@@ -19,6 +19,7 @@ from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYP
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellEnvVarConfig, DifyShellLayerConfig
+from dify_agent.layers.user_prompt import DIFY_USER_PROMPT_LAYER_TYPE_ID, DifyUserPromptFileConfig
 from dify_agent.protocol import (
     DIFY_AGENT_HISTORY_LAYER_ID,
     DIFY_AGENT_MODEL_LAYER_ID,
@@ -28,6 +29,7 @@ from dify_agent.protocol import (
 from pydantic import ValidationError
 
 from clients.agent_backend import (
+    AGENT_APP_USER_PROMPT_LAYER_ID,
     AGENT_SOUL_PROMPT_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_KNOWLEDGE_BASE_LAYER_ID,
@@ -358,6 +360,47 @@ def test_workflow_request_builder_binds_shell_to_drive_when_configured():
 def test_agent_app_request_builder_omits_shell_layer_by_default():
     request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
+
+
+def test_agent_app_request_builder_uses_multimodal_user_prompt_layer():
+    run_input = _agent_app_input()
+    run_input.user_files = [
+        DifyUserPromptFileConfig(
+            filename="red.png",
+            mime_type="image/png",
+            format="png",
+            type="image",
+            base64_data="cmVk",
+            detail="high",
+        )
+    ]
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+    user_prompt_layer = layers[AGENT_APP_USER_PROMPT_LAYER_ID]
+
+    assert user_prompt_layer.type == DIFY_USER_PROMPT_LAYER_TYPE_ID
+    assert user_prompt_layer.config.text == "List files."
+    assert user_prompt_layer.config.files[0].filename == "red.png"
+
+
+def test_redact_for_agent_backend_log_hides_user_file_base64_data():
+    run_input = _agent_app_input()
+    run_input.user_files = [
+        DifyUserPromptFileConfig(
+            filename="red.png",
+            mime_type="image/png",
+            format="png",
+            type="image",
+            base64_data="cmVk",
+        )
+    ]
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+
+    redacted = cast(dict[str, Any], redact_for_agent_backend_log(request))
+    layers = {layer["name"]: layer for layer in redacted["composition"]["layers"]}
+
+    assert layers[AGENT_APP_USER_PROMPT_LAYER_ID]["config"]["files"][0]["base64_data"] == "[REDACTED]"
 
 
 def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
