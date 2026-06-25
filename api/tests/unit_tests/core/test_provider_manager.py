@@ -5,7 +5,7 @@ import pytest
 from pytest_mock import MockerFixture
 
 from core.entities.provider_entities import ModelSettings
-from core.provider_manager import ProviderManager
+from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import (
@@ -654,11 +654,11 @@ def test_invalidate_configurations_cache_bumps_selected_source_version() -> None
     with patch("core.provider_manager.redis_client", fake_redis):
         ProviderManager.invalidate_configurations_cache(
             "tenant-id",
-            sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,),
+            sources=(ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,),
         )
         ProviderManager.invalidate_configurations_cache(
             "tenant-id",
-            sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,),
+            sources=(ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,),
         )
 
     assert fake_redis.store["provider_configurations:tenant:tenant-id:source:provider_credentials:version"] == "2"

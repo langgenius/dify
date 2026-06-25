@@ -6,6 +6,7 @@ import logging
 from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
+from enum import StrEnum
 from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
@@ -67,22 +68,20 @@ logger = logging.getLogger(__name__)
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS = 300
-_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS = "provider_models"
-_PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS = "preferred_model_providers"
-_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS = "provider_model_settings"
-_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS = "provider_model_credentials"
-_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS = "provider_credentials"
-_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS = "provider_load_balancing_configs"
-_PROVIDER_CONFIGURATION_SOURCES = (
-    _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS,
-    _PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS,
-    _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS,
-    _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS,
-    _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,
-    _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,
-)
 _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:version"
 _PROVIDER_CONFIGURATION_CACHE_SOURCE_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:v:{version}"
+
+
+class ProviderConfigurationCacheSource(StrEnum):
+    PROVIDER_MODELS = "provider_models"
+    PREFERRED_MODEL_PROVIDERS = "preferred_model_providers"
+    PROVIDER_MODEL_SETTINGS = "provider_model_settings"
+    PROVIDER_MODEL_CREDENTIALS = "provider_model_credentials"
+    PROVIDER_CREDENTIALS = "provider_credentials"
+    PROVIDER_LOAD_BALANCING_CONFIGS = "provider_load_balancing_configs"
+
+
+_PROVIDER_CONFIGURATION_SOURCES = tuple(ProviderConfigurationCacheSource)
 
 
 class _CacheEntry(Protocol):
@@ -93,8 +92,8 @@ class _CacheEntry(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class _ProviderConfigurationCacheSource[T: _CacheEntry]:
-    name: str
+class _ProviderConfigurationCacheSourceSpec[T: _CacheEntry]:
+    name: ProviderConfigurationCacheSource
     entry_cls: type[T]
     load_records: Callable[[str], list[T]]
 
@@ -342,7 +341,7 @@ class _ProviderConfigurationSourceCache:
         cls,
         *,
         tenant_id: str,
-        source: str,
+        source: ProviderConfigurationCacheSource,
         entry_cls: type[T],
     ) -> list[T] | None:
         try:
@@ -363,7 +362,13 @@ class _ProviderConfigurationSourceCache:
             return None
 
     @classmethod
-    def set_records(cls, *, tenant_id: str, source: str, records: Sequence[_CacheEntry]) -> None:
+    def set_records(
+        cls,
+        *,
+        tenant_id: str,
+        source: ProviderConfigurationCacheSource,
+        records: Sequence[_CacheEntry],
+    ) -> None:
         try:
             version = cls._get_version(tenant_id=tenant_id, source=source)
             cache_key = cls._source_key(tenant_id=tenant_id, source=source, version=version)
@@ -373,28 +378,34 @@ class _ProviderConfigurationSourceCache:
             logger.warning("Failed to write provider configuration source cache", exc_info=True)
 
     @classmethod
-    def invalidate_tenant(cls, tenant_id: str, sources: Sequence[str] | None = None) -> None:
+    def invalidate_tenant(
+        cls,
+        tenant_id: str,
+        sources: Sequence[ProviderConfigurationCacheSource] | None = None,
+    ) -> None:
         try:
             if sources is None:
                 sources = _PROVIDER_CONFIGURATION_SOURCES
             for source in sources:
-                redis_client.incr(_PROVIDER_CONFIGURATION_CACHE_VERSION_KEY.format(tenant_id=tenant_id, source=source))
+                redis_client.incr(
+                    _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY.format(tenant_id=tenant_id, source=source.value)
+                )
         except Exception:
             logger.warning("Failed to invalidate provider configuration source cache", exc_info=True)
 
     @classmethod
-    def _get_version(cls, *, tenant_id: str, source: str) -> str:
-        version_key = _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY.format(tenant_id=tenant_id, source=source)
+    def _get_version(cls, *, tenant_id: str, source: ProviderConfigurationCacheSource) -> str:
+        version_key = _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY.format(tenant_id=tenant_id, source=source.value)
         version = redis_client.get(version_key)
         if version is None:
             return "0"
         return version.decode("utf-8") if isinstance(version, bytes) else str(version)
 
     @staticmethod
-    def _source_key(*, tenant_id: str, source: str, version: str) -> str:
+    def _source_key(*, tenant_id: str, source: ProviderConfigurationCacheSource, version: str) -> str:
         return _PROVIDER_CONFIGURATION_CACHE_SOURCE_KEY.format(
             tenant_id=tenant_id,
-            source=source,
+            source=source.value,
             version=version,
         )
 
@@ -402,7 +413,7 @@ class _ProviderConfigurationSourceCache:
 def _get_cached_or_load_records[T: _CacheEntry](
     *,
     tenant_id: str,
-    cache_source: _ProviderConfigurationCacheSource[T],
+    cache_source: _ProviderConfigurationCacheSourceSpec[T],
 ) -> list[T]:
     cached_records = _ProviderConfigurationSourceCache.get_records(
         tenant_id=tenant_id,
@@ -491,33 +502,33 @@ def _load_provider_load_balancing_config_cache_entries(tenant_id: str) -> list[_
         ]
 
 
-_PROVIDER_MODELS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS,
+_PROVIDER_MODELS_CACHE_SOURCE = _ProviderConfigurationCacheSourceSpec(
+    name=ProviderConfigurationCacheSource.PROVIDER_MODELS,
     entry_cls=_ProviderModelCacheEntry,
     load_records=_load_provider_model_cache_entries,
 )
-_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS,
+_PREFERRED_MODEL_PROVIDERS_CACHE_SOURCE = _ProviderConfigurationCacheSourceSpec(
+    name=ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS,
     entry_cls=_TenantPreferredModelProviderCacheEntry,
     load_records=_load_preferred_model_provider_cache_entries,
 )
-_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS,
+_PROVIDER_MODEL_SETTINGS_CACHE_SOURCE = _ProviderConfigurationCacheSourceSpec(
+    name=ProviderConfigurationCacheSource.PROVIDER_MODEL_SETTINGS,
     entry_cls=_ProviderModelSettingCacheEntry,
     load_records=_load_provider_model_setting_cache_entries,
 )
-_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS,
+_PROVIDER_MODEL_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSourceSpec(
+    name=ProviderConfigurationCacheSource.PROVIDER_MODEL_CREDENTIALS,
     entry_cls=_ProviderModelCredentialCacheEntry,
     load_records=_load_provider_model_credential_cache_entries,
 )
-_PROVIDER_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS,
+_PROVIDER_CREDENTIALS_CACHE_SOURCE = _ProviderConfigurationCacheSourceSpec(
+    name=ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS,
     entry_cls=_ProviderCredentialCacheEntry,
     load_records=_load_provider_credential_cache_entries,
 )
-_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE = _ProviderConfigurationCacheSource(
-    name=_PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,
+_PROVIDER_LOAD_BALANCING_CONFIGS_CACHE_SOURCE = _ProviderConfigurationCacheSourceSpec(
+    name=ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,
     entry_cls=_LoadBalancingModelConfigCacheEntry,
     load_records=_load_provider_load_balancing_config_cache_entries,
 )
@@ -540,15 +551,6 @@ class ProviderManager:
     instance scope.
     """
 
-    CONFIGURATION_SOURCE_PROVIDER_MODELS = _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODELS
-    CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS = _PROVIDER_CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS
-    CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS = _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS
-    CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS = _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS
-    CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS = _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS
-    CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS = (
-        _PROVIDER_CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS
-    )
-
     decoding_rsa_key: Any | None
     decoding_cipher_rsa: Any | None
     _model_runtime: ModelRuntime
@@ -569,7 +571,10 @@ class ProviderManager:
         self._configurations_cache.pop(tenant_id, None)
 
     @staticmethod
-    def invalidate_configurations_cache(tenant_id: str, sources: Sequence[str] | None = None) -> None:
+    def invalidate_configurations_cache(
+        tenant_id: str,
+        sources: Sequence[ProviderConfigurationCacheSource] | None = None,
+    ) -> None:
         """Invalidate cross-process provider configuration source cache for a tenant."""
         _ProviderConfigurationSourceCache.invalidate_tenant(tenant_id, sources=sources)
 

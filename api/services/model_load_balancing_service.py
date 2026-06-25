@@ -13,7 +13,7 @@ from core.helper.model_provider_cache import (
 )
 from core.model_manager import LBModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
-from core.provider_manager import ProviderManager
+from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from extensions.ext_database import db
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -318,7 +318,7 @@ class ModelLoadBalancingService:
         db.session.commit()
         ProviderManager.invalidate_configurations_cache(
             tenant_id,
-            sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+            sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
         )
 
         return inherit_config
@@ -443,7 +443,7 @@ class ModelLoadBalancingService:
                 db.session.commit()
                 ProviderManager.invalidate_configurations_cache(
                     tenant_id,
-                    sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+                    sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
                 )
 
                 self._clear_credentials_cache(tenant_id, config_id)
@@ -500,7 +500,7 @@ class ModelLoadBalancingService:
                 db.session.commit()
                 ProviderManager.invalidate_configurations_cache(
                     tenant_id,
-                    sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+                    sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
                 )
 
         # get deleted config ids
@@ -510,7 +510,7 @@ class ModelLoadBalancingService:
             db.session.commit()
             ProviderManager.invalidate_configurations_cache(
                 tenant_id,
-                sources=(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS,),
+                sources=(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS,),
             )
 
             self._clear_credentials_cache(tenant_id, config_id)

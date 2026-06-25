@@ -487,21 +487,21 @@ class ProviderConfiguration(BaseModel):
         provider_load_balancing_configs: bool = False,
     ) -> None:
         """Invalidate tenant-scoped provider snapshots after committing configuration writes."""
-        from core.provider_manager import ProviderManager
+        from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 
-        sources: list[str] = []
+        sources: list[ProviderConfigurationCacheSource] = []
         if provider_models:
-            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_MODELS)
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_MODELS)
         if preferred_model_providers:
-            sources.append(ProviderManager.CONFIGURATION_SOURCE_PREFERRED_MODEL_PROVIDERS)
+            sources.append(ProviderConfigurationCacheSource.PREFERRED_MODEL_PROVIDERS)
         if provider_model_settings:
-            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_MODEL_SETTINGS)
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_MODEL_SETTINGS)
         if provider_model_credentials:
-            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_MODEL_CREDENTIALS)
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_MODEL_CREDENTIALS)
         if provider_credentials:
-            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_CREDENTIALS)
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_CREDENTIALS)
         if provider_load_balancing_configs:
-            sources.append(ProviderManager.CONFIGURATION_SOURCE_PROVIDER_LOAD_BALANCING_CONFIGS)
+            sources.append(ProviderConfigurationCacheSource.PROVIDER_LOAD_BALANCING_CONFIGS)
 
         if not sources:
             logger.warning("No provider configuration cache source selected for invalidation")
