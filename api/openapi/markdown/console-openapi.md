@@ -12609,10 +12609,8 @@ Risk marker for CLI tool bootstrap commands.
 | ---- | ---- | ----------- | -------- |
 | cli_tools | [ [AgentCliToolConfig](#agentclitoolconfig) ] |  | No |
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_sets | [ [AgentComposerKnowledgeSetCandidateResponse](#agentcomposerknowledgesetcandidateresponse) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -13472,22 +13470,6 @@ Visibility and lifecycle scope of an Agent record.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
-#### AgentSkillRefConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| file_refs | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
 #### AgentSkillUploadResponse
 
 | Name | Type | Description | Required |
@@ -13514,7 +13496,6 @@ Visibility and lifecycle scope of an Agent record.
 | app_features | [AgentSoulAppFeaturesConfig](#agentsoulappfeaturesconfig) |  | No |
 | app_variables | [ [AppVariableConfig](#appvariableconfig) ] |  | No |
 | env | [AgentSoulEnvConfig](#agentsoulenvconfig) |  | No |
-| files | [AgentSoulFilesConfig](#agentsoulfilesconfig) |  | No |
 | human | [AgentSoulHumanConfig](#agentsoulhumanconfig) |  | No |
 | knowledge | [AgentSoulKnowledgeConfig](#agentsoulknowledgeconfig) |  | No |
 | memory | [AgentSoulMemoryConfig](#agentsoulmemoryconfig) |  | No |
@@ -13568,19 +13549,6 @@ old Agent tool payloads can be read while new payloads stay explicit.
 | ---- | ---- | ----------- | -------- |
 | secret_refs | [ [AgentSecretRefConfig](#agentsecretrefconfig) ] |  | No |
 | variables | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
-
-#### AgentSoulFilesConfig
-
-Versioned Agent Soul references to drive-backed skills and files.
-
-File bytes and drive value pointers stay in ``agent_drive_files``. This
-section records which drive keys belong to one Agent Soul snapshot so version
-restore/copy/runtime use the same skills/files view the user published.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
 
 #### AgentSoulHumanConfig
 

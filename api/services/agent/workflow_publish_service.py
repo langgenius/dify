@@ -9,7 +9,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationError, WorkflowAgentNodeValidator
-from models import ToolFile, UploadFile
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
