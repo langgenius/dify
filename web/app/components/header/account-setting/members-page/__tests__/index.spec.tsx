@@ -224,6 +224,18 @@ describe('MembersPage', () => {
     expect(screen.getByTestId('member-row-1').children[2])!.toHaveClass('min-w-0', 'grow')
   })
 
+  it('should render plural roles column header when RBAC is enabled', () => {
+    renderWithSystemFeatures(<MembersPage />, {
+      systemFeatures: {
+        is_email_setup: true,
+        rbac_enabled: true,
+      },
+    })
+
+    expect(screen.getByText('common.members.roles', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
+    expect(screen.queryByText('common.members.role', { selector: '.system-xs-medium-uppercase' })).not.toBeInTheDocument()
+  })
+
   it('should open and close invite modal', async () => {
     const user = userEvent.setup()
 

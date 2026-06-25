@@ -50,7 +50,7 @@ const DataSourcePluginActions = ({
   const locale = useLocale()
   const readmeTriggerId = useId()
   const openReadmePanel = useReadmePanelStore(s => s.openReadmePanel)
-  const { canManagePlugin, canUpdatePlugin } = usePluginSettingsAccess()
+  const { canDeletePlugin, canUpdatePlugin } = usePluginSettingsAccess()
   const detailHeaderState = usePluginDetailHeader(detail)
   const {
     modalStates,
@@ -69,7 +69,7 @@ const DataSourcePluginActions = ({
     modalStates,
     versionPicker,
     isFromMarketplace,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
     onUpdate,
   })
@@ -150,7 +150,7 @@ const DataSourcePluginActions = ({
         detailUrl={getDetailUrl(detail, locale, theme || 'light')}
         triggerSize="xs"
         showCheckVersion={canUpdatePlugin}
-        showRemove={canManagePlugin}
+        showRemove={canDeletePlugin}
       />
       <HeaderModals
         detail={detail}
