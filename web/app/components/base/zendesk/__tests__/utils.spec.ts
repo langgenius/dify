@@ -64,64 +64,6 @@ describe('zendesk/utils', () => {
     })
   })
 
-  describe('setZendeskWidgetVisibility', () => {
-    it('should call window.zE to show widget when visible is true', async () => {
-      vi.doMock('@/config', () => ({ IS_CE_EDITION: false }))
-      const { setZendeskWidgetVisibility } = await import('../utils')
-
-      setZendeskWidgetVisibility(true)
-
-      expect(window.zE).toHaveBeenCalledWith('messenger', 'show')
-    })
-
-    it('should call window.zE to hide widget when visible is false', async () => {
-      vi.doMock('@/config', () => ({ IS_CE_EDITION: false }))
-      const { setZendeskWidgetVisibility } = await import('../utils')
-
-      setZendeskWidgetVisibility(false)
-
-      expect(window.zE).toHaveBeenCalledWith('messenger', 'hide')
-    })
-
-    it('should not call window.zE when IS_CE_EDITION is true', async () => {
-      vi.doMock('@/config', () => ({ IS_CE_EDITION: true }))
-      const { setZendeskWidgetVisibility } = await import('../utils')
-
-      setZendeskWidgetVisibility(true)
-
-      expect(window.zE).not.toHaveBeenCalled()
-    })
-  })
-
-  describe('toggleZendeskWindow', () => {
-    it('should call window.zE to open messenger when open is true', async () => {
-      vi.doMock('@/config', () => ({ IS_CE_EDITION: false }))
-      const { toggleZendeskWindow } = await import('../utils')
-
-      toggleZendeskWindow(true)
-
-      expect(window.zE).toHaveBeenCalledWith('messenger', 'open')
-    })
-
-    it('should call window.zE to close messenger when open is false', async () => {
-      vi.doMock('@/config', () => ({ IS_CE_EDITION: false }))
-      const { toggleZendeskWindow } = await import('../utils')
-
-      toggleZendeskWindow(false)
-
-      expect(window.zE).toHaveBeenCalledWith('messenger', 'close')
-    })
-
-    it('should not call window.zE when IS_CE_EDITION is true', async () => {
-      vi.doMock('@/config', () => ({ IS_CE_EDITION: true }))
-      const { toggleZendeskWindow } = await import('../utils')
-
-      toggleZendeskWindow(true)
-
-      expect(window.zE).not.toHaveBeenCalled()
-    })
-  })
-
   describe('openZendeskWindow', () => {
     it('should show and open messenger when zE exists', async () => {
       vi.doMock('@/config', () => ({ IS_CE_EDITION: false }))

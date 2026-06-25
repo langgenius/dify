@@ -1,5 +1,4 @@
 import type { PermissionKey } from '@/models/access-control'
-import { DatasetPermission } from '@/models/datasets'
 
 export const AppACLPermission = {
   Preview: 'app.acl.preview',
@@ -67,23 +66,6 @@ type DatasetACLCapabilities = {
   canPipelineRelease: boolean
   canDelete: boolean
   canAccessConfig: boolean
-}
-
-type DatasetConfig = {
-  createdBy: string
-  partialMemberList: string[]
-  permission: DatasetPermission
-}
-
-export const hasEditPermissionForDataset = (userId: string, datasetConfig: DatasetConfig) => {
-  const { createdBy, partialMemberList, permission } = datasetConfig
-  if (permission === DatasetPermission.onlyMe)
-    return userId === createdBy
-  if (permission === DatasetPermission.allTeamMembers)
-    return true
-  if (permission === DatasetPermission.partialMembers)
-    return partialMemberList.includes(userId)
-  return false
 }
 
 export const hasPermission = (permissionKeys: readonly PermissionKey[] | null | undefined, permissionKeySet: PermissionKey | PermissionKey[]) => {

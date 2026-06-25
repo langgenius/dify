@@ -5,7 +5,6 @@ import { getAppACLCapabilities } from '@/utils/permission'
 import AppInfoDetailPanel from './app-info-detail-panel'
 import AppInfoModals from './app-info-modals'
 import AppInfoTrigger from './app-info-trigger'
-import { useAppInfoActions } from './use-app-info-actions'
 
 type IAppInfoProps = {
   expand: boolean
@@ -122,16 +121,3 @@ export const AppInfoView = ({
     </div>
   )
 }
-
-const AppInfo = ({ onDetailExpand, ...props }: IAppInfoProps) => {
-  const actions = useAppInfoActions({ onDetailExpand })
-
-  return (
-    <AppInfoView
-      {...props}
-      actions={actions}
-    />
-  )
-}
-
-export default React.memo(AppInfo)
