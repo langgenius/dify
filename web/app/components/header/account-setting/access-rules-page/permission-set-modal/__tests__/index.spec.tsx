@@ -11,6 +11,8 @@ const expectedAppACLPermissionKeys = [
   'app.acl.delete',
   'app.acl.release_and_version',
   'app.acl.monitor',
+  'app.acl.tracing_config',
+  'app.acl.log_and_annotation',
   'app.acl.access_config',
 ]
 
