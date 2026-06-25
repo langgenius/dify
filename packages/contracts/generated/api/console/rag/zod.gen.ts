@@ -140,20 +140,6 @@ export const zRagPipelineWorkflowPublishResponse = z.object({
 })
 
 /**
- * Parser
- */
-export const zParser = z.object({
-  credential_id: z.string().nullish(),
-  datasource_type: z.string(),
-  inputs: z.record(z.string(), z.unknown()),
-})
-
-/**
- * DataSourceContentPreviewResponse
- */
-export const zDataSourceContentPreviewResponse = z.unknown()
-
-/**
  * WorkflowUpdatePayload
  */
 export const zWorkflowUpdatePayload = z.object({
@@ -1309,21 +1295,6 @@ export const zPostRagPipelinesByPipelineIdWorkflowsPublishPath = z.object({
  */
 export const zPostRagPipelinesByPipelineIdWorkflowsPublishResponse
   = zRagPipelineWorkflowPublishResponse
-
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody
-  = zParser
-
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath
-  = z.object({
-    node_id: z.string(),
-    pipeline_id: z.uuid(),
-  })
-
-/**
- * Success
- */
-export const zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse
-  = zDataSourceContentPreviewResponse
 
 export const zGetRagPipelinesByPipelineIdWorkflowsPublishedPreProcessingParametersPath = z.object({
   pipeline_id: z.uuid(),

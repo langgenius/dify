@@ -95,9 +95,6 @@ import {
   zPostRagPipelinesByPipelineIdWorkflowsDraftNodesByNodeIdRunResponse,
   zPostRagPipelinesByPipelineIdWorkflowsDraftPath,
   zPostRagPipelinesByPipelineIdWorkflowsDraftResponse,
-  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody,
-  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath,
-  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
   zPostRagPipelinesByPipelineIdWorkflowsPublishPath,
   zPostRagPipelinesByPipelineIdWorkflowsPublishResponse,
   zPostRagPipelinesImportsBody,
@@ -860,42 +857,6 @@ export const publish2 = {
 }
 
 /**
- * Run datasource content preview
- */
-export const post13 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreview',
-    path: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview',
-    summary: 'Run datasource content preview',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody,
-      params: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath,
-    }),
-  )
-  .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
-
-export const preview = {
-  post: post13,
-}
-
-export const byNodeId2 = {
-  preview,
-}
-
-export const nodes2 = {
-  byNodeId: byNodeId2,
-}
-
-export const datasource2 = {
-  nodes: nodes2,
-}
-
-/**
  * Get first step parameters of rag pipeline
  */
 export const get20 = oc
@@ -952,12 +913,11 @@ export const processing2 = {
 }
 
 export const published = {
-  datasource: datasource2,
   preProcessing: preProcessing2,
   processing: processing2,
 }
 
-export const post14 = oc
+export const post13 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -969,7 +929,7 @@ export const post14 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post14,
+  post: post13,
 }
 
 /**

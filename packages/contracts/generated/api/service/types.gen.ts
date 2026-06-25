@@ -567,7 +567,7 @@ export type DatasourceNodeRunPayload = {
 export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
 
 export type DatasourcePluginResponse = {
-  credentials: Array<DatasourceCredentialInfoResponse>
+  credentials?: Array<DatasourceCredentialInfoResponse>
   datasource_type?: string | null
   node_id?: string | null
   plugin_id?: string | null
@@ -3194,13 +3194,24 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
 }
 
+export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunError
+  = PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors]
+
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
@@ -3216,14 +3227,27 @@ export type PostDatasetsByDatasetIdPipelineRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunErrors = {
-  401: unknown
-  403: unknown
-  404: unknown
-  500: unknown
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostDatasetsByDatasetIdPipelineRunError
+  = PostDatasetsByDatasetIdPipelineRunErrors[keyof PostDatasetsByDatasetIdPipelineRunErrors]
+
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse
