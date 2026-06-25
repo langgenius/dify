@@ -72,13 +72,14 @@ class CreateRagPipelineDatasetApi(Resource):
                     tenant_id=current_tenant_id,
                     rag_pipeline_dataset_create_entity=rag_pipeline_dataset_create_entity,
                 )
+                if rag_pipeline_dataset_create_entity.permission == "partial_members":
+                    DatasetPermissionService.update_partial_member_list(
+                        current_tenant_id,
+                        import_info["dataset_id"],
+                        rag_pipeline_dataset_create_entity.partial_member_list,
+                        session,
+                    )
                 session.commit()
-            if rag_pipeline_dataset_create_entity.permission == "partial_members":
-                DatasetPermissionService.update_partial_member_list(
-                    current_tenant_id,
-                    import_info["dataset_id"],
-                    rag_pipeline_dataset_create_entity.partial_member_list,
-                )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
@@ -111,5 +112,6 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
                 permission=DatasetPermissionEnum.ONLY_ME,
                 partial_member_list=None,
             ),
+            session=db.session,
         )
         return dump_response(DatasetDetailResponse, dataset), 201

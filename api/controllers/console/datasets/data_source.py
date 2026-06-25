@@ -246,7 +246,7 @@ class DataSourceNotionListApi(Resource):
         with sessionmaker(db.engine).begin() as session:
             # import notion in the exist dataset
             if query.dataset_id:
-                dataset = DatasetService.get_dataset(query.dataset_id)
+                dataset = DatasetService.get_dataset(query.dataset_id, db.session)
                 if not dataset:
                     raise NotFound("Dataset not found.")
                 if dataset.data_source_type != "notion_import":
@@ -401,11 +401,11 @@ class DataSourceNotionDatasetSyncApi(Resource):
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
     def get(self, dataset_id: UUID) -> tuple[dict[str, str], int]:
         dataset_id_str = str(dataset_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
+        documents = DocumentService.get_document_by_dataset_id(dataset_id_str, db.session)
         for document in documents:
             document_indexing_sync_task.delay(dataset_id_str, document.id)
         return {"result": "success"}, 200
@@ -421,11 +421,11 @@ class DataSourceNotionDocumentSyncApi(Resource):
     def get(self, dataset_id: UUID, document_id: UUID) -> tuple[dict[str, str], int]:
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
-        dataset = DatasetService.get_dataset(dataset_id_str)
+        dataset = DatasetService.get_dataset(dataset_id_str, db.session)
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        document = DocumentService.get_document(dataset_id_str, document_id_str, session=db.session)
         if document is None:
             raise NotFound("Document not found.")
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)

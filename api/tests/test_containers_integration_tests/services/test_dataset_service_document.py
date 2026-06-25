@@ -156,7 +156,7 @@ def test_get_documents_by_ids_uses_single_batch_query(db_session_with_containers
         position=2,
     )
 
-    result = DocumentService.get_documents_by_ids(dataset.id, [doc_a.id, doc_b.id])
+    result = DocumentService.get_documents_by_ids(dataset.id, [doc_a.id, doc_b.id], db_session_with_containers)
 
     assert {document.id for document in result} == {doc_a.id, doc_b.id}
 
@@ -164,7 +164,7 @@ def test_get_documents_by_ids_uses_single_batch_query(db_session_with_containers
 def test_update_documents_need_summary_returns_zero_for_empty_input(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
 
-    assert DocumentService.update_documents_need_summary(dataset.id, []) == 0
+    assert DocumentService.update_documents_need_summary(dataset.id, [], db_session_with_containers) == 0
 
 
 def test_update_documents_need_summary_updates_matching_non_qa_documents(db_session_with_containers: Session):
@@ -185,6 +185,7 @@ def test_update_documents_need_summary_updates_matching_non_qa_documents(db_sess
     updated_count = DocumentService.update_documents_need_summary(
         dataset.id,
         [paragraph_doc.id, qa_doc.id],
+        db_session_with_containers,
         need_summary=False,
     )
 

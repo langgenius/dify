@@ -9,6 +9,7 @@ from core.app.app_config.entities import (
 )
 from core.entities.agent_entities import PlanningStrategy
 from core.rag.data_post_processor.data_post_processor import RerankingModelDict, WeightsDict
+from extensions.ext_database import db
 from models.model import AppMode, AppModelConfigDict
 from services.dataset_service import DatasetService
 
@@ -256,7 +257,7 @@ class DatasetConfigManager:
     @classmethod
     def is_dataset_exists(cls, tenant_id: str, dataset_id: str) -> bool:
         # verify if the dataset ID exists
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id, db.session)
 
         if not dataset:
             return False
