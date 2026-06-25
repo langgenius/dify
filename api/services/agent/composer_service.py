@@ -98,24 +98,65 @@ def _validate_composer_payload_for_strategy(payload: ComposerSavePayload) -> Non
 
 class AgentComposerService:
     @classmethod
-    def load_workflow_composer(cls, *, tenant_id: str, app_id: str, node_id: str) -> dict[str, Any]:
+    def load_workflow_composer(
+        cls, *, tenant_id: str, app_id: str, node_id: str, snapshot_id: str | None = None
+    ) -> dict[str, Any]:
         workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
         if not binding:
+            if snapshot_id:
+                raise AgentVersionNotFoundError()
             return cls._empty_workflow_state(app_id=app_id, workflow_id=workflow.id, node_id=node_id)
 
         agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id)
+        version = cls._workflow_composer_version(
+            tenant_id=tenant_id,
+            binding=binding,
+            agent=agent,
+            snapshot_id=snapshot_id,
+        )
+        return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
+
+    @classmethod
+    def _workflow_composer_version(
+        cls,
+        *,
+        tenant_id: str,
+        binding: WorkflowAgentNodeBinding,
+        agent: Agent | None,
+        snapshot_id: str | None,
+    ) -> AgentConfigSnapshot | None:
+        if snapshot_id:
+            if agent is None:
+                raise AgentVersionNotFoundError()
+            if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
+                AgentRosterService(db.session).get_agent_version_detail(
+                    tenant_id=tenant_id,
+                    agent_id=agent.id,
+                    version_id=snapshot_id,
+                )
+            elif binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
+                if (
+                    agent.scope != AgentScope.WORKFLOW_ONLY
+                    or agent.app_id != binding.app_id
+                    or agent.workflow_id != binding.workflow_id
+                    or agent.workflow_node_id != binding.node_id
+                ):
+                    raise AgentVersionNotFoundError()
+            else:
+                raise AgentVersionNotFoundError()
+            return cls._require_version(tenant_id=tenant_id, agent_id=agent.id, version_id=snapshot_id)
+
         version_id = (
             agent.active_config_snapshot_id
             if agent and binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT
             else binding.current_snapshot_id
         )
-        version = cls._get_version_if_present(
+        return cls._get_version_if_present(
             tenant_id=tenant_id,
             agent_id=agent.id if agent else None,
             version_id=version_id,
         )
-        return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
 
     @classmethod
     def save_workflow_composer(

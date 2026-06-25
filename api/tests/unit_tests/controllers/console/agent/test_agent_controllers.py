@@ -1094,10 +1094,11 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
         "binding": {"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
     }
+    captured_load: dict[str, object] = {}
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "load_workflow_composer",
-        lambda **kwargs: _workflow_composer_response(node_id=kwargs["node_id"]),
+        lambda **kwargs: captured_load.update(kwargs) or _workflow_composer_response(node_id=kwargs["node_id"]),
     )
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
@@ -1124,8 +1125,12 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         },
     )
 
-    workflow_state = unwrap(WorkflowAgentComposerApi.get)(WorkflowAgentComposerApi(), "tenant-1", app_model, "node-1")
+    with app.test_request_context("?snapshot_id=preview-version"):
+        workflow_state = unwrap(WorkflowAgentComposerApi.get)(
+            WorkflowAgentComposerApi(), "tenant-1", app_model, "node-1"
+        )
     assert workflow_state["node_id"] == "node-1"
+    assert captured_load["snapshot_id"] == "preview-version"
     with app.test_request_context(json=payload):
         saved_state = unwrap(WorkflowAgentComposerApi.put)(
             WorkflowAgentComposerApi(), "tenant-1", account_id, app_model, "node-1"

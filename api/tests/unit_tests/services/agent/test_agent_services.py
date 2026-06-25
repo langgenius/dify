@@ -39,6 +39,7 @@ from services.agent.errors import (
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionConflictError,
+    AgentVersionNotFoundError,
     InvalidComposerConfigError,
 )
 from services.agent.roster_service import AgentRosterService
@@ -156,6 +157,103 @@ def test_load_workflow_composer_serializes_existing_binding(monkeypatch: pytest.
     result = AgentComposerService.load_workflow_composer(tenant_id="tenant-1", app_id="app-1", node_id="node-1")
 
     assert result == {"agent": "agent-1", "version": "version-1"}
+
+
+def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest.MonkeyPatch):
+    binding = SimpleNamespace(
+        agent_id="agent-1",
+        binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+        current_snapshot_id="binding-version",
+    )
+    agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="active-version")
+    validated: dict[str, str] = {}
+
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: agent)
+    monkeypatch.setattr(
+        AgentRosterService,
+        "get_agent_version_detail",
+        lambda self, **kwargs: validated.update(kwargs) or {"id": kwargs["version_id"]},
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_require_version",
+        lambda **kwargs: SimpleNamespace(id=kwargs["version_id"]),
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_serialize_workflow_state",
+        lambda **kwargs: {
+            "binding_snapshot_id": kwargs["binding"].current_snapshot_id,
+            "version": kwargs["version"].id,
+        },
+    )
+
+    result = AgentComposerService.load_workflow_composer(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_id="node-1",
+        snapshot_id="preview-version",
+    )
+
+    assert result == {"binding_snapshot_id": "binding-version", "version": "preview-version"}
+    assert validated == {"tenant_id": "tenant-1", "agent_id": "agent-1", "version_id": "preview-version"}
+
+
+def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest.MonkeyPatch):
+    binding = SimpleNamespace(
+        agent_id="inline-agent-1",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        current_snapshot_id="inline-version-1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+    )
+    agent = SimpleNamespace(
+        id="inline-agent-1",
+        scope=AgentScope.WORKFLOW_ONLY,
+        app_id="app-1",
+        workflow_id="workflow-1",
+        workflow_node_id="node-1",
+        active_config_snapshot_id="inline-version-1",
+    )
+
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
+    monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: agent)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_require_version",
+        lambda **kwargs: SimpleNamespace(id=kwargs["version_id"]),
+    )
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_serialize_workflow_state",
+        lambda **kwargs: {"agent": kwargs["agent"].id, "version": kwargs["version"].id},
+    )
+
+    result = AgentComposerService.load_workflow_composer(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        node_id="node-1",
+        snapshot_id="inline-preview-version",
+    )
+
+    assert result == {"agent": "inline-agent-1", "version": "inline-preview-version"}
+
+
+def test_load_workflow_composer_rejects_preview_without_binding(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
+    monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)
+
+    with pytest.raises(AgentVersionNotFoundError):
+        AgentComposerService.load_workflow_composer(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            node_id="node-1",
+            snapshot_id="preview-version",
+        )
 
 
 @pytest.mark.parametrize(

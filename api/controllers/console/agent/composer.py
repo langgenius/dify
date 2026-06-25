@@ -1,8 +1,9 @@
 from uuid import UUID
 
+from flask import request
 from flask_restx import Resource
 
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
@@ -28,9 +29,15 @@ from libs.login import login_required
 from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
-from services.entities.agent_entities import ComposerSavePayload, WorkflowComposerCopyFromRosterPayload
+from services.entities.agent_entities import (
+    ComposerSavePayload,
+    WorkflowAgentComposerQuery,
+    WorkflowComposerCopyFromRosterPayload,
+)
 
-register_schema_models(console_ns, ComposerSavePayload, WorkflowComposerCopyFromRosterPayload)
+register_schema_models(
+    console_ns, ComposerSavePayload, WorkflowAgentComposerQuery, WorkflowComposerCopyFromRosterPayload
+)
 register_response_schema_models(
     console_ns,
     AgentAppComposerResponse,
@@ -50,18 +57,21 @@ class WorkflowAgentComposerApi(Resource):
     @console_ns.response(
         200, "Workflow agent composer state", console_ns.models[WorkflowAgentComposerResponse.__name__]
     )
+    @console_ns.doc(params=query_params_from_model(WorkflowAgentComposerQuery))
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW, AppMode.ADVANCED_CHAT])
     @with_current_tenant_id
     def get(self, tenant_id: str, app_model: App, node_id: str):
+        query = WorkflowAgentComposerQuery.model_validate(request.args.to_dict(flat=True))
         return dump_response(
             WorkflowAgentComposerResponse,
             AgentComposerService.load_workflow_composer(
                 tenant_id=tenant_id,
                 app_id=app_model.id,
                 node_id=node_id,
+                snapshot_id=query.snapshot_id,
             ),
         )
 
