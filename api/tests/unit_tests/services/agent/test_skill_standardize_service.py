@@ -33,7 +33,7 @@ def test_slugify_skill_name():
 
 
 def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest():
-    content = _zip({"SKILL.md": _SKILL_MD, "scripts/run.py": b"print('x')\n"})
+    content = _zip({"pdf-toolkit/SKILL.md": _SKILL_MD, "pdf-toolkit/scripts/run.py": b"print('x')\n"})
 
     tool_files = MagicMock()
     tool_files.create_file_by_raw.side_effect = [
@@ -42,19 +42,6 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
     ]
     drive = MagicMock()
     drive.commit.return_value = []
-    drive.list_skills.return_value = [
-        {
-            "path": "pdf-toolkit",
-            "skill_md_key": "pdf-toolkit/SKILL.md",
-            "archive_key": "pdf-toolkit/.DIFY-SKILL-FULL.zip",
-            "name": "PDF Toolkit",
-            "description": "Work with PDFs.",
-            "size": len(_SKILL_MD),
-            "mime_type": "text/markdown",
-            "hash": None,
-            "created_at": None,
-        },
-    ]
 
     service = SkillStandardizeService(tool_file_manager=tool_files, drive_service=drive)
     result = service.standardize(
@@ -72,7 +59,12 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
     assert md_call.kwargs["mimetype"] == "text/markdown"
     assert md_call.kwargs["file_binary"] == _SKILL_MD
     assert zip_call.kwargs["mimetype"] == "application/zip"
-    assert zip_call.kwargs["file_binary"] == content
+    assert zip_call.kwargs["file_binary"] != content
+    with zipfile.ZipFile(io.BytesIO(zip_call.kwargs["file_binary"])) as archive:
+        assert sorted(info.filename for info in archive.infolist() if not info.is_dir()) == [
+            "SKILL.md",
+            "scripts/run.py",
+        ]
 
     # Committed as drive-owned with the standardized keys. Member paths are
     # carried in metadata for inspect/preview/runtime lazy resolution.
@@ -97,5 +89,7 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
     assert skill["name"] == "PDF Toolkit"
     assert skill["archive_key"] == "pdf-toolkit/.DIFY-SKILL-FULL.zip"
     assert skill["skill_md_key"] == "pdf-toolkit/SKILL.md"
+    assert result["manifest"]["entry_path"] == "SKILL.md"
     assert result["manifest"]["files"] == ["SKILL.md", "scripts/run.py"]
+    drive.list_skills.assert_not_called()
     assert "_committed_items" not in result
