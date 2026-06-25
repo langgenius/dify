@@ -4883,7 +4883,7 @@ Create external knowledge dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | External dataset created successfully | **application/json**: [DatasetDetail](#datasetdetail)<br> |
+| 201 | External dataset created successfully | **application/json**: [DatasetDetailResponse](#datasetdetailresponse)<br> |
 | 400 | Invalid parameters |  |
 | 403 | Permission denied |  |
 
@@ -4905,6 +4905,8 @@ Get external knowledge API templates
 | 200 | External API templates retrieved successfully | **application/json**: [ExternalKnowledgeApiListResponse](#externalknowledgeapilistresponse)<br> |
 
 ### [POST] /datasets/external-knowledge-api
+Create external knowledge API template
+
 #### Request Body
 
 | Required | Schema |
@@ -4916,6 +4918,7 @@ Get external knowledge API templates
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 201 | External API template created successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
+| 403 | Permission denied |  |
 
 ### [DELETE] /datasets/external-knowledge-api/{external_knowledge_api_id}
 #### Parameters
@@ -4947,11 +4950,13 @@ Get external knowledge API template details
 | 404 | Template not found |  |
 
 ### [PATCH] /datasets/external-knowledge-api/{external_knowledge_api_id}
+Update external knowledge API template
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| external_knowledge_api_id | path |  | Yes | string (uuid) |
+| external_knowledge_api_id | path | External knowledge API ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -4964,6 +4969,7 @@ Get external knowledge API template details
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | External API template updated successfully | **application/json**: [ExternalKnowledgeApiResponse](#externalknowledgeapiresponse)<br> |
+| 404 | Template not found |  |
 
 ### [GET] /datasets/external-knowledge-api/{external_knowledge_api_id}/use-check
 Check if external knowledge API is being used
@@ -5008,7 +5014,7 @@ Initialize dataset with documents
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
+| 200 | Dataset initialized successfully | **application/json**: [DatasetAndDocumentResponse](#datasetanddocumentresponse)<br> |
 | 400 | Invalid request parameters |  |
 
 ### [GET] /datasets/metadata/built-in
@@ -5044,7 +5050,7 @@ Get dataset document processing rules
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Process rules retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Process rules retrieved successfully | **application/json**: [ProcessRuleResponse](#processruleresponse)<br> |
 
 ### [GET] /datasets/retrieval-setting
 Get dataset retrieval settings
@@ -5165,7 +5171,7 @@ Get dataset auto disable logs
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Batch indexing estimate calculated successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
 
 ### [GET] /datasets/{dataset_id}/batch/{batch}/indexing-status
 #### Parameters
@@ -5253,9 +5259,9 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | ZIP archive generated successfully | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | ZIP archive downloaded successfully |
 
 ### [POST] /datasets/{dataset_id}/documents/generate-summary
 **Generate summary index for specified documents**
@@ -5348,7 +5354,7 @@ Get document details
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Document retrieved successfully | **application/json**: [DocumentDetailResponse](#documentdetailresponse)<br> |
 | 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/download
@@ -5381,7 +5387,7 @@ Estimate document indexing cost
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Indexing estimate calculated successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Indexing estimate calculated successfully | **application/json**: [IndexingEstimateResponse](#indexingestimateresponse)<br> |
 | 400 | Document already finished |  |
 | 404 | Document not found |  |
 
@@ -5452,7 +5458,7 @@ Update document metadata
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Document pipeline execution log retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Pipeline execution log retrieved successfully | **application/json**: [DocumentPipelineExecutionLogResponse](#documentpipelineexecutionlogresponse)<br> |
 
 ### [PATCH] /datasets/{dataset_id}/documents/{document_id}/processing/pause
 **pause document**
@@ -5775,6 +5781,7 @@ Returns:
   - generating: Number of summaries being generated
   - error: Number of summaries with errors
   - not_started: Number of segments without summary records
+  - timeout: Number of summaries that timed out
 - summaries: List of summary records with status and content preview
 
 #### Parameters
@@ -5788,7 +5795,7 @@ Returns:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Summary status retrieved successfully | **application/json**: [OpaqueObjectResponse](#opaqueobjectresponse)<br> |
+| 200 | Summary status retrieved successfully | **application/json**: [DocumentSummaryStatusResponse](#documentsummarystatusresponse)<br> |
 | 404 | Document not found |  |
 
 ### [GET] /datasets/{dataset_id}/documents/{document_id}/website-sync
@@ -5842,7 +5849,7 @@ Test external knowledge retrieval for dataset
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | External hit testing completed successfully | **application/json**: [ExternalRetrievalTestResponse](#externalretrievaltestresponse)<br> |
+| 200 | External hit testing completed successfully | **application/json**: [ExternalHitTestingResponse](#externalhittestingresponse)<br> |
 | 400 | Invalid parameters |  |
 | 404 | Dataset not found |  |
 
@@ -8738,7 +8745,7 @@ Bedrock retrieval test (internal use only)
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Bedrock retrieval test completed | **application/json**: [ExternalRetrievalTestResponse](#externalretrievaltestresponse)<br> |
+| 200 | Bedrock retrieval test completed | **application/json**: [BedrockRetrievalResponse](#bedrockretrievalresponse)<br> |
 
 ### [GET] /trial-apps/{app_id}
 **Get app detail**
@@ -14093,6 +14100,21 @@ AppMCPServer Status Enum
 | query | string |  | Yes |
 | retrieval_setting | [BedrockRetrievalSetting](#bedrockretrievalsetting) |  | Yes |
 
+#### BedrockRetrievalRecordResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| metadata | object |  | No |
+| score | number |  | Yes |
+| title | string |  | No |
+
+#### BedrockRetrievalResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| records | [ [BedrockRetrievalRecordResponse](#bedrockretrievalrecordresponse) ] |  | Yes |
+
 #### BedrockRetrievalSetting
 
 Retrieval settings for Amazon Bedrock knowledge base queries.
@@ -14962,47 +14984,6 @@ Model class for provider custom model configuration.
 | permission | [PermissionEnum](#permissionenum) |  | No |
 | provider | string, <br>**Default:** vendor |  | No |
 
-#### DatasetDetail
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| app_count | integer |  | No |
-| author_name | string |  | No |
-| built_in_field_enabled | boolean |  | No |
-| chunk_structure | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| data_source_type | string |  | No |
-| description | string |  | No |
-| doc_form | string |  | No |
-| doc_metadata | [ [DatasetDocMetadata](#datasetdocmetadata) ] |  | No |
-| document_count | integer |  | No |
-| embedding_available | boolean |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| enable_api | boolean |  | No |
-| external_knowledge_info | [ExternalKnowledgeInfo](#externalknowledgeinfo) |  | No |
-| external_retrieval_model | [ExternalRetrievalModel](#externalretrievalmodel) |  | No |
-| icon_info | [DatasetIconInfo](#dataseticoninfo) |  | No |
-| id | string |  | No |
-| indexing_technique | string |  | No |
-| is_multimodal | boolean |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| permission | string |  | No |
-| permission_keys | [ string ] |  | No |
-| pipeline_id | string |  | No |
-| provider | string |  | No |
-| retrieval_model_dict | [DatasetRetrievalModel](#datasetretrievalmodel) |  | No |
-| runtime_mode | string |  | No |
-| summary_index_setting | [_AnonymousInlineModel_b1954337d565](#_anonymousinlinemodel_b1954337d565) |  | No |
-| tags | [ [Tag](#tag) ] |  | No |
-| total_available_documents | integer |  | No |
-| total_documents | integer |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| word_count | integer |  | No |
-
 #### DatasetDetailResponse
 
 | Name | Type | Description | Required |
@@ -15088,14 +15069,6 @@ Model class for provider custom model configuration.
 | updated_by | string |  | Yes |
 | word_count | integer |  | Yes |
 
-#### DatasetDocMetadata
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | No |
-| name | string |  | No |
-| type | string |  | No |
-
 #### DatasetDocMetadataResponse
 
 | Name | Type | Description | Required |
@@ -15121,15 +15094,6 @@ Model class for provider custom model configuration.
 | score_threshold_enabled | boolean |  | No |
 | top_k | integer |  | Yes |
 
-#### DatasetIconInfo
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
-| icon_url | string |  | No |
-
 #### DatasetIconInfoResponse
 
 | Name | Type | Description | Required |
@@ -15138,12 +15102,6 @@ Model class for provider custom model configuration.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | icon_url | string |  | No |
-
-#### DatasetKeywordSetting
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | No |
 
 #### DatasetKeywordSettingResponse
 
@@ -15282,13 +15240,6 @@ Model class for provider custom model configuration.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 
-#### DatasetRerankingModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
-
 #### DatasetRerankingModelResponse
 
 | Name | Type | Description | Required |
@@ -15308,19 +15259,6 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | No |
 | name | string |  | Yes |
 | permission | string |  | No |
-
-#### DatasetRetrievalModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| reranking_enable | boolean |  | No |
-| reranking_mode | string |  | No |
-| reranking_model | [DatasetRerankingModel](#datasetrerankingmodel) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| search_method | string |  | No |
-| top_k | integer |  | No |
-| weights | [DatasetWeightedScore](#datasetweightedscore) |  | No |
 
 #### DatasetRetrievalModelResponse
 
@@ -15371,14 +15309,6 @@ Model class for provider custom model configuration.
 | retrieval_model | object |  | No |
 | summary_index_setting | object |  | No |
 
-#### DatasetVectorSetting
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | No |
-| embedding_provider_name | string |  | No |
-| vector_weight | number |  | No |
-
 #### DatasetVectorSettingResponse
 
 | Name | Type | Description | Required |
@@ -15386,14 +15316,6 @@ Model class for provider custom model configuration.
 | embedding_model_name | string |  | No |
 | embedding_provider_name | string |  | No |
 | vector_weight | number |  | No |
-
-#### DatasetWeightedScore
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | [DatasetKeywordSetting](#datasetkeywordsetting) |  | No |
-| vector_setting | [DatasetVectorSetting](#datasetvectorsetting) |  | No |
-| weight_type | string |  | No |
 
 #### DatasetWeightedScoreResponse
 
@@ -15701,6 +15623,42 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | document_ids | [ string (uuid) ] | List of document IDs to include in the ZIP download. | Yes |
 
+#### DocumentDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archived | boolean |  | No |
+| average_segment_length | number |  | No |
+| completed_at | integer |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| created_from | string |  | No |
+| data_source_detail_dict |  |  | No |
+| data_source_info |  |  | No |
+| data_source_type | string |  | No |
+| dataset_process_rule |  |  | No |
+| dataset_process_rule_id | string |  | No |
+| disabled_at | integer |  | No |
+| disabled_by | string |  | No |
+| display_status | string |  | No |
+| doc_form | string |  | No |
+| doc_language | string |  | No |
+| doc_metadata | [ [DocumentMetadataResponse](#documentmetadataresponse) ] |  | No |
+| doc_type | string |  | No |
+| document_process_rule |  |  | No |
+| enabled | boolean |  | No |
+| error | string |  | No |
+| hit_count | integer |  | No |
+| id | string |  | Yes |
+| indexing_latency | number |  | No |
+| indexing_status | string |  | No |
+| name | string |  | No |
+| need_summary | boolean |  | No |
+| position | integer |  | No |
+| segment_count | integer |  | No |
+| tokens | integer |  | No |
+| updated_at | integer |  | No |
+
 #### DocumentMetadataOperation
 
 | Name | Type | Description | Required |
@@ -15724,6 +15682,15 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | doc_metadata |  |  | No |
 | doc_type | string |  | No |
+
+#### DocumentPipelineExecutionLogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasource_info | [JsonValue](#jsonvalue) |  | No |
+| datasource_node_id | string |  | No |
+| datasource_type | string |  | No |
+| input_data | [JsonValue](#jsonvalue) |  | No |
 
 #### DocumentRenamePayload
 
@@ -15788,6 +15755,14 @@ Request payload for bulk downloading documents as a zip archive.
 | splitting_completed_at | integer |  | Yes |
 | stopped_at | integer |  | Yes |
 | total_segments | integer |  | No |
+
+#### DocumentSummaryStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| summaries | [ [SummaryEntryResponse](#summaryentryresponse) ] |  | Yes |
+| summary_status | [SummaryStatusResponse](#summarystatusresponse) |  | Yes |
+| total_segments | integer |  | Yes |
 
 #### DocumentWithSegmentsListResponse
 
@@ -16152,6 +16127,35 @@ declaration of an endpoint group
 | metadata_filtering_conditions | object |  | No |
 | query | string |  | Yes |
 
+#### ExternalHitTestingQueryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | Yes |
+
+#### ExternalHitTestingRecordResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| content | string |  | No |
+| metadata | object |  | No |
+| score | number |  | No |
+| title | string |  | No |
+
+#### ExternalHitTestingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| query | [ExternalHitTestingQueryResponse](#externalhittestingqueryresponse) |  | Yes |
+| records | [ [ExternalHitTestingRecordResponse](#externalhittestingrecordresponse) ] |  | Yes |
+
+#### ExternalKnowledgeApiBindingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
 #### ExternalKnowledgeApiListResponse
 
 | Name | Type | Description | Required |
@@ -16175,42 +16179,12 @@ declaration of an endpoint group
 | ---- | ---- | ----------- | -------- |
 | created_at | string |  | Yes |
 | created_by | string |  | Yes |
-| dataset_bindings | [ [ExternalKnowledgeDatasetBindingResponse](#externalknowledgedatasetbindingresponse) ] |  | No |
+| dataset_bindings | [ [ExternalKnowledgeApiBindingResponse](#externalknowledgeapibindingresponse) ] |  | Yes |
 | description | string |  | Yes |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| settings | object |  | No |
+| settings | object |  | Yes |
 | tenant_id | string |  | Yes |
-
-#### ExternalKnowledgeDatasetBindingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-| name | string |  | Yes |
-
-#### ExternalKnowledgeInfo
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| external_knowledge_api_endpoint | string |  | No |
-| external_knowledge_api_id | string |  | No |
-| external_knowledge_api_name | string |  | No |
-| external_knowledge_id | string |  | No |
-
-#### ExternalRetrievalModel
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | No |
-| top_k | integer |  | No |
-
-#### ExternalRetrievalTestResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ExternalRetrievalTestResponse | object<br>[ object ] |  |  |
 
 #### FeatureModel
 
@@ -16724,27 +16698,15 @@ Query parameter for including secret variables in export.
 | info_list | object |  | Yes |
 | process_rule | object |  | Yes |
 
-#### IndexingEstimatePreviewItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| child_chunks | [ string ] |  | No |
-| content | string |  | Yes |
-| summary | string |  | No |
-
-#### IndexingEstimateQaPreviewItemResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| answer | string |  | Yes |
-| question | string |  | Yes |
-
 #### IndexingEstimateResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| preview | [ [IndexingEstimatePreviewItemResponse](#indexingestimatepreviewitemresponse) ] |  | Yes |
-| qa_preview | [ [IndexingEstimateQaPreviewItemResponse](#indexingestimateqapreviewitemresponse) ] |  | No |
+| currency | string |  | Yes |
+| preview | [ [PreviewDetail](#previewdetail) ] |  | Yes |
+| qa_preview | [ [QAPreviewDetail](#qapreviewdetail) ] |  | No |
+| tokens | integer |  | Yes |
+| total_price | number<br>integer |  | Yes |
 | total_segments | integer |  | Yes |
 
 #### InfoList
@@ -17702,6 +17664,7 @@ OAuth schema
 | redirect_uri | string |  | No |
 | refresh_token | string |  | No |
 
+<<<<<<< HEAD
 #### OpaqueObjectResponse
 
 | Name | Type | Description | Required |
@@ -17715,6 +17678,15 @@ OAuth schema
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
 
+||||||| 48dfbd60d6
+#### OpaqueObjectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| OpaqueObjectResponse | object |  |  |
+
+=======
+>>>>>>> chariri/refac-basemodel-datasets
 #### OutputErrorStrategy
 
 Per-output failure handling strategy.
@@ -18580,6 +18552,7 @@ Dataset Process Rule Mode
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
+<<<<<<< HEAD
 #### ProviderConfig
 
 Model class for common provider settings like credentials
@@ -18602,6 +18575,16 @@ Model class for common provider settings like credentials
 | type | [core__entities__provider_entities__BasicProviderConfig__Type](#core__entities__provider_entities__basicproviderconfig__type) | The type of the credentials | Yes |
 >>>>>>> chariri/refac-basemodel-appflow
 | url | string |  | No |
+||||||| 48dfbd60d6
+=======
+#### ProcessRuleResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limits | object |  | Yes |
+| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
+| rules | [Rule](#rule) |  | No |
+>>>>>>> chariri/refac-basemodel-datasets
 
 #### ProviderCredentialResponse
 
@@ -19785,6 +19768,28 @@ Default configuration for form inputs.
 | ---- | ---- | ----------- | -------- |
 | data | [ string ] |  | Yes |
 
+#### SummaryEntryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| error | string |  | No |
+| segment_id | string |  | Yes |
+| segment_position | integer |  | Yes |
+| status | string |  | Yes |
+| summary_preview | string |  | No |
+| updated_at | integer |  | No |
+
+#### SummaryStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed | integer |  | No |
+| error | integer |  | No |
+| generating | integer |  | No |
+| not_started | integer |  | No |
+| timeout | integer |  | No |
+
 #### SwitchWorkspacePayload
 
 | Name | Type | Description | Required |
@@ -20197,6 +20202,7 @@ Enum class for tool provider
 | trial_models | [ string ] |  | Yes |
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ||||||| 48dfbd60d6
 #### TrialPipelineVariable
 
@@ -20402,6 +20408,103 @@ Enum class for tool provider
 | status | string |  | Yes |
 
 >>>>>>> chariri/refac-basemodel-appflow
+||||||| 48dfbd60d6
+#### TrialPipelineVariable
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_file_extension | [ string ] |  | No |
+| allow_file_upload_methods | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| belong_to_node_id | string |  | No |
+| default_value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
+| label | string |  | No |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| placeholder | string |  | No |
+| required | boolean |  | No |
+| tooltips | string |  | No |
+| type | string |  | No |
+| unit | string |  | No |
+| variable | string |  | No |
+
+#### TrialSimpleAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+
+#### TrialSite
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | No |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| code | string |  | No |
+| copyright | string |  | No |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| custom_disclaimer | string |  | No |
+| customize_domain | string |  | No |
+| customize_token_strategy | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### TrialTag
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| name | string |  | No |
+| type | string |  | No |
+
+#### TrialWorkflow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [TrialConversationVariable](#trialconversationvariable) ] |  | No |
+| created_at | long |  | No |
+| created_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
+| environment_variables | [ object ] |  | No |
+| features | object |  | No |
+| graph | object |  | No |
+| hash | string |  | No |
+| id | string |  | No |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+| rag_pipeline_variables | [ [TrialPipelineVariable](#trialpipelinevariable) ] |  | No |
+| tool_published | boolean |  | No |
+| updated_at | long |  | No |
+| updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
+| version | string |  | No |
+
+#### TrialWorkflowPartial
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| id | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+
+=======
+>>>>>>> chariri/refac-basemodel-datasets
 #### TriggerOAuthAuthorizeResponse
 
 | Name | Type | Description | Required |
@@ -21567,6 +21670,7 @@ Workflow tool configuration
 | data | [ [AccessPolicy](#accesspolicy) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
 
+<<<<<<< HEAD
 #### _AnonymousInlineModel_b1954337d565
 
 | Name | Type | Description | Required |
@@ -21575,6 +21679,87 @@ Workflow tool configuration
 | model_name | string |  | No |
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
+||||||| 48dfbd60d6
+#### _AnonymousInlineModel_744ff9cc03e6
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
+
+#### _AnonymousInlineModel_7b8b49ca164e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| name | string |  | No |
+| type | string |  | No |
+
+#### _AnonymousInlineModel_b0fd3f86d9d5
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+
+#### _AnonymousInlineModel_b1954337d565
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enable | boolean |  | No |
+| model_name | string |  | No |
+| model_provider_name | string |  | No |
+| summary_prompt | string |  | No |
+
+=======
+#### _AnonymousInlineModel_744ff9cc03e6
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
+
+#### _AnonymousInlineModel_7b8b49ca164e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| name | string |  | No |
+| type | string |  | No |
+
+#### _AnonymousInlineModel_b0fd3f86d9d5
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+>>>>>>> chariri/refac-basemodel-datasets
 
 #### _MembersInRoleList
 
