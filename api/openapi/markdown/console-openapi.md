@@ -21370,6 +21370,7 @@ Enum class for tool provider
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 ||||||| 48dfbd60d6
 #### TrialPipelineVariable
 ||||||| 48dfbd60d6
@@ -21532,6 +21533,103 @@ Enum class for tool provider
 | TriggerCreationMethod | string |  |  |
 
 >>>>>>> chariri/refac-basemodel-worktools
+||||||| 7ab88500c5
+#### TrialPipelineVariable
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_file_extension | [ string ] |  | No |
+| allow_file_upload_methods | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| belong_to_node_id | string |  | No |
+| default_value | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  | No |
+| label | string |  | No |
+| max_length | integer |  | No |
+| options | [ string ] |  | No |
+| placeholder | string |  | No |
+| required | boolean |  | No |
+| tooltips | string |  | No |
+| type | string |  | No |
+| unit | string |  | No |
+| variable | string |  | No |
+
+#### TrialSimpleAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+
+#### TrialSite
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_token | string |  | No |
+| app_base_url | string |  | No |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| code | string |  | No |
+| copyright | string |  | No |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| custom_disclaimer | string |  | No |
+| customize_domain | string |  | No |
+| customize_token_strategy | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### TrialTag
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| name | string |  | No |
+| type | string |  | No |
+
+#### TrialWorkflow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_variables | [ [TrialConversationVariable](#trialconversationvariable) ] |  | No |
+| created_at | long |  | No |
+| created_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
+| environment_variables | [ object ] |  | No |
+| features | object |  | No |
+| graph | object |  | No |
+| hash | string |  | No |
+| id | string |  | No |
+| marked_comment | string |  | No |
+| marked_name | string |  | No |
+| rag_pipeline_variables | [ [TrialPipelineVariable](#trialpipelinevariable) ] |  | No |
+| tool_published | boolean |  | No |
+| updated_at | long |  | No |
+| updated_by | [TrialSimpleAccount](#trialsimpleaccount) |  | No |
+| version | string |  | No |
+
+#### TrialWorkflowPartial
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| id | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+
+=======
+>>>>>>> chariri/refac-basemodel-memclean
 #### TriggerOAuthAuthorizeResponse
 
 | Name | Type | Description | Required |
@@ -22815,6 +22913,7 @@ Workflow tool configuration
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #### _AnonymousInlineModel_b1954337d565
 
 | Name | Type | Description | Required |
@@ -22859,6 +22958,44 @@ Workflow tool configuration
 | id | string |  | No |
 | name | string |  | No |
 
+||||||| 7ab88500c5
+#### _AnonymousInlineModel_744ff9cc03e6
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
+
+#### _AnonymousInlineModel_7b8b49ca164e
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | No |
+| name | string |  | No |
+| type | string |  | No |
+
+#### _AnonymousInlineModel_b0fd3f86d9d5
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+
+=======
+>>>>>>> chariri/refac-basemodel-memclean
 #### _AnonymousInlineModel_b1954337d565
 
 | Name | Type | Description | Required |
