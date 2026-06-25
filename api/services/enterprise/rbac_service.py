@@ -1685,6 +1685,17 @@ class RBACService:
             )
             return MemberRolesResponse.model_validate(data or {})
 
+        @staticmethod
+        def delete_rbac_bindings(tenant_id: str, account_id: str):
+            data = _inner_call(
+                "DELETE",
+                f"{_INNER_PREFIX}/members/rbac-bindings",
+                tenant_id=tenant_id,
+                account_id=account_id,
+                params={"account_id": account_id},
+            )
+            return data
+
     class CheckAccess:
         """Call the ``/inner/api/rbac/check-access`` endpoint."""
 
