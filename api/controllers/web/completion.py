@@ -190,13 +190,13 @@ class ChatApi(WebApiResource):
         streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
         args["auto_generate_name"] = False
 
-        # Eagerly validate conversation to avoid hanging on invalid conversation_id
-        if payload.conversation_id:
-            ConversationService.get_conversation(
-                app_model=app_model, conversation_id=payload.conversation_id, user=end_user
-            )
-
         try:
+            # Eagerly validate conversation to avoid hanging on invalid conversation_id
+            if payload.conversation_id:
+                ConversationService.get_conversation(
+                    app_model=app_model, conversation_id=payload.conversation_id, user=end_user
+                )
+
             response = AppGenerateService.generate(
                 app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
             )
