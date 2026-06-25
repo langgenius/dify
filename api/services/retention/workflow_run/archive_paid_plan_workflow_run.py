@@ -27,7 +27,7 @@ import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, TypedDict, cast
+from typing import Any
 
 import click
 import pyarrow as pa
@@ -52,12 +52,17 @@ from models.workflow import (
     WorkflowPause,
     WorkflowPauseReason,
     WorkflowRun,
-    WorkflowRunArchiveBundle,
 )
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
+from services.retention.workflow_run.archive_bundle_index import (
+    ArchiveBundleManifest,
+    ArchiveBundleTableManifestEntry,
+    decode_archive_bundle_manifest,
+    upsert_archive_bundle_index_from_manifest,
+)
 from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_FORMAT,
     ARCHIVE_BUNDLE_MANIFEST_NAME,
@@ -65,34 +70,6 @@ from services.retention.workflow_run.constants import (
 )
 
 logger = logging.getLogger(__name__)
-
-
-class TableStatsManifestEntry(TypedDict):
-    row_count: int
-    checksum: str
-    size_bytes: int
-    object_key: str
-
-
-class ArchiveManifestDict(TypedDict):
-    schema_version: str
-    archive_format: str
-    tenant_id: str
-    tenant_prefix: str
-    year: int
-    month: int
-    shard: str
-    bundle_id: str
-    object_prefix: str
-    workflow_run_count: int
-    workflow_node_execution_count: int
-    min_created_at: str
-    max_created_at: str
-    min_run_id: str
-    max_run_id: str
-    archived_at: str
-    tables: dict[str, TableStatsManifestEntry]
-    run_ids: list[str]
 
 
 @dataclass(frozen=True)
@@ -549,8 +526,8 @@ class WorkflowRunArchiver:
                 for table_name, payload in table_payloads.items():
                     storage.put_object(self._get_table_object_key(identity, table_name), payload)
                 storage.put_object(self._get_manifest_object_key(identity), manifest_data)
-                manifest = self._decode_manifest_data(manifest_data)
-                self._upsert_bundle_index_from_manifest(session, manifest, len(manifest_data))
+                manifest = decode_archive_bundle_manifest(manifest_data)
+                upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
                 session.commit()
 
                 logger.info(
@@ -584,71 +561,12 @@ class WorkflowRunArchiver:
         manifest_key = self._get_manifest_object_key(identity)
         try:
             manifest_data = storage.get_object(manifest_key)
-            manifest = self._decode_manifest_data(manifest_data)
-            self._upsert_bundle_index_from_manifest(session, manifest, len(manifest_data))
+            manifest = decode_archive_bundle_manifest(manifest_data)
+            upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
             session.commit()
         except Exception:
             session.rollback()
             logger.warning("Failed to sync workflow archive bundle index for %s", manifest_key, exc_info=True)
-
-    def _upsert_bundle_index_from_manifest(
-        self,
-        session: Session,
-        manifest: ArchiveManifestDict,
-        manifest_size_bytes: int,
-    ) -> None:
-        """Persist the manifest query index used by archive list and download APIs."""
-        row_count = sum(entry["row_count"] for entry in manifest["tables"].values())
-        archive_bytes = manifest_size_bytes + sum(entry["size_bytes"] for entry in manifest["tables"].values())
-        archived_at = self._parse_manifest_datetime(manifest["archived_at"])
-        existing = session.scalar(
-            select(WorkflowRunArchiveBundle).where(
-                WorkflowRunArchiveBundle.tenant_id == manifest["tenant_id"],
-                WorkflowRunArchiveBundle.year == manifest["year"],
-                WorkflowRunArchiveBundle.month == manifest["month"],
-                WorkflowRunArchiveBundle.shard == manifest["shard"],
-                WorkflowRunArchiveBundle.bundle_id == manifest["bundle_id"],
-            )
-        )
-        values = {
-            "tenant_id": manifest["tenant_id"],
-            "year": manifest["year"],
-            "month": manifest["month"],
-            "shard": manifest["shard"],
-            "bundle_id": manifest["bundle_id"],
-            "workflow_run_count": manifest["workflow_run_count"],
-            "row_count": row_count,
-            "archive_bytes": archive_bytes,
-            "archived_at": archived_at,
-        }
-        if existing is None:
-            session.add(
-                WorkflowRunArchiveBundle(
-                    tenant_id=manifest["tenant_id"],
-                    year=manifest["year"],
-                    month=manifest["month"],
-                    shard=manifest["shard"],
-                    bundle_id=manifest["bundle_id"],
-                    workflow_run_count=manifest["workflow_run_count"],
-                    row_count=row_count,
-                    archive_bytes=archive_bytes,
-                    archived_at=archived_at,
-                )
-            )
-            return
-        for field_name, value in values.items():
-            setattr(existing, field_name, value)
-
-    @staticmethod
-    def _decode_manifest_data(manifest_data: bytes) -> ArchiveManifestDict:
-        return cast(ArchiveManifestDict, json.loads(manifest_data.decode("utf-8")))
-
-    @staticmethod
-    def _parse_manifest_datetime(value: str) -> datetime.datetime:
-        parsed = datetime.datetime.fromisoformat(value)
-        if parsed.tzinfo is None:
-            return parsed
-        return parsed.astimezone(datetime.UTC).replace(tzinfo=None)
 
     def _lock_runs_for_archive(
         self,
@@ -758,9 +676,9 @@ class WorkflowRunArchiver:
         identity: ArchiveBundleIdentity,
         runs: Sequence[WorkflowRun],
         table_stats: list[TableStats],
-    ) -> ArchiveManifestDict:
+    ) -> ArchiveBundleManifest:
         """Generate a manifest for the archived workflow run bundle."""
-        tables: dict[str, TableStatsManifestEntry] = {
+        tables: dict[str, ArchiveBundleTableManifestEntry] = {
             stat.table_name: {
                 "row_count": stat.row_count,
                 "checksum": stat.checksum,
@@ -770,7 +688,7 @@ class WorkflowRunArchiver:
             for stat in table_stats
         }
         sorted_runs = sorted(runs, key=lambda run: (run.created_at, run.id))
-        return ArchiveManifestDict(
+        return ArchiveBundleManifest(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
             archive_format=ARCHIVE_BUNDLE_FORMAT,
             tenant_id=identity.tenant_id,
