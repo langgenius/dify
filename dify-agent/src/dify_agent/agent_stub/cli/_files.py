@@ -140,18 +140,14 @@ def _build_download_mapping(
 ) -> AgentStubFileMapping:
     if mapping is not None:
         if transfer_method is not None or reference_or_url is not None:
-            raise AgentStubValidationError(
-                "--mapping cannot be combined with TRANSFER_METHOD or REFERENCE_OR_URL"
-            )
+            raise AgentStubValidationError("--mapping cannot be combined with TRANSFER_METHOD or REFERENCE_OR_URL")
         try:
             return AgentStubFileMapping.model_validate_json(mapping)
         except ValidationError as exc:
             raise AgentStubValidationError("invalid file download mapping") from exc
 
     if transfer_method is None or reference_or_url is None:
-        raise AgentStubValidationError(
-            "file download requires either --mapping or TRANSFER_METHOD REFERENCE_OR_URL"
-        )
+        raise AgentStubValidationError("file download requires either --mapping or TRANSFER_METHOD REFERENCE_OR_URL")
 
     normalized_transfer_method = cast(
         Literal["local_file", "tool_file", "datasource_file", "remote_url"],

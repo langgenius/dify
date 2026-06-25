@@ -90,9 +90,7 @@ def test_format_drive_manifest_returns_human_readable_listing(monkeypatch: pytes
         fake_manifest,
     )
 
-    result = format_drive_manifest(
-        list_drive_manifest_from_environment(prefix="skills/")
-    )
+    result = format_drive_manifest(list_drive_manifest_from_environment(prefix="skills/"))
 
     assert result == ("12\ttext/markdown\t-\tskills/example/SKILL.md\n-\t-\tsha256:abc\tskills/example/helper.py")
     assert captured["prefix"] == "skills/"
@@ -529,9 +527,7 @@ def test_pull_drive_from_environment_returns_json_result(
     result = pull_drive_from_environment(targets=["files/a.txt"], local_base=str(tmp_path))
 
     assert isinstance(result, DrivePullResult)
-    assert result.model_dump() == {
-        "items": [{"key": "files/a.txt", "local_path": str(tmp_path / "files" / "a.txt")}]
-    }
+    assert result.model_dump() == {"items": [{"key": "files/a.txt", "local_path": str(tmp_path / "files" / "a.txt")}]}
     assert (tmp_path / "files" / "a.txt").read_bytes() == b"a"
 
 

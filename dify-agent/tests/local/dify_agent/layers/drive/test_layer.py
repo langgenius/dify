@@ -309,7 +309,9 @@ async def test_download_items_hands_validated_downloads_to_materialization(
     )
     captured: dict[str, object] = {}
 
-    def fake_materialize_drive_downloads(*, base_path: Path, downloads: list[DriveDownloadPayload], archive_skip_entry_names_by_dir):
+    def fake_materialize_drive_downloads(
+        *, base_path: Path, downloads: list[DriveDownloadPayload], archive_skip_entry_names_by_dir
+    ):
         captured["base_path"] = base_path
         captured["downloads"] = downloads
         captured["archive_skip_entry_names_by_dir"] = archive_skip_entry_names_by_dir

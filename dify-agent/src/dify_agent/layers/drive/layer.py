@@ -62,6 +62,7 @@ class DifyDriveLayerError(RuntimeError):
 class DifyDriveDeps(LayerDeps):
     execution_context: Layer[Any, Any, Any, Any, Any, Any]  # pyright: ignore[reportUninitializedInstanceVariable]
 
+
 @dataclass(slots=True)
 class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntimeState]):
     """Drive runtime layer that eagerly materializes prompt-mentioned drive targets."""

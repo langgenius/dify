@@ -212,7 +212,9 @@ def test_cli_file_download_supports_mapping_json(
         captured_kwargs.update(kwargs)
         return type("Response", (), {"path": Path("/tmp/inputs/report.pdf")})()
 
-    monkeypatch.setattr("dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment)
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment
+    )
 
     with pytest.raises(SystemExit) as exc_info:
         main(
@@ -248,7 +250,9 @@ def test_cli_file_download_rejects_legacy_positional_directory(
         called = True
         return type("Response", (), {"path": Path("/tmp/report.pdf")})()
 
-    monkeypatch.setattr("dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment)
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment
+    )
 
     with pytest.raises(SystemExit) as exc_info:
         main(["file", "download", "tool_file", _reference("tool-file-1"), "/tmp"])
@@ -323,8 +327,12 @@ def test_cli_drive_pull_prints_downloaded_paths(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
         lambda *, targets, local_base: DrivePullResult(
             items=[
-                DrivePullResult.Item(key=f"{targets[0]}/SKILL.md", local_path=str(Path(local_base) / targets[0] / "SKILL.md")),
-                DrivePullResult.Item(key=f"{targets[0]}/helper.py", local_path=str(Path(local_base) / targets[0] / "helper.py")),
+                DrivePullResult.Item(
+                    key=f"{targets[0]}/SKILL.md", local_path=str(Path(local_base) / targets[0] / "SKILL.md")
+                ),
+                DrivePullResult.Item(
+                    key=f"{targets[0]}/helper.py", local_path=str(Path(local_base) / targets[0] / "helper.py")
+                ),
             ]
         ),
     )
@@ -377,7 +385,11 @@ def test_cli_drive_pull_forwards_multiple_targets(
         captured_kwargs["targets"] = targets
         captured_kwargs["local_base"] = local_base
         return DrivePullResult(
-            items=[DrivePullResult.Item(key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md"))]
+            items=[
+                DrivePullResult.Item(
+                    key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md")
+                )
+            ]
         )
 
     monkeypatch.setattr(
@@ -405,7 +417,11 @@ def test_cli_drive_pull_uses_environment_drive_base_default(
         captured_kwargs["targets"] = targets
         captured_kwargs["local_base"] = local_base
         return DrivePullResult(
-            items=[DrivePullResult.Item(key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md"))]
+            items=[
+                DrivePullResult.Item(
+                    key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md")
+                )
+            ]
         )
 
     monkeypatch.setattr(
@@ -433,7 +449,11 @@ def test_cli_drive_pull_keeps_historical_drive_base_when_env_is_missing(
         captured_kwargs["targets"] = targets
         captured_kwargs["local_base"] = local_base
         return DrivePullResult(
-            items=[DrivePullResult.Item(key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md"))]
+            items=[
+                DrivePullResult.Item(
+                    key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md")
+                )
+            ]
         )
 
     monkeypatch.setattr(
@@ -459,7 +479,9 @@ def test_cli_drive_pull_without_targets_pulls_whole_visible_drive(
     def fake_pull_drive_from_environment(*, targets, local_base):
         captured_kwargs["targets"] = targets
         captured_kwargs["local_base"] = local_base
-        return DrivePullResult(items=[DrivePullResult.Item(key="files/a.txt", local_path=str(Path(local_base) / "files" / "a.txt"))])
+        return DrivePullResult(
+            items=[DrivePullResult.Item(key="files/a.txt", local_path=str(Path(local_base) / "files" / "a.txt"))]
+        )
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
