@@ -348,9 +348,7 @@ class TestAgentAppDriveLayer:
         assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 1
         assert names.index("drive") == names.index(DIFY_SHELL_LAYER_ID) + 1
 
-    def test_drive_layer_injected_with_empty_catalog_and_drive_depends_on_shell(
-        self, monkeypatch: pytest.MonkeyPatch
-    ):
+    def test_drive_layer_injected_with_empty_catalog_and_drive_depends_on_shell(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
