@@ -66,10 +66,10 @@ export default class AudioPlayer {
       this.audio.addEventListener('ended', () => {
         callback('ended')
       }, false)
-      this.audio.addEventListener('paused', () => {
+      this.audio.addEventListener('pause', () => {
         callback('paused')
       }, true)
-      this.audio.addEventListener('loaded', () => {
+      this.audio.addEventListener('loadeddata', () => {
         callback('loaded')
       }, true)
       this.audio.addEventListener('play', () => {
@@ -78,7 +78,7 @@ export default class AudioPlayer {
       this.audio.addEventListener('timeupdate', () => {
         callback('timeupdate')
       }, true)
-      this.audio.addEventListener('loadeddate', () => {
+      this.audio.addEventListener('loadeddata', () => {
         callback('loadeddate')
       }, true)
       this.audio.addEventListener('canplay', () => {

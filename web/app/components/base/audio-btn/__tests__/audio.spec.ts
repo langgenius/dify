@@ -20,7 +20,7 @@ vi.mock('@/service/share', () => ({
   textToAudioStream: (...args: unknown[]) => mockTextToAudioStream(...args),
 }))
 
-type AudioEventName = 'ended' | 'paused' | 'loaded' | 'play' | 'timeupdate' | 'loadeddate' | 'canplay' | 'error' | 'sourceopen'
+type AudioEventName = 'ended' | 'pause' | 'play' | 'timeupdate' | 'loadeddata' | 'canplay' | 'error' | 'sourceopen'
 
 type AudioEventListener = () => void
 
@@ -285,10 +285,9 @@ describe('AudioPlayer', () => {
       audio!.emit('play')
       audio!.emit('ended')
       audio!.emit('error')
-      audio!.emit('paused')
-      audio!.emit('loaded')
+      audio!.emit('pause')
+      audio!.emit('loadeddata')
       audio!.emit('timeupdate')
-      audio!.emit('loadeddate')
       audio!.emit('canplay')
 
       expect(player.callback).toBe(callback)
