@@ -699,6 +699,19 @@ export const zModelSelectorScope = z.enum([
 export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
 
 /**
+ * Type
+ */
+export const zCoreEntitiesProviderEntitiesBasicProviderConfigType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
+
+/**
  * ProviderConfig
  *
  * Model class for common provider settings like credentials
@@ -713,7 +726,7 @@ export const zProviderConfig = z.object({
   placeholder: zI18nObject.nullish(),
   required: z.boolean().optional().default(false),
   scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: zType,
+  type: zCoreEntitiesProviderEntitiesBasicProviderConfigType,
   url: z.string().nullish(),
 })
 

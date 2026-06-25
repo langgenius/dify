@@ -6852,9 +6852,9 @@ Get instruction generation template
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 302 | Redirect to OAuth callback page |
 
 ### [GET] /notification
 Return the active in-product notification for the current user in their interface language (falls back to English if unavailable). The notification is NOT marked as seen here; call POST /notification/dismiss when the user explicitly closes the modal.
@@ -7059,7 +7059,7 @@ Initiate OAuth login process
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Authorization URL retrieved successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
+| 200 | Tool OAuth authorization URL generated successfully | **application/json**: [PluginOAuthAuthorizationUrlResponse](#pluginoauthauthorizationurlresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/callback
 #### Parameters
@@ -7070,9 +7070,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 302 | Redirect to OAuth callback page |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
 **Handle OAuth callback for trigger provider**
@@ -7085,9 +7085,9 @@ Initiate OAuth login process
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 302 | Redirect to console OAuth callback page | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 302 | Redirect to OAuth callback page |
 
 ### [POST] /oauth/provider
 #### Request Body
@@ -10927,7 +10927,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Tool labels retrieved successfully | **application/json**: [ToolLabelListResponse](#toollabellistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/add
 #### Request Body
@@ -10940,7 +10940,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/delete
 #### Request Body
@@ -10953,7 +10953,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/get
 #### Parameters
@@ -10966,7 +10966,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider retrieved successfully | **application/json**: [ApiProviderDetailResponse](#apiproviderdetailresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/remote
 #### Parameters
@@ -10979,7 +10979,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Remote API provider schema retrieved successfully | **application/json**: [ApiProviderRemoteSchemaResponse](#apiproviderremoteschemaresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/schema
 #### Request Body
@@ -10992,7 +10992,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API schema parsed successfully | **application/json**: [ApiSchemaParseResponse](#apischemaparseresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/test/pre
 #### Request Body
@@ -11005,7 +11005,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API tool test preview completed successfully | **application/json**: [ApiToolPreviewResponse](#apitoolpreviewresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/api/tools
 #### Parameters
@@ -11018,7 +11018,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/api/update
 #### Request Body
@@ -11031,7 +11031,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
 #### Parameters
@@ -11050,7 +11050,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
 #### Parameters
@@ -11064,7 +11064,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credential info retrieved successfully | **application/json**: [ToolProviderCredentialInfoApiEntity](#toolprovidercredentialinfoapientity)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/schema/{credential_type}
 #### Parameters
@@ -11078,7 +11078,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credential schema retrieved successfully | **application/json**: [ProviderConfigListResponse](#providerconfiglistresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credentials
 #### Parameters
@@ -11092,7 +11092,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credentials retrieved successfully | **application/json**: [ToolProviderCredentialListResponse](#toolprovidercredentiallistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/default-credential
 #### Parameters
@@ -11111,7 +11111,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Default credential set successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/delete
 #### Parameters
@@ -11130,7 +11130,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider credential deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/icon
 #### Parameters
@@ -11141,9 +11141,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Builtin provider icon |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/info
 #### Parameters
@@ -11156,7 +11156,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider info retrieved successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/client-schema
 #### Parameters
@@ -11169,7 +11169,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolOAuthClientSchemaResponse](#tooloauthclientschemaresponse)<br> |
+| 200 | Builtin provider OAuth client schema retrieved successfully | **application/json**: [BuiltinProviderOAuthClientSchemaResponse](#builtinprovideroauthclientschemaresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -11182,7 +11182,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Custom OAuth client deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -11193,9 +11193,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolOAuthCustomClientResponse](#tooloauthcustomclientresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Custom OAuth client retrieved successfully |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/oauth/custom-client
 #### Parameters
@@ -11214,7 +11214,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Custom OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/tools
 #### Parameters
@@ -11227,7 +11227,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/update
 #### Parameters
@@ -11246,7 +11246,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [DELETE] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -11272,7 +11272,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider created successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [PUT] /workspaces/current/tool-provider/mcp
 #### Request Body
@@ -11285,7 +11285,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | MCP provider updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/mcp/auth
 #### Request Body
@@ -11298,7 +11298,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider authorized successfully | **application/json**: [MCPAuthResponse](#mcpauthresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/tools/{provider_id}
 #### Parameters
@@ -11311,7 +11311,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider retrieved successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/mcp/update/{provider_id}
 #### Parameters
@@ -11324,7 +11324,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP provider tools refreshed successfully | **application/json**: [ToolProviderApiEntityResponse](#toolproviderapientityresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/create
 #### Request Body
@@ -11337,7 +11337,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/delete
 #### Request Body
@@ -11350,7 +11350,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/get
 #### Parameters
@@ -11364,7 +11364,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool retrieved successfully | **application/json**: [WorkflowToolDetailResponse](#workflowtooldetailresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/workflow/tools
 #### Parameters
@@ -11377,7 +11377,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow provider tools retrieved successfully | **application/json**: [ToolApiListResponse](#toolapilistresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/workflow/update
 #### Request Body
@@ -11390,7 +11390,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tool updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/tool-providers
 #### Parameters
@@ -11403,35 +11403,35 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Tool providers retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/api
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | API tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/builtin
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Builtin tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/mcp
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | MCP tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/tools/workflow
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ToolProviderOpaqueResponse](#toolprovideropaqueresponse)<br> |
+| 200 | Workflow tools retrieved successfully | **application/json**: [ToolProviderListResponse](#toolproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/icon
 #### Parameters
@@ -11442,9 +11442,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Trigger provider icon |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/info
 **Get info for a trigger provider**
@@ -11459,7 +11459,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger provider retrieved successfully | **application/json**: [TriggerProviderApiEntity](#triggerproviderapientity)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Remove custom OAuth client configuration**
@@ -11474,7 +11474,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Trigger OAuth client deleted successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Get OAuth client configuration for a provider**
@@ -11489,7 +11489,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
+| 200 | Trigger OAuth client retrieved successfully | **application/json**: [TriggerOAuthClientResponse](#triggeroauthclientresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Configure custom OAuth client for a provider**
@@ -11510,7 +11510,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Trigger OAuth client saved successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/build/{subscription_builder_id}
 **Build a subscription instance for a trigger provider**
@@ -11532,7 +11532,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription builder built successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/create
 **Add a new subscription instance for a trigger provider**
@@ -11553,7 +11553,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription builder created successfully | **application/json**: [TriggerSubscriptionBuilderCreateResponse](#triggersubscriptionbuildercreateresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}
 **Get the request logs for a subscription instance for a trigger provider**
@@ -11569,7 +11569,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription builder logs retrieved successfully | **application/json**: [TriggerSubscriptionBuilderLogsResponse](#triggersubscriptionbuilderlogsresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}
 **Update a subscription instance for a trigger provider**
@@ -11591,7 +11591,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription builder updated successfully | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}
 **Verify and update a subscription instance for a trigger provider**
@@ -11613,7 +11613,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription builder verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}
 **Get a subscription instance for a trigger provider**
@@ -11629,7 +11629,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription builder retrieved successfully | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/list
 **List all trigger subscriptions for the current tenant's provider**
@@ -11644,7 +11644,8 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscriptions retrieved successfully | **application/json**: [TriggerProviderSubscriptionListResponse](#triggerprovidersubscriptionlistresponse)<br> |
+| 404 | Trigger provider not found | **application/json**: [TriggerProviderErrorResponse](#triggerprovidererrorresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
 **Initiate OAuth authorization flow for a trigger provider**
@@ -11659,7 +11660,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Authorization URL retrieved successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
+| 200 | Trigger OAuth authorization URL generated successfully | **application/json**: [TriggerOAuthAuthorizeResponse](#triggeroauthauthorizeresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/verify/{subscription_id}
 **Verify credentials for an existing subscription (edit mode only)**
@@ -11681,7 +11682,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription verified successfully | **application/json**: [TriggerVerificationResponse](#triggerverificationresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{subscription_id}/subscriptions/delete
 **Delete a subscription instance**
@@ -11717,7 +11718,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger subscription updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [GET] /workspaces/current/triggers
 **List all trigger providers for the current tenant**
@@ -11726,7 +11727,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Trigger providers retrieved successfully | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -13679,6 +13680,26 @@ Soft lifecycle state for Agent records.
 | ---- | ---- | ----------- | -------- |
 | data | [ [ApiKeyItem](#apikeyitem) ] |  | Yes |
 
+#### ApiProviderDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | object |  | No |
+| custom_disclaimer | string |  | No |
+| description | string |  | No |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
+| labels | [ string ] |  | No |
+| privacy_policy | string |  | No |
+| schema | string |  | Yes |
+| schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
+| tools | [ [ApiToolBundle](#apitoolbundle) ] |  | Yes |
+
+#### ApiProviderRemoteSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| schema | string |  | Yes |
+
 #### ApiProviderSchemaType
 
 Enum class for api provider schema type.
@@ -13687,13 +13708,52 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | ApiProviderSchemaType | string | Enum class for api provider schema type. |  |
 
+#### ApiSchemaParseResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
+| parameters_schema | [ [ApiToolBundle](#apitoolbundle) ] |  | Yes |
+| schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
+| warning | object |  | Yes |
+
+#### ApiToolBundle
+
+This class is used to store the schema information of an api based tool.
+ such as the url, the method, the parameters, etc.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string |  | Yes |
+| icon | string |  | No |
+| method | string |  | Yes |
+| openapi | object |  | Yes |
+| operation_id | string |  | No |
+| output_schema | object |  | No |
+| parameters | [ [ToolParameter](#toolparameter) ] |  | No |
+| server_url | string |  | Yes |
+| summary | string |  | No |
+
+#### ApiToolPreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ApiToolPreviewResponse |  |  |  |
+
+#### ApiToolPreviewResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| result | string |  | No |
+
 #### ApiToolProviderAddPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 | custom_disclaimer | string |  | No |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | labels | [ string ] |  | No |
 | privacy_policy | string |  | No |
 | provider | string |  | Yes |
@@ -13712,7 +13772,7 @@ Enum class for api provider schema type.
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 | custom_disclaimer | string |  | No |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | labels | [ string ] |  | No |
 | original_provider | string |  | Yes |
 | privacy_policy | string |  | No |
@@ -14164,6 +14224,16 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | id | string |  | Yes |
+
+#### BuiltinProviderOAuthClientSchemaResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_params | object |  | No |
+| is_oauth_custom_client_enabled | boolean |  | Yes |
+| is_system_oauth_params_exists | boolean |  | Yes |
+| redirect_uri | string |  | Yes |
+| schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
 
 #### BuiltinToolAddPayload
 
@@ -16096,6 +16166,56 @@ declaration of an endpoint group
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
 
+#### EventApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | [I18nObject](#i18nobject) | The description of the trigger | Yes |
+| identity | [EventIdentity](#eventidentity) | The identity of the trigger | Yes |
+| name | string | The name of the trigger | Yes |
+| output_schema | object | The output schema of the trigger | Yes |
+| parameters | [ [EventParameter](#eventparameter) ] | The parameters of the trigger | Yes |
+
+#### EventIdentity
+
+The identity of the event
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the event | Yes |
+| label | [I18nObject](#i18nobject) | The label of the event | Yes |
+| name | string | The name of the event | Yes |
+| provider | string | The provider of the event | No |
+
+#### EventParameter
+
+The parameter of the event
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) | The auto generate of the parameter | No |
+| default | integer<br>number<br>string<br>[ object ] |  | No |
+| description | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+| max | number<br>integer |  | No |
+| min | number<br>integer |  | No |
+| multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
+| name | string | The name of the parameter | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| scope | string |  | No |
+| template | [PluginParameterTemplate](#pluginparametertemplate) | The template of the parameter | No |
+| type | [EventParameterType](#eventparametertype) |  | Yes |
+
+#### EventParameterType
+
+The type of the parameter
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EventParameterType | string | The type of the parameter |  |
+
 #### EventStreamResponse
 
 | Name | Type | Description | Required |
@@ -17007,6 +17127,20 @@ Enum class for large language model mode.
 | authorization_code | string |  | No |
 | provider_id | string |  | Yes |
 
+#### MCPAuthResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorization_url | string |  | No |
+| result | string |  | No |
+
+#### MCPAuthentication
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_id | string |  | Yes |
+| client_secret | string |  | No |
+
 #### MCPCallbackQuery
 
 | Name | Type | Description | Required |
@@ -17014,12 +17148,19 @@ Enum class for large language model mode.
 | code | string |  | Yes |
 | state | string |  | Yes |
 
+#### MCPConfiguration
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| sse_read_timeout | number, <br>**Default:** 300 |  | No |
+| timeout | number, <br>**Default:** 30 |  | No |
+
 #### MCPProviderCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| authentication | object |  | No |
-| configuration | object |  | No |
+| authentication | [MCPAuthentication](#mcpauthentication) |  | No |
+| configuration | [MCPConfiguration](#mcpconfiguration) |  | No |
 | headers | object |  | No |
 | icon | string |  | Yes |
 | icon_background | string |  | No |
@@ -17039,8 +17180,8 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| authentication | object |  | No |
-| configuration | object |  | No |
+| authentication | [MCPAuthentication](#mcpauthentication) |  | No |
+| configuration | [MCPConfiguration](#mcpconfiguration) |  | No |
 | headers | object |  | No |
 | icon | string |  | Yes |
 | icon_background | string |  | No |
@@ -17720,6 +17861,7 @@ OAuth schema
 | value | string | The value of the option | Yes |
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 ||||||| 48dfbd60d6
 #### OpaqueObjectResponse
 
@@ -17732,6 +17874,9 @@ OAuth schema
 ||||||| 48dfbd60d6
 =======
 >>>>>>> chariri/refac-basemodel-ragpipe
+||||||| 48dfbd60d6
+=======
+>>>>>>> chariri/refac-basemodel-worktools
 #### OutputErrorStrategy
 
 Per-output failure handling strategy.
@@ -18599,6 +18744,7 @@ Dataset Process Rule Mode
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 #### ProviderConfig
 
 Model class for common provider settings like credentials
@@ -18651,6 +18797,32 @@ Model class for common provider settings like credentials
 | type | [Type](#type) | The type of the credentials | Yes |
 | url | string |  | No |
 >>>>>>> chariri/refac-basemodel-ragpipe
+||||||| 48dfbd60d6
+=======
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [core__entities__provider_entities__BasicProviderConfig__Type](#core__entities__provider_entities__basicproviderconfig__type) | The type of the credentials | Yes |
+| url | string |  | No |
+
+#### ProviderConfigListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ProviderConfigListResponse | array |  |  |
+>>>>>>> chariri/refac-basemodel-worktools
 
 #### ProviderCredentialResponse
 
@@ -19067,6 +19239,16 @@ Model class for provider quota configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_policies | [ [AccessPolicy](#accesspolicy) ] |  | No |
+
+#### RequestLog
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime | The created at of the request log | Yes |
+| endpoint | string | The endpoint of the request log | Yes |
+| id | string | The id of the request log | Yes |
+| request | object | The request of the request log | Yes |
+| response | object | The response of the request log | Yes |
 
 #### RerankingModel
 
@@ -19808,6 +19990,29 @@ Default configuration for form inputs.
 | type | [ValueSourceType](#valuesourcetype) |  | Yes |
 | value | string |  | No |
 
+#### SubscriptionBuilderApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_type | [CredentialType](#credentialtype) | The credential type of the subscription builder | Yes |
+| credentials | object | The credentials of the subscription builder | Yes |
+| endpoint | string | The endpoint id of the subscription builder | Yes |
+| id | string | The id of the subscription builder | Yes |
+| name | string | The name of the subscription builder | Yes |
+| parameters | object | The parameters of the subscription builder | Yes |
+| properties | object | The properties of the subscription builder | Yes |
+| provider | string | The provider id of the subscription builder | Yes |
+
+#### SubscriptionConstructor
+
+The subscription constructor of the trigger provider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] | The credentials schema of the subscription constructor | No |
+| oauth_schema | [OAuthSchema](#oauthschema) | The OAuth schema of the subscription constructor if OAuth is supported | No |
+| parameters | [ [EventParameter](#eventparameter) ] | The parameters schema of the subscription constructor | No |
+
 #### SubscriptionModel
 
 | Name | Type | Description | Required |
@@ -20116,6 +20321,7 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
 
+<<<<<<< HEAD
 #### ToolLabelEnum
 
 | Name | Type | Description | Required |
@@ -20123,10 +20329,50 @@ Available voices
 | ToolLabelEnum | string |  |  |
 
 #### ToolOAuthClientSchemaResponse
+||||||| 48dfbd60d6
+#### ToolOAuthClientSchemaResponse
+=======
+#### ToolApiEntity
+>>>>>>> chariri/refac-basemodel-worktools
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ToolOAuthClientSchemaResponse | array |  |  |
+| author | string |  | Yes |
+| description | [I18nObject](#i18nobject) |  | Yes |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| labels | [ string ] |  | No |
+| name | string |  | Yes |
+| output_schema | object |  | No |
+| parameters | [ [ToolParameter](#toolparameter) ] |  | No |
+
+#### ToolApiListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolApiListResponse | array |  |  |
+
+#### ToolEmojiIcon
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | Yes |
+| content | string |  | Yes |
+
+#### ToolLabel
+
+Tool label
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string | The icon of the tool | Yes |
+| label | [I18nObject](#i18nobject) | The label of the tool | Yes |
+| name | string | The name of the tool | Yes |
+
+#### ToolLabelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolLabelListResponse | array |  |  |
 
 #### ToolOAuthCustomClientPayload
 
@@ -20135,11 +20381,29 @@ Available voices
 | client_params | object |  | No |
 | enable_oauth_custom_client | boolean |  | No |
 
-#### ToolOAuthCustomClientResponse
+#### ToolParameter
+
+Overrides type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ToolOAuthCustomClientResponse | object |  |  |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) |  | No |
+| default | number<br>integer<br>string<br>boolean<br>[ object ]<br>object |  | No |
+| form | [ToolParameterForm](#toolparameterform) | The form of the parameter, schema/form/llm | Yes |
+| human_description | [I18nObject](#i18nobject) | The description presented to the user | No |
+| input_schema | object |  | No |
+| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+| llm_description | string |  | No |
+| max | number<br>integer |  | No |
+| min | number<br>integer |  | No |
+| name | string | The name of the parameter | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) | The placeholder presented to the user | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| scope | string |  | No |
+| template | [PluginParameterTemplate](#pluginparametertemplate) |  | No |
+| type | [ToolParameterType](#toolparametertype) | The type of the parameter | Yes |
 
 #### ToolParameterForm
 
@@ -20147,17 +20411,84 @@ Available voices
 | ---- | ---- | ----------- | -------- |
 | ToolParameterForm | string |  |  |
 
+#### ToolParameterType
+
+removes TOOLS_SELECTOR from PluginParameterType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolParameterType | string | removes TOOLS_SELECTOR from PluginParameterType |  |
+
+#### ToolProviderApiEntityResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allow_delete | boolean, <br>**Default:** true |  | No |
+| authentication | [MCPAuthentication](#mcpauthentication) | The OAuth config of the MCP tool | No |
+| author | string |  | Yes |
+| configuration | [MCPConfiguration](#mcpconfiguration) | The timeout and sse_read_timeout of the MCP tool | No |
+| description | [I18nObject](#i18nobject) |  | Yes |
+| icon | string<br>object |  | Yes |
+| icon_dark | string<br>object |  | No |
+| id | string |  | Yes |
+| identity_mode | string, <br>**Default:** off | Identity-forwarding mechanism: 'off' or 'idp_token' | No |
+| is_dynamic_registration | boolean, <br>**Default:** true | Whether the MCP tool is dynamically registered | No |
+| is_team_authorization | boolean |  | No |
+| label | [I18nObject](#i18nobject) |  | Yes |
+| labels | [ string ] |  | No |
+| masked_headers | object | The masked headers of the MCP tool | No |
+| name | string |  | Yes |
+| original_headers | object | The original headers of the MCP tool | No |
+| plugin_id | string | The plugin id of the tool | No |
+| plugin_unique_identifier | string | The unique identifier of the tool | No |
+| server_identifier | string | The server identifier of the MCP tool | No |
+| server_url | string | The server url of the tool | No |
+| team_credentials | object |  | No |
+| tools | [ [ToolApiEntity](#toolapientity) ] |  | No |
+| type | [ToolProviderType](#toolprovidertype) |  | Yes |
+| updated_at | integer |  | No |
+| workflow_app_id | string | The app id of the workflow tool | No |
+
+#### ToolProviderCredentialApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_by | string | User ID of the credential creator | No |
+| credential_type | [CredentialType](#credentialtype) | The type of the credential | Yes |
+| credentials | object | The credentials of the provider | No |
+| from_other_member | boolean | True when this credential is being returned only because a workflow/agent node still references it but it would normally be hidden from this user by the visibility filter (another member's only_me credential). The frontend renders it as 'borrowed' — selectable until the node switches away, but not editable/deletable. | No |
+| id | string | The unique id of the credential | Yes |
+| is_default | boolean | Whether the credential is the default credential for the provider in the workspace | No |
+| name | string | The name of the credential | Yes |
+| partial_member_list | [ string ] | List of user IDs allowed when visibility is partial_members | No |
+| provider | string | The provider of the credential | Yes |
+| visibility | string, <br>**Default:** all_team_members | Credential visibility: only_me, all_team_members, or partial_members | No |
+
+#### ToolProviderCredentialInfoApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [ToolProviderCredentialApiEntity](#toolprovidercredentialapientity) ] | The credentials of the provider | Yes |
+| is_oauth_custom_client_enabled | boolean | Whether the OAuth custom client is enabled for the provider | No |
+| supported_credential_types | [ [CredentialType](#credentialtype) ] | The supported credential types of the provider | Yes |
+
+#### ToolProviderCredentialListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolProviderCredentialListResponse | array |  |  |
+
 #### ToolProviderListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | type | string |  | No |
 
-#### ToolProviderOpaqueResponse
+#### ToolProviderListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ToolProviderOpaqueResponse |  |  |  |
+| ToolProviderListResponse | array |  |  |
 
 #### ToolProviderType
 
@@ -20364,6 +20695,7 @@ Enum class for tool provider
 | updated_at | long |  | No |
 | updated_by | string |  | No |
 
+<<<<<<< HEAD
 =======
 #### TrialPipelineVariable
 
@@ -20571,12 +20903,21 @@ Enum class for tool provider
 
 =======
 >>>>>>> chariri/refac-basemodel-datasets
+||||||| 48dfbd60d6
+=======
+#### TriggerCreationMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerCreationMethod | string |  |  |
+
+>>>>>>> chariri/refac-basemodel-worktools
 #### TriggerOAuthAuthorizeResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | authorization_url | string |  | Yes |
-| subscription_builder |  |  | Yes |
+| subscription_builder | [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity) |  | Yes |
 | subscription_builder_id | string |  | Yes |
 
 #### TriggerOAuthClientPayload
@@ -20593,22 +20934,78 @@ Enum class for tool provider
 | configured | boolean |  | Yes |
 | custom_configured | boolean |  | Yes |
 | custom_enabled | boolean |  | Yes |
-| oauth_client_schema |  |  | Yes |
-| params | object |  | Yes |
+| oauth_client_schema | [ [ProviderConfig](#providerconfig) ] |  | Yes |
+| params | object |  | No |
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
 
-#### TriggerProviderOpaqueResponse
+#### TriggerProviderApiEntity
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| TriggerProviderOpaqueResponse |  |  |  |
+| author | string | The author of the trigger provider | Yes |
+| description | [I18nObject](#i18nobject) | The description of the trigger provider | Yes |
+| events | [ [EventApiEntity](#eventapientity) ] | The events of the trigger provider | Yes |
+| icon | string | The icon of the trigger provider | No |
+| icon_dark | string | The dark icon of the trigger provider | No |
+| label | [I18nObject](#i18nobject) | The label of the trigger provider | Yes |
+| name | string | The name of the trigger provider | Yes |
+| plugin_id | string | The plugin id of the tool | No |
+| plugin_unique_identifier | string | The unique identifier of the tool | No |
+| subscription_constructor | [SubscriptionConstructor](#subscriptionconstructor) | The subscription constructor of the trigger provider | No |
+| subscription_schema | [ [ProviderConfig](#providerconfig) ] | The subscription schema of the trigger provider | No |
+| supported_creation_methods | [ [TriggerCreationMethod](#triggercreationmethod) ] | Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'. | No |
+| tags | [ string ] | The tags of the trigger provider | No |
+
+#### TriggerProviderErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | Yes |
+
+#### TriggerProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerProviderListResponse | array |  |  |
+
+#### TriggerProviderSubscriptionApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_type | [CredentialType](#credentialtype) | The type of the credential | Yes |
+| credentials | object | The credentials of the subscription | Yes |
+| endpoint | string | The endpoint of the subscription | Yes |
+| id | string | The unique id of the subscription | Yes |
+| name | string | The name of the subscription | Yes |
+| parameters | object | The parameters of the subscription | Yes |
+| properties | object | The properties of the subscription | Yes |
+| provider | string | The provider id of the subscription | Yes |
+| workflows_in_use | integer | The number of workflows using this subscription | Yes |
+
+#### TriggerProviderSubscriptionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerProviderSubscriptionListResponse | array |  |  |
 
 #### TriggerSubscriptionBuilderCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_type | string, <br>**Default:** unauthorized |  | No |
+
+#### TriggerSubscriptionBuilderCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| subscription_builder | [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity) |  | Yes |
+
+#### TriggerSubscriptionBuilderLogsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| logs | [ [RequestLog](#requestlog) ] |  | Yes |
 
 #### TriggerSubscriptionBuilderUpdatePayload
 
@@ -20624,6 +21021,12 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
+
+#### TriggerVerificationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| verified | boolean |  | Yes |
 
 #### Type
 
@@ -21572,7 +21975,7 @@ Query parameters for workflow runs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | Yes |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | label | string |  | Yes |
 | labels | [ string ] |  | No |
 | name | string |  | Yes |
@@ -21584,6 +21987,22 @@ Query parameters for workflow runs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| workflow_tool_id | string |  | Yes |
+
+#### WorkflowToolDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
+| label | string |  | Yes |
+| name | string |  | Yes |
+| output_schema | object |  | No |
+| parameters | [ [WorkflowToolParameterConfiguration](#workflowtoolparameterconfiguration) ] |  | Yes |
+| privacy_policy | string |  | No |
+| synced | boolean |  | Yes |
+| tool | [ToolApiEntity](#toolapientity) |  | Yes |
+| workflow_app_id | string |  | Yes |
 | workflow_tool_id | string |  | Yes |
 
 #### WorkflowToolGetQuery
@@ -21614,7 +22033,7 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | description | string |  | Yes |
-| icon | object |  | Yes |
+| icon | [ToolEmojiIcon](#toolemojiicon) |  | Yes |
 | label | string |  | Yes |
 | labels | [ string ] |  | No |
 | name | string |  | Yes |
