@@ -417,22 +417,20 @@ describe('IntegrationsPage', () => {
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
   })
 
-  it('does not render the MCP management route without mcp.manage', () => {
+  it('renders the MCP route as read-only without mcp.manage', () => {
     mockAppContextState.workspacePermissionKeys = ['tool.manage']
 
-    const { container } = renderIntegrationsPage(undefined, 'mcp')
+    renderIntegrationsPage(undefined, 'mcp')
 
-    expect(screen.queryByTestId('tool-provider-list')).not.toBeInTheDocument()
-    expect(container.firstElementChild).toBeNull()
+    expect(screen.getByTestId('tool-provider-list')).toHaveTextContent('mcp')
   })
 
-  it.each(['custom-tool', 'workflow-tool'] as const)('does not render the %s management route without tool.manage', (section) => {
+  it.each(['custom-tool', 'workflow-tool'] as const)('renders the %s route as read-only without tool.manage', (section) => {
     mockAppContextState.workspacePermissionKeys = ['mcp.manage']
 
-    const { container } = renderIntegrationsPage(undefined, section)
+    renderIntegrationsPage(undefined, section)
 
-    expect(screen.queryByTestId('tool-provider-list')).not.toBeInTheDocument()
-    expect(container.firstElementChild).toBeNull()
+    expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
   })
 
   it('remounts the tools section content when the route section changes', () => {
@@ -529,7 +527,7 @@ describe('IntegrationsPage', () => {
     expect(onSectionChange).toHaveBeenCalledTimes(2)
   })
 
-  it('hides custom and workflow tool entries without tool.manage while keeping MCP with mcp.manage', () => {
+  it('keeps custom, workflow, and MCP tool entries visible without manage permissions', () => {
     mockAppContextState.workspacePermissionKeys = ['mcp.manage']
     renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
 
@@ -537,8 +535,8 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'workflow.common.workflowAsTool' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'common.settings.swaggerAPIAsTool' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.common.workflowAsTool' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.settings.swaggerAPIAsTool' })).toBeInTheDocument()
   })
 
   it('opens tools to the tools plugin page when the parent tools nav is clicked', () => {
