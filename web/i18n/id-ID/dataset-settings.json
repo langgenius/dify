@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Jumlah Kata Kunci",
   "form.onSearchResults": "Tidak ada anggota yang cocok dengan kueri penelusuran Anda.\nCoba cari lagi.",
   "form.permissions": "Izin",
+  "form.permissionsAccessConfig": "Buka konfigurasi akses",
   "form.permissionsAllMember": "Semua anggota tim",
   "form.permissionsInvitedMembers": "Anggota tim parsial",
   "form.permissionsOnlyMe": "Hanya saya",
