@@ -126,7 +126,7 @@ async function mountedStore() {
     },
   })
   store.set(queryClientAtom, queryClient)
-  const unsubscribe = store.sub(state.createReleaseFormValuesAtom, () => undefined)
+  const unsubscribe = store.sub(state.createReleaseFormIsSubmittingAtom, () => undefined)
 
   return {
     queryClient,
@@ -230,20 +230,6 @@ describe('create release state', () => {
       isPending: false,
       mutateAsync: vi.fn(),
     }
-  })
-
-  it('should keep default form values before editing', async () => {
-    const { state, store, unsubscribe } = await mountedStore()
-
-    expect(store.get(state.createReleaseFormValuesAtom)).toEqual({
-      dslFile: undefined,
-      releaseDescription: '',
-      releaseName: '',
-      releaseSourceMode: 'sourceApp',
-      sourceApp: undefined,
-    })
-
-    unsubscribe()
   })
 
   it('should validate release name only when submitting', async () => {

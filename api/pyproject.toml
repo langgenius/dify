@@ -5,7 +5,7 @@ requires-python = "~=3.12.0"
 
 dependencies = [
     # Legacy: mature and widely deployed
-    "bleach>=6.3.0,<7.0.0",
+    "bleach>=6.4.0,<7.0.0",
     "boto3>=1.43.24,<2.0.0",
     "celery>=5.6.3,<6.0.0",
     "croniter>=6.2.2,<7.0.0",
@@ -44,7 +44,7 @@ dependencies = [
     "resend>=2.27.0,<3.0.0",
     # Emerging: newer and fast-moving, use compatible pins
     "fastopenapi[flask]==0.7.0",
-    "graphon==0.5.2",
+    "graphon==0.5.3",
     "httpx-sse==0.4.3",
     "json-repair==0.59.4",
 ]
@@ -103,7 +103,11 @@ dify-trace-weave = { workspace = true }
 [tool.uv]
 default-groups = ["storage", "tools", "vdb-all", "trace-all"]
 package = false
-override-dependencies = ["litellm>=1.83.10,<2.0.0", "pyarrow>=23.0.1,<24.0.0"]
+override-dependencies = [
+    "litellm>=1.83.10,<2.0.0",
+    "pyarrow>=23.0.1,<24.0.0",
+    "cryptography>=49.0.0,<50.0.0",
+]
 
 [dependency-groups]
 

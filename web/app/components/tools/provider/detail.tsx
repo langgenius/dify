@@ -164,9 +164,6 @@ const ProviderDetail = ({
   // workflow provider
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
-    if (!canManageTools)
-      return
-
     setIsDetailLoading(true)
     const res = await fetchWorkflowToolDetail(collection.id)
     const payload = {
@@ -184,7 +181,7 @@ const ProviderDetail = ({
     }
     setCustomCollection(payload)
     setIsDetailLoading(false)
-  }, [canManageTools, collection.id])
+  }, [collection.id])
   const removeWorkflowToolProvider = async () => {
     if (!canManageTools)
       return
@@ -243,24 +240,18 @@ const ProviderDetail = ({
         setToolList([])
       }
       else {
-        if (!canManageTools) {
-          setToolList([])
-          setIsDetailLoading(false)
-          return
-        }
-
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
     }
     catch { }
     setIsDetailLoading(false)
-  }, [canManageTools, collection.name, collection.type])
+  }, [collection.name, collection.type])
 
   useEffect(() => {
     if (collection.type === CollectionType.custom && canManageTools)
       getCustomProvider()
-    if (collection.type === CollectionType.workflow && canManageTools)
+    if (collection.type === CollectionType.workflow)
       getWorkflowToolProvider()
     getProviderToolList()
   }, [canManageTools, collection.name, collection.type, getCustomProvider, getProviderToolList, getWorkflowToolProvider])
@@ -331,7 +322,7 @@ const ProviderDetail = ({
                         nativeButton={false}
                         variant="primary"
                         className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
-                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" />}
+                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" aria-label={t('openInStudio', { ns: 'tools' })} />}
                       >
                         <span className="min-w-0 truncate px-0.5 system-sm-medium">{t('openInStudio', { ns: 'tools' })}</span>
                         <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />

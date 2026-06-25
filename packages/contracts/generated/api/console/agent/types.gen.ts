@@ -135,9 +135,14 @@ export type ComposerSavePayload = {
   agent_soul?: AgentSoulConfig | null
   binding?: ComposerBindingPayload | null
   client_revision_id?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: AgentIconType | null
   idempotency_key?: string | null
   new_agent_name?: string | null
   node_job?: WorkflowNodeJobConfig | null
+  role?: string | null
   save_strategy: ComposerSaveStrategy
   soul_lock?: ComposerSoulLockPayload
   variant: ComposerVariant
@@ -537,6 +542,8 @@ export type ComposerBindingPayload = {
   current_snapshot_id?: string | null
 }
 
+export type AgentIconType = 'emoji' | 'image' | 'link'
+
 export type WorkflowNodeJobConfig = {
   declared_outputs?: Array<DeclaredOutputConfig>
   human_contacts?: Array<AgentHumanContactConfig>
@@ -876,8 +883,6 @@ export type AgentAppPublishedReferenceResponse = {
 export type LlmMode = 'chat' | 'completion'
 
 export type AgentKind = 'dify_agent'
-
-export type AgentIconType = 'emoji' | 'image' | 'link'
 
 export type AgentPublishedReferenceResponse = {
   app_icon?: string | null

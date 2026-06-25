@@ -925,6 +925,9 @@ class RecommendedApp(TypeBase):
     is_learn_dify: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
     )
+    is_cloud_only: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     language: Mapped[str] = mapped_column(
         String(255),

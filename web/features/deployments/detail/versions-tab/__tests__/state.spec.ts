@@ -2,7 +2,7 @@ import type { Getter } from 'jotai'
 import { skipToken } from '@tanstack/react-query'
 import { atom, createStore } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { setNextRouteStateAtom } from '@/app/components/next-route-state/atoms'
 
 type QueryOptions = {
   enabled?: boolean
@@ -57,6 +57,13 @@ async function loadState() {
   return await import('../state')
 }
 
+function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1') {
+  store.set(setNextRouteStateAtom, {
+    pathname: `/deployments/${appInstanceId}/overview`,
+    params: { appInstanceId },
+  })
+}
+
 describe('versions tab state', () => {
   it('should gate release history and menu queries until route and menu state are ready', async () => {
     const state = await loadState()
@@ -79,7 +86,7 @@ describe('versions tab state', () => {
   it('should build release history input from the current page', async () => {
     const state = await loadState()
     const store = createStore()
-    store.set(deploymentRouteAppInstanceIdAtom, 'app-instance-1')
+    setDeploymentRoute(store)
 
     store.set(state.setReleaseHistoryCurrentPageAtom, -1)
     expect(store.get(state.releaseHistoryCurrentPageAtom)).toBe(0)
@@ -99,7 +106,7 @@ describe('versions tab state', () => {
   it('should scope deploy menu queries to the open release id', async () => {
     const state = await loadState()
     const store = createStore()
-    store.set(deploymentRouteAppInstanceIdAtom, 'app-instance-1')
+    setDeploymentRoute(store)
 
     store.set(state.setDeployReleaseMenuOpenAtom, {
       releaseId: 'release-1',

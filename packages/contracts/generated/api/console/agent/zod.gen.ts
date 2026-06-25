@@ -284,6 +284,13 @@ export const zComposerBindingPayload = z.object({
 })
 
 /**
+ * AgentIconType
+ *
+ * Supported icon storage formats for Agent roster entries.
+ */
+export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
+
+/**
  * ComposerSoulLockPayload
  */
 export const zComposerSoulLockPayload = z.object({
@@ -830,13 +837,6 @@ export const zAgentAppDetailWithSite = z.object({
  * the current roster/workflow APIs scoped to Dify Agent.
  */
 export const zAgentKind = z.enum(['dify_agent'])
-
-/**
- * AgentIconType
- *
- * Supported icon storage formats for Agent roster entries.
- */
-export const zAgentIconType = z.enum(['emoji', 'image', 'link'])
 
 /**
  * AgentPublishedReferenceResponse
@@ -1877,9 +1877,14 @@ export const zComposerSavePayload = z.object({
   agent_soul: zAgentSoulConfig.nullish(),
   binding: zComposerBindingPayload.nullish(),
   client_revision_id: z.string().nullish(),
+  description: z.string().nullish(),
+  icon: z.string().max(255).nullish(),
+  icon_background: z.string().max(255).nullish(),
+  icon_type: zAgentIconType.nullish(),
   idempotency_key: z.string().nullish(),
   new_agent_name: z.string().min(1).max(255).nullish(),
   node_job: zWorkflowNodeJobConfig.nullish(),
+  role: z.string().max(255).nullish(),
   save_strategy: zComposerSaveStrategy,
   soul_lock: zComposerSoulLockPayload.optional(),
   variant: zComposerVariant,

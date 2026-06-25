@@ -837,6 +837,7 @@ class AgentRosterService:
         if agent.source == AgentSource.AGENT_APP:
             return {
                 AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
                 AgentConfigRevisionOperation.RESTORE_VERSION,
             }
         return {

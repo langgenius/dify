@@ -222,32 +222,6 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
   warnParseFailure(value)
   return undefined
 }
-
-// Parse date with multiple format support
-export const parseDateWithFormat = (dateString: string, format?: string): Dayjs | null => {
-  if (!dateString)
-    return null
-
-  // If format is specified, use it directly
-  if (format) {
-    const parsed = dayjs(dateString, format, true)
-    return parsed.isValid() ? parsed : null
-  }
-
-  // Try common date formats
-  const formats = [
-    ...COMMON_PARSE_FORMATS,
-  ]
-
-  for (const fmt of formats) {
-    const parsed = dayjs(dateString, fmt, true)
-    if (parsed.isValid())
-      return parsed
-  }
-
-  return null
-}
-
 // Format date output with localization support
 export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, _locale: string = 'en-US'): string => {
   if (!date || !date.isValid())

@@ -16,7 +16,7 @@ def valid_password(password):
     raise ValueError("Password must contain letters and numbers, and the length must be at least 8 characters.")
 
 
-def hash_password(password_str, salt_byte):
+def hash_password(password_str: str, salt_byte: bytes):
     dk = hashlib.pbkdf2_hmac("sha256", password_str.encode("utf-8"), salt_byte, 10000)
     return binascii.hexlify(dk)
 

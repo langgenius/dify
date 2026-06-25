@@ -19,12 +19,14 @@ type Props = {
   onCreateBlank: () => void
   onCreateTemplate: () => void
   onImportDSL: () => void
+  showLearnDify: boolean
 }
 
 function FirstEmptyState({
   onCreateBlank,
   onCreateTemplate,
   onImportDSL,
+  showLearnDify,
 }: Props) {
   const { t } = useTranslation()
 
@@ -102,13 +104,15 @@ function FirstEmptyState({
           </div>
         </section>
       </div>
-      <LearnDify
-        className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
-        dismissible={false}
-        itemLimit={4}
-        showDescription
-        title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
-      />
+      {showLearnDify && (
+        <LearnDify
+          className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
+          dismissible={false}
+          itemLimit={4}
+          showDescription
+          title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
+        />
+      )}
     </div>
   )
 }

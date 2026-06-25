@@ -74,14 +74,14 @@ def _build_source() -> Source:
 
 class TestInnerKnowledgeRetrievalService:
     @patch("services.knowledge_retrieval_inner_service.DatasetRetrieval")
-    @patch("services.knowledge_retrieval_inner_service.db")
-    def test_retrieve_maps_multiple_request_and_skips_enable_api_check(self, mock_db, mock_rag_cls):
+    def test_retrieve_maps_multiple_request_and_skips_enable_api_check(self, mock_rag_cls):
         request = _build_request()
+        mock_session = MagicMock()
         mock_app = MagicMock(id="app-1", tenant_id="tenant-1")
         dataset_1 = MagicMock(id="dataset-1", tenant_id="tenant-1", enable_api=False)
         dataset_2 = MagicMock(id="dataset-2", tenant_id="tenant-1", enable_api=True)
-        mock_db.session.scalar.return_value = mock_app
-        mock_db.session.scalars.return_value.all.return_value = [dataset_1, dataset_2]
+        mock_session.scalar.return_value = mock_app
+        mock_session.scalars.return_value.all.return_value = [dataset_1, dataset_2]
 
         rag = MagicMock()
         rag.knowledge_retrieval.return_value = [_build_source()]
@@ -101,7 +101,7 @@ class TestInnerKnowledgeRetrievalService:
         }
         mock_rag_cls.return_value = rag
 
-        response = InnerKnowledgeRetrievalService().retrieve(request)
+        response = InnerKnowledgeRetrievalService().retrieve(request, mock_session)
 
         rag_request = rag.knowledge_retrieval.call_args.kwargs["request"]
         assert rag_request.tenant_id == "tenant-1"
@@ -127,8 +127,7 @@ class TestInnerKnowledgeRetrievalService:
         assert response.usage.currency == "USD"
 
     @patch("services.knowledge_retrieval_inner_service.DatasetRetrieval")
-    @patch("services.knowledge_retrieval_inner_service.db")
-    def test_retrieve_maps_single_request(self, mock_db, mock_rag_cls):
+    def test_retrieve_maps_single_request(self, mock_rag_cls):
         request = _build_request(
             dataset_ids=["dataset-1"],
             retrieval={
@@ -151,8 +150,9 @@ class TestInnerKnowledgeRetrievalService:
             },
             attachment_ids=[],
         )
-        mock_db.session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
-        mock_db.session.scalars.return_value.all.return_value = [MagicMock(id="dataset-1", tenant_id="tenant-1")]
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
+        mock_session.scalars.return_value.all.return_value = [MagicMock(id="dataset-1", tenant_id="tenant-1")]
 
         rag = MagicMock()
         rag.knowledge_retrieval.return_value = []
@@ -172,7 +172,7 @@ class TestInnerKnowledgeRetrievalService:
         }
         mock_rag_cls.return_value = rag
 
-        InnerKnowledgeRetrievalService().retrieve(request)
+        InnerKnowledgeRetrievalService().retrieve(request, mock_session)
 
         rag_request = rag.knowledge_retrieval.call_args.kwargs["request"]
         assert rag_request.retrieval_mode == "single"
@@ -184,35 +184,35 @@ class TestInnerKnowledgeRetrievalService:
         assert rag_request.metadata_model_config is not None
         assert rag_request.metadata_model_config.provider == "openai"
 
-    @patch("services.knowledge_retrieval_inner_service.db")
-    def test_retrieve_raises_when_app_missing(self, mock_db):
-        mock_db.session.scalar.return_value = None
+    def test_retrieve_raises_when_app_missing(self):
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = None
 
         with pytest.raises(InnerKnowledgeRetrieveAppNotFoundError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request())
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
 
-    @patch("services.knowledge_retrieval_inner_service.db")
-    def test_retrieve_raises_when_app_belongs_to_other_tenant(self, mock_db):
-        mock_db.session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-2")
+    def test_retrieve_raises_when_app_belongs_to_other_tenant(self):
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-2")
 
         with pytest.raises(InnerKnowledgeRetrieveAppTenantMismatchError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request())
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
 
-    @patch("services.knowledge_retrieval_inner_service.db")
-    def test_retrieve_raises_when_dataset_missing(self, mock_db):
-        mock_db.session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
-        mock_db.session.scalars.return_value.all.return_value = [MagicMock(id="dataset-1", tenant_id="tenant-1")]
+    def test_retrieve_raises_when_dataset_missing(self):
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
+        mock_session.scalars.return_value.all.return_value = [MagicMock(id="dataset-1", tenant_id="tenant-1")]
 
         with pytest.raises(InnerKnowledgeRetrieveDatasetNotFoundError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request())
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
 
-    @patch("services.knowledge_retrieval_inner_service.db")
-    def test_retrieve_raises_when_dataset_belongs_to_other_tenant(self, mock_db):
-        mock_db.session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
-        mock_db.session.scalars.return_value.all.return_value = [
+    def test_retrieve_raises_when_dataset_belongs_to_other_tenant(self):
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = MagicMock(id="app-1", tenant_id="tenant-1")
+        mock_session.scalars.return_value.all.return_value = [
             MagicMock(id="dataset-1", tenant_id="tenant-1"),
             MagicMock(id="dataset-2", tenant_id="tenant-2"),
         ]
 
         with pytest.raises(InnerKnowledgeRetrieveDatasetTenantMismatchError):
-            InnerKnowledgeRetrievalService().retrieve(_build_request())
+            InnerKnowledgeRetrievalService().retrieve(_build_request(), mock_session)
