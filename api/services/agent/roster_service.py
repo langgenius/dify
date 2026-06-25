@@ -576,7 +576,7 @@ class AgentRosterService:
                 Agent.status == AgentStatus.ACTIVE,
             )
         ).all()
-        return {agent.app_id: agent for agent in agents if agent.app_id}
+        return {agent.app_id: agent for agent in agents if agent.app_id and agent.id}
 
     def get_app_backing_agent(self, *, tenant_id: str, app_id: str) -> Agent | None:
         """Return the roster Agent that backs the given Agent App, if any."""
@@ -860,11 +860,15 @@ class AgentRosterService:
 
     def load_active_config_is_published_by_agent_id(self, *, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
         """Return whether each Agent's normal draft is aligned with its active published snapshot."""
+        agents = [agent for agent in agents if agent.id]
+        if not agents:
+            return {}
+
         published_agent_ids = self._load_published_active_snapshot_agent_ids(tenant_id=tenant_id, agents=agents)
         drafts = self._session.scalars(
             select(AgentConfigDraft).where(
                 AgentConfigDraft.tenant_id == tenant_id,
-                AgentConfigDraft.agent_id.in_([agent.id for agent in agents] or [""]),
+                AgentConfigDraft.agent_id.in_([agent.id for agent in agents]),
                 AgentConfigDraft.draft_type == AgentConfigDraftType.DRAFT,
                 AgentConfigDraft.account_id.is_(None),
             )

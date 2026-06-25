@@ -1731,6 +1731,59 @@ def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
     ) == {"agent-2": False}
 
 
+def test_active_config_is_published_skips_empty_agent_ids():
+    empty_id_agent = Agent(
+        id="",
+        tenant_id="tenant-1",
+        name="Broken",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id=None,
+    )
+    fake_session = FakeSession(scalars=[["should-not-be-read"]])
+
+    assert AgentRosterService(fake_session).load_active_config_is_published_by_agent_id(
+        tenant_id="tenant-1",
+        agents=[empty_id_agent],
+    ) == {}
+    assert fake_session._scalars == [["should-not-be-read"]]
+
+
+def test_load_app_backing_agents_skips_empty_agent_ids():
+    valid_agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Valid",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id="app-1",
+        status=AgentStatus.ACTIVE,
+    )
+    empty_id_agent = Agent(
+        id="",
+        tenant_id="tenant-1",
+        name="Broken",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        app_id="app-2",
+        status=AgentStatus.ACTIVE,
+    )
+
+    result = AgentRosterService(FakeSession(scalars=[[valid_agent, empty_id_agent]])).load_app_backing_agents_by_app_id(
+        tenant_id="tenant-1",
+        app_ids=["app-1", "app-2"],
+    )
+
+    assert result == {"app-1": valid_agent}
+
+
 def test_published_references_include_app_display_fields_and_sort_by_updated_at():
     recent_updated_at = datetime(2026, 1, 7, 3, 4, 5, tzinfo=UTC)
     stale_updated_at = datetime(2026, 1, 6, 3, 4, 5, tzinfo=UTC)
