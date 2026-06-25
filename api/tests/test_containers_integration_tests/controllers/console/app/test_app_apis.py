@@ -513,7 +513,7 @@ class TestWorkflowDraftVariableEndpoints:
                 self.session = session
 
             def list_variables_without_values(self, **_kwargs):
-                return WorkflowDraftVariableList(variables=[], total=0)
+                return {"items": [], "total": 0}
 
         monkeypatch.setattr(workflow_draft_variable_module, "sessionmaker", DummySessionMaker)
 
