@@ -3861,6 +3861,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| snapshot_id | query |  | No | string |
 | app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
@@ -20667,6 +20668,12 @@ How a workflow node is bound to an Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | WorkflowAgentBindingType | string | How a workflow node is bound to an Agent. |  |
+
+#### WorkflowAgentComposerQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| snapshot_id | string |  | No |
 
 #### WorkflowAgentComposerResponse
 
