@@ -113,9 +113,6 @@ import {
   zPostRagPipelinesByPipelineIdWorkflowsDraftRunBody,
   zPostRagPipelinesByPipelineIdWorkflowsDraftRunPath,
   zPostRagPipelinesByPipelineIdWorkflowsDraftRunResponse,
-  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody,
-  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath,
-  zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse,
   zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunBody,
   zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunPath,
   zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse,
@@ -1066,33 +1063,9 @@ export const publish2 = {
 }
 
 /**
- * Run datasource content preview
- */
-export const post17 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'POST',
-    operationId: 'postRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreview',
-    path: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview',
-    summary: 'Run datasource content preview',
-    tags: ['console'],
-  })
-  .input(
-    z.object({
-      body: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewBody,
-      params: zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewPath,
-    }),
-  )
-  .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse)
-
-export const preview = {
-  post: post17,
-}
-
-/**
  * Run rag pipeline datasource
  */
-export const post18 = oc
+export const post17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1110,11 +1083,10 @@ export const post18 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunResponse)
 
 export const run6 = {
-  post: post18,
+  post: post17,
 }
 
 export const byNodeId5 = {
-  preview,
   run: run6,
 }
 
@@ -1185,7 +1157,7 @@ export const processing2 = {
 /**
  * Run published workflow
  */
-export const post19 = oc
+export const post18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1203,7 +1175,7 @@ export const post19 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsPublishedRunResponse)
 
 export const run7 = {
-  post: post19,
+  post: post18,
 }
 
 export const published = {
@@ -1213,7 +1185,7 @@ export const published = {
   run: run7,
 }
 
-export const post20 = oc
+export const post19 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1225,7 +1197,7 @@ export const post20 = oc
   .output(zPostRagPipelinesByPipelineIdWorkflowsByWorkflowIdRestoreResponse)
 
 export const restore = {
-  post: post20,
+  post: post19,
 }
 
 /**

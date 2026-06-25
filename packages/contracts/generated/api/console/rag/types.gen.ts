@@ -319,16 +319,6 @@ export type RagPipelineWorkflowPublishResponse = {
   result: string
 }
 
-export type Parser = {
-  credential_id?: string | null
-  datasource_type: string
-  inputs: {
-    [key: string]: unknown
-  }
-}
-
-export type DataSourceContentPreviewResponse = unknown
-
 export type PublishedWorkflowRunPayload = {
   datasource_info_list: Array<{
     [key: string]: unknown
@@ -1316,24 +1306,6 @@ export type PostRagPipelinesByPipelineIdWorkflowsPublishResponses = {
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishResponse
   = PostRagPipelinesByPipelineIdWorkflowsPublishResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishResponses]
-
-export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewData = {
-  body: Parser
-  path: {
-    node_id: string
-    pipeline_id: string
-  }
-  query?: never
-  url: '/rag/pipelines/{pipeline_id}/workflows/published/datasource/nodes/{node_id}/preview'
-}
-
-export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses
-  = {
-    200: DataSourceContentPreviewResponse
-  }
-
-export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponse
-  = PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses[keyof PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdPreviewResponses]
 
 export type PostRagPipelinesByPipelineIdWorkflowsPublishedDatasourceNodesByNodeIdRunData = {
   body: DatasourceNodeRunPayload
