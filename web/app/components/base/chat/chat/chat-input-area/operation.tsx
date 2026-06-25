@@ -67,7 +67,7 @@ const Operation: FC<OperationProps> = ({
         <Button
           aria-label={sendButtonLabel ? undefined : t('operation.send', { ns: 'common' })}
           className={cn(
-            'ml-3',
+            'ml-3 focus-visible:ring-inset',
             sendButtonLabel ? 'px-3' : 'w-8 px-0',
           )}
           variant="primary"
