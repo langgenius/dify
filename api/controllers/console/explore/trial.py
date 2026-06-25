@@ -1,28 +1,24 @@
 import logging
-from typing import Any, Literal, cast
+from typing import Literal
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import (
-    AudioBinaryResponse,
-    AudioTranscriptResponse,
-    GeneratedAppResponse,
-    SimpleResultResponse,
-)
+from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse, SimpleResultResponse
 from controllers.common.fields import Parameters as ParametersResponse
 from controllers.common.fields import Site as SiteResponse
 from controllers.common.schema import (
-    get_or_create_model,
     query_params_from_model,
+    query_params_from_request,
     register_response_schema_models,
     register_schema_models,
 )
 from controllers.console import console_ns
+from controllers.console.app.app import AppDetailWithSite
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -36,6 +32,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
+from controllers.console.app.workflow import WorkflowResponse
 from controllers.console.app.wraps import get_app_model_with_trial
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
@@ -56,26 +53,13 @@ from core.errors.error import (
 )
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from fields.app_fields import (
-    app_detail_fields_with_site,
-    deleted_tool_fields,
-    model_config_fields,
-    site_fields,
-    tag_fields,
-)
-from fields.dataset_fields import dataset_fields
-from fields.member_fields import simple_account_fields
+from fields.base import ResponseModel
+from fields.dataset_fields import DatasetDetailResponse
 from fields.message_fields import SuggestedQuestionsResponse
-from fields.workflow_fields import (
-    conversation_variable_fields,
-    pipeline_variable_fields,
-    workflow_fields,
-    workflow_partial_fields,
-)
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import uuid_value
+from libs.helper import dump_response, uuid_value
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
@@ -102,57 +86,42 @@ from services.recommended_app_service import RecommendedAppService
 logger = logging.getLogger(__name__)
 
 
-model_config_model = get_or_create_model("TrialAppModelConfig", model_config_fields)
-workflow_partial_model = get_or_create_model("TrialWorkflowPartial", workflow_partial_fields)
-deleted_tool_model = get_or_create_model("TrialDeletedTool", deleted_tool_fields)
-tag_model = get_or_create_model("TrialTag", tag_fields)
-site_model = get_or_create_model("TrialSite", site_fields)
+class TrialDatasetListItemResponse(DatasetDetailResponse):
+    pass
 
-app_detail_fields_with_site_copy = app_detail_fields_with_site.copy()
-app_detail_fields_with_site_copy["model_config"] = fields.Nested(
-    model_config_model, attribute="app_model_config", allow_null=True
-)
-app_detail_fields_with_site_copy["workflow"] = fields.Nested(workflow_partial_model, allow_null=True)
-app_detail_fields_with_site_copy["deleted_tools"] = fields.List(fields.Nested(deleted_tool_model))
-app_detail_fields_with_site_copy["tags"] = fields.List(fields.Nested(tag_model))
-app_detail_fields_with_site_copy["site"] = fields.Nested(site_model)
-app_detail_with_site_model = get_or_create_model("TrialAppDetailWithSite", app_detail_fields_with_site_copy)
 
-simple_account_model = get_or_create_model("TrialSimpleAccount", simple_account_fields)
-conversation_variable_model = get_or_create_model("TrialConversationVariable", conversation_variable_fields)
-pipeline_variable_model = get_or_create_model("TrialPipelineVariable", pipeline_variable_fields)
+class TrialDatasetListResponse(ResponseModel):
+    data: list[TrialDatasetListItemResponse]
+    has_more: bool
+    limit: int
+    total: int
+    page: int
 
-workflow_fields_copy = workflow_fields.copy()
-workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
-workflow_fields_copy["updated_by"] = fields.Nested(
-    simple_account_model, attribute="updated_by_account", allow_null=True
-)
-workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
-workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = get_or_create_model("TrialWorkflow", workflow_fields_copy)
 
-dataset_model = get_or_create_model("TrialDataset", dataset_fields)
-dataset_list_model = get_or_create_model(
-    "TrialDatasetList",
-    {
-        "data": fields.List(fields.Nested(dataset_model)),
-        "has_more": fields.Boolean,
-        "limit": fields.Integer,
-        "total": fields.Integer,
-        "page": fields.Integer,
-    },
+register_response_schema_models(
+    console_ns,
+    ParametersResponse,
+    AppDetailWithSite,
+    AudioBinaryResponse,
+    AudioTranscriptResponse,
+    SimpleResultResponse,
+    SiteResponse,
+    SuggestedQuestionsResponse,
+    TrialDatasetListItemResponse,
+    TrialDatasetListResponse,
+    WorkflowResponse,
 )
 
 
 class WorkflowRunRequest(BaseModel):
     inputs: dict
-    files: list | None = Field(default=None)
+    files: list | None = None
 
 
 class ChatRequest(BaseModel):
     inputs: dict
     query: str
-    files: list | None = Field(default=None)
+    files: list | None = None
     conversation_id: str | None = None
     parent_message_id: str | None = None
     retriever_from: str = "explore_app"
@@ -168,7 +137,7 @@ class TextToSpeechRequest(BaseModel):
 class CompletionRequest(BaseModel):
     inputs: dict
     query: str = ""
-    files: list | None = Field(default=None)
+    files: list | None = None
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = "explore_app"
 
@@ -187,23 +156,13 @@ register_schema_models(
     CompletionRequest,
     TrialDatasetListQuery,
 )
-register_response_schema_models(
-    console_ns,
-    ParametersResponse,
-    AudioBinaryResponse,
-    AudioTranscriptResponse,
-    GeneratedAppResponse,
-    SimpleResultResponse,
-    SiteResponse,
-    SuggestedQuestionsResponse,
-)
 
 
 class TrialAppWorkflowRunApi(TrialAppResource):
     @trial_feature_enable
-    @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
     @with_current_user
+    @console_ns.expect(console_ns.models[WorkflowRunRequest.__name__])
+    @console_ns.response(200, "Success")
     def post(self, current_user: Account, trial_app):
         """
         Run workflow
@@ -224,6 +183,7 @@ class TrialAppWorkflowRunApi(TrialAppResource):
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -263,12 +223,12 @@ class TrialAppWorkflowTaskStopApi(TrialAppResource):
         # New graph engine command channel mechanism
         GraphEngineManager(redis_client).send_stop_command(task_id)
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 class TrialChatApi(TrialAppResource):
     @console_ns.expect(console_ns.models[ChatRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
@@ -297,6 +257,7 @@ class TrialChatApi(TrialAppResource):
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -355,7 +316,7 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return {"data": questions}
+        return dump_response(SuggestedQuestionsResponse, {"data": questions})
 
 
 class TrialChatAudioApi(TrialAppResource):
@@ -374,7 +335,7 @@ class TrialChatAudioApi(TrialAppResource):
 
             response = AudioService.transcript_asr(app_model=app_model, file=file, end_user=None)
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
-            return response
+            return dump_response(AudioTranscriptResponse, response)
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
             raise AppUnavailableError()
@@ -427,6 +388,7 @@ class TrialChatTextApi(TrialAppResource):
                 message_id=message_id,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore binary response
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logger.exception("App model config broken.")
@@ -456,7 +418,7 @@ class TrialChatTextApi(TrialAppResource):
 
 class TrialCompletionApi(TrialAppResource):
     @console_ns.expect(console_ns.models[CompletionRequest.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @trial_feature_enable
     @with_current_user
     def post(self, current_user: Account, trial_app):
@@ -480,6 +442,7 @@ class TrialCompletionApi(TrialAppResource):
             )
 
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -557,50 +520,49 @@ class TrialAppParameterApi(Resource):
 
 
 class AppApi(Resource):
-    @console_ns.response(200, "Success", app_detail_with_site_model)
     @get_app_model_with_trial(None)
-    @marshal_with(app_detail_with_site_model)
+    @console_ns.response(200, "App detail retrieved successfully", console_ns.models[AppDetailWithSite.__name__])
     def get(self, app_model):
         """Get app detail"""
 
         app_service = AppService()
         app_model = app_service.get_app(app_model)
 
-        return app_model
+        return dump_response(AppDetailWithSite, app_model)
 
 
 class AppWorkflowApi(Resource):
-    @console_ns.response(200, "Success", workflow_model)
     @get_app_model_with_trial(None)
-    @marshal_with(workflow_model)
+    @console_ns.response(200, "Workflow detail retrieved successfully", console_ns.models[WorkflowResponse.__name__])
     def get(self, app_model):
         """Get workflow detail"""
         if not app_model.workflow_id:
             raise AppUnavailableError()
 
         workflow = db.session.get(Workflow, app_model.workflow_id)
-        return workflow
+        return dump_response(WorkflowResponse, workflow)
 
 
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
-    @console_ns.response(200, "Success", dataset_list_model)
+    @console_ns.response(200, "Success", console_ns.models[TrialDatasetListResponse.__name__])
     @get_app_model_with_trial(None)
     def get(self, app_model):
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        ids = request.args.getlist("ids")
+        query = query_params_from_request(
+            TrialDatasetListQuery,
+            list_fields=("ids",),
+            use_defaults_for_malformed_ints=True,
+        )
 
         tenant_id = app_model.tenant_id
-        if ids:
-            datasets, total = DatasetService.get_datasets_by_ids(ids, tenant_id)
+        if query.ids:
+            datasets, total = DatasetService.get_datasets_by_ids(query.ids, tenant_id)
         else:
             raise NeedAddIdsError()
 
-        data = cast(list[dict[str, Any]], marshal(datasets, dataset_fields))
-
-        response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
-        return response
+        return TrialDatasetListResponse(
+            data=datasets, has_more=len(datasets) == query.limit, limit=query.limit, total=total or 0, page=query.page
+        ).model_dump(mode="json")
 
 
 console_ns.add_resource(TrialChatApi, "/trial-apps/<uuid:app_id>/chat-messages", endpoint="trial_app_chat_completion")
