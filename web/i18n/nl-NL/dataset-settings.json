@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Number of Keywords",
   "form.onSearchResults": "No members match your search query.\nTry your search again.",
   "form.permissions": "Permissions",
+  "form.permissionsAccessConfig": "Ga naar toegangsconfiguratie",
   "form.permissionsAllMember": "All team members",
   "form.permissionsInvitedMembers": "Partial team members",
   "form.permissionsOnlyMe": "Only me",
