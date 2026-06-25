@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -112,7 +111,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -138,7 +137,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert set(body.keys()) == {
         "site",
         "form_content",
@@ -167,7 +166,7 @@ def test_get_form_includes_site(monkeypatch: pytest.MonkeyPatch, app: Flask):
             "description": "desc",
             "copyright": None,
             "privacy_policy": None,
-            "custom_disclaimer": None,
+            "custom_disclaimer": "",
             "default_language": "en",
             "prompt_public": False,
             "show_workflow_steps": True,
@@ -256,7 +255,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -277,7 +276,7 @@ def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, a
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert body["inputs"] == [input_config.model_dump(mode="json") for input_config in runtime_inputs]
     service_mock.resolve_form_inputs.assert_called_once_with(form)
 
@@ -380,7 +379,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
         chat_color_theme_inverted=False,
         copyright=None,
         privacy_policy=None,
-        custom_disclaimer=None,
+        custom_disclaimer="",
         prompt_public=False,
         show_workflow_steps=True,
         use_icon_as_answer_icon=False,
@@ -403,7 +402,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
     with app.test_request_context("/api/form/human_input/token-1", method="GET"):
         response = HumanInputFormApi().get("token-1")
 
-    body = json.loads(response.get_data(as_text=True))
+    body = response
     assert set(body.keys()) == {
         "site",
         "form_content",
@@ -432,7 +431,7 @@ def test_get_form_allows_backstage_token(monkeypatch: pytest.MonkeyPatch, app: F
             "description": "desc",
             "copyright": None,
             "privacy_policy": None,
-            "custom_disclaimer": None,
+            "custom_disclaimer": "",
             "default_language": "en",
             "prompt_public": False,
             "show_workflow_steps": True,
