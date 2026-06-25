@@ -29,37 +29,8 @@ export type AudioTranscriptResponse = {
   text: string
 }
 
-export type ChatMessagePayload = {
-  conversation_id?: string | null
-  files?: Array<unknown> | null
-  inputs: {
-    [key: string]: unknown
-  }
-  model_config?: {
-    [key: string]: unknown
-  }
-  parent_message_id?: string | null
-  query: string
-  response_mode?: 'blocking' | 'streaming'
-  retriever_from?: string
-}
-
-export type GeneratedAppResponse = JsonValue
-
 export type SimpleResultResponse = {
   result: string
-}
-
-export type CompletionMessageExplorePayload = {
-  files?: Array<{
-    [key: string]: unknown
-  }> | null
-  inputs: {
-    [key: string]: unknown
-  }
-  query?: string
-  response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
 }
 
 export type ConversationInfiniteScrollPagination = {
@@ -153,18 +124,6 @@ export type TextToAudioPayload = {
 }
 
 export type AudioBinaryResponse = Blob | File
-
-export type WorkflowRunPayload = {
-  files?: Array<{
-    transfer_method: 'local_file' | 'remote_url'
-    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
-    upload_file_id?: string
-    url?: string
-  }> | null
-  inputs: {
-    [key: string]: unknown
-  }
-}
 
 export type InstalledAppResponse = {
   app: InstalledAppInfoResponse
@@ -477,22 +436,6 @@ export type PostInstalledAppsByInstalledAppIdAudioToTextResponses = {
 export type PostInstalledAppsByInstalledAppIdAudioToTextResponse
   = PostInstalledAppsByInstalledAppIdAudioToTextResponses[keyof PostInstalledAppsByInstalledAppIdAudioToTextResponses]
 
-export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
-  body: ChatMessagePayload
-  path: {
-    installed_app_id: string
-  }
-  query?: never
-  url: '/installed-apps/{installed_app_id}/chat-messages'
-}
-
-export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostInstalledAppsByInstalledAppIdChatMessagesResponse
-  = PostInstalledAppsByInstalledAppIdChatMessagesResponses[keyof PostInstalledAppsByInstalledAppIdChatMessagesResponses]
-
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopData = {
   body?: never
   path: {
@@ -509,22 +452,6 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses =
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponse
   = PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses[keyof PostInstalledAppsByInstalledAppIdChatMessagesByTaskIdStopResponses]
-
-export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
-  body: CompletionMessageExplorePayload
-  path: {
-    installed_app_id: string
-  }
-  query?: never
-  url: '/installed-apps/{installed_app_id}/completion-messages'
-}
-
-export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponse
-  = PostInstalledAppsByInstalledAppIdCompletionMessagesResponses[keyof PostInstalledAppsByInstalledAppIdCompletionMessagesResponses]
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesByTaskIdStopData = {
   body?: never
@@ -668,25 +595,6 @@ export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksRespons
 export type PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponse
   = PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses[keyof PostInstalledAppsByInstalledAppIdMessagesByMessageIdFeedbacksResponses]
 
-export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData = {
-  body?: never
-  path: {
-    installed_app_id: string
-    message_id: string
-  }
-  query: {
-    response_mode: 'blocking' | 'streaming'
-  }
-  url: '/installed-apps/{installed_app_id}/messages/{message_id}/more-like-this'
-}
-
-export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
-}
-
-export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
-  = GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses[keyof GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses]
-
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdSuggestedQuestionsData = {
   body?: never
   path: {
@@ -803,22 +711,6 @@ export type PostInstalledAppsByInstalledAppIdTextToAudioResponses = {
 
 export type PostInstalledAppsByInstalledAppIdTextToAudioResponse
   = PostInstalledAppsByInstalledAppIdTextToAudioResponses[keyof PostInstalledAppsByInstalledAppIdTextToAudioResponses]
-
-export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
-  body: WorkflowRunPayload
-  path: {
-    installed_app_id: string
-  }
-  query?: never
-  url: '/installed-apps/{installed_app_id}/workflows/run'
-}
-
-export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
-}
-
-export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponse
-  = PostInstalledAppsByInstalledAppIdWorkflowsRunResponses[keyof PostInstalledAppsByInstalledAppIdWorkflowsRunResponses]
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsTasksByTaskIdStopData = {
   body?: never
