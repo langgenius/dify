@@ -1612,6 +1612,7 @@ export const zSandboxUploadResponse = z.object({
  */
 export const zAccountWithRoleResponse = z.object({
   avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
@@ -2123,7 +2124,15 @@ export const zAppPagination = z.object({
 /**
  * Type
  */
-export const zType = z.enum(['github', 'marketplace', 'package'])
+export const zType = z.enum([
+  'app-selector',
+  'array[tools]',
+  'boolean',
+  'model-selector',
+  'secret-input',
+  'select',
+  'text-input',
+])
 
 /**
  * Github
@@ -3621,6 +3630,29 @@ export const zAppDetailWithSiteWritable = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
+})
+
+/**
+ * AccountWithRoleResponse
+ */
+export const zAccountWithRoleResponseWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  id: z.string(),
+  last_active_at: z.int().nullish(),
+  last_login_at: z.int().nullish(),
+  name: z.string(),
+  role: z.string(),
+  roles: z.array(z.record(z.string(), z.string())).optional(),
+  status: z.string(),
+})
+
+/**
+ * WorkflowCommentMentionUsersPayload
+ */
+export const zWorkflowCommentMentionUsersPayloadWritable = z.object({
+  users: z.array(zAccountWithRoleResponseWritable),
 })
 
 /**

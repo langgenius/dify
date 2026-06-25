@@ -141,9 +141,9 @@ Get account avatar url
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [EducationActivateResponse](#educationactivateresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Success |
 
 ### [GET] /account/education/autocomplete
 #### Parameters
@@ -1050,7 +1050,7 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceListResponse](#workspacelistresponse)<br> |
+| 200 | Success | **application/json**: [WorkspacePaginationResponse](#workspacepaginationresponse)<br> |
 
 ### [GET] /api-based-extension
 Get all API-based extensions for current tenant
@@ -9310,7 +9310,7 @@ Create a new plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
+| 200 | Endpoint created successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### ~~[POST] /workspaces/current/endpoints/create~~
@@ -9329,7 +9329,7 @@ Deprecated legacy alias for creating a plugin endpoint. Use POST /workspaces/cur
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint created successfully | **application/json**: [EndpointCreateResponse](#endpointcreateresponse)<br> |
+| 200 | Endpoint created successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### ~~[POST] /workspaces/current/endpoints/delete~~
@@ -9348,7 +9348,7 @@ Deprecated legacy alias for deleting a plugin endpoint. Use DELETE /workspaces/c
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
+| 200 | Endpoint deleted successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [POST] /workspaces/current/endpoints/disable
@@ -9364,7 +9364,7 @@ Disable a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint disabled successfully | **application/json**: [EndpointDisableResponse](#endpointdisableresponse)<br> |
+| 200 | Endpoint disabled successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [POST] /workspaces/current/endpoints/enable
@@ -9380,7 +9380,7 @@ Enable a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint enabled successfully | **application/json**: [EndpointEnableResponse](#endpointenableresponse)<br> |
+| 200 | Endpoint enabled successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [GET] /workspaces/current/endpoints/list
@@ -9414,7 +9414,7 @@ List endpoints for a specific plugin
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginEndpointListResponse](#pluginendpointlistresponse)<br> |
+| 200 | Success | **application/json**: [EndpointListResponse](#endpointlistresponse)<br> |
 
 ### ~~[POST] /workspaces/current/endpoints/update~~
 
@@ -9432,7 +9432,7 @@ Deprecated legacy alias for updating a plugin endpoint. Use PATCH /workspaces/cu
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
+| 200 | Endpoint updated successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [DELETE] /workspaces/current/endpoints/{id}
@@ -9448,7 +9448,7 @@ Delete a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint deleted successfully | **application/json**: [EndpointDeleteResponse](#endpointdeleteresponse)<br> |
+| 200 | Endpoint deleted successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [PATCH] /workspaces/current/endpoints/{id}
@@ -9470,7 +9470,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Endpoint updated successfully | **application/json**: [EndpointUpdateResponse](#endpointupdateresponse)<br> |
+| 200 | Endpoint updated successfully | **application/json**: [SuccessResponse](#successresponse)<br> |
 | 403 | Admin privileges required |  |
 
 ### [GET] /workspaces/current/members
@@ -9530,7 +9530,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MemberActionTenantResponse](#memberactiontenantresponse)<br> |
+| 200 | Success | **application/json**: [MemberActionResponse](#memberactionresponse)<br> |
 
 ### [POST] /workspaces/current/members/{member_id}/owner-transfer
 #### Parameters
@@ -11740,9 +11740,15 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
 
 ### [POST] /workspaces/custom-config/webapp-logo/upload
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -11760,7 +11766,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [WorkspaceMutationResponse](#workspacemutationresponse)<br> |
+| 200 | Success | **application/json**: [WorkspaceTenantResultResponse](#workspacetenantresultresponse)<br> |
 
 ### [POST] /workspaces/switch
 #### Request Body
@@ -12038,6 +12044,7 @@ Default namespace
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | avatar | string |  | No |
+| avatar_url | string |  | Yes |
 | created_at | integer |  | No |
 | email | string |  | Yes |
 | id | string |  | Yes |
@@ -13936,6 +13943,12 @@ AppMCPServer Status Enum
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSelectorScope | string |  |  |
+
 #### AppSiteResponse
 
 | Name | Type | Description | Required |
@@ -15809,12 +15822,6 @@ Request payload for bulk downloading documents as a zip archive.
 | role | string |  | Yes |
 | token | string |  | Yes |
 
-#### EducationActivateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| EducationActivateResponse | object |  |  |
-
 #### EducationAutocompleteQuery
 
 | Name | Type | Description | Required |
@@ -15924,29 +15931,32 @@ Request payload for bulk downloading documents as a zip archive.
 | plugin_unique_identifier | string |  | Yes |
 | settings | object |  | Yes |
 
-#### EndpointCreateResponse
+#### EndpointDeclaration
+
+declaration of an endpoint
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
+| hidden | boolean |  | No |
+| method | string |  | Yes |
+| path | string |  | Yes |
 
-#### EndpointDeleteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
-
-#### EndpointDisableResponse
+#### EndpointEntityWithInstance
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
-
-#### EndpointEnableResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
+| created_at | dateTime |  | Yes |
+| declaration | [EndpointProviderDeclaration](#endpointproviderdeclaration) |  | No |
+| enabled | boolean |  | Yes |
+| expired_at | dateTime |  | Yes |
+| hook_id | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plugin_id | string |  | Yes |
+| settings | object |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| url | string |  | Yes |
 
 #### EndpointIdPayload
 
@@ -15973,7 +15983,23 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| endpoints | [ object ] | Endpoint information | Yes |
+| endpoints | [ [EndpointEntityWithInstance](#endpointentitywithinstance) ] | Endpoint information | Yes |
+
+#### EndpointProviderDeclaration
+
+declaration of an endpoint group
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoints | [ [EndpointDeclaration](#endpointdeclaration) ] |  | No |
+| settings | [ [ProviderConfig](#providerconfig) ] |  | No |
+
+#### EndpointSettingsPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| settings | object |  | Yes |
 
 #### EndpointUpdatePayload
 
@@ -15981,12 +16007,6 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | name | string |  | Yes |
 | settings | object |  | Yes |
-
-#### EndpointUpdateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| success | boolean | Operation success | Yes |
 
 #### EnvSuggestion
 
@@ -17013,12 +17033,12 @@ Enum class for large language model mode.
 | marketplace_plugin_unique_identifier | string |  | Yes |
 | version | string |  | No |
 
-#### MemberActionTenantResponse
+#### MemberActionResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
-| tenant_id | string |  | Yes |
+| tenant_id | string |  | No |
 
 #### MemberBindingsResponse
 
@@ -17328,6 +17348,12 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
 
+#### ModelSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelSelectorScope | string |  |  |
+
 #### ModelStatus
 
 Enum class for model status.
@@ -17634,6 +17660,13 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | OpaqueObjectResponse | object |  |  |
+
+#### Option
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
 
 #### OutputErrorStrategy
 
@@ -18334,12 +18367,6 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | options |  |  | Yes |
 
-#### PluginEndpointListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| endpoints | [ object ] | Endpoint information | Yes |
-
 #### PluginInstallationPermissionModel
 
 | Name | Type | Description | Required |
@@ -18475,6 +18502,24 @@ Dataset Process Rule Mode
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
+
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [Type](#type) | The type of the credentials | Yes |
+| url | string |  | No |
 
 #### ProviderCredentialResponse
 
@@ -19783,6 +19828,7 @@ Tag type
 | created_at | integer |  | No |
 | current | boolean |  | Yes |
 | id | string |  | Yes |
+| last_opened_at | integer |  | No |
 | name | string |  | No |
 | plan | string |  | No |
 | status | string |  | No |
@@ -19910,6 +19956,12 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolProviderType | string | Enum class for tool provider |  |
+
+#### ToolSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolSelectorScope | string |  |  |
 
 #### TraceAppConfigResponse
 
@@ -21130,7 +21182,13 @@ Workflow tool configuration
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
-#### WorkspaceListResponse
+#### WorkspaceLogoUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string |  | Yes |
+
+#### WorkspacePaginationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21139,19 +21197,6 @@ Workflow tool configuration
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
-
-#### WorkspaceLogoUploadResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-
-#### WorkspaceMutationResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
-| tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
 
 #### WorkspacePermissionResponse
 
@@ -21166,6 +21211,13 @@ Workflow tool configuration
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
+
+#### WorkspaceTenantResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+| tenant | [TenantInfoResponse](#tenantinforesponse) |  | Yes |
 
 #### _AccessPolicyList
 

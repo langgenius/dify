@@ -119,20 +119,6 @@ export const zEducationStatusResponse = z.object({
 })
 
 /**
- * EducationActivatePayload
- */
-export const zEducationActivatePayload = z.object({
-  institution: z.string(),
-  role: z.string(),
-  token: z.string(),
-})
-
-/**
- * EducationActivateResponse
- */
-export const zEducationActivateResponse = z.record(z.string(), z.unknown())
-
-/**
  * EducationAutocompleteResponse
  */
 export const zEducationAutocompleteResponse = z.object({
@@ -295,13 +281,6 @@ export const zGetAccountDeleteVerifyResponse = zSimpleResultDataResponse
  * Success
  */
 export const zGetAccountEducationResponse = zEducationStatusResponse
-
-export const zPostAccountEducationBody = zEducationActivatePayload
-
-/**
- * Success
- */
-export const zPostAccountEducationResponse = zEducationActivateResponse
 
 export const zGetAccountEducationAutocompleteQuery = z.object({
   keywords: z.string(),

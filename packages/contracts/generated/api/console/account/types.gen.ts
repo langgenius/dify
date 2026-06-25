@@ -81,16 +81,6 @@ export type EducationStatusResponse = {
   result?: boolean | null
 }
 
-export type EducationActivatePayload = {
-  institution: string
-  role: string
-  token: string
-}
-
-export type EducationActivateResponse = {
-  [key: string]: unknown
-}
-
 export type EducationAutocompleteResponse = {
   curr_page?: number | null
   data?: Array<string>
@@ -292,20 +282,6 @@ export type GetAccountEducationResponses = {
 
 export type GetAccountEducationResponse
   = GetAccountEducationResponses[keyof GetAccountEducationResponses]
-
-export type PostAccountEducationData = {
-  body: EducationActivatePayload
-  path?: never
-  query?: never
-  url: '/account/education'
-}
-
-export type PostAccountEducationResponses = {
-  200: EducationActivateResponse
-}
-
-export type PostAccountEducationResponse
-  = PostAccountEducationResponses[keyof PostAccountEducationResponses]
 
 export type GetAccountEducationAutocompleteData = {
   body?: never

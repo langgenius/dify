@@ -1692,6 +1692,7 @@ export type WorkflowCommentBasic = {
 
 export type AccountWithRoleResponse = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -2001,7 +2002,14 @@ export type ModelConfigPartial = {
   updated_by?: string | null
 }
 
-export type Type = 'github' | 'marketplace' | 'package'
+export type Type
+  = | 'app-selector'
+    | 'array[tools]'
+    | 'boolean'
+    | 'model-selector'
+    | 'secret-input'
+    | 'select'
+    | 'text-input'
 
 export type Github = {
   github_plugin_unique_identifier: string
@@ -2660,6 +2668,10 @@ export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
 }
 
+export type WorkflowCommentMentionUsersPayloadWritable = {
+  users: Array<AccountWithRoleResponseWritable>
+}
+
 export type WorkflowCommentDetailWritable = {
   content: string
   created_at?: number | null
@@ -2737,6 +2749,21 @@ export type WorkflowCommentBasicWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type AccountWithRoleResponseWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  last_active_at?: number | null
+  last_login_at?: number | null
+  name: string
+  role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
+  status: string
 }
 
 export type WorkflowCommentAccountWritable = {
