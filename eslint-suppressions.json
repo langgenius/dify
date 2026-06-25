@@ -3274,7 +3274,7 @@
   },
   "web/app/components/develop/code.tsx": {
     "ts/no-explicit-any": {
-      "count": 7
+      "count": 6
     }
   },
   "web/app/components/develop/doc.tsx": {
@@ -3284,9 +3284,6 @@
   },
   "web/app/components/develop/md.tsx": {
     "jsx-a11y/no-redundant-roles": {
-      "count": 1
-    },
-    "ts/no-empty-object-type": {
       "count": 1
     },
     "ts/no-explicit-any": {
@@ -7222,7 +7219,7 @@
       "count": 1
     },
     "ts/no-explicit-any": {
-      "count": 13
+      "count": 9
     }
   },
   "web/service/datasets.ts": {
