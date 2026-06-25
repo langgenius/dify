@@ -237,7 +237,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, outsider)
+            DatasetService.check_dataset_permission(dataset, outsider, db_session_with_containers)
 
     def test_check_dataset_permission_rejects_only_me_dataset_for_non_creator(
         self, db_session_with_containers: Session
@@ -252,7 +252,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, member)
+            DatasetService.check_dataset_permission(dataset, member, db_session_with_containers)
 
     def test_check_dataset_permission_rejects_partial_team_user_without_binding(
         self, db_session_with_containers: Session
@@ -267,7 +267,7 @@ class TestDatasetServicePermissionsAndLifecycle:
         )
 
         with pytest.raises(NoPermissionError, match="do not have permission"):
-            DatasetService.check_dataset_permission(dataset, member)
+            DatasetService.check_dataset_permission(dataset, member, db_session_with_containers)
 
     def test_check_dataset_permission_allows_partial_team_creator(self, db_session_with_containers: Session):
         creator, tenant = DatasetPermissionIntegrationFactory.create_account_with_tenant(
@@ -281,7 +281,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
         )
 
-        DatasetService.check_dataset_permission(dataset, creator)
+        DatasetService.check_dataset_permission(dataset, creator, db_session_with_containers)
 
     def test_check_dataset_permission_allows_partial_team_member_with_binding(
         self, db_session_with_containers: Session
@@ -301,7 +301,7 @@ class TestDatasetServicePermissionsAndLifecycle:
             account_id=member.id,
         )
 
-        DatasetService.check_dataset_permission(dataset, member)
+        DatasetService.check_dataset_permission(dataset, member, db_session_with_containers)
 
     def test_check_dataset_operator_permission_rejects_only_me_for_non_creator(
         self, db_session_with_containers: Session
