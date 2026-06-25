@@ -830,7 +830,7 @@ class TestRagPipelineByIdApi:
             result = method(api, pipeline, "old-workflow")
 
         workflow_service.delete_workflow.assert_called_once()
-        assert result == ("", 204)
+        assert result == (None, 204)
 
     def test_delete_active_workflow_rejected(self, app: Flask) -> None:
         api = RagPipelineByIdApi()
