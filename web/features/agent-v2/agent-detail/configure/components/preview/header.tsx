@@ -81,6 +81,8 @@ export function AgentPreviewHeader({
         </SegmentedControl>
         <Infotip
           aria-label={modeTip}
+          placement="bottom"
+          sideOffset={2}
           className="size-5 rounded-md"
           iconClassName="size-4 text-text-tertiary"
           popupClassName="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
