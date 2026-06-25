@@ -268,8 +268,11 @@ class TestWeaviateVector(unittest.TestCase):
         wv._client = MagicMock()
         wv._client.collections.exists.side_effect = RuntimeError("create failed")
 
-        with patch.object(weaviate_vector_module.logger, "exception") as mock_exception,pytest.raises(RuntimeError, match="create failed"):
-                wv._create_collection()
+        with (
+            patch.object(weaviate_vector_module.logger, "exception") as mock_exception,
+            pytest.raises(RuntimeError, match="create failed"),
+        ):
+            wv._create_collection()
 
         mock_exception.assert_called_once()
 
@@ -834,8 +837,11 @@ class TestWeaviateVector(unittest.TestCase):
         wv._client.collections.use.return_value = mock_col
         mock_col.data.delete_by_id.side_effect = FakeUnexpectedStatusCodeError(500)
 
-        with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError),pytest.raises(FakeUnexpectedStatusCodeError, match="status=500"):
-                wv.delete_by_ids(["bad-id"])
+        with (
+            patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError),
+            pytest.raises(FakeUnexpectedStatusCodeError, match="status=500"),
+        ):
+            wv.delete_by_ids(["bad-id"])
 
     def test_json_serializable_converts_datetime(self):
         wv = WeaviateVector.__new__(WeaviateVector)

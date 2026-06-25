@@ -192,7 +192,9 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog: pytest.LogCaptureFixture):
+    def test_login_fails_when_rate_limited(
+        self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test login rejection when rate limit is exceeded.
 
@@ -222,7 +224,9 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
     @patch("controllers.console.auth.login.BillingService.is_email_in_freeze")
-    def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app: Flask, caplog: pytest.LogCaptureFixture):
+    def test_login_fails_when_account_frozen(
+        self, mock_is_frozen, mock_db, app: Flask, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test login rejection for frozen accounts.
 
