@@ -12271,7 +12271,11 @@ Default namespace
 | active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
+| app_id | string |  | No |
+| backing_app_id | string |  | No |
+| chat_endpoint | string |  | No |
 | draft | [AgentConfigDraftSummaryResponse](#agentconfigdraftsummaryresponse) |  | No |
+| hidden_app_backed | boolean |  | No |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
@@ -12306,6 +12310,7 @@ Default namespace
 | active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
+| backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -12314,6 +12319,7 @@ Default namespace
 | description | string |  | No |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
+| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -12369,6 +12375,7 @@ default (the config form sends the full desired feature state on save).
 | active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
+| backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
@@ -12376,6 +12383,7 @@ default (the config form sends the full desired feature state on save).
 | debug_conversation_id | string |  | No |
 | description | string |  | No |
 | has_draft_trigger | boolean |  | No |
+| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -12517,7 +12525,10 @@ Risk marker for CLI tool bootstrap commands.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | active_config_snapshot_id | string |  | No |
+| app_id | string |  | No |
+| backing_app_id | string |  | No |
 | description | string |  | Yes |
+| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -12525,6 +12536,7 @@ Risk marker for CLI tool bootstrap commands.
 | name | string |  | Yes |
 | role | string |  | No |
 | scope | [AgentScope](#agentscope) |  | Yes |
+| source | [AgentSource](#agentsource) |  | No |
 | status | [AgentStatus](#agentstatus) |  | Yes |
 
 #### AgentComposerBindingResponse
@@ -12957,10 +12969,12 @@ Supported icon storage formats for Agent roster entries.
 | app_id | string |  | No |
 | archived_at | integer |  | No |
 | archived_by | string |  | No |
+| backing_app_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
 | existing_node_ids | [ string ] |  | No |
+| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
@@ -13395,9 +13409,11 @@ section may be empty, which is how callers express "no knowledge layer".
 | app_id | string |  | No |
 | archived_at | integer |  | No |
 | archived_by | string |  | No |
+| backing_app_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
+| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
@@ -20706,8 +20722,11 @@ How a workflow node is bound to an Agent.
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | No |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | app_id | string |  | No |
+| backing_app_id | string |  | No |
 | binding | [AgentComposerBindingResponse](#agentcomposerbindingresponse) |  | No |
+| chat_endpoint | string |  | No |
 | effective_declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
+| hidden_app_backed | boolean |  | No |
 | impact_summary | [AgentComposerImpactResponse](#agentcomposerimpactresponse) |  | No |
 | node_id | string |  | No |
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | Yes |

@@ -625,10 +625,7 @@ class AgentRosterService:
         conversation_ids_by_agent_id: dict[str, str] = {}
         changed = False
         for agent in agents:
-            if (
-                agent.tenant_id != tenant_id
-                or agent.status != AgentStatus.ACTIVE
-            ):
+            if agent.tenant_id != tenant_id or agent.status != AgentStatus.ACTIVE:
                 continue
             conversation_ids_by_agent_id[agent.id] = self._get_or_create_agent_app_debug_conversation(
                 agent=agent,
