@@ -33,6 +33,7 @@ type Props = Readonly<{
   isHideRemoveBtn?: boolean
   onRemove?: () => void
   isSaving?: boolean
+  readonly?: boolean
 }>
 
 const ConfigCredential: FC<Props> = ({
@@ -42,6 +43,7 @@ const ConfigCredential: FC<Props> = ({
   isHideRemoveBtn,
   onRemove = noop,
   isSaving,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -118,6 +120,7 @@ const ConfigCredential: FC<Props> = ({
                           }}
                           formSchemas={credentialSchema}
                           isEditMode={true}
+                          readonly={readonly}
                           showOnVariableMap={{}}
                           validating={false}
                           inputClassName="bg-components-input-bg-normal!"
@@ -137,13 +140,15 @@ const ConfigCredential: FC<Props> = ({
                         />
                         <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex')}>
                           {
-                            (collection.is_team_authorization && !isHideRemoveBtn) && (
+                            (collection.is_team_authorization && !isHideRemoveBtn && !readonly) && (
                               <Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>
                             )
                           }
                           <div className="flex space-x-2">
                             <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-                            <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+                            {!readonly && (
+                              <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+                            )}
                           </div>
                         </div>
                       </>

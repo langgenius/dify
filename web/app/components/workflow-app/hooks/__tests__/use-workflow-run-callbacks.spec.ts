@@ -40,6 +40,7 @@ const createHandlers = () => ({
   handleWorkflowAgentLog: vi.fn(),
   handleWorkflowTextChunk: vi.fn(),
   handleWorkflowTextReplace: vi.fn(),
+  handleWorkflowReasoning: vi.fn(),
   handleWorkflowPaused: vi.fn(),
 })
 
@@ -252,6 +253,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     callbacks.onAgentLog?.({ node_id: 'node-1' } as never)
     callbacks.onTextChunk?.({ data: 'chunk' } as never)
     callbacks.onTextReplace?.({ text: 'replacement' } as never)
+    callbacks.onReasoning?.({ data: { reasoning: 'thinking', node_id: 'node-1' } } as never)
     callbacks.onHumanInputRequired?.({ node_id: 'node-1' } as never)
     callbacks.onHumanInputFormFilled?.({ node_id: 'node-1' } as never)
     callbacks.onHumanInputFormTimeout?.({ node_id: 'node-1' } as never)
@@ -295,6 +297,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onAgentLog).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextChunk).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextReplace).toHaveBeenCalled()
+    expect(handlers.handleWorkflowReasoning).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalled()
     expect(userCallbacks.onHumanInputRequired).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalled()
@@ -423,6 +426,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     finalCallbacks.onAgentLog?.({ node_id: 'node-1' } as never)
     finalCallbacks.onTextChunk?.({ data: 'chunk' } as never)
     finalCallbacks.onTextReplace?.({ text: 'replacement' } as never)
+    finalCallbacks.onReasoning?.({ data: { reasoning: 'thinking', node_id: 'node-1' } } as never)
     finalCallbacks.onHumanInputRequired?.({ node_id: 'node-1' } as never)
     finalCallbacks.onHumanInputFormFilled?.({ node_id: 'node-1' } as never)
     finalCallbacks.onHumanInputFormTimeout?.({ node_id: 'node-1' } as never)
@@ -461,6 +465,7 @@ describe('useWorkflowRun callbacks helpers', () => {
     expect(userCallbacks.onAgentLog).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextChunk).toHaveBeenCalled()
     expect(handlers.handleWorkflowTextReplace).toHaveBeenCalled()
+    expect(handlers.handleWorkflowReasoning).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputRequired).toHaveBeenCalled()
     expect(userCallbacks.onHumanInputRequired).toHaveBeenCalled()
     expect(handlers.handleWorkflowNodeHumanInputFormFilled).toHaveBeenCalled()

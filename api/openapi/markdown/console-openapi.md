@@ -4,10 +4,9 @@ Console management APIs for app configuration, monitoring, and administration
 ## Version: 1.0
 
 ### Available authorizations
-#### Bearer (API Key Authentication)
-Type: Bearer {your-api-key}  
-**Name:** Authorization  
-**In:** header  
+#### Bearer (HTTP, bearer)
+Use the Service API key as a Bearer token in the Authorization header.
+Bearer format: API_KEY
 
 ---
 ## console
@@ -311,7 +310,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app list | **application/json**: [AppPagination](#apppagination)<br> |
+| 200 | Agent app list | **application/json**: [AgentAppPagination](#agentapppagination)<br> |
 
 ### [POST] /agent
 #### Request Body
@@ -324,7 +323,7 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Agent app created successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 201 | Agent app created successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
 
@@ -349,7 +348,7 @@ Check if activation token is valid
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -363,20 +362,20 @@ Check if activation token is valid
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app detail | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app detail | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 
 ### [PUT] /agent/{agent_id}
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -388,9 +387,83 @@ Check if activation token is valid
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Agent app updated successfully | **application/json**: [AppDetailWithSite](#appdetailwithsite)<br> |
+| 200 | Agent app updated successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
 | 400 | Invalid request parameters |  |
 | 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/api-access
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API access | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
+
+### [POST] /agent/{agent_id}/api-enable
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentApiStatusPayload](#agentapistatuspayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API status updated | **application/json**: [AgentApiAccessResponse](#agentapiaccessresponse)<br> |
+| 403 | Insufficient permissions |  |
+
+### [GET] /agent/{agent_id}/api-keys
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent service API keys | **application/json**: [ApiKeyList](#apikeylist)<br> |
+
+### [POST] /agent/{agent_id}/api-keys
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent service API key created | **application/json**: [ApiKeyItem](#apikeyitem)<br> |
+| 400 | Maximum keys exceeded |  |
+
+### [DELETE] /agent/{agent_id}/api-keys/{api_key_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| api_key_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description |
+| ---- | ----------- |
+| 204 | Agent service API key deleted |
 
 ### [GET] /agent/{agent_id}/chat-messages
 Get Agent App chat messages for a conversation with pagination
@@ -399,7 +472,7 @@ Get Agent App chat messages for a conversation with pagination
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | conversation_id | query | Conversation ID | Yes | string |
 | first_id | query | First message ID for pagination | No | string |
 | limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
@@ -418,8 +491,8 @@ Get suggested questions for an Agent App message
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
-| message_id | path | Message ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| message_id | path | Message ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -435,7 +508,7 @@ Stop a running Agent App chat message generation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | task_id | path | Task ID to stop | Yes | string |
 
 #### Responses
@@ -449,7 +522,7 @@ Stop a running Agent App chat message generation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -462,7 +535,7 @@ Stop a running Agent App chat message generation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -481,7 +554,7 @@ Stop a running Agent App chat message generation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -494,7 +567,7 @@ Stop a running Agent App chat message generation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -508,6 +581,41 @@ Stop a running Agent App chat message generation
 | ---- | ----------- | ------ |
 | 200 | Agent app composer validation result | **application/json**: [AgentComposerValidateResponse](#agentcomposervalidateresponse)<br> |
 
+### [POST] /agent/{agent_id}/copy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [AgentAppCopyPayload](#agentappcopypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Agent app copied successfully | **application/json**: [AgentAppDetailWithSite](#agentappdetailwithsite)<br> |
+| 400 | Invalid request parameters |  |
+| 403 | Insufficient permissions |  |
+
+### [POST] /agent/{agent_id}/debug-conversation/refresh
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent debug conversation refreshed | **application/json**: [AgentDebugConversationRefreshResponse](#agentdebugconversationrefreshresponse)<br> |
+| 403 | Insufficient permissions |  |
+
 ### [GET] /agent/{agent_id}/drive/files
 List agent drive entries for an Agent App
 
@@ -515,7 +623,7 @@ List agent drive entries for an Agent App
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
 
 #### Responses
@@ -531,7 +639,7 @@ Time-limited external signed URL for one Agent App drive value
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
 
 #### Responses
@@ -547,7 +655,7 @@ Truncated text preview of one Agent App drive value
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
 
 #### Responses
@@ -556,6 +664,37 @@ Truncated text preview of one Agent App drive value
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
 
+### [GET] /agent/{agent_id}/drive/skills
+List drive-backed skills for an Agent App
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
+
+### [GET] /agent/{agent_id}/drive/skills/{skill_path}/inspect
+Inspect one drive-backed skill for slash-menu hover/detail UI
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
+
 ### [POST] /agent/{agent_id}/features
 Update an Agent App's presentation features (opener, follow-up, citations, ...)
 
@@ -563,7 +702,7 @@ Update an Agent App's presentation features (opener, follow-up, citations, ...)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -586,7 +725,7 @@ Create or update Agent App message feedback
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -608,7 +747,7 @@ Delete one Agent App drive file by key
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | key | query | Drive key, e.g. files/sample.pdf | Yes | string |
 
 #### Responses
@@ -624,7 +763,7 @@ Commit an uploaded file into the Agent App drive under files/<name>
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -638,6 +777,68 @@ Commit an uploaded file into the Agent App drive under files/<name>
 | ---- | ----------- | ------ |
 | 201 | File committed into the agent drive | **application/json**: [AgentDriveFileCommitResponse](#agentdrivefilecommitresponse)<br> |
 
+### [GET] /agent/{agent_id}/log-sources
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent log sources | **application/json**: [AgentLogSourceListResponse](#agentlogsourcelistresponse)<br> |
+
+### [GET] /agent/{agent_id}/logs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| keyword | query | Search query, answer, or conversation name | No | string |
+| limit | query | Page size | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
+| sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
+| source | query | Deprecated single source filter | No | string |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+| status | query | Deprecated single status filter | No | string |
+| statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent logs | **application/json**: [AgentLogListResponse](#agentloglistresponse)<br> |
+
+### [GET] /agent/{agent_id}/logs/{conversation_id}/messages
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| keyword | query | Search query, answer, or conversation name | No | string |
+| limit | query | Page size | No | integer, <br>**Default:** 20 |
+| page | query | Page number | No | integer, <br>**Default:** 1 |
+| sort_by | query | Sort by created_at or updated_at | No | string, <br>**Default:** updated_at |
+| sort_order | query | Sort order: asc or desc | No | string, <br>**Default:** desc |
+| source | query | Deprecated single source filter | No | string |
+| sources | query | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No | [ string ] |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+| status | query | Deprecated single status filter | No | string |
+| statuses | query | Filter by one or more of success, failed, paused | No | [ string ] |
+| agent_id | path |  | Yes | string (uuid) |
+| conversation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent log messages | **application/json**: [AgentLogMessageListResponse](#agentlogmessagelistresponse)<br> |
+
 ### [GET] /agent/{agent_id}/messages/{message_id}
 Get Agent App message details by ID
 
@@ -645,8 +846,8 @@ Get Agent App message details by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
-| message_id | path | Message ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+| message_id | path | Message ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -662,7 +863,7 @@ List workflow apps that reference this Agent App's bound Agent (read-only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -678,7 +879,7 @@ List a directory in an Agent App conversation sandbox
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | conversation_id | query | Agent App conversation ID | Yes | string |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
@@ -695,7 +896,7 @@ Read a text/binary preview file in an Agent App conversation sandbox
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | conversation_id | query | Agent App conversation ID | Yes | string |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
@@ -712,7 +913,7 @@ Upload one Agent App sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -726,37 +927,27 @@ Upload one Agent App sandbox file as a Dify ToolFile mapping
 | ---- | ----------- | ------ |
 | 200 | Uploaded | **application/json**: [SandboxUploadResponse](#sandboxuploadresponse)<br> |
 
-### [POST] /agent/{agent_id}/skills/standardize
-Validate + standardize a Skill into an Agent App drive
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
-| 400 | Invalid skill package or no bound agent |  |
-
 ### [POST] /agent/{agent_id}/skills/upload
-Upload + validate a Skill package for an Agent App
+Upload + standardize a Skill into an Agent App drive
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
+| 400 | Invalid skill package or no bound agent |  |
 
 ### [DELETE] /agent/{agent_id}/skills/{slug}
 Delete a standardized skill from an Agent App drive
@@ -765,7 +956,7 @@ Delete a standardized skill from an Agent App drive
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | slug | path | Skill slug (single path segment) | Yes | string |
 
 #### Responses
@@ -781,7 +972,7 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path | Agent ID | Yes | string |
+| agent_id | path | Agent ID | Yes | string (uuid) |
 | slug | path | Skill slug (single path segment) | Yes | string |
 
 #### Responses
@@ -790,12 +981,28 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 | ---- | ----------- | ------ |
 | 200 | Inference result (draft suggestions, nothing persisted) | **application/json**: [SkillToolInferenceResult](#skilltoolinferenceresult)<br> |
 
+### [GET] /agent/{agent_id}/statistics/summary
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| source | query | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No | string |
+| start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent monitoring summary and chart data | **application/json**: [AgentStatisticSummaryEnvelopeResponse](#agentstatisticsummaryenveloperesponse)<br> |
+
 ### [GET] /agent/{agent_id}/versions
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -808,14 +1015,28 @@ Infer CLI tool + ENV suggestions from a standardized Agent App skill
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string |
-| version_id | path |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+| version_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Agent version detail | **application/json**: [AgentConfigSnapshotDetailResponse](#agentconfigsnapshotdetailresponse)<br> |
+
+### [POST] /agent/{agent_id}/versions/{version_id}/restore
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+| version_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Agent version restored | **application/json**: [AgentConfigSnapshotRestoreResponse](#agentconfigsnapshotrestoreresponse)<br> |
 
 ### [GET] /all-workspaces
 #### Parameters
@@ -862,7 +1083,7 @@ Delete API-based extension
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| id | path | Extension ID | Yes | string |
+| id | path | Extension ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -877,7 +1098,7 @@ Get API-based extension by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| id | path | Extension ID | Yes | string |
+| id | path | Extension ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -892,7 +1113,7 @@ Update API-based extension
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| id | path | Extension ID | Yes | string |
+| id | path | Extension ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -931,7 +1152,7 @@ Update API-based extension
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| binding_id | path |  | Yes | string |
+| binding_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -1100,7 +1321,7 @@ Delete application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1118,7 +1339,7 @@ Get application details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1135,7 +1356,7 @@ Update application details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1160,7 +1381,7 @@ Get advanced chat workflow run list
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | last_id | query | Last run ID for pagination | No | string |
 | limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
 | status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
@@ -1179,7 +1400,7 @@ Get advanced chat workflow run list
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
 | time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
 | triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string, <br>**Available values:** "app-run", "debugging" |
@@ -1199,7 +1420,7 @@ Get human input form preview for advanced chat workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -1223,7 +1444,7 @@ Submit human input form preview for advanced chat workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -1247,7 +1468,7 @@ Run draft workflow iteration node for advanced chat
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -1273,7 +1494,7 @@ Run draft workflow loop node for advanced chat
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -1299,7 +1520,7 @@ Run draft workflow for advanced chat application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1322,7 +1543,7 @@ List agent drive entries (read-only inspector; one endpoint for both tabs)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 | prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
 
@@ -1339,7 +1560,7 @@ Time-limited external signed URL for one drive value (no streaming proxy)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
@@ -1356,7 +1577,7 @@ Truncated text preview of one drive value (binary-safe; SKILL.md is the main cas
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | key | query | Drive key, e.g. tender-analyzer/SKILL.md | Yes | string |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
@@ -1366,14 +1587,48 @@ Truncated text preview of one drive value (binary-safe; SKILL.md is the main cas
 | ---- | ----------- | ------ |
 | 200 | Preview | **application/json**: [AgentDrivePreviewResponse](#agentdrivepreviewresponse)<br> |
 
-### [DELETE] /apps/{app_id}/agent/files
-Delete one drive file by key; soul ref first, then the KV row (ENG-625 D5)
+### [GET] /apps/{app_id}/agent/drive/skills
+List drive-backed skills for the bound agent
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+| prefix | query | Key prefix filter: '<slug>/' for one skill, 'files/' for files | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skills | **application/json**: [AgentDriveSkillListResponse](#agentdriveskilllistresponse)<br> |
+
+### [GET] /apps/{app_id}/agent/drive/skills/{skill_path}/inspect
+Inspect one drive-backed skill for slash-menu hover/detail UI
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| skill_path | path | Skill path/slug, e.g. tender-analyzer | Yes | string |
+| node_id | query | Workflow node ID (workflow composer variant) | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Drive skill inspect view | **application/json**: [AgentDriveSkillInspectResponse](#agentdriveskillinspectresponse)<br> |
+
+### [DELETE] /apps/{app_id}/agent/files
+Delete one drive file by key via drive commit-null semantics
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
 | key | query | Drive key, e.g. files/sample.pdf | Yes | string |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
@@ -1392,7 +1647,7 @@ Commit an uploaded file into the agent drive under files/<name> (ENG-625 D3)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
 #### Request Body
@@ -1416,7 +1671,7 @@ Get agent execution logs for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | conversation_id | query | Conversation UUID | Yes | string |
 | message_id | query | Message UUID | Yes | string |
 
@@ -1427,53 +1682,39 @@ Get agent execution logs for an application
 | 200 | Agent logs retrieved successfully | **application/json**: [AgentLogResponse](#agentlogresponse)<br> |
 | 400 | Invalid request parameters |  |
 
-### [POST] /apps/{app_id}/agent/skills/standardize
-**Upload a Skill, validate it, and standardize it into the app agent's drive**
+### [POST] /apps/{app_id}/agent/skills/upload
+**Upload a Skill, validate it, and commit drive-backed skill files**
 
-Validate + standardize a Skill into the agent drive (ENG-594)
+Upload + standardize a Skill into the agent drive
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Skill standardized into drive | **application/json**: [AgentSkillStandardizeResponse](#agentskillstandardizeresponse)<br> |
+| 201 | Skill uploaded into drive | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
 | 400 | Invalid skill package or no bound agent |  |
 
-### [POST] /apps/{app_id}/agent/skills/upload
-**Validate an uploaded Skill package and persist the archive**
-
-Upload + validate a Skill package (.zip/.skill) and extract its manifest
-Returns a validated skill ref (to bind into the Agent soul config on save)
-plus its manifest. Standardizing into the agent drive is ENG-594.
-
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 201 | Skill validated | **application/json**: [AgentSkillUploadResponse](#agentskilluploadresponse)<br> |
-| 400 | Invalid skill package |  |
-
 ### [DELETE] /apps/{app_id}/agent/skills/{slug}
-Delete a standardized skill: soul ref first, then the <slug>/ drive prefix (ENG-625 D5)
+Delete a standardized skill by removing its known drive keys via commit-null
 
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | slug | path | Skill slug (single path segment) | Yes | string |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
@@ -1493,7 +1734,7 @@ Saving still goes through composer validation.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | slug | path | Skill slug (single path segment) | Yes | string |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 
@@ -1511,7 +1752,7 @@ Enable or disable annotation reply for an app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path | Action to perform (enable/disable) | Yes | string |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1534,8 +1775,8 @@ Get status of annotation reply action job
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path | Action type | Yes | string |
-| app_id | path | Application ID | Yes | string |
-| job_id | path | Job ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| job_id | path | Job ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1551,7 +1792,7 @@ Get annotation settings for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1567,8 +1808,8 @@ Update annotation settings for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_setting_id | path | Annotation setting ID | Yes | string |
-| app_id | path | Application ID | Yes | string |
+| annotation_setting_id | path | Annotation setting ID | Yes | string (uuid) |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1588,7 +1829,7 @@ Update annotation settings for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -1603,7 +1844,7 @@ Get annotations for an app with pagination
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | keyword | query | Search keyword | No | string |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -1622,7 +1863,7 @@ Create a new annotation for an app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1644,7 +1885,7 @@ Batch import annotations from CSV file with rate limiting and security checks
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1663,8 +1904,8 @@ Get status of batch import job
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| job_id | path | Job ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| job_id | path | Job ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1680,7 +1921,7 @@ Get count of message annotations for the app
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1695,7 +1936,7 @@ Export all annotations for an app with CSV injection protection
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1709,8 +1950,8 @@ Export all annotations for an app with CSV injection protection
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path |  | Yes | string |
-| app_id | path |  | Yes | string |
+| annotation_id | path |  | Yes | string (uuid) |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -1725,8 +1966,8 @@ Update or delete an annotation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path | Annotation ID | Yes | string |
-| app_id | path | Application ID | Yes | string |
+| annotation_id | path | Annotation ID | Yes | string (uuid) |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1749,8 +1990,8 @@ Get hit histories for an annotation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| annotation_id | path | Annotation ID | Yes | string |
-| app_id | path | Application ID | Yes | string |
+| annotation_id | path | Annotation ID | Yes | string (uuid) |
+| app_id | path | Application ID | Yes | string (uuid) |
 | limit | query | Page size | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
 
@@ -1768,7 +2009,7 @@ Enable or disable app API
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1790,7 +2031,7 @@ Transcript audio to text for chat messages
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | App ID | Yes | string |
+| app_id | path | App ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1807,7 +2048,7 @@ Get chat conversations with pagination, filtering and summary
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | keyword | query | Search keyword | No | string |
@@ -1830,8 +2071,8 @@ Delete a chat conversation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | path | Conversation ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| conversation_id | path | Conversation ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1848,8 +2089,8 @@ Get chat conversation details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | path | Conversation ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| conversation_id | path | Conversation ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1866,7 +2107,7 @@ Get chat messages for a conversation with pagination
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | conversation_id | query | Conversation ID | Yes | string |
 | first_id | query | First message ID for pagination | No | string |
 | limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
@@ -1885,8 +2126,8 @@ Get suggested questions for a message
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| message_id | path | Message ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| message_id | path | Message ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1902,7 +2143,7 @@ Stop a running chat message generation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | task_id | path | Task ID to stop | Yes | string |
 
 #### Responses
@@ -1918,7 +2159,7 @@ Get completion conversations with pagination and filtering
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | keyword | query | Search keyword | No | string |
@@ -1940,8 +2181,8 @@ Delete a completion conversation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | path | Conversation ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| conversation_id | path | Conversation ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1958,8 +2199,8 @@ Get completion conversation details with messages
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| conversation_id | path | Conversation ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| conversation_id | path | Conversation ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -1976,7 +2217,7 @@ Generate completion message for debugging
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -1999,7 +2240,7 @@ Stop a running completion message generation
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | task_id | path | Task ID to stop | Yes | string |
 
 #### Responses
@@ -2015,7 +2256,7 @@ Get conversation variables for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | conversation_id | query | Conversation ID to filter variables | Yes | string |
 
 #### Responses
@@ -2035,7 +2276,7 @@ Convert Completion App to Workflow App
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2060,7 +2301,7 @@ Create a copy of an existing application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID to copy | Yes | string |
+| app_id | path | Application ID to copy | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2084,7 +2325,7 @@ Export application configuration as DSL
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID to export | Yes | string |
+| app_id | path | Application ID to export | Yes | string (uuid) |
 | include_secret | query | Include secrets in export | No | boolean |
 | workflow_id | query | Specific workflow ID to export | No | string |
 
@@ -2102,7 +2343,7 @@ Create or update message feedback (like/dislike)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2125,7 +2366,7 @@ Export user feedback data for Google Sheets
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end_date | query | End date (YYYY-MM-DD) | No | string |
 | format | query | Export format | No | string, <br>**Available values:** "csv", "json", <br>**Default:** csv |
 | from_source | query | Filter by feedback source | No | string, <br>**Available values:** "admin", "user" |
@@ -2148,7 +2389,7 @@ Update application icon
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2170,8 +2411,8 @@ Get message details by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| message_id | path | Message ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| message_id | path | Message ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2189,7 +2430,7 @@ Update application model configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2212,7 +2453,7 @@ Check if app name is available
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2233,7 +2474,7 @@ Check if app name is available
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -2248,7 +2489,7 @@ Get MCP server configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2263,7 +2504,7 @@ Create MCP server configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2285,7 +2526,7 @@ Update MCP server configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2308,7 +2549,7 @@ Update application site configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2331,7 +2572,7 @@ Enable or disable app site
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2353,7 +2594,7 @@ Reset access token for application site
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2370,7 +2611,7 @@ Remove the current account's star from an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2386,7 +2627,7 @@ Star an application for the current account
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2402,7 +2643,7 @@ Get average response time statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2419,7 +2660,7 @@ Get average session interaction statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2436,7 +2677,7 @@ Get daily conversation statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2453,7 +2694,7 @@ Get daily terminal/end-user statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2470,7 +2711,7 @@ Get daily message statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2487,7 +2728,7 @@ Get daily token cost statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2504,7 +2745,7 @@ Get tokens per second statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2521,7 +2762,7 @@ Get user satisfaction rate statistics for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
@@ -2538,7 +2779,7 @@ Convert text to speech for chat messages
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | App ID | Yes | string |
+| app_id | path | App ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2560,7 +2801,7 @@ Get available TTS voices for a specific language
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | App ID | Yes | string |
+| app_id | path | App ID | Yes | string (uuid) |
 | language | query | Language code | Yes | string |
 
 #### Responses
@@ -2579,7 +2820,7 @@ Get app tracing configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2594,7 +2835,7 @@ Update app tracing configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2618,7 +2859,7 @@ Delete an existing tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | tracing_provider | query | Tracing provider name | Yes | string |
 
 #### Responses
@@ -2635,7 +2876,7 @@ Get tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | tracing_provider | query | Tracing provider name | Yes | string |
 
 #### Responses
@@ -2654,7 +2895,7 @@ Update an existing tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2678,7 +2919,7 @@ Create a new tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2700,7 +2941,7 @@ Create a new tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2721,7 +2962,7 @@ Create a new tracing configuration for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -2738,7 +2979,7 @@ Get workflow application execution logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | created_at__after | query | Filter logs created after this timestamp | No | dateTime |
 | created_at__before | query | Filter logs created before this timestamp | No | dateTime |
 | created_by_account | query | Filter by account | No | string |
@@ -2764,7 +3005,7 @@ Get workflow archived execution logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | created_at__after | query | Filter logs created after this timestamp | No | dateTime |
 | created_at__before | query | Filter logs created before this timestamp | No | dateTime |
 | created_by_account | query | Filter by account | No | string |
@@ -2788,7 +3029,7 @@ Get workflow archived execution logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | last_id | query | Last run ID for pagination | No | string |
 | limit | query | Number of items per page (1-100) | No | integer, <br>**Default:** 20 |
 | status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
@@ -2807,7 +3048,7 @@ Get workflow archived execution logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | status | query | Workflow run status filter | No | string, <br>**Available values:** "failed", "partial-succeeded", "running", "stopped", "succeeded" |
 | time_range | query | Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), 30m (30 minutes), 30s (30 seconds). Filters by created_at field. | No | string |
 | triggered_from | query | Filter by trigger source: debugging or app-run. Default: debugging | No | string, <br>**Available values:** "app-run", "debugging" |
@@ -2827,7 +3068,7 @@ Stop running workflow task
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | task_id | path | Task ID | Yes | string |
 
 #### Responses
@@ -2845,8 +3086,8 @@ Stop running workflow task
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2862,8 +3103,8 @@ Generate a download URL for an archived workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2878,8 +3119,8 @@ Generate a download URL for an archived workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2895,9 +3136,9 @@ List a directory in a workflow Agent node sandbox
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
-| workflow_run_id | path | Workflow run ID | Yes | string |
+| workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
 | node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
 | path | query | Directory path relative to the sandbox workspace | No | string, <br>**Default:** . |
 
@@ -2914,9 +3155,9 @@ Read a text/binary preview file in a workflow Agent node sandbox
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Workflow Agent node ID | Yes | string |
-| workflow_run_id | path | Workflow run ID | Yes | string |
+| workflow_run_id | path | Workflow run ID | Yes | string (uuid) |
 | node_execution_id | query | Optional workflow node execution ID. When omitted, the latest active session for the node is used. | No | string |
 | path | query | File path relative to the sandbox workspace | Yes | string |
 
@@ -2933,9 +3174,9 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
-| workflow_run_id | path |  | Yes | string |
+| workflow_run_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2956,7 +3197,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -2971,7 +3212,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -2992,7 +3233,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3007,7 +3248,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | comment_id | path | Comment ID | Yes | string |
 
 #### Responses
@@ -3023,7 +3264,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | comment_id | path | Comment ID | Yes | string |
 
 #### Responses
@@ -3039,7 +3280,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | comment_id | path | Comment ID | Yes | string |
 
 #### Request Body
@@ -3061,7 +3302,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | comment_id | path | Comment ID | Yes | string |
 
 #### Request Body
@@ -3083,7 +3324,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | comment_id | path | Comment ID | Yes | string |
 | reply_id | path | Reply ID | Yes | string |
 
@@ -3100,7 +3341,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | comment_id | path | Comment ID | Yes | string |
 | reply_id | path | Reply ID | Yes | string |
 
@@ -3123,7 +3364,7 @@ Upload one workflow Agent sandbox file as a Dify ToolFile mapping
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | comment_id | path | Comment ID | Yes | string |
 
 #### Responses
@@ -3139,7 +3380,7 @@ Get workflow average app interaction statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
@@ -3156,7 +3397,7 @@ Get workflow daily runs statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
@@ -3173,7 +3414,7 @@ Get workflow daily terminals statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
@@ -3190,7 +3431,7 @@ Get workflow daily token cost statistics
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | end | query | End date and time (YYYY-MM-DD HH:MM) | No | string |
 | start | query | Start date and time (YYYY-MM-DD HH:MM) | No | string |
 
@@ -3209,7 +3450,7 @@ Get all published workflows for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | limit | query |  | No | integer, <br>**Default:** 10 |
 | named_only | query |  | No | boolean |
 | page | query |  | No | integer, <br>**Default:** 1 |
@@ -3230,7 +3471,7 @@ Get default block configurations for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3247,7 +3488,7 @@ Get default block configuration by type
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | block_type | path | Block type | Yes | string |
 | q | query |  | No | string |
 
@@ -3267,7 +3508,7 @@ Get draft workflow for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3285,7 +3526,7 @@ Sync draft workflow configuration
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3308,7 +3549,7 @@ Get conversation variables for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3324,7 +3565,7 @@ Update conversation variables for workflow draft
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3347,7 +3588,7 @@ Get environment variables for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3363,7 +3604,7 @@ Update environment variables for workflow draft
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3384,7 +3625,7 @@ Update draft workflow features
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3407,7 +3648,7 @@ Test human input delivery for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -3431,7 +3672,7 @@ Get human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -3455,7 +3696,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -3477,7 +3718,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -3501,7 +3742,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -3523,7 +3764,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Responses
@@ -3537,7 +3778,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Request Body
@@ -3557,7 +3798,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Responses
@@ -3566,12 +3807,32 @@ Submit human input form preview for workflow
 | ---- | ----------- | ------ |
 | 200 | Workflow agent composer candidates | **application/json**: [AgentComposerCandidatesResponse](#agentcomposercandidatesresponse)<br> |
 
+### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| node_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowComposerCopyFromRosterPayload](#workflowcomposercopyfromrosterpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow roster agent copied to inline agent | **application/json**: [WorkflowAgentComposerResponse](#workflowagentcomposerresponse)<br> |
+
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Request Body
@@ -3591,7 +3852,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Request Body
@@ -3611,7 +3872,7 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Request Body
@@ -3633,7 +3894,7 @@ Get last run result for draft workflow node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Responses
@@ -3651,7 +3912,7 @@ Get last run result for draft workflow node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Request Body
@@ -3675,7 +3936,7 @@ Get last run result for draft workflow node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Responses
@@ -3693,7 +3954,7 @@ Delete all variables for a specific node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
 #### Responses
@@ -3709,7 +3970,7 @@ Get variables for a specific node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID | Yes | string |
 
 #### Responses
@@ -3725,7 +3986,7 @@ Get variables for a specific node
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3747,8 +4008,8 @@ Snapshot of every node's declared outputs for a draft workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3764,8 +4025,8 @@ Server-Sent Events stream of inspector deltas for a draft workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3781,9 +4042,9 @@ One node's declared outputs for a draft workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID inside the workflow graph | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3799,10 +4060,10 @@ Full value for one declared output, including signed download URL for files.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID inside the workflow graph | Yes | string |
 | output_name | path | Declared output name as exposed by Composer | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3818,7 +4079,7 @@ Get system variables for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3833,7 +4094,7 @@ Get system variables for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3856,7 +4117,7 @@ Get system variables for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3879,7 +4140,7 @@ Delete all draft workflow variables
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -3896,7 +4157,7 @@ Get draft workflow variables
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | limit | query | Items per page | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
 
@@ -3913,8 +4174,8 @@ Delete a workflow variable
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -3930,8 +4191,8 @@ Get a specific workflow variable
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| variable_id | path | Variable ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| variable_id | path | Variable ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3947,8 +4208,8 @@ Update a workflow variable
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -3970,8 +4231,8 @@ Reset a workflow variable to its default value
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| variable_id | path | Variable ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| variable_id | path | Variable ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -3990,7 +4251,7 @@ Get published workflow for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4005,7 +4266,7 @@ Get published workflow for an application
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -4026,8 +4287,8 @@ Snapshot of every node's declared outputs for a published workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4043,8 +4304,8 @@ Server-Sent Events stream of inspector deltas for a published workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4060,9 +4321,9 @@ One node's declared outputs for a published workflow run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID inside the workflow graph | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4078,10 +4339,10 @@ Full value for one declared output of a published run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | node_id | path | Node ID inside the workflow graph | Yes | string |
 | output_name | path | Declared output name as exposed by Composer | Yes | string |
-| run_id | path | Workflow run ID | Yes | string |
+| run_id | path | Workflow run ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4098,7 +4359,7 @@ Full value for one declared output of a published run.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | query |  | Yes | string |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4113,7 +4374,7 @@ Full value for one declared output of a published run.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | workflow_id | path |  | Yes | string |
 
 #### Responses
@@ -4131,7 +4392,7 @@ Update workflow by ID
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | workflow_id | path | Workflow ID | Yes | string |
 
 #### Request Body
@@ -4155,7 +4416,7 @@ Restore a published workflow version into the draft workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path | Application ID | Yes | string |
+| app_id | path | Application ID | Yes | string (uuid) |
 | workflow_id | path | Published workflow ID | Yes | string |
 
 #### Responses
@@ -4173,7 +4434,7 @@ Restore a published workflow version into the draft workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| resource_id | path | App ID | Yes | string |
+| resource_id | path | App ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4188,7 +4449,7 @@ Restore a published workflow version into the draft workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| resource_id | path | App ID | Yes | string |
+| resource_id | path | App ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4204,8 +4465,8 @@ Restore a published workflow version into the draft workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| api_key_id | path | API key ID | Yes | string |
-| resource_id | path | App ID | Yes | string |
+| api_key_id | path | API key ID | Yes | string (uuid) |
+| resource_id | path | App ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4220,7 +4481,7 @@ Refresh MCP server configuration and regenerate server code
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| server_id | path | Server ID | Yes | string |
+| server_id | path | Server ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4477,7 +4738,7 @@ Get compliance document download link
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
-| binding_id | path |  | Yes | string |
+| binding_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4491,7 +4752,7 @@ Get compliance document download link
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
-| binding_id | path |  | Yes | string |
+| binding_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4568,7 +4829,7 @@ Delete dataset API key
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| api_key_id | path | API key ID | Yes | string |
+| api_key_id | path | API key ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4581,7 +4842,7 @@ Delete dataset API key
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| job_id | path |  | Yes | string |
+| job_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4594,7 +4855,7 @@ Delete dataset API key
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| job_id | path |  | Yes | string |
+| job_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -4660,7 +4921,7 @@ Get external knowledge API templates
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| external_knowledge_api_id | path |  | Yes | string |
+| external_knowledge_api_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4675,7 +4936,7 @@ Get external knowledge API template details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| external_knowledge_api_id | path | External knowledge API ID | Yes | string |
+| external_knowledge_api_id | path | External knowledge API ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4689,7 +4950,7 @@ Get external knowledge API template details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| external_knowledge_api_id | path |  | Yes | string |
+| external_knowledge_api_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -4710,7 +4971,7 @@ Check if external knowledge API is being used
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| external_knowledge_api_id | path | External knowledge API ID | Yes | string |
+| external_knowledge_api_id | path | External knowledge API ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4813,7 +5074,7 @@ Get mock dataset retrieval settings by vector type
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4828,7 +5089,7 @@ Get dataset details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4845,7 +5106,7 @@ Update dataset details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -4866,7 +5127,7 @@ Update dataset details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 | status | path |  | Yes | string |
 
 #### Responses
@@ -4882,7 +5143,7 @@ Get dataset auto disable logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -4897,7 +5158,7 @@ Get dataset auto disable logs
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | batch | path |  | Yes | string |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4911,7 +5172,7 @@ Get dataset auto disable logs
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | batch | path |  | Yes | string |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4924,7 +5185,7 @@ Get dataset auto disable logs
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -4939,7 +5200,7 @@ Get documents in a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 | fetch | query | Fetch full details (default: false) | No | string |
 | keyword | query | Search keyword | No | string |
 | limit | query | Number of items per page (default: 20) | No | string |
@@ -4958,7 +5219,7 @@ Get documents in a dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -4981,7 +5242,7 @@ Download selected dataset documents as a single ZIP archive (upload-file only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5007,7 +5268,7 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5029,7 +5290,7 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5049,7 +5310,7 @@ then asynchronously generates summary indexes for the provided documents.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5062,8 +5323,8 @@ then asynchronously generates summary indexes for the provided documents.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5078,8 +5339,8 @@ Get document details
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 | metadata | query | Metadata inclusion (all/only/without) | No | string |
 
 #### Responses
@@ -5096,8 +5357,8 @@ Get a signed download URL for a dataset document's original uploaded file
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5112,8 +5373,8 @@ Estimate document indexing cost
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5130,8 +5391,8 @@ Get document indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5147,8 +5408,8 @@ Update document metadata
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5169,8 +5430,8 @@ Update document metadata
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5183,8 +5444,8 @@ Update document metadata
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5199,8 +5460,8 @@ Update document metadata
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5215,8 +5476,8 @@ Update document metadata
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5232,8 +5493,8 @@ Update document processing status (pause/resume)
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path | Action to perform (pause/resume) | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5248,8 +5509,8 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5268,8 +5529,8 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5289,8 +5550,8 @@ Update document processing status (pause/resume)
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path | Action | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 | segment_id | query | Segment IDs | No | [ string ] |
 
 #### Responses
@@ -5304,8 +5565,8 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 | segment_id | query | Segment IDs | No | [ string ] |
 
 #### Responses
@@ -5319,8 +5580,8 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 | enabled | query |  | No | string, <br>**Default:** all |
 | hit_count_gte | query |  | No | integer |
 | keyword | query |  | No | string |
@@ -5339,8 +5600,8 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5353,8 +5614,8 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5373,9 +5634,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Segment ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5388,9 +5649,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Segment ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5409,9 +5670,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
@@ -5427,9 +5688,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5448,9 +5709,9 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5469,10 +5730,10 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string (uuid) |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5485,10 +5746,10 @@ Update document processing status (pause/resume)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| child_chunk_id | path | Child chunk ID | Yes | string |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
-| segment_id | path | Parent segment ID | Yes | string |
+| child_chunk_id | path | Child chunk ID | Yes | string (uuid) |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
+| segment_id | path | Parent segment ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5519,8 +5780,8 @@ Returns:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
-| document_id | path | Document ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
+| document_id | path | Document ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5536,8 +5797,8 @@ Returns:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| document_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| document_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5552,7 +5813,7 @@ Get dataset error documents
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5568,7 +5829,7 @@ Test external knowledge retrieval for dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5591,7 +5852,7 @@ Test dataset knowledge retrieval
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5614,7 +5875,7 @@ Get dataset indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5627,7 +5888,7 @@ Get dataset indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5640,7 +5901,7 @@ Get dataset indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5660,7 +5921,7 @@ Get dataset indexing status
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | action | path |  | Yes | string |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5673,8 +5934,8 @@ Get dataset indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| metadata_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| metadata_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5687,8 +5948,8 @@ Get dataset indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
-| metadata_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
+| metadata_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5707,7 +5968,7 @@ Get dataset indexing status
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5722,7 +5983,7 @@ Get dataset permission user list
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5739,7 +6000,7 @@ Get dataset query history
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5754,7 +6015,7 @@ Get applications related to dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5769,7 +6030,7 @@ Get applications related to dataset
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -5790,7 +6051,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path | Dataset ID | Yes | string |
+| dataset_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5805,7 +6066,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| resource_id | path | Dataset ID | Yes | string |
+| resource_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5820,7 +6081,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| resource_id | path | Dataset ID | Yes | string |
+| resource_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5836,8 +6097,8 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| api_key_id | path | API key ID | Yes | string |
-| resource_id | path | Dataset ID | Yes | string |
+| api_key_id | path | API key ID | Yes | string (uuid) |
+| resource_id | path | Dataset ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -5941,7 +6202,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -5993,7 +6254,7 @@ Check if dataset is in use
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| file_id | path |  | Yes | string |
+| file_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6135,7 +6396,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6148,7 +6409,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6167,7 +6428,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6180,7 +6441,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6199,7 +6460,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 | task_id | path |  | Yes | string |
 
 #### Responses
@@ -6213,7 +6474,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6232,7 +6493,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 | task_id | path |  | Yes | string |
 
 #### Responses
@@ -6249,7 +6510,7 @@ Request body:
 | last_id | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | pinned | query |  | No | boolean |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6262,8 +6523,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path |  | Yes | string |
-| installed_app_id | path |  | Yes | string |
+| c_id | path |  | Yes | string (uuid) |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6276,8 +6537,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path |  | Yes | string |
-| installed_app_id | path |  | Yes | string |
+| c_id | path |  | Yes | string (uuid) |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6296,8 +6557,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path |  | Yes | string |
-| installed_app_id | path |  | Yes | string |
+| c_id | path |  | Yes | string (uuid) |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6310,8 +6571,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| c_id | path |  | Yes | string |
-| installed_app_id | path |  | Yes | string |
+| c_id | path |  | Yes | string (uuid) |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6324,24 +6585,24 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| conversation_id | query | Conversation UUID | Yes | string |
-| first_id | query | First message ID for pagination | No | string |
-| limit | query | Number of messages to return (1-100) | No | integer, <br>**Default:** 20 |
-| installed_app_id | path |  | Yes | string |
+| conversation_id | query | Conversation ID. | Yes | string |
+| first_id | query | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No | string |
+| limit | query | Number of chat history messages to return per request. | No | integer, <br>**Default:** 20 |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [MessageInfiniteScrollPagination](#messageinfinitescrollpagination)<br> |
+| 200 | Success | **application/json**: [ExploreMessageInfiniteScrollPagination](#exploremessageinfinitescrollpagination)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/messages/{message_id}/feedbacks
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-| message_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6361,8 +6622,8 @@ Request body:
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | response_mode | query |  | Yes | string, <br>**Available values:** "blocking", "streaming" |
-| installed_app_id | path |  | Yes | string |
-| message_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6375,8 +6636,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-| message_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6391,7 +6652,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6406,7 +6667,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6421,7 +6682,7 @@ Request body:
 | ---- | ---------- | ----------- | -------- | ------ |
 | last_id | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6434,7 +6695,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6453,8 +6714,8 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
-| message_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -6467,7 +6728,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6488,7 +6749,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -6509,7 +6770,7 @@ Request body:
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| installed_app_id | path |  | Yes | string |
+| installed_app_id | path |  | Yes | string (uuid) |
 | task_id | path |  | Yes | string |
 
 #### Responses
@@ -6619,7 +6880,7 @@ Mark a notification as dismissed for the current user.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | credential_id | query | Credential ID | Yes | string |
-| page_id | path |  | Yes | string |
+| page_id | path |  | Yes | string (uuid) |
 | page_type | path |  | Yes | string |
 
 #### Responses
@@ -6719,7 +6980,7 @@ Sync data from OAuth data source
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| binding_id | path | Data source binding ID | Yes | string |
+| binding_id | path | Data source binding ID | Yes | string (uuid) |
 | provider | path | Data source provider name (notion) | Yes | string |
 
 #### Responses
@@ -7032,7 +7293,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| dataset_id | path |  | Yes | string |
+| dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7082,7 +7343,7 @@ Initiate OAuth login process
 | ---- | ---------- | ----------- | -------- | ------ |
 | last_id | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7097,7 +7358,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 | task_id | path |  | Yes | string |
 
 #### Responses
@@ -7113,8 +7374,8 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| run_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7129,8 +7390,8 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| run_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7149,7 +7410,7 @@ Initiate OAuth login process
 | named_only | query |  | No | boolean |
 | page | query |  | No | integer, <br>**Default:** 1 |
 | user_id | query |  | No | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7165,7 +7426,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7182,7 +7443,7 @@ Initiate OAuth login process
 | ---- | ---------- | ----------- | -------- | ------ |
 | q | query |  | No | string |
 | block_type | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7197,7 +7458,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7213,7 +7474,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7235,7 +7496,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7256,7 +7517,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7277,7 +7538,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7293,7 +7554,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7315,7 +7576,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7335,7 +7596,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7351,7 +7612,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7371,7 +7632,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7385,7 +7646,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7401,7 +7662,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | query |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7417,7 +7678,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | query |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7432,7 +7693,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7451,7 +7712,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7464,7 +7725,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7481,7 +7742,7 @@ Initiate OAuth login process
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7494,8 +7755,8 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7508,8 +7769,8 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7522,8 +7783,8 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7542,8 +7803,8 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7559,7 +7820,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7574,7 +7835,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7590,7 +7851,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7612,7 +7873,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7634,7 +7895,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | query |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7650,7 +7911,7 @@ Initiate OAuth login process
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | query |  | Yes | string |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7665,7 +7926,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7686,7 +7947,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 | workflow_id | path |  | Yes | string |
 
 #### Responses
@@ -7702,7 +7963,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 | workflow_id | path |  | Yes | string |
 
 #### Request Body
@@ -7725,7 +7986,7 @@ Initiate OAuth login process
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| pipeline_id | path |  | Yes | string |
+| pipeline_id | path |  | Yes | string (uuid) |
 | workflow_id | path |  | Yes | string |
 
 #### Responses
@@ -7840,7 +8101,7 @@ Generate structured output rules using LLM
 | ---- | ---------- | ----------- | -------- | ------ |
 | last_id | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7858,7 +8119,7 @@ command channel for backward compatibility.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 | task_id | path |  | Yes | string |
 
 #### Responses
@@ -7875,8 +8136,8 @@ command channel for backward compatibility.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| run_id | path |  | Yes | string |
-| snippet_id | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7892,8 +8153,8 @@ command channel for backward compatibility.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| run_id | path |  | Yes | string |
-| snippet_id | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7910,7 +8171,7 @@ Get all published workflows for a snippet
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 | limit | query |  | No | integer, <br>**Default:** 10 |
 | page | query |  | No | integer, <br>**Default:** 1 |
 
@@ -7918,7 +8179,7 @@ Get all published workflows for a snippet
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Published workflows retrieved successfully | **application/json**: [WorkflowPaginationResponse](#workflowpaginationresponse)<br> |
+| 200 | Published workflows retrieved successfully | **application/json**: [SnippetWorkflowPaginationResponse](#snippetworkflowpaginationresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/default-workflow-block-configs
 **Get default block configurations for snippet workflow**
@@ -7927,7 +8188,7 @@ Get all published workflows for a snippet
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7942,7 +8203,7 @@ Get all published workflows for a snippet
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7958,7 +8219,7 @@ Get all published workflows for a snippet
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -7980,7 +8241,7 @@ Get all published workflows for a snippet
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -7995,7 +8256,7 @@ Conversation variables are not used in snippet workflows; returns an empty list 
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8010,7 +8271,7 @@ Get environment variables from snippet draft workflow graph
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8031,7 +8292,7 @@ Returns an SSE event stream with iteration progress and results.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path | Node ID | Yes | string |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8058,7 +8319,7 @@ Returns an SSE event stream with loop progress and results.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path | Node ID | Yes | string |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8085,7 +8346,7 @@ including status, inputs, outputs, and timing information.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path | Node ID | Yes | string |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -8106,7 +8367,7 @@ Returns the node execution result including status, outputs, and timing.
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path | Node ID | Yes | string |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8129,7 +8390,7 @@ Delete all variables for a specific node (snippet draft workflow)
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8145,7 +8406,7 @@ Get variables for a specific node (snippet draft workflow)
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | node_id | path |  | Yes | string |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8163,7 +8424,7 @@ and returns an SSE event stream with execution progress and results.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8185,7 +8446,7 @@ System variables are not used in snippet workflows; returns an empty list for AP
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8200,7 +8461,7 @@ Delete all draft workflow variables for the current user (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8217,7 +8478,7 @@ List draft workflow variables without values (paginated, snippet scope)
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query | Items per page | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8232,8 +8493,8 @@ Delete a draft workflow variable (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8249,8 +8510,8 @@ Get a specific draft workflow variable (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8266,8 +8527,8 @@ Update a draft workflow variable (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8289,8 +8550,8 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
-| variable_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
+| variable_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8307,7 +8568,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8323,7 +8584,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8345,7 +8606,7 @@ Reset a draft workflow variable to its default value (snippet scope)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 | workflow_id | path | Published workflow ID | Yes | string |
 
 #### Responses
@@ -8444,7 +8705,7 @@ Remove one or more tag bindings from a target.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| tag_id | path |  | Yes | string |
+| tag_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8457,7 +8718,7 @@ Remove one or more tag bindings from a target.
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| tag_id | path |  | Yes | string |
+| tag_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8493,7 +8754,7 @@ Bedrock retrieval test (internal use only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8506,7 +8767,7 @@ Bedrock retrieval test (internal use only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8519,7 +8780,7 @@ Bedrock retrieval test (internal use only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8538,7 +8799,7 @@ Bedrock retrieval test (internal use only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8560,7 +8821,7 @@ Bedrock retrieval test (internal use only)
 | ids | query | Dataset IDs | No | [ string ] |
 | limit | query | Number of items per page | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8573,8 +8834,8 @@ Bedrock retrieval test (internal use only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
-| message_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
+| message_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8589,7 +8850,7 @@ Bedrock retrieval test (internal use only)
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8606,7 +8867,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8619,7 +8880,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8640,7 +8901,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8655,7 +8916,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8676,7 +8937,7 @@ Returns the site configuration for the application including theme, icons, and t
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| app_id | path |  | Yes | string |
+| app_id | path |  | Yes | string (uuid) |
 | task_id | path |  | Yes | string |
 
 #### Responses
@@ -8901,7 +9162,7 @@ Get list of available agent providers
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8917,7 +9178,7 @@ Get list of available agent providers
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -8933,7 +9194,7 @@ Get list of available agent providers
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path |  | Yes | string |
+| snippet_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -8956,7 +9217,7 @@ Get list of available agent providers
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -8974,7 +9235,7 @@ Export snippet configuration as DSL
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path | Snippet ID to export | Yes | string |
+| snippet_id | path | Snippet ID to export | Yes | string (uuid) |
 | include_secret | query | Whether to include secret variables | No | string, <br>**Default:** false |
 
 #### Responses
@@ -8993,7 +9254,7 @@ Increment snippet use count by 1
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snippet_id | path | Snippet ID | Yes | string |
+| snippet_id | path | Snippet ID | Yes | string (uuid) |
 
 #### Responses
 
@@ -9262,7 +9523,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| member_id | path |  | Yes | string |
+| member_id | path |  | Yes | string (uuid) |
 
 #### Responses
 
@@ -9275,7 +9536,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| member_id | path |  | Yes | string |
+| member_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -9294,7 +9555,7 @@ Update a plugin endpoint
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| member_id | path |  | Yes | string |
+| member_id | path |  | Yes | string (uuid) |
 
 #### Request Body
 
@@ -10127,6 +10388,539 @@ Returns permission flags that control workspace features like member invitations
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [PluginCategoryListResponse](#plugincategorylistresponse)<br> |
+
+### [GET] /workspaces/current/rbac/access-policies
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_AccessPolicyList](#_accesspolicylist)<br> |
+
+### [POST] /workspaces/current/rbac/access-policies
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Policy created | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [DELETE] /workspaces/current/rbac/access-policies/{policy_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [GET] /workspaces/current/rbac/access-policies/{policy_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [PUT] /workspaces/current/rbac/access-policies/{policy_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [POST] /workspaces/current/rbac/access-policies/{policy_id}/copy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Policy copied | **application/json**: [AccessPolicy](#accesspolicy)<br> |
+
+### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/lock
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| binding_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+
+### [PUT] /workspaces/current/rbac/access-policy-bindings/{binding_id}/unlock
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| binding_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessPolicyBindingState](#accesspolicybindingstate)<br> |
+
+### [DELETE] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AppAccessMatrix](#appaccessmatrix)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/user-access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/apps/{app_id}/users/{target_account_id}/access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/apps/{app_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [PUT] /workspaces/current/rbac/apps/{app_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [DELETE] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/access-policy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [DatasetAccessMatrix](#datasetaccessmatrix)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/user-access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceUserAccessPoliciesResponse](#resourceuseraccesspoliciesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/datasets/{dataset_id}/users/{target_account_id}/access-policies
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| target_account_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ReplaceUserAccessPoliciesResponse](#replaceuseraccesspoliciesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/datasets/{dataset_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [PUT] /workspaces/current/rbac/datasets/{dataset_id}/whitelist
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [ResourceWhitelist](#resourcewhitelist)<br> |
+
+### [GET] /workspaces/current/rbac/members/{member_id}/rbac-roles
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| member_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberRolesResponse](#memberrolesresponse)<br> |
+
+### [PUT] /workspaces/current/rbac/members/{member_id}/rbac-roles
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| member_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberRolesResponse](#memberrolesresponse)<br> |
+
+### [GET] /workspaces/current/rbac/my-permissions
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MyPermissionsResponse](#mypermissionsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/role-permissions/catalog
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
+### [GET] /workspaces/current/rbac/role-permissions/catalog/app
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
+### [GET] /workspaces/current/rbac/role-permissions/catalog/dataset
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PermissionCatalogResponse](#permissioncatalogresponse)<br> |
+
+### [GET] /workspaces/current/rbac/roles
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_RBACRoleList](#_rbacrolelist)<br> |
+
+### [POST] /workspaces/current/rbac/roles
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Role created | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [DELETE] /workspaces/current/rbac/roles/{role_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [GET] /workspaces/current/rbac/roles/{role_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [PUT] /workspaces/current/rbac/roles/{role_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [POST] /workspaces/current/rbac/roles/{role_id}/copy
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Role copied | **application/json**: [RBACRole](#rbacrole)<br> |
+
+### [GET] /workspaces/current/rbac/roles/{role_id}/members
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| role_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [_MembersInRoleList](#_membersinrolelist)<br> |
+
+### [PUT] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/apps/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/apps/access-policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
+
+### [PUT] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AccessMatrixItem](#accessmatrixitem)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/member-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [MemberBindingsResponse](#memberbindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/datasets/access-policies/{policy_id}/role-bindings
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| policy_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [RoleBindingsResponse](#rolebindingsresponse)<br> |
+
+### [GET] /workspaces/current/rbac/workspace/datasets/access-policy
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkspaceAccessMatrix](#workspaceaccessmatrix)<br> |
 
 ### [GET] /workspaces/current/tool-labels
 #### Responses
@@ -11056,6 +11850,84 @@ Default namespace
 | id | string |  | Yes |
 | name | string |  | Yes |
 
+#### AccessMatrixItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| accounts | [ [AccessPolicyAccount](#accesspolicyaccount) ] |  | No |
+| policy | [AccessPolicy](#accesspolicy) |  | No |
+| roles | [ [AccessPolicyRole](#accesspolicyrole) ] |  | No |
+
+#### AccessPolicy
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | No |
+| created_at | integer |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| is_builtin | boolean |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| policy_key | string |  | No |
+| resource_type | string |  | Yes |
+| tenant_id | string |  | No |
+| updated_at | integer |  | No |
+
+#### AccessPolicyAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| account_name | string |  | Yes |
+| avatar | string |  | No |
+| binding_id | string |  | Yes |
+| email | string |  | No |
+| is_locked | boolean |  | No |
+
+#### AccessPolicyBindingState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding_id | string |  | Yes |
+| is_locked | boolean |  | No |
+
+#### AccessPolicyMemberBinding
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_id | string |  | Yes |
+| account_id | string |  | Yes |
+| account_name | string |  | No |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| resource_id | string |  | No |
+| resource_type | string |  | Yes |
+| tenant_id | string |  | No |
+
+#### AccessPolicyRole
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binding_id | string |  | Yes |
+| is_locked | boolean |  | No |
+| role_id | string |  | Yes |
+| role_name | string |  | Yes |
+| role_tag | string |  | No |
+
+#### AccessPolicyRoleBinding
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_id | string |  | Yes |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| resource_id | string |  | No |
+| resource_type | string |  | Yes |
+| role_id | string |  | Yes |
+| role_name | string |  | No |
+| tenant_id | string |  | No |
+
 #### Account
 
 | Name | Type | Description | Required |
@@ -11166,6 +12038,7 @@ Default namespace
 | last_login_at | integer |  | No |
 | name | string |  | Yes |
 | role | string |  | Yes |
+| roles | [ object ] |  | No |
 | status | string |  | Yes |
 
 #### AccountWithRoleList
@@ -11187,9 +12060,9 @@ Default namespace
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | No |
-| interface_language | string |  | Yes |
-| name | string |  | Yes |
-| timezone | string |  | Yes |
+| interface_language | string |  | No |
+| name | string |  | No |
+| timezone | string |  | No |
 | token | string |  | Yes |
 | workspace_id | string |  | No |
 
@@ -11197,7 +12070,9 @@ Default namespace
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_status | string |  | No |
 | email | string |  | Yes |
+| requires_setup | boolean |  | No |
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
 
@@ -11266,6 +12141,31 @@ Default namespace
 | chat_prompt_config | object |  | No |
 | completion_prompt_config | object |  | No |
 
+#### AgentApiAccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| api_key_count | integer |  | Yes |
+| api_rph | integer |  | Yes |
+| api_rpm | integer |  | Yes |
+| chat_endpoint | string |  | Yes |
+| conversations_endpoint | string |  | Yes |
+| enabled | boolean |  | Yes |
+| files_upload_endpoint | string |  | Yes |
+| info_endpoint | string |  | Yes |
+| messages_endpoint | string |  | Yes |
+| meta_endpoint | string |  | Yes |
+| parameters_endpoint | string |  | Yes |
+| service_api_base_url | string |  | Yes |
+| stop_endpoint | string |  | Yes |
+| streaming_only | boolean, <br>**Default:** true |  | No |
+
+#### AgentApiStatusPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enable_api | boolean | Enable or disable Agent service API | Yes |
+
 #### AgentAppComposerResponse
 
 | Name | Type | Description | Required |
@@ -11277,6 +12177,17 @@ Default namespace
 | validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
 
+#### AgentAppCopyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string | Description for the copied agent | No |
+| icon | string | Icon | No |
+| icon_background | string | Icon background color | No |
+| icon_type | [IconType](#icontype) | Icon type | No |
+| name | string | Name for the copied agent | No |
+| role | string | Role for the copied agent | No |
+
 #### AgentAppCreatePayload
 
 | Name | Type | Description | Required |
@@ -11286,7 +12197,43 @@ Default namespace
 | icon_background | string | Icon background color | No |
 | icon_type | [IconType](#icontype) | Icon type | No |
 | name | string | Agent name | Yes |
-| role | string | Agent role | No |
+| role | string | Agent role | Yes |
+
+#### AgentAppDetailWithSite
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
+| api_base_url | string |  | No |
+| app_id | string |  | No |
+| bound_agent_id | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| debug_conversation_id | string |  | No |
+| deleted_tools | [ [DeletedTool](#deletedtool) ] |  | No |
+| description | string |  | No |
+| enable_api | boolean |  | Yes |
+| enable_site | boolean |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| maintainer | string |  | No |
+| max_active_requests | integer |  | No |
+| mode | string |  | Yes |
+| model_config | [ModelConfig](#modelconfig) |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| role | string |  | No |
+| site | [Site](#site) |  | No |
+| tags | [ [Tag](#tag) ] |  | No |
+| tracing | [JSONValue](#jsonvalue) |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
 #### AgentAppFeaturesPayload
 
@@ -11305,6 +12252,62 @@ default (the config form sends the full desired feature state on save).
 | suggested_questions_after_answer | [AgentSuggestedQuestionsAfterAnswerFeatureConfig](#agentsuggestedquestionsafteranswerfeatureconfig) | Follow-up suggestions config, e.g. {'enabled': true} | No |
 | text_to_speech | [AgentTextToSpeechFeatureConfig](#agenttexttospeechfeatureconfig) | Text-to-speech config | No |
 
+#### AgentAppPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentAppPartial](#agentapppartial) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### AgentAppPartial
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_mode | string |  | No |
+| active_config_is_published | boolean |  | No |
+| app_id | string |  | No |
+| author_name | string |  | No |
+| bound_agent_id | string |  | No |
+| create_user_name | string |  | No |
+| created_at | integer |  | No |
+| created_by | string |  | No |
+| debug_conversation_id | string |  | No |
+| description | string |  | No |
+| has_draft_trigger | boolean |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | Yes |
+| id | string |  | Yes |
+| is_starred | boolean |  | No |
+| maintainer | string |  | No |
+| max_active_requests | integer |  | No |
+| mode | string |  | Yes |
+| model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| published_reference_count | integer |  | No |
+| published_references | [ [AgentAppPublishedReferenceResponse](#agentapppublishedreferenceresponse) ] |  | No |
+| role | string |  | No |
+| tags | [ [Tag](#tag) ] |  | No |
+| updated_at | integer |  | No |
+| updated_by | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+| workflow | [WorkflowPartial](#workflowpartial) |  | No |
+
+#### AgentAppPublishedReferenceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
+| app_id | string |  | Yes |
+| app_name | string |  | Yes |
+
 #### AgentAppUpdatePayload
 
 | Name | Type | Description | Required |
@@ -11315,8 +12318,22 @@ default (the config form sends the full desired feature state on save).
 | icon_type | [IconType](#icontype) | Icon type | No |
 | max_active_requests | integer | Maximum active requests | No |
 | name | string | App name | Yes |
-| role | string | Agent role | No |
+| role | string | Agent role | Yes |
 | use_icon_as_answer_icon | boolean | Use icon as answer icon | No |
+
+#### AgentAverageResponseTimeStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| latency | number |  | Yes |
+
+#### AgentAverageSessionInteractionStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| interactions | number |  | Yes |
 
 #### AgentCliToolAuthorizationStatus
 
@@ -11420,23 +12437,6 @@ Risk marker for CLI tool bootstrap commands.
 | provider_id | string |  | No |
 | tools_count | integer |  | No |
 
-#### AgentComposerFileCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| drive_key | string |  | No |
-| file_id | string |  | No |
-| id | string |  | No |
-| kind | string, <br>**Default:** file |  | No |
-| name | string |  | No |
-| reference | string |  | No |
-| remote_url | string |  | No |
-| tenant_id | string |  | No |
-| transfer_method | string |  | No |
-| type | string |  | No |
-| upload_file_id | string |  | No |
-| url | string |  | No |
-
 #### AgentComposerImpactBindingResponse
 
 | Name | Type | Description | Required |
@@ -11461,22 +12461,6 @@ Risk marker for CLI tool bootstrap commands.
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | previous_node_outputs | [ [WorkflowPreviousNodeOutputRef](#workflowpreviousnodeoutputref) ] |  | No |
 
-#### AgentComposerSkillCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| kind | string, <br>**Default:** skill |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
 #### AgentComposerSoulCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -11485,7 +12469,6 @@ Risk marker for CLI tool bootstrap commands.
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
 | knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
-| skills_files | [  ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -11534,8 +12517,10 @@ Audit operation recorded for Agent Soul version/revision changes.
 | config_snapshot | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| display_version | integer |  | No |
 | id | string |  | Yes |
 | revisions | [ [AgentConfigRevisionResponse](#agentconfigrevisionresponse) ] |  | No |
+| snapshot_version | integer |  | No |
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
@@ -11546,6 +12531,13 @@ Audit operation recorded for Agent Soul version/revision changes.
 | ---- | ---- | ----------- | -------- |
 | data | [ [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) ] |  | Yes |
 
+#### AgentConfigSnapshotRestoreResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| active_config_snapshot_id | string |  | Yes |
+| result | string |  | Yes |
+
 #### AgentConfigSnapshotSummaryResponse
 
 | Name | Type | Description | Required |
@@ -11553,10 +12545,39 @@ Audit operation recorded for Agent Soul version/revision changes.
 | agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
+| display_version | integer |  | No |
 | id | string |  | Yes |
+| snapshot_version | integer |  | No |
 | summary | string |  | No |
 | version | integer |  | Yes |
 | version_note | string |  | No |
+
+#### AgentDailyConversationStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_count | integer |  | Yes |
+| date | string |  | Yes |
+
+#### AgentDailyEndUserStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| terminal_count | integer |  | Yes |
+
+#### AgentDailyMessageStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| message_count | integer |  | Yes |
+
+#### AgentDebugConversationRefreshResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| debug_conversation_id | string |  | Yes |
 
 #### AgentDriveDeleteFileByAgentQuery
 
@@ -11568,7 +12589,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_version_id | string |  | No |
 | removed_keys | [ string ] |  | No |
 | result | string |  | Yes |
 
@@ -11582,7 +12602,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| config_version_id | string |  | No |
 | file | [AgentDriveFileResponse](#agentdrivefileresponse) |  | Yes |
 
 #### AgentDriveFilePayload
@@ -11608,9 +12627,11 @@ Audit operation recorded for Agent Soul version/revision changes.
 | created_at | integer |  | No |
 | file_kind | string |  | Yes |
 | hash | string |  | No |
+| is_skill | boolean |  | No |
 | key | string |  | Yes |
 | mime_type | string |  | No |
 | size | integer |  | No |
+| skill_metadata | string |  | No |
 
 #### AgentDriveListResponse
 
@@ -11619,6 +12640,65 @@ Audit operation recorded for Agent Soul version/revision changes.
 | items | [ [AgentDriveItemResponse](#agentdriveitemresponse) ] |  | No |
 
 #### AgentDrivePreviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| binary | boolean |  | Yes |
+| key | string |  | Yes |
+| size | integer |  | No |
+| text | string |  | No |
+| truncated | boolean |  | Yes |
+
+#### AgentDriveSkillFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available_in_drive | boolean |  | Yes |
+| drive_key | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| type | string |  | Yes |
+
+#### AgentDriveSkillInspectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| created_at | integer |  | No |
+| description | string |  | Yes |
+| file_tree | [ object ] |  | No |
+| files | [ [AgentDriveSkillFileResponse](#agentdriveskillfileresponse) ] |  | No |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| skill_md | [AgentDriveSkillMarkdownResponse](#agentdriveskillmarkdownresponse) |  | Yes |
+| skill_md_key | string |  | Yes |
+| source | string |  | Yes |
+| warnings | [ string ] |  | No |
+
+#### AgentDriveSkillItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| created_at | integer |  | No |
+| description | string |  | Yes |
+| hash | string |  | No |
+| mime_type | string |  | No |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| size | integer |  | No |
+| skill_md_key | string |  | Yes |
+
+#### AgentDriveSkillListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [AgentDriveSkillItemResponse](#agentdriveskillitemresponse) ] |  | No |
+
+#### AgentDriveSkillMarkdownResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -11797,6 +12877,65 @@ the current roster/workflow APIs scoped to Dify Agent.
 | ---- | ---- | ----------- | -------- |
 | AgentKnowledgeQueryMode | string |  |  |
 
+#### AgentLogConversationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| end_user_id | string |  | No |
+| id | string |  | Yes |
+| message_count | integer |  | Yes |
+| operation_rate | number |  | No |
+| source | [AgentLogSourceResponse](#agentlogsourceresponse) |  | No |
+| status | string, <br>**Available values:** "failed", "paused", "success" | *Enum:* `"failed"`, `"paused"`, `"success"` | Yes |
+| title | string |  | No |
+| unread | boolean |  | Yes |
+| updated_at | integer |  | No |
+| user_rate | number |  | No |
+
+#### AgentLogListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentLogConversationItemResponse](#agentlogconversationitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### AgentLogMessageItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| answer | string |  | Yes |
+| answer_tokens | integer |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| currency | string |  | Yes |
+| error | string |  | No |
+| from_account_id | string |  | No |
+| from_end_user_id | string |  | No |
+| id | string |  | Yes |
+| latency | number |  | Yes |
+| message_id | string |  | Yes |
+| message_tokens | integer |  | Yes |
+| query | string |  | Yes |
+| status | string |  | Yes |
+| total_price | string |  | Yes |
+| total_tokens | integer |  | Yes |
+| updated_at | integer |  | No |
+
+#### AgentLogMessageListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentLogMessageItemResponse](#agentlogmessageitemresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
 #### AgentLogMetaResponse
 
 | Name | Type | Description | Required |
@@ -11823,6 +12962,52 @@ the current roster/workflow APIs scoped to Dify Agent.
 | files | [  ] |  | No |
 | iterations | [ [AgentIterationLogResponse](#agentiterationlogresponse) ] |  | Yes |
 | meta | [AgentLogMetaResponse](#agentlogmetaresponse) |  | Yes |
+
+#### AgentLogSourceGroupResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | string |  | Yes |
+| sources | [ [AgentLogSourceResponse](#agentlogsourceresponse) ] |  | No |
+| type | string, <br>**Available values:** "webapp", "workflow" | *Enum:* `"webapp"`, `"workflow"` | Yes |
+
+#### AgentLogSourceListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AgentLogSourceResponse](#agentlogsourceresponse) ] |  | Yes |
+| groups | [ [AgentLogSourceGroupResponse](#agentlogsourcegroupresponse) ] |  | Yes |
+
+#### AgentLogSourceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_icon | string |  | No |
+| app_icon_background | string |  | No |
+| app_icon_type | string |  | No |
+| app_id | string |  | Yes |
+| app_name | string |  | Yes |
+| id | string |  | Yes |
+| node_id | string |  | No |
+| type | string, <br>**Available values:** "webapp", "workflow" | *Enum:* `"webapp"`, `"workflow"` | Yes |
+| workflow_id | string |  | No |
+| workflow_version | string |  | No |
+
+#### AgentLogsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| keyword | string | Search query, answer, or conversation name | No |
+| limit | integer, <br>**Default:** 20 | Page size | No |
+| page | integer, <br>**Default:** 1 | Page number | No |
+| sort_by | string, <br>**Default:** updated_at | Sort by created_at or updated_at | No |
+| sort_order | string, <br>**Default:** desc | Sort order: asc or desc | No |
+| source | string | Deprecated single source filter | No |
+| sources | [ string ] | Filter by one or more source IDs, e.g. webapp:<app_id> or workflow:<app_id>:<workflow_id>:<version>:<node_id> | No |
+| start | string | Start date (YYYY-MM-DD HH:MM) | No |
+| status | string | Deprecated single status filter | No |
+| statuses | [ string ] | Filter by one or more of success, failed, paused | No |
 
 #### AgentMemoryArtifactConfig
 
@@ -12002,34 +13187,12 @@ Visibility and lifecycle scope of an Agent record.
 | enabled | boolean |  | No |
 | type | string |  | No |
 
-#### AgentSkillRefConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
-#### AgentSkillStandardizeResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentSkillRefConfig](#agentskillrefconfig) |  | Yes |
-
 #### AgentSkillUploadResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | manifest | [SkillManifest](#skillmanifest) |  | Yes |
-| skill | [AgentSkillRefConfig](#agentskillrefconfig) |  | Yes |
+| skill | [AgentUploadedSkillResponse](#agentuploadedskillresponse) |  | Yes |
 
 #### AgentSoulAppFeaturesConfig
 
@@ -12058,7 +13221,6 @@ Visibility and lifecycle scope of an Agent record.
 | prompt | [AgentSoulPromptConfig](#agentsoulpromptconfig) |  | No |
 | sandbox | [AgentSoulSandboxConfig](#agentsoulsandboxconfig) |  | No |
 | schema_version | integer, <br>**Default:** 1 |  | No |
-| skills_files | [AgentSoulSkillsFilesConfig](#agentsoulskillsfilesconfig) |  | No |
 | tools | [AgentSoulToolsConfig](#agentsoultoolsconfig) |  | No |
 
 #### AgentSoulDifyToolConfig
@@ -12175,13 +13337,6 @@ Reference to model credentials resolved only at runtime.
 | config | [AgentSandboxProviderConfig](#agentsandboxproviderconfig) |  | No |
 | provider | string |  | No |
 
-#### AgentSoulSkillsFilesConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
-
 #### AgentSoulToolsConfig
 
 | Name | Type | Description | Required |
@@ -12196,6 +13351,50 @@ Origin that created or imported the Agent.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AgentSource | string | Origin that created or imported the Agent. |  |
+
+#### AgentStatisticChartsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| average_response_time | [ [AgentAverageResponseTimeStatisticResponse](#agentaverageresponsetimestatisticresponse) ] |  | No |
+| average_session_interactions | [ [AgentAverageSessionInteractionStatisticResponse](#agentaveragesessioninteractionstatisticresponse) ] |  | No |
+| daily_conversations | [ [AgentDailyConversationStatisticResponse](#agentdailyconversationstatisticresponse) ] |  | No |
+| daily_end_users | [ [AgentDailyEndUserStatisticResponse](#agentdailyenduserstatisticresponse) ] |  | No |
+| daily_messages | [ [AgentDailyMessageStatisticResponse](#agentdailymessagestatisticresponse) ] |  | No |
+| token_usage | [ [AgentTokenUsageStatisticResponse](#agenttokenusagestatisticresponse) ] |  | No |
+| tokens_per_second | [ [AgentTokensPerSecondStatisticResponse](#agenttokenspersecondstatisticresponse) ] |  | No |
+| user_satisfaction_rate | [ [AgentUserSatisfactionRateStatisticResponse](#agentusersatisfactionratestatisticresponse) ] |  | No |
+
+#### AgentStatisticSummaryEnvelopeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| charts | [AgentStatisticChartsResponse](#agentstatisticchartsresponse) |  | Yes |
+| source | string |  | Yes |
+| summary | [AgentStatisticSummaryResponse](#agentstatisticsummaryresponse) |  | Yes |
+
+#### AgentStatisticSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| average_response_time | number |  | Yes |
+| average_session_interactions | number |  | Yes |
+| currency | string |  | Yes |
+| tokens_per_second | number |  | Yes |
+| total_conversations | integer |  | Yes |
+| total_end_users | integer |  | Yes |
+| total_messages | integer |  | Yes |
+| total_price | string |  | Yes |
+| total_tokens | integer |  | Yes |
+| user_satisfaction_rate | number |  | Yes |
+
+#### AgentStatisticsQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end | string | End date (YYYY-MM-DD HH:MM) | No |
+| source | string | Filter by all, console/explore, api/service-api, web-app, debugger, openapi, or trigger | No |
+| start | string | Start date (YYYY-MM-DD HH:MM) | No |
 
 #### AgentStatus
 
@@ -12239,6 +13438,22 @@ Soft lifecycle state for Agent records.
 | tool_input | string |  | No |
 | tool_labels | [JSONValue](#jsonvalue) |  | Yes |
 
+#### AgentTokenUsageStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| currency | string |  | Yes |
+| date | string |  | Yes |
+| token_count | integer |  | Yes |
+| total_price | string |  | Yes |
+
+#### AgentTokensPerSecondStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| tps | number |  | Yes |
+
 #### AgentToolCallResponse
 
 | Name | Type | Description | Required |
@@ -12252,6 +13467,23 @@ Soft lifecycle state for Agent records.
 | tool_name | string |  | Yes |
 | tool_output | object |  | Yes |
 | tool_parameters | object |  | Yes |
+
+#### AgentUploadedSkillResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_key | string |  | No |
+| description | string |  | Yes |
+| name | string |  | Yes |
+| path | string |  | Yes |
+| skill_md_key | string |  | Yes |
+
+#### AgentUserSatisfactionRateStatisticResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| date | string |  | Yes |
+| rate | number |  | Yes |
 
 #### AllowedExtensionsResponse
 
@@ -12484,6 +13716,13 @@ Enum class for api provider schema type.
 | schema_type | [ApiProviderSchemaType](#apiproviderschematype) |  | Yes |
 | tool_name | string |  | Yes |
 
+#### AppAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | No |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
+
 #### AppApiStatusPayload
 
 | Name | Type | Description | Required |
@@ -12504,8 +13743,10 @@ Enum class for api provider schema type.
 | icon | string |  | No |
 | icon_background | string |  | No |
 | id | string |  | Yes |
+| maintainer | string |  | No |
 | mode_compatible_with_agent | string |  | Yes |
 | name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
 | updated_at | integer |  | No |
@@ -12518,7 +13759,6 @@ Enum class for api provider schema type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
 | bound_agent_id | string |  | No |
@@ -12533,11 +13773,12 @@ Enum class for api provider schema type.
 | icon_type | string |  | No |
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
+| maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
-| role | string |  | No |
+| permission_keys | [ string ] |  | No |
 | site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
@@ -12642,7 +13883,6 @@ AppMCPServer Status Enum
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_mode | string |  | No |
-| active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
 | bound_agent_id | string |  | No |
@@ -12657,11 +13897,12 @@ AppMCPServer Status Enum
 | icon_url | string |  | Yes |
 | id | string |  | Yes |
 | is_starred | boolean |  | No |
+| maintainer | string |  | No |
 | max_active_requests | integer |  | No |
 | mode | string |  | Yes |
 | model_config | [ModelConfigPartial](#modelconfigpartial) |  | No |
 | name | string |  | Yes |
-| role | string |  | No |
+| permission_keys | [ string ] |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
@@ -13006,7 +14247,7 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### ChildChunkDetailResponse
 
@@ -13049,14 +14290,14 @@ Button styles for user actions.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
-| id | string |  | No |
+| content | string | Child chunk text content. | Yes |
+| id | string | Existing child chunk ID. Omit to create a new child chunk. | No |
 
 #### ChildChunkUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | Yes |
+| content | string | Child chunk text content. | Yes |
 
 #### CliToolSuggestion
 
@@ -13164,9 +14405,14 @@ Button styles for user actions.
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | No |
 | binding | [ComposerBindingPayload](#composerbindingpayload) |  | No |
 | client_revision_id | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | [AgentIconType](#agenticontype) |  | No |
 | idempotency_key | string |  | No |
 | new_agent_name | string |  | No |
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | No |
+| role | string |  | No |
 | save_strategy | [ComposerSaveStrategy](#composersavestrategy) |  | Yes |
 | soul_lock | [ComposerSoulLockPayload](#composersoullockpayload) |  | No |
 | variant | [ComposerVariant](#composervariant) |  | Yes |
@@ -13214,9 +14460,9 @@ Condition detail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
-| name | string |  | Yes |
-| value | string<br>[ string ]<br>integer<br>number |  | No |
+| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | Comparison to apply. String operators (`contains`, `not contains`, `start with`, `end with`, `is`, `is not`, `empty`, `not empty`, `in`, `not in`) act on string or array metadata; numeric operators (`=`, `≠`, `>`, `<`, `≥`, `≤`) act on numeric metadata; time operators (`before`, `after`) act on time metadata.<br>*Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
+| name | string | Metadata field name to compare against. | Yes |
+| value | string<br>[ string ]<br>number | Value to compare against. Type depends on `comparison_operator`: string for most string operators, array of strings for `in` and `not in`, number for numeric operators, and omit or use `null` for `empty` and `not empty`. | No |
 
 #### ConfigurateMethod
 
@@ -13358,8 +14604,8 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| auto_generate | boolean |  | No |
-| name | string |  | No |
+| auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
+| name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
 #### ConversationVariableResponse
 
@@ -13657,6 +14903,13 @@ Model class for provider custom model configuration.
 | workspace_id | string |  | Yes |
 | workspace_name | string |  | Yes |
 
+#### DatasetAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| dataset_id | string |  | No |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
+
 #### DatasetAndDocumentResponse
 
 | Name | Type | Description | Required |
@@ -13705,6 +14958,7 @@ Model class for provider custom model configuration.
 | is_published | boolean |  | No |
 | name | string |  | No |
 | permission | string |  | No |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | No |
 | provider | string |  | No |
 | retrieval_model_dict | [DatasetRetrievalModel](#datasetretrievalmodel) |  | No |
@@ -13743,8 +14997,10 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -13783,9 +15039,11 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | No |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -13887,9 +15145,11 @@ Model class for provider custom model configuration.
 | indexing_technique | string |  | Yes |
 | is_multimodal | boolean |  | Yes |
 | is_published | boolean |  | Yes |
+| maintainer | string |  | No |
 | name | string |  | Yes |
 | partial_member_list | [ string ] |  | Yes |
 | permission | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 | pipeline_id | string |  | Yes |
 | provider | string |  | Yes |
 | retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
@@ -14336,15 +15596,15 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_ids | [ string (uuid) ] |  | Yes |
+| document_ids | [ string (uuid) ] | List of document IDs to include in the ZIP download. | Yes |
 
 #### DocumentMetadataOperation
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| document_id | string |  | Yes |
-| metadata_list | [ [MetadataDetail](#metadatadetail) ] |  | Yes |
-| partial_update | boolean |  | No |
+| document_id | string | Document ID whose metadata should be updated. | Yes |
+| metadata_list | [ [MetadataDetail](#metadatadetail) ] | Metadata fields to update. | Yes |
+| partial_update | boolean | Whether to partially update metadata, keeping existing values for unspecified fields. | No |
 
 #### DocumentMetadataResponse
 
@@ -14761,6 +16021,34 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | tool_icons | object |  | No |
 
+#### ExploreMessageInfiniteScrollPagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ExploreMessageListItem](#exploremessagelistitem) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| limit | integer |  | Yes |
+
+#### ExploreMessageListItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
+| answer | string |  | Yes |
+| conversation_id | string |  | Yes |
+| created_at | integer |  | No |
+| error | string |  | No |
+| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
+| feedback | [SimpleFeedback](#simplefeedback) |  | No |
+| id | string |  | Yes |
+| inputs | object |  | Yes |
+| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
+| metadata | [JSONValueType](#jsonvaluetype) |  | No |
+| parent_message_id | string |  | No |
+| query | string |  | Yes |
+| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
+| status | string |  | Yes |
+
 #### ExternalApiTemplateListQuery
 
 | Name | Type | Description | Required |
@@ -15126,10 +16414,10 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] |  | No |
-| external_retrieval_model | object |  | No |
-| query | string |  | Yes |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
+| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
+| query | string | Search query text. | Yes |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked. | No |
 
 #### HitTestingQuery
 
@@ -15315,6 +16603,7 @@ How Dify forwards the end-user's identity to an MCP server.
 | error | string |  | No |
 | id | string |  | Yes |
 | imported_dsl_version | string |  | No |
+| permission_keys | [ string ] |  | No |
 | status | [ImportStatus](#importstatus) |  | Yes |
 
 #### ImportStatus
@@ -15511,19 +16800,19 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data_source | [DataSource](#datasource) |  | No |
-| doc_form | string, <br>**Default:** text_model |  | No |
-| doc_language | string, <br>**Default:** English |  | No |
-| duplicate | boolean, <br>**Default:** true |  | No |
-| embedding_model | string |  | No |
-| embedding_model_provider | string |  | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | *Enum:* `"economy"`, `"high_quality"` | Yes |
-| is_multimodal | boolean |  | No |
-| name | string |  | No |
-| original_document_id | string |  | No |
-| process_rule | [ProcessRule](#processrule) |  | No |
-| retrieval_model | [RetrievalModel](#retrievalmodel) |  | No |
-| summary_index_setting | object |  | No |
+| data_source | [DataSource](#datasource) | Document data source configuration. | No |
+| doc_form | string, <br>**Available values:** "hierarchical_model", "qa_model", "text_model", <br>**Default:** text_model | `text_model` for standard text chunking, `hierarchical_model` for parent-child chunk structure, `qa_model` for question-answer pair extraction.<br>*Enum:* `"hierarchical_model"`, `"qa_model"`, `"text_model"` | No |
+| doc_language | string, <br>**Default:** English | Language of the document for processing optimization. | No |
+| duplicate | boolean, <br>**Default:** true | Whether duplicate document content is allowed. | No |
+| embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
+| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted.<br>*Enum:* `"economy"`, `"high_quality"` | Yes |
+| is_multimodal | boolean | Whether the document uses multimodal indexing. | No |
+| name | string | Document name. | No |
+| original_document_id | string | Original document ID for replacement updates. | No |
+| process_rule | [ProcessRule](#processrule) | Processing rules for chunking. | No |
+| retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked in this knowledge base. | No |
+| summary_index_setting | object | Summary index configuration. | No |
 
 #### KnowledgePipeline
 
@@ -15704,13 +16993,19 @@ Enum class for large language model mode.
 | result | string |  | Yes |
 | tenant_id | string |  | Yes |
 
+#### MemberBindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessPolicyMemberBinding](#accesspolicymemberbinding) ] |  | No |
+
 #### MemberInvitePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | emails | [ string ] |  | No |
 | language | string |  | No |
-| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+| role | string |  | Yes |
 
 #### MemberInviteResponse
 
@@ -15734,6 +17029,20 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | role | string |  | Yes |
+
+#### MemberRolesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| roles | [ [RBACRole](#rbacrole) ] |  | No |
+
+#### MembersInRole
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | No |
+| account_name | string |  | No |
 
 #### MessageDetail
 
@@ -15796,9 +17105,9 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| content | string |  | No |
+| content | string | Optional text feedback providing additional detail. | No |
 | message_id | string | Message ID | Yes |
-| rating | string |  | No |
+| rating | string | Feedback rating. Set to `null` to revoke previously submitted feedback. | No |
 
 #### MessageFile
 
@@ -15814,14 +17123,6 @@ Enum class for large language model mode.
 | upload_file_id | string |  | No |
 | url | string |  | No |
 
-#### MessageInfiniteScrollPagination
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [MessageListItem](#messagelistitem) ] |  | Yes |
-| has_more | boolean |  | Yes |
-| limit | integer |  | Yes |
-
 #### MessageInfiniteScrollPaginationResponse
 
 | Name | Type | Description | Required |
@@ -15830,47 +17131,28 @@ Enum class for large language model mode.
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 
-#### MessageListItem
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
-| answer | string |  | Yes |
-| conversation_id | string |  | Yes |
-| created_at | integer |  | No |
-| error | string |  | No |
-| extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
-| feedback | [SimpleFeedback](#simplefeedback) |  | No |
-| id | string |  | Yes |
-| inputs | object |  | Yes |
-| message_files | [ [MessageFile](#messagefile) ] |  | Yes |
-| parent_message_id | string |  | No |
-| query | string |  | Yes |
-| retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
-| status | string |  | Yes |
-
 #### MessageListQuery
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_id | string | Conversation UUID | Yes |
-| first_id | string | First message ID for pagination | No |
-| limit | integer, <br>**Default:** 20 | Number of messages to return (1-100) | No |
+| conversation_id | string | Conversation ID. | Yes |
+| first_id | string | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No |
+| limit | integer, <br>**Default:** 20 | Number of chat history messages to return per request. | No |
 
 #### MetadataArgs
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
-| type | string, <br>**Available values:** "number", "string", "time" | *Enum:* `"number"`, `"string"`, `"time"` | Yes |
+| name | string | Metadata field name. | Yes |
+| type | string, <br>**Available values:** "number", "string", "time" | `string` for text values, `number` for numeric values, `time` for date/time values.<br>*Enum:* `"number"`, `"string"`, `"time"` | Yes |
 
 #### MetadataDetail
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| value | string<br>integer<br>number |  | No |
+| id | string | Metadata field ID. | Yes |
+| name | string | Metadata field name. | Yes |
+| value | string<br>integer<br>number | Metadata value. Can be a string, number, or `null`. | No |
 
 #### MetadataFilteringCondition
 
@@ -15878,8 +17160,8 @@ Metadata Filtering Condition.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conditions | [ [Condition](#condition) ] |  | No |
-| logical_operator | string |  | No |
+| conditions | [ [Condition](#condition) ] | List of metadata conditions to evaluate. | No |
+| logical_operator | string | How to combine multiple conditions. | No |
 
 #### MetadataOperationData
 
@@ -15887,13 +17169,13 @@ Metadata operation data
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] |  | Yes |
+| operation_data | [ [DocumentMetadataOperation](#documentmetadataoperation) ] | Array of document metadata update operations. Each entry maps a document ID to its metadata values. | Yes |
 
 #### MetadataUpdatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
+| name | string | New metadata field name. | Yes |
 
 #### ModelConfig
 
@@ -16045,11 +17327,20 @@ Model with provider entity.
 | ---- | ---- | ----------- | -------- |
 | response_mode | string, <br>**Available values:** "blocking", "streaming" | *Enum:* `"blocking"`, `"streaming"` | Yes |
 
+#### MyPermissionsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
+| dataset | [ResourcePermissionSnapshot](#resourcepermissionsnapshot) |  | No |
+| workspace | [WorkspacePermissionSnapshot](#workspacepermissionsnapshot) |  | No |
+
 #### NewAppResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | new_app_id | string |  | Yes |
+| permission_keys | [ string ] |  | No |
 
 #### NodeIdQuery
 
@@ -16354,6 +17645,15 @@ output check fails and any configured retry attempts have been exhausted.
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
 | total | integer |  | Yes |
+
+#### Pagination
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| current_page | integer |  | No |
+| per_page | integer |  | No |
+| total_count | integer |  | No |
+| total_pages | integer |  | No |
 
 #### PaginationQuery
 
@@ -16730,6 +18030,29 @@ Enum class for parameter type.
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
 
+#### PermissionCatalogGroup
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| group_key | string |  | Yes |
+| group_name | string |  | Yes |
+| permissions | [ [PermissionCatalogItem](#permissioncatalogitem) ] |  | No |
+
+#### PermissionCatalogItem
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| key | string |  | Yes |
+| name | string |  | Yes |
+
+#### PermissionCatalogResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| groups | [ [PermissionCatalogGroup](#permissioncataloggroup) ] |  | No |
+
 #### PermissionEnum
 
 Shared permission levels for resources (datasets, credentials, etc.)
@@ -17069,8 +18392,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| enabled | boolean |  | Yes |
-| id | string |  | Yes |
+| enabled | boolean | Whether this preprocessing rule is enabled. | Yes |
+| id | string, <br>**Available values:** "remove_extra_spaces", "remove_stopwords", "remove_urls_emails" | Rule identifier.<br>*Enum:* `"remove_extra_spaces"`, `"remove_stopwords"`, `"remove_urls_emails"` | Yes |
 
 #### PreviewDetail
 
@@ -17095,8 +18418,8 @@ Serialized pricing info with codegen-safe decimal string patterns.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [ProcessRuleMode](#processrulemode) |  | Yes |
-| rules | [Rule](#rule) |  | No |
+| mode | [ProcessRuleMode](#processrulemode) | Processing mode. `automatic` uses built-in rules, `custom` allows manual configuration, and `hierarchical` enables parent-child chunk structure for `doc_form: hierarchical_model`. | Yes |
+| rules | [Rule](#rule) | Custom processing rules. | No |
 
 #### ProcessRuleMode
 
@@ -17288,6 +18611,29 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | QuotaUnit | string |  |  |
 
+#### RBACRole
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| category | string |  | No |
+| description | string |  | No |
+| id | string |  | Yes |
+| is_builtin | boolean |  | No |
+| name | string |  | Yes |
+| permission_keys | [ string ] |  | No |
+| role_tag | string |  | No |
+| tenant_id | string |  | No |
+| type | string |  | Yes |
+
+#### RBACRoleAccount
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_id | string |  | Yes |
+| account_name | string |  | No |
+| avatar | string |  | No |
+| email | string |  | No |
+
 #### RagPipelineDatasetImportPayload
 
 | Name | Type | Description | Required |
@@ -17449,12 +18795,53 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | url | string | URL to fetch | Yes |
 
+#### ReplaceUserAccessPoliciesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policies | [ [AccessPolicy](#accesspolicy) ] |  | No |
+
 #### RerankingModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| reranking_model_name | string |  | No |
-| reranking_provider_name | string |  | No |
+| reranking_model_name | string | Name of the reranking model. | No |
+| reranking_provider_name | string | Provider name of the reranking model. | No |
+
+#### ResourcePermissionKeys
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| permission_keys | [ string ] |  | No |
+| resource_id | string |  | Yes |
+
+#### ResourcePermissionSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_permission_keys | [ string ] |  | No |
+| overrides | [ [ResourcePermissionKeys](#resourcepermissionkeys) ] |  | No |
+
+#### ResourceUserAccessPolicies
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policies | [ [AccessPolicy](#accesspolicy) ] |  | No |
+| account | [RBACRoleAccount](#rbacroleaccount) |  | Yes |
+| roles | [ [RBACRole](#rbacrole) ] |  | No |
+
+#### ResourceUserAccessPoliciesResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
+| scope | string |  | Yes |
+
+#### ResourceWhitelist
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | No |
 
 #### RestrictModel
 
@@ -17480,15 +18867,15 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) |  | No |
-| reranking_enable | boolean |  | Yes |
-| reranking_mode | string |  | No |
-| reranking_model | [RerankingModel](#rerankingmodel) |  | No |
-| score_threshold | number |  | No |
-| score_threshold_enabled | boolean |  | Yes |
-| search_method | [RetrievalMethod](#retrievalmethod) |  | Yes |
-| top_k | integer |  | Yes |
-| weights | [WeightModel](#weightmodel) |  | No |
+| metadata_filtering_conditions | [MetadataFilteringCondition](#metadatafilteringcondition) | Restrict retrieval to chunks whose document metadata matches the given conditions. Conditions are evaluated server-side against document metadata fields. | No |
+| reranking_enable | boolean | Whether reranking is enabled. | Yes |
+| reranking_mode | string | Reranking mode. Required when `reranking_enable` is `true`. | No |
+| reranking_model | [RerankingModel](#rerankingmodel) | Reranking model configuration. | No |
+| score_threshold | number | Minimum similarity score for results. Only effective when score threshold filtering is enabled. | No |
+| score_threshold_enabled | boolean | Whether score threshold filtering is enabled. | Yes |
+| search_method | [RetrievalMethod](#retrievalmethod) | Search method used for retrieval. | Yes |
+| top_k | integer | Maximum number of results to return. | Yes |
+| weights | [WeightModel](#weightmodel) | Weight configuration for hybrid search. | No |
 
 #### RetrievalSettingResponse
 
@@ -17518,6 +18905,12 @@ Model class for provider quota configuration.
 | summary | string |  | No |
 | word_count | integer |  | No |
 
+#### RoleBindingsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessPolicyRoleBinding](#accesspolicyrolebinding) ] |  | No |
+
 #### RosterListQuery
 
 | Name | Type | Description | Required |
@@ -17530,10 +18923,10 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| parent_mode | string |  | No |
-| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] |  | No |
-| segmentation | [Segmentation](#segmentation) |  | No |
-| subchunk_segmentation | [Segmentation](#segmentation) |  | No |
+| parent_mode | string | Parent-child segmentation mode. | No |
+| pre_processing_rules | [ [PreProcessingRule](#preprocessingrule) ] | Pre-processing rules to apply before segmentation. | No |
+| segmentation | [Segmentation](#segmentation) | Parent chunk segmentation settings. | No |
+| subchunk_segmentation | [Segmentation](#segmentation) | Child chunk segmentation settings. | No |
 
 #### RuleCodeGeneratePayload
 
@@ -17737,10 +19130,10 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| chunk_overlap | integer |  | No |
-| max_tokens | integer |  | Yes |
-| separator | string, <br>**Default:** 
- |  | No |
+| chunk_overlap | integer | Token overlap between chunks. | No |
+| max_tokens | integer | Maximum token count per chunk. | Yes |
+| separator | string, <br>**Default:**
+ | Custom separator for splitting text. | No |
 
 #### SelectInputConfig
 
@@ -18028,7 +19421,7 @@ Payload for running a loop node in snippet draft workflow.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| data | [ [_AnonymousInlineModel_efd591151ea9](#_anonymousinlinemodel_efd591151ea9) ] |  | No |
+| data | [ [_AnonymousInlineModel_744ff9cc03e6](#_anonymousinlinemodel_744ff9cc03e6) ] |  | No |
 | has_more | boolean |  | No |
 | limit | integer |  | No |
 | page | integer |  | No |
@@ -18049,6 +19442,15 @@ Query parameters for listing snippet published workflows.
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 10 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+
+#### SnippetWorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [SnippetWorkflowResponse](#snippetworkflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
 
 #### SnippetWorkflowResponse
 
@@ -18196,12 +19598,14 @@ Model class for provider system configuration response.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
 | enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
 | enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
 | enable_marketplace | boolean |  | Yes |
 | enable_social_oauth_login | boolean |  | Yes |
 | enable_trial_app | boolean |  | Yes |
@@ -18212,6 +19616,7 @@ Model class for provider system configuration response.
 | max_plugin_package_size | integer, <br>**Default:** 15728640 |  | Yes |
 | plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
 | plugin_manager | [PluginManagerModel](#pluginmanagermodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
 | sso_enforced_for_signin | boolean |  | Yes |
 | sso_enforced_for_signin_protocol | string |  | Yes |
 | webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
@@ -18343,10 +19748,10 @@ Tag type
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| message_id | string | Message ID | No |
-| streaming | boolean | Enable streaming response | No |
-| text | string | Text to convert to audio | No |
-| voice | string | Voice to use for TTS | No |
+| message_id | string | Message ID. Takes priority over `text` when both are provided. | No |
+| streaming | boolean | Reserved for compatibility; TTS response streaming is determined by the provider output. | No |
+| text | string | Speech content to convert. | No |
+| voice | string | Voice to use for text-to-speech. Available voices depend on the TTS provider configured for this app. Omit to use the app's configured voice when available; that value is exposed by [Get App Parameters](/api-reference/applications/get-app-parameters) as `text_to_speech.voice`. | No |
 
 #### TextToSpeechPayload
 
@@ -18485,6 +19890,7 @@ Enum class for tool provider
 | mode | string |  | No |
 | model_config | [TrialAppModelConfig](#trialappmodelconfig) |  | No |
 | name | string |  | No |
+| permission_keys | [ string ] |  | No |
 | site | [TrialSite](#trialsite) |  | No |
 | tags | [ [TrialTag](#trialtag) ] |  | No |
 | updated_at | long |  | No |
@@ -18543,6 +19949,7 @@ Enum class for tool provider
 | indexing_technique | string |  | No |
 | name | string |  | No |
 | permission | string |  | No |
+| permission_keys | [ string ] |  | No |
 
 #### TrialDatasetList
 
@@ -18916,23 +20323,23 @@ in form definiton, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_weight | number |  | Yes |
+| keyword_weight | number | Weight assigned to keyword search results. | Yes |
 
 #### WeightModel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) |  | No |
-| vector_setting | [WeightVectorSetting](#weightvectorsetting) |  | No |
-| weight_type | string |  | No |
+| keyword_setting | [WeightKeywordSetting](#weightkeywordsetting) | Keyword search weight settings. | No |
+| vector_setting | [WeightVectorSetting](#weightvectorsetting) | Semantic search weight settings. | No |
+| weight_type | string | Strategy for balancing semantic and keyword search weights. | No |
 
 #### WeightVectorSetting
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| embedding_model_name | string |  | Yes |
-| embedding_provider_name | string |  | Yes |
-| vector_weight | number |  | Yes |
+| embedding_model_name | string | Name of the embedding model used for vector search. | Yes |
+| embedding_provider_name | string | Provider of the embedding model used for vector search. | Yes |
+| vector_weight | number | Weight assigned to semantic vector search results. | Yes |
 
 #### WorkflowAgentBindingType
 
@@ -19178,6 +20585,14 @@ How a workflow node is bound to an Agent.
 | mentioned_user_ids | [ string ] | Mentioned user IDs. Omit to keep existing mentions. | No |
 | position_x | number | Comment X position | No |
 | position_y | number | Comment Y position | No |
+
+#### WorkflowComposerCopyFromRosterPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| idempotency_key | string |  | No |
+| source_agent_id | string |  | Yes |
+| source_snapshot_id | string |  | No |
 
 #### WorkflowConversationVariableResponse
 
@@ -19628,8 +21043,8 @@ can reuse its existing handler.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| files | [ object ] |  | No |
-| inputs | object |  | Yes |
+| files | [ object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
 
 #### WorkflowRunQuery
 
@@ -19744,6 +21159,13 @@ Workflow tool configuration
 | marked_comment | string |  | No |
 | marked_name | string |  | No |
 
+#### WorkspaceAccessMatrix
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
 #### WorkspaceCustomConfigPayload
 
 | Name | Type | Description | Required |
@@ -19811,6 +21233,38 @@ Workflow tool configuration
 | allow_owner_transfer | boolean |  | Yes |
 | workspace_id | string |  | Yes |
 
+#### WorkspacePermissionSnapshot
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| permission_keys | [ string ] |  | No |
+
+#### _AccessPolicyList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AccessPolicy](#accesspolicy) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
+#### _AnonymousInlineModel_744ff9cc03e6
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author_name | string |  | No |
+| created_at | long |  | No |
+| created_by | string |  | No |
+| description | string |  | No |
+| icon_info | object |  | No |
+| id | string |  | No |
+| is_published | boolean |  | No |
+| name | string |  | No |
+| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
+| type | string |  | No |
+| updated_at | long |  | No |
+| updated_by | string |  | No |
+| use_count | integer |  | No |
+| version | integer |  | No |
+
 #### _AnonymousInlineModel_7b8b49ca164e
 
 | Name | Type | Description | Required |
@@ -19836,24 +21290,26 @@ Workflow tool configuration
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
 
-#### _AnonymousInlineModel_efd591151ea9
+#### _MembersInRoleList
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author_name | string |  | No |
-| created_at | long |  | No |
-| created_by | string |  | No |
-| description | string |  | No |
-| icon_info | object |  | No |
-| id | string |  | No |
-| is_published | boolean |  | No |
-| name | string |  | No |
-| tags | [ [_AnonymousInlineModel_7b8b49ca164e](#_anonymousinlinemodel_7b8b49ca164e) ] |  | No |
-| type | string |  | No |
-| updated_at | long |  | No |
-| updated_by | string |  | No |
-| use_count | integer |  | No |
-| version | integer |  | No |
+| data | [ [MembersInRole](#membersinrole) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
+#### _RBACRoleAccountList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RBACRoleAccount](#rbacroleaccount) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
+
+#### _RBACRoleList
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [RBACRole](#rbacrole) ] |  | No |
+| pagination | [Pagination](#pagination) |  | No |
 
 #### core__tools__entities__common_entities__I18nObject
 

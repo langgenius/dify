@@ -13,7 +13,7 @@ from core.mcp.server.streamable_http import handle_mcp_request
 from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from libs import helper
-from models.enums import AppMCPServerStatus
+from models.enums import AppMCPServerStatus, EndUserType
 from models.model import App, AppMCPServer, AppMode, EndUser
 
 
@@ -201,7 +201,7 @@ class MCPAppApi(Resource):
                 select(EndUser)
                 .where(EndUser.tenant_id == tenant_id)
                 .where(EndUser.session_id == mcp_server_id)
-                .where(EndUser.type == "mcp")
+                .where(EndUser.type == EndUserType.MCP)
                 .limit(1)
             )
 
@@ -212,7 +212,7 @@ class MCPAppApi(Resource):
         end_user = EndUser(
             tenant_id=tenant_id,
             app_id=app_id,
-            type="mcp",
+            type=EndUserType.MCP,
             name=client_name,
             session_id=mcp_server_id,
         )

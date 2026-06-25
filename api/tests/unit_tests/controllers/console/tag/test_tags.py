@@ -2,15 +2,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from sqlalchemy.orm import Session
-
-
-class SessionMatcher:
-    def __eq__(self, other):
-        return isinstance(other, Session)
-
-
 from flask import Flask
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden
 
 import controllers.console.tag.tags as module
@@ -25,6 +18,11 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import TagType
 from services.tag_service import UpdateTagPayload
+
+
+class SessionMatcher:
+    def __eq__(self, other):
+        return isinstance(other, Session | scoped_session)
 
 
 def unwrap(func):
@@ -193,9 +191,10 @@ class TestTagUpdateDeleteApi:
                 result, status = method(api, admin_user, "tag-1")
 
         assert status == 200
-        update_payload, tag_id = update_tags_mock.call_args.args
+        update_payload, tag_id, session = update_tags_mock.call_args.args
         assert update_payload == UpdateTagPayload(name="updated")
         assert tag_id == "tag-1"
+        assert session == module.db.session
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
@@ -221,7 +220,7 @@ class TestTagUpdateDeleteApi:
         ):
             result, status = method(api, "tag-1")
 
-        delete_mock.assert_called_once_with("tag-1")
+        delete_mock.assert_called_once_with("tag-1", module.db.session)
         assert status == 204
 
 

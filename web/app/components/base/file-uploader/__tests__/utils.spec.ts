@@ -9,7 +9,6 @@ import {
   fileUpload,
   getFileAppearanceType,
   getFileExtension,
-  getFileNameFromUrl,
   getFilesInLogs,
   getFileUploadErrorMessage,
   getProcessedFiles,
@@ -624,18 +623,6 @@ describe('file-uploader utils', () => {
       expect(result[0]!.supportFileType).toBe('image') // correct, no change
       expect(result[1]!.supportFileType).toBe('image') // corrected from document to image
       expect(result[2]!.supportFileType).toBe('document') // conflict, no change
-    })
-  })
-
-  describe('getFileNameFromUrl', () => {
-    it('should extract filename from URL', () => {
-      expect(getFileNameFromUrl('http://example.com/path/file.txt'))
-        .toBe('file.txt')
-    })
-
-    it('should return empty string for URL ending with slash', () => {
-      expect(getFileNameFromUrl('http://example.com/path/'))
-        .toBe('')
     })
   })
 

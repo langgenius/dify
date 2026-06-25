@@ -67,7 +67,7 @@ describe('Item Component', () => {
   describe('Rename Mode Interactions', () => {
     it('should switch to rename mode when Trigger Rename is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
 
       // Act
       await triggerRename()
@@ -78,7 +78,7 @@ describe('Item Component', () => {
 
     it('should update rename input value when changed', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
 
@@ -91,7 +91,7 @@ describe('Item Component', () => {
 
     it('should call onAction with "rename" and correct payload when Save is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'New Name' } })
@@ -115,7 +115,7 @@ describe('Item Component', () => {
 
     it('should exit rename mode without calling onAction when Cancel is clicked', async () => {
       // Arrange
-      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />)
       await triggerRename()
       const input = screen.getByPlaceholderText('common.placeholder.input')
       fireEvent.change(input, { target: { value: 'Cancelled Name' } })
@@ -137,7 +137,7 @@ describe('Item Component', () => {
       const parentClick = vi.fn()
       render(
         <div onClick={parentClick}>
-          <Item credentialItem={mockCredentialItem} onAction={mockOnAction} />
+          <Item credentialItem={mockCredentialItem} onAction={mockOnAction} canManageCredential />
         </div>,
       )
       // Act & Assert
@@ -164,7 +164,7 @@ describe('Item Component', () => {
     it('should not throw if onAction is missing', async () => {
       // Arrange & Act
       // @ts-expect-error - Testing runtime tolerance for missing prop
-      render(<Item credentialItem={mockCredentialItem} onAction={undefined} />)
+      render(<Item credentialItem={mockCredentialItem} onAction={undefined} canManageCredential />)
       await triggerRename()
 
       // Assert

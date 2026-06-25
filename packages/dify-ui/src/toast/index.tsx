@@ -176,15 +176,15 @@ function ToastCard({
             <ToastIcon type={toastType} />
           </div>
           <div className="min-w-0 flex-1 p-1">
-            <div className="flex w-full items-center gap-1">
+            <div className="flex w-full min-w-0 items-center gap-1">
               {toastItem.title != null && (
-                <BaseToast.Title className="system-sm-semibold wrap-break-word text-text-primary">
+                <BaseToast.Title className="min-w-0 flex-1 system-sm-semibold wrap-break-word [overflow-wrap:anywhere] text-text-primary">
                   {toastItem.title}
                 </BaseToast.Title>
               )}
             </div>
             {toastItem.description != null && (
-              <BaseToast.Description className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
+              <BaseToast.Description className="mt-1 min-w-0 system-xs-regular wrap-break-word [overflow-wrap:anywhere] text-text-secondary">
                 {toastItem.description}
               </BaseToast.Description>
             )}

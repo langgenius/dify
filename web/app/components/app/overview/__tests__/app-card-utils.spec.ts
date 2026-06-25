@@ -153,8 +153,8 @@ describe('app-card-utils', () => {
       appInfo: baseAppInfo,
       cardType: 'webapp',
       currentWorkflow: null,
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
 
     expect(state.isApp).toBe(true)
@@ -168,8 +168,8 @@ describe('app-card-utils', () => {
       appInfo: { ...baseAppInfo, mode: AppModeEnum.WORKFLOW },
       cardType: 'webapp',
       currentWorkflow: null,
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
     expect(unpublishedState.appUnpublished).toBe(true)
     expect(unpublishedState.toggleDisabled).toBe(true)
@@ -182,8 +182,8 @@ describe('app-card-utils', () => {
           nodes: [{ data: { type: BlockEnum.Answer } }],
         },
       },
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
     expect(missingStartState.missingStartNode).toBe(true)
     expect(missingStartState.runningStatus).toBe(false)
@@ -210,13 +210,13 @@ describe('app-card-utils', () => {
     expect(getAppCardOperationKeys({
       cardType: 'api',
       appMode: AppModeEnum.COMPLETION,
-      isCurrentWorkspaceEditor: true,
+      canManageSettings: true,
     })).toEqual(['develop'])
 
     expect(getAppCardOperationKeys({
       cardType: 'webapp',
       appMode: AppModeEnum.CHAT,
-      isCurrentWorkspaceEditor: false,
+      canManageSettings: false,
     })).toEqual(['launch', 'embedded', 'customize'])
   })
 

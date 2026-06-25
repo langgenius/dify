@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "Обновите версию, чтобы включить массовую загрузку документов",
   "upgrade.uploadMultiplePages.description": "Вы достигли лимита загрузки — на вашем текущем тарифном плане можно выбрать и загрузить только один документ за раз.",
   "upgrade.uploadMultiplePages.title": "Обновите версию, чтобы загружать несколько документов одновременно",
+  "upgrade.workflowRestore.description": "Восстановление версий рабочего процесса недоступно в вашем текущем плане.",
+  "upgrade.workflowRestore.title": "Обновите план, чтобы восстанавливать версии рабочего процесса",
   "upgradeBtn.encourage": "Обновить сейчас",
   "upgradeBtn.encourageShort": "Обновить",
   "upgradeBtn.plain": "Обновить тарифный план",

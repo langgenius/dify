@@ -218,7 +218,7 @@ class TestWorkflowPersistenceLayer:
         assert exec_repo.saved[-1].status == WorkflowExecutionStatus.FAILED
         assert trace_tasks
 
-    def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch):
+    def test_handle_graph_run_succeeded_enqueues_parent_trace_context(self, monkeypatch: pytest.MonkeyPatch):
         trace_tasks: list[TraceTask] = []
         trace_manager = SimpleNamespace(user_id="user", add_trace_task=lambda task: trace_tasks.append(task))
         layer, _, _, _ = _make_layer(

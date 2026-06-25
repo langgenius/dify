@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 from flask import Flask
@@ -6,12 +7,6 @@ from controllers.console.workspace.agent_providers import (
     AgentProviderApi,
     AgentProviderListApi,
 )
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestAgentProviderListApi:

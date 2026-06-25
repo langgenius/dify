@@ -100,6 +100,7 @@ class DatasetPermissionIntegrationFactory:
             data_source_type=DataSourceType.UPLOAD_FILE,
             indexing_technique=indexing_technique,
             created_by=created_by,
+            maintainer=created_by,
             provider="vendor",
             permission=permission,
             retrieval_model={"top_k": 2},

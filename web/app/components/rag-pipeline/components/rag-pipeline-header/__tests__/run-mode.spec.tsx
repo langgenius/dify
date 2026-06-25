@@ -35,6 +35,12 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: (selector: (state: { accessControl: { canRun: boolean } }) => unknown) => selector({
+    accessControl: { canRun: true },
+  }),
+}))
+
 vi.mock('@/app/components/workflow/types', () => ({
   WorkflowRunningStatus: { Running: 'running' },
 }))

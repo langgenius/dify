@@ -3,6 +3,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { ChunkingMode, DatasetPermission, DataSourceType, WeightedScoreEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { DatasetACLPermission } from '@/utils/permission'
 import { IndexingType } from '../../../../create/step-two'
 import { useFormState } from '../use-form-state'
 
@@ -16,7 +17,10 @@ const mockMutateDatasets = vi.fn()
 const mockInvalidDatasetList = vi.fn()
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: () => false, // isCurrentWorkspaceDatasetOperator
+  useSelector: <T>(selector: (value: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T) => selector({
+    userProfile: { id: 'user-1' },
+    workspacePermissionKeys: [],
+  }),
 }))
 
 const createDefaultMockDataset = (): DataSet => ({
@@ -85,6 +89,7 @@ const createDefaultMockDataset = (): DataSet => ({
   runtime_mode: 'general',
   enable_api: true,
   is_multimodal: false,
+  permission_keys: [DatasetACLPermission.Edit],
 })
 
 let mockDataset: DataSet = createDefaultMockDataset()
@@ -183,6 +188,17 @@ describe('useFormState', () => {
 
       expect(result.current.currentDataset).toBeDefined()
       expect(result.current.currentDataset?.id).toBe('dataset-1')
+    })
+
+    it('should expose editability from dataset ACL permission keys without legacy role state', () => {
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      expect(result.current.canEditSettings).toBe(false)
+      expect('isCurrentWorkspaceDatasetOperator' in result.current).toBe(false)
     })
   })
 
@@ -480,6 +496,21 @@ describe('useFormState', () => {
           permission: DatasetPermission.onlyMe,
         }),
       })
+    })
+
+    it('should not save when dataset only has readonly ACL permission', async () => {
+      const { updateDatasetSetting } = await import('@/service/datasets')
+      mockDataset = {
+        ...createDefaultMockDataset(),
+        permission_keys: [DatasetACLPermission.Readonly],
+      }
+      const { result } = renderHook(() => useFormState())
+
+      await act(async () => {
+        await result.current.handleSave()
+      })
+
+      expect(updateDatasetSetting).not.toHaveBeenCalled()
     })
 
     it('should show success toast on successful save', async () => {

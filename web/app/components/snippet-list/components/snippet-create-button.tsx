@@ -15,6 +15,7 @@ import ImportSnippetDSLDialog from '@/app/components/snippets/import-snippet-dsl
 const SnippetCreateButton = () => {
   const { t } = useTranslation('snippet')
   const {
+    canCreateAndModifySnippet,
     createSnippetMutation,
     handleCreateSnippet,
     isCreatingSnippet,
@@ -23,6 +24,9 @@ const SnippetCreateButton = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const isSubmitting = isCreatingSnippet || createSnippetMutation.isPending
+
+  if (!canCreateAndModifySnippet)
+    return null
 
   return (
     <>

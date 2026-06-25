@@ -12,8 +12,8 @@ from typing import Annotated, Any, Literal, TypedDict, cast
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 from redis.exceptions import LockNotOwnedError
-from sqlalchemy import delete, exists, func, select, update
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import ColumnElement, delete, exists, func, select, update
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -67,6 +67,7 @@ from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -235,8 +236,35 @@ class _EstimateArgs(BaseModel):
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None, include_all=False):
+    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
+        if not dify_config.RBAC_ENABLED:
+            return False
+
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
+        workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
+        return "dataset.create_and_management" in workspace_permission_keys
+
+    @staticmethod
+    def get_datasets(
+        page,
+        per_page,
+        session: scoped_session | Session | None = None,
+        tenant_id=None,
+        user=None,
+        search=None,
+        tag_ids=None,
+        include_all=False,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
+        session = session or db.session
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
+            query = query.where(accessible_filter)
 
         if user:
             # get permitted dataset ids
@@ -246,8 +274,7 @@ class DatasetService:
                 )
             ).all()
             permitted_dataset_ids = {dp.dataset_id for dp in dataset_permission} if dataset_permission else None
-
-            if user.current_role == TenantAccountRole.DATASET_OPERATOR:
+            if not dify_config.RBAC_ENABLED and user.current_role == TenantAccountRole.DATASET_OPERATOR:
                 # only show datasets that the user has permission to access
                 # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
                 if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
@@ -255,34 +282,50 @@ class DatasetService:
                 else:
                     return [], 0
             else:
-                if user.current_role != TenantAccountRole.OWNER or not include_all:
-                    # show all datasets that the user has permission to access
-                    # Check if permitted_dataset_ids is not empty to avoid WHERE false condition
-                    if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
-                                    Dataset.id.in_(permitted_dataset_ids),
-                                ),
-                            )
-                        )
+                if dify_config.RBAC_ENABLED:
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
+                    should_show_all_datasets = include_all and can_manage_all_datasets
+                else:
+                    should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
+
+                if not should_show_all_datasets:
+                    if dify_config.RBAC_ENABLED:
+                        # RBAC mode: show all datasets.  Permission control is enforced
+                        # via permission_keys on each item and @rbac_permission_required decorators.
+                        pass
                     else:
-                        query = query.where(
-                            sa.or_(
-                                Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                                sa.and_(
-                                    Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id
-                                ),
+                        # Keep legacy visibility rules when RBAC is disabled.
+                        if permitted_dataset_ids and len(permitted_dataset_ids) > 0:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.maintainer == user.id,
+                                    ),
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM,
+                                        Dataset.id.in_(permitted_dataset_ids),
+                                    ),
+                                )
                             )
-                        )
+                        else:
+                            query = query.where(
+                                sa.or_(
+                                    Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                                    sa.and_(
+                                        Dataset.permission == DatasetPermissionEnum.ONLY_ME,
+                                        Dataset.maintainer == user.id,
+                                    ),
+                                )
+                            )
         else:
-            # if no user, only show datasets that are shared with all team members
-            query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
+            if dify_config.RBAC_ENABLED:
+                # Without an account we cannot resolve RBAC resource visibility.
+                query = query.where(sa.false())
+            else:
+                # if no user, only show datasets that are shared with all team members
+                query = query.where(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
             escaped_search = helper.escape_like_pattern(search)
@@ -295,6 +338,7 @@ class DatasetService:
                     "knowledge",
                     tenant_id,
                     tag_ids,
+                    session,
                     match_all=True,
                 )
             else:
@@ -326,11 +370,27 @@ class DatasetService:
         return {"mode": mode, "rules": rules}
 
     @staticmethod
-    def get_datasets_by_ids(ids, tenant_id):
+    def get_datasets_by_ids(
+        ids,
+        tenant_id,
+        user=None,
+        accessible_dataset_ids: list[str] | None = None,
+        include_own_datasets: bool = False,
+    ):
         # Check if ids is not empty to avoid WHERE false condition
         if not ids or len(ids) == 0:
             return [], 0
         stmt = select(Dataset).where(Dataset.id.in_(ids), Dataset.tenant_id == tenant_id)
+
+        if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
+            requested_dataset_ids = set(ids)
+            accessible_dataset_ids = [
+                dataset_id for dataset_id in accessible_dataset_ids if dataset_id in requested_dataset_ids
+            ]
+            accessible_filter: ColumnElement[bool] = Dataset.id.in_(accessible_dataset_ids)
+            if include_own_datasets and user:
+                accessible_filter = sa.or_(Dataset.maintainer == user.id, accessible_filter)
+            stmt = stmt.where(accessible_filter)
 
         datasets = db.paginate(select=stmt, page=1, per_page=len(ids), max_per_page=len(ids), error_out=False)
 
@@ -389,6 +449,7 @@ class DatasetService:
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.description = description
         dataset.created_by = account.id
+        dataset.maintainer = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
@@ -419,6 +480,12 @@ class DatasetService:
             db.session.add(external_knowledge_binding)
 
         db.session.commit()
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            account.id,
+            enterprise_rbac_service.RBACResourceType.DATASET,
+            dataset.id,
+        )
         return dataset
 
     @staticmethod
@@ -464,6 +531,7 @@ class DatasetService:
             runtime_mode=DatasetRuntimeMode.RAG_PIPELINE,
             icon_info=rag_pipeline_dataset_create_entity.icon_info.model_dump(),
             created_by=current_user.id,
+            maintainer=current_user.id,
             pipeline_id=pipeline.id,
         )
         db.session.add(dataset)
@@ -1262,12 +1330,12 @@ class DatasetService:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
         if user.current_role != TenantAccountRole.OWNER:
-            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
+            if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.maintainer != user.id:
                 logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
                 raise NoPermissionError("You do not have permission to access this dataset.")
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
-                # For partial team permission, user needs explicit permission or be the creator
-                if dataset.created_by != user.id:
+                # For partial team permission, user needs explicit permission or be the maintainer.
+                if dataset.maintainer != user.id:
                     user_permission = db.session.scalar(
                         select(DatasetPermission)
                         .where(DatasetPermission.dataset_id == dataset.id, DatasetPermission.account_id == user.id)
@@ -1287,7 +1355,7 @@ class DatasetService:
 
         if user.current_role != TenantAccountRole.OWNER:
             if dataset.permission == DatasetPermissionEnum.ONLY_ME:
-                if dataset.created_by != user.id:
+                if dataset.maintainer != user.id:
                     raise NoPermissionError("You do not have permission to access this dataset.")
 
             elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
@@ -1710,7 +1778,7 @@ class DocumentService:
             invalid_source_message="Document does not have an uploaded file to download.",
             missing_file_message="Uploaded file not found.",
         )
-        upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id])
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), document.tenant_id, [upload_file_id])
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
             raise NotFound("Uploaded file not found.")
@@ -1749,7 +1817,7 @@ class DocumentService:
             upload_file_ids.append(upload_file_id)
             upload_file_ids_by_document_id[document_id] = upload_file_id
 
-        upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), tenant_id, upload_file_ids)
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
             raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")
@@ -2032,14 +2100,7 @@ class DocumentService:
                         website_info = knowledge_config.data_source.info_list.website_info_list
                         assert website_info
                         count = len(website_info.urls)
-                    batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-
-                    if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                        raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-                    if count > batch_upload_limit:
-                        raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-
-                    DocumentService.check_documents_upload_quota(count, features)
+                    DocumentService.check_document_creation_limits(count, features)
 
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type and knowledge_config.data_source:
@@ -2604,6 +2665,21 @@ class DocumentService:
             )
 
     @staticmethod
+    def check_document_creation_limits(count: int, features: FeatureModel):
+        """Validate billing-backed document creation limits before document rows are created."""
+        if not features.billing.enabled:
+            return
+
+        if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
+            raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
+
+        batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
+        if count > batch_upload_limit:
+            raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+
+        DocumentService.check_documents_upload_quota(count, features)
+
+    @staticmethod
     def build_document(
         dataset: Dataset,
         process_rule_id: str | None,
@@ -2824,13 +2900,7 @@ class DocumentService:
                 website_info = knowledge_config.data_source.info_list.website_info_list
                 if website_info:
                     count = len(website_info.urls)
-            if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
-                raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
-            batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
-            if count > batch_upload_limit:
-                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-
-            DocumentService.check_documents_upload_quota(count, features)
+            DocumentService.check_document_creation_limits(count, features)
 
         dataset_collection_binding_id = None
         retrieval_model = None
@@ -2859,6 +2929,7 @@ class DocumentService:
             data_source_type=knowledge_config.data_source.info_list.data_source_type,
             indexing_technique=IndexTechniqueType(knowledge_config.indexing_technique),
             created_by=account.id,
+            maintainer=account.id,
             embedding_model=knowledge_config.embedding_model,
             embedding_model_provider=knowledge_config.embedding_model_provider,
             collection_binding_id=dataset_collection_binding_id,

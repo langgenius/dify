@@ -5,8 +5,8 @@ from datetime import datetime
 
 from flask import Response
 from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
 from models.enums import FeedbackRating
 from models.model import Account, App, Conversation, Message, MessageFeedback
 
@@ -15,6 +15,8 @@ class FeedbackService:
     @staticmethod
     def export_feedbacks(
         app_id: str,
+        *,
+        session: Session,
         from_source: str | None = None,
         rating: str | None = None,
         has_comment: bool | None = None,
@@ -27,6 +29,7 @@ class FeedbackService:
 
         Args:
             app_id: Application ID
+            session: Database session used to run the export query
             from_source: Filter by feedback source ('user' or 'admin')
             rating: Filter by rating ('like' or 'dislike')
             has_comment: Only include feedback with comments
@@ -81,7 +84,7 @@ class FeedbackService:
         stmt = stmt.order_by(MessageFeedback.created_at.desc())
 
         # Execute query
-        results = db.session.execute(stmt).all()
+        results = session.execute(stmt).all()
 
         # Prepare data for export
         export_data = []

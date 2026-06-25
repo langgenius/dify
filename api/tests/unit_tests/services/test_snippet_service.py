@@ -94,14 +94,15 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(monkeypatch: pytest.MonkeyPatch) -> None:
+    session = _SessionWithoutNameLookup()
     get_target_ids = Mock(return_value=[])
     monkeypatch.setattr("services.snippet_service.TagService.get_target_ids_by_tag_ids", get_target_ids)
     service = SnippetService.__new__(SnippetService)
 
-    result = service.get_snippets(tenant_id="tenant-1", tag_ids=["tag-1"])
+    result = service.get_snippets(tenant_id="tenant-1", session=session, tag_ids=["tag-1"])
 
     assert result == ([], 0, False)
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], match_all=True)
+    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], session, match_all=True)
 
 
 def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -124,6 +125,7 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
 
     result, total, has_more = service.get_snippets(
         tenant_id="tenant-1",
+        session=session,
         page=2,
         limit=2,
         keyword="search",
@@ -135,7 +137,7 @@ def test_get_snippets_applies_filters_and_paginates(monkeypatch: pytest.MonkeyPa
     assert result == snippets[:2]
     assert total == 3
     assert has_more is True
-    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], match_all=True)
+    get_target_ids.assert_called_once_with("snippet", "tenant-1", ["tag-1"], session, match_all=True)
     session.scalar.assert_called_once()
     session.scalars.assert_called_once()
 
@@ -527,7 +529,7 @@ def test_delete_snippet_removes_related_records() -> None:
     session.delete.assert_called_once_with(snippet)
 
 
-def test_delete_draft_variable_files_removes_storage_objects(monkeypatch) -> None:
+def test_delete_draft_variable_files_removes_storage_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from extensions.ext_storage import storage
 
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")
@@ -552,7 +554,7 @@ def test_delete_draft_variable_files_removes_storage_objects(monkeypatch) -> Non
     assert "workflow_draft_variable_files" in executed_sql
 
 
-def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch) -> None:
+def test_delete_archived_workflow_run_files_removes_prefixed_objects(monkeypatch: pytest.MonkeyPatch) -> None:
     from configs import dify_config
 
     snippet = SimpleNamespace(id="snippet-1", tenant_id="tenant-1")

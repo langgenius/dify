@@ -109,6 +109,7 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
     isValidatingCurrentWorkspace: false,
+    workspacePermissionKeys: [],
   }
   const useSelector: AppContextValue['useSelector'] = selector => selector({ ...base, useSelector })
   return {

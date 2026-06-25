@@ -21,18 +21,20 @@ import { useCollaboration } from '@/app/components/workflow/collaboration/hooks/
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { getAppACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,
   useConfigsMap,
-  useDSL,
+  useDSLByCanEdit,
   useGetRunAndTraceUrl,
   useInspectVarsCrud,
-  useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
   useSetWorkflowVarsWithValue,
   useWorkflowRefreshDraft,
-  useWorkflowRun,
-  useWorkflowStartRun,
+  useWorkflowRunByCanEdit,
+  useWorkflowStartRunByCanEdit,
 } from '../hooks'
 import WorkflowChildren from './workflow-children'
 
@@ -74,6 +76,16 @@ const WorkflowMain = ({
 
   const filteredCursors = Object.fromEntries(
     Object.entries(cursors).filter(([userId]) => userId !== myUserId),
+  )
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = useMemo(
+    () => getAppACLCapabilities(appDetail?.permission_keys, {
+      currentUserId,
+      resourceMaintainer: appDetail?.maintainer,
+      workspacePermissionKeys,
+    }),
+    [appDetail?.maintainer, appDetail?.permission_keys, currentUserId, workspacePermissionKeys],
   )
 
   useEffect(() => {
@@ -138,7 +150,7 @@ const WorkflowMain = ({
   const {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft()
+  } = useNodesSyncDraftByCanEdit(appACLCapabilities.canEdit)
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const {
@@ -147,7 +159,7 @@ const WorkflowMain = ({
     handleRestoreFromPublishedWorkflow,
     handleRun,
     handleStopRun,
-  } = useWorkflowRun()
+  } = useWorkflowRunByCanEdit(appACLCapabilities.canEdit)
 
   useEffect(() => {
     if (!appId || !isCollaborationEnabled)
@@ -209,13 +221,13 @@ const WorkflowMain = ({
     handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow,
-  } = useWorkflowStartRun()
+  } = useWorkflowStartRunByCanEdit(appACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const {
     exportCheck,
     handleExportDSL,
-  } = useDSL()
+  } = useDSLByCanEdit(appACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
 
@@ -275,6 +287,13 @@ const WorkflowMain = ({
       invalidateSysVarValues,
       resetConversationVar,
       invalidateConversationVarValues,
+      accessControl: {
+        canEdit: appACLCapabilities.canEdit,
+        canComment: appACLCapabilities.canComment,
+        canRun: appACLCapabilities.canTestAndRun,
+        canImportExportDSL: appACLCapabilities.canImportExportDSL,
+        canReleaseAndVersion: appACLCapabilities.canReleaseAndVersion,
+      },
       configsMap,
     }
   }, [
@@ -312,6 +331,7 @@ const WorkflowMain = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    appACLCapabilities,
     configsMap,
   ])
 

@@ -26,7 +26,7 @@ vi.mock('../customize', () => ({
 }))
 
 vi.mock('../../app-access-control', () => ({
-  default: ({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) => (
+  AccessControl: ({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) => (
     <div data-testid="access-control">
       <button type="button" onClick={onClose}>close-access</button>
       <button type="button" onClick={onConfirm}>confirm-access</button>
@@ -149,7 +149,7 @@ describe('app-card-sections', () => {
         isApp
         accessibleUrl="https://example.com/apps/demo"
         showConfirmDelete
-        isCurrentWorkspaceManager
+        canRegenerateUrl
         genLoading={false}
         onRegenerate={onRegenerate}
         onShowRegenerateConfirm={vi.fn()}

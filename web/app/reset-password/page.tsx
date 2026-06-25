@@ -12,7 +12,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { sendResetPasswordCode } from '@/service/common'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '../components/signin/storage'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -22,6 +22,7 @@ export default function CheckCode() {
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
+  const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const handleGetEMailVerificationCode = async () => {
     try {
@@ -37,7 +38,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))

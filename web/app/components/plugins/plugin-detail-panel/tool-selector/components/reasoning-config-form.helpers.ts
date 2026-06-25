@@ -1,7 +1,6 @@
-import type { Node } from 'reactflow'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -211,23 +210,3 @@ export const createPickerProps = ({
 export const getFieldTitle = (labels: { [key: string]: string }, language: string) => {
   return labels[language] || labels.en_US
 }
-
-export const createEmptyAppValue = () => ({
-  app_id: '',
-  inputs: {},
-  files: [],
-})
-
-export const createReasoningFormContext = ({
-  availableNodes,
-  nodeId,
-  nodeOutputVars,
-}: {
-  availableNodes: Node[]
-  nodeId: string
-  nodeOutputVars: NodeOutPutVar[]
-}) => ({
-  availableNodes,
-  nodeId,
-  nodeOutputVars,
-})

@@ -1,4 +1,5 @@
 import datetime
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
@@ -347,7 +348,9 @@ def test_serialize_record_falls_back_to_table_columns() -> None:
     }
 
 
-def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=object()))
 
     # Total tenant count query
@@ -381,14 +384,13 @@ def test_process_with_tenant_ids_filters_by_plan_and_logs_errors(monkeypatch: py
     process_tenant_mock = MagicMock(side_effect=lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("err")))
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "process_tenant", process_tenant_mock)
 
-    logger_exc = MagicMock()
-    monkeypatch.setattr(service_module.logger, "exception", logger_exc)
-
-    ClearFreePlanTenantExpiredLogs.process(days=7, batch=10, tenant_ids=["t_sandbox", "t_paid", "t_fail"])
+    with caplog.at_level(logging.ERROR, logger=service_module.logger.name):
+        ClearFreePlanTenantExpiredLogs.process(days=7, batch=10, tenant_ids=["t_sandbox", "t_paid", "t_fail"])
 
     # Only sandbox tenant should attempt processing, and its failure should be swallowed + logged.
     assert process_tenant_mock.call_count == 1
-    assert logger_exc.call_count >= 1
+    assert "Failed to process tenant t_sandbox" in caplog.messages
+    assert "Failed to process tenant t_fail" in caplog.messages
 
 
 def test_process_without_tenant_ids_batches_and_scales_interval(monkeypatch: pytest.MonkeyPatch) -> None:

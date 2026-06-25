@@ -16,6 +16,7 @@ type ExternalKnowledgeSectionProps = {
   scoreThreshold: number
   scoreThresholdEnabled: boolean
   handleSettingsChange: (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => void
+  readonly?: boolean
 }
 
 const ExternalKnowledgeSection = ({
@@ -26,6 +27,7 @@ const ExternalKnowledgeSection = ({
   scoreThreshold,
   scoreThresholdEnabled,
   handleSettingsChange,
+  readonly = false,
 }: ExternalKnowledgeSectionProps) => {
   const { t } = useTranslation()
 
@@ -44,6 +46,7 @@ const ExternalKnowledgeSection = ({
           scoreThresholdEnabled={scoreThresholdEnabled}
           onChange={handleSettingsChange}
           isInRetrievalSetting={true}
+          readonly={readonly}
         />
       </div>
 

@@ -1,5 +1,6 @@
 import io
 import types
+from inspect import unwrap
 from unittest.mock import patch
 
 import pytest
@@ -7,12 +8,6 @@ from werkzeug.exceptions import Forbidden
 
 import controllers.files.upload as module
 from core.workflow.file_reference import build_file_reference
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def fake_request(args: dict, file=None):

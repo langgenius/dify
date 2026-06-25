@@ -22,7 +22,7 @@ import type {
 } from '@/models/datasets'
 import qs from 'qs'
 import { DataSourceProvider } from '@/models/common'
-import { del, get, patch, post, put } from './base'
+import { del, get, patch, post } from './base'
 
 // apis for documents in a dataset
 
@@ -166,10 +166,6 @@ export const downloadDocumentsZip = ({ datasetId, documentIds }: DocumentDownloa
       document_ids: documentIds,
     },
   })
-}
-
-export const modifyDocMetadata = ({ datasetId, documentId, body }: CommonDocReq & { body: { doc_type: string, doc_metadata: Record<string, any> } }): Promise<CommonResponse> => {
-  return put<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body })
 }
 
 // hit testing
