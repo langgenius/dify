@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Elimină din echipă",
   "members.removeFromTeamConfirmDescription": "Confirmă eliminarea acestui membru. Această acțiune nu poate fi anulată.",
   "members.removeFromTeamConfirmTitle": "Elimină {{memberName}} din echipă",
-  "members.role": "ROLURI",
+  "members.role": "ROL",
   "members.roles": "ROLURI",
   "members.selectRole": "Selectați un rol",
   "members.sendInvite": "Trimite invitație",

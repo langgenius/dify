@@ -256,7 +256,7 @@
   "members.removeFromTeam": "टीम से हटाएं",
   "members.removeFromTeamConfirmDescription": "इस सदस्य को हटाने की पुष्टि करें। यह कार्रवाई वापस नहीं की जा सकती।",
   "members.removeFromTeamConfirmTitle": "{{memberName}} को टीम से हटाएं",
-  "members.role": "भूमिकाएं",
+  "members.role": "भूमिका",
   "members.roles": "भूमिकाएं",
   "members.selectRole": "एक भूमिका चुनें",
   "members.sendInvite": "आमंत्रण भेजें",

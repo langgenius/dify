@@ -706,6 +706,29 @@ describe('useChat', () => {
       expect(lastResponse!.workflowProcess?.status).toBe('failed')
     })
 
+    it('should store workflow finished error on workflow process state', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'failed workflow' }, {})
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-err', task_id: 't-err' })
+        callbacks.onWorkflowFinished({ data: { status: 'failed', error: 'Invalid upload file' } })
+      })
+
+      const lastResponse = result.current.chatList[1]
+      expect(lastResponse!.workflowProcess?.status).toBe('failed')
+      expect(lastResponse!.workflowProcess?.error).toBe('Invalid upload file')
+    })
+
     it('should insert and then replace child QA when sending with parent_message_id', () => {
       let callbacks: HookCallbacks
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {

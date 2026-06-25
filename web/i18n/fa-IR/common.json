@@ -256,7 +256,7 @@
   "members.removeFromTeam": "حذف از تیم",
   "members.removeFromTeamConfirmDescription": "حذف این عضو را تأیید کنید. این عمل قابل بازگشت نیست.",
   "members.removeFromTeamConfirmTitle": "حذف {{memberName}} از تیم",
-  "members.role": "نقش‌ها",
+  "members.role": "نقش",
   "members.roles": "نقش‌ها",
   "members.selectRole": "یک نقش انتخاب کنید",
   "members.sendInvite": "ارسال دعوت",
