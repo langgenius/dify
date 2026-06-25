@@ -1,9 +1,30 @@
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
+import { Infotip } from '@/app/components/base/infotip'
+import { useDocLink } from '@/context/i18n'
 
 type AgentConfigureRightPanelMode = 'build' | 'preview'
+
+function AgentModeTipSection({
+  iconClassName,
+  title,
+  children,
+}: {
+  iconClassName: string
+  title: string
+  children: string
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-start gap-1.5">
+        <span aria-hidden className={cn('size-4 shrink-0 text-text-primary', iconClassName)} />
+        <div className="system-sm-medium-uppercase text-text-primary">{title}</div>
+      </div>
+      <div className="system-xs-regular text-text-secondary">{children}</div>
+    </div>
+  )
+}
 
 export function AgentPreviewHeader({
   mode,
@@ -25,9 +46,13 @@ export function AgentPreviewHeader({
   refreshDisabled?: boolean
 }) {
   const { t } = useTranslation('agentV2')
-  const modeTipTitle = t(`agentDetail.configure.rightPanel.${mode}TipTitle`)
-  const modeTipBody = t(`agentDetail.configure.rightPanel.${mode}TipBody`)
-  const modeTip = `${modeTipTitle}. ${modeTipBody}`
+  const docLink = useDocLink()
+  const buildLabel = t('agentDetail.configure.rightPanel.build')
+  const buildTipBody = t('agentDetail.configure.rightPanel.buildTipBody')
+  const previewLabel = t('agentDetail.configure.rightPanel.preview')
+  const previewTipBody = t('agentDetail.configure.rightPanel.previewTipBody')
+  const learnMoreLabel = t('agentDetail.configure.rightPanel.learnMore')
+  const modeTip = `${buildLabel}. ${buildTipBody} ${previewLabel}. ${previewTipBody} ${learnMoreLabel}`
 
   return (
     <div className="relative z-1 flex h-12 shrink-0 items-center gap-3 py-2 pr-3 pl-4">
@@ -42,7 +67,7 @@ export function AgentPreviewHeader({
           aria-label={t('agentDetail.configure.rightPanel.modeLabel')}
         >
           <SegmentedControlItem<AgentConfigureRightPanelMode> value="build" className="uppercase">
-            <span aria-hidden className="i-ri-hammer-line size-4" />
+            <span aria-hidden className="i-custom-vender-agent-v2-configure-build size-4" />
             {t('agentDetail.configure.rightPanel.build')}
           </SegmentedControlItem>
           <SegmentedControlItem<AgentConfigureRightPanelMode>
@@ -50,27 +75,37 @@ export function AgentPreviewHeader({
             disabled={!previewEnabled}
             className="uppercase"
           >
-            <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
+            <span aria-hidden className="i-custom-vender-agent-v2-configure-preview size-4" />
             {t('agentDetail.configure.rightPanel.preview')}
           </SegmentedControlItem>
         </SegmentedControl>
-        <Tooltip>
-          <TooltipTrigger
-            render={(
-              <button
-                type="button"
-                aria-label={modeTip}
-                className="flex size-5 shrink-0 items-center justify-center rounded-md text-text-quaternary hover:bg-state-base-hover hover:text-text-tertiary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              >
-                <span aria-hidden className="i-ri-question-line size-4" />
-              </button>
-            )}
-          />
-          <TooltipContent className="max-w-64">
-            <div className="system-xs-semibold text-text-primary">{modeTipTitle}</div>
-            <div className="mt-1 system-xs-regular text-text-secondary">{modeTipBody}</div>
-          </TooltipContent>
-        </Tooltip>
+        <Infotip
+          aria-label={modeTip}
+          placement="bottom"
+          sideOffset={2}
+          className="size-5 rounded-md"
+          iconClassName="size-4 text-text-tertiary"
+          popupClassName="w-60 max-w-60 rounded-xl bg-components-tooltip-bg px-4 py-3.5 text-start text-text-secondary backdrop-blur-[5px]"
+        >
+          <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
+              <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-build" title={buildLabel}>
+                {buildTipBody}
+              </AgentModeTipSection>
+              <AgentModeTipSection iconClassName="i-custom-vender-agent-v2-configure-preview" title={previewLabel}>
+                {previewTipBody}
+              </AgentModeTipSection>
+            </div>
+            <a
+              href={docLink('/use-dify/build/agent')}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="body-xs-regular text-text-accent hover:underline"
+            >
+              {learnMoreLabel}
+            </a>
+          </div>
+        </Infotip>
       </div>
       <div className="flex shrink-0 items-center gap-1">
         <button
@@ -82,35 +117,30 @@ export function AgentPreviewHeader({
         >
           <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
         </button>
-        {mode === 'build'
-          ? (
-              <button
-                type="button"
-                onClick={onOpenVersions}
-                className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                aria-label={t('agentDetail.configure.publishBar.versionHistory')}
-              >
-                <span aria-hidden className="i-ri-folder-3-line size-4" />
-              </button>
-            )
-          : (
-              <>
-                <SegmentedControlDivider className="mx-1" />
-                <button
-                  type="button"
-                  aria-pressed={isChatFeaturesOpen}
-                  onClick={onToggleChatFeatures}
-                  className={cn(
-                    'flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                    isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
-                  )}
-                  aria-label={t('agentDetail.configure.preview.chatFeatures')}
-                >
-                  <span aria-hidden className="i-ri-apps-2-add-line size-4" />
-                  <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
-                </button>
-              </>
-            )}
+        {mode === 'build' && (
+          <button
+            type="button"
+            onClick={onOpenVersions}
+            className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            aria-label={t('agentDetail.configure.publishBar.versionHistory')}
+          >
+            <span aria-hidden className="i-ri-folder-3-line size-4" />
+          </button>
+        )}
+        <SegmentedControlDivider className="mx-1" />
+        <button
+          type="button"
+          aria-pressed={isChatFeaturesOpen}
+          onClick={onToggleChatFeatures}
+          className={cn(
+            'flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
+          )}
+          aria-label={t('agentDetail.configure.preview.chatFeatures')}
+        >
+          <span aria-hidden className="i-ri-apps-2-add-line size-4" />
+          <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
+        </button>
       </div>
     </div>
   )

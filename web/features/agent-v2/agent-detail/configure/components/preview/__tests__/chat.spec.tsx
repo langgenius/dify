@@ -2,8 +2,10 @@ import type { ComponentProps } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { TransferMethod } from '@/types/app'
 import { AgentChatRuntime } from '../chat-runtime'
 
 const useChatMock = vi.hoisted(() => vi.fn())
@@ -266,5 +268,44 @@ describe('AgentPreviewChat', () => {
 
     await waitFor(() => expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1))
     expect(handleSendMock).not.toHaveBeenCalled()
+  })
+
+  it('should keep preview file upload disabled by default', async () => {
+    renderPreviewChat()
+
+    await waitFor(() => expect(useChatMock).toHaveBeenCalled())
+
+    const config = useChatMock.mock.calls.at(-1)?.[0]
+    expect(config.file_upload).toEqual(expect.objectContaining({
+      enabled: false,
+      allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+    }))
+  })
+
+  it('should enable build chat file upload when chat features file upload is enabled', async () => {
+    renderPreviewChat({
+      agentSoulConfig: {
+        app_features: {
+          file_upload: {
+            enabled: true,
+          },
+        },
+      },
+    })
+
+    await waitFor(() => expect(useChatMock).toHaveBeenCalled())
+
+    const config = useChatMock.mock.calls.at(-1)?.[0]
+    expect(config.file_upload).toEqual(expect.objectContaining({
+      enabled: true,
+      allowed_file_types: [SupportUploadFileTypes.image],
+      allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      number_limits: 3,
+    }))
+    expect(config.file_upload.image).toEqual(expect.objectContaining({
+      enabled: true,
+      transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
+      number_limits: 3,
+    }))
   })
 })

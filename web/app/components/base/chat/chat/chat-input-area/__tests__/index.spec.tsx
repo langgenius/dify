@@ -314,6 +314,12 @@ describe('ChatInputArea', () => {
       render(<ChatInputArea visionConfig={mockVisionConfig} />)
       expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
     })
+
+    it('should render a custom send button label when provided', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} sendButtonLabel="Start build" />)
+      expect(screen.getByRole('button', { name: 'Start build' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.send' })).not.toBeInTheDocument()
+    })
   })
 
   // -------------------------------------------------------------------------

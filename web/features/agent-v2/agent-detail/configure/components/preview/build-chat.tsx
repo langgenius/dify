@@ -6,7 +6,7 @@ import { AgentChatRuntime } from './chat-runtime'
 
 const buildIconGridCells = Array.from({ length: 16 }, (_, index) => `build-icon-cell-${index}`)
 
-type AgentBuildChatProps = Omit<AgentChatRuntimeProps, 'inputPlaceholder' | 'renderEmptyState'>
+type AgentBuildChatProps = Omit<AgentChatRuntimeProps, 'inputPlaceholder' | 'renderEmptyState' | 'sendButtonLabel'>
 
 function AgentBuildChatEmptyState({
   inputNode,
@@ -43,6 +43,7 @@ export function AgentBuildChat(props: AgentBuildChatProps) {
     <AgentChatRuntime
       {...props}
       inputPlaceholder={t('agentDetail.configure.build.inputPlaceholder')}
+      sendButtonLabel={t('agentDetail.configure.build.startBuild')}
       renderEmptyState={(emptyStateProps: AgentChatRuntimeEmptyStateProps) => (
         <AgentBuildChatEmptyState {...emptyStateProps} />
       )}

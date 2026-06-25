@@ -72,6 +72,7 @@ export type ChatProps = {
   inputDisabled?: boolean
   inputPlaceholder?: string
   inputPlaceholderBotName?: string
+  sendButtonLabel?: string
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
@@ -120,6 +121,7 @@ const Chat: FC<ChatProps> = ({
   inputDisabled,
   inputPlaceholder,
   inputPlaceholderBotName,
+  sendButtonLabel,
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
@@ -262,6 +264,7 @@ const Chat: FC<ChatProps> = ({
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
                   readonly={readonly}
+                  sendButtonLabel={sendButtonLabel}
                   sendOnEnter={sendOnEnter}
                 />
               )

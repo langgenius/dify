@@ -41,6 +41,7 @@ type ChatInputAreaProps = {
   theme?: Theme | null
   isResponding?: boolean
   disabled?: boolean
+  sendButtonLabel?: string
   /**
    * Controls whether pressing Enter sends the message.
    * - true (default): Enter sends, Shift+Enter inserts newline
@@ -49,7 +50,7 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
@@ -141,7 +142,7 @@ const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFil
       toast.error(t('voiceInput.notAllow', { ns: 'common' }))
     })
   }, [t])
-  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} theme={theme} />)
+  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} theme={theme} />)
   return (
     <>
       <div className={cn('relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md', isDragActive && 'border border-dashed border-components-option-card-option-selected-border', disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none')}>

@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "कीवर्ड की संख्या",
   "form.onSearchResults": "कोई सदस्य आपकी खोज क्वेरी से मेल नहीं खाता। अपनी खोज को फिर से प्रयास करें।",
   "form.permissions": "अनुमतियां",
+  "form.permissionsAccessConfig": "पहुँच कॉन्फ़िगरेशन पर जाएँ",
   "form.permissionsAllMember": "सभी टीम सदस्यों के लिए",
   "form.permissionsInvitedMembers": "आंशिक टीम के सदस्य",
   "form.permissionsOnlyMe": "मेरे लिए ही",

@@ -22,6 +22,7 @@ type OperationProps = {
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
+  sendButtonLabel?: string
   theme?: Theme | null
   ref?: Ref<HTMLDivElement>
 }
@@ -32,6 +33,7 @@ const Operation: FC<OperationProps> = ({
   speechToTextConfig,
   onShowVoiceInput,
   onSend,
+  sendButtonLabel,
   theme,
 }) => {
   const { t } = useTranslation()
@@ -62,8 +64,11 @@ const Operation: FC<OperationProps> = ({
           }
         </div>
         <Button
-          aria-label={t('operation.send', { ns: 'common' })}
-          className="ml-3 w-8 px-0"
+          aria-label={sendButtonLabel ? undefined : t('operation.send', { ns: 'common' })}
+          className={cn(
+            'ml-3',
+            sendButtonLabel ? 'px-3' : 'w-8 px-0',
+          )}
           variant="primary"
           onClick={readonly ? noop : onSend}
           style={
@@ -74,7 +79,7 @@ const Operation: FC<OperationProps> = ({
               : {}
           }
         >
-          <RiSendPlane2Fill className="size-4" aria-hidden="true" />
+          {sendButtonLabel || <RiSendPlane2Fill className="size-4" aria-hidden="true" />}
         </Button>
       </div>
     </div>
