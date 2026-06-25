@@ -162,18 +162,6 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     manifest_files: list[str] | None = None
 
 
-class AgentSoulFilesConfig(BaseModel):
-    """Versioned Agent Soul references to drive-backed skills and files.
-
-    File bytes and drive value pointers stay in ``agent_drive_files``. This
-    section records which drive keys belong to one Agent Soul snapshot so version
-    restore/copy/runtime use the same skills/files view the user published.
-    """
-
-    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
-    files: list[AgentFileRefConfig] = Field(default_factory=list)
-
-
 class AgentPermissionConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -691,7 +679,6 @@ class AgentSoulConfig(BaseModel):
     env: AgentSoulEnvConfig = Field(default_factory=AgentSoulEnvConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
-    files: AgentSoulFilesConfig = Field(default_factory=AgentSoulFilesConfig)
     model: AgentSoulModelConfig | None = None
     app_features: AgentSoulAppFeaturesConfig = Field(default_factory=AgentSoulAppFeaturesConfig)
     app_variables: list[AppVariableConfig] = Field(default_factory=list)

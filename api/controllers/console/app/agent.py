@@ -38,7 +38,6 @@ from services.agent.skill_tool_inference_service import (
     SkillToolInferenceResult,
     SkillToolInferenceService,
 )
-from services.agent.soul_files_service import AgentSoulFilesService
 from services.agent_drive_service import (
     AgentDriveError,
     AgentDriveService,
@@ -182,22 +181,6 @@ def _agent_not_bound() -> tuple[dict[str, str], int]:
     return {"code": "agent_not_bound", "message": "no agent is bound for this app/node"}, 400
 
 
-def _sync_active_soul_files(
-    *,
-    tenant_id: str,
-    agent_id: str,
-    account_id: str,
-    committed_items: list[dict[str, Any]],
-) -> None:
-    AgentSoulFilesService.sync_drive_commit_to_active_soul(
-        tenant_id=tenant_id,
-        agent_id=agent_id,
-        account_id=account_id,
-        committed_items=committed_items,
-    )
-    db.session.commit()
-
-
 def _upload_skill_for_app(*, current_user: Account, app_model: App):
     """Upload one skill package and commit its normalized files into the agent drive."""
 
@@ -212,9 +195,8 @@ def _upload_skill_for_app(*, current_user: Account, app_model: App):
 
     upload = request.files["file"]
     content = upload.stream.read()
-    standardize_service = SkillStandardizeService()
     try:
-        result = standardize_service.standardize(
+        result = SkillStandardizeService().standardize(
             content=content,
             filename=upload.filename or "",
             tenant_id=app_model.tenant_id,
@@ -223,12 +205,6 @@ def _upload_skill_for_app(*, current_user: Account, app_model: App):
         )
     except (SkillPackageError, AgentDriveError) as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
-    _sync_active_soul_files(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent_id,
-        account_id=current_user.id,
-        committed_items=standardize_service.last_committed_items,
-    )
     return result, 201
 
 
@@ -267,12 +243,6 @@ def _commit_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
-    _sync_active_soul_files(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent_id,
-        account_id=current_user.id,
-        committed_items=committed,
-    )
 
     row = committed[0]
     return {
@@ -306,12 +276,6 @@ def _delete_drive_file_for_app(*, current_user: Account, app_model: App, allow_n
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
-    _sync_active_soul_files(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent_id,
-        account_id=current_user.id,
-        committed_items=result,
-    )
     removed_keys = [item["key"] for item in result if item.get("removed")]
     return {"result": "success", "removed_keys": removed_keys}
 
@@ -337,12 +301,6 @@ def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, a
         )
     except AgentDriveError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
-    _sync_active_soul_files(
-        tenant_id=app_model.tenant_id,
-        agent_id=agent_id,
-        account_id=current_user.id,
-        committed_items=result,
-    )
     removed_keys = [item["key"] for item in result if item.get("removed")]
     return {"result": "success", "removed_keys": removed_keys}
 

@@ -28,12 +28,10 @@ from controllers.console import console_ns
 from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
-from services.agent.soul_files_service import AgentSoulFilesService
 from services.agent_drive_service import AgentDriveError, AgentDriveService
 
 
@@ -162,50 +160,6 @@ def _handle(exc: AgentDriveError) -> tuple[dict[str, object], int]:
     return {"code": exc.code, "message": exc.message}, exc.status_code
 
 
-def _versioned_manifest(*, tenant_id: str, agent_id: str, prefix: str = "") -> list[dict[str, Any]]:
-    agent_soul = AgentSoulFilesService.active_agent_soul(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
-    normalized_prefix = prefix.strip().lstrip("/")
-    skill_prefixes = AgentSoulFilesService.allowed_skill_prefixes(agent_soul)
-    if normalized_prefix and any(normalized_prefix.startswith(p) for p in skill_prefixes):
-        return AgentDriveService().manifest(tenant_id=tenant_id, agent_id=agent_id, prefix=normalized_prefix)
-    return AgentSoulFilesService.list_files(
-        session=db.session,
-        tenant_id=tenant_id,
-        agent_id=agent_id,
-        prefix=normalized_prefix,
-    )
-
-
-def _versioned_skills(*, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
-    return AgentSoulFilesService.list_skills(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
-
-
-def _assert_key_in_active_soul(*, tenant_id: str, agent_id: str, key: str) -> None:
-    agent_soul = AgentSoulFilesService.active_agent_soul(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
-    if not AgentSoulFilesService.key_allowed_by_soul(agent_soul=agent_soul, key=key):
-        raise AgentDriveError(
-            "drive_key_not_in_agent_soul",
-            "drive key is not part of the active Agent Soul version",
-            status_code=404,
-        )
-
-
-def _assert_skill_in_active_soul(*, tenant_id: str, agent_id: str, skill_path: str) -> None:
-    agent_soul = AgentSoulFilesService.active_agent_soul(session=db.session, tenant_id=tenant_id, agent_id=agent_id)
-    wanted = skill_path.strip().strip("/")
-    for skill in agent_soul.files.skills:
-        path = skill.path
-        if not path and skill.skill_md_key:
-            path = AgentSoulFilesService.skill_path_from_key(skill.skill_md_key)
-        if path == wanted:
-            return
-    raise AgentDriveError(
-        "skill_not_in_agent_soul",
-        "skill is not part of the active Agent Soul version",
-        status_code=404,
-    )
-
-
 def _json_response(data: Mapping[str, Any]):
     return Response(
         response=json.dumps(data, ensure_ascii=False, separators=(",", ":")),
@@ -230,7 +184,7 @@ class AgentDriveListByAgentApi(Resource):
         query = query_params_from_request(AgentDriveListByAgentQuery)
         resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            items = _versioned_manifest(tenant_id=tenant_id, agent_id=str(agent_id), prefix=query.prefix)
+            items = AgentDriveService().manifest(tenant_id=tenant_id, agent_id=str(agent_id), prefix=query.prefix)
         except AgentDriveError as exc:
             return _handle(exc)
         return {"items": [{k: v for k, v in item.items() if k != "file_id"} for item in items]}
@@ -249,7 +203,7 @@ class AgentDriveSkillListByAgentApi(Resource):
     def get(self, tenant_id: str, agent_id: UUID):
         resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            items = _versioned_skills(tenant_id=tenant_id, agent_id=str(agent_id))
+            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=str(agent_id))
         except AgentDriveError as exc:
             return _handle(exc)
         return {"items": items}
@@ -268,7 +222,6 @@ class AgentDriveSkillInspectByAgentApi(Resource):
     def get(self, tenant_id: str, agent_id: UUID, skill_path: str):
         resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            _assert_skill_in_active_soul(tenant_id=tenant_id, agent_id=str(agent_id), skill_path=skill_path)
             return _json_response(
                 AgentDriveService().inspect_skill(
                     tenant_id=tenant_id,
@@ -294,7 +247,6 @@ class AgentDrivePreviewByAgentApi(Resource):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
         resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            _assert_key_in_active_soul(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
             return AgentDriveService().preview(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)
@@ -314,7 +266,6 @@ class AgentDriveDownloadByAgentApi(Resource):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
         resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
-            _assert_key_in_active_soul(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
             url = AgentDriveService().download_url(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)
@@ -337,7 +288,7 @@ class AgentDriveListApi(Resource):
         if not agent_id:
             return _agent_not_bound()
         try:
-            items = _versioned_manifest(tenant_id=app_model.tenant_id, agent_id=agent_id, prefix=query.prefix)
+            items = AgentDriveService().manifest(tenant_id=app_model.tenant_id, agent_id=agent_id, prefix=query.prefix)
         except AgentDriveError as exc:
             return _handle(exc)
         # the inner manifest exposes file_id for agent-side pulls; the console
@@ -361,7 +312,7 @@ class AgentDriveSkillListApi(Resource):
         if not agent_id:
             return _agent_not_bound()
         try:
-            items = _versioned_skills(tenant_id=app_model.tenant_id, agent_id=agent_id)
+            items = AgentDriveService().list_skills(tenant_id=app_model.tenant_id, agent_id=agent_id)
         except AgentDriveError as exc:
             return _handle(exc)
         return {"items": items}
@@ -389,7 +340,6 @@ class AgentDriveSkillInspectApi(Resource):
         if not agent_id:
             return _agent_not_bound()
         try:
-            _assert_skill_in_active_soul(tenant_id=app_model.tenant_id, agent_id=agent_id, skill_path=skill_path)
             return _json_response(
                 AgentDriveService().inspect_skill(
                     tenant_id=app_model.tenant_id,
@@ -417,7 +367,6 @@ class AgentDrivePreviewApi(Resource):
         if not agent_id:
             return _agent_not_bound()
         try:
-            _assert_key_in_active_soul(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
             return AgentDriveService().preview(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)
@@ -439,7 +388,6 @@ class AgentDriveDownloadApi(Resource):
         if not agent_id:
             return _agent_not_bound()
         try:
-            _assert_key_in_active_soul(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
             url = AgentDriveService().download_url(tenant_id=app_model.tenant_id, agent_id=agent_id, key=query.key)
         except AgentDriveError as exc:
             return _handle(exc)

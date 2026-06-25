@@ -64,7 +64,6 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
         user_id="user-1",
         agent_id="agent-1",
     )
-    assert service.last_committed_items == []
 
     # ToolFiles: SKILL.md and the full archive. Archive members stay lazy.
     assert tool_files.create_file_by_raw.call_count == 2
@@ -98,4 +97,3 @@ def test_standardize_creates_drive_owned_toolfiles_and_commits_archive_manifest(
     assert skill["archive_key"] == "pdf-toolkit/.DIFY-SKILL-FULL.zip"
     assert skill["skill_md_key"] == "pdf-toolkit/SKILL.md"
     assert result["manifest"]["files"] == ["SKILL.md", "scripts/run.py"]
-    assert "_committed_items" not in result

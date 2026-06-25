@@ -172,8 +172,6 @@ def soul_candidates(
         )
 
     human_contacts = [contact.model_dump(exclude_none=True) for contact in soul.human.contacts]
-    skills = [skill.model_dump(exclude_none=True) for skill in soul.files.skills]
-    files = [file_ref.model_dump(exclude_none=True) for file_ref in soul.files.files]
     dify_tools = workspace_tools_loader()
 
     lists = {
@@ -181,8 +179,6 @@ def soul_candidates(
         "cli_tools": cli_tools,
         "knowledge_sets": knowledge_sets,
         "human_contacts": human_contacts,
-        "skills": skills,
-        "files": files,
     }
     capped: dict[str, list[dict[str, Any]]] = {}
     for key, values in lists.items():

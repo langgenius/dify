@@ -22,7 +22,6 @@ from models.agent import (
 from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.soul_files_service import AgentSoulFilesService
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -183,8 +182,6 @@ class WorkflowAgentPublishService:
         from services.agent_drive_service import decode_drive_mention_ref
 
         wanted_keys: dict[str, tuple[str, str]] = {}
-        soul_skill_keys = {skill.skill_md_key for skill in agent_soul.files.skills if skill.skill_md_key}
-        soul_file_keys = {file_ref.drive_key for file_ref in agent_soul.files.files if file_ref.drive_key}
         for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
             if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
                 continue
@@ -193,37 +190,24 @@ class WorkflowAgentPublishService:
                 continue
             code = "skill_ref_dangling" if mention.kind == MentionKind.SKILL else "file_ref_dangling"
             wanted_keys[drive_key] = (code, mention.label or drive_key)
-        if not binding.agent_id:
+        if not wanted_keys or not binding.agent_id:
             return
 
-        declared_keys, _ = AgentSoulFilesService.drive_copy_scopes(agent_soul=agent_soul)
-        check_keys = sorted(set(wanted_keys) | declared_keys)
-        if not check_keys:
-            return
         existing_keys = set(
             session.scalars(
                 select(AgentDriveFile.key).where(
                     AgentDriveFile.tenant_id == binding.tenant_id,
                     AgentDriveFile.agent_id == binding.agent_id,
-                    AgentDriveFile.key.in_(check_keys),
+                    AgentDriveFile.key.in_(sorted(wanted_keys)),
                 )
             ).all()
         )
         messages: list[str] = []
         for key, (code, display) in wanted_keys.items():
-            if code == "skill_ref_dangling" and key not in soul_skill_keys:
-                messages.append(f"{code}: skill '{display}' is not recorded in this Agent Soul version.")
-                continue
-            if code == "file_ref_dangling" and key not in soul_file_keys:
-                messages.append(f"{code}: file '{display}' is not recorded in this Agent Soul version.")
-                continue
             if key in existing_keys:
                 continue
             kind = "skill" if code == "skill_ref_dangling" else "file"
             messages.append(f"{code}: {kind} '{display}' has no drive entry for key '{key}'.")
-        for key in declared_keys:
-            if key not in existing_keys:
-                messages.append(f"drive_ref_dangling: Agent Soul drive ref '{key}' has no backing drive entry.")
         if messages:
             raise WorkflowAgentNodeValidationError(
                 f"Workflow Agent node {binding.node_id} has invalid Agent Soul drive refs: {'; '.join(messages)}"

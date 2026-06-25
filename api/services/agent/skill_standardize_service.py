@@ -45,7 +45,6 @@ class SkillStandardizeService:
         self._package = package_service or SkillPackageService()
         self._drive = drive_service or AgentDriveService()
         self._tool_files = tool_file_manager or ToolFileManager()
-        self.last_committed_items: list[dict[str, Any]] = []
 
     def standardize(
         self,
@@ -81,7 +80,31 @@ class SkillStandardizeService:
 
         skill_md_key = f"{slug}/{_SKILL_MD_NAME}"
         archive_key = f"{slug}/{_FULL_ARCHIVE_NAME}"
-        committed_items = self._drive.commit(
+        member_items: list[DriveCommitItem] = []
+        for member_path in sorted(set(manifest.files)):
+            member_key = f"{slug}/{member_path}"
+            if member_key in {skill_md_key, archive_key}:
+                continue
+
+            member_bytes = self._package.read_member_bytes(content=content, member_path=member_path)
+            mimetype = mimetypes.guess_type(member_path)[0] or "application/octet-stream"
+            member_tool_file = self._tool_files.create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=None,
+                file_binary=member_bytes,
+                mimetype=mimetype,
+                filename=posixpath.basename(member_path),
+            )
+            member_items.append(
+                DriveCommitItem(
+                    key=member_key,
+                    file_ref=DriveFileRef(kind="tool_file", id=member_tool_file.id),
+                    value_owned_by_drive=True,
+                )
+            )
+
+        self._drive.commit(
             tenant_id=tenant_id,
             user_id=user_id,
             agent_id=agent_id,
@@ -102,9 +125,9 @@ class SkillStandardizeService:
                     file_ref=DriveFileRef(kind="tool_file", id=archive_tool_file.id),
                     value_owned_by_drive=True,
                 ),
+                *member_items,
             ],
         )
-        self.last_committed_items = committed_items
 
         drive_skill = next(
             skill

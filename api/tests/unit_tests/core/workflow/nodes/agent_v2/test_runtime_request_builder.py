@@ -941,19 +941,6 @@ def _soul_with_drive_skill() -> AgentSoulConfig:
                 "and [§file:files%2Fsample.pdf:sample.pdf§]."
             )
         },
-        files={
-            "skills": [
-                {
-                    "id": "tender-analyzer",
-                    "name": "Tender Analyzer",
-                    "description": "Parses RFPs.",
-                    "path": "tender-analyzer",
-                    "skill_md_key": "tender-analyzer/SKILL.md",
-                    "full_archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                }
-            ],
-            "files": [{"id": "files/sample.pdf", "name": "sample.pdf", "drive_key": "files/sample.pdf"}],
-        },
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
     )
 
@@ -1135,7 +1122,6 @@ def test_workflow_runtime_missing_drive_mentions_fall_back_to_label_then_decoded
                 "and [§file:files%2Fno-label.txt§]."
             )
         },
-        files={"files": [{"id": "files/no-label.txt", "name": "no-label.txt", "drive_key": "files/no-label.txt"}]},
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
     )
 

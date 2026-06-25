@@ -17,10 +17,8 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentCliToolConfig,
-    AgentFileRefConfig,
     AgentHumanContactConfig,
     AgentKnowledgeDatasetConfig,
-    AgentSkillRefConfig,
     AgentSoulConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
@@ -439,8 +437,6 @@ class AgentComposerSoulCandidatesResponse(ResponseModel):
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
     knowledge_sets: list[AgentComposerKnowledgeSetCandidateResponse] = Field(default_factory=list)
     human_contacts: list[AgentHumanContactConfig] = Field(default_factory=list)
-    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
-    files: list[AgentFileRefConfig] = Field(default_factory=list)
 
 
 class AgentComposerCandidatesResponse(ResponseModel):
