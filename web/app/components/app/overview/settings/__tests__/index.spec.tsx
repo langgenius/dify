@@ -36,10 +36,6 @@ const toastMocks = vi.hoisted(() => ({
   promise: vi.fn(),
 }))
 
-const configMocks = vi.hoisted(() => ({
-  isCloudEdition: true,
-}))
-
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: Object.assign(toastMocks.call, {
     success: vi.fn((message: string, options?: Record<string, unknown>) => toastMocks.call({ type: 'success', message, ...options })),
@@ -56,16 +52,6 @@ const mockOnSave = vi.fn()
 const mockSetShowPricingModal = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 const mockUseProviderContext = vi.fn<() => ProviderContextState>()
-
-vi.mock('@/config', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/config')>()
-  return {
-    ...actual,
-    get IS_CLOUD_EDITION() {
-      return configMocks.isCloudEdition
-    },
-  }
-})
 
 const buildModalContext = (): ModalContextState => ({
   setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -143,7 +129,6 @@ describe('SettingsModal', () => {
     mockOnSave.mockClear()
     mockSetShowPricingModal.mockClear()
     mockSetShowAccountSettingModal.mockClear()
-    configMocks.isCloudEdition = true
     mockUseProviderContext.mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
@@ -342,12 +327,11 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
   })
 
-  it('should keep the input placeholder editable for self-hosted sandbox plans', async () => {
-    configMocks.isCloudEdition = false
+  it('should keep the input placeholder editable when billing is disabled', async () => {
     mockOnSave.mockResolvedValueOnce(undefined)
     mockUseProviderContext.mockReturnValue({
       ...baseProviderContextValue,
-      enableBilling: true,
+      enableBilling: false,
       plan: {
         ...baseProviderContextValue.plan,
         type: Plan.sandbox,

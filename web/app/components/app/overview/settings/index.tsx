@@ -20,7 +20,6 @@ import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
 import { Plan } from '@/app/components/billing/type'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
@@ -153,8 +152,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
   const { setShowPricingModal } = useModalContext()
-  const isCloudSandboxPlan = IS_CLOUD_EDITION && plan.type === Plan.sandbox
-  const showUpgradeAction = enableBilling && isCloudSandboxPlan
+  const isCloudSandboxPlan = enableBilling && plan.type === Plan.sandbox
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
@@ -449,7 +447,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <div className="flex items-center">
                       <div className="flex grow items-center">
                         <div id={inputPlaceholderLabelId} className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
-                        {showUpgradeAction && (
+                        {isCloudSandboxPlan && (
                           <div className="h-[18px] select-none">
                             <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                               <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
@@ -487,7 +485,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     <div className="flex grow items-center">
                       <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
                       {/* upgrade button */}
-                      {showUpgradeAction && (
+                      {isCloudSandboxPlan && (
                         <div className="h-[18px] select-none">
                           <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                             <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
