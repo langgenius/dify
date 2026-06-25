@@ -3204,12 +3204,6 @@ Enum class for fetch from.
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
-#### GeneratedAppResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| GeneratedAppResponse |  |  |  |
-
 #### HitTestingChildChunk
 
 | Name | Type | Description | Required |
@@ -3394,7 +3388,7 @@ Model class for i18n object.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| JSONValue | string<br>integer<br>number<br>boolean<br>object<br>[ object ] |  |  |
+| JSONValue |  |  |  |
 
 #### JSONValueType
 
