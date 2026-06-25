@@ -5,7 +5,10 @@ mentioned in the prompt. When the layer enters a run context it eagerly pulls
 those mentioned skills/files from the Dify inner drive bridge, materializes them
 under the fixed Agent Stub drive base for ``drive_ref``, and contributes a
 concise prompt block describing what was loaded and what other skills remain
-available for lazy pull.
+available for lazy pull. It also contributes a suffix prompt with
+``dify-agent drive`` and ``dify-agent file`` usage so the model has concrete
+Agent Stub commands for materializing drive content and workflow files when a
+shell layer is available.
 """
 
 from __future__ import annotations
@@ -27,6 +30,26 @@ from dify_agent.layers.drive.configs import DIFY_DRIVE_LAYER_TYPE_ID, DifyDriveL
 
 _SKILL_ARCHIVE_FILENAME = ".DIFY-SKILL-FULL.zip"
 _DOWNLOAD_CONCURRENCY = 4
+_AGENT_STUB_CLI_USAGE_PROMPT = """Agent Stub CLI usage is available inside shell jobs:
+
+Drive commands:
+
+- List drive items: `dify-agent drive list [PATH_PREFIX]`
+- Emit the drive manifest as JSON: `dify-agent drive list [PATH_PREFIX] --json`
+- Pull drive keys or prefixes: `dify-agent drive pull TARGET ...`
+  Pulled files are written under `$DIFY_AGENT_STUB_DRIVE_BASE` by default.
+  Use `--drive-base .` to materialize pulled files under the current working directory.
+- Upload a local file or directory: `dify-agent drive push LOCAL_PATH DRIVE_PATH`
+  Add `--recursive` to upload raw directory contents. Without `--recursive`, a directory must contain `SKILL.md`
+  and is uploaded as a standardized skill.
+
+File commands:
+
+- Download one workflow file mapping: `dify-agent file download TRANSFER_METHOD REFERENCE_OR_URL [DIR]`
+  `TRANSFER_METHOD` is one of `local_file`, `tool_file`, `datasource_file`, or `remote_url`.
+  If `DIR` is omitted, the file is saved in the current working directory.
+- Upload one sandbox-local output file: `dify-agent file upload PATH`
+  The command prints a JSON file mapping such as `{"transfer_method":"tool_file","reference":"..."}`."""
 
 
 class DifyDriveLayerError(RuntimeError):
@@ -81,6 +104,11 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     def prefix_prompts(self) -> list[str]:
         return [self.build_prompt_context()]
 
+    @property
+    @override
+    def suffix_prompts(self) -> list[str]:
+        return [_AGENT_STUB_CLI_USAGE_PROMPT]
+
     @override
     async def on_context_create(self) -> None:
         await self._pull_mentioned_targets()
@@ -122,9 +150,6 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
 
         if not sections:
             return ""
-        sections.append(
-            "Additional drive skills/files can be pulled lazily later with the Agent Stub drive commands if needed."
-        )
         return "\n\n".join(sections)
 
     async def _pull_mentioned_targets(self) -> None:

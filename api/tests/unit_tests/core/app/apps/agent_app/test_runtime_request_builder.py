@@ -128,7 +128,7 @@ class TestAgentAppRuntimeRequestBuilder:
         req = result.request
         assert req.purpose == "agent_app"
         names = [layer.name for layer in req.composition.layers]
-        assert names == ["agent_soul_prompt", "agent_app_user_prompt", "execution_context", "history", "llm"]
+        assert names == ["agent_soul_prompt", "agent_app_user_prompt", "execution_context", "drive", "history", "llm"]
         # plugin_id / provider normalized for plugin-daemon transport.
         llm = next(layer for layer in req.composition.layers if layer.name == "llm")
         assert llm.config.plugin_id == "langgenius/openai"
@@ -251,37 +251,32 @@ class TestAgentAppRuntimeRequestBuilder:
 
 
 def _soul_with_model_and_skill() -> AgentSoulConfig:
-    soul = _soul_with_model()
-    soul.prompt.system_prompt = "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§]"
-    return soul
+    return AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "langgenius/openai/openai",
+                "model": "gpt-4o-mini",
+            },
+            "prompt": {"system_prompt": "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§]"},
+            "files": {
+                "skills": [
+                    {
+                        "path": "tender-analyzer",
+                        "skill_md_key": "tender-analyzer/SKILL.md",
+                        "name": "Tender Analyzer",
+                        "description": "Parses RFPs.",
+                    }
+                ]
+            },
+        }
+    )
 
 
 class TestAgentAppDriveLayer:
     def test_drive_layer_injected_when_flag_enabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-            lambda self, *, tenant_id, agent_id: [
-                {
-                    "path": "tender-analyzer",
-                    "skill_md_key": "tender-analyzer/SKILL.md",
-                    "archive_key": None,
-                    "name": "Tender Analyzer",
-                    "description": "Parses RFPs.",
-                    "size": 1,
-                    "mime_type": "text/markdown",
-                    "hash": None,
-                    "created_at": 1,
-                }
-            ],
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-            lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
-                {"key": "tender-analyzer/SKILL.md", "is_skill": True}
-            ],
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
@@ -305,14 +300,6 @@ class TestAgentAppDriveLayer:
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
         monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-            lambda self, *, tenant_id, agent_id: [],
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-            lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
-        )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -328,7 +315,10 @@ class TestAgentAppDriveLayer:
             "drive": "drive",
         }
 
-    def test_no_drive_layer_when_flag_disabled(self):
+    def test_no_drive_layer_when_flag_disabled(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
+        )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -342,29 +332,6 @@ class TestAgentAppDriveLayer:
     ):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-            lambda self, *, tenant_id, agent_id: [
-                {
-                    "path": "tender-analyzer",
-                    "skill_md_key": "tender-analyzer/SKILL.md",
-                    "archive_key": None,
-                    "name": "Tender Analyzer",
-                    "description": "Parses RFPs.",
-                    "size": 1,
-                    "mime_type": "text/markdown",
-                    "hash": None,
-                    "created_at": 1,
-                }
-            ],
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-            lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
-                {"key": "tender-analyzer/SKILL.md", "is_skill": True},
-                {"key": "files/sample.pdf", "is_skill": False},
-            ],
         )
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
@@ -388,14 +355,6 @@ class TestAgentAppDriveLayer:
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-            lambda self, *, tenant_id, agent_id: [],
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-            lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
-        )
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
             "Use [§skill:ghost%2FSKILL.md:Ghost Skill§], [§file:files%2Fghost.txt:Ghost File§], "
@@ -415,29 +374,6 @@ class TestAgentAppDriveLayer:
     def test_agent_app_runtime_expands_drive_mentions_in_agent_soul_prompt(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-            lambda self, *, tenant_id, agent_id: [
-                {
-                    "path": "tender-analyzer",
-                    "skill_md_key": "tender-analyzer/SKILL.md",
-                    "archive_key": None,
-                    "name": "Tender Analyzer",
-                    "description": "Parses RFPs.",
-                    "size": 1,
-                    "mime_type": "text/markdown",
-                    "hash": None,
-                    "created_at": 1,
-                }
-            ],
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-            lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
-                {"key": "tender-analyzer/SKILL.md", "is_skill": True},
-                {"key": "files/sample.pdf", "is_skill": False},
-            ],
         )
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
@@ -460,14 +396,6 @@ class TestAgentAppDriveLayer:
     ):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-            lambda self, *, tenant_id, agent_id: [],
-        )
-        monkeypatch.setattr(
-            "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-            lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
         )
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
