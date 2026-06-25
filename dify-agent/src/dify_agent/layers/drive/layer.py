@@ -4,11 +4,10 @@ The API backend sends the full drive skill catalog plus the ordered drive keys
 mentioned in the prompt. When the layer enters a run context it eagerly pulls
 those mentioned skills/files from the Dify inner drive bridge, materializes them
 under the fixed Agent Stub drive base for ``drive_ref``, and contributes a
-concise prompt block describing what was loaded and what other skills remain
-available for lazy pull. It also contributes a suffix prompt with
-``dify-agent drive`` and ``dify-agent file`` usage so the model has concrete
-Agent Stub commands for materializing drive content and workflow files when a
-shell layer is available.
+concise prompt block describing what was loaded. It also contributes a suffix
+prompt with the remaining skill catalog plus ``dify-agent drive`` and
+``dify-agent file`` usage so the model has concrete Agent Stub commands for
+materializing drive content and workflow files when a shell layer is available.
 """
 
 from __future__ import annotations
@@ -103,7 +102,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     @property
     @override
     def suffix_prompts(self) -> list[str]:
-        return [_AGENT_STUB_CLI_USAGE_PROMPT]
+        return [self.build_suffix_prompt()]
 
     @override
     async def on_context_create(self) -> None:
@@ -124,7 +123,13 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             skill = next((item for item in self.config.skills if item.skill_md_key == skill_key), None)
             if skill is None:
                 continue
-            loaded_skill_sections.append(f"Path: {skill.path}\nName: {skill.name}\nSKILL.md:\n{body}")
+            pulled_skill_path = self._pulled_file_paths.get(skill_key)
+            if pulled_skill_path is None:
+                continue
+            local_path = Path(pulled_skill_path).parent
+            loaded_skill_sections.append(
+                f"Path: {skill.path}\nLocal path: {local_path}\nName: {skill.name}\nSKILL.md:\n{body}"
+            )
         if loaded_skill_sections:
             sections.append("Loaded mentioned skills:\n\n" + "\n\n".join(loaded_skill_sections))
 
@@ -136,16 +141,28 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
         if mentioned_files:
             sections.append("Mentioned files pulled to local drive:\n" + "\n".join(mentioned_files))
 
-        other_skills = [
-            f"- {skill.path}: {skill.name} — {skill.description}"
-            for skill in self.config.skills
-            if skill.skill_md_key not in set(self.config.mentioned_skill_keys)
-        ]
-        if other_skills:
-            sections.append("Other available skills:\n" + "\n".join(other_skills))
-
         if not sections:
             return ""
+        return "\n\n".join(sections)
+
+    def build_suffix_prompt(self) -> str:
+        sections: list[str] = []
+        mentioned_skill_keys = set(self.config.mentioned_skill_keys)
+        other_skills = [
+            (
+                f"- {skill.path}: {skill.name} — {skill.description}. "
+                f"Pull with `dify-agent drive pull {self._skill_prefix(skill.skill_md_key)}`."
+            )
+            for skill in self.config.skills
+            if skill.skill_md_key not in mentioned_skill_keys
+        ]
+        if other_skills:
+            sections.append(
+                "Other available skills:\n"
+                + "\n".join(other_skills)
+                + "\n\nIf you want to use one, pull it first with `dify-agent drive pull <SKILL_PATH>/`."
+            )
+        sections.append(_AGENT_STUB_CLI_USAGE_PROMPT)
         return "\n\n".join(sections)
 
     async def _pull_mentioned_targets(self) -> None:
