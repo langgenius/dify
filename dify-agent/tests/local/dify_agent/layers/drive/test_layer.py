@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from io import BytesIO
 from pathlib import Path
 from typing import ClassVar
+from zipfile import ZipFile
 
 import pytest
 
@@ -309,10 +311,9 @@ async def test_download_items_hands_validated_downloads_to_materialization(
     )
     captured: dict[str, object] = {}
 
-    def fake_materialize_drive_downloads(*, base_path: Path, downloads: list[DriveDownloadPayload], archive_skip_entry_names_by_dir):
+    def fake_materialize_drive_downloads(*, base_path: Path, downloads: list[DriveDownloadPayload]):
         captured["base_path"] = base_path
         captured["downloads"] = downloads
-        captured["archive_skip_entry_names_by_dir"] = archive_skip_entry_names_by_dir
         return [tmp_path / "tender-analyzer" / "SKILL.md", tmp_path / "files" / "report.pdf"]
 
     monkeypatch.setattr(
@@ -333,11 +334,52 @@ async def test_download_items_hands_validated_downloads_to_materialization(
         DriveDownloadPayload(key="tender-analyzer/SKILL.md", payload=b"skill-md", size=8),
         DriveDownloadPayload(key="files/report.pdf", payload=b"pdf", size=3),
     ]
-    assert captured["archive_skip_entry_names_by_dir"] == {"tender-analyzer": {"SKILL.md"}}
     assert result == {
         "tender-analyzer/SKILL.md": str(tmp_path / "tender-analyzer" / "SKILL.md"),
         "files/report.pdf": str(tmp_path / "files" / "report.pdf"),
     }
+
+
+@pytest.mark.anyio
+async def test_download_items_extracts_skill_archive_over_skill_md_and_deletes_archive(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    layer = _build_layer(tmp_path)
+    archive_buffer = BytesIO()
+    with ZipFile(archive_buffer, mode="w") as archive:
+        archive.writestr("SKILL.md", "# From archive\n")
+        archive.writestr("helper.py", "print('archive')\n")
+    archive_bytes = archive_buffer.getvalue()
+    responses = {
+        "download:https://files/skill-md": _FakeAsyncResponse(content=b"# From manifest\n"),
+        "download:https://files/archive": _FakeAsyncResponse(content=archive_bytes),
+    }
+    monkeypatch.setattr(
+        "dify_agent.layers.drive.layer.httpx.AsyncClient",
+        lambda **_kwargs: _FakeAsyncClient(responses),
+    )
+    monkeypatch.setattr(
+        "dify_agent.layers.drive.layer.agent_stub_drive_base_for_ref",
+        lambda _drive_ref: str(tmp_path),
+    )
+
+    result = await layer._download_items(
+        [
+            AgentStubDriveItem(key="tender-analyzer/SKILL.md", download_url="https://files/skill-md", size=16),
+            AgentStubDriveItem(
+                key="tender-analyzer/.DIFY-SKILL-FULL.zip",
+                download_url="https://files/archive",
+                size=len(archive_bytes),
+            ),
+        ]
+    )
+
+    archive_path = tmp_path / "tender-analyzer" / ".DIFY-SKILL-FULL.zip"
+    assert result["tender-analyzer/.DIFY-SKILL-FULL.zip"] == str(archive_path)
+    assert not archive_path.exists()
+    assert (tmp_path / "tender-analyzer" / "SKILL.md").read_text(encoding="utf-8") == "# From archive\n"
+    assert (tmp_path / "tender-analyzer" / "helper.py").read_text(encoding="utf-8") == "print('archive')\n"
 
 
 @pytest.mark.anyio

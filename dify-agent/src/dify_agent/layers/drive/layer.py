@@ -223,7 +223,6 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
     async def _download_items(self, items: list[AgentStubDriveItem]) -> dict[str, str]:
         base_path = Path(agent_stub_drive_base_for_ref(self.config.drive_ref))
         semaphore = asyncio.Semaphore(_DOWNLOAD_CONCURRENCY)
-        canonical_skill_dirs = {item.key.rsplit("/", 1)[0] for item in items if item.key.endswith("/SKILL.md")}
 
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True, trust_env=False) as client:
 
@@ -246,7 +245,6 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             written_paths = materialize_drive_downloads(
                 base_path=base_path,
                 downloads=downloads,
-                archive_skip_entry_names_by_dir={skill_dir: {"SKILL.md"} for skill_dir in canonical_skill_dirs},
             )
         except (DriveMaterializationValidationError, DriveMaterializationTransferError) as exc:
             raise DifyDriveLayerError(str(exc)) from exc
