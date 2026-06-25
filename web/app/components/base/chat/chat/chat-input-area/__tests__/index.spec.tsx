@@ -533,14 +533,20 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('Validation & Constraints', () => {
-    it('should notify and NOT send when query is blank', async () => {
+    it('should disable send when query is blank', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()
       render(<ChatInputArea onSend={onSend} visionConfig={mockVisionConfig} />)
 
-      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+      const sendButton = screen.getByRole('button', { name: 'common.operation.send' })
+      expect(sendButton).toBeDisabled()
+
+      await user.click(sendButton)
       expect(onSend).not.toHaveBeenCalled()
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'info' }))
+      expect(mockNotify).not.toHaveBeenCalled()
+
+      await user.type(getTextarea()!, '   ')
+      expect(sendButton).toBeDisabled()
     })
 
     it('should notify and NOT send while bot is responding', async () => {

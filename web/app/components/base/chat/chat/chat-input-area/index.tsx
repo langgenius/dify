@@ -54,6 +54,7 @@ const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFil
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
+  const canSend = !!query.trim()
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
   const { handleDragFileEnter, handleDragFileLeave, handleDragFileOver, handleDropFile, handleClipboardPasteFile, isDragActive } = useFile(visionConfig!, false)
@@ -66,6 +67,9 @@ const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFil
     setTimeout(handleTextareaResize, 0)
   }, [handleTextareaResize])
   const handleSend = () => {
+    if (!canSend)
+      return
+
     if (isResponding) {
       toast.info(t('errorMessage.waitForResponse', { ns: 'appDebug' }))
       return
@@ -74,10 +78,6 @@ const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFil
       const { files, setFiles } = filesStore.getState()
       if (files.some(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
         toast.info(t('errorMessage.waitForFileUpload', { ns: 'appDebug' }))
-        return
-      }
-      if (!query || !query.trim()) {
-        toast.info(t('errorMessage.queryRequired', { ns: 'appAnnotation' }))
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
@@ -142,7 +142,7 @@ const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFil
       toast.error(t('voiceInput.notAllow', { ns: 'common' }))
     })
   }, [t])
-  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} theme={theme} />)
+  const operation = (<Operation ref={holdSpaceRef} readonly={readonly} fileConfig={visionConfig} speechToTextConfig={speechToTextConfig} onShowVoiceInput={handleShowVoiceInput} onSend={handleSend} sendButtonLabel={sendButtonLabel} disabled={!canSend} theme={theme} />)
   return (
     <>
       <div className={cn('relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md', isDragActive && 'border border-dashed border-components-option-card-option-selected-border', disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none')}>

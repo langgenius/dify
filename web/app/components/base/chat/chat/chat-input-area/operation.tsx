@@ -10,7 +10,6 @@ import {
   RiMicLine,
   RiSendPlane2Fill,
 } from '@remixicon/react'
-import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
@@ -23,6 +22,7 @@ type OperationProps = {
   onShowVoiceInput?: () => void
   onSend: () => void
   sendButtonLabel?: string
+  disabled?: boolean
   theme?: Theme | null
   ref?: Ref<HTMLDivElement>
 }
@@ -34,6 +34,7 @@ const Operation: FC<OperationProps> = ({
   onShowVoiceInput,
   onSend,
   sendButtonLabel,
+  disabled,
   theme,
 }) => {
   const { t } = useTranslation()
@@ -70,7 +71,8 @@ const Operation: FC<OperationProps> = ({
             sendButtonLabel ? 'px-3' : 'w-8 px-0',
           )}
           variant="primary"
-          onClick={readonly ? noop : onSend}
+          disabled={readonly || disabled}
+          onClick={onSend}
           style={
             theme
               ? {
