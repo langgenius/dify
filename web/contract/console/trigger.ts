@@ -88,7 +88,7 @@ export const triggerSubscriptionUpdateContract = base
       credentials?: Record<string, unknown>
     }
   }>())
-  .output(type<{ result: string, id: string }>())
+  .output(type<{ result: string }>())
 
 export const triggerSubscriptionBuilderLogsContract = base
   .route({ path: '/workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscriptionBuilderId}', method: 'GET' })

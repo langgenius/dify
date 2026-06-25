@@ -9,11 +9,11 @@ export type AllowedExtensionsResponse = {
 }
 
 export type UploadConfig = {
-  attachment_image_file_size_limit?: number | null
+  attachment_image_file_size_limit: number
   audio_file_size_limit: number
   batch_count_limit: number
   file_size_limit: number
-  file_upload_limit?: number | null
+  file_upload_limit: number
   image_file_batch_limit: number
   image_file_size_limit: number
   single_chunk_attachment_limit: number
