@@ -102,7 +102,10 @@ def test_drive_layer_exposes_agent_stub_cli_usage_suffix_prompt(tmp_path: Path) 
     assert "Other available skills" in prompt
     assert "other-skill: Other Skill — Fallback catalog entry." in prompt
     assert "`dify-agent drive pull other-skill/`" not in prompt
-    assert '`cat "$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)/SKILL.md"`' in prompt
+    assert (
+        '`skill_dir="$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)"; '
+        'printf "%s\\n" "$skill_dir"; cat "$skill_dir/SKILL.md"`'
+    ) in prompt
     assert "dify-agent drive list [REMOTE_PREFIX]" in prompt
     assert "dify-agent drive pull [REMOTE ...] [--to LOCAL_DIR]" in prompt
     assert "--to ." in prompt
@@ -152,6 +155,7 @@ async def test_on_context_create_loads_mentioned_targets_into_prompt(
     prompt = layer.build_prompt_context()
     assert "Loaded mentioned skills" in prompt
     assert f"Local path: {tmp_path / 'tender-analyzer'}" in prompt
+    assert "Name: Tender Analyzer" not in prompt
     assert "# Tender Analyzer\nUse carefully." in prompt
     assert f"files/report.pdf -> {tmp_path / 'files' / 'report.pdf'}" in prompt
     assert "Other available skills" not in prompt
@@ -193,6 +197,7 @@ async def test_on_context_resume_loads_mentioned_targets_into_prompt(
     prompt = layer.build_prompt_context()
     assert "Loaded mentioned skills" in prompt
     assert f"Local path: {tmp_path / 'tender-analyzer'}" in prompt
+    assert "Name: Tender Analyzer" not in prompt
     assert "# Tender Analyzer\nUse carefully." in prompt
     assert f"files/report.pdf -> {tmp_path / 'files' / 'report.pdf'}" in prompt
     assert "Other available skills" not in prompt

@@ -128,7 +128,7 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
                 continue
             local_path = Path(pulled_skill_path).parent
             loaded_skill_sections.append(
-                f"Path: {skill.path}\nLocal path: {local_path}\nName: {skill.name}\nSKILL.md:\n{body}"
+                f"Path: {skill.path}\nLocal path: {local_path}\nSKILL.md:\n{body}"
             )
         if loaded_skill_sections:
             sections.append("Loaded mentioned skills:\n\n" + "\n\n".join(loaded_skill_sections))
@@ -158,7 +158,8 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
                 "Other available skills:\n"
                 + "\n".join(other_skills)
                 + "\n\nTo use one, pull it and read its SKILL.md in one command: "
-                '`cat "$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)/SKILL.md"`.'
+                '`skill_dir="$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)"; '
+                'printf "%s\\n" "$skill_dir"; cat "$skill_dir/SKILL.md"`.'
             )
         sections.append(_AGENT_STUB_CLI_USAGE_PROMPT)
         return "\n\n".join(sections)
