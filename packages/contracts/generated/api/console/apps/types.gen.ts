@@ -1812,6 +1812,7 @@ export type AgentSoulConfig = {
   app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
   env?: AgentSoulEnvConfig
+  files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
@@ -1916,8 +1917,10 @@ export type AgentComposerNodeJobCandidatesResponse = {
 export type AgentComposerSoulCandidatesResponse = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
+  files?: Array<AgentFileRefConfig>
   human_contacts?: Array<AgentHumanContactConfig>
   knowledge_sets?: Array<AgentComposerKnowledgeSetCandidateResponse>
+  skills?: Array<AgentSkillRefConfig>
 }
 
 export type ComposerCandidateCapabilities = {
@@ -2145,6 +2148,11 @@ export type AgentSoulEnvConfig = {
   variables?: Array<AgentEnvVariableConfig>
 }
 
+export type AgentSoulFilesConfig = {
+  files?: Array<AgentFileRefConfig>
+  skills?: Array<AgentSkillRefConfig>
+}
+
 export type AgentSoulHumanConfig = {
   contacts?: Array<AgentHumanContactConfig>
   tools?: Array<AgentHumanToolConfig>
@@ -2303,12 +2311,42 @@ export type AgentComposerDifyToolCandidateResponse = {
   tools_count?: number | null
 }
 
+export type AgentFileRefConfig = {
+  drive_key?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
 export type AgentComposerKnowledgeSetCandidateResponse = {
   datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
   description?: string | null
   id: string
   missing_dataset_ids?: Array<string>
   name: string
+}
+
+export type AgentSkillRefConfig = {
+  description?: string | null
+  file_id?: string | null
+  file_refs?: Array<AgentFileRefConfig>
+  full_archive_file_id?: string | null
+  full_archive_key?: string | null
+  id?: string | null
+  manifest_files?: Array<string> | null
+  name?: string | null
+  path?: string | null
+  skill_md_file_id?: string | null
+  skill_md_key?: string | null
+  [key: string]: unknown
 }
 
 export type CheckResultView = {
@@ -2484,21 +2522,6 @@ export type AgentSoulDifyToolConfig = {
       | null
   }
   tool_name?: string | null
-}
-
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
 }
 
 export type OutputErrorStrategy = 'default_value' | 'fail_branch' | 'stop'

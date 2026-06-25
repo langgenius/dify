@@ -287,11 +287,7 @@ class AgentSoulFilesService:
             manifest_files=metadata.manifest_files,
         )
         existing_ref = next(
-            (
-                existing
-                for existing in agent_soul.files.skills
-                if existing.skill_md_key == key or existing.path == path
-            ),
+            (existing for existing in agent_soul.files.skills if existing.skill_md_key == key or existing.path == path),
             None,
         )
         file_refs = list(existing_ref.file_refs) if existing_ref else []
@@ -303,9 +299,7 @@ class AgentSoulFilesService:
             ref.full_archive_file_id = archive_ref.file_id
         ref.file_refs = sorted(file_refs, key=lambda value: value.drive_key or value.name)
         skills = [
-            existing
-            for existing in agent_soul.files.skills
-            if existing.skill_md_key != key and existing.path != path
+            existing for existing in agent_soul.files.skills if existing.skill_md_key != key and existing.path != path
         ]
         skills.append(ref)
         skills.sort(key=lambda value: value.path or value.skill_md_key or "")

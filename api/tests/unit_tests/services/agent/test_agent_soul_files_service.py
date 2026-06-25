@@ -146,9 +146,7 @@ def test_apply_drive_commit_removes_refs_without_touching_unrelated_entries():
     )
 
     AgentSoulFilesService._apply_commit_item(agent_soul=soul, item={"key": "files/sample.pdf", "removed": True})
-    AgentSoulFilesService._apply_commit_item(
-        agent_soul=soul, item={"key": "tender-analyzer/SKILL.md", "removed": True}
-    )
+    AgentSoulFilesService._apply_commit_item(agent_soul=soul, item={"key": "tender-analyzer/SKILL.md", "removed": True})
 
     assert [file_ref.drive_key for file_ref in soul.files.files] == ["files/keep.pdf"]
     assert soul.files.skills == []

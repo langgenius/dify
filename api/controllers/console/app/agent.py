@@ -330,8 +330,7 @@ def _delete_skill_for_app(*, current_user: Account, app_model: App, slug: str, a
         file_ref.drive_key
         for skill in agent_soul.files.skills
         if (
-            skill.path
-            or (AgentSoulFilesService.skill_path_from_key(skill.skill_md_key) if skill.skill_md_key else "")
+            skill.path or (AgentSoulFilesService.skill_path_from_key(skill.skill_md_key) if skill.skill_md_key else "")
         ).strip("/")
         == slug
         for file_ref in skill.file_refs

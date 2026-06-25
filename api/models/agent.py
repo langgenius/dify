@@ -240,9 +240,7 @@ class AgentConfigDraft(DefaultFieldsMixin, Base):
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     agent_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    draft_type: Mapped[AgentConfigDraftType] = mapped_column(
-        EnumText(AgentConfigDraftType, length=32), nullable=False
-    )
+    draft_type: Mapped[AgentConfigDraftType] = mapped_column(EnumText(AgentConfigDraftType, length=32), nullable=False)
     account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     draft_owner_key: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     base_snapshot_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)

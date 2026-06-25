@@ -285,9 +285,8 @@ class WorkflowAgentPublishService:
                 continue
             if not isinstance(binding_payload, Mapping):
                 raise ValueError(f"Workflow Agent node {node_id} has invalid agent_binding.")
-            if (
-                binding_payload.get("binding_type") == WorkflowAgentBindingType.INLINE_AGENT.value
-                and (not binding_payload.get("agent_id") or not binding_payload.get("current_snapshot_id"))
+            if binding_payload.get("binding_type") == WorkflowAgentBindingType.INLINE_AGENT.value and (
+                not binding_payload.get("agent_id") or not binding_payload.get("current_snapshot_id")
             ):
                 continue
             cls._sync_agent_binding_for_node(
