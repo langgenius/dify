@@ -46,7 +46,7 @@ from dify_agent.protocol import (
 _ResponseModelT = TypeVar("_ResponseModelT", bound=BaseModel)
 _TERMINAL_EVENT_TYPES = {"run_succeeded", "run_failed", "run_cancelled"}
 _TERMINAL_RUN_STATUSES = {"succeeded", "failed", "cancelled"}
-_FUNCTION_TOOL_RESULT_PAYLOAD_KEY: str | None = None
+_function_tool_result_payload_key_cache: str | None = None
 
 
 class DifyAgentClientError(RuntimeError):
@@ -176,13 +176,13 @@ def _function_tool_result_payload_key() -> str:
     during local development or rolling deploys, so the client normalizes the
     remote frame into the local schema before Pydantic validation.
     """
-    global _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
-    if _FUNCTION_TOOL_RESULT_PAYLOAD_KEY is not None:
-        return _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
+    global _function_tool_result_payload_key_cache
+    if _function_tool_result_payload_key_cache is not None:
+        return _function_tool_result_payload_key_cache
 
     parameters = list(inspect.signature(FunctionToolResultEvent).parameters)
-    _FUNCTION_TOOL_RESULT_PAYLOAD_KEY = "part" if parameters and parameters[0] == "part" else "result"
-    return _FUNCTION_TOOL_RESULT_PAYLOAD_KEY
+    _function_tool_result_payload_key_cache = "part" if parameters and parameters[0] == "part" else "result"
+    return _function_tool_result_payload_key_cache
 
 
 def _normalize_run_event_payload_for_local_pydantic_ai(payload: Any) -> Any:

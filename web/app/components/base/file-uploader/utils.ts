@@ -206,12 +206,6 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
     }
   })
 }
-
-export const getFileNameFromUrl = (url: string) => {
-  const urlParts = url.split('/')
-  return urlParts[urlParts.length - 1] || ''
-}
-
 export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileExtensions: string[]) => {
   if (allowFileTypes.includes(SupportUploadFileTypes.custom))
     return allowFileExtensions.map(item => item.slice(1).toUpperCase())

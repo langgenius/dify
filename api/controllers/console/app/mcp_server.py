@@ -12,8 +12,11 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
 )
@@ -83,6 +86,7 @@ class AppMCPServerController(Resource):
     @login_required
     @account_initialization_required
     @setup_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model
     def get(self, app_model: App):
         server = db.session.scalar(select(AppMCPServer).where(AppMCPServer.app_id == app_model.id).limit(1))
@@ -99,11 +103,12 @@ class AppMCPServerController(Resource):
     )
     @console_ns.response(403, "Insufficient permissions")
     @account_initialization_required
-    @get_app_model
     @login_required
     @setup_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_tenant_id
+    @get_app_model
     def post(self, current_tenant_id: str, app_model: App):
         payload = MCPServerCreatePayload.model_validate(console_ns.payload or {})
 
@@ -133,11 +138,12 @@ class AppMCPServerController(Resource):
     )
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(404, "Server not found")
-    @get_app_model
     @login_required
     @setup_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @get_app_model
     def put(self, app_model: App):
         payload = MCPServerUpdatePayload.model_validate(console_ns.payload or {})
         server = db.session.get(AppMCPServer, payload.id)
@@ -174,6 +180,7 @@ class AppMCPServerRefreshController(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @with_current_tenant_id
     def get(self, current_tenant_id: str, server_id: UUID):
         server = db.session.scalar(

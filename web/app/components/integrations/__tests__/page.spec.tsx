@@ -7,6 +7,10 @@ const { mockRouterPush, mockWindowOpen } = vi.hoisted(() => ({
   mockWindowOpen: vi.fn(),
 }))
 
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
+}))
+
 const {
   mockCanManagement,
   mockCanDebugger,
@@ -39,19 +43,33 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
+  }),
+}))
+
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
     permission: mockReferenceSetting().permission,
+    canInstallPlugin: mockCanManagement(),
+    canDeletePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
+    canUpdatePlugin: true,
     setPluginPermissionSettings: mockSetReferenceSettings,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
+    canInstallPlugin: mockCanManagement(),
+    canDeletePlugin: true,
     canManagement: mockCanManagement(),
     canDebugger: mockCanDebugger(),
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
+    canUpdatePlugin: true,
     setReferenceSettings: mockSetReferenceSettings,
   }),
 }))
@@ -245,6 +263,7 @@ describe('IntegrationsPage', () => {
     mockCanManagement.mockReturnValue(true)
     mockCanDebugger.mockReturnValue(true)
     mockCanSetPermissions.mockReturnValue(true)
+    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
     mockReferenceSetting.mockReturnValue({
       permission: {
         install_permission: 'everyone',
@@ -396,6 +415,22 @@ describe('IntegrationsPage', () => {
     expect(screen.getByTestId('data-source-page')).toBeInTheDocument()
   })
 
+  it('renders the MCP route as read-only without mcp.manage', () => {
+    mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+    renderIntegrationsPage(undefined, 'mcp')
+
+    expect(screen.getByTestId('tool-provider-list')).toHaveTextContent('mcp')
+  })
+
+  it.each(['custom-tool', 'workflow-tool'] as const)('renders the %s route as read-only without tool.manage', (section) => {
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+
+    renderIntegrationsPage(undefined, section)
+
+    expect(screen.getByTestId('tool-provider-list')).toBeInTheDocument()
+  })
+
   it('remounts the tools section content when the route section changes', () => {
     const view = renderIntegrationsPage(undefined, 'builtin')
 
@@ -490,6 +525,18 @@ describe('IntegrationsPage', () => {
     expect(onSectionChange).toHaveBeenCalledTimes(2)
   })
 
+  it('keeps custom, workflow, and MCP tool entries visible without manage permissions', () => {
+    mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+    renderIntegrationsPage(undefined, { section: 'provider', onSectionChange: vi.fn() })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.menus.tools' }))
+
+    expect(screen.getByRole('button', { name: 'common.toolsPage.toolPlugin' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'MCP' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'workflow.common.workflowAsTool' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.settings.swaggerAPIAsTool' })).toBeInTheDocument()
+  })
+
   it('opens tools to the tools plugin page when the parent tools nav is clicked', () => {
     renderIntegrationsPage(undefined, 'provider')
 
@@ -527,7 +574,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getAllByText('common.toolsPage.toolPlugin')).toHaveLength(2)
     expect(screen.getByText('common.toolsPage.description')).toBeInTheDocument()
     expect(screen.getByText('common.toolsPage.description').closest('[class*="max-w-[1600px]"]')).toHaveClass('px-6')
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools')
   })
 
   it('aligns model provider headers to the unified content frame', () => {
@@ -549,7 +596,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('MCP')).toHaveLength(2)
     expect(screen.getByText('common.mcpPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/build/mcp')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/build/mcp')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
@@ -558,7 +605,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('common.settings.swaggerAPIAsTool')).toHaveLength(2)
     expect(screen.getByText('common.swaggerAPIAsToolPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#custom-tool')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#custom-tool')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
@@ -579,7 +626,7 @@ describe('IntegrationsPage', () => {
     expect(screen.getAllByText('common.settings.customEndpoint')).toHaveLength(2)
     expect(screen.getByText('common.apiBasedExtensionPage.description')).toBeInTheDocument()
     expect(screen.getByTestId('api-extension-toolbar')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/api-extension/api-extension')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/api-extension/api-extension')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 
@@ -601,7 +648,7 @@ describe('IntegrationsPage', () => {
 
     expect(screen.getAllByText('workflow.common.workflowAsTool')).toHaveLength(2)
     expect(screen.getByText('common.workflowAsToolPage.description')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/use-dify/workspace/tools#workflow-tool')
+    expect(screen.getByRole('link', { name: /common\.modelProvider\.learnMore/i })).toHaveAttribute('href', 'https://docs.dify.ai/en/self-host/use-dify/workspace/tools#workflow-tool')
     expect(screen.queryByText('common.toolsPage.description')).not.toBeInTheDocument()
   })
 

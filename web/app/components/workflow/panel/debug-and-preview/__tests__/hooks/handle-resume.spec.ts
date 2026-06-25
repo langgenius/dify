@@ -262,6 +262,27 @@ describe('useChat – handleResume', () => {
       const answer = result.current.chatList.find(item => item.id === 'msg-resume')
       expect(answer!.workflowProcess!.status).toBe('succeeded')
     })
+
+    it('should store workflow finished error on resume workflow process', async () => {
+      const { result } = await setupResumeWithTree()
+
+      act(() => {
+        capturedResumeOptions.onWorkflowStarted({
+          workflow_run_id: 'wfr-2',
+          task_id: 'task-2',
+        })
+      })
+
+      act(() => {
+        capturedResumeOptions.onWorkflowFinished({
+          data: { status: 'failed', error: 'Invalid upload file' },
+        })
+      })
+
+      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      expect(answer!.workflowProcess!.status).toBe('failed')
+      expect(answer!.workflowProcess!.error).toBe('Invalid upload file')
+    })
   })
 
   describe('onData', () => {
@@ -292,6 +313,35 @@ describe('useChat – handleResume', () => {
       })
 
       expect(result.current.conversationId).toBe('new-conv-resume')
+    })
+  })
+
+  describe('onReasoning', () => {
+    it('should accumulate reasoning per node onto the resumed answer', async () => {
+      const { result } = await setupResumeWithTree()
+
+      act(() => {
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'resumed ', node_id: 'llm' } })
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'thought', node_id: 'llm', is_final: true } })
+      })
+
+      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      expect(answer!.reasoningContent).toEqual({ llm: 'resumed thought' })
+      expect(answer!.reasoningFinished).toBe(true)
+    })
+
+    it('should ignore empty reasoning and fall back to "_" when node_id is absent', async () => {
+      const { result } = await setupResumeWithTree()
+
+      act(() => {
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: '' } })
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'a' } })
+        capturedResumeOptions.onReasoning({ data: { message_id: 'msg-resume', reasoning: 'b' } })
+      })
+
+      const answer = result.current.chatList.find(item => item.id === 'msg-resume')
+      expect(answer!.reasoningContent).toEqual({ _: 'ab' })
+      expect(answer!.reasoningFinished).toBeUndefined()
     })
   })
 

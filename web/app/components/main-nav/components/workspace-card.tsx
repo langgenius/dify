@@ -17,10 +17,12 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import LicenseNav from '@/app/components/header/license-env'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { IS_CLOUD_EDITION } from '@/config'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
+import { hasPermission } from '@/utils/permission'
 import { basePath } from '@/utils/var'
 import { formatCredits, getRemainingCredits } from '../utils'
 import { WorkspaceIcon, WorkspaceMenuItemContent } from './workspace-menu-content'
@@ -118,6 +120,7 @@ function WorkspaceCardTrigger({
         title={name}
         className={cn(
           'flex w-full items-center gap-1.5 py-1.5 pr-3 pl-1.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
+          showCloudBilling ? 'rounded-t-xl' : 'rounded-xl',
           open && 'bg-linear-to-b from-background-section-burn to-background-section',
         )}
       >
@@ -159,7 +162,6 @@ function WorkspaceCardTrigger({
 function WorkspaceMenuHeader({
   name,
   status,
-  showWorkspaceSettings,
   showInviteMembers,
   settingsLabel,
   inviteMembersLabel,
@@ -168,7 +170,6 @@ function WorkspaceMenuHeader({
 }: {
   name: string
   status: ReactNode
-  showWorkspaceSettings: boolean
   showInviteMembers: boolean
   settingsLabel: ReactNode
   inviteMembersLabel: ReactNode
@@ -185,15 +186,13 @@ function WorkspaceMenuHeader({
           </div>
           <WorkspaceIcon name={name} className="h-9 w-9 shrink-0" />
         </div>
-        {showWorkspaceSettings && (
-          <button
-            type="button"
-            className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
-            onClick={onOpenSettings}
-          >
-            <WorkspaceMenuItemContent icon={<span aria-hidden className="i-custom-vender-main-nav-workspace-settings h-4 w-4" />} label={settingsLabel} />
-          </button>
-        )}
+        <button
+          type="button"
+          className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-lg px-3 py-1 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
+          onClick={onOpenSettings}
+        >
+          <WorkspaceMenuItemContent icon={<span aria-hidden className="i-custom-vender-main-nav-workspace-settings h-4 w-4" />} label={settingsLabel} />
+        </button>
         {showInviteMembers && (
           <button
             type="button"
@@ -233,6 +232,7 @@ export function WorkspaceCard() {
   const workspaces = workspacesData?.workspaces
   const currentWorkspaceInList = workspaces?.find(workspace => workspace.current)
   const { enableBilling } = useProviderContext()
+  const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const showCloudBilling = IS_CLOUD_EDITION && enableBilling
   const [open, setOpen] = useState(false)
@@ -251,8 +251,7 @@ export function WorkspaceCard() {
   const isFreePlan = workspacePlan === Plan.sandbox
   const showPlanAction = showCloudBilling
   const planActionLabel = t(isFreePlan ? 'upgradeBtn.encourageShort' : 'upgradeBtn.plain', { ns: 'billing' })
-  const showWorkspaceSettings = currentWorkspace.role !== 'dataset_operator'
-  const showInviteMembers = showWorkspaceSettings && ['owner', 'admin'].includes(currentWorkspace.role)
+  const showInviteMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const renderWorkspaceStatus = () => enableBilling ? <WorkspacePlanBadge plan={workspacePlan} /> : <LicenseNav />
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
@@ -292,13 +291,16 @@ export function WorkspaceCard() {
           <WorkspaceMenuHeader
             name={currentWorkspace.name}
             status={renderWorkspaceStatus()}
-            showWorkspaceSettings={showWorkspaceSettings}
             showInviteMembers={showInviteMembers}
             settingsLabel={t('mainNav.workspace.settings', { ns: 'common' })}
             inviteMembersLabel={t('mainNav.workspace.inviteMembers', { ns: 'common' })}
             onOpenSettings={() => {
               setOpen(false)
-              setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
+              setShowAccountSettingModal({
+                payload: enableBilling
+                  ? ACCOUNT_SETTING_TAB.BILLING
+                  : ACCOUNT_SETTING_TAB.MEMBERS,
+              })
             }}
             onInviteMembers={() => {
               setOpen(false)

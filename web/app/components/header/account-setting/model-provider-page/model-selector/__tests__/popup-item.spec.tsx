@@ -72,8 +72,14 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 const mockUseAppContext = vi.hoisted(() => vi.fn())
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['credential.use', 'credential.create', 'credential.manage'],
+}))
 vi.mock('@/context/app-context', () => ({
   useAppContext: mockUseAppContext,
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
 }))
 
 const makeModelItem = (overrides: Partial<ModelItem> = {}): ModelItem => ({
@@ -133,6 +139,7 @@ const renderWithCombobox = (
 describe('PopupItem', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['credential.use', 'credential.create', 'credential.manage']
     mockUseLanguage.mockReturnValue('en_US')
     mockUseProviderContext.mockReturnValue({
       modelProviders: [makeProvider()],
@@ -408,5 +415,19 @@ describe('PopupItem', () => {
     fireEvent.click(screen.getByRole('button', { name: 'close dropdown' }))
 
     expect(onHide).toHaveBeenCalled()
+  })
+
+  it('should keep the credential dropdown enabled for manage-only users', () => {
+    mockWorkspacePermissionKeys.value = ['credential.manage']
+
+    renderWithCombobox(<PopupItem {...previewCardProps()} model={makeModel()} onHide={vi.fn()} />)
+
+    const trigger = screen.getByRole('button', { name: /my-api-key/ })
+
+    expect(trigger).not.toBeDisabled()
+
+    fireEvent.click(trigger)
+
+    expect(screen.getByRole('button', { name: 'close dropdown' })).toBeInTheDocument()
   })
 })

@@ -38,6 +38,7 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
+    workspacePermissionKeys: ['plugin.install'],
   }),
 }))
 

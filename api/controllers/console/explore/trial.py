@@ -419,7 +419,13 @@ class TrialChatTextApi(TrialAppResource):
             app_id = app_model.id
             user_id = current_user.id
 
-            response = AudioService.transcript_tts(app_model=app_model, text=text, voice=voice, message_id=message_id)
+            response = AudioService.transcript_tts(
+                app_model=app_model,
+                session=db.session,
+                text=text,
+                voice=voice,
+                message_id=message_id,
+            )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:

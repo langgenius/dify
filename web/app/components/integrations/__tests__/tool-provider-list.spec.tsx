@@ -89,11 +89,17 @@ const createDefaultCollections = () => [
 let mockCollectionData: ReturnType<typeof createDefaultCollections> = []
 let mockIsLoadingToolProviders = false
 const mockRefetch = vi.fn()
+const mockUseAllToolProviders = vi.hoisted(() => vi.fn())
 vi.mock('@/service/use-tools', () => ({
-  useAllToolProviders: () => ({
-    data: mockCollectionData,
-    isLoading: mockIsLoadingToolProviders,
-    refetch: mockRefetch,
+  useAllToolProviders: (enabled?: boolean) => mockUseAllToolProviders(enabled),
+}))
+
+const mockAppContextState = vi.hoisted(() => ({
+  workspacePermissionKeys: ['tool.manage', 'mcp.manage'] as string[],
+}))
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockAppContextState.workspacePermissionKeys,
   }),
 }))
 
@@ -131,13 +137,18 @@ const {
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   useCanSetPluginSettings: () => ({
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
   }),
   usePluginSettingsAccess: () => ({
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
+    canDeletePlugin: true,
+    canUpdatePlugin: true,
   }),
   default: () => ({
     referenceSetting: mockReferenceSetting(),
     canSetPermissions: mockCanSetPermissions(),
+    canSetPluginPreferences: mockCanSetPermissions(),
     setReferenceSettings: mockSetReferenceSettings,
   }),
 }))
@@ -316,6 +327,12 @@ describe('ProviderList', () => {
     mockEnableMarketplace = false
     mockCollectionData = createDefaultCollections()
     mockIsLoadingToolProviders = false
+    mockAppContextState.workspacePermissionKeys = ['tool.manage', 'mcp.manage']
+    mockUseAllToolProviders.mockImplementation((enabled = true) => ({
+      data: enabled ? mockCollectionData : [],
+      isLoading: enabled ? mockIsLoadingToolProviders : false,
+      refetch: mockRefetch,
+    }))
     mockCheckedInstalledData = null
     mockCanSetPermissions.mockReturnValue(true)
     mockReferenceSetting.mockReturnValue({
@@ -345,6 +362,42 @@ describe('ProviderList', () => {
       expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
       expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
       expect(screen.getByText('MCP')).toBeInTheDocument()
+    })
+
+    it('keeps custom and workflow tabs visible without tool.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['mcp.manage']
+
+      renderProviderList()
+
+      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
+      expect(screen.getByText('MCP')).toBeInTheDocument()
+    })
+
+    it('keeps MCP tab visible without mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+      renderProviderList()
+
+      expect(screen.getByText('tools.type.builtIn')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.custom')).toBeInTheDocument()
+      expect(screen.getByText('tools.type.workflow')).toBeInTheDocument()
+      expect(screen.getByText('MCP')).toBeInTheDocument()
+    })
+
+    it.each([
+      ['api', 'card-my-api'],
+      ['workflow', 'card-wf-tool'],
+    ] as const)('renders %s category read-only without tool.manage', (category, cardTestId) => {
+      mockAppContextState.workspacePermissionKeys = []
+
+      renderProviderList({ category })
+
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(screen.getByTestId(cardTestId)).toBeInTheDocument()
+      expect(screen.queryByTestId('custom-create-card')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('toolbar-add-custom-tool')).not.toBeInTheDocument()
     })
 
     it('switches tab when clicked', () => {
@@ -424,7 +477,7 @@ describe('ProviderList', () => {
 
       fireEvent.click(screen.getByTestId('card-google-search'))
 
-      expect(screen.getByTestId('card-google-search')).toHaveClass('outline-[1.5px]', 'outline-components-option-card-option-selected-border')
+      expect(screen.getByTestId('card-google-search')).toHaveClass('after:ring-[1.5px]', 'after:ring-components-option-card-option-selected-border', 'after:ring-inset')
     })
   })
 
@@ -743,6 +796,17 @@ describe('ProviderList', () => {
     it('renders MCPList component', () => {
       renderProviderList({ category: 'mcp' })
       expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+    })
+
+    it('renders MCP list read-only without mcp.manage', () => {
+      mockAppContextState.workspacePermissionKeys = ['tool.manage']
+
+      renderProviderList({ category: 'mcp' })
+
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(screen.getByTestId('mcp-list')).toBeInTheDocument()
+      expect(screen.getByTestId('mcp-list')).toHaveAttribute('data-show-create-card', 'false')
+      expect(screen.queryByTestId('toolbar-add-mcp')).not.toBeInTheDocument()
     })
 
     it('keeps MCP creation in the empty card when there are no MCP servers', () => {

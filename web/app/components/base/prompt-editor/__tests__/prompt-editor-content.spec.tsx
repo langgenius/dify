@@ -7,6 +7,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import {
+  $getRoot,
   BLUR_COMMAND,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
@@ -17,6 +18,7 @@ import { useEffect } from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { AgentOutputBlockNode } from '../plugins/agent-output-block/node'
 import { ContextBlockNode } from '../plugins/context-block'
 import { CurrentBlockNode } from '../plugins/current-block'
 import { CustomTextNode } from '../plugins/custom-text/node'
@@ -26,6 +28,7 @@ import { HITLInputNode } from '../plugins/hitl-input-block'
 import { LastRunBlockNode } from '../plugins/last-run-block'
 import { QueryBlockNode } from '../plugins/query-block'
 import { RequestURLBlockNode } from '../plugins/request-url-block'
+import { RosterReferenceBlockNode } from '../plugins/roster-reference-block/node'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '../plugins/update-block'
 import { VariableValueBlockNode } from '../plugins/variable-value-block/node'
 import { WorkflowVariableBlockNode } from '../plugins/workflow-variable-block'
@@ -108,10 +111,12 @@ const PromptEditorContentHarness = ({
           RequestURLBlockNode,
           WorkflowVariableBlockNode,
           VariableValueBlockNode,
+          RosterReferenceBlockNode,
           HITLInputNode,
           CurrentBlockNode,
           ErrorMessageBlockNode,
           LastRunBlockNode,
+          AgentOutputBlockNode,
         ],
         editorState: textToEditorState(initialText),
         onError: (error: Error) => {
@@ -199,6 +204,117 @@ describe('PromptEditorContent', () => {
       expect(onFocus).toHaveBeenCalledTimes(1)
       expect(onBlur).toHaveBeenCalledTimes(1)
       expect(screen.getByRole('textbox')).toBeInTheDocument()
+    })
+
+    it('should render adjacent agent output tokens as inline output blocks', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+      const initialText = '[§output:ccc:ccc§][§output:output_3ggg:output_3ggg§][§output:ggg:ggg§][§output:output_3fdfdf:output_3fdfdf§]'
+
+      const { container } = render(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText={initialText}
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [
+              { name: 'ccc', type: 'string' },
+              { name: 'output_3ggg', type: 'string' },
+              { name: 'ggg', type: 'string' },
+              { name: 'output_3fdfdf', type: 'string' },
+            ],
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('ccc')).toBeInTheDocument()
+        expect(screen.getByText('output_3ggg')).toBeInTheDocument()
+        expect(screen.getByText('ggg')).toBeInTheDocument()
+        expect(screen.getByText('output_3fdfdf')).toBeInTheDocument()
+      })
+      expect(container).not.toHaveTextContent('[§output:ccc:ccc§]')
+
+      await waitFor(() => {
+        expect(captures.editor).not.toBeNull()
+      })
+      captures.editor!.getEditorState().read(() => {
+        expect($getRoot().getTextContent()).toBe(initialText)
+      })
+    })
+
+    it('should infer file type when rendering a file-name output token', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      render(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:qna_report.pdf:qna_report.pdf§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [
+              { name: 'qna_report.pdf', type: 'string' },
+            ],
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('qna_report.pdf')).toBeInTheDocument()
+        expect(screen.getByText('file')).toBeInTheDocument()
+      })
+    })
+
+    it('should update rendered output block type when declared output config changes', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+      const outputBlock = {
+        show: true,
+        outputs: [
+          { name: 'summary', type: 'string' as const },
+        ],
+      }
+
+      const { rerender } = render(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:summary:summary§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={outputBlock}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('summary')).toBeInTheDocument()
+        expect(screen.getByText('string')).toBeInTheDocument()
+      })
+
+      rerender(
+        <PromptEditorContentHarness
+          captures={captures}
+          initialText="[§output:summary:summary§]"
+          shortcutPopups={[]}
+          floatingAnchorElem={document.createElement('div')}
+          onEditorChange={vi.fn()}
+          agentOutputBlock={{
+            show: true,
+            outputs: [
+              { name: 'summary', type: 'file' },
+            ],
+          }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(screen.getByText('file')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('string')).not.toBeInTheDocument()
     })
 
     it('should render optional blocks and open shortcut popups with the real editor runtime', async () => {
@@ -290,6 +406,30 @@ describe('PromptEditorContent', () => {
 
       expect(screen.queryByTestId('draggable-target-line')).not.toBeInTheDocument()
       expect(screen.getByText('common.promptEditor.placeholder')).toBeInTheDocument()
+    })
+
+    it('should render roster references as inline token pills when enabled', async () => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+
+      const { container } = render(
+        <PromptEditorContentHarness
+          captures={captures}
+          shortcutPopups={[]}
+          initialText="Use [§file:file-1:qna_report.pdf§]"
+          floatingAnchorElem={null}
+          onEditorChange={vi.fn()}
+          rosterReferenceBlock={{ show: true }}
+        />,
+      )
+
+      await waitFor(() => {
+        expect(captures.editor).not.toBeNull()
+      })
+
+      const token = container.querySelector('[data-roster-reference-kind="file"]') as HTMLElement
+      expect(token).toBeInTheDocument()
+      expect(token).toHaveTextContent('qna_report.pdf')
+      expect(token.querySelector('.i-ri-file-pdf-2-fill')).toBeInTheDocument()
     })
   })
 })

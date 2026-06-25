@@ -224,6 +224,7 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
 
     agent_id: str
     agent_config_snapshot_id: str
+    agent_runtime_session_snapshot_id: str | None = None
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):

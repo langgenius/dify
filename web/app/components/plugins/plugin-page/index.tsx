@@ -14,7 +14,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { useEffect, useMemo, useState } from 'react'
+import { cloneElement, isValidElement, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TabSlider from '@/app/components/base/tab-slider'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
@@ -27,6 +27,7 @@ import Link from '@/next/link'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
+import { PluginInstallPermissionProvider } from '../install-plugin/components/plugin-install-permission-provider'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
@@ -53,6 +54,11 @@ export type PluginPageProps = {
   plugins: React.ReactNode
   marketplace: React.ReactNode
 }
+type PluginPanelPermissionProps = {
+  canInstall?: boolean
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
+}
 const PluginPage = ({
   plugins,
   marketplace,
@@ -78,10 +84,31 @@ const PluginPage = ({
 
   const [manifest, setManifest] = useState<PluginDeclaration | PluginManifestInMarket | null>(null)
 
+  const {
+    referenceSetting,
+    canInstallPlugin,
+    canUpdatePlugin,
+    canDeletePlugin,
+    canDebugger,
+    canSetPermissions,
+    canSetPluginPreferences,
+    currentDifyVersion,
+    isPermissionLoading,
+    isReferenceSettingLoading,
+    setReferenceSettings,
+  } = useReferenceSetting(PluginCategoryEnum.tool)
+
   useEffect(() => {
     (async () => {
       setUniqueIdentifier(null)
       await sleep(100)
+      if (isPermissionLoading)
+        return
+
+      if (!canInstallPlugin) {
+        setInstallState(null)
+        return
+      }
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
         const { plugin, version } = data
@@ -105,17 +132,7 @@ const PluginPage = ({
         }
       }
     })()
-  }, [packageId, bundleInfo, showInstallFromMarketplace])
-
-  const {
-    referenceSetting,
-    canManagement,
-    canDebugger,
-    canSetPermissions,
-    isPermissionLoading,
-    isReferenceSettingLoading,
-    setReferenceSettings,
-  } = useReferenceSetting(PluginCategoryEnum.tool)
+  }, [packageId, bundleInfo, canInstallPlugin, isPermissionLoading, setInstallState, showInstallFromMarketplace])
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
@@ -140,6 +157,11 @@ const PluginPage = ({
     : t('metadata.title', { ns: 'plugin' }))
 
   const handleFileChange = (file: File | null) => {
+    if (!canInstallPlugin) {
+      setCurrentFile(null)
+      return
+    }
+
     if (!file || !file.name.endsWith('.difypkg')) {
       setCurrentFile(null)
       return
@@ -150,10 +172,21 @@ const PluginPage = ({
   const uploaderProps = useUploader({
     onFileChange: handleFileChange,
     containerRef,
-    enabled: isPluginsTab && canManagement,
+    enabled: isPluginsTab && canInstallPlugin,
   })
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
+  const pluginsWithPermission = useMemo(() => {
+    if (!isValidElement(plugins) || typeof plugins.type === 'string')
+      return plugins
+
+    return cloneElement(plugins as React.ReactElement<PluginPanelPermissionProps>, {
+      canInstall: canInstallPlugin,
+      canDeletePlugin,
+      canUpdatePlugin,
+    })
+  }, [canInstallPlugin, canDeletePlugin, canUpdatePlugin, plugins])
+
   return (
     <div
       id="marketplace-container"
@@ -212,9 +245,9 @@ const PluginPage = ({
               )
             }
             <PluginTasks />
-            {(canManagement || isPermissionLoading) && (
+            {(canInstallPlugin || isPermissionLoading) && (
               <InstallPluginDropdown
-                disabled={isPermissionLoading || !canManagement}
+                disabled={isPermissionLoading || !canInstallPlugin}
                 onSwitchToMarketplaceTab={() => setActiveTab('discover')}
               />
             )}
@@ -233,7 +266,7 @@ const PluginPage = ({
               </Button>
             )}
             {
-              canSetPermissions && (
+              (canSetPermissions || canSetPluginPreferences) && (
                 <Tooltip>
                   <TooltipTrigger
                     render={(
@@ -259,7 +292,13 @@ const PluginPage = ({
       </div>
       {isPluginsTab && (
         <>
-          {plugins}
+          <PluginInstallPermissionProvider
+            canInstallPlugin={canInstallPlugin}
+            canUpdatePlugin={canUpdatePlugin}
+            currentDifyVersion={currentDifyVersion}
+          >
+            {pluginsWithPermission}
+          </PluginInstallPermissionProvider>
           {dragging && (
             <div
               className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
@@ -267,10 +306,12 @@ const PluginPage = ({
             >
             </div>
           )}
-          <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
-            <RiDragDropLine className="size-4" />
-            <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
-          </div>
+          {canInstallPlugin && (
+            <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
+              <RiDragDropLine className="size-4" />
+              <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
+            </div>
+          )}
           {currentFile && (
             <InstallFromLocalPackage
               file={currentFile}
@@ -289,12 +330,22 @@ const PluginPage = ({
         </>
       )}
       {
-        isExploringMarketplace && enable_marketplace && marketplace
+        isExploringMarketplace && enable_marketplace && (
+          <PluginInstallPermissionProvider
+            canInstallPlugin={canInstallPlugin}
+            canUpdatePlugin={canUpdatePlugin}
+            currentDifyVersion={currentDifyVersion}
+          >
+            {marketplace}
+          </PluginInstallPermissionProvider>
+        )
       }
 
       {showPluginSettingModal && referenceSetting && (
         <ReferenceSettingModal
           payload={referenceSetting}
+          canSetPermissions={canSetPermissions}
+          canSetAutoUpdate={canSetPluginPreferences}
           onHide={setHidePluginSettingModal}
           onSave={setReferenceSettings}
         />

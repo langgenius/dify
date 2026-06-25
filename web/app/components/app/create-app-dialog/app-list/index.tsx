@@ -5,19 +5,20 @@ import type { App } from '@/models/explore'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiRobot2Line } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppTypeSelector from '@/app/components/app/type-selector'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DSLImportMode } from '@/models/app'
 import { useRouter } from '@/next/navigation'
 import { importDSL } from '@/service/apps'
@@ -27,6 +28,7 @@ import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
@@ -45,12 +47,15 @@ const Apps = ({
   onCreateFromBlank,
 }: AppsProps) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const canCreateAppFromTemplate = hasPermission(workspacePermissionKeys, 'app.create_and_management')
   const { push } = useRouter()
   const invalidateAppList = useInvalidateAppList()
   const allCategoriesEn = AppCategories.RECOMMENDED
 
-  const setNeedRefresh = useSetLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, { raw: true })
+  const setNeedRefresh = useSetNeedRefreshAppList()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -72,14 +77,30 @@ const Apps = ({
     isLoading,
   } = useExploreAppList()
 
+  const visibleCategories = useMemo(() => {
+    if (!data)
+      return []
+
+    const categoriesWithApps = new Set<string>()
+    data.allList.forEach((app) => {
+      app.categories.forEach(category => categoriesWithApps.add(category))
+    })
+
+    return data.categories.filter(category => categoriesWithApps.has(category))
+  }, [data])
+
+  const activeCategory = visibleCategories.includes(currCategory)
+    ? currCategory
+    : allCategoriesEn
+
   const filteredList = useMemo(() => {
     if (!data)
       return []
     const { allList } = data
     const filteredByCategory = allList.filter((item) => {
-      if (currCategory === allCategoriesEn)
+      if (activeCategory === allCategoriesEn)
         return true
-      return item.categories?.includes(currCategory) ?? false
+      return item.categories?.includes(activeCategory) ?? false
     })
     if (currentType.length === 0)
       return filteredByCategory
@@ -96,7 +117,7 @@ const Apps = ({
         return true
       return false
     })
-  }, [currentType, currCategory, allCategoriesEn, data])
+  }, [currentType, activeCategory, allCategoriesEn, data])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -142,7 +163,8 @@ const Apps = ({
         await handleCheckPluginDependencies(app.app_id)
       setNeedRefresh('1')
       invalidateAppList()
-      getRedirection(isCurrentWorkspaceEditor, { id: app.app_id!, mode }, push)
+      if (app.app_id)
+        getRedirection({ id: app.app_id, mode: app.app_mode, permission_keys: app.permission_keys }, push, { isRbacEnabled })
     }
     catch {
       toast.error(t('newApp.appCreateFailed', { ns: 'app' }))
@@ -183,7 +205,7 @@ const Apps = ({
       <div className="relative flex flex-1 overflow-y-auto">
         {!searchKeywords && (
           <div className="h-full w-[200px] p-4">
-            <Sidebar current={currCategory as AppCategories} categories={data?.categories || []} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+            <Sidebar current={activeCategory as AppCategories} categories={visibleCategories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
           </div>
         )}
         <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
@@ -194,7 +216,7 @@ const Apps = ({
                   ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('newApp.foundResults', { ns: 'app', count: searchFilteredList.length }) : t('newApp.foundResult', { ns: 'app', count: searchFilteredList.length })}</p>
                   : (
                       <div className="flex h-[22px] items-center">
-                        <AppCategoryLabel category={currCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
+                        <AppCategoryLabel category={activeCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
                       </div>
                     )}
               </div>
@@ -207,7 +229,7 @@ const Apps = ({
                   <AppCard
                     key={app.app_id}
                     app={app}
-                    canCreate={isCurrentWorkspaceEditor}
+                    canCreate={canCreateAppFromTemplate}
                     onCreate={() => {
                       setCurrApp(app)
                       setIsShowCreateModal(true)

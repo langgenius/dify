@@ -709,7 +709,9 @@ def test_langfuse_trace_entity_with_list_dict_input():
     assert data.input[0]["content"] == "hello"
 
 
-def test_workflow_trace_handles_usage_extraction_error(trace_instance, monkeypatch: pytest.MonkeyPatch, caplog):
+def test_workflow_trace_handles_usage_extraction_error(
+    trace_instance, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+):
     # Setup trace info to trigger LLM node usage extraction
     trace_info = WorkflowTraceInfo(
         workflow_id="wf-1",
