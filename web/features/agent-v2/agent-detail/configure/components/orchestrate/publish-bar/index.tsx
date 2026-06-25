@@ -303,7 +303,7 @@ export function AgentConfigurePublishBar({
   )
 }
 
-function PublishBarBottomActions({
+export function PublishBarBottomActions({
   children,
 }: {
   children: ReactNode

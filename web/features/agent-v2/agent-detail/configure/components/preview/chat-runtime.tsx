@@ -444,10 +444,12 @@ export type AgentChatRuntimeProps = {
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   conversationId?: string | null
+  draftType?: 'debug_build'
   inputPlaceholder: string
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
+  onConversationComplete?: (conversationId: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }
@@ -461,10 +463,12 @@ export function AgentChatRuntime({
   agentSoulConfig,
   clearChatList,
   conversationId,
+  draftType,
   inputPlaceholder,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
+  onConversationComplete,
   onConversationIdChange,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
@@ -497,11 +501,13 @@ export function AgentChatRuntime({
       agentSoulConfig={agentSoulConfig}
       clearChatList={clearChatList}
       conversationId={conversationId}
+      draftType={draftType}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
       sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
       onClearChatListChange={onClearChatListChange}
+      onConversationComplete={onConversationComplete}
       onConversationIdChange={onConversationIdChange}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
@@ -517,11 +523,13 @@ function AgentPreviewChatSession({
   agentSoulConfig,
   clearChatList,
   conversationId,
+  draftType,
   initialChatTree,
   inputPlaceholder,
   sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
+  onConversationComplete,
   onConversationIdChange,
   onSaveDraftBeforeRun,
 }: {
@@ -533,11 +541,13 @@ function AgentPreviewChatSession({
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
   conversationId?: string | null
+  draftType?: 'debug_build'
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
+  onConversationComplete?: (conversationId: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }) {
@@ -600,6 +610,8 @@ function AgentPreviewChatSession({
       inputs,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
+    if (draftType)
+      data.draft_type = draftType
 
     if (files?.length && supportVision)
       data.files = files
@@ -610,10 +622,13 @@ function AgentPreviewChatSession({
       {
         onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
         onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
-        onConversationComplete: onConversationIdChange,
+        onConversationComplete: (conversationId) => {
+          onConversationIdChange?.(conversationId)
+          onConversationComplete?.(conversationId)
+        },
       },
     )
-  }, [agentId, chatList, config.model.name, config.model.provider, handleSend, inputs, onConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
+  }, [agentId, chatList, config.model.name, config.model.provider, draftType, handleSend, inputs, onConversationComplete, onConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)

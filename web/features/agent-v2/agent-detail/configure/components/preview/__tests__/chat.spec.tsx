@@ -270,6 +270,23 @@ describe('AgentPreviewChat', () => {
     expect(handleSendMock).not.toHaveBeenCalled()
   })
 
+  it('should send build chat with the debug build draft type', async () => {
+    renderPreviewChat({
+      draftType: 'debug_build',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    expect(handleSendMock).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      expect.objectContaining({
+        draft_type: 'debug_build',
+      }),
+      expect.any(Object),
+    )
+  })
+
   it('should keep preview file upload disabled by default', async () => {
     renderPreviewChat()
 

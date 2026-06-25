@@ -1,6 +1,7 @@
 'use client'
 
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { ReactNode } from 'react'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -36,6 +37,7 @@ type AgentOrchestratePanelProps = {
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   showHeader?: boolean
   showPublishBar?: boolean
+  bottomBar?: ReactNode
   onSelectModel: (model: DefaultModel) => void
   onPublish: () => void | Promise<void>
   onExitVersions?: () => void
@@ -59,6 +61,7 @@ export function AgentOrchestratePanel({
   selectedVersionSnapshot,
   showHeader = true,
   showPublishBar = true,
+  bottomBar,
   onSelectModel,
   onPublish,
   onExitVersions,
@@ -67,6 +70,7 @@ export function AgentOrchestratePanel({
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
   const orchestrateLabel = t('agentDetail.configure.orchestrate')
+  const hasBottomBar = showPublishBar || !!bottomBar
   const driveApiContext = useMemo(() => appId && nodeId
     ? {
         agentId,
@@ -92,8 +96,8 @@ export function AgentOrchestratePanel({
             labelledBy={showHeader ? orchestrateHeadingId : undefined}
             slotClassNames={{
               viewport: 'overscroll-contain',
-              content: cn('min-h-full px-4 py-3', showPublishBar && 'pb-20'),
-              scrollbar: showPublishBar ? 'z-20' : undefined,
+              content: cn('min-h-full px-4 py-3', hasBottomBar && 'pb-20'),
+              scrollbar: hasBottomBar ? 'z-20' : undefined,
             }}
           >
             <AgentDriveApiContextProvider value={driveApiContext}>
@@ -115,7 +119,8 @@ export function AgentOrchestratePanel({
         </div>
       </AgentOrchestrateReadOnlyContext>
 
-      {showPublishBar && (
+      {bottomBar}
+      {showPublishBar && !bottomBar && (
         <AgentConfigurePublishBar
           agentId={agentId}
           activeConfigIsPublished={activeConfigIsPublished}
