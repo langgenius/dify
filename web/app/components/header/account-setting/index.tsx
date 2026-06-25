@@ -63,7 +63,7 @@ export default function AccountSetting({
   const activeMenu = (() => {
     if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
-    if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
+    if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSION_SET) && !canManageWorkspaceRoles)
       return ACCOUNT_SETTING_TAB.MEMBERS
     return normalizedActiveTab
   })()
