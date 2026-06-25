@@ -33,11 +33,15 @@ import { PluginSource } from '../types'
 import Action from './action'
 
 type Props = Readonly<{
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   className?: string
   plugin: PluginDetail
 }>
 
 const PluginItem: FC<Props> = ({
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   className,
   plugin,
 }) => {
@@ -152,9 +156,9 @@ const PluginItem: FC<Props> = ({
                   author={author}
                   pluginName={name}
                   usedInApps={5}
-                  isShowFetchNewVersion={source === PluginSource.github}
+                  isShowFetchNewVersion={canUpdatePlugin && source === PluginSource.github}
                   isShowInfo={source === PluginSource.github}
-                  isShowDelete
+                  isShowDelete={canDeletePlugin}
                   meta={meta}
                   onDelete={handleDelete}
                   category={category}

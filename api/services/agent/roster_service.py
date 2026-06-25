@@ -1,8 +1,9 @@
 from typing import Any, TypedDict
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import IntegrityError
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
 from models.agent import (
@@ -10,6 +11,7 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
     AgentKind,
     AgentScope,
     AgentSource,
@@ -18,8 +20,8 @@ from models.agent import (
     WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import AppStatus
-from models.model import App, AppMode
+from models.enums import AppStatus, ConversationFromSource, ConversationStatus
+from models.model import App, AppMode, Conversation, IconType
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
@@ -29,7 +31,10 @@ from services.agent.errors import (
     AgentNotFoundError,
     AgentVersionNotFoundError,
 )
+from services.app_service import AppService, CreateAppParams
+from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import RosterAgentCreatePayload, RosterAgentUpdatePayload
+from services.feature_service import FeatureService
 
 
 class AgentReferencingWorkflow(TypedDict):
@@ -48,6 +53,28 @@ class AgentReferencingWorkflow(TypedDict):
 
 
 class AgentRosterService:
+    _APP_MODEL_CONFIG_COPY_FIELDS = (
+        "opening_statement",
+        "suggested_questions",
+        "suggested_questions_after_answer",
+        "speech_to_text",
+        "text_to_speech",
+        "more_like_this",
+        "model",
+        "user_input_form",
+        "dataset_query_variable",
+        "pre_prompt",
+        "agent_mode",
+        "sensitive_word_avoidance",
+        "retriever_resource",
+        "prompt_type",
+        "chat_prompt_config",
+        "completion_prompt_config",
+        "dataset_configs",
+        "external_data_tools",
+        "file_upload",
+    )
+
     def __init__(self, session: Any):
         self._session = session
 
@@ -56,6 +83,7 @@ class AgentRosterService:
         agent: Agent,
         active_version: AgentConfigSnapshot | None = None,
         published_references: list[AgentReferencingWorkflow] | None = None,
+        active_config_is_published: bool = False,
     ) -> dict[str, Any]:
         published_references = published_references or []
         return {
@@ -70,10 +98,12 @@ class AgentRosterService:
             "scope": agent.scope.value,
             "source": agent.source.value,
             "app_id": agent.app_id,
+            "debug_conversation_id": None,
             "workflow_id": agent.workflow_id,
             "workflow_node_id": agent.workflow_node_id,
             "active_config_snapshot_id": agent.active_config_snapshot_id,
             "active_config_snapshot": AgentRosterService.serialize_version(active_version) if active_version else None,
+            "active_config_is_published": active_config_is_published,
             "status": agent.status.value,
             "created_by": agent.created_by,
             "updated_by": agent.updated_by,
@@ -94,11 +124,26 @@ class AgentRosterService:
             "id": version.id,
             "agent_id": version.agent_id,
             "version": version.version,
+            "display_version": version.version,
+            "snapshot_version": version.version,
             "summary": version.summary,
             "version_note": version.version_note,
             "created_by": version.created_by,
             "created_at": to_timestamp(version.created_at),
         }
+
+    @classmethod
+    def _serialize_visible_version(
+        cls,
+        version: AgentConfigSnapshot,
+        *,
+        display_version: int,
+    ) -> dict[str, Any]:
+        payload = cls.serialize_version(version) or {}
+        payload["version"] = display_version
+        payload["display_version"] = display_version
+        payload["snapshot_version"] = version.version
+        return payload
 
     @staticmethod
     def _build_roster_agents_stmt(*, tenant_id: str, keyword: str | None = None):
@@ -128,6 +173,10 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
+            tenant_id=tenant_id,
+            agents=agents,
+        )
 
         data = []
         for agent in agents:
@@ -139,6 +188,7 @@ class AgentRosterService:
                     agent,
                     active_version,
                     published_references_by_agent_id.get(agent.id, []),
+                    active_config_is_published_by_agent_id.get(agent.id, False),
                 )
             )
 
@@ -165,11 +215,16 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id for agent in agents],
         )
+        active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
+            tenant_id=tenant_id,
+            agents=agents,
+        )
         data = [
             self.serialize_agent(
                 agent,
                 versions_by_id.get(agent.active_config_snapshot_id) if agent.active_config_snapshot_id else None,
                 published_references_by_agent_id.get(agent.id, []),
+                active_config_is_published_by_agent_id.get(agent.id, False),
             )
             for agent in agents
         ]
@@ -340,7 +395,171 @@ class AgentRosterService:
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(AgentSoulConfig())
         self._session.flush()
+        self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
         return agent
+
+    def _create_agent_app_debug_conversation(self, *, app_id: str, account_id: str) -> str:
+        """Create one console debug conversation for an Agent App editor."""
+
+        conversation = Conversation(
+            app_id=app_id,
+            app_model_config_id=None,
+            model_provider=None,
+            model_id="",
+            override_model_configs=None,
+            mode=AppMode.AGENT,
+            name="Agent Debugging Conversation",
+            inputs={},
+            introduction="",
+            system_instruction="",
+            system_instruction_tokens=0,
+            status=ConversationStatus.NORMAL,
+            invoke_from=InvokeFrom.DEBUGGER,
+            from_source=ConversationFromSource.CONSOLE,
+            from_end_user_id=None,
+            from_account_id=account_id,
+        )
+        self._session.add(conversation)
+        self._session.flush()
+        return conversation.id
+
+    def _get_or_create_agent_app_debug_conversation(self, *, agent: Agent, account_id: str) -> str:
+        if not agent.app_id:
+            raise AgentNotFoundError()
+
+        mapping = self._session.scalar(
+            select(AgentDebugConversation).where(
+                AgentDebugConversation.tenant_id == agent.tenant_id,
+                AgentDebugConversation.agent_id == agent.id,
+                AgentDebugConversation.account_id == account_id,
+            )
+        )
+        if mapping is not None:
+            conversation_id = self._session.scalar(
+                select(Conversation.id).where(
+                    Conversation.id == mapping.conversation_id,
+                    Conversation.app_id == agent.app_id,
+                    Conversation.from_source == ConversationFromSource.CONSOLE,
+                    Conversation.from_account_id == account_id,
+                    Conversation.is_deleted.is_(False),
+                )
+            )
+            if conversation_id:
+                return conversation_id
+
+            mapping.conversation_id = self._create_agent_app_debug_conversation(
+                app_id=agent.app_id,
+                account_id=account_id,
+            )
+            self._session.flush()
+            return mapping.conversation_id
+
+        conversation_id = self._create_agent_app_debug_conversation(
+            app_id=agent.app_id,
+            account_id=account_id,
+        )
+        self._session.add(
+            AgentDebugConversation(
+                tenant_id=agent.tenant_id,
+                agent_id=agent.id,
+                app_id=agent.app_id,
+                account_id=account_id,
+                conversation_id=conversation_id,
+            )
+        )
+        self._session.flush()
+        return conversation_id
+
+    def get_or_create_agent_app_debug_conversation_id(
+        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+    ) -> str:
+        """Return the current editor's debug conversation for an Agent App."""
+
+        agent = self._session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent is None:
+            raise AgentNotFoundError()
+
+        conversation_id = self._get_or_create_agent_app_debug_conversation(agent=agent, account_id=account_id)
+        if commit:
+            self._session.commit()
+        return conversation_id
+
+    def refresh_agent_app_debug_conversation_id(
+        self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
+    ) -> str:
+        """Start a new console debug conversation for the current Agent App editor."""
+
+        agent = self._session.scalar(
+            select(Agent).where(
+                Agent.tenant_id == tenant_id,
+                Agent.id == agent_id,
+                Agent.scope == AgentScope.ROSTER,
+                Agent.source == AgentSource.AGENT_APP,
+                Agent.status == AgentStatus.ACTIVE,
+            )
+        )
+        if agent is None or not agent.app_id:
+            raise AgentNotFoundError()
+
+        conversation_id = self._create_agent_app_debug_conversation(
+            app_id=agent.app_id,
+            account_id=account_id,
+        )
+        mapping = self._session.scalar(
+            select(AgentDebugConversation).where(
+                AgentDebugConversation.tenant_id == tenant_id,
+                AgentDebugConversation.agent_id == agent_id,
+                AgentDebugConversation.account_id == account_id,
+            )
+        )
+        if mapping is None:
+            self._session.add(
+                AgentDebugConversation(
+                    tenant_id=tenant_id,
+                    agent_id=agent_id,
+                    app_id=agent.app_id,
+                    account_id=account_id,
+                    conversation_id=conversation_id,
+                )
+            )
+        else:
+            mapping.app_id = agent.app_id
+            mapping.conversation_id = conversation_id
+        self._session.flush()
+        if commit:
+            self._session.commit()
+        return conversation_id
+
+    def load_or_create_agent_app_debug_conversation_ids_by_agent_id(
+        self, *, tenant_id: str, agents: list[Agent], account_id: str
+    ) -> dict[str, str]:
+        """Return per-account debug conversations for a page of Agent Apps."""
+
+        conversation_ids_by_agent_id: dict[str, str] = {}
+        changed = False
+        for agent in agents:
+            if (
+                agent.tenant_id != tenant_id
+                or agent.scope != AgentScope.ROSTER
+                or agent.source != AgentSource.AGENT_APP
+            ):
+                continue
+            conversation_ids_by_agent_id[agent.id] = self._get_or_create_agent_app_debug_conversation(
+                agent=agent,
+                account_id=account_id,
+            )
+            changed = True
+        if changed:
+            self._session.commit()
+        return conversation_ids_by_agent_id
 
     def load_app_backing_agents_by_app_id(self, *, tenant_id: str, app_ids: list[str]) -> dict[str, Agent]:
         """Return active app-backed Agents keyed by Agent App id."""
@@ -406,6 +625,144 @@ class AgentRosterService:
             raise AgentNotFoundError()
         return app
 
+    def duplicate_agent_app(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account: Any,
+        name: str | None = None,
+        description: str | None = None,
+        role: str | None = None,
+        icon_type: Any = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> App:
+        source_app = self.get_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        source_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=source_app.id)
+        if source_agent is None:
+            raise AgentNotFoundError()
+
+        copied_name = name or self._next_duplicate_agent_name(tenant_id=tenant_id, base_name=source_app.name)
+        copied_description = description if description is not None else source_app.description
+        copied_role = role if role is not None else source_agent.role or ""
+        copied_icon_type = icon_type if icon_type is not None else source_app.icon_type
+        copied_icon = icon if icon is not None else source_app.icon
+        copied_icon_background = icon_background if icon_background is not None else source_app.icon_background
+
+        target_app = AppService().create_app(
+            tenant_id,
+            CreateAppParams(
+                name=copied_name,
+                description=copied_description,
+                mode="agent",
+                agent_role=copied_role,
+                icon_type=self._normalize_app_icon_type(copied_icon_type),
+                icon=copied_icon,
+                icon_background=copied_icon_background,
+                api_rph=source_app.api_rph or 0,
+                api_rpm=source_app.api_rpm or 0,
+                max_active_requests=source_app.max_active_requests,
+            ),
+            account,
+        )
+
+        target_app.enable_site = source_app.enable_site
+        target_app.enable_api = source_app.enable_api
+        target_app.use_icon_as_answer_icon = source_app.use_icon_as_answer_icon
+        target_app.tracing = source_app.tracing
+
+        self._copy_app_model_config(source_app=source_app, target_app=target_app, account_id=account.id)
+        self._copy_agent_active_snapshot(
+            tenant_id=tenant_id,
+            source_agent=source_agent,
+            target_app_id=target_app.id,
+            account_id=account.id,
+        )
+        self._session.commit()
+
+        if FeatureService.get_system_features().webapp_auth.enabled:
+            try:
+                original_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(source_app.id)
+                access_mode = original_settings.access_mode
+            except Exception:
+                access_mode = "public"
+            EnterpriseService.WebAppAuth.update_app_access_mode(target_app.id, access_mode)
+
+        return target_app
+
+    @staticmethod
+    def _normalize_app_icon_type(icon_type: IconType | str | None) -> str | None:
+        if icon_type is None:
+            return None
+        if isinstance(icon_type, IconType):
+            return icon_type.value
+        return icon_type
+
+    def _copy_app_model_config(self, *, source_app: App, target_app: App, account_id: str) -> None:
+        source_config = source_app.app_model_config
+        target_config = target_app.app_model_config
+        if source_config is None or target_config is None:
+            return
+
+        for field_name in self._APP_MODEL_CONFIG_COPY_FIELDS:
+            setattr(target_config, field_name, getattr(source_config, field_name))
+        target_config.updated_by = account_id
+
+    def _copy_agent_active_snapshot(
+        self,
+        *,
+        tenant_id: str,
+        source_agent: Agent,
+        target_app_id: str,
+        account_id: str,
+    ) -> None:
+        target_agent = self.get_app_backing_agent(tenant_id=tenant_id, app_id=target_app_id)
+        if target_agent is None:
+            raise AgentNotFoundError()
+
+        source_version = self._get_version(
+            tenant_id=tenant_id,
+            agent_id=source_agent.id,
+            version_id=source_agent.active_config_snapshot_id,
+        )
+        target_version = self._get_version(
+            tenant_id=tenant_id,
+            agent_id=target_agent.id,
+            version_id=target_agent.active_config_snapshot_id,
+        )
+
+        target_version.config_snapshot = AgentSoulConfig.model_validate(source_version.config_snapshot_dict)
+        target_version.summary = source_version.summary
+        target_version.version_note = source_version.version_note
+        target_version.created_by = account_id
+        target_agent.active_config_has_model = agent_soul_has_model(target_version.config_snapshot)
+        target_agent.updated_by = account_id
+
+    def _next_duplicate_agent_name(self, *, tenant_id: str, base_name: str) -> str:
+        suffix = " copy"
+        max_base_len = 255 - len(suffix)
+        first_candidate = f"{base_name[:max_base_len]}{suffix}"
+        candidates = [first_candidate]
+        for index in range(2, 100):
+            numbered_suffix = f" copy {index}"
+            candidates.append(f"{base_name[: 255 - len(numbered_suffix)]}{numbered_suffix}")
+
+        existing_names = set(
+            self._session.scalars(
+                select(Agent.name).where(
+                    Agent.tenant_id == tenant_id,
+                    Agent.scope == AgentScope.ROSTER,
+                    Agent.status == AgentStatus.ACTIVE,
+                    Agent.name.in_(candidates),
+                )
+            ).all()
+        )
+        for candidate in candidates:
+            if candidate not in existing_names:
+                return candidate
+        return f"{base_name[:245]} copy {int(naive_utc_now().timestamp())}"
+
     def list_workflows_referencing_app_agent(self, *, tenant_id: str, app_id: str) -> list[AgentReferencingWorkflow]:
         """List the workflow apps that reference this Agent App's bound Agent.
 
@@ -420,6 +777,12 @@ class AgentRosterService:
 
         return self._load_published_references_by_agent_id(tenant_id=tenant_id, agent_ids=[agent.id]).get(agent.id, [])
 
+    def load_published_references_by_agent_id(
+        self, *, tenant_id: str, agent_ids: list[str]
+    ) -> dict[str, list[AgentReferencingWorkflow]]:
+        """Return published workflow references grouped by roster Agent id."""
+        return self._load_published_references_by_agent_id(tenant_id=tenant_id, agent_ids=agent_ids)
+
     def get_roster_agent_detail(self, *, tenant_id: str, agent_id: str) -> dict[str, Any]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
         active_version = self._get_version(
@@ -429,7 +792,16 @@ class AgentRosterService:
             tenant_id=tenant_id,
             agent_ids=[agent.id],
         )
-        return self.serialize_agent(agent, active_version, published_references_by_agent_id.get(agent.id, []))
+        active_config_is_published_by_agent_id = self.load_active_config_is_published_by_agent_id(
+            tenant_id=tenant_id,
+            agents=[agent],
+        )
+        return self.serialize_agent(
+            agent,
+            active_version,
+            published_references_by_agent_id.get(agent.id, []),
+            active_config_is_published_by_agent_id.get(agent.id, False),
+        )
 
     def update_roster_agent(
         self, *, tenant_id: str, agent_id: str, account_id: str, payload: RosterAgentUpdatePayload
@@ -463,25 +835,34 @@ class AgentRosterService:
     @staticmethod
     def _visible_version_operations(agent: Agent) -> set[AgentConfigRevisionOperation]:
         if agent.source == AgentSource.AGENT_APP:
-            return {AgentConfigRevisionOperation.SAVE_NEW_VERSION}
+            return {
+                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+                AgentConfigRevisionOperation.RESTORE_VERSION,
+            }
         return {
             AgentConfigRevisionOperation.CREATE_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_VERSION,
             AgentConfigRevisionOperation.SAVE_NEW_AGENT,
             AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+            AgentConfigRevisionOperation.RESTORE_VERSION,
         }
+
+    def active_config_is_published(self, *, tenant_id: str, agent: Agent) -> bool:
+        """Return whether the Agent's current active snapshot is a visible published version."""
+        return self.load_active_config_is_published_by_agent_id(tenant_id=tenant_id, agents=[agent]).get(
+            agent.id,
+            False,
+        )
+
+    def load_active_config_is_published_by_agent_id(self, *, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
+        """Return publish-state flags for the active config snapshots of the given Agents."""
+        published_agent_ids = self._load_published_active_snapshot_agent_ids(tenant_id=tenant_id, agents=agents)
+        return {agent.id: agent.id in published_agent_ids for agent in agents}
 
     def list_agent_versions(self, *, tenant_id: str, agent_id: str) -> list[dict[str, Any]]:
         agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        visible_version_ids = (
-            select(AgentConfigRevision.current_snapshot_id)
-            .where(
-                AgentConfigRevision.tenant_id == tenant_id,
-                AgentConfigRevision.agent_id == agent_id,
-                AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
-            )
-            .subquery()
-        )
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
         versions = list(
             self._session.scalars(
                 select(AgentConfigSnapshot)
@@ -493,25 +874,39 @@ class AgentRosterService:
                 .order_by(AgentConfigSnapshot.version.desc())
             ).all()
         )
+        total = len(versions)
         return [
-            serialized_version
-            for version in versions
-            if (serialized_version := self.serialize_version(version)) is not None
+            self._serialize_visible_version(version, display_version=total - index)
+            for index, version in enumerate(versions)
         ]
 
-    def get_agent_version_detail(self, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
-        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
-        visible_revision_id = self._session.scalar(
-            select(AgentConfigRevision.id)
+    def _visible_version_ids_stmt(self, *, tenant_id: str, agent_id: str, agent: Agent):
+        return (
+            select(AgentConfigRevision.current_snapshot_id)
             .where(
                 AgentConfigRevision.tenant_id == tenant_id,
                 AgentConfigRevision.agent_id == agent_id,
-                AgentConfigRevision.current_snapshot_id == version_id,
                 AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
             )
-            .limit(1)
+            .subquery()
         )
-        if not visible_revision_id:
+
+    def get_agent_version_detail(self, *, tenant_id: str, agent_id: str, version_id: str) -> dict[str, Any]:
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
+        visible_versions = list(
+            self._session.scalars(
+                select(AgentConfigSnapshot)
+                .where(
+                    AgentConfigSnapshot.tenant_id == tenant_id,
+                    AgentConfigSnapshot.agent_id == agent_id,
+                    AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
+                )
+                .order_by(AgentConfigSnapshot.version.asc())
+            ).all()
+        )
+        display_versions_by_id = {version.id: index for index, version in enumerate(visible_versions, start=1)}
+        if version_id not in display_versions_by_id:
             raise AgentVersionNotFoundError()
         version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
         revisions = list(
@@ -525,7 +920,7 @@ class AgentRosterService:
                 .order_by(AgentConfigRevision.revision.desc())
             ).all()
         )
-        result = self.serialize_version(version) or {}
+        result = self._serialize_visible_version(version, display_version=display_versions_by_id[version_id])
         result["config_snapshot"] = version.config_snapshot_dict
         result["revisions"] = [
             {
@@ -542,6 +937,46 @@ class AgentRosterService:
             for revision in revisions
         ]
         return result
+
+    def restore_agent_version(
+        self, *, tenant_id: str, agent_id: str, version_id: str, account_id: str
+    ) -> dict[str, Any]:
+        agent = self._get_agent(tenant_id=tenant_id, agent_id=agent_id, roster_only=True)
+        visible_version_ids = self._visible_version_ids_stmt(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
+        visible_version_id = self._session.scalar(
+            select(AgentConfigSnapshot.id)
+            .where(
+                AgentConfigSnapshot.tenant_id == tenant_id,
+                AgentConfigSnapshot.agent_id == agent_id,
+                AgentConfigSnapshot.id == version_id,
+                AgentConfigSnapshot.id.in_(select(visible_version_ids.c.current_snapshot_id)),
+            )
+            .limit(1)
+        )
+        if not visible_version_id:
+            raise AgentVersionNotFoundError()
+
+        version = self._get_version(tenant_id=tenant_id, agent_id=agent_id, version_id=version_id)
+        if agent.active_config_snapshot_id == version.id:
+            return {"result": "success", "active_config_snapshot_id": version.id}
+
+        previous_snapshot_id = agent.active_config_snapshot_id
+        agent.active_config_snapshot_id = version.id
+        agent.active_config_has_model = agent_soul_has_model(version.config_snapshot)
+        agent.updated_by = account_id
+        self._session.add(
+            AgentConfigRevision(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                previous_snapshot_id=previous_snapshot_id,
+                current_snapshot_id=version.id,
+                revision=self._next_revision(tenant_id=tenant_id, agent_id=agent_id),
+                operation=AgentConfigRevisionOperation.RESTORE_VERSION,
+                created_by=account_id,
+            )
+        )
+        self._session.commit()
+        return {"result": "success", "active_config_snapshot_id": version.id}
 
     def _get_agent(self, *, tenant_id: str, agent_id: str, roster_only: bool = False) -> Agent:
         stmt = select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id)
@@ -567,6 +1002,40 @@ class AgentRosterService:
         if not version:
             raise AgentVersionNotFoundError()
         return version
+
+    def _next_revision(self, *, tenant_id: str, agent_id: str) -> int:
+        return (
+            self._session.scalar(
+                select(func.max(AgentConfigRevision.revision)).where(
+                    AgentConfigRevision.tenant_id == tenant_id,
+                    AgentConfigRevision.agent_id == agent_id,
+                )
+            )
+            or 0
+        ) + 1
+
+    def _load_published_active_snapshot_agent_ids(self, *, tenant_id: str, agents: list[Agent]) -> set[str]:
+        predicates = [
+            and_(
+                AgentConfigRevision.agent_id == agent.id,
+                AgentConfigRevision.current_snapshot_id == agent.active_config_snapshot_id,
+                AgentConfigRevision.operation.in_(self._visible_version_operations(agent)),
+            )
+            for agent in agents
+            if agent.active_config_snapshot_id
+        ]
+        if not predicates:
+            return set()
+
+        agent_ids = self._session.scalars(
+            select(AgentConfigRevision.agent_id)
+            .where(
+                AgentConfigRevision.tenant_id == tenant_id,
+                or_(*predicates),
+            )
+            .distinct()
+        ).all()
+        return set(agent_ids)
 
     def _load_published_references_by_agent_id(
         self, *, tenant_id: str, agent_ids: list[str]

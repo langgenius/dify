@@ -52,7 +52,7 @@ const LocaleLayout = async ({
         <ReactScanLoader />
       </head>
       <body
-        className="h-full"
+        className="h-full bg-background-body"
         {...datasetMap}
       >
         <div className="isolate h-full">

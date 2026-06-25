@@ -7,7 +7,8 @@ from typing import Any, Literal, NotRequired, TypedDict, cast, override
 import sqlalchemy as sa
 from flask_sqlalchemy.pagination import Pagination
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
@@ -27,7 +28,9 @@ from models import Account, AppStar
 from models.agent import Agent, AgentIconType, AgentScope, AgentSource, AgentStatus
 from models.model import App, AppMode, AppModelConfig, IconType, Site
 from models.tools import ApiToolProvider
+from services.agent.errors import AgentNameConflictError
 from services.billing_service import BillingService
+from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.openapi.visibility import apply_openapi_gate, is_openapi_visible
@@ -48,6 +51,8 @@ class AppListBaseParams(BaseModel):
     tag_ids: list[str] | None = None
     creator_ids: list[str] | None = None
     is_created_by_me: bool | None = None
+    accessible_app_ids: list[str] | None = None
+    include_own_apps: bool = False
 
 
 class AppListParams(AppListBaseParams):
@@ -75,7 +80,7 @@ class CreateAppParams(BaseModel):
 class AppService:
     @staticmethod
     def _build_app_list_filters(
-        user_id: str, tenant_id: str, params: AppListBaseParams
+        user_id: str, tenant_id: str, params: AppListBaseParams, session: scoped_session
     ) -> list[sa.ColumnElement[bool]]:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
@@ -106,6 +111,11 @@ class AppService:
 
         if params.is_created_by_me:
             filters.append(App.created_by == user_id)
+        elif params.accessible_app_ids is not None:
+            accessible_filter: ColumnElement[bool] = App.id.in_(params.accessible_app_ids)
+            if params.include_own_apps:
+                accessible_filter = sa.or_(App.maintainer == user_id, accessible_filter)
+            filters.append(accessible_filter)
         if params.creator_ids:
             filters.append(App.created_by.in_(params.creator_ids))
         if params.name:
@@ -115,7 +125,7 @@ class AppService:
             escaped_name = escape_like_pattern(name)
             filters.append(App.name.ilike(f"%{escaped_name}%", escape="\\"))
         if params.tag_ids and len(params.tag_ids) > 0:
-            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, match_all=True)
+            target_ids = TagService.get_target_ids_by_tag_ids("app", tenant_id, params.tag_ids, session, match_all=True)
             if target_ids and len(target_ids) > 0:
                 filters.append(App.id.in_(target_ids))
             else:
@@ -197,7 +207,9 @@ class AppService:
             ).scalars()
         )
 
-    def get_paginate_apps(self, user_id: str, tenant_id: str, params: AppListParams) -> Pagination | None:
+    def get_paginate_apps(
+        self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
+    ) -> Pagination | None:
         """
         Get app list with pagination, filters, and explicit sort order.
         :param user_id: user id
@@ -205,7 +217,7 @@ class AppService:
         :param params: query parameters
         :return:
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
@@ -231,12 +243,12 @@ class AppService:
         return app_models
 
     def get_paginate_starred_apps(
-        self, user_id: str, tenant_id: str, params: StarredAppListParams
+        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
     ) -> Pagination | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.
         """
-        filters = self._build_app_list_filters(user_id, tenant_id, params)
+        filters = self._build_app_list_filters(user_id, tenant_id, params, session)
         if not filters:
             return None
 
@@ -373,6 +385,7 @@ class AppService:
         app.api_rpm = params.api_rpm
         app.max_active_requests = params.max_active_requests
         app.created_by = account.id
+        app.maintainer = account.id
         app.updated_by = account.id
 
         db.session.add(app)
@@ -424,6 +437,12 @@ class AppService:
         db.session.commit()
 
         app_was_created.send(app, account=account)
+        enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
+            tenant_id,
+            account.id,
+            enterprise_rbac_service.RBACResourceType.APP,
+            app.id,
+        )
 
         if FeatureService.get_system_features().webapp_auth.enabled:
             # update web app setting as private
@@ -540,17 +559,21 @@ class AppService:
         *,
         name: str | None = None,
         description: str | None = None,
+        role: str | None = None,
         icon_type: IconType | str | None = None,
         icon: str | None = None,
         icon_background: str | None = None,
-        role: str | None = None,
         account_id: str | None = None,
         updated_at: datetime | None = None,
     ) -> None:
         """Keep the Roster identity aligned with its Agent App shell.
 
         Agent Soul remains versioned through Composer. This helper only mirrors
-        user-facing identity fields so Roster and Agent Console do not drift.
+        user-facing identity fields, including the roster role/persona label,
+        so Roster and Agent Console do not drift.
+
+        Role omission is intentional: ``role=None`` preserves the backing
+        Agent's current role, while ``role=""`` explicitly clears it.
         """
         agent = self._get_backing_agent_for_update(app)
         if agent is None:
@@ -560,17 +583,27 @@ class AppService:
             agent.name = name
         if description is not None:
             agent.description = description
+        if role is not None:
+            agent.role = role
         if icon_type is not None:
             agent.icon_type = self._to_agent_icon_type(icon_type)
         if icon is not None:
             agent.icon = icon
         if icon_background is not None:
             agent.icon_background = icon_background
-        if role is not None:
-            agent.role = role
         agent.updated_by = account_id
         if updated_at is not None:
             agent.updated_at = updated_at
+
+    @staticmethod
+    def _commit_app_identity_update(app: App) -> None:
+        try:
+            db.session.commit()
+        except IntegrityError as exc:
+            db.session.rollback()
+            if app.mode == AppMode.AGENT:
+                raise AgentNameConflictError() from exc
+            raise
 
     def update_app(self, app: App, args: ArgsDict) -> App:
         """
@@ -599,14 +632,16 @@ class AppService:
             app,
             name=app.name,
             description=app.description,
+            # Omitted role must stay omitted here: None means "preserve current
+            # backing-agent role", while an empty string is an explicit clear.
+            role=args.get("role"),
             icon_type=app.icon_type,
             icon=app.icon,
             icon_background=app.icon_background,
-            role=args.get("role"),
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
-        db.session.commit()
+        self._commit_app_identity_update(app)
 
         app_was_updated.send(app)
 
@@ -629,7 +664,7 @@ class AppService:
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
-        db.session.commit()
+        self._commit_app_identity_update(app)
 
         app_was_updated.send(app)
 

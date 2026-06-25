@@ -11,7 +11,7 @@ import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -60,6 +60,7 @@ class Import(BaseModel):
     status: ImportStatus
     app_id: str | None = None
     app_mode: str | None = None
+    permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
@@ -433,6 +434,7 @@ class AppDslService:
             app.enable_api = True
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
+            app.maintainer = account.id
             app.updated_by = account.id
 
             self._session.add(app)

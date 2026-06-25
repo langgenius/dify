@@ -22,6 +22,7 @@ export type TrialAppDetailWithSite = {
   mode?: string
   model_config?: TrialAppModelConfig
   name?: string
+  permission_keys?: Array<string>
   site?: TrialSite
   tags?: Array<TrialTag>
   updated_at?: number
@@ -269,6 +270,7 @@ export type TrialDataset = {
   indexing_technique?: string
   name?: string
   permission?: string
+  permission_keys?: Array<string>
 }
 
 export type JsonObject = {

@@ -1,8 +1,10 @@
 import type { ReactNode } from 'react'
 import type { WorkflowProps } from '@/app/components/workflow'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { AppACLPermission } from '@/utils/permission'
 import WorkflowMain from '../workflow-main'
 
 const mockSetFeatures = vi.fn()
@@ -89,12 +91,6 @@ vi.mock('@/app/components/workflow/store', () => ({
       setConversationVariables: mockSetConversationVariables,
       setEnvironmentVariables: mockSetEnvironmentVariables,
     }),
-  }),
-}))
-
-vi.mock('@/app/components/app/store', () => ({
-  useStore: <T,>(selector: (state: { appDetail: { mode: string } }) => T) => selector({
-    appDetail: { mode: 'workflow' },
   }),
 }))
 
@@ -224,6 +220,7 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
   useAvailableNodesMetaData: () => ({ nodes: [{ id: 'start' }], nodesMap: { start: { id: 'start' } } }),
   useConfigsMap: () => ({ flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } }),
   useDSL: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
+  useDSLByCanEdit: () => ({ exportCheck: hookFns.exportCheck, handleExportDSL: hookFns.handleExportDSL }),
   useGetRunAndTraceUrl: () => ({ getWorkflowRunAndTraceUrl: hookFns.getWorkflowRunAndTraceUrl }),
   useInspectVarsCrud: () => ({
     hasNodeInspectVars: hookFns.hasNodeInspectVars,
@@ -245,11 +242,22 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
   }),
+  useNodesSyncDraftByCanEdit: () => ({
+    doSyncWorkflowDraft: hookFns.doSyncWorkflowDraft,
+    syncWorkflowDraftWhenPageClose: hookFns.syncWorkflowDraftWhenPageClose,
+  }),
   useSetWorkflowVarsWithValue: () => ({
     fetchInspectVars: hookFns.fetchInspectVars,
   }),
   useWorkflowRefreshDraft: () => ({ handleRefreshWorkflowDraft: hookFns.handleRefreshWorkflowDraft }),
   useWorkflowRun: () => ({
+    handleBackupDraft: hookFns.handleBackupDraft,
+    handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
+    handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
+    handleRun: hookFns.handleRun,
+    handleStopRun: hookFns.handleStopRun,
+  }),
+  useWorkflowRunByCanEdit: () => ({
     handleBackupDraft: hookFns.handleBackupDraft,
     handleLoadBackupDraft: hookFns.handleLoadBackupDraft,
     handleRestoreFromPublishedWorkflow: hookFns.handleRestoreFromPublishedWorkflow,
@@ -264,6 +272,27 @@ vi.mock('@/app/components/workflow-app/hooks', () => ({
     handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
     handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
     handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
+  }),
+  useWorkflowStartRunByCanEdit: () => ({
+    handleStartWorkflowRun: hookFns.handleStartWorkflowRun,
+    handleWorkflowStartRunInChatflow: hookFns.handleWorkflowStartRunInChatflow,
+    handleWorkflowStartRunInWorkflow: hookFns.handleWorkflowStartRunInWorkflow,
+    handleWorkflowTriggerScheduleRunInWorkflow: hookFns.handleWorkflowTriggerScheduleRunInWorkflow,
+    handleWorkflowTriggerWebhookRunInWorkflow: hookFns.handleWorkflowTriggerWebhookRunInWorkflow,
+    handleWorkflowTriggerPluginRunInWorkflow: hookFns.handleWorkflowTriggerPluginRunInWorkflow,
+    handleWorkflowRunAllTriggersInWorkflow: hookFns.handleWorkflowRunAllTriggersInWorkflow,
+  }),
+}))
+
+vi.mock('@/app/components/workflow-app/hooks/use-workflow-draft-graph-for-canvas', () => ({
+  useWorkflowDraftGraphForCanvas: () => ({
+    getWorkflowDraftGraphForCanvas: (graph?: { nodes?: unknown[], edges?: unknown[], viewport?: unknown }) => ({
+      nodes: graph?.nodes?.length
+        ? graph.nodes
+        : [{ id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } }],
+      edges: graph?.edges || [],
+      viewport: graph?.viewport || { x: 0, y: 0, zoom: 1 },
+    }),
   }),
 }))
 
@@ -297,6 +326,7 @@ describe('WorkflowMain', () => {
     collaborationListeners.workflowUpdate = null
     collaborationListeners.syncRequest = null
     mockFetchWorkflowDraft.mockReset()
+    useAppStore.setState({ appDetail: undefined })
   })
 
   it('should render the inner workflow context with children and forwarded graph props', () => {
@@ -402,6 +432,30 @@ describe('WorkflowMain', () => {
       handleExportDSL: hookFns.handleExportDSL,
       fetchInspectVars: hookFns.fetchInspectVars,
       configsMap: { flowId: 'app-1', flowType: 'app-flow', fileSettings: { enabled: true } },
+    })
+  })
+
+  it('should pass view-layout ACL permission as comment-only workflow access', () => {
+    useAppStore.setState({
+      appDetail: {
+        permission_keys: [AppACLPermission.ViewLayout],
+      } as never,
+    })
+
+    render(
+      <WorkflowMain
+        nodes={[]}
+        edges={[]}
+        viewport={{ x: 0, y: 0, zoom: 1 }}
+      />,
+    )
+
+    expect(capturedContextProps?.hooksStore).toMatchObject({
+      accessControl: {
+        canEdit: false,
+        canComment: true,
+        canRun: false,
+      },
     })
   })
 

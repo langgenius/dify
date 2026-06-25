@@ -2,20 +2,11 @@ import type { ComponentType } from 'react'
 import type {
   CredentialFormSchemaSelect,
   CredentialFormSchemaTextInput,
-  FormValue,
-  ModelLoadBalancingConfig,
 } from './declarations'
 import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
-import {
-  deleteModelProvider,
-  setModelProvider,
-  validateModelLoadBalancingCredentials,
-  validateModelProvider,
-} from '@/service/common'
+
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
-import { ValidatedStatus } from '../key-validator/declarations'
 import {
-  ConfigurationMethodEnum,
   FormTypeEnum,
   MODEL_TYPE_TEXT,
   ModelTypeEnum,
@@ -59,130 +50,6 @@ export const modelNameMap = {
 
 export const isNullOrUndefined = (value: unknown): value is null | undefined => {
   return value === undefined || value === null
-}
-
-export const validateCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
-  let body, url
-
-  if (predefined) {
-    body = {
-      credentials: v,
-    }
-    url = `/workspaces/current/model-providers/${provider}/credentials/validate`
-  }
-  else {
-    const { __model_name, __model_type, ...credentials } = v
-    body = {
-      model: __model_name,
-      model_type: __model_type,
-      credentials,
-    }
-    url = `/workspaces/current/model-providers/${provider}/models/credentials/validate`
-  }
-  try {
-    const res = await validateModelProvider({ url, body })
-    if (res.result === 'success')
-      return Promise.resolve({ status: ValidatedStatus.Success })
-    else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
-  }
-  catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    return Promise.resolve({ status: ValidatedStatus.Error, message })
-  }
-}
-
-export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue, id?: string): Promise<{
-  status: ValidatedStatus
-  message?: string
-}> => {
-  const { __model_name, __model_type, ...credentials } = v
-  try {
-    const res = await validateModelLoadBalancingCredentials({
-      url: `/workspaces/current/model-providers/${provider}/models/load-balancing-configs/${id ? `${id}/` : ''}credentials-validate`,
-      body: {
-        model: __model_name,
-        model_type: __model_type,
-        credentials,
-      },
-    })
-    if (res.result === 'success')
-      return Promise.resolve({ status: ValidatedStatus.Success })
-    else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
-  }
-  catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    return Promise.resolve({ status: ValidatedStatus.Error, message })
-  }
-}
-
-export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
-  let body, url
-
-  if (predefined) {
-    const { __authorization_name__, ...rest } = v
-    body = {
-      config_from: ConfigurationMethodEnum.predefinedModel,
-      credentials: rest,
-      load_balancing: loadBalancing,
-      name: __authorization_name__,
-    }
-    url = `/workspaces/current/model-providers/${provider}/credentials`
-  }
-  else {
-    const { __model_name, __model_type, ...credentials } = v
-    body = {
-      model: __model_name,
-      model_type: __model_type,
-      credentials,
-      load_balancing: loadBalancing,
-    }
-    url = `/workspaces/current/model-providers/${provider}/models`
-  }
-
-  return setModelProvider({ url, body })
-}
-
-export const savePredefinedLoadBalancingConfig = async (provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
-  const { __model_name, __model_type, ...credentials } = v
-  const body = {
-    config_from: ConfigurationMethodEnum.predefinedModel,
-    model: __model_name,
-    model_type: __model_type,
-    credentials,
-    load_balancing: loadBalancing,
-  }
-  const url = `/workspaces/current/model-providers/${provider}/models`
-
-  return setModelProvider({ url, body })
-}
-
-export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue, credentialId?: string) => {
-  let url = ''
-  let body
-
-  if (predefined) {
-    url = `/workspaces/current/model-providers/${provider}/credentials`
-    if (credentialId) {
-      body = {
-        credential_id: credentialId,
-      }
-    }
-  }
-  else {
-    if (!v)
-      return
-
-    const { __model_name, __model_type } = v
-    body = {
-      model: __model_name,
-      model_type: __model_type,
-    }
-    url = `/workspaces/current/model-providers/${provider}/models`
-  }
-
-  return deleteModelProvider({ url, body })
 }
 
 export const sizeFormat = (size: number) => {

@@ -57,8 +57,9 @@ class TestAPIBasedExtensionService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         return account, tenant
@@ -81,7 +82,7 @@ class TestAPIBasedExtensionService:
         )
 
         # Save extension
-        saved_extension = APIBasedExtensionService.save(extension_data)
+        saved_extension = APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Verify extension was saved correctly
         assert saved_extension.id is not None
@@ -119,21 +120,21 @@ class TestAPIBasedExtensionService:
         )
 
         with pytest.raises(ValueError, match="name must not be empty"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Test empty api_endpoint
         extension_data.name = fake.company()
         extension_data.api_endpoint = ""
 
         with pytest.raises(ValueError, match="api_endpoint must not be empty"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Test empty api_key
         extension_data.api_endpoint = f"https://{fake.domain_name()}/api"
         extension_data.api_key = ""
 
         with pytest.raises(ValueError, match="api_key must not be empty"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_get_all_by_tenant_id_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -157,11 +158,11 @@ class TestAPIBasedExtensionService:
                 api_key=fake.password(length=20),
             )
 
-            saved_extension = APIBasedExtensionService.save(extension_data)
+            saved_extension = APIBasedExtensionService.save(db_session_with_containers, extension_data)
             extensions.append(saved_extension)
 
         # Get all extensions for tenant
-        extension_list = APIBasedExtensionService.get_all_by_tenant_id(tenant.id)
+        extension_list = APIBasedExtensionService.get_all_by_tenant_id(db_session_with_containers, tenant.id)
 
         # Verify results
         assert len(extension_list) == 3
@@ -191,10 +192,12 @@ class TestAPIBasedExtensionService:
             api_key=fake.password(length=20),
         )
 
-        created_extension = APIBasedExtensionService.save(extension_data)
+        created_extension = APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Get extension by ID
-        retrieved_extension = APIBasedExtensionService.get_with_tenant_id(tenant.id, created_extension.id)
+        retrieved_extension = APIBasedExtensionService.get_with_tenant_id(
+            db_session_with_containers, tenant.id, created_extension.id
+        )
 
         # Verify extension was retrieved correctly
         assert retrieved_extension is not None
@@ -219,7 +222,9 @@ class TestAPIBasedExtensionService:
 
         # Try to get non-existent extension
         with pytest.raises(ValueError, match="API based extension is not found"):
-            APIBasedExtensionService.get_with_tenant_id(tenant.id, non_existent_extension_id)
+            APIBasedExtensionService.get_with_tenant_id(
+                db_session_with_containers, tenant.id, non_existent_extension_id
+            )
 
     def test_delete_extension_success(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -238,11 +243,11 @@ class TestAPIBasedExtensionService:
             api_key=fake.password(length=20),
         )
 
-        created_extension = APIBasedExtensionService.save(extension_data)
+        created_extension = APIBasedExtensionService.save(db_session_with_containers, extension_data)
         extension_id = created_extension.id
 
         # Delete the extension
-        APIBasedExtensionService.delete(created_extension)
+        APIBasedExtensionService.delete(db_session_with_containers, created_extension)
 
         # Verify extension was deleted
 
@@ -270,7 +275,7 @@ class TestAPIBasedExtensionService:
             api_key=fake.password(length=20),
         )
 
-        APIBasedExtensionService.save(extension_data1)
+        APIBasedExtensionService.save(db_session_with_containers, extension_data1)
         # Try to create second extension with same name
         extension_data2 = APIBasedExtension(
             tenant_id=tenant.id,
@@ -280,7 +285,7 @@ class TestAPIBasedExtensionService:
         )
 
         with pytest.raises(ValueError, match="name must be unique, it is already existed"):
-            APIBasedExtensionService.save(extension_data2)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data2)
 
     def test_save_extension_update_existing(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -301,7 +306,7 @@ class TestAPIBasedExtensionService:
             api_key=fake.password(length=20),
         )
 
-        created_extension = APIBasedExtensionService.save(extension_data)
+        created_extension = APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Save original values for later comparison
         original_name = created_extension.name
@@ -320,7 +325,7 @@ class TestAPIBasedExtensionService:
         created_extension.api_endpoint = new_endpoint
         created_extension.api_key = new_api_key
 
-        updated_extension = APIBasedExtensionService.save(created_extension)
+        updated_extension = APIBasedExtensionService.save(db_session_with_containers, created_extension)
 
         # Verify extension was updated correctly
         assert updated_extension.id == created_extension.id
@@ -336,7 +341,9 @@ class TestAPIBasedExtensionService:
         assert mock_external_service_dependencies["requestor_instance"].request.call_count == 2
 
         # Verify the update by retrieving the extension again
-        retrieved_extension = APIBasedExtensionService.get_with_tenant_id(tenant.id, created_extension.id)
+        retrieved_extension = APIBasedExtensionService.get_with_tenant_id(
+            db_session_with_containers, tenant.id, created_extension.id
+        )
         assert retrieved_extension.name == new_name
         assert retrieved_extension.api_endpoint == new_endpoint
         assert retrieved_extension.api_key == new_api_key  # Should be decrypted when retrieved
@@ -367,7 +374,7 @@ class TestAPIBasedExtensionService:
 
         # Try to save extension with connection error
         with pytest.raises(ValueError, match="connection error: request timeout"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_save_extension_invalid_api_key_length(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -390,7 +397,7 @@ class TestAPIBasedExtensionService:
 
         # Try to save extension with short API key
         with pytest.raises(ValueError, match="api_key must be at least 5 characters"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_save_extension_empty_fields(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -410,21 +417,21 @@ class TestAPIBasedExtensionService:
         )
 
         with pytest.raises(ValueError, match="name must not be empty"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Test with None api_endpoint
         extension_data.name = fake.company()
         extension_data.api_endpoint = None
 
         with pytest.raises(ValueError, match="api_endpoint must not be empty"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Test with None api_key
         extension_data.api_endpoint = f"https://{fake.domain_name()}/api"
         extension_data.api_key = None
 
         with pytest.raises(ValueError, match="api_key must not be empty"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_get_all_by_tenant_id_empty_list(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -438,7 +445,7 @@ class TestAPIBasedExtensionService:
         )
 
         # Get all extensions for tenant (none exist)
-        extension_list = APIBasedExtensionService.get_all_by_tenant_id(tenant.id)
+        extension_list = APIBasedExtensionService.get_all_by_tenant_id(db_session_with_containers, tenant.id)
 
         # Verify empty list is returned
         assert len(extension_list) == 0
@@ -468,7 +475,7 @@ class TestAPIBasedExtensionService:
 
         # Try to save extension with invalid ping response
         with pytest.raises(ValueError, match="{'result': 'invalid'}"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_save_extension_missing_ping_result(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -494,7 +501,7 @@ class TestAPIBasedExtensionService:
 
         # Try to save extension with missing ping result
         with pytest.raises(ValueError, match="{'status': 'ok'}"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_get_with_tenant_id_wrong_tenant(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -520,11 +527,11 @@ class TestAPIBasedExtensionService:
             api_key=fake.password(length=20),
         )
 
-        created_extension = APIBasedExtensionService.save(extension_data)
+        created_extension = APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
         # Try to get extension with wrong tenant ID
         with pytest.raises(ValueError, match="API based extension is not found"):
-            APIBasedExtensionService.get_with_tenant_id(tenant2.id, created_extension.id)
+            APIBasedExtensionService.get_with_tenant_id(db_session_with_containers, tenant2.id, created_extension.id)
 
     def test_save_extension_api_key_exactly_four_chars_rejected(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -544,7 +551,7 @@ class TestAPIBasedExtensionService:
         )
 
         with pytest.raises(ValueError, match="api_key must be at least 5 characters"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_save_extension_api_key_exactly_five_chars_accepted(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -563,7 +570,7 @@ class TestAPIBasedExtensionService:
             api_key="12345",
         )
 
-        saved = APIBasedExtensionService.save(extension_data)
+        saved = APIBasedExtensionService.save(db_session_with_containers, extension_data)
         assert saved.id is not None
 
     def test_save_extension_requestor_constructor_error(
@@ -586,7 +593,7 @@ class TestAPIBasedExtensionService:
         )
 
         with pytest.raises(ValueError, match="connection error: bad config"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_save_extension_network_exception(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -610,7 +617,7 @@ class TestAPIBasedExtensionService:
         )
 
         with pytest.raises(ValueError, match="connection error: network failure"):
-            APIBasedExtensionService.save(extension_data)
+            APIBasedExtensionService.save(db_session_with_containers, extension_data)
 
     def test_save_extension_update_duplicate_name_rejected(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -623,26 +630,28 @@ class TestAPIBasedExtensionService:
         assert tenant is not None
 
         ext1 = APIBasedExtensionService.save(
+            db_session_with_containers,
             APIBasedExtension(
                 tenant_id=tenant.id,
                 name="Extension Alpha",
                 api_endpoint=f"https://{fake.domain_name()}/api",
                 api_key=fake.password(length=20),
-            )
+            ),
         )
         ext2 = APIBasedExtensionService.save(
+            db_session_with_containers,
             APIBasedExtension(
                 tenant_id=tenant.id,
                 name="Extension Beta",
                 api_endpoint=f"https://{fake.domain_name()}/api",
                 api_key=fake.password(length=20),
-            )
+            ),
         )
 
         # Try to rename ext2 to ext1's name
         ext2.name = "Extension Alpha"
         with pytest.raises(ValueError, match="name must be unique, it is already existed"):
-            APIBasedExtensionService.save(ext2)
+            APIBasedExtensionService.save(db_session_with_containers, ext2)
 
     def test_get_all_returns_empty_for_different_tenant(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -658,14 +667,15 @@ class TestAPIBasedExtensionService:
         assert tenant1 is not None
 
         APIBasedExtensionService.save(
+            db_session_with_containers,
             APIBasedExtension(
                 tenant_id=tenant1.id,
                 name=fake.company(),
                 api_endpoint=f"https://{fake.domain_name()}/api",
                 api_key=fake.password(length=20),
-            )
+            ),
         )
 
         assert tenant2 is not None
-        result = APIBasedExtensionService.get_all_by_tenant_id(tenant2.id)
+        result = APIBasedExtensionService.get_all_by_tenant_id(db_session_with_containers, tenant2.id)
         assert result == []

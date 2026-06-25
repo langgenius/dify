@@ -1,10 +1,12 @@
 from types import SimpleNamespace
 
+from pytest_mock import MockerFixture
+
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
 from services.rag_pipeline.pipeline_template.pipeline_template_type import PipelineTemplateType
 
 
-def test_get_pipeline_templates(mocker) -> None:
+def test_get_pipeline_templates(mocker: MockerFixture) -> None:
     built_in_template = SimpleNamespace(
         id="tpl-1",
         name="Template 1",
@@ -44,7 +46,7 @@ def test_get_pipeline_templates(mocker) -> None:
     }
 
 
-def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
+def test_get_pipeline_template_detail_returns_detail(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = SimpleNamespace(
         id="tpl-1",
@@ -73,7 +75,7 @@ def test_get_pipeline_template_detail_returns_detail(mocker) -> None:
     }
 
 
-def test_get_pipeline_template_detail_returns_none_when_not_found(mocker) -> None:
+def test_get_pipeline_template_detail_returns_none_when_not_found(mocker: MockerFixture) -> None:
     session_mock = mocker.Mock()
     session_mock.get.return_value = None
     mocker.patch(

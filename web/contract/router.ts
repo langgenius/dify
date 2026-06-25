@@ -1,6 +1,8 @@
 import type { InferContractRouterInputs } from '@orpc/contract'
 import { contract as communityContract } from '@dify/contracts/api/console/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
+import { rbacAccessConfigContract } from './console/access-control'
+import { agentDriveContracts } from './console/agent-drive'
 import {
   appDeleteContract,
   appListContract,
@@ -15,6 +17,7 @@ import {
   exploreAppsContract,
   exploreBannersContract,
   exploreInstalledAppAccessModeContract,
+  exploreInstalledAppAccessModeUpdateContract,
   exploreInstalledAppMetaContract,
   exploreInstalledAppParametersContract,
   exploreInstalledAppPinContract,
@@ -22,6 +25,7 @@ import {
   exploreInstalledAppUninstallContract,
   learnDifyAppsContract,
 } from './console/explore'
+import { fileUploadContract } from './console/files'
 import { changePreferredProviderTypeContract, modelProvidersModelsContract } from './console/model-providers'
 import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginCheckInstalledContract, pluginLatestVersionsContract } from './console/plugins'
@@ -98,11 +102,6 @@ export const marketplaceRouterContract = {
 
 export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
 
-// Hand-written console contracts below are temporary overrides for gaps in the
-// generated community contract. Prefer fixing backend OpenAPI annotations so
-// generated contracts include accurate method, path, input, and output types;
-// once generated contracts are correct, the matching hand-written contracts
-// should be removed instead of kept in parallel.
 export const consoleRouterContract = {
   enterprise: enterpriseContract,
   ...communityContract,
@@ -114,6 +113,27 @@ export const consoleRouterContract = {
     star: appStarContract,
     unstar: appUnstarContract,
     workflowOnlineUsers: workflowOnlineUsersContract,
+    byAppId: {
+      ...communityContract.apps.byAppId,
+      agent: {
+        ...communityContract.apps.byAppId.agent,
+        ...agentDriveContracts.byAppId.agent,
+        drive: {
+          ...communityContract.apps.byAppId.agent.drive,
+          ...agentDriveContracts.byAppId.agent.drive,
+        },
+      },
+    },
+  },
+  agent: {
+    ...communityContract.agent,
+    byAgentId: {
+      ...communityContract.agent.byAgentId,
+      drive: {
+        ...communityContract.agent.byAgentId.drive,
+        ...agentDriveContracts.byAgentId.drive,
+      },
+    },
   },
   explore: {
     ...communityContract.explore,
@@ -124,6 +144,7 @@ export const consoleRouterContract = {
     uninstallInstalledApp: exploreInstalledAppUninstallContract,
     updateInstalledApp: exploreInstalledAppPinContract,
     appAccessMode: exploreInstalledAppAccessModeContract,
+    updateAppAccessMode: exploreInstalledAppAccessModeUpdateContract,
     installedAppParameters: exploreInstalledAppParametersContract,
     installedAppMeta: exploreInstalledAppMetaContract,
     banners: exploreBannersContract,
@@ -135,6 +156,13 @@ export const consoleRouterContract = {
     parameters: trialAppParametersContract,
     workflows: trialAppWorkflowsContract,
   },
+  files: {
+    ...communityContract.files,
+    upload: {
+      ...communityContract.files.upload,
+      post: fileUploadContract,
+    },
+  },
   modelProviders: {
     models: modelProvidersModelsContract,
     changePreferredProviderType: changePreferredProviderTypeContract,
@@ -143,6 +171,7 @@ export const consoleRouterContract = {
     checkInstalled: pluginCheckInstalledContract,
     latestVersions: pluginLatestVersionsContract,
   },
+  rbacAccessConfig: rbacAccessConfigContract,
   snippets: {
     list: listCustomizedSnippetsContract,
     create: createCustomizedSnippetContract,

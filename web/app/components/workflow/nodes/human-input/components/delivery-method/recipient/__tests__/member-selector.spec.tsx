@@ -38,6 +38,7 @@ const members: Member[] = [{
   avatar_url: 'avatar.png',
   status: 'active',
   role: 'normal',
+  roles: [],
   created_at: '2026-01-01T00:00:00Z',
   last_active_at: '2026-01-02T00:00:00Z',
   last_login_at: '2026-01-03T00:00:00Z',

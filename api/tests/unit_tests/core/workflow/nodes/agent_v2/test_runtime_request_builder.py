@@ -21,6 +21,9 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
+    DeclaredArrayItem,
+    DeclaredOutputChildConfig,
+    DeclaredOutputConfig,
     DeclaredOutputType,
     WorkflowNodeJobConfig,
 )
@@ -186,7 +189,7 @@ def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={"system_prompt": "You are careful."},
         model=AgentSoulModelConfig(
-            plugin_id="langgenius/openai/openai",
+            plugin_id="langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
             model_provider="langgenius/openai/openai",
             model="gpt-test",
         ),
@@ -321,6 +324,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
                 "secret_refs": [
                     {"variable": "TOKEN", "credential_id": "credential-1"},
                     {"name": "API_KEY", "provider_credential_id": "credential-2"},
+                    {"name": "EDITABLE_TOKEN", "value": "credential-3"},
                     {"ref": "missing-name"},
                 ],
             },
@@ -341,6 +345,7 @@ def test_build_shell_layer_config_accepts_legacy_fallback_keys():
     assert config["secret_refs"] == [
         {"name": "TOKEN", "ref": "credential-1"},
         {"name": "API_KEY", "ref": "credential-2"},
+        {"name": "EDITABLE_TOKEN", "ref": "credential-3"},
     ]
     assert config["sandbox"] is None
 
@@ -491,6 +496,119 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     assert plugin_tools_builder.last_invoke_from == context.dify_context.invoke_from
 
 
+def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}, {"id": "  "}, {"id": "dataset-2"}],
+                    "query_config": {
+                        "top_k": 6,
+                        "score_threshold": 0.4,
+                        "score_threshold_enabled": True,
+                    },
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    knowledge_layer = layers["knowledge"]
+    assert knowledge_layer["type"] == "dify.knowledge_base"
+    assert knowledge_layer["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    assert knowledge_layer["config"] == {
+        "dataset_ids": ["dataset-1", "dataset-2"],
+        "retrieval": {
+            "mode": "multiple",
+            "top_k": 6,
+            "score_threshold": 0.4,
+            "reranking_mode": "reranking_model",
+            "reranking_enable": True,
+            "reranking_model": None,
+            "weights": None,
+            "model": None,
+        },
+        "metadata_filtering": {"mode": "disabled", "metadata_model_config": None, "conditions": None},
+        "max_result_content_chars": 2000,
+        "max_observation_chars": 12000,
+    }
+
+
+def test_build_knowledge_layer_uses_stable_default_top_k_when_query_config_omits_it():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}],
+                    "query_config": {},
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    knowledge_layer = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "knowledge")
+    assert knowledge_layer["config"]["retrieval"]["top_k"] == 4
+
+
+def test_build_skips_knowledge_layer_when_agent_soul_has_no_valid_dataset_ids():
+    context = _context()
+    snapshot = AgentConfigSnapshot(
+        id="snapshot-1",
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        version=1,
+        config_snapshot=AgentSoulConfig.model_validate(
+            {
+                "prompt": {"system_prompt": "You are careful."},
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "openai",
+                    "model": "gpt-test",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "  "}, {}],
+                },
+            }
+        ),
+    )
+    context = replace(context, snapshot=snapshot)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    dumped = result.request.model_dump(mode="json")
+    assert all(layer["name"] != "knowledge" for layer in dumped["composition"]["layers"])
+
+
 def test_build_passes_saved_session_snapshot_to_agent_backend_request():
     session_snapshot = CompositorSessionSnapshot(layers=[])
     context = replace(_context(), session_snapshot=session_snapshot)
@@ -630,6 +748,40 @@ def test_array_output_emits_typed_items_per_array_item():
     assert output_schema["required"] == ["tags"]
 
 
+def test_nested_declared_output_emits_object_and_array_child_schema():
+    profile_output = DeclaredOutputConfig(
+        name="profile",
+        type=DeclaredOutputType.OBJECT,
+        children=[
+            DeclaredOutputChildConfig(name="email", type=DeclaredOutputType.STRING),
+            DeclaredOutputChildConfig(
+                name="nickname",
+                type=DeclaredOutputType.STRING,
+                required=False,
+                description="Optional display name",
+            ),
+            DeclaredOutputChildConfig(
+                name="addresses",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(
+                    type=DeclaredOutputType.OBJECT,
+                    description="Address item",
+                    children=[DeclaredOutputChildConfig(name="city", type=DeclaredOutputType.STRING)],
+                ),
+            ),
+        ],
+    )
+
+    schema = WorkflowAgentRuntimeRequestBuilder._schema_for_declared_output(profile_output)
+
+    assert schema["properties"]["email"] == {"type": "string"}
+    assert schema["properties"]["nickname"] == {"type": "string", "description": "Optional display name"}
+    assert schema["properties"]["addresses"]["items"]["properties"]["city"] == {"type": "string"}
+    assert schema["properties"]["addresses"]["items"]["description"] == "Address item"
+    assert schema["properties"]["addresses"]["items"]["required"] == ["city"]
+    assert schema["required"] == ["email", "addresses"]
+
+
 def test_effective_declared_outputs_passthrough_when_user_declared():
     """effective_declared_outputs() must return user-provided outputs verbatim
     when non-empty; only empty input gets PRD defaults injected."""
@@ -682,57 +834,116 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
 
 def _soul_with_drive_skill() -> AgentSoulConfig:
     return AgentSoulConfig(
-        prompt={"system_prompt": "You are careful."},
-        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
-        skills_files={
-            "skills": [
-                {
-                    "id": "abc123",
-                    "name": "Tender Analyzer",
-                    "description": "Parses RFPs.",
-                    "skill_md_key": "tender-analyzer/SKILL.md",
-                    "full_archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                },
-                {"id": "legacy", "name": "Legacy Skill"},  # pre-standardization: no drive key
-            ],
-            "files": [
-                {"name": "sample.pdf", "drive_key": "files/sample.pdf", "type": "application/pdf"},
-                {"name": "plain-upload.pdf", "file_id": "upload-1"},  # not drive-backed
-            ],
+        prompt={
+            "system_prompt": (
+                "You are careful. Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] "
+                "and [§file:files%2Fsample.pdf:sample.pdf§]."
+            )
         },
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
     )
 
 
-def test_build_drive_layer_config_catalogs_only_drive_backed_refs():
+def _mock_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
+        lambda self, *, tenant_id, agent_id: [
+            {
+                "path": "tender-analyzer",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+                "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+                "size": 123,
+                "mime_type": "text/markdown",
+                "hash": "hash-1",
+                "created_at": 1,
+            }
+        ],
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
+        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
+            {"key": "tender-analyzer/SKILL.md", "is_skill": True},
+            {"key": "tender-analyzer/.DIFY-SKILL-FULL.zip", "is_skill": False},
+            {"key": "files/sample.pdf", "is_skill": False},
+        ],
+    )
+
+
+def _mock_empty_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
+        lambda self, *, tenant_id, agent_id: [],
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
+        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
+    )
+
+
+def test_build_drive_layer_config_catalogs_drive_skills_and_mentions(monkeypatch: pytest.MonkeyPatch):
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
 
-    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), agent_id="agent-1")
+    _mock_drive_catalog(monkeypatch)
+    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), tenant_id="tenant-1", agent_id="agent-1")
 
     assert config is not None
     assert config.drive_ref == "agent-agent-1"
     assert [skill.skill_md_key for skill in config.skills] == ["tender-analyzer/SKILL.md"]
     assert config.skills[0].archive_key == "tender-analyzer/.DIFY-SKILL-FULL.zip"
-    assert [file.key for file in config.files] == ["files/sample.pdf"]
-    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
-    assert "Legacy Skill" in warnings[0]["message"]
+    assert config.mentioned_skill_keys == ["tender-analyzer/SKILL.md"]
+    assert config.mentioned_file_keys == ["files/sample.pdf"]
+    assert warnings == []
 
 
-def test_build_drive_layer_config_skips_when_nothing_configured():
+def test_build_drive_layer_config_emits_drive_ref_when_catalog_is_empty(monkeypatch: pytest.MonkeyPatch):
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
 
+    _mock_empty_drive_catalog(monkeypatch)
     soul = AgentSoulConfig(
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test")
     )
-    assert build_drive_layer_config(soul, agent_id="agent-1") == (None, [])
+    config, warnings = build_drive_layer_config(soul, tenant_id="tenant-1", agent_id="agent-1")
+
+    assert config is not None
+    assert config.drive_ref == "agent-agent-1"
+    assert config.skills == []
+    assert config.mentioned_skill_keys == []
+    assert config.mentioned_file_keys == []
+    assert warnings == []
+
+
+def test_workflow_run_request_contains_drive_layer_with_empty_catalog(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+    )
+    monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
+    _mock_empty_drive_catalog(monkeypatch)
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
+
+    dumped = result.request.model_dump(mode="json")
+    layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+    assert layers["drive"]["config"] == {
+        "drive_ref": "agent-agent-1",
+        "skills": [],
+        "mentioned_skill_keys": [],
+        "mentioned_file_keys": [],
+    }
+    assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {
+        "execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID,
+        "drive": "drive",
+    }
 
 
 def test_build_drive_layer_config_requires_agent_identity():
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
 
-    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), agent_id=None)
+    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), tenant_id="tenant-1", agent_id=None)
 
     assert config is None
-    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+    assert [w["code"] for w in warnings] == ["drive_ref_dangling"]
 
 
 def test_workflow_run_request_contains_drive_layer_when_flag_enabled(monkeypatch: pytest.MonkeyPatch):
@@ -740,6 +951,7 @@ def test_workflow_run_request_contains_drive_layer_when_flag_enabled(monkeypatch
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
     )
+    _mock_drive_catalog(monkeypatch)
     context = _context()
     context.snapshot.config_snapshot = _soul_with_drive_skill()
 
@@ -752,26 +964,71 @@ def test_workflow_run_request_contains_drive_layer_when_flag_enabled(monkeypatch
     assert layer_names.index("drive") == layer_names.index("execution_context") + 1
     drive = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "drive")
     assert drive["type"] == "dify.drive"
+    assert drive["deps"] == {"execution_context": "execution_context"}
     assert drive["config"]["drive_ref"] == "agent-agent-1"
     assert drive["config"]["skills"] == [
         {
+            "path": "tender-analyzer",
             "name": "Tender Analyzer",
             "description": "Parses RFPs.",
             "skill_md_key": "tender-analyzer/SKILL.md",
             "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
         }
     ]
-    assert drive["config"]["files"] == [
-        {"name": "sample.pdf", "key": "files/sample.pdf", "size": None, "mime_type": "application/pdf"}
-    ]
-    # the dangling legacy ref degraded to a warning instead of failing the run
+    assert drive["config"]["mentioned_skill_keys"] == ["tender-analyzer/SKILL.md"]
+    assert drive["config"]["mentioned_file_keys"] == ["files/sample.pdf"]
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
-    assert any(w["code"] == "skill_ref_dangling" for w in warnings)
+    assert warnings == []
     # the drive layer is non-sensitive and must survive into persistable specs
     from dify_agent.protocol import extract_runtime_layer_specs
 
     specs = extract_runtime_layer_specs(result.request.composition)
     assert any(spec.name == "drive" and spec.type == "dify.drive" for spec in specs)
+
+
+def test_workflow_runtime_expands_drive_mentions_in_agent_soul_prompt(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+    )
+    _mock_drive_catalog(monkeypatch)
+    context = _context()
+    context.snapshot.config_snapshot = _soul_with_drive_skill()
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+    assert soul_prompt.config.prefix == "You are careful. Use Tender Analyzer and sample.pdf."
+    assert "[§" not in soul_prompt.config.prefix
+
+
+def test_workflow_runtime_missing_drive_mentions_fall_back_to_label_then_decoded_key(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
+        lambda self, *, tenant_id, agent_id: [],
+    )
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
+        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
+    )
+    context = _context()
+    context.snapshot.config_snapshot = AgentSoulConfig(
+        prompt={
+            "system_prompt": (
+                "Use [§skill:ghost%2FSKILL.md:Ghost Skill§], [§file:files%2Fghost.txt:Ghost File§], "
+                "and [§file:files%2Fno-label.txt§]."
+            )
+        },
+        model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and files/no-label.txt."
+    assert "[§" not in soul_prompt.config.prefix
 
 
 def test_workflow_run_request_has_no_drive_layer_when_flag_disabled():
@@ -782,20 +1039,20 @@ def test_workflow_run_request_has_no_drive_layer_when_flag_disabled():
 
     dumped = result.request.model_dump(mode="json")
     assert all(layer["name"] != "drive" for layer in dumped["composition"]["layers"])
-    warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
-    assert any(w["code"] == "drive_manifest_disabled" for w in warnings)
+    assert result.metadata["runtime_support"]["unsupported_runtime_warnings"] == []
 
 
-def test_build_drive_layer_config_all_refs_dangling_yields_no_config():
+def test_build_drive_layer_config_missing_mentions_warn_but_keep_skill_catalog(monkeypatch: pytest.MonkeyPatch):
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
 
+    _mock_drive_catalog(monkeypatch)
     soul = AgentSoulConfig(
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
-        skills_files={"skills": [{"id": "legacy", "name": "Legacy"}], "files": [{"name": "u.pdf", "file_id": "u1"}]},
+        prompt={"system_prompt": "Use [§skill:ghost%2FSKILL.md:Ghost§]"},
     )
-    config, warnings = build_drive_layer_config(soul, agent_id="agent-1")
-    assert config is None
-    assert [w["code"] for w in warnings] == ["skill_ref_dangling"]
+    config, warnings = build_drive_layer_config(soul, tenant_id="tenant-1", agent_id="agent-1")
+    assert config is not None
+    assert [w["code"] for w in warnings] == ["mention_target_missing"]
 
 
 # ── ENG-635: ask_human layer gating + feature manifest ───────────────────────
@@ -829,3 +1086,36 @@ def test_feature_manifest_marks_human_supported_when_configured():
     assert manifest["reserved_status"]["human"] == "supported_by_ask_human_hitl"
     # configured human no longer produces a "not executed" warning
     assert all("human" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+
+
+def test_feature_manifest_marks_knowledge_supported_without_warning_when_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "datasets": [{"id": "dataset-1", "name": "Product Docs"}],
+            }
+        }
+    )
+
+    manifest = build_runtime_feature_manifest(soul)
+    assert "knowledge" in manifest["supported"]
+    assert "knowledge" not in manifest["reserved"]
+    assert manifest["reserved_status"]["knowledge"] == "supported_by_knowledge_layer"
+    assert all("knowledge" not in w["section"] for w in manifest["unsupported_runtime_warnings"])
+
+
+def test_feature_manifest_treats_blank_knowledge_dataset_ids_as_not_configured():
+    from core.workflow.nodes.agent_v2.runtime_feature_manifest import build_runtime_feature_manifest
+
+    soul = AgentSoulConfig.model_validate(
+        {
+            "knowledge": {
+                "datasets": [{"id": "  "}, {}],
+            }
+        }
+    )
+
+    manifest = build_runtime_feature_manifest(soul)
+    assert manifest["reserved_status"]["knowledge"] == "not_configured"

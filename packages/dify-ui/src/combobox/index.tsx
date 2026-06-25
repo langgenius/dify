@@ -50,7 +50,7 @@ const comboboxItemClassName = [
 
 const comboboxTriggerVariants = cva(
   [
-    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-left text-components-input-text-filled outline-hidden transition-colors',
+    'group/combobox-trigger flex w-full min-w-0 items-center border-0 bg-components-input-bg-normal text-start text-components-input-text-filled outline-hidden transition-colors',
     'hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt',
     'focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:ring-inset',
     'data-placeholder:text-components-input-text-placeholder',
@@ -207,9 +207,9 @@ const comboboxControlVariants = cva(
   {
     variants: {
       size: {
-        small: 'mr-1 size-4',
-        medium: 'mr-1.5 size-5',
-        large: 'mr-2 size-5',
+        small: 'me-1 size-4',
+        medium: 'me-1.5 size-5',
+        large: 'me-2 size-5',
       },
     },
     defaultVariants: {

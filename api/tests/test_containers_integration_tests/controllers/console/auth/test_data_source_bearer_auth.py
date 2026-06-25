@@ -1,7 +1,7 @@
 """Controller integration tests for API key data source auth routes."""
 
 import json
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from flask.testing import FlaskClient
 from sqlalchemy import select
@@ -85,7 +85,7 @@ def test_create_binding_successful(
 
     assert response.status_code == 200
     assert response.get_json() == {"result": "success"}
-    create_auth.assert_called_once_with(tenant_id, payload)
+    create_auth.assert_called_once_with(ANY, tenant_id, payload)
 
 
 def test_create_binding_failure(

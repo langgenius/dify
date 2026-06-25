@@ -237,9 +237,10 @@ class TestGetUserTenant:
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
             with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    mock_get.return_value = mock_tenant
-                    mock_get_user.return_value = mock_user
-                    result = protected_view()
+                    with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
+                        mock_get.return_value = mock_tenant
+                        mock_get_user.return_value = mock_user
+                        result = protected_view()
 
         # Assert
         assert result["tenant"] == mock_tenant
@@ -293,9 +294,10 @@ class TestGetUserTenant:
             monkeypatch.setattr(app, "login_manager", MagicMock(), raising=False)
             with patch("controllers.inner_api.plugin.wraps.db.session.get") as mock_get:
                 with patch("controllers.inner_api.plugin.wraps.get_user") as mock_get_user:
-                    mock_get.return_value = mock_tenant
-                    mock_get_user.return_value = mock_user
-                    result = protected_view()
+                    with patch("controllers.inner_api.plugin.wraps.user_logged_in"):
+                        mock_get.return_value = mock_tenant
+                        mock_get_user.return_value = mock_user
+                        result = protected_view()
 
         # Assert
         assert result["tenant"] == mock_tenant

@@ -18,8 +18,9 @@ import { isSearchResultEmpty } from '@/app/components/base/search-input/search-s
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { useCanSetPluginSettings } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '@/app/components/tools/content-inset'
+import { useCanManageMCP, useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import Marketplace from '@/app/components/tools/marketplace'
 import MCPList from '@/app/components/tools/mcp'
 import ProviderDetail from '@/app/components/tools/provider/detail'
@@ -87,8 +88,12 @@ const ProviderList = ({
   const { t } = useTranslation()
   const { getTagLabel } = useTags()
   const {
-    canSetPermissions,
-  } = useCanSetPluginSettings()
+    canDeletePlugin,
+    canSetPluginPreferences,
+    canUpdatePlugin,
+  } = usePluginSettingsAccess()
+  const canManageTools = useCanManageTools()
+  const canManageMCP = useCanManageMCP()
   const { data: enable_marketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
     select: s => s.enable_marketplace,
@@ -96,7 +101,7 @@ const ProviderList = ({
   const { activeTab, handleCategoryChange, isRouteCategory } = useToolProviderCategory(category)
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const toolListFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
-  const showToolsUpdateSetting = activeTab === 'builtin' && canSetPermissions
+  const showToolsUpdateSetting = activeTab === 'builtin' && canSetPluginPreferences
   const showLabelFilter = activeTab === 'builtin'
   const options = [
     { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
@@ -124,11 +129,11 @@ const ProviderList = ({
     return collectionList.filter(collection => collection.type === activeTab)
   }, [activeTab, collectionList])
   const hasCategoryCollections = activeTabCollectionList.length > 0
-  const shouldShowCustomToolCreateCard = !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
-  const shouldShowMCPCreateCard = !(activeTab === 'mcp' && hasCategoryCollections)
+  const shouldShowCustomToolCreateCard = canManageTools && !(activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
+  const shouldShowMCPCreateCard = canManageMCP && !(activeTab === 'mcp' && hasCategoryCollections)
   const shouldShowToolbarCreateAction
-    = (activeTab === 'mcp' && hasCategoryCollections)
-      || (activeTab === 'api' && !isCollectionListLoading && hasCategoryCollections)
+    = (activeTab === 'mcp' && canManageMCP && hasCategoryCollections)
+      || (activeTab === 'api' && canManageTools && !isCollectionListLoading && hasCategoryCollections)
   const filteredCollectionList = useMemo(() => {
     return activeTabCollectionList.filter((collection) => {
       if (showLabelFilter && tagFilterValue.length > 0 && (!collection.labels || collection.labels.every(label => !tagFilterValue.includes(label))))
@@ -256,6 +261,8 @@ const ProviderList = ({
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={() => setCurrentProviderId(undefined)}
+        canDeletePlugin={canDeletePlugin}
+        canUpdatePlugin={canUpdatePlugin}
       />
     </>
   )

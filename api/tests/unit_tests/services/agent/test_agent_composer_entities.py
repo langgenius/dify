@@ -3,7 +3,7 @@ import pytest
 from models.agent_config_entities import AgentKnowledgeQueryMode, AgentSoulModelConfig, DeclaredOutputType
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.errors import AgentSoulLockedError, PlaintextSecretNotAllowedError
+from services.agent.errors import AgentSoulLockedError, InvalidComposerConfigError, PlaintextSecretNotAllowedError
 from services.entities.agent_entities import (
     AgentSoulConfig,
     ComposerSavePayload,
@@ -51,6 +51,37 @@ def test_locked_workflow_soul_rejects_soul_changes():
         ComposerConfigValidator.validate_save_payload(payload)
 
 
+def test_locked_workflow_node_job_only_allows_inline_soul_payload():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY,
+            "soul_lock": {"locked": True},
+            "agent_soul": {"prompt": {"system_prompt": "changed"}},
+        }
+    )
+
+    ComposerConfigValidator.validate_save_payload(payload)
+
+
+def test_draft_save_payload_skips_publish_only_agent_soul_validation():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
+            "agent_soul": {
+                "prompt": {"system_prompt": "no human reference yet"},
+                "human": {"contacts": [{"id": "human-1", "name": "Reviewer"}]},
+                "env": {"variables": [{"name": "bad-name"}]},
+            },
+        }
+    )
+
+    ComposerConfigValidator.validate_draft_save_payload(payload)
+    with pytest.raises(InvalidComposerConfigError):
+        ComposerConfigValidator.validate_publish_payload(payload)
+
+
 def test_agent_app_soul_allows_app_features_and_variables():
     payload = ComposerSavePayload.model_validate(
         {
@@ -72,6 +103,28 @@ def test_agent_app_soul_allows_app_features_and_variables():
     ComposerConfigValidator.validate_save_payload(payload)
     assert payload.agent_soul is not None
     assert payload.agent_soul.app_variables[0].name == "company_name"
+
+
+def test_composer_save_payload_accepts_new_roster_metadata():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_ROSTER,
+            "new_agent_name": "Research Agent",
+            "description": "Finds relevant sources.",
+            "role": "Research Assistant",
+            "icon_type": "emoji",
+            "icon": "search",
+            "icon_background": "#E0F2FE",
+        }
+    )
+
+    assert payload.new_agent_name == "Research Agent"
+    assert payload.description == "Finds relevant sources."
+    assert payload.role == "Research Assistant"
+    assert payload.icon_type == "emoji"
+    assert payload.icon == "search"
+    assert payload.icon_background == "#E0F2FE"
 
 
 def test_knowledge_query_mode_uses_stable_backend_enums():

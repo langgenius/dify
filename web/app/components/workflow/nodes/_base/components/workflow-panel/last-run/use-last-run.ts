@@ -10,7 +10,6 @@ import {
 import { useWorkflowRunValidation } from '@/app/components/workflow/hooks/use-checklist'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
-import useAgentSingleRunFormParams from '@/app/components/workflow/nodes/agent/use-single-run-form-params'
 import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/nodes/assigner/use-single-run-form-params'
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
@@ -50,7 +49,8 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.Tool]: useToolSingleRunFormParams,
   [BlockEnum.ParameterExtractor]: useParameterExtractorSingleRunFormParams,
   [BlockEnum.Iteration]: useIterationSingleRunFormParams,
-  [BlockEnum.Agent]: useAgentSingleRunFormParams,
+  [BlockEnum.Agent]: undefined,
+  [BlockEnum.AgentV2]: undefined,
   [BlockEnum.DocExtractor]: useDocExtractorSingleRunFormParams,
   [BlockEnum.Loop]: useLoopSingleRunFormParams,
   [BlockEnum.Start]: useStartSingleRunFormParams,
@@ -91,6 +91,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.ParameterExtractor]: undefined,
   [BlockEnum.Iteration]: undefined,
   [BlockEnum.Agent]: undefined,
+  [BlockEnum.AgentV2]: undefined,
   [BlockEnum.DocExtractor]: undefined,
   [BlockEnum.Loop]: undefined,
   [BlockEnum.Start]: undefined,

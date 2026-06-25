@@ -1,4 +1,4 @@
-import type { NodeDefault } from '../types'
+import type { NodeDefault, OnSelectBlock } from '../types'
 import type { BlockClassificationEnum } from './types'
 import {
   createPreviewCardHandle,
@@ -17,12 +17,13 @@ import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
+import { AgentBlockItem } from './agent-selector'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
 
 type BlocksProps = {
   searchText: string
-  onSelect: (type: BlockEnum) => void
+  onSelect: OnSelectBlock
   availableBlocksTypes?: BlockEnum[]
   blocks?: NodeDefault[]
 }
@@ -79,7 +80,13 @@ const Blocks = ({
   const isEmpty = Object.values(groups).every(list => !list.length)
 
   const renderGroup = useCallback((classification: BlockClassificationEnum) => {
-    const list = groups[classification]!.sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
+    const list = [...groups[classification]!].sort((a, b) => {
+      if (a.metaData.type === BlockEnum.AgentV2)
+        return -1
+      if (b.metaData.type === BlockEnum.AgentV2)
+        return 1
+      return (a.metaData.sort || 0) - (b.metaData.sort || 0)
+    })
     const { getNodes } = store.getState()
     const nodes = getNodes()
     const hasKnowledgeBaseNode = nodes.some(node => node.data.type === BlockEnum.KnowledgeBase)
@@ -102,39 +109,64 @@ const Blocks = ({
           )
         }
         {
-          // Preview is supplementary: icon/title/description are all reachable
-          // from the node that gets added on click (inspector + canvas), so
-          // hover/focus-only activation is a11y-safe. See
-          // packages/dify-ui/AGENTS.md → Overlay Primitive Selection.
-          filteredList.map(block => (
-            <PreviewCardTrigger
-              key={block.metaData.type}
-              delay={150}
-              closeDelay={150}
-              handle={previewCardHandle}
-              payload={{ block }}
-              render={(
-                <div
-                  className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
-                  onClick={() => onSelect(block.metaData.type)}
-                >
-                  <BlockIcon
-                    className="mr-2 shrink-0"
-                    type={block.metaData.type}
-                  />
-                  <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
-                  {
-                    block.metaData.type === BlockEnum.LoopEnd && (
-                      <Badge
-                        text={t('nodes.loop.loopNode', { ns: 'workflow' })}
-                        className="ml-2 shrink-0"
-                      />
-                    )
-                  }
-                </div>
-              )}
-            />
-          ))
+          filteredList.map((block) => {
+            if (block.metaData.type === BlockEnum.AgentV2) {
+              return (
+                <AgentBlockItem
+                  key={block.metaData.type}
+                  block={block}
+                  onSelect={agent =>
+                    onSelect(BlockEnum.AgentV2, {
+                      agent_binding: {
+                        binding_type: 'roster_agent',
+                        agent_id: agent.id,
+                      },
+                      agent_node_kind: 'dify_agent',
+                      version: '2',
+                    })}
+                  onStartFromScratch={() =>
+                    onSelect(BlockEnum.AgentV2, {
+                      agent_binding: {
+                        binding_type: 'inline_agent',
+                      },
+                      agent_node_kind: 'dify_agent',
+                      version: '2',
+                    })}
+                />
+              )
+            }
+
+            return (
+              <PreviewCardTrigger
+                key={block.metaData.type}
+                delay={150}
+                closeDelay={150}
+                handle={previewCardHandle}
+                payload={{ block }}
+                render={(
+                  <button
+                    type="button"
+                    className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                    onClick={() => onSelect(block.metaData.type)}
+                  >
+                    <BlockIcon
+                      className="mr-2 shrink-0"
+                      type={block.metaData.type}
+                    />
+                    <span className="min-w-0 grow truncate text-sm text-text-secondary">{block.metaData.title}</span>
+                    {
+                      block.metaData.type === BlockEnum.LoopEnd && (
+                        <Badge
+                          text={t('nodes.loop.loopNode', { ns: 'workflow' })}
+                          className="ml-2 shrink-0"
+                        />
+                      )
+                    }
+                  </button>
+                )}
+              />
+            )
+          })
         }
       </div>
     )

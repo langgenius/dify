@@ -14,10 +14,14 @@ import Operator from './operator'
 type ItemProps = {
   credentialItem: DataSourceCredential
   onAction: (action: string, credentialItem: DataSourceCredential, renamePayload?: { credential_id: string, name: string }) => void
+  canUseCredential?: boolean
+  canManageCredential?: boolean
 }
 const Item = ({
   credentialItem,
   onAction,
+  canUseCredential = false,
+  canManageCredential = false,
 }: ItemProps) => {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
@@ -97,6 +101,8 @@ const Item = ({
               credentialItem={credentialItem}
               onAction={onAction}
               onRename={() => setRenaming(true)}
+              canUseCredential={canUseCredential}
+              canManageCredential={canManageCredential}
             />
           </>
         )

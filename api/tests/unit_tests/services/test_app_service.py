@@ -3,7 +3,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+from sqlalchemy.exc import IntegrityError
+
 from models.model import App
+from services.agent.errors import AgentNameConflictError
 from services.app_service import AppService
 
 
@@ -168,6 +172,7 @@ class TestAgentAppType:
             mode=AppMode.AGENT,
             name="Old",
             description="old",
+            role="draft",
             icon_type=IconType.EMOJI,
             icon="robot",
             icon_background="#fff",
@@ -178,6 +183,7 @@ class TestAgentAppType:
         backing_agent = SimpleNamespace(
             name="Old",
             description="old",
+            role="draft",
             icon_type=AgentIconType.EMOJI,
             icon="robot",
             icon_background="#fff",
@@ -195,6 +201,7 @@ class TestAgentAppType:
                 {
                     "name": "Iris",
                     "description": "agent app",
+                    "role": "research assistant",
                     "icon_type": "image",
                     "icon": "file-id",
                     "icon_background": "#123456",
@@ -206,11 +213,166 @@ class TestAgentAppType:
         assert updated_app.name == "Iris"
         assert backing_agent.name == "Iris"
         assert backing_agent.description == "agent app"
+        assert backing_agent.role == "research assistant"
         assert backing_agent.icon_type == AgentIconType.IMAGE
         assert backing_agent.icon == "file-id"
         assert backing_agent.icon_background == "#123456"
         assert backing_agent.updated_by == "account-2"
         assert backing_agent.updated_at == updated_app.updated_at
+
+    def test_update_agent_app_preserves_role_when_args_omit_it(self):
+        from models.agent import AgentIconType
+        from models.model import AppMode, IconType
+        from services.app_service import AppService
+
+        app = SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            mode=AppMode.AGENT,
+            name="Old",
+            description="old",
+            role="draft",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            use_icon_as_answer_icon=False,
+            max_active_requests=None,
+            created_by="account-1",
+        )
+        backing_agent = SimpleNamespace(
+            name="Old",
+            description="old",
+            role="research assistant",
+            icon_type=AgentIconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            updated_by=None,
+            updated_at=None,
+        )
+
+        with (
+            patch("services.app_service.db") as mock_db,
+            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+        ):
+            mock_db.session.scalar.return_value = backing_agent
+            AppService().update_app(
+                app,  # type: ignore[arg-type]
+                {
+                    "name": "Iris",
+                    "description": "agent app",
+                    "icon_type": "image",
+                    "icon": "file-id",
+                    "icon_background": "#123456",
+                    "use_icon_as_answer_icon": False,
+                    "max_active_requests": 0,
+                },
+            )
+
+        assert backing_agent.role == "research assistant"
+
+    def test_update_agent_app_clears_role_when_args_set_empty_string(self):
+        from models.agent import AgentIconType
+        from models.model import AppMode, IconType
+        from services.app_service import AppService
+
+        app = SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            mode=AppMode.AGENT,
+            name="Old",
+            description="old",
+            role="draft",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            use_icon_as_answer_icon=False,
+            max_active_requests=None,
+            created_by="account-1",
+        )
+        backing_agent = SimpleNamespace(
+            name="Old",
+            description="old",
+            role="research assistant",
+            icon_type=AgentIconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            updated_by=None,
+            updated_at=None,
+        )
+
+        with (
+            patch("services.app_service.db") as mock_db,
+            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+        ):
+            mock_db.session.scalar.return_value = backing_agent
+            AppService().update_app(
+                app,  # type: ignore[arg-type]
+                {
+                    "name": "Iris",
+                    "description": "agent app",
+                    "role": "",
+                    "icon_type": "image",
+                    "icon": "file-id",
+                    "icon_background": "#123456",
+                    "use_icon_as_answer_icon": False,
+                    "max_active_requests": 0,
+                },
+            )
+
+        assert backing_agent.role == ""
+
+    def test_update_agent_app_duplicate_name_rolls_back_and_raises_conflict(self):
+        from models.agent import AgentIconType
+        from models.model import AppMode, IconType
+        from services.app_service import AppService
+
+        app = SimpleNamespace(
+            id="app-1",
+            tenant_id="tenant-1",
+            mode=AppMode.AGENT,
+            name="Old",
+            description="old",
+            role="draft",
+            icon_type=IconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            use_icon_as_answer_icon=False,
+            max_active_requests=None,
+            created_by="account-1",
+        )
+        backing_agent = SimpleNamespace(
+            name="Old",
+            description="old",
+            role="research assistant",
+            icon_type=AgentIconType.EMOJI,
+            icon="robot",
+            icon_background="#fff",
+            updated_by=None,
+            updated_at=None,
+        )
+
+        with (
+            patch("services.app_service.db") as mock_db,
+            patch("services.app_service.current_user", SimpleNamespace(id="account-2")),
+        ):
+            mock_db.session.scalar.return_value = backing_agent
+            mock_db.session.commit.side_effect = IntegrityError("duplicate", None, None)
+            with pytest.raises(AgentNameConflictError):
+                AppService().update_app(
+                    app,  # type: ignore[arg-type]
+                    {
+                        "name": "Existing Agent",
+                        "description": "agent app",
+                        "role": "research assistant",
+                        "icon_type": "emoji",
+                        "icon": "robot",
+                        "icon_background": "#fff",
+                        "use_icon_as_answer_icon": False,
+                        "max_active_requests": 0,
+                    },
+                )
+
+        mock_db.session.rollback.assert_called_once()
 
     def test_delete_agent_app_archives_backing_agent(self):
         from models.agent import AgentStatus

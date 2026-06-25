@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import types
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -11,12 +12,6 @@ from flask import Response
 from pydantic import ValidationError
 
 import controllers.mcp.mcp as module
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 @pytest.fixture(autouse=True)

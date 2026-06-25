@@ -45,6 +45,7 @@ export type DSLImportResponse = {
   imported_dsl_version?: string
   error: string
   leaked_dependencies: Dependency[]
+  permission_keys: string[]
 }
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
@@ -91,13 +92,6 @@ export type CreateApiKeyResponse = {
   token: string
   created_at: string
 }
-
-export type ValidateOpenAIKeyResponse = {
-  result: string
-  error?: string
-}
-
-export type UpdateOpenAIKeyResponse = ValidateOpenAIKeyResponse
 
 export type AppVoicesListResponse = [{
   name: string

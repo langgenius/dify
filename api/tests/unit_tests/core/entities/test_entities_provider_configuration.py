@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any
@@ -1704,13 +1705,14 @@ def test_get_specific_provider_credential_decrypts_and_obfuscates_credentials() 
     assert credentials == {"openai_api_key": "raw-secret", "region": "us"}
 
 
-def test_get_specific_provider_credential_logs_when_decrypt_fails() -> None:
+def test_get_specific_provider_credential_logs_when_decrypt_fails(caplog: pytest.LogCaptureFixture) -> None:
     configuration = _build_provider_configuration()
     configuration.provider.provider_credential_schema = _build_secret_provider_schema()
     session = Mock()
     session.execute.return_value.scalar_one_or_none.return_value = SimpleNamespace(
         encrypted_config='{"openai_api_key":"enc-secret"}'
     )
+    caplog.set_level(logging.ERROR, logger="core.entities.provider_configuration")
 
     with _patched_session(session):
         with patch.object(ProviderConfiguration, "_get_provider_record", return_value=None):
@@ -1718,16 +1720,15 @@ def test_get_specific_provider_credential_logs_when_decrypt_fails() -> None:
                 "core.entities.provider_configuration.encrypter.decrypt_token",
                 side_effect=RuntimeError("boom"),
             ):
-                with patch("core.entities.provider_configuration.logger.exception") as mock_logger:
-                    with patch.object(
-                        ProviderConfiguration,
-                        "obfuscated_credentials",
-                        side_effect=lambda credentials, credential_form_schemas: credentials,
-                    ):
-                        credentials = configuration._get_specific_provider_credential("cred-1")
+                with patch.object(
+                    ProviderConfiguration,
+                    "obfuscated_credentials",
+                    side_effect=lambda credentials, credential_form_schemas: credentials,
+                ):
+                    credentials = configuration._get_specific_provider_credential("cred-1")
 
     assert credentials == {"openai_api_key": "enc-secret"}
-    mock_logger.assert_called_once()
+    assert caplog.messages.count("Failed to decrypt credential secret variable openai_api_key") == 1
 
 
 def test_validate_provider_credentials_uses_empty_original_when_record_missing() -> None:
@@ -1831,7 +1832,7 @@ def test_switch_active_provider_credential_rolls_back_on_error() -> None:
     session.rollback.assert_called_once()
 
 
-def test_get_specific_custom_model_credential_logs_when_decrypt_fails() -> None:
+def test_get_specific_custom_model_credential_logs_when_decrypt_fails(caplog: pytest.LogCaptureFixture) -> None:
     configuration = _build_provider_configuration()
     configuration.provider.model_credential_schema = _build_secret_model_schema()
     session = Mock()
@@ -1840,19 +1841,19 @@ def test_get_specific_custom_model_credential_logs_when_decrypt_fails() -> None:
         credential_name="Main",
         encrypted_config='{"openai_api_key":"enc-secret"}',
     )
+    caplog.set_level(logging.ERROR, logger="core.entities.provider_configuration")
 
     with _patched_session(session):
         with patch("core.entities.provider_configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
-            with patch("core.entities.provider_configuration.logger.exception") as mock_logger:
-                with patch.object(
-                    ProviderConfiguration,
-                    "obfuscated_credentials",
-                    side_effect=lambda credentials, credential_form_schemas: credentials,
-                ):
-                    result = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
+            with patch.object(
+                ProviderConfiguration,
+                "obfuscated_credentials",
+                side_effect=lambda credentials, credential_form_schemas: credentials,
+            ):
+                result = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert result["credentials"] == {"openai_api_key": "enc-secret"}
-    mock_logger.assert_called_once()
+    assert caplog.messages.count("Failed to decrypt model credential secret variable openai_api_key") == 1
 
 
 def test_validate_custom_model_credentials_handles_invalid_original_json() -> None:
@@ -2041,7 +2042,9 @@ def test_get_custom_provider_models_skips_schema_models_with_mismatched_type() -
     assert all(model.model != "embed-model" for model in models)
 
 
-def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none() -> None:
+def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     configuration = _build_provider_configuration()
     configuration.custom_configuration.models = [
         CustomModelConfiguration(model="error-custom", model_type=ModelType.LLM, credentials={"k": "v"}),
@@ -2063,7 +2066,7 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
             return None
         return _build_ai_model(model)
 
-    with patch("core.entities.provider_configuration.logger.warning") as mock_warning:
+    with caplog.at_level(logging.WARNING, logger="core.entities.provider_configuration"):
         with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_schema):
             models = configuration._get_custom_provider_models(
                 model_types=[ModelType.LLM],
@@ -2071,6 +2074,6 @@ def test_get_custom_provider_models_skips_custom_models_on_schema_error_or_none(
                 model_setting_map={},
             )
 
-    assert mock_warning.call_count == 1
+    assert "get custom model schema failed, boom" in caplog.messages
     assert any(model.model == "ok-custom" for model in models)
     assert all(model.model != "none-custom" for model in models)

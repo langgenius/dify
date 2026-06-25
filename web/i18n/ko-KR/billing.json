@@ -164,6 +164,8 @@
   "upgrade.uploadMultipleFiles.title": "업그레이드하여 대량 문서 업로드 기능 잠금 해제",
   "upgrade.uploadMultiplePages.description": "업로드 한도에 도달했습니다 — 현재 요금제에서는 한 번에 한 개의 문서만 선택하고 업로드할 수 있습니다.",
   "upgrade.uploadMultiplePages.title": "한 번에 여러 문서를 업로드하려면 업그레이드하세요",
+  "upgrade.workflowRestore.description": "현재 플랜에서는 워크플로 버전 복원을 사용할 수 없습니다.",
+  "upgrade.workflowRestore.title": "워크플로 버전을 복원하려면 업그레이드하세요",
   "upgradeBtn.encourage": "지금 업그레이드",
   "upgradeBtn.encourageShort": "업그레이드",
   "upgradeBtn.plain": "요금제 업그레이드",

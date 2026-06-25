@@ -1,8 +1,10 @@
-from typing import Annotated, Literal
+from datetime import datetime
+from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from fields.base import ResponseModel
+from libs.helper import to_timestamp
 from models.agent import (
     AgentConfigRevisionOperation,
     AgentIconType,
@@ -14,10 +16,8 @@ from models.agent import (
 )
 from models.agent_config_entities import (
     AgentCliToolConfig,
-    AgentFileRefConfig,
     AgentHumanContactConfig,
     AgentKnowledgeDatasetConfig,
-    AgentSkillRefConfig,
     AgentSoulConfig,
     DeclaredOutputConfig,
     DeclaredOutputType,
@@ -34,7 +34,13 @@ from services.entities.agent_entities import (
 class AgentConfigSnapshotSummaryResponse(ResponseModel):
     id: str
     agent_id: str | None = None
+    # User-facing version number among visible published versions.
     version: int
+    # Alias for the user-facing version number; kept explicit for clients that
+    # want to distinguish it from the immutable snapshot sequence.
+    display_version: int | None = None
+    # Immutable snapshot sequence number used internally for audit/history.
+    snapshot_version: int | None = None
     summary: str | None = None
     version_note: str | None = None
     created_by: str | None = None
@@ -70,6 +76,7 @@ class AgentRosterResponse(ResponseModel):
     workflow_node_id: str | None = None
     active_config_snapshot_id: str | None = None
     active_config_snapshot: AgentConfigSnapshotSummaryResponse | None = None
+    active_config_is_published: bool = False
     status: AgentStatus
     created_by: str | None = None
     updated_by: str | None = None
@@ -104,6 +111,163 @@ class AgentInviteOptionsResponse(ResponseModel):
     has_more: bool
 
 
+class AgentLogSourceResponse(ResponseModel):
+    id: str
+    type: Literal["webapp", "workflow"]
+    app_id: str
+    app_name: str
+    app_icon_type: str | None = None
+    app_icon: str | None = None
+    app_icon_background: str | None = None
+    workflow_id: str | None = None
+    workflow_version: str | None = None
+    node_id: str | None = None
+
+
+class AgentLogSourceGroupResponse(ResponseModel):
+    type: Literal["webapp", "workflow"]
+    label: str
+    sources: list[AgentLogSourceResponse] = Field(default_factory=list)
+
+
+class AgentLogSourceListResponse(ResponseModel):
+    data: list[AgentLogSourceResponse]
+    groups: list[AgentLogSourceGroupResponse]
+
+
+class AgentLogConversationItemResponse(ResponseModel):
+    id: str
+    conversation_id: str
+    title: str | None = None
+    end_user_id: str | None = None
+    message_count: int
+    user_rate: float | None = None
+    operation_rate: float | None = None
+    unread: bool
+    source: AgentLogSourceResponse | None = None
+    status: Literal["success", "failed", "paused"]
+    created_at: int | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AgentLogMessageItemResponse(ResponseModel):
+    id: str
+    message_id: str
+    conversation_id: str
+    query: str
+    answer: str
+    status: str
+    error: str | None = None
+    from_end_user_id: str | None = None
+    from_account_id: str | None = None
+    message_tokens: int
+    answer_tokens: int
+    total_tokens: int
+    total_price: str
+    currency: str
+    latency: float
+    created_at: int | None = None
+    updated_at: int | None = None
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AgentLogListResponse(ResponseModel):
+    data: list[AgentLogConversationItemResponse]
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+
+
+class AgentLogMessageListResponse(ResponseModel):
+    data: list[AgentLogMessageItemResponse]
+    page: int
+    limit: int
+    total: int
+    has_more: bool
+
+
+class AgentStatisticSummaryResponse(ResponseModel):
+    total_messages: int
+    total_conversations: int
+    total_end_users: int
+    total_tokens: int
+    total_price: str
+    currency: str
+    average_session_interactions: float
+    average_response_time: float
+    tokens_per_second: float
+    user_satisfaction_rate: float
+
+
+class AgentDailyMessageStatisticResponse(ResponseModel):
+    date: str
+    message_count: int
+
+
+class AgentDailyConversationStatisticResponse(ResponseModel):
+    date: str
+    conversation_count: int
+
+
+class AgentDailyEndUserStatisticResponse(ResponseModel):
+    date: str
+    terminal_count: int
+
+
+class AgentTokenUsageStatisticResponse(ResponseModel):
+    date: str
+    token_count: int
+    total_price: str
+    currency: str
+
+
+class AgentAverageSessionInteractionStatisticResponse(ResponseModel):
+    date: str
+    interactions: float
+
+
+class AgentAverageResponseTimeStatisticResponse(ResponseModel):
+    date: str
+    latency: float
+
+
+class AgentTokensPerSecondStatisticResponse(ResponseModel):
+    date: str
+    tps: float
+
+
+class AgentUserSatisfactionRateStatisticResponse(ResponseModel):
+    date: str
+    rate: float
+
+
+class AgentStatisticChartsResponse(ResponseModel):
+    daily_messages: list[AgentDailyMessageStatisticResponse] = Field(default_factory=list)
+    daily_conversations: list[AgentDailyConversationStatisticResponse] = Field(default_factory=list)
+    daily_end_users: list[AgentDailyEndUserStatisticResponse] = Field(default_factory=list)
+    token_usage: list[AgentTokenUsageStatisticResponse] = Field(default_factory=list)
+    average_session_interactions: list[AgentAverageSessionInteractionStatisticResponse] = Field(default_factory=list)
+    average_response_time: list[AgentAverageResponseTimeStatisticResponse] = Field(default_factory=list)
+    tokens_per_second: list[AgentTokensPerSecondStatisticResponse] = Field(default_factory=list)
+    user_satisfaction_rate: list[AgentUserSatisfactionRateStatisticResponse] = Field(default_factory=list)
+
+
+class AgentStatisticSummaryEnvelopeResponse(ResponseModel):
+    source: str
+    summary: AgentStatisticSummaryResponse
+    charts: AgentStatisticChartsResponse
+
+
 class AgentConfigRevisionResponse(ResponseModel):
     id: str
     previous_snapshot_id: str | None = None
@@ -123,6 +287,11 @@ class AgentConfigSnapshotDetailResponse(AgentConfigSnapshotSummaryResponse):
 
 class AgentConfigSnapshotListResponse(ResponseModel):
     data: list[AgentConfigSnapshotSummaryResponse]
+
+
+class AgentConfigSnapshotRestoreResponse(ResponseModel):
+    result: Literal["success"]
+    active_config_snapshot_id: str
 
 
 class AgentComposerAgentResponse(ResponseModel):
@@ -225,20 +394,6 @@ class AgentComposerDifyToolCandidateResponse(ResponseModel):
     tools_count: int | None = None
 
 
-class AgentComposerSkillCandidateResponse(AgentSkillRefConfig):
-    kind: Literal["skill"] = "skill"
-
-
-class AgentComposerFileCandidateResponse(AgentFileRefConfig):
-    kind: Literal["file"] = "file"
-
-
-AgentComposerSkillFileCandidateResponse = Annotated[
-    AgentComposerSkillCandidateResponse | AgentComposerFileCandidateResponse,
-    Field(discriminator="kind"),
-]
-
-
 class AgentComposerNodeJobCandidatesResponse(ResponseModel):
     previous_node_outputs: list[WorkflowPreviousNodeOutputRef] = Field(default_factory=list)
     declare_output_types: list[DeclaredOutputType] = Field(default_factory=list)
@@ -246,7 +401,6 @@ class AgentComposerNodeJobCandidatesResponse(ResponseModel):
 
 
 class AgentComposerSoulCandidatesResponse(ResponseModel):
-    skills_files: list[AgentComposerSkillFileCandidateResponse] = Field(default_factory=list)
     dify_tools: list[AgentComposerDifyToolCandidateResponse] = Field(default_factory=list)
     cli_tools: list[AgentCliToolConfig] = Field(default_factory=list)
     knowledge_datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
