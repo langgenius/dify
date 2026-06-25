@@ -7,6 +7,7 @@ const {
   mockDownloadBlob,
   mockExportMutateAsync,
   mockOnRefresh,
+  mockRenderTagSelector,
   mockIsCurrentWorkspaceEditor,
   mockWorkspacePermissionKeys,
   mockToastError,
@@ -19,6 +20,7 @@ const {
   mockIsCurrentWorkspaceEditor: vi.fn(() => true),
   mockWorkspacePermissionKeys: vi.fn(() => ['snippets.create_and_modify', 'snippets.management']),
   mockOnRefresh: vi.fn(),
+  mockRenderTagSelector: vi.fn(),
   mockToastError: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockUpdateMutate: vi.fn(),
@@ -79,21 +81,23 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 }))
 
 vi.mock('@/features/tag-management/components/tag-selector', () => ({
-  TagSelector: ({
-    onOpenTagManagement,
-    onTagsChange,
-    value,
-  }: {
+  TagSelector: (props: {
     onOpenTagManagement: () => void
     onTagsChange: () => void
     value: Array<{ name: string }>
-  }) => (
-    <div data-testid="snippet-tags">
-      <span>{value.map(tag => tag.name).join(', ')}</span>
-      <button type="button" onClick={onOpenTagManagement}>manage tags</button>
-      <button type="button" onClick={onTagsChange}>sync tags</button>
-    </div>
-  ),
+    canBindOrUnbindTags?: boolean
+  }) => {
+    mockRenderTagSelector(props)
+    const { onOpenTagManagement, onTagsChange, value } = props
+
+    return (
+      <div data-testid="snippet-tags">
+        <span>{value.map(tag => tag.name).join(', ')}</span>
+        <button type="button" onClick={onOpenTagManagement}>manage tags</button>
+        <button type="button" onClick={onTagsChange}>sync tags</button>
+      </div>
+    )
+  },
 }))
 
 const createSnippet = (overrides: Partial<SnippetListItem> = {}): SnippetListItem => ({
@@ -192,6 +196,30 @@ describe('SnippetCard', () => {
       expect(screen.queryByRole('menuitem', { name: 'snippet.menu.editInfo' })).not.toBeInTheDocument()
       expect(await screen.findByRole('menuitem', { name: 'snippet.menu.exportSnippet' })).toBeInTheDocument()
       expect(await screen.findByRole('menuitem', { name: 'snippet.menu.deleteSnippet' })).toBeInTheDocument()
+    })
+
+    it('should pass snippet management permission to tag binding capability', () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.management'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      expect(mockRenderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'snippet',
+        targetId: 'snippet-1',
+        canBindOrUnbindTags: true,
+      }))
+    })
+
+    it('should disable tag binding capability without snippet management permission', () => {
+      mockWorkspacePermissionKeys.mockReturnValue(['snippets.create_and_modify'])
+
+      render(<SnippetCard snippet={createSnippet()} />)
+
+      expect(mockRenderTagSelector).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'snippet',
+        targetId: 'snippet-1',
+        canBindOrUnbindTags: false,
+      }))
     })
 
     it('should forward tag selector actions without navigating the card link', () => {
