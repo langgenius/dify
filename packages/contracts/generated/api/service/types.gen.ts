@@ -19,7 +19,7 @@ export type AgentThought = {
 }
 
 export type Annotation = {
-  content?: string | null
+  answer?: string | null
   created_at?: number | null
   hit_count?: number | null
   id: string
@@ -31,10 +31,15 @@ export type AnnotationCreatePayload = {
   question: string
 }
 
-export type AnnotationJobStatusResponse = {
-  error_msg?: string | null
+export type AnnotationJobStatusDetailResponse = {
+  error_msg?: string
   job_id: string
-  job_status: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+}
+
+export type AnnotationJobStatusResponse = {
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
 }
 
 export type AnnotationList = {
@@ -1414,7 +1419,7 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1572,7 +1577,7 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -1768,7 +1773,7 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
@@ -1893,16 +1898,32 @@ export type PostChatMessagesData = {
 }
 
 export type PostChatMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
+
 export type PostChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -1938,16 +1959,33 @@ export type PostCompletionMessagesData = {
 }
 
 export type PostCompletionMessagesErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostCompletionMessagesError
+  = PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
+
 export type PostCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostCompletionMessagesResponse
@@ -3622,16 +3660,32 @@ export type PostWorkflowsRunData = {
 }
 
 export type PostWorkflowsRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
+
 export type PostWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -3692,16 +3746,33 @@ export type PostWorkflowsByWorkflowIdRunData = {
 }
 
 export type PostWorkflowsByWorkflowIdRunErrors = {
-  400: unknown
-  401: unknown
-  403: unknown
-  404: unknown
-  429: unknown
-  500: unknown
+  400: {
+    [key: string]: unknown
+  }
+  401: {
+    [key: string]: unknown
+  }
+  403: {
+    [key: string]: unknown
+  }
+  404: {
+    [key: string]: unknown
+  }
+  429: {
+    [key: string]: unknown
+  }
+  500: {
+    [key: string]: unknown
+  }
 }
 
+export type PostWorkflowsByWorkflowIdRunError
+  = PostWorkflowsByWorkflowIdRunErrors[keyof PostWorkflowsByWorkflowIdRunErrors]
+
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse
