@@ -1030,6 +1030,9 @@ class DatasetRetrieval:
     ):
         """
         Persist dataset query audit rows for retrieval requests.
+
+        Uses an independent session to avoid committing the request-scoped
+        db.session, which would break transaction isolation for the caller.
         """
         if not query and not attachment_ids:
             return
@@ -1059,9 +1062,9 @@ class DatasetRetrieval:
                     created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
-            if dataset_queries:
-                db.session.add_all(dataset_queries)
-        db.session.commit()
+        if dataset_queries:
+            with sessionmaker(bind=db.engine).begin() as session:
+                session.add_all(dataset_queries)
 
     def _retriever(
         self,
