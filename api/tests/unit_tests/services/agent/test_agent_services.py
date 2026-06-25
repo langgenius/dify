@@ -282,7 +282,7 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
     payload = ComposerSavePayload.model_validate(
         {
             "variant": ComposerVariant.AGENT_APP.value,
-            "save_strategy": ComposerSaveStrategy.SAVE_AS_NEW_VERSION.value,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
             "new_agent_name": "Analyst",
             "agent_soul": {"prompt": {"system_prompt": "x"}},
         }
@@ -297,6 +297,45 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
     assert fake_session.added[0].name == "Analyst"
     assert fake_session.added[0].active_config_snapshot_id is None
     assert fake_session.commits == 1
+
+
+def test_load_agent_app_composer_exposes_draft_save_only(monkeypatch: pytest.MonkeyPatch):
+    agent = SimpleNamespace(
+        id="agent-1",
+        active_config_snapshot_id="version-1",
+        updated_by="account-1",
+        created_by="account-1",
+    )
+    draft = SimpleNamespace(config_snapshot_dict={"prompt": {"system_prompt": "x"}})
+
+    monkeypatch.setattr(AgentComposerService, "_require_agent_app_agent", lambda **kwargs: agent)
+    monkeypatch.setattr(AgentComposerService, "_get_or_create_agent_draft", lambda **kwargs: draft)
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: None)
+    monkeypatch.setattr(AgentComposerService, "_serialize_agent", lambda _agent: {"id": _agent.id})
+    monkeypatch.setattr(AgentComposerService, "_serialize_version", lambda _version: None)
+    monkeypatch.setattr(AgentComposerService, "_serialize_draft", lambda _draft: {"id": "draft-1"})
+
+    result = AgentComposerService.load_agent_app_composer(tenant_id="tenant-1", app_id="app-1")
+
+    assert result["save_options"] == [ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value]
+
+
+def test_save_agent_app_composer_rejects_version_save_strategy():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP.value,
+            "save_strategy": ComposerSaveStrategy.SAVE_AS_NEW_VERSION.value,
+            "agent_soul": {"prompt": {"system_prompt": "x"}},
+        }
+    )
+
+    with pytest.raises(InvalidComposerConfigError, match="Use the publish endpoint"):
+        AgentComposerService.save_agent_app_composer(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            account_id="account-1",
+            payload=payload,
+        )
 
 
 def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.MonkeyPatch):
