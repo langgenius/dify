@@ -30,6 +30,7 @@ function toAgentFileNode(committedFile: AgentDriveFileCommit['file']): AgentFile
     id: committedFile.file_id,
     name: committedFile.name,
     icon: getFileIconType(committedFile.name, committedFile.mime_type),
+    fileId: committedFile.file_id,
     driveKey: committedFile.drive_key,
   }
 }

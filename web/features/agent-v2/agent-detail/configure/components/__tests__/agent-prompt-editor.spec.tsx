@@ -78,6 +78,7 @@ vi.mock('foxact/use-clipboard', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
+  useDocLink: () => 'https://docs.example.com',
 }))
 
 vi.mock('@/service/use-tools', () => ({

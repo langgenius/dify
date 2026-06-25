@@ -4,6 +4,8 @@ import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
+import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
 const composerPutMutationFn = vi.hoisted(() => vi.fn(async (variables: {
@@ -143,6 +145,89 @@ describe('useAgentConfigureSync', () => {
     }))
     expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toBeUndefined()
     expect(result.current.draftSavedAt).toBe(1710000105000)
+  })
+
+  it('should include Agent Soul files when autosaving file changes', async () => {
+    const { store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        files: [
+          {
+            id: 'files/uploaded.md',
+            name: 'uploaded.md',
+            icon: 'markdown',
+            fileId: 'drive-file-1',
+            driveKey: 'files/uploaded.md',
+          },
+        ],
+      })
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          files: {
+            skills: [],
+            files: [
+              {
+                id: 'files/uploaded.md',
+                file_id: 'drive-file-1',
+                name: 'uploaded.md',
+                drive_key: 'files/uploaded.md',
+              },
+            ],
+          },
+        }),
+      }),
+    }))
+  })
+
+  it('should preserve uploaded files when prompt is updated immediately after upload', async () => {
+    const { store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerFilesAtom, [
+        {
+          id: 'files/uploaded.md',
+          name: 'uploaded.md',
+          icon: 'markdown',
+          fileId: 'drive-file-1',
+          driveKey: 'files/uploaded.md',
+        },
+      ])
+      store.set(agentComposerPromptAtom, 'Use [§file:files%2Fuploaded.md:uploaded.md§]')
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Use [§file:files%2Fuploaded.md:uploaded.md§]',
+          }),
+          files: {
+            skills: [],
+            files: [
+              {
+                id: 'files/uploaded.md',
+                file_id: 'drive-file-1',
+                name: 'uploaded.md',
+                drive_key: 'files/uploaded.md',
+              },
+            ],
+          },
+        }),
+      }),
+    }))
   })
 
   it('should skip autosave when knowledge retrieval validation fails', async () => {

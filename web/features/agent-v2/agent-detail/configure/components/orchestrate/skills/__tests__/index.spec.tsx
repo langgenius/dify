@@ -128,6 +128,22 @@ vi.mock('@/service/client', () => ({
 
 const agentSkillsDraft = {
   ...defaultAgentSoulConfigFormState,
+  skills: [
+    {
+      archiveKey: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+      description: 'Extracts tender requirements and scoring criteria.',
+      id: 'tender-analyzer/SKILL.md',
+      name: 'Tender Analyzer',
+      path: 'tender-analyzer',
+      skillMdKey: 'tender-analyzer/SKILL.md',
+    },
+    {
+      id: 'meeting-brief/SKILL.md',
+      name: 'Meeting Brief',
+      path: 'meeting-brief',
+      skillMdKey: 'meeting-brief/SKILL.md',
+    },
+  ],
 } satisfies typeof defaultAgentSoulConfigFormState
 
 function renderAgentSkills() {
@@ -493,19 +509,10 @@ describe('AgentSkills', () => {
     expect(within(dialog).getByText('agentV2.agentDetail.configure.skills.detail.fileCount:{"count":2}')).toBeInTheDocument()
   })
 
-  it('should use workflow node drive routes for skill list and preview in inline workflow mode', async () => {
+  it('should use workflow node drive routes for skill preview in inline workflow mode', async () => {
     renderWorkflowAgentSkills()
 
-    expect(mocks.driveSkillsQueryOptions).toHaveBeenCalledWith({
-      input: {
-        params: {
-          app_id: 'app-1',
-        },
-        query: {
-          node_id: 'node-1',
-        },
-      },
-    })
+    expect(mocks.driveSkillsQueryOptions).not.toHaveBeenCalled()
 
     fireEvent.click(screen.getByRole('button', {
       name: 'Tender Analyzer',

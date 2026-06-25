@@ -1,11 +1,12 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulConfigWithFiles } from '../conversions'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'
 
 describe('agent composer store conversions', () => {
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
-    const baseConfig: AgentSoulConfig = {
+    const baseConfig: AgentSoulConfigWithFiles = {
       app_features: {
         opening_statement: 'Hello',
         suggested_questions: ['What changed?'],
@@ -49,6 +50,26 @@ describe('agent composer store conversions', () => {
               score_threshold: 0.72,
               reranking_enable: false,
             },
+          },
+        ],
+      },
+      files: {
+        skills: [
+          {
+            id: 'tender-analyzer',
+            name: 'Tender Analyzer',
+            description: 'Parses RFPs.',
+            path: 'tender-analyzer',
+            skill_md_key: 'tender-analyzer/SKILL.md',
+            full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+          },
+        ],
+        files: [
+          {
+            id: 'files/sample.pdf',
+            file_id: 'drive-file-1',
+            name: 'sample.pdf',
+            drive_key: 'files/sample.pdf',
           },
         ],
       },
@@ -129,6 +150,20 @@ describe('agent composer store conversions', () => {
           value: 'credential-1',
         }),
       ],
+      skills: [
+        expect.objectContaining({
+          name: 'Tender Analyzer',
+          skillMdKey: 'tender-analyzer/SKILL.md',
+          archiveKey: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+        }),
+      ],
+      files: [
+        expect.objectContaining({
+          name: 'sample.pdf',
+          fileId: 'drive-file-1',
+          driveKey: 'files/sample.pdf',
+        }),
+      ],
     })
     expect(formState.tools).toEqual(expect.arrayContaining([
       expect.objectContaining({
@@ -152,6 +187,26 @@ describe('agent composer store conversions', () => {
     })
 
     expect(publishConfig).not.toHaveProperty('skills_files')
+    expect(publishConfig.files).toEqual({
+      skills: [
+        {
+          id: 'tender-analyzer',
+          name: 'Tender Analyzer',
+          description: 'Parses RFPs.',
+          path: 'tender-analyzer',
+          skill_md_key: 'tender-analyzer/SKILL.md',
+          full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
+        },
+      ],
+      files: [
+        {
+          id: 'files/sample.pdf',
+          file_id: 'drive-file-1',
+          name: 'sample.pdf',
+          drive_key: 'files/sample.pdf',
+        },
+      ],
+    })
     expect(publishConfig.tools?.dify_tools).toEqual([
       expect.objectContaining({
         provider: 'DuckDuckGo',

@@ -103,7 +103,10 @@ export function AgentTaskField({
         <FieldLabel className="min-w-0 py-1 system-sm-semibold-uppercase! text-text-secondary">
           {t(`${i18nPrefix}.task.label`, { ns: 'workflow' })}
         </FieldLabel>
-        <Infotip aria-label={t(`${i18nPrefix}.task.tooltip`, { ns: 'workflow' })}>
+        <Infotip
+          aria-label={t(`${i18nPrefix}.task.tooltip`, { ns: 'workflow' })}
+          popupClassName="whitespace-pre-line"
+        >
           {t(`${i18nPrefix}.task.tooltip`, { ns: 'workflow' })}
         </Infotip>
       </div>

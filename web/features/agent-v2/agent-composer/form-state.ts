@@ -36,6 +36,7 @@ export type AgentFileNode = {
   id: string
   name: string
   icon: FileTreeIconType
+  fileId?: string
   driveKey?: string
   children?: AgentFileNode[]
 }
@@ -99,6 +100,8 @@ export type AgentSoulConfigFormState = {
   prompt: string
   model?: DefaultModel
   appFeatures?: AgentSoulAppFeaturesConfig
+  skills: AgentSkill[]
+  files: AgentFileNode[]
   tools: AgentTool[]
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   envVariables: EnvVariable[]
@@ -107,6 +110,8 @@ export type AgentSoulConfigFormState = {
 
 export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
   prompt: '',
+  skills: [],
+  files: [],
   tools: [],
   knowledgeRetrievals: [],
   envVariables: [],
