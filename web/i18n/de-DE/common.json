@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Vom Team entfernen",
   "members.removeFromTeamConfirmDescription": "Bestätige, dass dieses Mitglied entfernt werden soll. Diese Aktion kann nicht rückgängig gemacht werden.",
   "members.removeFromTeamConfirmTitle": "{{memberName}} aus dem Team entfernen",
-  "members.role": "ROLLEN",
+  "members.role": "ROLLE",
   "members.roles": "ROLLEN",
   "members.selectRole": "Wählen Sie eine Rolle aus",
   "members.sendInvite": "Einladung senden",

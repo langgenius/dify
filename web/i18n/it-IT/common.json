@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Rimuovi dal team",
   "members.removeFromTeamConfirmDescription": "Conferma la rimozione di questo membro. Questa azione non può essere annullata.",
   "members.removeFromTeamConfirmTitle": "Rimuovi {{memberName}} dal team",
-  "members.role": "RUOLI",
+  "members.role": "RUOLO",
   "members.roles": "RUOLI",
   "members.selectRole": "Seleziona un ruolo",
   "members.sendInvite": "Invia Invito",
