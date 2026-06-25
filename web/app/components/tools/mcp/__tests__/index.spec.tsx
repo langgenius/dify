@@ -110,13 +110,16 @@ describe('MCPList', () => {
       expect(screen.getByTestId('create-card')).toBeInTheDocument()
     })
 
-    it('should not render or query providers when user lacks mcp.manage', () => {
+    it('should render providers read-only when user lacks mcp.manage', () => {
       mockWorkspacePermissionKeys = []
+      mockProviders = [
+        { id: '1', name: 'Provider 1', type: 'mcp' },
+      ]
 
-      const { container } = render(<MCPList searchText="" />)
+      render(<MCPList searchText="" />)
 
-      expect(container.firstElementChild).toBeNull()
-      expect(mockUseAllToolProviders).toHaveBeenCalledWith(false)
+      expect(mockUseAllToolProviders).toHaveBeenCalledWith(undefined)
+      expect(screen.getByTestId('provider-card-1')).toBeInTheDocument()
       expect(screen.queryByTestId('create-card')).not.toBeInTheDocument()
     })
 

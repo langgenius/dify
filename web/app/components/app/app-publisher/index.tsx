@@ -39,7 +39,7 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
-import { publishToCreatorsPlatform } from '@/service/apps'
+import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
@@ -130,6 +130,7 @@ export function AppPublisher({
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
+  const setAppDetail = useAppStore(state => state.setAppDetail)
   const canManageTools = useCanManageTools()
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -242,7 +243,9 @@ export function AppPublisher({
     if (!appDetail)
       return
     try {
-      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appDetail.id] })
+      const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
+      setAppDetail({ ...res })
     }
     finally {
       setShowAppAccessControl(false)

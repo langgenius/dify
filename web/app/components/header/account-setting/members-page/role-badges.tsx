@@ -29,9 +29,6 @@ type RoleBadgesProps = {
 }
 
 const RoleBadges = ({ roleNames, max = 2, className }: RoleBadgesProps) => {
-  if (!roleNames.length)
-    return null
-
   const visible = roleNames.slice(0, max)
   const overflow = roleNames.slice(max)
 
