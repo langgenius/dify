@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "บูรณาการ",
   "settings.members": "สมาชิก",
+  "settings.permissionSet": "ชุดสิทธิ์",
+  "settings.permissionSetDescription": "กำหนดค่าชุดสิทธิ์สำหรับใช้กับแอปและฐานความรู้ ชุดสิทธิ์คือชุดสิทธิ์การดำเนินการกับทรัพยากรที่นำกลับมาใช้ซ้ำได้ และสามารถกำหนดให้สมาชิกสำหรับทรัพยากรเฉพาะได้",
   "settings.preferences": "Preferences",
   "settings.provider": "ผู้ให้บริการโมเดล",
   "settings.resourceAccess": "การเข้าถึงทรัพยากร",

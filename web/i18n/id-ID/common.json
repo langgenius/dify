@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integrasi",
   "settings.members": "Anggota",
+  "settings.permissionSet": "Kumpulan Izin",
+  "settings.permissionSetDescription": "Konfigurasikan kumpulan izin untuk digunakan dengan aplikasi dan basis pengetahuan. Kumpulan izin adalah koleksi izin operasi sumber daya yang dapat digunakan kembali dan dapat ditetapkan kepada anggota untuk sumber daya tertentu.",
   "settings.preferences": "Preferences",
   "settings.provider": "Penyedia Model",
   "settings.resourceAccess": "Akses Sumber Daya",

@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integrations",
   "settings.members": "Members",
+  "settings.permissionSet": "Set met rechten",
+  "settings.permissionSetDescription": "Configureer sets met rechten voor gebruik met apps en kennisbanken. Een set met rechten is een herbruikbare verzameling rechten voor resourcebewerkingen die aan leden kan worden toegewezen voor specifieke resources.",
   "settings.preferences": "Preferences",
   "settings.provider": "Model Provider",
   "settings.resourceAccess": "Resourcetoegang",

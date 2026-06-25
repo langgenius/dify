@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "التكاملات",
   "settings.members": "الأعضاء",
+  "settings.permissionSet": "مجموعة الأذونات",
+  "settings.permissionSetDescription": "قم بتكوين مجموعات الأذونات لاستخدامها مع التطبيقات وقواعد المعرفة. مجموعة الأذونات هي مجموعة قابلة لإعادة الاستخدام من أذونات عمليات الموارد يمكن تعيينها للأعضاء لموارد محددة.",
   "settings.preferences": "Preferences",
   "settings.provider": "مزود النموذج",
   "settings.resourceAccess": "الوصول إلى الموارد",

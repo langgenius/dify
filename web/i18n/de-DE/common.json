@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integrationen",
   "settings.members": "Mitglieder",
+  "settings.permissionSet": "Berechtigungssatz",
+  "settings.permissionSetDescription": "Konfigurieren Sie Berechtigungssätze zur Verwendung mit Apps und Wissensdatenbanken. Ein Berechtigungssatz ist eine wiederverwendbare Sammlung von Berechtigungen für Ressourcenoperationen, die Mitgliedern für bestimmte Ressourcen zugewiesen werden kann.",
   "settings.preferences": "Preferences",
   "settings.provider": "Modellanbieter",
   "settings.resourceAccess": "Ressourcenzugriff",

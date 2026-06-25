@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integracje",
   "settings.members": "Członkowie",
+  "settings.permissionSet": "Zestaw uprawnień",
+  "settings.permissionSetDescription": "Skonfiguruj zestawy uprawnień do użycia z aplikacjami i bazami wiedzy. Zestaw uprawnień to wielokrotnego użytku zbiór uprawnień do operacji na zasobach, który można przypisywać członkom dla konkretnych zasobów.",
   "settings.preferences": "Preferences",
   "settings.provider": "Dostawca modelu",
   "settings.resourceAccess": "Dostęp do zasobów",

@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integrations",
   "settings.members": "Members",
+  "settings.permissionSet": "Permission Set",
+  "settings.permissionSetDescription": "Configure permission sets for use with applications and knowledge bases. A permission set is a reusable collection of resource operation permissions that can be assigned to members for specific resources.",
   "settings.preferences": "Preferences",
   "settings.provider": "Model Provider",
   "settings.resourceAccess": "Resource Access",

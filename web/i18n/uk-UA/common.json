@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Інтеграції",
   "settings.members": "Учасники",
+  "settings.permissionSet": "Набір дозволів",
+  "settings.permissionSetDescription": "Налаштуйте набори дозволів для використання із застосунками та базами знань. Набір дозволів — це багаторазова колекція дозволів на операції з ресурсами, яку можна призначати учасникам для конкретних ресурсів.",
   "settings.preferences": "Preferences",
   "settings.provider": "Постачальник моделі",
   "settings.resourceAccess": "Доступ до ресурсів",

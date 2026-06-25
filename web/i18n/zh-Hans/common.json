@@ -520,6 +520,8 @@
   "settings.extension": "扩展",
   "settings.integrations": "集成",
   "settings.members": "成员",
+  "settings.permissionSet": "权限集",
+  "settings.permissionSetDescription": "配置可供应用和知识库使用的权限集。权限集是一组可复用的资源操作权限，可针对特定资源分配给成员。",
   "settings.preferences": "偏好设置",
   "settings.provider": "模型供应商",
   "settings.resourceAccess": "访问权限",

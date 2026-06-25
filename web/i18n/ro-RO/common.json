@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integrări",
   "settings.members": "Membri",
+  "settings.permissionSet": "Set de permisiuni",
+  "settings.permissionSetDescription": "Configurați seturi de permisiuni pentru utilizare cu aplicații și baze de cunoștințe. Un set de permisiuni este o colecție reutilizabilă de permisiuni pentru operațiuni asupra resurselor, care poate fi atribuită membrilor pentru resurse specifice.",
   "settings.preferences": "Preferences",
   "settings.provider": "Furnizor de modele",
   "settings.resourceAccess": "Acces la resurse",

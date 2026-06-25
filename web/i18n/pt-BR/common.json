@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integrações",
   "settings.members": "Membros",
+  "settings.permissionSet": "Conjunto de permissões",
+  "settings.permissionSetDescription": "Configure conjuntos de permissões para uso com apps e bases de conhecimento. Um conjunto de permissões é uma coleção reutilizável de permissões de operações de recursos que pode ser atribuída a membros para recursos específicos.",
   "settings.preferences": "Preferences",
   "settings.provider": "Fornecedor de modelo",
   "settings.resourceAccess": "Acesso a recursos",

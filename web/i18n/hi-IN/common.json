@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "एकीकरण",
   "settings.members": "सदस्य",
+  "settings.permissionSet": "अनुमति सेट",
+  "settings.permissionSetDescription": "ऐप्लिकेशन और नॉलेज बेस के साथ उपयोग के लिए अनुमति सेट कॉन्फ़िगर करें। अनुमति सेट संसाधन संचालन अनुमतियों का पुन: उपयोग योग्य संग्रह है, जिसे विशिष्ट संसाधनों के लिए सदस्यों को असाइन किया जा सकता है।",
   "settings.preferences": "Preferences",
   "settings.provider": "मॉडल प्रदाता",
   "settings.resourceAccess": "संसाधन पहुँच",

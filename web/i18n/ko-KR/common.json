@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "통합",
   "settings.members": "멤버",
+  "settings.permissionSet": "권한 세트",
+  "settings.permissionSetDescription": "앱과 지식 베이스에서 사용할 권한 세트를 구성합니다. 권한 세트는 특정 리소스에 대해 멤버에게 할당할 수 있는 재사용 가능한 리소스 작업 권한 모음입니다.",
   "settings.preferences": "Preferences",
   "settings.provider": "모델 제공자",
   "settings.resourceAccess": "리소스 액세스",

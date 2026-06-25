@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Интеграции",
   "settings.members": "Участники",
+  "settings.permissionSet": "Набор разрешений",
+  "settings.permissionSetDescription": "Настройте наборы разрешений для использования с приложениями и базами знаний. Набор разрешений — это многократно используемая коллекция разрешений на операции с ресурсами, которую можно назначать участникам для конкретных ресурсов.",
   "settings.preferences": "Preferences",
   "settings.provider": "Поставщик модели",
   "settings.resourceAccess": "Доступ к ресурсам",

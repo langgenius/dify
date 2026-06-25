@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Intégrations",
   "settings.members": "Membres",
+  "settings.permissionSet": "Ensemble d’autorisations",
+  "settings.permissionSetDescription": "Configurez des ensembles d’autorisations à utiliser avec les apps et les bases de connaissances. Un ensemble d’autorisations est une collection réutilisable d’autorisations d’opérations sur les ressources pouvant être attribuée aux membres pour des ressources spécifiques.",
   "settings.preferences": "Preferences",
   "settings.provider": "Fournisseur de Modèle",
   "settings.resourceAccess": "Accès aux ressources",

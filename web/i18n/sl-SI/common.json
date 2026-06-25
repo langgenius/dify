@@ -520,6 +520,8 @@
   "settings.extension": "Extension",
   "settings.integrations": "Integracije",
   "settings.members": "Člani",
+  "settings.permissionSet": "Nabor dovoljenj",
+  "settings.permissionSetDescription": "Konfigurirajte nabore dovoljenj za uporabo z aplikacijami in bazami znanja. Nabor dovoljenj je ponovno uporabna zbirka dovoljenj za operacije nad viri, ki jo je mogoče dodeliti članom za določene vire.",
   "settings.preferences": "Preferences",
   "settings.provider": "Ponudnik modelov",
   "settings.resourceAccess": "Dostop do virov",
