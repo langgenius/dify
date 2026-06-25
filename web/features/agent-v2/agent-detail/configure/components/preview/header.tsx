@@ -55,7 +55,7 @@ export function AgentPreviewHeader({
   const modeTip = `${buildLabel}. ${buildTipBody} ${previewLabel}. ${previewTipBody} ${learnMoreLabel}`
 
   return (
-    <div className="relative z-1 flex h-12 shrink-0 items-center gap-3 py-2 pr-3 pl-4">
+    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2">
       <div className="flex min-w-0 flex-1 items-center gap-2">
         <SegmentedControl<AgentConfigureRightPanelMode>
           value={[mode]}
@@ -107,38 +107,40 @@ export function AgentPreviewHeader({
           </div>
         </Infotip>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={onRefresh}
-          disabled={refreshDisabled}
-          className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label={t('agentDetail.configure.preview.restart')}
-        >
-          <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
-        </button>
-        {mode === 'build' && (
+      <div className="flex shrink-0 items-center">
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onOpenVersions}
-            className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            aria-label={t('agentDetail.configure.publishBar.versionHistory')}
+            onClick={onRefresh}
+            disabled={refreshDisabled}
+            className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label={t('agentDetail.configure.preview.restart')}
           >
-            <span aria-hidden className="i-ri-folder-3-line size-4" />
+            <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
           </button>
-        )}
-        <SegmentedControlDivider className="mx-1" />
+          {mode === 'build' && (
+            <button
+              type="button"
+              onClick={onOpenVersions}
+              className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+              aria-label={t('agentDetail.configure.publishBar.versionHistory')}
+            >
+              <span aria-hidden className="i-ri-folder-3-line size-4" />
+            </button>
+          )}
+        </div>
+        <SegmentedControlDivider className="mx-3" />
         <button
           type="button"
           aria-pressed={isChatFeaturesOpen}
           onClick={onToggleChatFeatures}
           className={cn(
-            'flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            'flex h-8 items-center justify-center gap-1 rounded-lg px-2 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
             isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
           )}
           aria-label={t('agentDetail.configure.preview.chatFeatures')}
         >
-          <span aria-hidden className="i-ri-apps-2-add-line size-4" />
+          <span aria-hidden className="i-ri-chat-settings-line size-4" />
           <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
         </button>
       </div>

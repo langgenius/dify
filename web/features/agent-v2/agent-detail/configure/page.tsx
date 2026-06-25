@@ -9,7 +9,7 @@ import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provid
 import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
 import { consoleQuery } from '@/service/client'
 import { AgentOrchestratePanel } from './components/orchestrate'
-import { AgentBuildHeaderBackground } from './components/preview/build-background'
+import { AgentBuildPanelBackground } from './components/preview/build-background'
 import { AgentBuildChat } from './components/preview/build-chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
 import { AgentPreviewHeader } from './components/preview/header'
@@ -177,7 +177,7 @@ function AgentConfigurePageLoadedContent({
     <section
       aria-label={t('agentDetail.sections.configure')}
       aria-busy={agentQuery.isFetching}
-      className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden p-1"
+      className="flex h-full min-w-0 flex-1 gap-1 overflow-hidden bg-background-body p-1"
     >
       <AgentOrchestratePanel
         agentId={agentId}
@@ -199,8 +199,8 @@ function AgentConfigurePageLoadedContent({
 
       {/* Preview area */}
       <div className="flex min-w-105 flex-1 gap-1 overflow-hidden">
-        <div className="relative flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg bg-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
-          <AgentBuildHeaderBackground visible={rightPanelChatMode === 'build'} />
+        <div className="relative isolate flex min-w-105 flex-1 flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-linear-to-b from-background-gradient-bg-fill-chat-bg-1 to-background-gradient-bg-fill-chat-bg-2 shadow-xl shadow-shadow-shadow-5">
+          <AgentBuildPanelBackground visible={rightPanelChatMode === 'build'} />
           <AgentPreviewHeader
             mode={rightPanelChatMode}
             previewEnabled={false}
