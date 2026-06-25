@@ -16,7 +16,7 @@ class HitTestingDocument(ResponseModel):
     data_source_type: str
     name: str
     doc_type: str | None
-    doc_metadata: Any | None
+    doc_metadata: Any
 
     @field_validator("data_source_type", "doc_type", mode="before")
     @classmethod
@@ -80,7 +80,7 @@ class HitTestingRecord(ResponseModel):
     segment: HitTestingSegment
     child_chunks: list[HitTestingChildChunk]
     score: float | None
-    tsne_position: Any | None
+    tsne_position: Any
     files: list[HitTestingFile]
     summary: str | None
 

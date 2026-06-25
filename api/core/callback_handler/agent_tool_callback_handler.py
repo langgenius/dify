@@ -59,7 +59,7 @@ class DifyAgentCallbackHandler(BaseModel):
         tool_inputs: Mapping[str, Any],
         tool_outputs: Iterable[ToolInvokeMessage] | str,
         message_id: str | None = None,
-        timer: Any | None = None,
+        timer: Any = None,
         trace_manager: TraceQueueManager | None = None,
     ):
         """If not the final action, print out observation."""

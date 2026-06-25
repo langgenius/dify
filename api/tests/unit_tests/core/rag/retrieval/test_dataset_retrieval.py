@@ -2857,7 +2857,7 @@ class TestProcessMetadataFilterFunc:
     Method Signature:
     ==================
     def process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
+        self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list
     ) -> list:
 
     The method builds SQLAlchemy filter expressions by:

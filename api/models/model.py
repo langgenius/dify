@@ -698,7 +698,7 @@ class AppModelConfig(TypeBase):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     model_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
-    configs: Mapped[Any | None] = mapped_column(sa.JSON, nullable=True, default=None)
+    configs: Mapped[Any] = mapped_column(sa.JSON, nullable=True, default=None)
     created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
@@ -2059,7 +2059,7 @@ class OperationLog(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     action: Mapped[str] = mapped_column(String(255), nullable=False)
-    content: Mapped[Any | None] = mapped_column(sa.JSON, nullable=True)
+    content: Mapped[Any] = mapped_column(sa.JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )

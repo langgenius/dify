@@ -92,7 +92,7 @@ class FileLifecycleManager:
         self._deleted_prefix = ".deleted/"
 
         # Get permission manager (if exists)
-        self._permission_manager: Any | None = getattr(storage, "_permission_manager", None)
+        self._permission_manager: Any = getattr(storage, "_permission_manager", None)
 
     def save_with_lifecycle(self, filename: str, data: bytes, tags: dict[str, str] | None = None) -> FileMetadata:
         """Save file and manage lifecycle

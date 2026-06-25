@@ -118,7 +118,7 @@ class ApiTokenCache:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def get(token: str, scope: str | None) -> Any | None:
+    def get(token: str, scope: str | None) -> Any:
         """Get API token from cache."""
         cache_key = ApiTokenCache._make_cache_key(token, scope)
         cached_data = redis_client.get(cache_key)
@@ -157,7 +157,7 @@ class ApiTokenCache:
 
     @staticmethod
     @redis_fallback(default_return=False)
-    def set(token: str, scope: str | None, api_token: Any | None, ttl: int = CACHE_TTL_SECONDS) -> bool:
+    def set(token: str, scope: str | None, api_token: Any, ttl: int = CACHE_TTL_SECONDS) -> bool:
         """Set API token in cache."""
         cache_key = ApiTokenCache._make_cache_key(token, scope)
 

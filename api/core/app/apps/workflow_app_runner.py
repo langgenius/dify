@@ -171,8 +171,8 @@ class WorkflowBasedAppRunner:
     def _prepare_single_node_execution(
         self,
         workflow: Workflow,
-        single_iteration_run: Any | None = None,
-        single_loop_run: Any | None = None,
+        single_iteration_run: Any = None,
+        single_loop_run: Any = None,
         *,
         user_id: str,
         trace_session_id: str | None = None,

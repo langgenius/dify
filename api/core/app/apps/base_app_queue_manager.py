@@ -154,7 +154,7 @@ class AppQueueManager(ABC):
         Set task stop flag
         :return:
         """
-        result: Any | None = redis_client.get(cls._generate_task_belong_cache_key(task_id))
+        result: Any = redis_client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
             return
 

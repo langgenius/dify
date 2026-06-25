@@ -1498,7 +1498,7 @@ class DatasetRetrieval:
 
     @classmethod
     def process_metadata_filter_func(
-        cls, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
+        cls, sequence: int, condition: str, metadata_name: str, value: Any, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
             return filters

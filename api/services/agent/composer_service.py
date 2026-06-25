@@ -1024,7 +1024,7 @@ class AgentComposerService:
         name: str | None = None,
         description: str = "",
         role: str = "",
-        icon_type: Any | None = None,
+        icon_type: Any = None,
         icon: str | None = None,
         icon_background: str | None = None,
     ) -> Agent:

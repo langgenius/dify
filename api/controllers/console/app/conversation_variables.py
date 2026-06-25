@@ -56,7 +56,7 @@ class ConversationVariableResponse(ResponseModel):
 
     @field_validator("value", mode="before")
     @classmethod
-    def _normalize_value(cls, value: Any | None) -> str | None:
+    def _normalize_value(cls, value: Any) -> str | None:
         if value is None:
             return None
         if isinstance(value, str):
