@@ -39,7 +39,6 @@ export function SaveInlineAgentToRosterDialog({
   const [description, setDescription] = useState(initialAgent?.description ?? '')
   const [role, setRole] = useState(initialAgent?.role ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
-  const [isIconChanged, setIsIconChanged] = useState(false)
   const [agentIcon, setAgentIcon] = useState<AgentIconSelection>(() => initialAgent
     ? createAgentIconSelection(initialAgent)
     : defaultAgentIcon)
@@ -52,7 +51,6 @@ export function SaveInlineAgentToRosterDialog({
       setName(initialAgent?.name ?? '')
       setDescription(initialAgent?.description ?? '')
       setRole(initialAgent?.role ?? '')
-      setIsIconChanged(false)
       setAgentIcon(initialAgent
         ? createAgentIconSelection(initialAgent)
         : defaultAgentIcon)
@@ -84,13 +82,9 @@ export function SaveInlineAgentToRosterDialog({
         new_agent_name: trimmedName,
         description: formValues.description?.trim() ?? '',
         role: trimmedRole,
-        ...(isIconChanged
-          ? {
-              icon_type: agentIcon.type,
-              icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
-              icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
-            }
-          : {}),
+        icon_type: agentIcon.type,
+        icon: agentIcon.type === 'image' ? agentIcon.fileId : agentIcon.icon,
+        icon_background: agentIcon.type === 'emoji' ? agentIcon.background : undefined,
       },
     }, {
       onSuccess: (composerState) => {
@@ -158,7 +152,6 @@ export function SaveInlineAgentToRosterDialog({
         onOpenChange={setIconPickerOpen}
         onSelect={(icon) => {
           setAgentIcon(icon)
-          setIsIconChanged(true)
         }}
       />
     </>

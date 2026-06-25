@@ -85,7 +85,7 @@ const inlineAgent: AgentComposerAgentResponse = {
   status: 'active',
 }
 
-const renderDialog = () => {
+const renderDialog = (agent: AgentComposerAgentResponse = inlineAgent) => {
   const onOpenChange = vi.fn()
   const onSaved = vi.fn()
 
@@ -93,7 +93,7 @@ const renderDialog = () => {
     <SaveInlineAgentToRosterDialog
       appId="app-1"
       formKey={1}
-      initialAgent={inlineAgent}
+      initialAgent={agent}
       nodeId="node-1"
       open
       onOpenChange={onOpenChange}
@@ -132,12 +132,47 @@ describe('SaveInlineAgentToRosterDialog', () => {
         new_agent_name: 'Inline Tender Agent',
         description: 'Drafts tender clarifications.',
         role: 'Tender Analyst',
+        icon_type: 'emoji',
+        icon: '🤖',
+        icon_background: '#F5F3FF',
       },
     }, expect.objectContaining({
       onSuccess: expect.any(Function),
     }))
     const mutationOptions = mutationMock.mutate.mock.calls[0]?.[1]
     expect(mutationOptions).not.toHaveProperty('onError')
+  })
+
+  it('submits the visible default icon when the inline agent has no icon metadata', async () => {
+    const user = userEvent.setup()
+    renderDialog({
+      ...inlineAgent,
+      icon: null,
+      icon_background: null,
+      icon_type: null,
+    })
+
+    const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+
+    expect(mutationMock.mutate).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
+      },
+      body: {
+        variant: 'workflow',
+        save_strategy: 'save_to_roster',
+        new_agent_name: 'Inline Tender Agent',
+        description: 'Drafts tender clarifications.',
+        role: 'Tender Analyst',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F5F3FF',
+      },
+    }, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
   })
 
   it('initializes the icon picker from the inline agent and submits changed icon fields', async () => {
