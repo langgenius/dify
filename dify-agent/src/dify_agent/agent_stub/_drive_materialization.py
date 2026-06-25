@@ -13,7 +13,7 @@ import stat
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
-from typing import Collection, Final, Mapping
+from typing import Final
 from uuid import uuid4
 from zipfile import BadZipFile, ZipFile, ZipInfo
 
@@ -42,14 +42,14 @@ def materialize_drive_downloads(
     *,
     base_path: Path,
     downloads: list[DriveDownloadPayload],
-    archive_skip_entry_names_by_dir: Mapping[str, Collection[str]] | None = None,
 ) -> list[Path]:
     """Write downloaded drive payloads under one local base and extract skills.
 
-    The helper preserves caller-provided order in the returned list of written
-    paths. Skill archives are extracted only after every payload has been
+    The helper preserves caller-provided order in the returned list of paths.
+    Skill archives are extracted and deleted only after every payload has been
     written successfully so partial extraction cannot outlive a later failure in
-    the same batch.
+    the same batch. The returned path for an archive is the path where it was
+    downloaded before successful extraction.
     """
 
     resolved_base_path = base_path.expanduser().resolve()
@@ -60,7 +60,6 @@ def materialize_drive_downloads(
 
     written_paths: list[Path] = []
     archive_paths: list[Path] = []
-    skip_entry_names_by_dir = archive_skip_entry_names_by_dir or {}
     for download in downloads:
         if download.size is not None and len(download.payload) != download.size:
             raise DriveMaterializationTransferError(f"downloaded drive file size mismatch for {download.key}")
@@ -77,11 +76,8 @@ def materialize_drive_downloads(
             archive_paths.append(destination)
 
     for archive_path in sorted(archive_paths):
-        archive_skill_dir = archive_path.parent.relative_to(resolved_base_path).as_posix()
-        extract_skill_archive(
-            archive_path,
-            skip_entry_names=frozenset(skip_entry_names_by_dir.get(archive_skill_dir, ())),
-        )
+        extract_skill_archive(archive_path)
+        _delete_extracted_archive(archive_path)
     return written_paths
 
 
@@ -96,18 +92,15 @@ def resolve_drive_destination(base_path: Path, drive_key: str) -> Path:
     return destination
 
 
-def extract_skill_archive(archive_path: Path, *, skip_entry_names: Collection[str] = ()) -> None:
+def extract_skill_archive(archive_path: Path) -> None:
     """Safely extract one downloaded skill archive into its containing directory."""
 
     target_dir = archive_path.parent.resolve()
-    normalized_skip_entry_names = {entry_name.replace("\\", "/").rstrip("/") for entry_name in skip_entry_names}
     try:
         with TemporaryDirectory(dir=target_dir, prefix=".dify-skill-extract-") as staging_dir_name:
             staging_dir = Path(staging_dir_name).resolve()
             with ZipFile(archive_path) as archive:
                 for zip_info in archive.infolist():
-                    if zip_info.filename.replace("\\", "/").rstrip("/") in normalized_skip_entry_names:
-                        continue
                     destination = _resolve_zip_entry_destination(staging_dir, zip_info.filename)
                     if _is_zip_symlink(zip_info):
                         raise DriveMaterializationValidationError(
@@ -154,6 +147,15 @@ def _resolve_zip_entry_destination(target_dir: Path, entry_name: str) -> Path:
 def _is_zip_symlink(zip_info: ZipInfo) -> bool:
     file_mode = zip_info.external_attr >> 16
     return stat.S_ISLNK(file_mode)
+
+
+def _delete_extracted_archive(archive_path: Path) -> None:
+    try:
+        archive_path.unlink(missing_ok=True)
+    except OSError as exc:
+        raise DriveMaterializationTransferError(
+            f"failed to delete extracted skill archive: {archive_path.name}"
+        ) from exc
 
 
 __all__ = [

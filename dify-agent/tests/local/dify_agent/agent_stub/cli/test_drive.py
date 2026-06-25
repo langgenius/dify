@@ -179,7 +179,7 @@ def test_pull_drive_from_environment_auto_extracts_skill_archive(
     assert result.model_dump() == {
         "items": [{"key": "skills/foo/.DIFY-SKILL-FULL.zip", "local_path": str(archive_path)}]
     }
-    assert archive_path.read_bytes() == archive_bytes
+    assert not archive_path.exists()
     assert (tmp_path / "skills" / "foo" / "SKILL.md").read_text(encoding="utf-8") == "# Example\n"
     assert (tmp_path / "skills" / "foo" / "nested" / "helper.py").read_text(encoding="utf-8") == "print('x')\n"
 

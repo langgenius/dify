@@ -126,7 +126,8 @@ def pull_drive_from_environment(
         ``.DIFY-SKILL-FULL.zip`` archives into their containing skill
         directory with the same path-safety checks. Archive extraction is staged
         under a temporary directory and only moved into place after the full
-        archive validates successfully.
+        archive validates successfully. Successfully extracted skill archives
+        are deleted from disk.
 
         Extracted files are materialized on disk but are not added to the
         returned item list.
