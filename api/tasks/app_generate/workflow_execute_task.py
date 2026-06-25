@@ -354,6 +354,7 @@ def _publish_streaming_response(
     place that can guarantee SSE consumers eventually see a terminal workflow
     lifecycle event.
     """
+    normalized_workflow_run_id = str(workflow_run_id)
 
     def _publish_failed_terminal_event(error_message: str, task_id: str, publish_started: bool) -> None:
         timestamp = to_timestamp(naive_utc_now())
@@ -362,9 +363,9 @@ def _publish_streaming_response(
         if publish_started:
             started_payload = WorkflowStartStreamResponse(
                 task_id=task_id,
-                workflow_run_id=workflow_run_id,
+                workflow_run_id=normalized_workflow_run_id,
                 data=WorkflowStartStreamResponse.Data(
-                    id=workflow_run_id,
+                    id=normalized_workflow_run_id,
                     workflow_id=workflow_id,
                     inputs=inputs,
                     created_at=timestamp,
@@ -380,9 +381,9 @@ def _publish_streaming_response(
 
         finished_payload = WorkflowFinishStreamResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run_id,
+            workflow_run_id=normalized_workflow_run_id,
             data=WorkflowFinishStreamResponse.Data(
-                id=workflow_run_id,
+                id=normalized_workflow_run_id,
                 workflow_id=workflow_id,
                 status=WorkflowExecutionStatus.FAILED,
                 outputs=None,
@@ -399,14 +400,12 @@ def _publish_streaming_response(
         )
         topic.publish(json.dumps(finished_payload.model_dump(mode="json"), ensure_ascii=False).encode())
 
-    workflow_run_id = str(workflow_run_id)
-
     terminal_events = {"workflow_finished", "workflow_paused"}
     unexpected_stream_end_message = "Workflow stream ended without a terminal event"
-    topic = MessageBasedAppGenerator.get_response_topic(app_mode, workflow_run_id)
+    topic = MessageBasedAppGenerator.get_response_topic(app_mode, normalized_workflow_run_id)
     started_published = False
     terminal_published = False
-    last_task_id = workflow_run_id
+    last_task_id = normalized_workflow_run_id
 
     try:
         for event in response_stream:
@@ -434,7 +433,7 @@ def _publish_streaming_response(
         if not terminal_published:
             logger.exception(
                 "Workflow stream for run %s failed before terminal event; publishing fallback terminal event",
-                workflow_run_id,
+                normalized_workflow_run_id,
             )
             _publish_failed_terminal_event(
                 error_message=str(exc) or exc.__class__.__name__,
@@ -446,7 +445,7 @@ def _publish_streaming_response(
     if not terminal_published:
         logger.warning(
             "Workflow stream for run %s ended without a terminal event; publishing fallback terminal event",
-            workflow_run_id,
+            normalized_workflow_run_id,
         )
         _publish_failed_terminal_event(
             error_message=unexpected_stream_end_message,
