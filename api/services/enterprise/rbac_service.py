@@ -309,7 +309,8 @@ _LEGACY_WORKSPACE_OWNER_KEYS: list[str] = [
     "customization.manage",
     "plugin.install",
     "plugin.plugin_preferences",
-    "plugin.manage",
+    "plugin.model_config",
+    "plugin.delete",
     "plugin.debug",
     "credential.use",
     "credential.create",
@@ -340,7 +341,8 @@ _LEGACY_WORKSPACE_ADMIN_KEYS: list[str] = [
     "customization.manage",
     "plugin.install",
     "plugin.plugin_preferences",
-    "plugin.manage",
+    "plugin.model_config",
+    "plugin.delete",
     "plugin.debug",
     "credential.use",
     "credential.create",
@@ -405,6 +407,8 @@ _LEGACY_APP_OWNER_KEYS: list[str] = [
     "app.acl.release_and_version",
     "app.acl.monitor",
     "app.acl.access_config",
+    "app.acl.tracing_config",
+    "app.acl.log_and_annotation",
 ]
 
 _LEGACY_APP_ADMIN_KEYS: list[str] = [
@@ -417,6 +421,9 @@ _LEGACY_APP_ADMIN_KEYS: list[str] = [
     "app.acl.release_and_version",
     "app.acl.monitor",
     "app.acl.access_config",
+    "app.acl.access_config",
+    "app.acl.tracing_config",
+    "app.acl.log_and_annotation",
 ]
 
 _LEGACY_APP_EDITOR_KEYS: list[str] = [
@@ -432,9 +439,6 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
 ]
 
 _LEGACY_APP_NORMAL_KEYS: list[str] = [
-    "app.acl.preview",
-    "app.acl.view_layout",
-    "app.acl.test_and_run",
     "app.acl.monitor",
 ]
 
