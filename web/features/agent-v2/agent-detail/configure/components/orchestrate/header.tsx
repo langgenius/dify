@@ -14,8 +14,8 @@ export function AgentOrchestrateHeader({
   const { t } = useTranslation('agentV2')
 
   return (
-    <div className="h-[68px] shrink-0 px-4 py-3">
-      <div className="flex min-w-0 items-center gap-2">
+    <div className="shrink-0 px-4 py-3">
+      <div className="flex h-6 min-w-0 items-center gap-2">
         <h2 id={headingId} className="truncate title-xl-semi-bold text-text-primary">
           {t('agentDetail.configure.title')}
         </h2>
