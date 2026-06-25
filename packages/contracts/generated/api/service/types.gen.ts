@@ -1414,7 +1414,7 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1572,7 +1572,7 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null

@@ -97,51 +97,12 @@ export type ExternalDatasetCreatePayload = {
   name: string
 }
 
-export type DatasetDetail = {
-  app_count?: number
-  author_name?: string
-  built_in_field_enabled?: boolean
-  chunk_structure?: string
-  created_at?: number
-  created_by?: string
-  data_source_type?: string
-  description?: string
-  doc_form?: string
-  doc_metadata?: Array<DatasetDocMetadata>
-  document_count?: number
-  embedding_available?: boolean
-  embedding_model?: string
-  embedding_model_provider?: string
-  enable_api?: boolean
-  external_knowledge_info?: ExternalKnowledgeInfo
-  external_retrieval_model?: ExternalRetrievalModel
-  icon_info?: DatasetIconInfo
-  id?: string
-  indexing_technique?: string
-  is_multimodal?: boolean
-  is_published?: boolean
-  name?: string
-  permission?: string
-  permission_keys?: Array<string>
-  pipeline_id?: string
-  provider?: string
-  retrieval_model_dict?: DatasetRetrievalModel
-  runtime_mode?: string
-  summary_index_setting?: AnonymousInlineModelB1954337D565
-  tags?: Array<Tag>
-  total_available_documents?: number
-  total_documents?: number
-  updated_at?: number
-  updated_by?: string
-  word_count?: number
-}
-
 export type ExternalKnowledgeApiListResponse = {
   data: Array<ExternalKnowledgeApiResponse>
   has_more: boolean
   limit: number
   page: number
-  total: number
+  total: number | null
 }
 
 export type ExternalKnowledgeApiPayload = {
@@ -154,11 +115,11 @@ export type ExternalKnowledgeApiPayload = {
 export type ExternalKnowledgeApiResponse = {
   created_at: string
   created_by: string
-  dataset_bindings?: Array<ExternalKnowledgeDatasetBindingResponse>
+  dataset_bindings: Array<ExternalKnowledgeApiBindingResponse>
   description: string
   id: string
   name: string
-  settings?: {
+  settings: {
     [key: string]: unknown
   } | null
   tenant_id: string
@@ -479,13 +440,10 @@ export type ExternalHitTestingPayload = {
   query: string
 }
 
-export type ExternalRetrievalTestResponse
-  = | {
-    [key: string]: unknown
-  }
-  | Array<{
-    [key: string]: unknown
-  }>
+export type ExternalHitTestingResponse = {
+  query: ExternalHitTestingQueryResponse
+  records: Array<ExternalHitTestingRecordResponse>
+}
 
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
@@ -641,57 +599,7 @@ export type DatasetTagResponse = {
   type: string
 }
 
-export type DatasetDocMetadata = {
-  id?: string
-  name?: string
-  type?: string
-}
-
-export type ExternalKnowledgeInfo = {
-  external_knowledge_api_endpoint?: string
-  external_knowledge_api_id?: string
-  external_knowledge_api_name?: string
-  external_knowledge_id?: string
-}
-
-export type ExternalRetrievalModel = {
-  score_threshold?: number
-  score_threshold_enabled?: boolean
-  top_k?: number
-}
-
-export type DatasetIconInfo = {
-  icon?: string
-  icon_background?: string
-  icon_type?: string
-  icon_url?: string
-}
-
-export type DatasetRetrievalModel = {
-  reranking_enable?: boolean
-  reranking_mode?: string
-  reranking_model?: DatasetRerankingModel
-  score_threshold?: number
-  score_threshold_enabled?: boolean
-  search_method?: string
-  top_k?: number
-  weights?: DatasetWeightedScore
-}
-
-export type AnonymousInlineModelB1954337D565 = {
-  enable?: boolean
-  model_name?: string
-  model_provider_name?: string
-  summary_prompt?: string
-}
-
-export type Tag = {
-  id: string
-  name: string
-  type: string
-}
-
-export type ExternalKnowledgeDatasetBindingResponse = {
+export type ExternalKnowledgeApiBindingResponse = {
   id: string
   name: string
 }
@@ -844,6 +752,19 @@ export type ChildChunkUpdateArgs = {
   id?: string | null
 }
 
+export type ExternalHitTestingQueryResponse = {
+  content: string
+}
+
+export type ExternalHitTestingRecordResponse = {
+  content?: string | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  score?: number | null
+  title?: string | null
+}
+
 export type HitTestingQuery = {
   content: string
 }
@@ -894,17 +815,6 @@ export type DatasetWeightedScoreResponse = {
   keyword_setting?: DatasetKeywordSettingResponse
   vector_setting?: DatasetVectorSettingResponse
   weight_type?: string | null
-}
-
-export type DatasetRerankingModel = {
-  reranking_model_name?: string
-  reranking_provider_name?: string
-}
-
-export type DatasetWeightedScore = {
-  keyword_setting?: DatasetKeywordSetting
-  vector_setting?: DatasetVectorSetting
-  weight_type?: string
 }
 
 export type InfoList = {
@@ -1016,16 +926,6 @@ export type DatasetVectorSettingResponse = {
   embedding_model_name?: string | null
   embedding_provider_name?: string | null
   vector_weight?: number | null
-}
-
-export type DatasetKeywordSetting = {
-  keyword_weight?: number
-}
-
-export type DatasetVectorSetting = {
-  embedding_model_name?: string
-  embedding_provider_name?: string
-  vector_weight?: number
 }
 
 export type FileInfo = {
@@ -1264,7 +1164,7 @@ export type PostDatasetsExternalErrors = {
 }
 
 export type PostDatasetsExternalResponses = {
-  201: DatasetDetail
+  201: DatasetDetailResponse
 }
 
 export type PostDatasetsExternalResponse
@@ -1293,6 +1193,10 @@ export type PostDatasetsExternalKnowledgeApiData = {
   path?: never
   query?: never
   url: '/datasets/external-knowledge-api'
+}
+
+export type PostDatasetsExternalKnowledgeApiErrors = {
+  403: unknown
 }
 
 export type PostDatasetsExternalKnowledgeApiResponses = {
@@ -1345,6 +1249,10 @@ export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   }
   query?: never
   url: '/datasets/external-knowledge-api/{external_knowledge_api_id}'
+}
+
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
+  404: unknown
 }
 
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
@@ -2283,7 +2191,7 @@ export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
-  200: ExternalRetrievalTestResponse
+  200: ExternalHitTestingResponse
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponse
