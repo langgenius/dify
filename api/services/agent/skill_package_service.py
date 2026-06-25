@@ -76,17 +76,28 @@ class SkillPackageService:
     def validate_and_normalize(self, *, content: bytes, filename: str) -> NormalizedSkillPackage:
         """Return the canonical drive package for an uploaded skill archive.
 
-        The shallowest ``SKILL.md`` defines the skill root. The returned manifest
-        is normalized to archive-root ``SKILL.md`` and its hash describes the
-        rebuilt archive bytes. Member read/decompression failures while consuming
-        the archive are mapped to ``invalid_archive``.
+        The shallowest ``SKILL.md`` defines the skill root. When exactly one
+        depth-2 ``<folder>/SKILL.md`` exists, normalization strips that top-level
+        folder and silently discards all members outside it, including nested
+        foreign paths. When that unique depth-2 condition does not apply, files
+        outside the selected skill root still raise ``files_outside_skill_root``.
+        The returned manifest is normalized to archive-root ``SKILL.md`` and its
+        hash describes the rebuilt archive bytes. Member read/decompression
+        failures while consuming the archive are mapped to ``invalid_archive``.
         """
         archive = self._open_archive(content=content, filename=filename)
         with archive:
-            members, total_uncompressed = self._collect_file_members(archive)
-            entry_path = self._find_skill_md([safe_path for _, safe_path in members])
+            members = self._collect_file_members(archive)
+            member_paths = [safe_path for _, safe_path in members]
+            entry_path = self._find_skill_md(member_paths)
             strip_prefix = self._skill_root_prefix(entry_path)
-            normalized_members = self._normalize_members(members=members, skill_root_prefix=strip_prefix)
+            normalized_members = self._normalize_members(
+                members=members,
+                skill_root_prefix=strip_prefix,
+                ignore_outside_selected_root=self._can_strip_single_top_level_folder(
+                    paths=member_paths, entry_path=entry_path
+                ),
+            )
             skill_md_member = normalized_members[_SKILL_MD_NAME]
             self._validate_skill_md_size(skill_md_member)
             skill_md_bytes = self._read_member_bytes_from_archive(archive, member_info=skill_md_member)
@@ -94,6 +105,7 @@ class SkillPackageService:
             normalized_archive_bytes = self._build_normalized_archive(
                 archive=archive, normalized_members=normalized_members
             )
+            normalized_size = sum(max(info.file_size, 0) for info in normalized_members.values())
 
         name, description = self._parse_skill_md(skill_md)
         manifest = SkillManifest(
@@ -101,7 +113,7 @@ class SkillPackageService:
             description=description,
             entry_path=_SKILL_MD_NAME,
             files=sorted(normalized_members),
-            size=total_uncompressed,
+            size=normalized_size,
             hash=hashlib.sha256(normalized_archive_bytes).hexdigest(),
         )
         return NormalizedSkillPackage(
@@ -123,7 +135,7 @@ class SkillPackageService:
         except zipfile.BadZipFile as exc:
             raise SkillPackageError("invalid_archive", "skill archive is not a valid zip", status_code=400) from exc
 
-    def _collect_file_members(self, archive: zipfile.ZipFile) -> tuple[list[tuple[zipfile.ZipInfo, str]], int]:
+    def _collect_file_members(self, archive: zipfile.ZipFile) -> list[tuple[zipfile.ZipInfo, str]]:
         infos = [info for info in archive.infolist() if not info.is_dir()]
         if len(infos) > _MAX_ENTRIES:
             raise SkillPackageError("too_many_entries", "skill archive has too many files", status_code=400)
@@ -139,7 +151,7 @@ class SkillPackageService:
                 "skill archive uncompressed size exceeds limit",
                 status_code=400,
             )
-        return members, total_uncompressed
+        return members
 
     @staticmethod
     def _skill_root_prefix(entry_path: str) -> str | None:
@@ -153,11 +165,14 @@ class SkillPackageService:
         *,
         members: list[tuple[zipfile.ZipInfo, str]],
         skill_root_prefix: str | None,
+        ignore_outside_selected_root: bool = False,
     ) -> dict[str, zipfile.ZipInfo]:
         normalized_members: dict[str, zipfile.ZipInfo] = {}
         for info, safe_path in members:
             if skill_root_prefix is not None:
                 if not safe_path.startswith(skill_root_prefix):
+                    if ignore_outside_selected_root:
+                        continue
                     raise SkillPackageError(
                         "files_outside_skill_root",
                         "skill archive contains files outside the selected skill root",
@@ -228,6 +243,13 @@ class SkillPackageService:
             raise SkillPackageError("missing_skill_md", "skill archive must contain a SKILL.md", status_code=400)
         # Prefer the shallowest SKILL.md (skill root).
         return min(candidates, key=lambda p: (p.count("/"), len(p)))
+
+    @staticmethod
+    def _can_strip_single_top_level_folder(*, paths: list[str], entry_path: str) -> bool:
+        if entry_path.count("/") != 1:
+            return False
+        candidates = [path for path in paths if path.count("/") == 1 and posixpath.basename(path) == _SKILL_MD_NAME]
+        return len(candidates) == 1 and candidates[0] == entry_path
 
     @staticmethod
     def _read_member_bytes_from_archive(archive: zipfile.ZipFile, *, member_info: zipfile.ZipInfo) -> bytes:

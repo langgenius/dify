@@ -89,6 +89,50 @@ def test_validate_and_normalize_strips_single_top_level_folder():
     assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
 
 
+def test_validate_and_normalize_strips_single_top_level_folder_ignoring_other_root_entries():
+    package = _normalize(
+        {
+            "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
+            "pdf-toolkit/scripts/run.py": b"print('hi')\n",
+            "README.md": b"bundle notes\n",
+        }
+    )
+
+    assert package.manifest.entry_path == "SKILL.md"
+    assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
+    assert package.skill_md_bytes == _SKILL_MD.encode()
+    assert package.strip_prefix == "pdf-toolkit/"
+    assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
+
+
+def test_validate_and_normalize_strips_single_top_level_folder_dropping_nested_foreign_paths():
+    package = _normalize(
+        {
+            "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
+            "pdf-toolkit/scripts/run.py": b"print('hi')\n",
+            "bundle/other.txt": b"x",
+        }
+    )
+
+    assert package.manifest.entry_path == "SKILL.md"
+    assert package.manifest.files == ["SKILL.md", "scripts/run.py"]
+    assert package.skill_md_bytes == _SKILL_MD.encode()
+    assert package.strip_prefix == "pdf-toolkit/"
+    assert _archive_members(package.archive_bytes) == ["SKILL.md", "scripts/run.py"]
+
+
+def test_validate_and_normalize_rejects_multiple_depth_2_skill_roots_with_sibling_skill_tree():
+    with pytest.raises(SkillPackageError) as exc_info:
+        _normalize(
+            {
+                "pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
+                "pdf-toolkit/scripts/run.py": b"print('hi')\n",
+                "other-tool/SKILL.md": _SKILL_MD.encode(),
+            }
+        )
+    assert exc_info.value.code == "files_outside_skill_root"
+
+
 def test_validate_and_normalize_strips_deeper_selected_skill_root():
     members = {
         "bundle/pdf-toolkit/SKILL.md": _SKILL_MD.encode(),
@@ -188,7 +232,7 @@ def test_unterminated_frontmatter_falls_back_to_heading():
 
 def test_validate_and_normalize_rejects_files_outside_selected_skill_root():
     with pytest.raises(SkillPackageError) as exc_info:
-        _normalize({"pdf-toolkit/SKILL.md": _SKILL_MD.encode(), "README.md": b"x"})
+        _normalize({"bundle/pdf-toolkit/SKILL.md": _SKILL_MD.encode(), "README.md": b"x"})
     assert exc_info.value.code == "files_outside_skill_root"
 
 
