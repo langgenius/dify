@@ -130,11 +130,8 @@ class AgentComposerService:
             if agent is None:
                 raise AgentVersionNotFoundError()
             if binding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT:
-                AgentRosterService(db.session).get_agent_version_detail(
-                    tenant_id=tenant_id,
-                    agent_id=agent.id,
-                    version_id=snapshot_id,
-                )
+                if agent.scope != AgentScope.ROSTER:
+                    raise AgentVersionNotFoundError()
             elif binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT:
                 if (
                     agent.scope != AgentScope.WORKFLOW_ONLY

@@ -165,17 +165,11 @@ def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest
         binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
         current_snapshot_id="binding-version",
     )
-    agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="active-version")
-    validated: dict[str, str] = {}
+    agent = SimpleNamespace(id="agent-1", scope=AgentScope.ROSTER, active_config_snapshot_id="active-version")
 
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: agent)
-    monkeypatch.setattr(
-        AgentRosterService,
-        "get_agent_version_detail",
-        lambda self, **kwargs: validated.update(kwargs) or {"id": kwargs["version_id"]},
-    )
     monkeypatch.setattr(
         AgentComposerService,
         "_require_version",
@@ -198,7 +192,6 @@ def test_load_workflow_composer_uses_roster_preview_snapshot(monkeypatch: pytest
     )
 
     assert result == {"binding_snapshot_id": "binding-version", "version": "preview-version"}
-    assert validated == {"tenant_id": "tenant-1", "agent_id": "agent-1", "version_id": "preview-version"}
 
 
 def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest.MonkeyPatch):
