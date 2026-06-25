@@ -410,11 +410,6 @@ class AgentComposerService:
     ) -> dict[str, Any]:
         if payload.agent_soul is None:
             raise ValueError("agent_soul is required")
-        payload.agent_soul = cls._preserve_active_soul_files(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            agent_soul=payload.agent_soul,
-        )
         cls._save_agent_draft(
             tenant_id=tenant_id,
             agent=agent,
