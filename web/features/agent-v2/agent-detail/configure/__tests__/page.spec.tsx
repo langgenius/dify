@@ -139,6 +139,23 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
+vi.mock('../build-draft-query', () => ({
+  agentConfigureConsoleQuery: {
+    agent: {
+      byAgentId: {
+        buildDraft: {
+          get: {
+            queryOptions: () => ({
+              queryFn: vi.fn(),
+              queryKey: ['build-draft'],
+            }),
+          },
+        },
+      },
+    },
+  },
+}))
+
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({ data: undefined }),
   useTextGenerationCurrentProviderAndModelAndModelList: () => ({
@@ -149,10 +166,12 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 vi.mock('../components/orchestrate', () => ({
   AgentOrchestratePanel: (props: {
     bottomBar?: ReactNode
+    isBuildDraftActive?: boolean
     readOnly?: boolean
     showPublishBar?: boolean
   }) => (
     <div role="region" aria-label="orchestrate-panel">
+      <span>{`buildDraft:${props.isBuildDraftActive ? 'yes' : 'no'}`}</span>
       <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
       <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
       {props.bottomBar}
@@ -416,6 +435,7 @@ describe('AgentConfigurePage', () => {
       )
 
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('publish:yes')
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
     })
@@ -462,6 +482,7 @@ describe('AgentConfigurePage', () => {
       )
 
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:yes')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('publish:no')
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
     })

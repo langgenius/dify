@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { consoleQuery } from '@/service/client'
+import { agentConfigureConsoleQuery } from './build-draft-query'
 
 export type AgentConfigureSoulSource = 'draft' | 'build-draft' | 'view-version'
 
@@ -25,20 +26,39 @@ export function useAgentConfigureBuildDraftData({
   isViewingVersion: boolean
   normalAgentSoulConfig?: AgentSoulConfig
 }) {
+  const shouldSilenceBuildDraftCheckRef = useRef(true)
   const [soulSourceOverride, setSoulSourceOverride] = useState<AgentConfigureSoulSource | null>(null)
-  const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
-    input: {
-      params: {
-        agent_id: agentId,
-      },
+  const buildDraftQueryInput = {
+    params: {
+      agent_id: agentId,
     },
+  }
+  const buildDraftQueryOptions = agentConfigureConsoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+    input: {
+      params: buildDraftQueryInput.params,
+    },
+    context: {},
+  })
+  const silentBuildDraftQueryOptions = agentConfigureConsoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+    input: {
+      params: buildDraftQueryInput.params,
+    },
+    context: {
+      silent: true,
+    },
+    queryKey: buildDraftQueryOptions.queryKey,
   })
   const buildDraftQuery = useQuery({
     ...buildDraftQueryOptions,
     enabled: !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version',
     queryFn: async (context) => {
       try {
-        return await buildDraftQueryOptions.queryFn(context)
+        const queryOptions = shouldSilenceBuildDraftCheckRef.current
+          ? silentBuildDraftQueryOptions
+          : buildDraftQueryOptions
+
+        shouldSilenceBuildDraftCheckRef.current = false
+        return await queryOptions.queryFn(context)
       }
       catch (error) {
         if (isNotFoundResponse(error))

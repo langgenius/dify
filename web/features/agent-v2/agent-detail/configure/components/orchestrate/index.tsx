@@ -35,6 +35,7 @@ type AgentOrchestratePanelProps = {
   className?: string
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  isBuildDraftActive?: boolean
   showHeader?: boolean
   showPublishBar?: boolean
   bottomBar?: ReactNode
@@ -59,6 +60,7 @@ export function AgentOrchestratePanel({
   className,
   readOnly = false,
   selectedVersionSnapshot,
+  isBuildDraftActive = false,
   showHeader = true,
   showPublishBar = true,
   bottomBar,
@@ -69,7 +71,7 @@ export function AgentOrchestratePanel({
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
-  const orchestrateLabel = t('agentDetail.configure.orchestrate')
+  const orchestrateLabel = t('agentDetail.configure.title')
   const hasBottomBar = showPublishBar || !!bottomBar
   const driveApiContext = useMemo(() => appId && nodeId
     ? {
@@ -83,7 +85,7 @@ export function AgentOrchestratePanel({
 
   return (
     <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
-      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} />}
+      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} isBuildDraftActive={isBuildDraftActive} />}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
         <div

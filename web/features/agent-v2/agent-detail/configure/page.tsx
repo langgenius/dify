@@ -246,6 +246,7 @@ function AgentConfigurePageLoadedContent({
         isPublishing={isPublishing}
         readOnly={isViewingVersion || buildDraft.isActive}
         selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
+        isBuildDraftActive={buildDraft.isActive}
         showPublishBar={!buildDraft.isActive}
         bottomBar={buildDraft.isActive
           ? (

@@ -4,20 +4,32 @@ import { useTranslation } from 'react-i18next'
 
 type AgentOrchestrateHeaderProps = {
   headingId: string
+  isBuildDraftActive?: boolean
 }
 
 export function AgentOrchestrateHeader({
   headingId,
+  isBuildDraftActive = false,
 }: AgentOrchestrateHeaderProps) {
   const { t } = useTranslation('agentV2')
 
   return (
-    <div className="flex shrink-0 items-center gap-1 px-4 py-2">
-      <div className="flex min-w-0 flex-1 flex-col justify-center">
+    <div className="flex h-[68px] shrink-0 flex-col justify-center gap-1 px-4 py-3">
+      <div className="flex min-w-0 items-center gap-2">
         <h2 id={headingId} className="truncate title-xl-semi-bold text-text-primary">
-          {t('agentDetail.configure.orchestrate')}
+          {t('agentDetail.configure.title')}
         </h2>
+        {isBuildDraftActive && (
+          <span className="flex min-w-[18px] shrink-0 items-center justify-center rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1.25 py-0.75 system-2xs-medium-uppercase text-text-accent-secondary">
+            {t('agentDetail.configure.buildDraft.modeBadge')}
+          </span>
+        )}
       </div>
+      {isBuildDraftActive && (
+        <p className="w-full truncate system-xs-regular text-text-tertiary">
+          {t('agentDetail.configure.buildDraft.modeDescription')}
+        </p>
+      )}
     </div>
   )
 }
