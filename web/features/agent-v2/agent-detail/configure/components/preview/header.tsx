@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { SegmentedControl, SegmentedControlDivider, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useTranslation } from 'react-i18next'
@@ -36,6 +37,7 @@ export function AgentPreviewHeader({
   onRefresh,
   refreshDisabled,
   showChatFeaturesAction = true,
+  trailingAction,
 }: {
   mode: AgentConfigureRightPanelMode
   previewEnabled: boolean
@@ -46,6 +48,7 @@ export function AgentPreviewHeader({
   onRefresh: () => void
   refreshDisabled?: boolean
   showChatFeaturesAction?: boolean
+  trailingAction?: ReactNode
 }) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
@@ -147,6 +150,12 @@ export function AgentPreviewHeader({
               <span aria-hidden className="i-ri-chat-settings-line size-4" />
               <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
             </button>
+          </>
+        )}
+        {trailingAction && (
+          <>
+            <SegmentedControlDivider className="mx-3" />
+            {trailingAction}
           </>
         )}
       </div>

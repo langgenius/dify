@@ -348,4 +348,52 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
       }),
     }))
   })
+
+  it('still saves manually when inline agent autosave is disabled', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(() => useWorkflowInlineAgentConfigureSync({
+      nodeId: 'node-1',
+      baseConfig: {
+        schema_version: 1,
+      },
+      autoSaveEnabled: false,
+      enabled: true,
+    }), {
+      queryClient,
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(mockComposerMutationFn).toHaveBeenCalledWith({
+      params: {
+        app_id: 'app-1',
+        node_id: 'node-1',
+      },
+      body: expect.objectContaining({
+        variant: 'workflow',
+        save_strategy: 'node_job_only',
+        agent_soul: expect.objectContaining({
+          schema_version: 1,
+        }),
+      }),
+    }, expect.any(Object))
+  })
 })

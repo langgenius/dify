@@ -20,6 +20,7 @@ const {
   mockSetInputs,
   mockStoreState,
   mockUseAgentRosterDetail,
+  mockWorkflowInlineAgentDetailRefetch,
   mockUseWorkflowInlineAgentDetail,
   mockUseNodeCrud,
 } = vi.hoisted(() => ({
@@ -48,6 +49,7 @@ const {
     setOpenInlineAgentPanelNodeId: vi.fn(),
   },
   mockUseAgentRosterDetail: vi.fn(),
+  mockWorkflowInlineAgentDetailRefetch: vi.fn(),
   mockUseWorkflowInlineAgentDetail: vi.fn(),
   mockUseNodeCrud: vi.fn(),
 }))
@@ -188,12 +190,39 @@ vi.mock('../components/agent-orchestrate-drawer-panel', () => ({
     inlineComposerState?: unknown
     isInline: boolean
     nodeId: string
+    onClose?: () => void
+    onSaved?: (binding: {
+      agent_id?: string | null
+      binding_type: 'inline_agent' | 'roster_agent'
+      current_snapshot_id?: string | null
+    }) => void
+    onSaveInlineToRoster?: () => void
     open: boolean
   }) => {
     mockOrchestrateDrawerPanelProps.push(props)
 
     return (
-      <div role="region" aria-label="inline-orchestrate-panel" />
+      <div role="region" aria-label="inline-orchestrate-panel">
+        <button
+          type="button"
+          onClick={props.onSaveInlineToRoster}
+        >
+          Inline workspace more
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            props.onSaved?.({
+              binding_type: 'inline_agent',
+              agent_id: 'inline-agent-1',
+              current_snapshot_id: 'latest-snapshot-2',
+            })
+            props.onClose?.()
+          }}
+        >
+          Save inline modal
+        </button>
+      </div>
     )
   },
 }))
@@ -339,6 +368,8 @@ describe('agent/panel', () => {
             },
           }
         : undefined,
+      isFetching: false,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
     }))
   })
 
@@ -586,6 +617,7 @@ describe('agent/panel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith('agent-node')
+    expect(mockWorkflowInlineAgentDetailRefetch).toHaveBeenCalled()
 
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     rerender(
@@ -612,7 +644,7 @@ describe('agent/panel', () => {
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
   })
 
-  it('opens save-to-roster action from the inline drawer menu and rebinds to the saved roster agent', () => {
+  it('opens save-to-roster action from the inline workspace menu and rebinds to the saved roster agent', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     render(
       <AgentV2Panel
@@ -629,8 +661,8 @@ describe('agent/panel', () => {
     )
 
     const panel = screen.getByRole('dialog', { name: 'Workflow Agent 1' })
-    fireEvent.click(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.more' }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'agentV2.roster.saveToRoster' }))
+    expect(within(panel).queryByRole('button', { name: 'workflow.nodes.agent.roster.more' })).not.toBeInTheDocument()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Inline workspace more' }))
     fireEvent.click(screen.getByRole('button', { name: 'Save inline agent to roster', hidden: true }))
 
     expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith(undefined)
@@ -649,6 +681,43 @@ describe('agent/panel', () => {
         notRefreshWhenSyncError: true,
       }),
     )
+  })
+
+  it('updates the inline binding snapshot from the modal save response before closing', () => {
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save inline modal' }))
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'latest-snapshot-2',
+          },
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+    expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith(undefined)
   })
 
   it('does not show start from scratch for an existing inline agent binding', () => {
@@ -673,7 +742,11 @@ describe('agent/panel', () => {
 
   it('opens the inline panel while workflow composer state is still loading', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
-    mockUseWorkflowInlineAgentDetail.mockReturnValue({ data: undefined })
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: undefined,
+      isFetching: true,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
 
     const { container } = render(
       <AgentV2Panel

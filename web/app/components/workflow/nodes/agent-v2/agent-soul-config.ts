@@ -1,4 +1,4 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/apps/types.gen'
+import type { AgentSoulConfig, WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
@@ -54,6 +54,7 @@ export function useWorkflowInlineAgentConfigureSync({
   nodeId,
   baseConfig,
   currentModel,
+  autoSaveEnabled = true,
   enabled,
 }: {
   nodeId: string
@@ -63,6 +64,7 @@ export function useWorkflowInlineAgentConfigureSync({
     model: string
     plugin_id?: string
   }
+  autoSaveEnabled?: boolean
   enabled: boolean
 }) {
   const queryClient = useQueryClient()
@@ -89,7 +91,7 @@ export function useWorkflowInlineAgentConfigureSync({
     currentModel: currentModelRef.current,
   }), [store])
 
-  const saveComposer = useSerialAsyncCallback(async (configSnapshot: AgentSoulConfig) => {
+  const saveComposer = useSerialAsyncCallback(async (configSnapshot: AgentSoulConfig): Promise<WorkflowAgentComposerResponse | undefined> => {
     if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow)
       return
 
@@ -121,6 +123,7 @@ export function useWorkflowInlineAgentConfigureSync({
     setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
     setDraftSavedAt(Date.now())
     lastAutosavedDraftKeyRef.current = savedDraftKey
+    return composerState
   })
 
   const latestDraftSaveRef = useRef<() => void>(() => undefined)
@@ -137,7 +140,7 @@ export function useWorkflowInlineAgentConfigureSync({
       return
 
     debouncedSaveDraft.cancel?.()
-    await saveComposer(getAgentSoulDraft())
+    return saveComposer(getAgentSoulDraft())
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer])
 
   useEffect(() => {
@@ -147,6 +150,7 @@ export function useWorkflowInlineAgentConfigureSync({
 
       if (
         !enabledRef.current
+        || !autoSaveEnabled
         || !store.get(isAgentComposerDirtyAtom)
         || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
@@ -155,13 +159,14 @@ export function useWorkflowInlineAgentConfigureSync({
 
       debouncedSaveDraft()
     })
-  }, [debouncedSaveDraft, getAgentSoulDraft, store])
+  }, [autoSaveEnabled, debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     return () => {
-      debouncedSaveDraft.flush?.()
+      if (autoSaveEnabled)
+        debouncedSaveDraft.flush?.()
     }
-  }, [debouncedSaveDraft])
+  }, [autoSaveEnabled, debouncedSaveDraft])
 
   return {
     draftSavedAt,
