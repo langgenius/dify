@@ -31,6 +31,7 @@
   "menu.editInfo": "Edit Info",
   "menu.exportSnippet": "Export Snippet",
   "panelTitle": "Input Field",
+  "publishButton": "Publish",
   "publishFailed": "Failed to publish snippet",
   "publishMenuCurrentDraft": "Current draft unpublished",
   "publishSuccess": "Snippet published",

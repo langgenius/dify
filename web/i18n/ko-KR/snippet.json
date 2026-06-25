@@ -31,6 +31,7 @@
   "menu.editInfo": " 보 편집",
   "menu.exportSnippet": "스니펫 내보내기",
   "panelTitle": "입  필드",
+  "publishButton": "게시",
   "publishFailed": "스니펫을 게시하지 못했습니다.",
   "publishMenuCurrentDraft": "현재 초안이 게시되지 않았습니다.",
   "publishSuccess": "스니펫이 게시되었습니다.",

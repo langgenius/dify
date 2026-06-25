@@ -31,6 +31,7 @@
   "menu.editInfo": "编辑信息",
   "menu.exportSnippet": "导出 Snippet",
   "panelTitle": "输入字段",
+  "publishButton": "发布",
   "publishFailed": "发布 Snippet 失败",
   "publishMenuCurrentDraft": "当前草稿未发布",
   "publishSuccess": "Snippet 已发布",

@@ -31,6 +31,7 @@
   "menu.editInfo": "Modifica informazioni",
   "menu.exportSnippet": "Esporta frammento",
   "panelTitle": "Campo di immissione",
+  "publishButton": "Pubblica",
   "publishFailed": "Impossibile pubblicare lo snippet",
   "publishMenuCurrentDraft": "Bozza attuale non pubblicata",
   "publishSuccess": "Frammento pubblicato",

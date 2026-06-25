@@ -31,6 +31,7 @@
   "menu.editInfo": "Bilgileri Düzenle",
   "menu.exportSnippet": "Snippet'i Dışa Aktar",
   "panelTitle": "Giriş Alanı",
+  "publishButton": "Yayınla",
   "publishFailed": "Snippet yayınlanamadı",
   "publishMenuCurrentDraft": "Mevcut taslak yayınlanmadı",
   "publishSuccess": "Snippet yayınlandı",

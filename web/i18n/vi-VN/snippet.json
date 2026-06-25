@@ -31,6 +31,7 @@
   "menu.editInfo": "Chỉnh sửa thông tin",
   "menu.exportSnippet": "Xuất đoạn trích",
   "panelTitle": "Trường nhập liệu",
+  "publishButton": "Xuất bản",
   "publishFailed": "Không thể xuất bản đoạn trích",
   "publishMenuCurrentDraft": "Bản thảo hiện tại chưa được xuất bản",
   "publishSuccess": "Đoạn trích được xuất bản",

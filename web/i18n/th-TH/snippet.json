@@ -31,6 +31,7 @@
   "menu.editInfo": "แก้ไขข้อมูล",
   "menu.exportSnippet": "ส่งออกข้อมูลโค้ด",
   "panelTitle": "ช่องป้อนข้อมูล",
+  "publishButton": "เผยแพร่",
   "publishFailed": "ไม่สามารถเผยแพร่ตัวอย่างได้",
   "publishMenuCurrentDraft": "ฉบับร่างปัจจุบันไม่ได้เผยแพร่",
   "publishSuccess": "เผยแพร่ตัวอย่างแล้ว",

@@ -31,6 +31,7 @@
   "menu.editInfo": " едагувати інформацію",
   "menu.exportSnippet": "Експорт фрагмента",
   "panelTitle": "Поле введення",
+  "publishButton": "Опублікувати",
   "publishFailed": "Не вдалося опублікувати фрагмент",
   "publishMenuCurrentDraft": "Поточна чернетка не опублікована",
   "publishSuccess": "Фрагмент опубліковано",

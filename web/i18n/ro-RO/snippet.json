@@ -31,6 +31,7 @@
   "menu.editInfo": "Editați informații",
   "menu.exportSnippet": "Exportați fragmentul",
   "panelTitle": "Câmp de intrare",
+  "publishButton": "Publică",
   "publishFailed": "Nu s-a putut publica fragmentul",
   "publishMenuCurrentDraft": "Schița actuală nepublicată",
   "publishSuccess": "Snippet publicat",

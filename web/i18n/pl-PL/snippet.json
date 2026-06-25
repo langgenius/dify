@@ -31,6 +31,7 @@
   "menu.editInfo": "Edytuj informacje",
   "menu.exportSnippet": "Eksportuj fragment",
   "panelTitle": "Pole wejściowe",
+  "publishButton": "Opublikuj",
   "publishFailed": "Nie udało się opublikować fragmentu",
   "publishMenuCurrentDraft": "Aktualny projekt niepublikowany",
   "publishSuccess": "Fragment opublikowany",
