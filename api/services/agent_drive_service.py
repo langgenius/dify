@@ -891,9 +891,7 @@ class AgentDriveService:
         file_id: str,
     ) -> str:
         if file_kind == AgentDriveFileKind.TOOL_FILE:
-            tool_file = session.scalar(
-                select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)
-            )
+            tool_file = session.scalar(select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id))
             if tool_file is None:
                 raise AgentDriveError("drive_key_not_found", "drive value record is missing", status_code=404)
             return tool_file.file_key

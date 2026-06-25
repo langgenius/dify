@@ -599,9 +599,7 @@ def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():
                 "metadata_model_config": None,
                 "conditions": {
                     "logical_operator": "and",
-                    "conditions": [
-                        {"name": "category", "comparison_operator": "contains", "value": "auth"}
-                    ],
+                    "conditions": [{"name": "category", "comparison_operator": "contains", "value": "auth"}],
                 },
             },
         },

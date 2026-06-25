@@ -674,9 +674,7 @@ def build_drive_aware_soul_mention_resolver(
 
     base_resolver = build_soul_mention_resolver(agent_soul)
     skill_names_by_key = {
-        skill.skill_md_key: skill.name
-        for skill in agent_soul.files.skills
-        if skill.skill_md_key and skill.name
+        skill.skill_md_key: skill.name for skill in agent_soul.files.skills if skill.skill_md_key and skill.name
     }
     file_names_by_key = {
         file_ref.drive_key: file_ref.name or file_ref.drive_key.rsplit("/", 1)[-1]

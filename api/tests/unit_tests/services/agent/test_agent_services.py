@@ -1756,9 +1756,7 @@ def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
         base_snapshot_id="version-1",
         config_snapshot=AgentSoulConfig(),
     )
-    service = AgentRosterService(
-        FakeSession(scalars=[["agent-1"], [published_draft], ["agent-1"], [published_draft]])
-    )
+    service = AgentRosterService(FakeSession(scalars=[["agent-1"], [published_draft], ["agent-1"], [published_draft]]))
 
     flags = service.load_active_config_is_published_by_agent_id(tenant_id="tenant-1", agents=[agent, draft_agent])
 
@@ -1784,10 +1782,13 @@ def test_active_config_is_published_skips_empty_agent_ids():
     )
     fake_session = FakeSession(scalars=[["should-not-be-read"]])
 
-    assert AgentRosterService(fake_session).load_active_config_is_published_by_agent_id(
-        tenant_id="tenant-1",
-        agents=[empty_id_agent],
-    ) == {}
+    assert (
+        AgentRosterService(fake_session).load_active_config_is_published_by_agent_id(
+            tenant_id="tenant-1",
+            agents=[empty_id_agent],
+        )
+        == {}
+    )
     assert fake_session._scalars == [["should-not-be-read"]]
 
 
