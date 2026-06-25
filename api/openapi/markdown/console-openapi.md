@@ -9282,7 +9282,7 @@ Increment snippet use count by 1
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [DefaultModelDataResponse](#defaultmodeldataresponse)<br> |
+| 200 | Default model retrieved successfully | **application/json**: [DefaultModelDataResponse](#defaultmodeldataresponse)<br> |
 
 ### [POST] /workspaces/current/default-model
 #### Request Body
@@ -9581,7 +9581,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
+| 200 | Model providers retrieved successfully | **application/json**: [ModelProviderListResponse](#modelproviderlistresponse)<br> |
 
 ### [GET] /workspaces/current/model-providers/{provider}/checkout-url
 #### Parameters
@@ -9594,7 +9594,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ModelProviderPaymentCheckoutUrlResponse](#modelproviderpaymentcheckouturlresponse)<br> |
+| 200 | Model provider checkout URL retrieved successfully | **application/json**: [ModelProviderPaymentCheckoutUrlResponse](#modelproviderpaymentcheckouturlresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -9627,7 +9627,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ProviderCredentialResponse](#providercredentialresponse)<br> |
+| 200 | Provider credentials retrieved successfully | **application/json**: [ProviderCredentialsResponse](#providercredentialsresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/credentials
 #### Parameters
@@ -9703,7 +9703,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Credential validation result | **application/json**: [ProviderCredentialValidateResponse](#providercredentialvalidateresponse)<br> |
+| 200 | Provider credentials validated successfully | **application/json**: [ValidationResultResponse](#validationresultresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/models
 #### Parameters
@@ -9735,7 +9735,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ModelWithProviderListResponse](#modelwithproviderlistresponse)<br> |
+| 200 | Provider models retrieved successfully | **application/json**: [ProviderModelListResponse](#providermodellistresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models
 #### Parameters
@@ -9754,7 +9754,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Model updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [DELETE] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -9790,7 +9790,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ModelCredentialResponse](#modelcredentialresponse)<br> |
+| 200 | Model credentials retrieved successfully | **application/json**: [ModelCredentialResponse](#modelcredentialresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -9809,7 +9809,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 201 | Credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 201 | Model credential created successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [PUT] /workspaces/current/model-providers/{provider}/models/credentials
 #### Parameters
@@ -9828,7 +9828,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Model credential updated successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/models/credentials/switch
 #### Parameters
@@ -9866,7 +9866,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Credential validation result | **application/json**: [ModelCredentialValidateResponse](#modelcredentialvalidateresponse)<br> |
+| 200 | Model credentials validated successfully | **application/json**: [ValidationResultResponse](#validationresultresponse)<br> |
 
 ### [PATCH] /workspaces/current/model-providers/{provider}/models/disable
 #### Parameters
@@ -9957,7 +9957,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ModelParameterRulesResponse](#modelparameterrulesresponse)<br> |
+| 200 | Model parameter rules retrieved successfully | **application/json**: [ModelParameterRuleListResponse](#modelparameterrulelistresponse)<br> |
 
 ### [POST] /workspaces/current/model-providers/{provider}/preferred-provider-type
 #### Parameters
@@ -9989,7 +9989,7 @@ Update a plugin endpoint
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [ProviderWithModelsDataResponse](#providerwithmodelsdataresponse)<br> |
+| 200 | Available models retrieved successfully | **application/json**: [AvailableModelListResponse](#availablemodellistresponse)<br> |
 
 ### [GET] /workspaces/current/permission
 **Get workspace permission settings**
@@ -10100,7 +10100,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/marketplace
 #### Request Body
@@ -10113,7 +10113,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/install/pkg
 #### Request Body
@@ -10126,7 +10126,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
 ### [GET] /workspaces/current/plugin/list
 #### Parameters
@@ -10333,7 +10333,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upgrade/marketplace
 #### Request Body
@@ -10346,14 +10346,14 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginInstallTaskStartResponse](#plugininstalltaskstartresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/bundle
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginBundleUploadResponse](#pluginbundleuploadresponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/github
 #### Request Body
@@ -10366,14 +10366,14 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
 
 ### [POST] /workspaces/current/plugin/upload/pkg
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [PluginDaemonOperationResponse](#plugindaemonoperationresponse)<br> |
+| 200 | Success | **application/json**: [PluginDecodeResponse](#plugindecoderesponse)<br> |
 
 ### [GET] /workspaces/current/plugin/{category}/list
 #### Parameters
@@ -11794,9 +11794,9 @@ Returns permission flags that control workspace features like member invitations
 
 #### Responses
 
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| Code | Description |
+| ---- | ----------- |
+| 200 | Model provider icon |
 
 ---
 ## default
@@ -11819,6 +11819,22 @@ Default namespace
 
 ---
 ### Schemas
+
+#### AIModelEntity
+
+Model class for AI model.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| deprecated | boolean |  | No |
+| features | [ [ModelFeature](#modelfeature) ] |  | No |
+| fetch_from | [FetchFrom](#fetchfrom) |  | Yes |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| model | string |  | Yes |
+| model_properties | object |  | Yes |
+| model_type | [ModelType](#modeltype) |  | Yes |
+| parameter_rules | [ [ParameterRule](#parameterrule) ], <br>**Default:**  |  | No |
+| pricing | [PriceConfig](#priceconfig) |  | No |
 
 #### AIModelEntityResponse
 
@@ -13413,6 +13429,27 @@ Soft lifecycle state for Agent records.
 | ---- | ---- | ----------- | -------- |
 | AgentStatus | string | Soft lifecycle state for Agent records. |  |
 
+#### AgentStrategyProviderEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| identity | [AgentStrategyProviderIdentity](#agentstrategyprovideridentity) |  | Yes |
+| plugin_id | string | The id of the plugin | No |
+
+#### AgentStrategyProviderIdentity
+
+Inherits from ToolProviderIdentity, without any additional fields.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the tool | Yes |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
+| icon | string | The icon of the tool | Yes |
+| icon_dark | string | The dark icon of the tool | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
+| name | string | The name of the tool | Yes |
+| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
+
 #### AgentSuggestedQuestionsAfterAnswerFeatureConfig
 
 | Name | Type | Description | Required |
@@ -14091,12 +14128,24 @@ AppMCPServer Status Enum
 | ---- | ---- | ----------- | -------- |
 | text | string |  | Yes |
 
+#### AuthorizedCategory
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AuthorizedCategory | string |  |  |
+
 #### AutoDisableLogsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | count | integer |  | Yes |
 | document_ids | [ string ] |  | Yes |
+
+#### AvailableModelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ProviderWithModelsResponse](#providerwithmodelsresponse) ] |  | Yes |
 
 #### AvatarUrlResponse
 
@@ -15484,6 +15533,7 @@ Model class for provider custom model configuration.
 | state | string | OAuth state parameter | No |
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #### DatasourceParameter
 
 Overrides type
@@ -15582,6 +15632,38 @@ Enum class for datasource provider
 | plugin_unique_identifier | string |  | Yes |
 | provider | string |  | Yes |
 >>>>>>> chariri/refac-basemodel-ragpipe
+||||||| 48dfbd60d6
+=======
+#### DatasourceProviderEntity
+
+Datasource provider entity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
+| identity | [DatasourceProviderIdentity](#datasourceprovideridentity) |  | Yes |
+| oauth_schema | [OAuthSchema](#oauthschema) |  | No |
+| provider_type | [DatasourceProviderType](#datasourceprovidertype) |  | Yes |
+
+#### DatasourceProviderIdentity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the tool | Yes |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
+| icon | string | The icon of the tool | Yes |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
+| name | string | The name of the tool | Yes |
+| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
+
+#### DatasourceProviderType
+
+Enum class for datasource provider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| DatasourceProviderType | string | Enum class for datasource provider |  |
+>>>>>>> chariri/refac-basemodel-workmodel
 
 #### DatasourceUpdateNamePayload
 
@@ -16061,6 +16143,28 @@ Request payload for bulk downloading documents as a zip archive.
 | email | string |  | Yes |
 | token | string |  | Yes |
 
+<<<<<<< HEAD
+||||||| 48dfbd60d6
+#### EmptyObjectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmptyObjectResponse | object |  |  |
+
+=======
+#### EmptyObjectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EmptyObjectResponse | object |  |  |
+
+#### Endpoint
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+
+>>>>>>> chariri/refac-basemodel-workmodel
 #### EndpointCreatePayload
 
 | Name | Type | Description | Required |
@@ -16079,7 +16183,23 @@ declaration of an endpoint
 | method | string |  | Yes |
 | path | string |  | Yes |
 
+<<<<<<< HEAD
 #### EndpointEntityWithInstance
+||||||| 48dfbd60d6
+#### EndpointDeleteResponse
+=======
+#### EndpointDeclaration
+
+declaration of an endpoint
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| hidden | boolean |  | No |
+| method | string |  | Yes |
+| path | string |  | Yes |
+
+#### EndpointDeleteResponse
+>>>>>>> chariri/refac-basemodel-workmodel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -16139,6 +16259,15 @@ declaration of an endpoint group
 | name | string |  | Yes |
 | settings | object |  | Yes |
 
+#### EndpointProviderDeclaration
+
+declaration of an endpoint group
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoints | [ [EndpointDeclaration](#endpointdeclaration) ] |  | No |
+| settings | [ [ProviderConfig](#providerconfig) ] |  | No |
+
 #### EndpointUpdatePayload
 
 | Name | Type | Description | Required |
@@ -16167,6 +16296,7 @@ declaration of an endpoint group
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
 
+<<<<<<< HEAD
 #### EventApiEntity
 
 | Name | Type | Description | Required |
@@ -16198,6 +16328,41 @@ The parameter of the event
 | default | integer<br>number<br>string<br>[ object ] |  | No |
 | description | [I18nObject](#i18nobject) |  | No |
 | label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+||||||| 48dfbd60d6
+=======
+#### EventEntity
+
+The configuration of an event
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the event | Yes |
+| identity | [EventIdentity](#eventidentity) |  | Yes |
+| output_schema | object | The output schema that this event produces | No |
+| parameters | [ [EventParameter](#eventparameter) ] | The parameters of the event | No |
+
+#### EventIdentity
+
+The identity of the event
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the event | Yes |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the event | Yes |
+| name | string | The name of the event | Yes |
+| provider | string | The provider of the event | No |
+
+#### EventParameter
+
+The parameter of the event
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) | The auto generate of the parameter | No |
+| default | integer<br>number<br>string<br>[ object ] |  | No |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label presented to the user | Yes |
+>>>>>>> chariri/refac-basemodel-workmodel
 | max | number<br>integer |  | No |
 | min | number<br>integer |  | No |
 | multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
@@ -16588,10 +16753,10 @@ Enum class for form type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| github_plugin_unique_identifier | string |  | Yes |
-| package | string |  | Yes |
+| packages | string |  | Yes |
+| release | string |  | Yes |
 | repo | string |  | Yes |
-| version | string |  | Yes |
+| repo_address | string |  | Yes |
 
 #### HitTestingChildChunk
 
@@ -17037,6 +17202,17 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
 
+#### LatestPluginCache
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| alternative_plugin_id | string |  | Yes |
+| deprecated_reason | string |  | Yes |
+| plugin_id | string |  | Yes |
+| status | string |  | Yes |
+| unique_identifier | string |  | Yes |
+| version | string |  | Yes |
+
 #### LearnDifyAppListResponse
 
 | Name | Type | Description | Required |
@@ -17213,8 +17389,9 @@ Enum class for large language model mode.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| marketplace_plugin_unique_identifier | string |  | Yes |
-| version | string |  | No |
+| organization | string |  | Yes |
+| plugin | string |  | Yes |
+| version | string |  | Yes |
 
 #### MemberActionResponse
 
@@ -17369,6 +17546,13 @@ Enum class for large language model mode.
 | first_id | string | The ID of the first chat record on the current page. Omit this value to fetch the latest messages; for subsequent pages, use the first message ID from the current list to fetch older messages. | No |
 | limit | integer, <br>**Default:** 20 | Number of chat history messages to return per request. | No |
 
+#### Meta
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| minimum_dify_version | string |  | No |
+| version | string |  | No |
+
 #### MetadataArgs
 
 | Name | Type | Description | Required |
@@ -17406,6 +17590,18 @@ Metadata operation data
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | name | string | New metadata field name. | Yes |
+
+#### Model
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| llm | boolean |  | No |
+| moderation | boolean |  | No |
+| rerank | boolean |  | No |
+| speech2text | boolean |  | No |
+| text_embedding | boolean |  | No |
+| tts | boolean |  | No |
 
 #### ModelConfig
 
@@ -17464,22 +17660,15 @@ Metadata operation data
 | text_to_speech | object | Text to speech configuration | No |
 | tools | [ object ] | Available tools | No |
 
-#### ModelCredentialLoadBalancingResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| configs | [ object ] |  | No |
-| enabled | boolean |  | Yes |
-
 #### ModelCredentialResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | available_credentials | [ [CredentialConfiguration](#credentialconfiguration) ] |  | Yes |
-| credentials | object |  | No |
+| credentials | object |  | Yes |
 | current_credential_id | string |  | No |
 | current_credential_name | string |  | No |
-| load_balancing | [ModelCredentialLoadBalancingResponse](#modelcredentialloadbalancingresponse) |  | Yes |
+| load_balancing | [ModelLoadBalancingResponse](#modelloadbalancingresponse) |  | Yes |
 
 #### ModelCredentialSchema
 
@@ -17490,13 +17679,6 @@ Model class for model credential schema.
 | credential_form_schemas | [ [CredentialFormSchema](#credentialformschema) ] |  | Yes |
 | model | [FieldModelSchema](#fieldmodelschema) |  | Yes |
 
-#### ModelCredentialValidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| error | string |  | No |
-| result | string |  | Yes |
-
 #### ModelFeature
 
 Enum class for llm feature.
@@ -17505,7 +17687,26 @@ Enum class for llm feature.
 | ---- | ---- | ----------- | -------- |
 | ModelFeature | string | Enum class for llm feature. |  |
 
-#### ModelParameterRulesResponse
+#### ModelLoadBalancingConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_id | string |  | No |
+| credentials | object |  | Yes |
+| enabled | boolean |  | Yes |
+| id | string |  | Yes |
+| in_cooldown | boolean |  | Yes |
+| name | string |  | Yes |
+| ttl | integer |  | Yes |
+
+#### ModelLoadBalancingResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| configs | [ [ModelLoadBalancingConfigResponse](#modelloadbalancingconfigresponse) ] |  | Yes |
+| enabled | boolean |  | Yes |
+
+#### ModelParameterRuleListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -17571,12 +17772,6 @@ Model with provider entity.
 | provider | [SimpleProviderEntityResponse](#simpleproviderentityresponse) |  | Yes |
 | status | [ModelStatus](#modelstatus) |  | Yes |
 
-#### ModelWithProviderListResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [ModelWithProviderEntityResponse](#modelwithproviderentityresponse) ] |  | Yes |
-
 #### MoreLikeThisQuery
 
 | Name | Type | Description | Required |
@@ -17597,6 +17792,12 @@ Model with provider entity.
 | ---- | ---- | ----------- | -------- |
 | new_app_id | string |  | Yes |
 | permission_keys | [ string ] |  | No |
+
+#### Node
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
 
 #### NodeIdQuery
 
@@ -17858,6 +18059,7 @@ OAuth schema
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+<<<<<<< HEAD
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
 
@@ -17878,6 +18080,12 @@ OAuth schema
 ||||||| 48dfbd60d6
 =======
 >>>>>>> chariri/refac-basemodel-worktools
+||||||| 48dfbd60d6
+=======
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
+
+>>>>>>> chariri/refac-basemodel-workmodel
 #### OutputErrorStrategy
 
 Per-output failure handling strategy.
@@ -17923,8 +18131,8 @@ output check fails and any configured retry attempts have been exhausted.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| plugin_unique_identifier | string |  | Yes |
-| version | string |  | No |
+| manifest | [PluginDeclaration](#plugindeclaration) |  | Yes |
+| unique_identifier | string |  | Yes |
 
 #### PaginatedConversationVariableResponse
 
@@ -18320,6 +18528,16 @@ Enum class for parameter type.
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
 
+#### Permission
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoint | [Endpoint](#endpoint) |  | No |
+| model | [Model](#model) |  | No |
+| node | [Node](#node) |  | No |
+| storage | [Storage](#storage) |  | No |
+| tool | [Tool](#tool) |  | No |
+
 #### PermissionCatalogGroup
 
 | Name | Type | Description | Required |
@@ -18449,6 +18667,19 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | upgrade_mode | [UpgradeMode](#upgrademode) |  | Yes |
 | upgrade_time_of_day | integer |  | Yes |
 
+#### PluginBundleDependency
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | [core__plugin__entities__bundle__PluginBundleDependency__Type](#core__plugin__entities__bundle__pluginbundledependency__type) |  | Yes |
+| value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+
+#### PluginBundleUploadResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginBundleUploadResponse | array |  |  |
+
 #### PluginCategory
 
 | Name | Type | Description | Required |
@@ -18523,6 +18754,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | has_more | boolean |  | Yes |
 | plugins | [ [PluginCategoryInstalledPluginResponse](#plugincategoryinstalledpluginresponse) ] |  | Yes |
 
+<<<<<<< HEAD
 #### PluginDaemonOperationResponse
 
 | Name | Type | Description | Required |
@@ -18539,6 +18771,15 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | plugin_unique_identifier | string |  | Yes |
 | provider | string |  | Yes |
 
+||||||| 48dfbd60d6
+#### PluginDaemonOperationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginDaemonOperationResponse |  |  |  |
+
+=======
+>>>>>>> chariri/refac-basemodel-workmodel
 #### PluginDebuggingKeyResponse
 
 | Name | Type | Description | Required |
@@ -18546,6 +18787,32 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | host | string |  | Yes |
 | key | string |  | Yes |
 | port | integer |  | Yes |
+
+#### PluginDeclaration
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_strategy | [AgentStrategyProviderEntity](#agentstrategyproviderentity) |  | No |
+| author | string |  | Yes |
+| category | [PluginCategory](#plugincategory) |  | Yes |
+| created_at | dateTime |  | Yes |
+| datasource | [DatasourceProviderEntity](#datasourceproviderentity) |  | No |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| endpoint | [EndpointProviderDeclaration](#endpointproviderdeclaration) |  | No |
+| icon | string |  | Yes |
+| icon_dark | string |  | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | Yes |
+| meta | [Meta](#meta) |  | Yes |
+| model | [ProviderEntity](#providerentity) |  | No |
+| name | string |  | Yes |
+| plugins | [Plugins](#plugins) |  | Yes |
+| repo | string |  | No |
+| resource | [PluginResourceRequirements](#pluginresourcerequirements) |  | Yes |
+| tags | [ string ] |  | No |
+| tool | [ToolProviderEntity](#toolproviderentity) |  | No |
+| trigger | [TriggerProviderEntity](#triggerproviderentity) |  | No |
+| verified | boolean |  | No |
+| version | string |  | Yes |
 
 #### PluginDeclarationResponse
 
@@ -18573,6 +18840,14 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | verified | boolean |  | No |
 | version | string |  | Yes |
 
+#### PluginDecodeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| manifest | [PluginDeclaration](#plugindeclaration) |  | Yes |
+| unique_identifier | string | The unique identifier of the plugin. | Yes |
+| verification | [PluginVerification](#pluginverification) | Basic verification information | No |
+
 #### PluginDependency
 
 | Name | Type | Description | Required |
@@ -18585,8 +18860,102 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| options |  |  | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | Yes |
 
+<<<<<<< HEAD
+||||||| 48dfbd60d6
+#### PluginEndpointListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoints | [ object ] | Endpoint information | Yes |
+
+=======
+#### PluginEndpointListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoints | [ object ] | Endpoint information | Yes |
+
+#### PluginEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checksum | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| declaration | [PluginDeclaration](#plugindeclaration) |  | Yes |
+| endpoints_active | integer |  | Yes |
+| endpoints_setups | integer |  | Yes |
+| id | string |  | Yes |
+| installation_id | string |  | Yes |
+| meta | object |  | Yes |
+| name | string |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| version | string |  | Yes |
+
+#### PluginInstallTask
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_plugins | integer | The number of plugins that have been installed. | Yes |
+| created_at | dateTime |  | Yes |
+| id | string |  | Yes |
+| plugins | [ [PluginInstallTaskPluginStatus](#plugininstalltaskpluginstatus) ] | The status of the plugins. | Yes |
+| status | [PluginInstallTaskStatus](#plugininstalltaskstatus) | The status of the install task. | Yes |
+| total_plugins | integer | The total number of plugins to be installed. | Yes |
+| updated_at | dateTime |  | Yes |
+
+#### PluginInstallTaskPluginStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string | The icon of the plugin. | Yes |
+| labels | [I18nObject](#i18nobject) | The labels of the plugin. | Yes |
+| message | string | The message of the install task. | Yes |
+| plugin_id | string | The plugin ID of the install task. | Yes |
+| plugin_unique_identifier | string | The plugin unique identifier of the install task. | Yes |
+| source | string | The installation source of the plugin | No |
+| status | [PluginInstallTaskStatus](#plugininstalltaskstatus) | The status of the install task. | Yes |
+
+#### PluginInstallTaskStartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| all_installed | boolean | Whether all plugins are installed. | Yes |
+| task | [PluginInstallTask](#plugininstalltask) | The install task. | No |
+| task_id | string | The ID of the install task. | Yes |
+
+#### PluginInstallTaskStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginInstallTaskStatus | string |  |  |
+
+#### PluginInstallation
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checksum | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| declaration | [PluginDeclaration](#plugindeclaration) |  | Yes |
+| endpoints_active | integer |  | Yes |
+| endpoints_setups | integer |  | Yes |
+| id | string |  | Yes |
+| meta | object |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| version | string |  | Yes |
+
+>>>>>>> chariri/refac-basemodel-workmodel
 #### PluginInstallationPermissionModel
 
 | Name | Type | Description | Required |
@@ -18610,13 +18979,13 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| plugins |  |  | Yes |
+| plugins | [ [PluginInstallation](#plugininstallation) ] |  | Yes |
 
 #### PluginListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| plugins |  |  | Yes |
+| plugins | [ [PluginEntity](#pluginentity) ] |  | Yes |
 | total | integer |  | Yes |
 
 #### PluginManagerModel
@@ -18629,7 +18998,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| manifest |  |  | Yes |
+| manifest | [PluginDeclaration](#plugindeclaration) |  | Yes |
 
 #### PluginOAuthAuthorizationUrlResponse
 
@@ -18655,7 +19024,12 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | icon | string | The icon of the option, can be a url or a base64 encoded image | No |
+<<<<<<< HEAD
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
+||||||| 48dfbd60d6
+=======
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the option | Yes |
+>>>>>>> chariri/refac-basemodel-workmodel
 | value | string | The value of the option | Yes |
 
 #### PluginParameterTemplate
@@ -18684,23 +19058,48 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | readme | string |  | Yes |
 
+#### PluginResourceRequirements
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| memory | integer |  | Yes |
+| permission | [Permission](#permission) |  | No |
+
 #### PluginTaskResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| task |  |  | Yes |
+| task | [PluginInstallTask](#plugininstalltask) |  | Yes |
 
 #### PluginTasksResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| tasks |  |  | Yes |
+| tasks | [ [PluginInstallTask](#plugininstalltask) ] |  | Yes |
+
+#### PluginVerification
+
+Verification of the plugin.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| authorized_category | [AuthorizedCategory](#authorizedcategory) | The authorized category of the plugin. | Yes |
 
 #### PluginVersionsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| versions |  |  | Yes |
+| versions | object |  | Yes |
+
+#### Plugins
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| datasources | [ string ] |  | No |
+| endpoints | [ string ] |  | No |
+| models | [ string ] |  | No |
+| tools | [ string ] |  | No |
+| triggers | [ string ] |  | No |
 
 #### PreProcessingRule
 
@@ -18716,6 +19115,17 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | child_chunks | [ string ] |  | No |
 | content | string |  | Yes |
 | summary | string |  | No |
+
+#### PriceConfig
+
+Model class for pricing info.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| currency | string |  | Yes |
+| input | string |  | Yes |
+| output | string |  | No |
+| unit | string |  | Yes |
 
 #### PriceConfigResponse
 
@@ -18743,6 +19153,7 @@ Dataset Process Rule Mode
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -18826,10 +19237,27 @@ Model class for common provider settings like credentials
 >>>>>>> chariri/refac-basemodel-worktools
 
 #### ProviderCredentialResponse
+||||||| 48dfbd60d6
+#### ProviderCredentialResponse
+=======
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+>>>>>>> chariri/refac-basemodel-workmodel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credentials | object |  | No |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [core__entities__provider_entities__BasicProviderConfig__Type](#core__entities__provider_entities__basicproviderconfig__type) | The type of the credentials | Yes |
+| url | string |  | No |
 
 #### ProviderCredentialSchema
 
@@ -18839,12 +19267,36 @@ Model class for provider credential schema.
 | ---- | ---- | ----------- | -------- |
 | credential_form_schemas | [ [CredentialFormSchema](#credentialformschema) ] |  | Yes |
 
-#### ProviderCredentialValidateResponse
+#### ProviderCredentialsResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| error | string |  | No |
-| result | string, <br>**Available values:** "error", "success" | *Enum:* `"error"`, `"success"` | Yes |
+| credentials | object |  | No |
+
+#### ProviderEntity
+
+Runtime-native provider schema.
+
+`provider` is the canonical runtime identifier. `provider_name` is a
+compatibility alias for callers that still resolve providers by short name and
+is empty when no alias exists.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| background | string |  | No |
+| configurate_methods | [ [ConfigurateMethod](#configuratemethod) ] |  | Yes |
+| description | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| help | [ProviderHelpEntity](#providerhelpentity) |  | No |
+| icon_small | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| icon_small_dark | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | No |
+| label | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+| model_credential_schema | [ModelCredentialSchema](#modelcredentialschema) |  | No |
+| models | [ [AIModelEntity](#aimodelentity) ] |  | No |
+| position | object |  | No |
+| provider | string |  | Yes |
+| provider_credential_schema | [ProviderCredentialSchema](#providercredentialschema) |  | No |
+| provider_name | string |  | No |
+| supported_model_types | [ [ModelType](#modeltype) ] |  | Yes |
 
 #### ProviderEntityResponse
 
@@ -18875,6 +19327,12 @@ Model class for provider help.
 | ---- | ---- | ----------- | -------- |
 | title | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
 | url | [graphon__model_runtime__entities__common_entities__I18nObject](#graphon__model_runtime__entities__common_entities__i18nobject) |  | Yes |
+
+#### ProviderModelListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [ModelWithProviderEntityResponse](#modelwithproviderentityresponse) ] |  | Yes |
 
 #### ProviderModelWithStatusEntity
 
@@ -18932,12 +19390,6 @@ Model class for provider response.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ProviderType | string |  |  |
-
-#### ProviderWithModelsDataResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| data | [ [ProviderWithModelsResponse](#providerwithmodelsresponse) ] |  | Yes |
 
 #### ProviderWithModelsResponse
 
@@ -19967,6 +20419,13 @@ Query parameters for listing snippet published workflows.
 | paused | integer |  | Yes |
 | success | integer |  | Yes |
 
+#### Storage
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| size | integer, <br>**Default:** 1048576 |  | No |
+
 #### StrategySetting
 
 | Name | Type | Description | Required |
@@ -19991,6 +20450,7 @@ Default configuration for form inputs.
 | type | [ValueSourceType](#valuesourcetype) |  | Yes |
 | value | string |  | No |
 
+<<<<<<< HEAD
 #### SubscriptionBuilderApiEntity
 
 | Name | Type | Description | Required |
@@ -20004,6 +20464,9 @@ Default configuration for form inputs.
 | properties | object | The properties of the subscription builder | Yes |
 | provider | string | The provider id of the subscription builder | Yes |
 
+||||||| 48dfbd60d6
+=======
+>>>>>>> chariri/refac-basemodel-workmodel
 #### SubscriptionConstructor
 
 The subscription constructor of the trigger provider
@@ -20323,7 +20786,25 @@ Available voices
 | data | [ [TokensPerSecondStatisticItem](#tokenspersecondstatisticitem) ] |  | Yes |
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 #### ToolLabelEnum
+||||||| 48dfbd60d6
+#### ToolOAuthClientSchemaResponse
+=======
+#### Tool
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+
+#### ToolLabelEnum
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolLabelEnum | string |  |  |
+
+#### ToolOAuthClientSchemaResponse
+>>>>>>> chariri/refac-basemodel-workmodel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -20412,6 +20893,7 @@ Overrides type
 | ---- | ---- | ----------- | -------- |
 | ToolParameterForm | string |  |  |
 
+<<<<<<< HEAD
 #### ToolParameterType
 
 removes TOOLS_SELECTOR from PluginParameterType
@@ -20478,6 +20960,29 @@ removes TOOLS_SELECTOR from PluginParameterType
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolProviderCredentialListResponse | array |  |  |
+||||||| 48dfbd60d6
+=======
+#### ToolProviderEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] |  | No |
+| identity | [ToolProviderIdentity](#toolprovideridentity) |  | Yes |
+| oauth_schema | [OAuthSchema](#oauthschema) |  | No |
+| plugin_id | string |  | No |
+
+#### ToolProviderIdentity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the tool | Yes |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the tool | Yes |
+| icon | string | The icon of the tool | Yes |
+| icon_dark | string | The dark icon of the tool | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the tool | Yes |
+| name | string | The name of the tool | Yes |
+| tags | [ [ToolLabelEnum](#toollabelenum) ] | The tags of the tool | No |
+>>>>>>> chariri/refac-basemodel-workmodel
 
 #### ToolProviderListQuery
 
@@ -20940,7 +21445,38 @@ Enum class for tool provider
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
 
+<<<<<<< HEAD
 #### TriggerProviderApiEntity
+||||||| 48dfbd60d6
+#### TriggerProviderOpaqueResponse
+=======
+#### TriggerProviderEntity
+
+The configuration of a trigger provider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| events | [ [EventEntity](#evententity) ] | The events of the trigger provider | No |
+| identity | [TriggerProviderIdentity](#triggerprovideridentity) |  | Yes |
+| subscription_constructor | [SubscriptionConstructor](#subscriptionconstructor) | The subscription constructor of the trigger provider | No |
+| subscription_schema | [ [ProviderConfig](#providerconfig) ] | The configuration schema stored in the subscription entity | No |
+
+#### TriggerProviderIdentity
+
+The identity of the trigger provider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the trigger provider | Yes |
+| description | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The description of the trigger provider | Yes |
+| icon | string | The icon of the trigger provider | No |
+| icon_dark | string | The dark icon of the trigger provider | No |
+| label | [core__tools__entities__common_entities__I18nObject](#core__tools__entities__common_entities__i18nobject) | The label of the trigger provider | Yes |
+| name | string | The name of the trigger provider | Yes |
+| tags | [ string ] | The tags of the trigger provider | No |
+
+#### TriggerProviderOpaqueResponse
+>>>>>>> chariri/refac-basemodel-workmodel
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -21143,6 +21679,13 @@ User action configuration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [UserSatisfactionRateStatisticItem](#usersatisfactionratestatisticitem) ] |  | Yes |
+
+#### ValidationResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| error | string |  | No |
+| result | string, <br>**Available values:** "error", "success" | *Enum:* `"error"`, `"success"` | Yes |
 
 #### ValueSourceType
 
@@ -22274,6 +22817,16 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | core__entities__provider_entities__BasicProviderConfig__Type | string |  |  |
 
+<<<<<<< HEAD
+||||||| 48dfbd60d6
+=======
+#### core__plugin__entities__bundle__PluginBundleDependency__Type
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| core__plugin__entities__bundle__PluginBundleDependency__Type | string |  |  |
+
+>>>>>>> chariri/refac-basemodel-workmodel
 #### core__plugin__entities__parameters__PluginParameterAutoGenerate__Type
 
 | Name | Type | Description | Required |
