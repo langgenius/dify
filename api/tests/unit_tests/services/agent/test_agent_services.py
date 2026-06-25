@@ -625,6 +625,7 @@ def test_serialize_workflow_state_changes_lock_and_save_options(monkeypatch: pyt
         icon="robot",
         icon_background="#F5F3FF",
         scope=AgentScope.ROSTER,
+        source=AgentSource.ROSTER,
         status=AgentStatus.ACTIVE,
     )
     version = AgentConfigSnapshot(id="version-1", version=1, config_snapshot='{"prompt":{"system_prompt":"x"}}')
@@ -658,7 +659,14 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
             '{"workflow_prompt":"work","declared_outputs":[{"name":"summary","type":"string","required":true}]}'
         ),
     )
-    agent = Agent(id="agent-1", name="Analyst", description="", scope=AgentScope.ROSTER, status=AgentStatus.ACTIVE)
+    agent = Agent(
+        id="agent-1",
+        name="Analyst",
+        description="",
+        scope=AgentScope.ROSTER,
+        source=AgentSource.ROSTER,
+        status=AgentStatus.ACTIVE,
+    )
     version = AgentConfigSnapshot(id="version-1", version=1, config_snapshot='{"prompt":{"system_prompt":"x"}}')
     monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
 
@@ -1742,7 +1750,9 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
         scalar=[2, 1, SimpleNamespace(id="workflow-1")],
         scalars=[
             [agent, unconfigured_agent],
+            [],
             [agent],
+            [],
             [SimpleNamespace(agent_id="agent-1", node_id="node-1")],
         ],
     )
@@ -2210,7 +2220,7 @@ def test_agent_app_debug_conversation_requires_app_binding():
         )
 
 
-def test_load_or_create_agent_app_debug_conversations_filters_agent_apps():
+def test_load_or_create_agent_app_debug_conversations_supports_runtime_backed_agents():
     valid_agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -2249,10 +2259,11 @@ def test_load_or_create_agent_app_debug_conversations_filters_agent_apps():
         account_id="account-1",
     )
 
-    assert list(result) == ["agent-1"]
+    assert list(result) == ["agent-1", "agent-3"]
     assert result["agent-1"]
+    assert result["agent-3"]
     assert fake_session.commits == 1
-    assert len([value for value in fake_session.added if isinstance(value, AgentDebugConversation)]) == 1
+    assert len([value for value in fake_session.added if isinstance(value, AgentDebugConversation)]) == 2
 
 
 def test_agent_app_visible_versions_exclude_draft_saves():
