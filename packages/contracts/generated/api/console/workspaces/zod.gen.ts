@@ -889,9 +889,9 @@ export const zSnippetPagination = z.object({
 })
 
 /**
- * AccountWithRole
+ * AccountWithRoleResponse
  */
-export const zAccountWithRole = z.object({
+export const zAccountWithRoleResponse = z.object({
   avatar: z.string().nullish(),
   created_at: z.int().nullish(),
   email: z.string(),
@@ -905,10 +905,10 @@ export const zAccountWithRole = z.object({
 })
 
 /**
- * AccountWithRoleList
+ * AccountWithRoleListResponse
  */
-export const zAccountWithRoleList = z.object({
-  accounts: z.array(zAccountWithRole),
+export const zAccountWithRoleListResponse = z.object({
+  accounts: z.array(zAccountWithRoleResponse),
 })
 
 /**
@@ -2274,7 +2274,7 @@ export const zPostWorkspacesCurrentCustomizedSnippetsBySnippetIdUseCountIncremen
 /**
  * Success
  */
-export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentDatasetOperatorsResponse = zAccountWithRoleListResponse
 
 export const zGetWorkspacesCurrentDefaultModelQuery = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
@@ -2378,7 +2378,7 @@ export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointUpdateRespo
 /**
  * Success
  */
-export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleList
+export const zGetWorkspacesCurrentMembersResponse = zAccountWithRoleListResponse
 
 export const zPostWorkspacesCurrentMembersInviteEmailBody = zMemberInvitePayload
 

@@ -95,7 +95,7 @@ export type AudioBinaryResponse = Blob | File
 export type WorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount | null
+  created_by?: SimpleAccountResponse | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -110,7 +110,7 @@ export type WorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount | null
+  updated_by?: SimpleAccountResponse | null
   version: string
 }
 
@@ -236,7 +236,7 @@ export type WorkflowConversationVariableResponse = {
   value_type: string
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
