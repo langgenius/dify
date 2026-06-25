@@ -33,8 +33,6 @@ import {
   zDeleteWorkspacesCurrentToolProviderMcpResponse,
   zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientPath,
   zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse,
-  zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath,
-  zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse,
   zGetWorkspacesCurrentAgentProviderByProviderNamePath,
   zGetWorkspacesCurrentAgentProviderByProviderNameResponse,
   zGetWorkspacesCurrentAgentProvidersResponse,
@@ -4181,37 +4179,6 @@ export const get90 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
-    operationId: 'getWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLang',
-    path: '/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}',
-    tags: ['console'],
-  })
-  .input(z.object({ params: zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath }))
-  .output(zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse)
-
-export const byLang = {
-  get: get90,
-}
-
-export const byIconType = {
-  byLang,
-}
-
-export const byProvider4 = {
-  byIconType,
-}
-
-export const modelProviders2 = {
-  byProvider: byProvider4,
-}
-
-export const byTenantId = {
-  modelProviders: modelProviders2,
-}
-
-export const get91 = oc
-  .route({
-    inputStructure: 'detailed',
-    method: 'GET',
     operationId: 'getWorkspaces',
     path: '/workspaces',
     tags: ['console'],
@@ -4219,12 +4186,11 @@ export const get91 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get91,
+  get: get90,
   current,
   customConfig,
   info: info4,
   switch: switch3,
-  byTenantId,
 }
 
 export const contract = {
