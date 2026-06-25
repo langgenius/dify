@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Опишіть, що вам потрібно, і форма ліворуч заповнюватиметься під час розмови.",
   "agentDetail.configure.build.empty.title": "Створіть агента через чат",
   "agentDetail.configure.build.inputPlaceholder": "Опишіть, що має робити ваш агент",
+  "agentDetail.configure.build.startBuild": "Почати збірку",
   "agentDetail.configure.chatFeatures.description": "Налаштуйте чат-досвід кінцевого користувача у вашому веб-застосунку та чат-поверхнях.",
   "agentDetail.configure.chatFeatures.title": "Функції чату",
   "agentDetail.configure.files.add": "Додати файл",

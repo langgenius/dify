@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPreviewHeader } from '../header'
 
@@ -6,12 +6,14 @@ function renderHeader({
   mode = 'preview',
   previewEnabled = true,
   onModeChange = vi.fn(),
+  onToggleChatFeatures = vi.fn(),
   onOpenVersions = vi.fn(),
   onRefresh = vi.fn(),
 }: {
   mode?: 'build' | 'preview'
   previewEnabled?: boolean
   onModeChange?: (mode: 'build' | 'preview') => void
+  onToggleChatFeatures?: () => void
   onOpenVersions?: () => void
   onRefresh?: () => void
 } = {}) {
@@ -21,7 +23,7 @@ function renderHeader({
       previewEnabled={previewEnabled}
       isChatFeaturesOpen={false}
       onModeChange={onModeChange}
-      onToggleChatFeatures={vi.fn()}
+      onToggleChatFeatures={onToggleChatFeatures}
       onOpenVersions={onOpenVersions}
       onRefresh={onRefresh}
     />,
@@ -43,6 +45,16 @@ describe('AgentPreviewHeader', () => {
     expect(onRefresh).toHaveBeenCalledTimes(1)
   })
 
+  it('should show chat features in build mode', async () => {
+    const user = userEvent.setup()
+    const onToggleChatFeatures = vi.fn()
+    renderHeader({ mode: 'build', onToggleChatFeatures })
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.chatFeatures' }))
+
+    expect(onToggleChatFeatures).toHaveBeenCalledTimes(1)
+  })
+
   it('should disable preview mode when preview is unavailable', async () => {
     const user = userEvent.setup()
     const onModeChange = vi.fn()
@@ -52,7 +64,9 @@ describe('AgentPreviewHeader', () => {
       onModeChange,
     })
 
-    await user.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.rightPanel\.preview/ }))
+    const modeControl = screen.getByRole('group', { name: 'agentV2.agentDetail.configure.rightPanel.modeLabel' })
+
+    await user.click(within(modeControl).getByRole('button', { name: /agentV2\.agentDetail\.configure\.rightPanel\.preview/ }))
 
     expect(onModeChange).not.toHaveBeenCalled()
   })

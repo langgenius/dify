@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "อธิบายสิ่งที่คุณต้องการ แล้วแบบฟอร์มด้านซ้ายจะถูกกรอกไปพร้อมกับการสนทนา",
   "agentDetail.configure.build.empty.title": "สร้างเอเจนต์ของคุณด้วยการแชท",
   "agentDetail.configure.build.inputPlaceholder": "อธิบายว่าเอเจนต์ของคุณควรทำอะไร",
+  "agentDetail.configure.build.startBuild": "เริ่มสร้าง",
   "agentDetail.configure.chatFeatures.description": "กำหนดประสบการณ์การแชทของผู้ใช้ปลายทางบน Web app และหน้าจอแชท",
   "agentDetail.configure.chatFeatures.title": "ฟีเจอร์แชท",
   "agentDetail.configure.files.add": "เพิ่มไฟล์",

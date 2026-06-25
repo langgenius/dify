@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Describe what you want and it fills in the form on the left as you go.",
   "agentDetail.configure.build.empty.title": "Build your agent by chatting",
   "agentDetail.configure.build.inputPlaceholder": "Describe what your agent should do",
+  "agentDetail.configure.build.startBuild": "Start build",
   "agentDetail.configure.chatFeatures.description": "Shape the end-user chat experience on your web app and chat surfaces.",
   "agentDetail.configure.chatFeatures.title": "Chat Features",
   "agentDetail.configure.files.add": "Add file",

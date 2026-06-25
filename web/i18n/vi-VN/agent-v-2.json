@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Mô tả điều bạn muốn và biểu mẫu bên trái sẽ được điền dần khi trò chuyện.",
   "agentDetail.configure.build.empty.title": "Xây dựng tác nhân bằng trò chuyện",
   "agentDetail.configure.build.inputPlaceholder": "Mô tả tác nhân của bạn nên làm gì",
+  "agentDetail.configure.build.startBuild": "Bắt đầu build",
   "agentDetail.configure.chatFeatures.description": "Định hình trải nghiệm trò chuyện cho người dùng cuối trên Web app và các bề mặt trò chuyện.",
   "agentDetail.configure.chatFeatures.title": "Tính năng trò chuyện",
   "agentDetail.configure.files.add": "Thêm tệp",

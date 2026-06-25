@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Beschreiben Sie, was Sie möchten, und das Formular links wird während des Chats ausgefüllt.",
   "agentDetail.configure.build.empty.title": "Agent per Chat erstellen",
   "agentDetail.configure.build.inputPlaceholder": "Beschreiben Sie, was Ihr Agent tun soll",
+  "agentDetail.configure.build.startBuild": "Build starten",
   "agentDetail.configure.chatFeatures.description": "Gestalten Sie das Chat-Erlebnis für Endnutzer in Ihrer Webapp und in Chat-Oberflächen.",
   "agentDetail.configure.chatFeatures.title": "Chat-Funktionen",
   "agentDetail.configure.files.add": "Datei hinzufügen",

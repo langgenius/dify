@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "आप जो चाहते हैं उसका वर्णन करें और बाईं ओर का फ़ॉर्म बातचीत के साथ भरता जाएगा।",
   "agentDetail.configure.build.empty.title": "चैट करके अपना एजेंट बनाएं",
   "agentDetail.configure.build.inputPlaceholder": "बताएं कि आपका एजेंट क्या करे",
+  "agentDetail.configure.build.startBuild": "बिल्ड शुरू करें",
   "agentDetail.configure.chatFeatures.description": "अपने Web app और चैट सतहों पर अंतिम-उपयोगकर्ता चैट अनुभव को आकार दें।",
   "agentDetail.configure.chatFeatures.title": "चैट सुविधाएँ",
   "agentDetail.configure.files.add": "फ़ाइल जोड़ें",

@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Descreva o que você quer e o formulário à esquerda será preenchido conforme a conversa avança.",
   "agentDetail.configure.build.empty.title": "Crie seu agente conversando",
   "agentDetail.configure.build.inputPlaceholder": "Descreva o que seu agente deve fazer",
+  "agentDetail.configure.build.startBuild": "Iniciar build",
   "agentDetail.configure.chatFeatures.description": "Modele a experiência de chat do usuário final no seu webapp e superfícies de chat.",
   "agentDetail.configure.chatFeatures.title": "Recursos de chat",
   "agentDetail.configure.files.add": "Adicionar arquivo",

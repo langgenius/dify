@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Opišite, kaj želite, in obrazec na levi se bo sproti izpolnjeval.",
   "agentDetail.configure.build.empty.title": "Izdelajte agenta s klepetom",
   "agentDetail.configure.build.inputPlaceholder": "Opišite, kaj naj vaš agent počne",
+  "agentDetail.configure.build.startBuild": "Začni gradnjo",
   "agentDetail.configure.chatFeatures.description": "Oblikujte uporabniško izkušnjo klepeta v vaši spletni aplikaciji in klepetalnih površinah.",
   "agentDetail.configure.chatFeatures.title": "Funkcije klepeta",
   "agentDetail.configure.files.add": "Dodaj datoteko",

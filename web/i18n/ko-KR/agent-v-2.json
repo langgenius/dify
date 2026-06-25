@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "원하는 내용을 설명하면 대화에 맞춰 왼쪽 양식이 채워집니다.",
   "agentDetail.configure.build.empty.title": "채팅으로 에이전트 만들기",
   "agentDetail.configure.build.inputPlaceholder": "에이전트가 해야 할 일을 설명하세요",
+  "agentDetail.configure.build.startBuild": "빌드 시작",
   "agentDetail.configure.chatFeatures.description": "Web app 및 채팅 화면에서의 최종 사용자 채팅 경험을 구성합니다.",
   "agentDetail.configure.chatFeatures.title": "채팅 기능",
   "agentDetail.configure.files.add": "파일 추가",

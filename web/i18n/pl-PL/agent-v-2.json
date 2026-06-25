@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Opisz, czego chcesz, a formularz po lewej będzie wypełniany w trakcie rozmowy.",
   "agentDetail.configure.build.empty.title": "Buduj agenta przez czat",
   "agentDetail.configure.build.inputPlaceholder": "Opisz, co agent ma robić",
+  "agentDetail.configure.build.startBuild": "Rozpocznij budowanie",
   "agentDetail.configure.chatFeatures.description": "Ukształtuj doświadczenie czatu użytkownika końcowego w aplikacji webowej i powierzchniach czatu.",
   "agentDetail.configure.chatFeatures.title": "Funkcje czatu",
   "agentDetail.configure.files.add": "Dodaj plik",

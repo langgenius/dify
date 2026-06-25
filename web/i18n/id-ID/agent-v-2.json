@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Jelaskan yang Anda inginkan dan formulir di kiri akan terisi seiring percakapan.",
   "agentDetail.configure.build.empty.title": "Bangun agen Anda lewat chat",
   "agentDetail.configure.build.inputPlaceholder": "Jelaskan apa yang harus dilakukan agen Anda",
+  "agentDetail.configure.build.startBuild": "Mulai build",
   "agentDetail.configure.chatFeatures.description": "Bentuk pengalaman chat pengguna akhir di Web app dan permukaan chat Anda.",
   "agentDetail.configure.chatFeatures.title": "Fitur Chat",
   "agentDetail.configure.files.add": "Tambahkan file",

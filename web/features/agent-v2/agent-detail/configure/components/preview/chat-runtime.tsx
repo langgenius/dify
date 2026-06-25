@@ -410,6 +410,7 @@ export type AgentChatRuntimeProps = {
   clearChatList: boolean
   conversationId?: string | null
   inputPlaceholder: string
+  sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationIdChange?: (conversationId: string) => void
@@ -426,6 +427,7 @@ export function AgentChatRuntime({
   clearChatList,
   conversationId,
   inputPlaceholder,
+  sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
   onConversationIdChange,
@@ -462,6 +464,7 @@ export function AgentChatRuntime({
       conversationId={conversationId}
       initialChatTree={initialChatTree}
       inputPlaceholder={inputPlaceholder}
+      sendButtonLabel={sendButtonLabel}
       renderEmptyState={renderEmptyState}
       onClearChatListChange={onClearChatListChange}
       onConversationIdChange={onConversationIdChange}
@@ -481,6 +484,7 @@ function AgentPreviewChatSession({
   conversationId,
   initialChatTree,
   inputPlaceholder,
+  sendButtonLabel,
   renderEmptyState,
   onClearChatListChange,
   onConversationIdChange,
@@ -496,6 +500,7 @@ function AgentPreviewChatSession({
   conversationId?: string | null
   initialChatTree: ChatItemInTree[]
   inputPlaceholder: string
+  sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationIdChange?: (conversationId: string) => void
@@ -602,6 +607,7 @@ function AgentPreviewChatSession({
         onSend={doSend}
         inputs={inputs}
         inputsForm={inputsForm}
+        sendButtonLabel={sendButtonLabel}
       />
     </div>
   )
@@ -627,6 +633,7 @@ function AgentPreviewChatSession({
         isEmptyChat ? 'hidden' : 'px-3 pt-10',
       )}
       inputPlaceholder={inputPlaceholder}
+      sendButtonLabel={sendButtonLabel}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

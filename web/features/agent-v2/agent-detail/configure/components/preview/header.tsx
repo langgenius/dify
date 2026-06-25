@@ -117,35 +117,30 @@ export function AgentPreviewHeader({
         >
           <span aria-hidden className="i-custom-vender-other-replay-line size-4" />
         </button>
-        {mode === 'build'
-          ? (
-              <button
-                type="button"
-                onClick={onOpenVersions}
-                className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                aria-label={t('agentDetail.configure.publishBar.versionHistory')}
-              >
-                <span aria-hidden className="i-ri-folder-3-line size-4" />
-              </button>
-            )
-          : (
-              <>
-                <SegmentedControlDivider className="mx-1" />
-                <button
-                  type="button"
-                  aria-pressed={isChatFeaturesOpen}
-                  onClick={onToggleChatFeatures}
-                  className={cn(
-                    'flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                    isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
-                  )}
-                  aria-label={t('agentDetail.configure.preview.chatFeatures')}
-                >
-                  <span aria-hidden className="i-ri-apps-2-add-line size-4" />
-                  <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
-                </button>
-              </>
-            )}
+        {mode === 'build' && (
+          <button
+            type="button"
+            onClick={onOpenVersions}
+            className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            aria-label={t('agentDetail.configure.publishBar.versionHistory')}
+          >
+            <span aria-hidden className="i-ri-folder-3-line size-4" />
+          </button>
+        )}
+        <SegmentedControlDivider className="mx-1" />
+        <button
+          type="button"
+          aria-pressed={isChatFeaturesOpen}
+          onClick={onToggleChatFeatures}
+          className={cn(
+            'flex h-8 items-center justify-center gap-0.5 rounded-lg px-3 py-2 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+            isChatFeaturesOpen && 'bg-state-base-hover text-text-secondary',
+          )}
+          aria-label={t('agentDetail.configure.preview.chatFeatures')}
+        >
+          <span aria-hidden className="i-ri-apps-2-add-line size-4" />
+          <span className="px-0.5 system-sm-medium">{t('agentDetail.configure.preview.chatFeatures')}</span>
+        </button>
       </div>
     </div>
   )

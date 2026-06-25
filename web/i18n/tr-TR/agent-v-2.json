@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "Ne istediğinizi açıklayın; soldaki form ilerledikçe doldurulur.",
   "agentDetail.configure.build.empty.title": "Aracınızı sohbet ederek oluşturun",
   "agentDetail.configure.build.inputPlaceholder": "Aracınızın ne yapması gerektiğini açıklayın",
+  "agentDetail.configure.build.startBuild": "Build’i başlat",
   "agentDetail.configure.chatFeatures.description": "Web app ve sohbet yüzeylerinizde son kullanıcı sohbet deneyimini şekillendirin.",
   "agentDetail.configure.chatFeatures.title": "Sohbet Özellikleri",
   "agentDetail.configure.files.add": "Dosya ekle",

@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "やりたいことを説明すると、左側のフォームが会話に合わせて入力されます。",
   "agentDetail.configure.build.empty.title": "チャットでエージェントを作成",
   "agentDetail.configure.build.inputPlaceholder": "エージェントに実行させたいことを説明",
+  "agentDetail.configure.build.startBuild": "ビルドを開始",
   "agentDetail.configure.chatFeatures.description": "Web app やチャット画面でのエンドユーザー向けチャット体験を設定します。",
   "agentDetail.configure.chatFeatures.title": "チャット機能",
   "agentDetail.configure.files.add": "ファイルを追加",

@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "صِف ما تريده وسيتم ملء النموذج على اليسار أثناء المحادثة.",
   "agentDetail.configure.build.empty.title": "ابنِ وكيلك عبر الدردشة",
   "agentDetail.configure.build.inputPlaceholder": "صِف ما يجب أن يفعله وكيلك",
+  "agentDetail.configure.build.startBuild": "ابدأ البناء",
   "agentDetail.configure.chatFeatures.description": "شكّل تجربة الدردشة للمستخدم النهائي على Web app وأسطح الدردشة.",
   "agentDetail.configure.chatFeatures.title": "ميزات الدردشة",
   "agentDetail.configure.files.add": "إضافة ملف",

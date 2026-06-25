@@ -63,6 +63,7 @@
   "agentDetail.configure.build.empty.description": "描述你的需求，它會隨著對話填寫左側表單。",
   "agentDetail.configure.build.empty.title": "透過對話建置 Agent",
   "agentDetail.configure.build.inputPlaceholder": "描述你的 Agent 應該做什麼",
+  "agentDetail.configure.build.startBuild": "開始構建",
   "agentDetail.configure.chatFeatures.description": "配置 Web app 和聊天介面的終端使用者聊天體驗。",
   "agentDetail.configure.chatFeatures.title": "Chat 功能",
   "agentDetail.configure.files.add": "新增檔案",
