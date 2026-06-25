@@ -440,7 +440,7 @@ class SnippetWorkflowByIdApi(Resource):
             return {"message": "No valid fields to update"}, 400
 
         snippet_service = _snippet_service()
-        with Session(db.engine) as session:
+        with _snippet_session_maker().begin() as session:
             workflow = snippet_service.update_workflow(
                 session=session,
                 snippet=snippet,
@@ -450,7 +450,6 @@ class SnippetWorkflowByIdApi(Resource):
             )
             if not workflow:
                 raise NotFound("Workflow not found")
-            session.commit()
 
         response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
         response["input_fields"] = snippet.input_fields_list

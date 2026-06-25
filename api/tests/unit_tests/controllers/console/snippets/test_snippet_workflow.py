@@ -384,21 +384,21 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
     user = _account("account-1")
     input_fields = [{"variable": "query", "type": "text"}]
     snippet = _snippet(input_fields=json.dumps(input_fields))
-    session = SimpleNamespace(commit=Mock())
+    session = SimpleNamespace()
     update_workflow = Mock(return_value=workflow)
 
-    class SessionContext:
-        def __init__(self, engine):
-            self.engine = engine
-
+    class TransactionContext:
         def __enter__(self):
             return session
 
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(snippet_workflow_module, "Session", SessionContext)
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=object()))
+    class SessionMaker:
+        def begin(self):
+            return TransactionContext()
+
+    monkeypatch.setattr(snippet_workflow_module, "_snippet_session_maker", Mock(return_value=SessionMaker()))
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
@@ -422,7 +422,6 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
         account=user,
         data={"marked_name": "v1", "marked_comment": "first version"},
     )
-    session.commit.assert_called_once()
     assert response["marked_name"] == "v1"
     assert response["marked_comment"] == "first version"
     assert response["input_fields"] == input_fields
@@ -445,18 +444,18 @@ def test_update_published_snippet_workflow_raises_not_found(
     user = _account("account-1")
     snippet = _snippet()
 
-    class SessionContext:
-        def __init__(self, engine):
-            self.engine = engine
-
+    class TransactionContext:
         def __enter__(self):
-            return SimpleNamespace(commit=Mock())
+            return SimpleNamespace()
 
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(snippet_workflow_module, "Session", SessionContext)
-    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=object()))
+    class SessionMaker:
+        def begin(self):
+            return TransactionContext()
+
+    monkeypatch.setattr(snippet_workflow_module, "_snippet_session_maker", Mock(return_value=SessionMaker()))
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
