@@ -9,6 +9,7 @@ This module tests the core authentication endpoints including:
 """
 
 import base64
+import logging
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -191,7 +192,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
-    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask):
+    def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog):
         """
         Test login rejection when rate limit is exceeded.
 
@@ -204,22 +205,24 @@ class TestLoginApi:
         mock_get_invitation.return_value = None
 
         # Act & Assert
-        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
-            with app.test_request_context(
-                "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
-            ):
-                login_api = LoginApi()
-                with pytest.raises(EmailPasswordLoginLimitError):
-                    login_api.post()
+        with app.test_request_context(
+            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
+        ):
+            login_api = LoginApi()
+            with pytest.raises(EmailPasswordLoginLimitError):
+                login_api.post()
 
-        assert mock_log_warning.call_count == 1
-        assert mock_log_warning.call_args.args[1] == "test@example.com"
-        assert mock_log_warning.call_args.args[2] == LoginFailureReason.LOGIN_RATE_LIMITED
+        warn_records = [
+            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
+        ]
+        assert len(warn_records) == 1
+        assert warn_records[0].args[0] == "test@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.LOGIN_RATE_LIMITED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", True)
     @patch("controllers.console.auth.login.BillingService.is_email_in_freeze")
-    def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app: Flask):
+    def test_login_fails_when_account_frozen(self, mock_is_frozen, mock_db, app: Flask, caplog):
         """
         Test login rejection for frozen accounts.
 
@@ -231,17 +234,19 @@ class TestLoginApi:
         mock_is_frozen.return_value = True
 
         # Act & Assert
-        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
-            with app.test_request_context(
-                "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
-            ):
-                login_api = LoginApi()
-                with pytest.raises(AccountInFreezeError):
-                    login_api.post()
+        with app.test_request_context(
+            "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
+        ):
+            login_api = LoginApi()
+            with pytest.raises(AccountInFreezeError):
+                login_api.post()
 
-        assert mock_log_warning.call_count == 1
-        assert mock_log_warning.call_args.args[1] == "frozen@example.com"
-        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_IN_FREEZE
+        warn_records = [
+            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
+        ]
+        assert len(warn_records) == 1
+        assert warn_records[0].args[0] == "frozen@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_IN_FREEZE
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -257,6 +262,7 @@ class TestLoginApi:
         mock_is_rate_limit,
         mock_db,
         app: Flask,
+        caplog,
     ):
         """
         Test login failure with invalid credentials.
@@ -272,20 +278,22 @@ class TestLoginApi:
         mock_authenticate.side_effect = AccountPasswordError("Invalid password")
 
         # Act & Assert
-        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
-            with app.test_request_context(
-                "/login",
-                method="POST",
-                json={"email": "test@example.com", "password": encode_password("WrongPass123!")},
-            ):
-                login_api = LoginApi()
-                with pytest.raises(AuthenticationFailedError):
-                    login_api.post()
+        with app.test_request_context(
+            "/login",
+            method="POST",
+            json={"email": "test@example.com", "password": encode_password("WrongPass123!")},
+        ):
+            login_api = LoginApi()
+            with pytest.raises(AuthenticationFailedError):
+                login_api.post()
 
         mock_add_rate_limit.assert_called_once_with("test@example.com")
-        assert mock_log_warning.call_count == 1
-        assert mock_log_warning.call_args.args[1] == "test@example.com"
-        assert mock_log_warning.call_args.args[2] == LoginFailureReason.INVALID_CREDENTIALS
+        warn_records = [
+            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
+        ]
+        assert len(warn_records) == 1
+        assert warn_records[0].args[0] == "test@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.INVALID_CREDENTIALS
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -293,7 +301,7 @@ class TestLoginApi:
     @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     def test_login_fails_for_banned_account(
-        self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask
+        self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app: Flask, caplog
     ):
         """
         Test login rejection for banned accounts.
@@ -308,19 +316,21 @@ class TestLoginApi:
         mock_authenticate.side_effect = AccountLoginError("Account is banned")
 
         # Act & Assert
-        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
-            with app.test_request_context(
-                "/login",
-                method="POST",
-                json={"email": "banned@example.com", "password": encode_password("ValidPass123!")},
-            ):
-                login_api = LoginApi()
-                with pytest.raises(AccountBannedError):
-                    login_api.post()
+        with app.test_request_context(
+            "/login",
+            method="POST",
+            json={"email": "banned@example.com", "password": encode_password("ValidPass123!")},
+        ):
+            login_api = LoginApi()
+            with pytest.raises(AccountBannedError):
+                login_api.post()
 
-        assert mock_log_warning.call_count == 1
-        assert mock_log_warning.call_args.args[1] == "banned@example.com"
-        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_BANNED
+        warn_records = [
+            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
+        ]
+        assert len(warn_records) == 1
+        assert warn_records[0].args[0] == "banned@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
@@ -452,23 +462,26 @@ class TestLoginApi:
         mock_get_token_data: MagicMock,
         mock_db: MagicMock,
         app: Flask,
+        caplog,
     ):
         mock_get_token_data.return_value = {"email": "User@Example.com", "code": "123456"}
         mock_get_account.side_effect = Unauthorized("Account is banned.")
 
-        with patch("controllers.console.auth.login.logger.warning") as mock_log_warning:
-            with app.test_request_context(
-                "/email-code-login/validity",
-                method="POST",
-                json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
-            ):
-                with pytest.raises(AccountBannedError):
-                    EmailCodeLoginApi().post()
+        with app.test_request_context(
+            "/email-code-login/validity",
+            method="POST",
+            json={"email": "User@Example.com", "code": encode_code("123456"), "token": "token-123"},
+        ):
+            with pytest.raises(AccountBannedError):
+                EmailCodeLoginApi().post()
 
         mock_revoke_token.assert_called_once_with("token-123")
-        assert mock_log_warning.call_count == 1
-        assert mock_log_warning.call_args.args[1] == "user@example.com"
-        assert mock_log_warning.call_args.args[2] == LoginFailureReason.ACCOUNT_BANNED
+        warn_records = [
+            r for r in caplog.records if r.name == "controllers.console.auth.login" and r.levelno == logging.WARNING
+        ]
+        assert len(warn_records) == 1
+        assert warn_records[0].args[0] == "user@example.com"
+        assert warn_records[0].args[1] == LoginFailureReason.ACCOUNT_BANNED
 
 
 class TestLogoutApi:

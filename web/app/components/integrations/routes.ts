@@ -70,19 +70,6 @@ export const sectionByToolCategory: Record<ToolCategory, IntegrationSection> = {
   mcp: 'mcp',
 }
 
-export const marketplaceCategoryByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
-  'provider': 'model',
-  'builtin': 'tool',
-  'mcp': 'tool',
-  'custom-tool': 'tool',
-  'workflow-tool': 'tool',
-  'data-source': 'datasource',
-  'custom-endpoint': 'extension',
-  'trigger': 'trigger',
-  'agent-strategy': 'agent-strategy',
-  'extension': 'extension',
-}
-
 export const marketplaceUrlPathByIntegrationSection: Partial<Record<IntegrationSection, string>> = {
   'provider': '/plugins/model',
   'builtin': '/plugins/tool',
@@ -112,17 +99,6 @@ export const integrationPathBySection: Record<IntegrationSection, string> = {
 export const buildIntegrationPath = (section: IntegrationSection) => {
   return integrationPathBySection[section]
 }
-
-export const buildMarketplacePathByIntegrationSection = (section: IntegrationSection) => {
-  const category = marketplaceCategoryByIntegrationSection[section]
-
-  if (!category)
-    return '/marketplace'
-
-  const params = new URLSearchParams({ category })
-  return `/marketplace?${params.toString()}`
-}
-
 export const buildMarketplaceUrlPathByIntegrationSection = (section: IntegrationSection) => {
   return marketplaceUrlPathByIntegrationSection[section] ?? '/plugins'
 }

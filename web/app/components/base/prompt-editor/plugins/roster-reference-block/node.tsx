@@ -1,5 +1,4 @@
 import type {
-  LexicalNode,
   NodeKey,
   SerializedLexicalNode,
 } from 'lexical'
@@ -67,10 +66,4 @@ export class RosterReferenceBlockNode extends DecoratorNode<JSX.Element> {
 
 export function $createRosterReferenceBlockNode(text = ''): RosterReferenceBlockNode {
   return $applyNodeReplacement(new RosterReferenceBlockNode(text))
-}
-
-export function $isRosterReferenceBlockNode(
-  node: LexicalNode | null | undefined,
-): node is RosterReferenceBlockNode {
-  return node instanceof RosterReferenceBlockNode
 }

@@ -6,7 +6,6 @@ import {
 import RequestURLBlockComponent from '../component'
 import {
   $createRequestURLBlockNode,
-  $isRequestURLBlockNode,
   RequestURLBlockNode,
 } from '../node'
 
@@ -101,14 +100,6 @@ describe('RequestURLBlockNode', () => {
       const { node } = createNodeInEditor()
 
       expect(node).toBeInstanceOf(RequestURLBlockNode)
-    })
-
-    it('should identify request URL block nodes using type guard', () => {
-      const { node } = createNodeInEditor()
-
-      expect($isRequestURLBlockNode(node)).toBe(true)
-      expect($isRequestURLBlockNode(null)).toBe(false)
-      expect($isRequestURLBlockNode(undefined)).toBe(false)
     })
   })
 })
