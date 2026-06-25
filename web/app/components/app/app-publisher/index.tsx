@@ -46,7 +46,7 @@ import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { AccessControl } from '../app-access-control'
+import AccessControl from '../app-access-control'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
