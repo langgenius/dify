@@ -981,7 +981,70 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | appId | string | Application ID | Yes |
 
+<<<<<<< HEAD
 #### AudioToTextResponse
+||||||| 48dfbd60d6
+#### AppSiteInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| can_replace_logo | boolean |  | Yes |
+| custom_config | object |  | No |
+| enable_site | boolean |  | Yes |
+| end_user_id | string |  | No |
+| model_config | [AppSiteModelConfigResponse](#appsitemodelconfigresponse) |  | No |
+| plan | string |  | No |
+| site | [AppSiteResponse](#appsiteresponse) |  | Yes |
+
+#### AppSiteModelConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| model |  |  | Yes |
+| more_like_this |  |  | Yes |
+| opening_statement | string |  | No |
+| pre_prompt | string |  | No |
+| suggested_questions |  |  | Yes |
+| suggested_questions_after_answer |  |  | Yes |
+| user_input_form |  |  | Yes |
+
+#### AppSiteResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| chat_color_theme | string |  | No |
+| chat_color_theme_inverted | boolean |  | No |
+| copyright | string |  | No |
+| custom_disclaimer | string |  | No |
+| default_language | string |  | No |
+| description | string |  | No |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| icon_type | string |  | No |
+| icon_url | string |  | No |
+| privacy_policy | string |  | No |
+| prompt_public | boolean |  | No |
+| show_workflow_steps | boolean |  | No |
+| title | string |  | No |
+| use_icon_as_answer_icon | boolean |  | No |
+
+#### AudioBinaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioBinaryResponse | string |  |  |
+
+#### AudioTranscriptResponse
+=======
+#### AudioBinaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioBinaryResponse | string |  |  |
+
+#### AudioTranscriptResponse
+>>>>>>> chariri/refac-basemodel-helpclean
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
