@@ -33,7 +33,7 @@ export function AgentPreviewHeader({
   isChatFeaturesOpen,
   onModeChange,
   onToggleChatFeatures,
-  onOpenVersions,
+  onOpenWorkingDirectory,
   onRefresh,
   refreshDisabled,
   showChatFeaturesAction = true,
@@ -44,7 +44,7 @@ export function AgentPreviewHeader({
   isChatFeaturesOpen: boolean
   onModeChange: (mode: AgentConfigureRightPanelMode) => void
   onToggleChatFeatures: () => void
-  onOpenVersions: () => void
+  onOpenWorkingDirectory: () => void
   onRefresh: () => void
   refreshDisabled?: boolean
   showChatFeaturesAction?: boolean
@@ -126,9 +126,9 @@ export function AgentPreviewHeader({
           {mode === 'build' && (
             <button
               type="button"
-              onClick={onOpenVersions}
+              onClick={onOpenWorkingDirectory}
               className="flex size-6 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-              aria-label={t('agentDetail.configure.publishBar.versionHistory')}
+              aria-label={t('agentDetail.configure.workingDirectory.open')}
             >
               <span aria-hidden className="i-ri-folder-3-line size-4" />
             </button>
@@ -152,7 +152,7 @@ export function AgentPreviewHeader({
             </button>
           </>
         )}
-        {trailingAction && (
+        {trailingAction != null && (
           <>
             <SegmentedControlDivider className="mx-3" />
             {trailingAction}

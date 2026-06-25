@@ -234,7 +234,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               isChatFeaturesOpen={false}
               onModeChange={() => undefined}
               onToggleChatFeatures={() => undefined}
-              onOpenVersions={() => undefined}
+              onOpenWorkingDirectory={() => undefined}
               onRefresh={() => {
                 setConversationId(null)
                 setClearChatList(true)

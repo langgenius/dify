@@ -7,14 +7,14 @@ function renderHeader({
   previewEnabled = true,
   onModeChange = vi.fn(),
   onToggleChatFeatures = vi.fn(),
-  onOpenVersions = vi.fn(),
+  onOpenWorkingDirectory = vi.fn(),
   onRefresh = vi.fn(),
 }: {
   mode?: 'build' | 'preview'
   previewEnabled?: boolean
   onModeChange?: (mode: 'build' | 'preview') => void
   onToggleChatFeatures?: () => void
-  onOpenVersions?: () => void
+  onOpenWorkingDirectory?: () => void
   onRefresh?: () => void
 } = {}) {
   render(
@@ -24,7 +24,7 @@ function renderHeader({
       isChatFeaturesOpen={false}
       onModeChange={onModeChange}
       onToggleChatFeatures={onToggleChatFeatures}
-      onOpenVersions={onOpenVersions}
+      onOpenWorkingDirectory={onOpenWorkingDirectory}
       onRefresh={onRefresh}
     />,
   )
@@ -53,6 +53,16 @@ describe('AgentPreviewHeader', () => {
     await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.preview.chatFeatures' }))
 
     expect(onToggleChatFeatures).toHaveBeenCalledTimes(1)
+  })
+
+  it('should open the working directory from the build header', async () => {
+    const user = userEvent.setup()
+    const onOpenWorkingDirectory = vi.fn()
+    renderHeader({ mode: 'build', onOpenWorkingDirectory })
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.workingDirectory.open' }))
+
+    expect(onOpenWorkingDirectory).toHaveBeenCalledTimes(1)
   })
 
   it('should disable preview mode when preview is unavailable', async () => {

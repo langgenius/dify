@@ -167,6 +167,7 @@ vi.mock('../components/orchestrate', () => ({
   AgentOrchestratePanel: (props: {
     bottomBar?: ReactNode
     isBuildDraftActive?: boolean
+    onOpenVersions?: () => void
     readOnly?: boolean
     showPublishBar?: boolean
   }) => (
@@ -174,6 +175,7 @@ vi.mock('../components/orchestrate', () => ({
       <span>{`buildDraft:${props.isBuildDraftActive ? 'yes' : 'no'}`}</span>
       <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
       <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
+      <button type="button" onClick={props.onOpenVersions}>open versions</button>
       {props.bottomBar}
     </div>
   ),
@@ -243,7 +245,7 @@ vi.mock('../components/preview/header', () => ({
     mode: 'build' | 'preview'
     previewEnabled: boolean
     onModeChange: (mode: 'build' | 'preview') => void
-    onOpenVersions: () => void
+    onOpenWorkingDirectory: () => void
     onRefresh: () => void
   }) => (
     <div>
@@ -254,8 +256,8 @@ vi.mock('../components/preview/header', () => ({
       <button type="button" onClick={() => props.onModeChange('build')}>
         build mode
       </button>
-      <button type="button" onClick={props.onOpenVersions}>
-        open versions
+      <button type="button" onClick={props.onOpenWorkingDirectory}>
+        open working directory
       </button>
       <button type="button" onClick={props.onRefresh}>
         restart preview
