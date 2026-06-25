@@ -102,8 +102,7 @@ def test_drive_layer_exposes_agent_stub_cli_usage_suffix_prompt(tmp_path: Path) 
     assert "Other available skills" in prompt
     assert "other-skill: Other Skill — Fallback catalog entry." in prompt
     assert "`dify-agent drive pull other-skill/`" not in prompt
-    assert "pull it with `dify-agent drive pull <SKILL_PATH>/`" in prompt
-    assert "read the pulled skill content before using it" in prompt
+    assert '`cat "$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)/SKILL.md"`' in prompt
     assert "dify-agent drive list [REMOTE_PREFIX]" in prompt
     assert "dify-agent drive pull [REMOTE ...] [--to LOCAL_DIR]" in prompt
     assert "--to ." in prompt

@@ -157,8 +157,8 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             sections.append(
                 "Other available skills:\n"
                 + "\n".join(other_skills)
-                + "\n\nIf you want to use one, pull it with `dify-agent drive pull <SKILL_PATH>/`, "
-                "then read the pulled skill content before using it."
+                + "\n\nTo use one, pull it and read its SKILL.md in one command: "
+                '`cat "$(dify-agent drive pull <SKILL_PATH> --to /tmp/drive)/SKILL.md"`.'
             )
         sections.append(_AGENT_STUB_CLI_USAGE_PROMPT)
         return "\n\n".join(sections)
