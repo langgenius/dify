@@ -5,6 +5,7 @@
   "agentLogDetail.iterations": "Iterations",
   "agentLogDetail.toolUsed": "Tool Used",
   "archives.action.downloadMonth": "Download {{month}} archive",
+  "archives.action.downloadReady": "Archive download is ready.",
   "archives.action.prepareDownload": "Prepare download",
   "archives.action.prepareFailed": "Failed to prepare archive download.",
   "archives.action.prepareMonth": "Prepare {{month}} archive download",

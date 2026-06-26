@@ -183,7 +183,8 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const { t } = useTranslation()
   const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(null)
   const archiveMonth = formatMonth(archive.year, archive.month)
-  const downloadTaskId = downloadTask?.download_id
+  const cachedTask = downloadTask ?? archive.download_task ?? null
+  const downloadTaskId = cachedTask?.download_id
   const taskQuery = useQuery(consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryOptions({
     input: downloadTaskId
       ? {
@@ -192,13 +193,13 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
           },
         }
       : skipToken,
-    enabled: !!downloadTaskId && isPreparingStatus(downloadTask?.status),
-    refetchInterval: query => isPreparingStatus(query.state.data?.status ?? downloadTask?.status)
+    enabled: !!downloadTaskId && isPreparingStatus(cachedTask?.status),
+    refetchInterval: query => isPreparingStatus(query.state.data?.status ?? cachedTask?.status)
       ? DOWNLOAD_TASK_POLLING_INTERVAL
       : false,
   }))
   const createDownloadMutation = useMutation(consoleQuery.workflowRunArchives.downloads.post.mutationOptions())
-  const currentTask = taskQuery.data ?? downloadTask
+  const currentTask = taskQuery.data ?? cachedTask
   const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
   const isReady = currentTask?.status === 'ready'
   const isFailed = currentTask?.status === 'failed'
@@ -222,7 +223,8 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
     }, {
       onSuccess: (task) => {
         setDownloadTask(task)
-        toast.success(t('archives.action.prepareStarted', { ns: 'appLog' }))
+        const messageKey = task.status === 'ready' ? 'archives.action.downloadReady' : 'archives.action.prepareStarted'
+        toast.success(t(messageKey, { ns: 'appLog' }))
       },
       onError: () => {
         toast.error(t('archives.action.prepareFailed', { ns: 'appLog' }))

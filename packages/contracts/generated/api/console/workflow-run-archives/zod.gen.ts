@@ -13,19 +13,6 @@ export const zWorkflowRunArchiveDownloadPayload = z.object({
 })
 
 /**
- * WorkflowRunArchiveMonthResponse
- */
-export const zWorkflowRunArchiveMonthResponse = z.object({
-  archive_bytes: z.int(),
-  bundle_count: z.int(),
-  latest_archived_at: z.iso.datetime(),
-  month: z.int(),
-  row_count: z.int(),
-  workflow_run_count: z.int(),
-  year: z.int(),
-})
-
-/**
  * WorkflowRunArchiveSummaryResponse
  */
 export const zWorkflowRunArchiveSummaryResponse = z.object({
@@ -33,14 +20,6 @@ export const zWorkflowRunArchiveSummaryResponse = z.object({
   archived_month_count: z.int(),
   latest_archived_at: z.iso.datetime().nullish(),
   workflow_run_count: z.int(),
-})
-
-/**
- * WorkflowRunArchiveListResponse
- */
-export const zWorkflowRunArchiveListResponse = z.object({
-  months: z.array(zWorkflowRunArchiveMonthResponse),
-  summary: zWorkflowRunArchiveSummaryResponse,
 })
 
 /**
@@ -73,6 +52,28 @@ export const zWorkflowRunArchiveDownloadTaskResponse = z.object({
   status: zWorkflowRunArchiveDownloadStatus,
   updated_at: z.iso.datetime(),
   year: z.int(),
+})
+
+/**
+ * WorkflowRunArchiveMonthResponse
+ */
+export const zWorkflowRunArchiveMonthResponse = z.object({
+  archive_bytes: z.int(),
+  bundle_count: z.int(),
+  download_task: zWorkflowRunArchiveDownloadTaskResponse.nullish(),
+  latest_archived_at: z.iso.datetime(),
+  month: z.int(),
+  row_count: z.int(),
+  workflow_run_count: z.int(),
+  year: z.int(),
+})
+
+/**
+ * WorkflowRunArchiveListResponse
+ */
+export const zWorkflowRunArchiveListResponse = z.object({
+  months: z.array(zWorkflowRunArchiveMonthResponse),
+  summary: zWorkflowRunArchiveSummaryResponse,
 })
 
 /**

@@ -51,21 +51,6 @@ class WorkflowRunArchiveSummaryResponse(ResponseModel):
     latest_archived_at: datetime.datetime | None = None
 
 
-class WorkflowRunArchiveMonthResponse(ResponseModel):
-    year: int
-    month: int
-    bundle_count: int
-    workflow_run_count: int
-    row_count: int
-    archive_bytes: int
-    latest_archived_at: datetime.datetime
-
-
-class WorkflowRunArchiveListResponse(ResponseModel):
-    summary: WorkflowRunArchiveSummaryResponse
-    months: list[WorkflowRunArchiveMonthResponse]
-
-
 class WorkflowRunArchiveDownloadTaskResponse(ResponseModel):
     download_id: str
     year: int
@@ -81,6 +66,22 @@ class WorkflowRunArchiveDownloadTaskResponse(ResponseModel):
     expires_at: datetime.datetime
     started_at: datetime.datetime | None = None
     finished_at: datetime.datetime | None = None
+
+
+class WorkflowRunArchiveMonthResponse(ResponseModel):
+    year: int
+    month: int
+    bundle_count: int
+    workflow_run_count: int
+    row_count: int
+    archive_bytes: int
+    latest_archived_at: datetime.datetime
+    download_task: WorkflowRunArchiveDownloadTaskResponse | None = None
+
+
+class WorkflowRunArchiveListResponse(ResponseModel):
+    summary: WorkflowRunArchiveSummaryResponse
+    months: list[WorkflowRunArchiveMonthResponse]
 
 
 register_schema_models(console_ns, WorkflowRunArchiveDownloadPayload)

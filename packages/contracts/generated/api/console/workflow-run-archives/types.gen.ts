@@ -34,6 +34,7 @@ export type WorkflowRunArchiveDownloadTaskResponse = {
 export type WorkflowRunArchiveMonthResponse = {
   archive_bytes: number
   bundle_count: number
+  download_task?: WorkflowRunArchiveDownloadTaskResponse | null
   latest_archived_at: string
   month: number
   row_count: number

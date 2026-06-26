@@ -11,7 +11,7 @@ import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from models.workflow import WorkflowRunArchiveBundle
@@ -42,6 +42,7 @@ class WorkflowRunArchiveMonth:
     row_count: int
     archive_bytes: int
     latest_archived_at: datetime.datetime
+    download_task: WorkflowRunArchiveDownloadTask | None
 
 
 @dataclass(frozen=True)
@@ -74,35 +75,49 @@ class WorkflowRunArchiveDownloadNotReadyError(Exception):
     """Raised when a cached download task has not produced a file yet."""
 
 
-def list_workflow_run_archives(session: Session, tenant_id: str) -> WorkflowRunArchiveList:
+def list_workflow_run_archives(
+    session: Session,
+    tenant_id: str,
+    *,
+    cache: WorkflowRunArchiveDownloadTaskCache | None = None,
+) -> WorkflowRunArchiveList:
     """Return monthly archive metadata for one tenant from the DB bundle index."""
     stmt = (
-        select(
-            WorkflowRunArchiveBundle.year.label("year"),
-            WorkflowRunArchiveBundle.month.label("month"),
-            func.count(WorkflowRunArchiveBundle.id).label("bundle_count"),
-            func.coalesce(func.sum(WorkflowRunArchiveBundle.workflow_run_count), 0).label("workflow_run_count"),
-            func.coalesce(func.sum(WorkflowRunArchiveBundle.row_count), 0).label("row_count"),
-            func.coalesce(func.sum(WorkflowRunArchiveBundle.archive_bytes), 0).label("archive_bytes"),
-            func.max(WorkflowRunArchiveBundle.archived_at).label("latest_archived_at"),
-        )
+        select(WorkflowRunArchiveBundle)
         .where(WorkflowRunArchiveBundle.tenant_id == tenant_id)
-        .group_by(WorkflowRunArchiveBundle.year, WorkflowRunArchiveBundle.month)
-        .order_by(WorkflowRunArchiveBundle.year.desc(), WorkflowRunArchiveBundle.month.desc())
-    )
-    months = [
-        WorkflowRunArchiveMonth(
-            year=int(row.year),
-            month=int(row.month),
-            bundle_count=int(row.bundle_count),
-            workflow_run_count=int(row.workflow_run_count),
-            row_count=int(row.row_count),
-            archive_bytes=int(row.archive_bytes),
-            latest_archived_at=row.latest_archived_at,
+        .order_by(
+            WorkflowRunArchiveBundle.year.desc(),
+            WorkflowRunArchiveBundle.month.desc(),
+            WorkflowRunArchiveBundle.shard,
+            WorkflowRunArchiveBundle.bundle_id,
         )
-        for row in session.execute(stmt)
-        if row.latest_archived_at is not None
-    ]
+    )
+    month_bundles: dict[tuple[int, int], list[WorkflowRunArchiveBundle]] = {}
+    for bundle in session.scalars(stmt):
+        month_bundles.setdefault((bundle.year, bundle.month), []).append(bundle)
+
+    task_cache = cache or WorkflowRunArchiveDownloadTaskCache()
+    months: list[WorkflowRunArchiveMonth] = []
+    for (year, month), bundles in month_bundles.items():
+        bundle_refs = [(bundle.shard, bundle.bundle_id) for bundle in bundles]
+        months.append(
+            WorkflowRunArchiveMonth(
+                year=year,
+                month=month,
+                bundle_count=len(bundles),
+                workflow_run_count=sum(bundle.workflow_run_count for bundle in bundles),
+                row_count=sum(bundle.row_count for bundle in bundles),
+                archive_bytes=sum(bundle.archive_bytes for bundle in bundles),
+                latest_archived_at=max(bundle.archived_at for bundle in bundles),
+                download_task=_get_cached_month_download_task(
+                    task_cache,
+                    tenant_id=tenant_id,
+                    year=year,
+                    month=month,
+                    bundle_refs=bundle_refs,
+                ),
+            )
+        )
     latest_archived_at = max((month.latest_archived_at for month in months), default=None)
     return WorkflowRunArchiveList(
         summary=WorkflowRunArchiveSummary(
@@ -113,6 +128,29 @@ def list_workflow_run_archives(session: Session, tenant_id: str) -> WorkflowRunA
         ),
         months=months,
     )
+
+
+def _get_cached_month_download_task(
+    cache: WorkflowRunArchiveDownloadTaskCache,
+    *,
+    tenant_id: str,
+    year: int,
+    month: int,
+    bundle_refs: list[tuple[str, str]],
+) -> WorkflowRunArchiveDownloadTask | None:
+    if not bundle_refs:
+        return None
+    download_id = build_archive_download_id(
+        tenant_id=tenant_id,
+        year=year,
+        month=month,
+        bundle_refs=bundle_refs,
+    )
+    try:
+        return cache.get(tenant_id=tenant_id, download_id=download_id)
+    except Exception:
+        logger.warning("Failed to read cached workflow run archive download task: %s", download_id, exc_info=True)
+        return None
 
 
 def create_workflow_run_archive_download_task(

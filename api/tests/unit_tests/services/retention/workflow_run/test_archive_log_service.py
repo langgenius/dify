@@ -27,6 +27,7 @@ class FakeTaskCache:
     created_task: WorkflowRunArchiveDownloadTask | None
     saved_task: WorkflowRunArchiveDownloadTask | None
     existing_task: WorkflowRunArchiveDownloadTask | None
+    tasks_by_download_id: dict[str, WorkflowRunArchiveDownloadTask]
     create_result: bool
 
     def __init__(
@@ -34,10 +35,12 @@ class FakeTaskCache:
         *,
         create_result: bool = True,
         existing_task: WorkflowRunArchiveDownloadTask | None = None,
+        tasks_by_download_id: dict[str, WorkflowRunArchiveDownloadTask] | None = None,
     ) -> None:
         self.created_task = None
         self.saved_task = None
         self.existing_task = existing_task
+        self.tasks_by_download_id = tasks_by_download_id or {}
         self.create_result = create_result
 
     def create_if_absent(self, task: WorkflowRunArchiveDownloadTask) -> bool:
@@ -45,16 +48,37 @@ class FakeTaskCache:
         return self.create_result
 
     def get(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
+        if self.tasks_by_download_id:
+            return self.tasks_by_download_id.get(download_id)
         return self.existing_task
 
     def save(self, task: WorkflowRunArchiveDownloadTask) -> None:
         self.saved_task = task
 
 
-def _bundle(*, shard: str, bundle_id: str, archive_bytes: int) -> WorkflowRunArchiveBundle:
+def _bundle(
+    *,
+    shard: str,
+    bundle_id: str,
+    archive_bytes: int,
+    year: int = 2025,
+    month: int = 3,
+    workflow_run_count: int = 1,
+    row_count: int = 9,
+    archived_at: datetime.datetime | None = None,
+) -> WorkflowRunArchiveBundle:
     return cast(
         WorkflowRunArchiveBundle,
-        SimpleNamespace(shard=shard, bundle_id=bundle_id, archive_bytes=archive_bytes),
+        SimpleNamespace(
+            year=year,
+            month=month,
+            shard=shard,
+            bundle_id=bundle_id,
+            workflow_run_count=workflow_run_count,
+            row_count=row_count,
+            archive_bytes=archive_bytes,
+            archived_at=archived_at or datetime.datetime(2026, 6, 25, 8, 0),
+        ),
     )
 
 
@@ -73,28 +97,64 @@ def test_list_workflow_run_archives_aggregates_month_rows() -> None:
     latest = datetime.datetime(2026, 6, 25, 8, 0)
     previous = datetime.datetime(2026, 6, 24, 8, 0)
     session = MagicMock()
-    session.execute.return_value = [
-        SimpleNamespace(
+    march_download_id = build_archive_download_id(
+        tenant_id="tenant-1",
+        year=2025,
+        month=3,
+        bundle_refs=[("00-of-01", "bundle-a"), ("00-of-01", "bundle-b")],
+    )
+    ready_task = build_pending_archive_download_task(
+        tenant_id="tenant-1",
+        requested_by="account-1",
+        year=2025,
+        month=3,
+        bundle_ids=["bundle-a", "bundle-b"],
+        bundle_refs=[("00-of-01", "bundle-a"), ("00-of-01", "bundle-b")],
+        archive_bytes=4096,
+        download_id=march_download_id,
+    ).model_copy(
+        update={
+            "status": WorkflowRunArchiveDownloadStatus.READY,
+            "file_name": "workflow-run-logs-2025-03.zip",
+            "storage_key": "workflow-run-archive-downloads/tenant-1/2025/03/download.zip",
+            "file_size_bytes": 8192,
+        }
+    )
+    cache = FakeTaskCache(tasks_by_download_id={march_download_id: ready_task})
+    session.scalars.return_value = [
+        _bundle(
             year=2025,
             month=3,
-            bundle_count=2,
-            workflow_run_count=100,
-            row_count=900,
-            archive_bytes=4096,
-            latest_archived_at=latest,
+            shard="00-of-01",
+            bundle_id="bundle-a",
+            workflow_run_count=40,
+            row_count=360,
+            archive_bytes=1024,
+            archived_at=previous,
         ),
-        SimpleNamespace(
+        _bundle(
+            year=2025,
+            month=3,
+            shard="00-of-01",
+            bundle_id="bundle-b",
+            workflow_run_count=60,
+            row_count=540,
+            archive_bytes=3072,
+            archived_at=latest,
+        ),
+        _bundle(
             year=2025,
             month=2,
-            bundle_count=1,
+            shard="00-of-01",
+            bundle_id="bundle-c",
             workflow_run_count=20,
             row_count=180,
             archive_bytes=1024,
-            latest_archived_at=previous,
+            archived_at=previous,
         ),
     ]
 
-    result = list_workflow_run_archives(session, "tenant-1")
+    result = list_workflow_run_archives(session, "tenant-1", cache=cast(WorkflowRunArchiveDownloadTaskCache, cache))
 
     assert result.summary.archived_month_count == 2
     assert result.summary.workflow_run_count == 120
@@ -103,6 +163,10 @@ def test_list_workflow_run_archives_aggregates_month_rows() -> None:
     assert result.months[0].year == 2025
     assert result.months[0].month == 3
     assert result.months[0].bundle_count == 2
+    assert result.months[0].workflow_run_count == 100
+    assert result.months[0].row_count == 900
+    assert result.months[0].download_task == ready_task
+    assert result.months[1].download_task is None
 
 
 def test_create_workflow_run_archive_download_task_creates_stable_pending_task() -> None:
