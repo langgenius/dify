@@ -22,7 +22,7 @@ class TestSpecSchemaDefinitionsApi:
         assert status == 200
         assert resp == schema_definitions
 
-    def test_get_exception_returns_empty_list(self):
+    def test_get_exception_returns_empty_list(self, caplog):
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 
@@ -31,14 +31,10 @@ class TestSpecSchemaDefinitionsApi:
                 spec_module,
                 "SchemaManager",
                 side_effect=Exception("boom"),
-            ),
-            patch.object(
-                spec_module.logger,
-                "exception",
-            ) as log_exception,
+            )
         ):
             resp, status = method(api)
 
         assert status == 200
         assert resp == []
-        log_exception.assert_called_once()
+        assert "boom" in caplog.text
