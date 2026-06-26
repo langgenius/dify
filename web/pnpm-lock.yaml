@@ -632,8 +632,8 @@ importers:
         specifier: 3.19.3
         version: 3.19.3
       vinext:
-        specifier: https://pkg.pr.new/vinext@b6a2cac
-        version: https://pkg.pr.new/vinext@b6a2cac(66649bf1ea938c65a8375a19f764960f)
+        specifier: 0.1.6
+        version: 0.1.6(66649bf1ea938c65a8375a19f764960f)
       vite:
         specifier: npm:@voidzero-dev/vite-plus-core@0.1.24
         version: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)'
@@ -5666,6 +5666,10 @@ packages:
     resolution: {integrity: sha512-7m1vEcPCxXYI8HqnL8CKI6siDyD+eIWSwgB3DZA+ZTogxk9I4CDnj4wilt9x/+/QbHI4YG5YZNmC6458/e9Ktg==}
     deprecated: The Intersection Observer polyfill is no longer needed and can safely be removed. Intersection Observer has been Baseline since 2019.
 
+  ipaddr.js@2.4.0:
+    resolution: {integrity: sha512-9VGk3HGanVE6JoZXHiCpnGy5X0jYDnN4EA4lntFPj+1vIWlFhIylq2CrrCOJH9EAhc5CYhq18F2Av2tgoAPsYQ==}
+    engines: {node: '>= 10'}
+
   is-alphabetical@1.0.4:
     resolution: {integrity: sha512-DwzsA04LQ10FHTZuL0/grVDk4rFoVH1pjAToYwBrHSxcrBIGQuXrQMtD5U1b0U2XVgKZCTLLP8u2Qxqhy3l2Vg==}
 
@@ -7135,9 +7139,6 @@ packages:
   roughjs@4.6.6:
     resolution: {integrity: sha512-ZUz/69+SYpFN/g/lUlo2FXcIjRkSu3nDarreVdGGndHEBJ6cXPdKguS8JGxwj5HA5xIbVKSmLgr5b3AWxtRfvQ==}
 
-  rsc-html-stream@0.0.7:
-    resolution: {integrity: sha512-v9+fuY7usTgvXdNl8JmfXCvSsQbq2YMd60kOeeMIqCJFZ69fViuIxztHei7v5mlMMa2h3SqS+v44Gu9i9xANZA==}
-
   run-applescript@7.1.0:
     resolution: {integrity: sha512-DPe5pVFaAsinSaV6QjQ6gdiedWDcRCbUuiQfQa2wmWV7+xC9bGulGI8+TdRmoFkAPaBXk8CrAbnlY2ISniJ47Q==}
     engines: {node: '>=18'}
@@ -7600,6 +7601,7 @@ packages:
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
     engines: {node: ^18 || >=20}
+    deprecated: unmaintained
     hasBin: true
     peerDependencies:
       typescript: ^5.0.0
@@ -7823,18 +7825,17 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vinext@https://pkg.pr.new/vinext@b6a2cac:
-    resolution: {integrity: sha512-/Jm507qqC1dCOhCaorb9H8/I5JEqkcsiUJw0Wgprg7Znym4eyLUvcWcRLVyM9z22Tm0+O1PugcSDA8oNvbqPuQ==}
-    version: 0.0.5
+  vinext@0.1.6:
+    resolution: {integrity: sha512-uNqbo86PdaKcHCWpGcYOimQ2g1sS86um0InilA8bGjz51oktCssX6jWnQdOKYfOzYYOYYTW9y4N8vfC4vyIx6w==}
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
       '@mdx-js/rollup': ^3.0.0
       '@vitejs/plugin-react': ^5.1.4 || ^6.0.0
       '@vitejs/plugin-rsc': 0.5.27
-      react: '>=19.2.0'
-      react-dom: '>=19.2.0'
-      react-server-dom-webpack: ^19.2.4
+      react: ^19.2.6
+      react-dom: ^19.2.6
+      react-server-dom-webpack: ^19.2.6
       vite: ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@mdx-js/rollup':
@@ -7935,6 +7936,9 @@ packages:
 
   web-namespaces@2.0.1:
     resolution: {integrity: sha512-bKr1DkiNa2krS7qxNtdrtHAmzuYGFQLiQ13TsorsdT6ULTkPLKuu5+GsFpDlg6JFjUTwX2DyhMPG2be8uPrqsQ==}
+
+  web-vitals@4.2.4:
+    resolution: {integrity: sha512-r4DIlprAGwJ7YM11VZp4R884m0Vmgr6EAKe3P+kO0PPj3Unqyvv59rczf6UiGcb9Z8QxZVcqKNwv/g0WNdWwsw==}
 
   web-vitals@5.1.0:
     resolution: {integrity: sha512-ArI3kx5jI0atlTtmV0fWU3fjpLmq/nD3Zr1iFFlJLaqa5wLBkUSzINwBPySCX/8jRyjlmy1Volw1kz1g9XE4Jg==}
@@ -11404,7 +11408,7 @@ snapshots:
 
   '@vue/compiler-sfc@3.5.30':
     dependencies:
-      '@babel/parser': 7.29.2
+      '@babel/parser': 7.29.7
       '@vue/compiler-core': 3.5.30
       '@vue/compiler-dom': 3.5.30
       '@vue/compiler-ssr': 3.5.30
@@ -13351,6 +13355,8 @@ snapshots:
 
   intersection-observer@0.12.2: {}
 
+  ipaddr.js@2.4.0: {}
+
   is-alphabetical@1.0.4: {}
 
   is-alphabetical@2.0.1: {}
@@ -15270,8 +15276,6 @@ snapshots:
       points-on-curve: 0.2.0
       points-on-path: 0.2.1
 
-  rsc-html-stream@0.0.7: {}
-
   run-applescript@7.1.0: {}
 
   run-parallel@1.2.0:
@@ -16000,18 +16004,20 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinext@https://pkg.pr.new/vinext@b6a2cac(66649bf1ea938c65a8375a19f764960f):
+  vinext@0.1.6(66649bf1ea938c65a8375a19f764960f):
     dependencies:
       '@unpic/react': 1.0.2(next@16.2.6(@babel/core@7.29.7)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sass@1.98.0))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@vercel/og': 0.8.6
       '@vitejs/plugin-react': 6.0.1(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))
+      image-size: 2.0.2
+      ipaddr.js: 2.4.0
       magic-string: 0.30.21
       react: 19.2.6
       react-dom: 19.2.6(react@19.2.6)
-      rsc-html-stream: 0.0.7
       vite: '@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)'
       vite-plugin-commonjs: 0.10.4
       vite-tsconfig-paths: 6.1.1(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(typescript@5.9.3)
+      web-vitals: 4.2.4
     optionalDependencies:
       '@mdx-js/rollup': 3.1.1(rollup@4.59.0)
       '@vitejs/plugin-rsc': 0.5.27(@voidzero-dev/vite-plus-core@0.1.24(@types/node@25.5.0)(esbuild@0.28.1)(jiti@1.21.7)(sass@1.98.0)(terser@5.46.1)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(react-dom@19.2.6(react@19.2.6))(react-server-dom-webpack@19.2.6(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(webpack@5.105.4(esbuild@0.28.1)(uglify-js@3.19.3)))(react@19.2.6)
@@ -16183,6 +16189,8 @@ snapshots:
       graceful-fs: 4.2.11
 
   web-namespaces@2.0.1: {}
+
+  web-vitals@4.2.4: {}
 
   web-vitals@5.1.0: {}
 
