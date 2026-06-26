@@ -4,11 +4,11 @@ import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReleaseWithSummaryDeployments } from './release-deployments'
 import { ReleaseSource } from '@dify/contracts/enterprise/types.gen'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useAtomValue } from 'jotai'
-import { ScopeProvider } from 'jotai-scope'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
 import {
   formatDate,
@@ -25,10 +25,6 @@ import {
   DetailTableRow,
 } from '../components/detail-table'
 import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../components/detail-table-styles'
-import {
-  deploymentSourceAppIdAtom,
-  deploymentSourceAppQueryAtom,
-} from '../state'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import {
   ReleaseDeploymentsContent,
@@ -90,23 +86,17 @@ function ReleaseSourceCell({ release }: {
     )
   }
 
-  return (
-    <ScopeProvider
-      key={sourceAppId}
-      atoms={[
-        [deploymentSourceAppIdAtom, sourceAppId],
-      ]}
-      name="DeploymentReleaseSource"
-    >
-      <ReleaseSourceLink sourceAppId={sourceAppId} />
-    </ScopeProvider>
-  )
+  return <ReleaseSourceLink sourceAppId={sourceAppId} />
 }
 
 function ReleaseSourceLink({ sourceAppId }: {
   sourceAppId: string
 }) {
-  const sourceAppQuery = useAtomValue(deploymentSourceAppQueryAtom)
+  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
+    input: {
+      params: { app_id: sourceAppId },
+    },
+  }))
   const sourceAppName = sourceAppQuery.data?.name
   const label = sourceAppName || sourceAppId
   const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId
@@ -126,8 +116,7 @@ function ReleaseSourceLink({ sourceAppId }: {
   )
 }
 
-function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
-  appInstanceId: string
+function ReleaseHistoryMobileRows({ releaseRows, onReleaseDeleted }: {
   releaseRows: ReleaseWithSummaryDeployments[]
   onReleaseDeleted?: () => void
 }) {
@@ -164,7 +153,6 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
                 <div className="flex shrink-0 justify-end gap-1">
                   <DeployReleaseMenu
                     releaseId={releaseId}
-                    appInstanceId={appInstanceId}
                     releaseRows={releaseRows}
                     onDeleted={onReleaseDeleted}
                   />
@@ -185,8 +173,7 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
   )
 }
 
-export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
-  appInstanceId: string
+export function ReleaseHistoryRows({ releaseRows, onReleaseDeleted }: {
   releaseRows: ReleaseWithSummaryDeployments[]
   onReleaseDeleted?: () => void
 }) {
@@ -195,7 +182,6 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDelete
   return (
     <>
       <ReleaseHistoryMobileRows
-        appInstanceId={appInstanceId}
         releaseRows={releaseRows}
         onReleaseDeleted={onReleaseDeleted}
       />
@@ -241,7 +227,6 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDelete
                     <div className="flex justify-end">
                       <DeployReleaseMenu
                         releaseId={releaseId}
-                        appInstanceId={appInstanceId}
                         releaseRows={releaseRows}
                         onDeleted={onReleaseDeleted}
                       />
