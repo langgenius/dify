@@ -326,8 +326,14 @@ def normalize_previous_node_output_selector(ref: WorkflowPreviousNodeOutputRef) 
     two returned items.
     """
     for candidate in (ref.selector, ref.variable_selector, ref.value_selector):
-        if isinstance(candidate, list) and len(candidate) >= 2 and all(isinstance(item, str) for item in candidate):
-            return tuple(candidate)
+        if isinstance(candidate, list) and len(candidate) >= 2:
+            selector_parts: list[str] = []
+            for item in candidate:
+                if not isinstance(item, str):
+                    break
+                selector_parts.append(item)
+            if len(selector_parts) == len(candidate):
+                return tuple(selector_parts)
     node_id = ref.get("node_id")
     output_name = ref.get("output") or ref.get("name") or ref.get("variable") or ref.get("key")
     if isinstance(node_id, str) and isinstance(output_name, str):

@@ -90,6 +90,13 @@ _DANGEROUS_ACK_KEYS = (
     "risk_accepted",
     "approved",
 )
+type AgentStubFileTransferMethod = Literal["local_file", "tool_file", "datasource_file", "remote_url"]
+_AGENT_STUB_FILE_TRANSFER_METHODS: Mapping[FileTransferMethod, AgentStubFileTransferMethod] = {
+    FileTransferMethod.LOCAL_FILE: "local_file",
+    FileTransferMethod.TOOL_FILE: "tool_file",
+    FileTransferMethod.DATASOURCE_FILE: "datasource_file",
+    FileTransferMethod.REMOTE_URL: "remote_url",
+}
 
 
 class WorkflowAgentRuntimeRequestBuildError(ValueError):
@@ -423,21 +430,21 @@ class WorkflowAgentRuntimeRequestBuilder:
 
         if isinstance(value, list | tuple):
             changed = False
-            items: list[Any] = []
+            resolved_items: list[Any] = []
             for item in value:
                 resolved_item, item_changed = cls._resolve_prompt_payload_value(item)
-                items.append(resolved_item)
+                resolved_items.append(resolved_item)
                 changed = changed or item_changed
-            return items, changed
+            return resolved_items, changed
 
         if isinstance(value, Mapping):
             changed = False
-            items: dict[str, Any] = {}
+            resolved_items_by_key: dict[str, Any] = {}
             for key, item in value.items():
                 resolved_item, item_changed = cls._resolve_prompt_payload_value(item)
-                items[str(key)] = resolved_item
+                resolved_items_by_key[str(key)] = resolved_item
                 changed = changed or item_changed
-            return items, changed
+            return resolved_items_by_key, changed
 
         return value, False
 
@@ -445,7 +452,9 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _agent_stub_download_mapping(value: Any) -> dict[str, Any] | None:
         try:
             if isinstance(value, File):
-                transfer_method = value.transfer_method.value
+                transfer_method = _AGENT_STUB_FILE_TRANSFER_METHODS.get(value.transfer_method)
+                if transfer_method is None:
+                    return None
                 if value.transfer_method == FileTransferMethod.REMOTE_URL:
                     url = value.remote_url
                     if not isinstance(url, str) or not url:

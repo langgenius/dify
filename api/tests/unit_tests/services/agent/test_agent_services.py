@@ -1765,9 +1765,7 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
         scalar=[2, 1, SimpleNamespace(id="workflow-1")],
         scalars=[
             [agent, unconfigured_agent],
-            [],
             [agent],
-            [],
             [SimpleNamespace(agent_id="agent-1", node_id="node-1")],
         ],
     )
@@ -1778,7 +1776,6 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
         lambda version_ids: {"version-1": version, "version-2": unconfigured_version},
     )
     monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
-    monkeypatch.setattr(service, "_load_published_active_snapshot_agent_ids", lambda **kwargs: {"agent-1"})
 
     listed = service.list_roster_agents(tenant_id="tenant-1", page=1, limit=20)
     invited = service.list_invite_options(tenant_id="tenant-1", page=1, limit=20, app_id="app-1")
@@ -1822,7 +1819,6 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
         },
     )
     monkeypatch.setattr(service, "_load_published_references_by_agent_id", lambda **kwargs: {})
-    monkeypatch.setattr(service, "_load_published_active_snapshot_agent_ids", lambda **kwargs: set())
 
     result = service.list_invite_options(tenant_id="tenant-1", page=1, limit=1)
 
