@@ -26,6 +26,7 @@ flowchart TD
 
   accessChannels["detail/access/channels"]
   accessPermissions["detail/access/permissions"]
+  accessSubjectSelector["detail/access/permissions/access-subject-selector"]
   apiTokenManagement["detail/api-tokens/api-token-management"]
   apiKeys["detail/api-tokens/api-keys"]
   apiDocs["detail/api-tokens/docs"]
@@ -75,12 +76,15 @@ flowchart TD
   overviewReleaseSummary --> createRelease
 
   detailInstances --> shared
+  detailInstances --> detail
   detailInstances --> instanceEnvironmentList
   detailInstances --> instanceHeaderActions
   instanceEnvironmentList --> shared
+  instanceEnvironmentList --> detailInstances
   instanceEnvironmentList --> instanceRowActions
   instanceHeaderActions --> routeState
   instanceHeaderActions --> deployDrawer
+  instanceHeaderActions --> detail
   instanceRowActions --> routeState
   instanceRowActions --> shared
   instanceRowActions --> deployDrawer
@@ -90,17 +94,22 @@ flowchart TD
   detailAccess --> accessPermissions
   accessChannels --> routeState
   accessChannels --> shared
+  accessChannels --> detailAccess
   accessPermissions --> routeState
   accessPermissions --> shared
+  accessPermissions --> detailAccess
+  accessPermissions --> accessSubjectSelector
 
   detailApiTokens --> routeState
   detailApiTokens --> apiTokenManagement
   apiTokenManagement --> routeState
   apiTokenManagement --> shared
+  apiTokenManagement --> detailApiTokens
   apiTokenManagement --> apiKeys
   apiTokenManagement --> apiDocs
   apiKeys --> routeState
   apiKeys --> shared
+  apiKeys --> detailApiTokens
   apiDocs --> routeState
 
   detailReleases --> routeState
@@ -110,6 +119,7 @@ flowchart TD
   releaseActions --> shared
   releaseActions --> deployDrawer
   releaseHistory --> shared
+  releaseHistory --> detailReleases
   releaseHistory --> releaseActions
 ```
 

@@ -4,20 +4,9 @@ Guided deployment creation workflow for selecting a source, defining the initial
 
 ## Internal Modules
 
-| Module                                                | Why this module uses it                                                                                       |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `shared/components/empty-state`                       | Reuses deployment empty/error state presentation for the source app list.                                     |
-| `shared/components/env-var-bindings`                  | Renders target environment variable bindings from computed deployment options.                                |
-| `shared/components/env-var-bindings-utils`            | Converts contract env var slots and normalizes env var value-type metadata for target readiness and payloads. |
-| `shared/components/runtime-credential-bindings`       | Renders target runtime credential binding choices from computed deployment options.                           |
-| `shared/components/runtime-credential-bindings-utils` | Reuses credential slot keys, selected credential mapping, and required-binding validation.                    |
-| `shared/components/title-tooltip`                     | Shows full labels and descriptions when step text is visually truncated.                                      |
-| `shared/components/unsupported-dsl-nodes-alert`       | Presents unsupported DSL node feedback from precheck and submission errors.                                   |
-| `shared/domain/dsl`                                   | Parses and encodes DSL content for source validation, default names, env var metadata, and submit payloads.   |
-| `shared/domain/error`                                 | Converts deployment errors and unsupported DSL node errors into user-facing feedback.                         |
-| `shared/domain/feature-flags`                         | Gates the import-DSL source method consistently with the deployments feature flag.                            |
-| `shared/domain/idempotency`                           | Generates deployment idempotency keys for create-and-deploy submission.                                       |
-| `shared/hooks/use-infinite-scroll`                    | Centralizes infinite-scroll observation and next-page triggering for source app query results.                |
+| Module   | Why this module uses it                                                        |
+| -------- | ------------------------------------------------------------------------------ |
+| `shared` | Reuses shared deployment domain rules, UI primitives, hooks, or local helpers. |
 
 ## External Modules
 

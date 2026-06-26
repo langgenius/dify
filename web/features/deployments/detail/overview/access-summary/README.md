@@ -4,11 +4,11 @@ Access summary section for showing webapp and API token status on the overview r
 
 ## Internal Modules
 
-| Module                                   | Why this module uses it                                             |
-| ---------------------------------------- | ------------------------------------------------------------------- |
-| `route-state`                            | Reads the route app instance identity for access summary links.     |
-| `shared/ui/deployment-status-badge`      | Reuses deployment status badge styling for access status summaries. |
-| `detail/overview/components/card-styles` | Reuses overview card and icon styling shared by overview sections.  |
+| Module            | Why this module uses it                                                        |
+| ----------------- | ------------------------------------------------------------------------------ |
+| `shared`          | Reuses shared deployment domain rules, UI primitives, hooks, or local helpers. |
+| `route-state`     | Reads the route app instance identity for access summary links.                |
+| `detail/overview` | Reuses overview card and icon styling shared by overview sections.             |
 
 ## External Modules
 

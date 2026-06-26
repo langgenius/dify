@@ -4,11 +4,12 @@ Instances route for listing environment deployments and running deployment row a
 
 ## Internal Modules
 
-| Module                           | Why this module uses it                                                             |
-| -------------------------------- | ----------------------------------------------------------------------------------- |
-| `shared/components/detail-table` | Reuses the detail table layout for deployment table skeletons.                      |
-| `shared/components/empty-state`  | Reuses deployment empty/error state presentation for the instances route.           |
-| `detail/state`                   | Reads detail-owned query state and runtime instance rows before composing sections. |
+| Module                              | Why this module uses it                                                             |
+| ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `detail`                            | Reads detail-owned query state and runtime instance rows before composing sections. |
+| `shared`                            | Reuses shared deployment domain rules, UI primitives, hooks, or local helpers.      |
+| `detail/instances/environment-list` | Renders environment deployment rows.                                                |
+| `detail/instances/header-actions`   | Renders the new deployment action for empty instances.                              |
 
 ## External Modules
 

@@ -4,13 +4,11 @@ Access channels section for viewing webapp and developer API endpoints and toggl
 
 ## Internal Modules
 
-| Module                          | Why this module uses it                                                              |
-| ------------------------------- | ------------------------------------------------------------------------------------ |
-| `route-state`                   | Reads the route app instance identity for access-channel mutations.                  |
-| `shared/components/empty-state` | Reuses deployment empty, notice, and error state presentation for channel endpoints. |
-| `shared/components/section`     | Reuses the detail section frame for access channel content.                          |
-| `shared/components/endpoint`    | Reuses endpoint and copy-pill presentation for channel URLs.                         |
-| `detail/access/state`           | Reads access route query data for channel settings.                                  |
+| Module          | Why this module uses it                                                        |
+| --------------- | ------------------------------------------------------------------------------ |
+| `shared`        | Reuses shared deployment domain rules, UI primitives, hooks, or local helpers. |
+| `route-state`   | Reads the route app instance identity for access-channel mutations.            |
+| `detail/access` | Reads access route query data for channel settings.                            |
 
 ## External Modules
 

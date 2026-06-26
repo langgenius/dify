@@ -4,9 +4,10 @@ API tokens route for API token management, endpoint display, and API documentati
 
 ## Internal Modules
 
-| Module        | Why this module uses it                                      |
-| ------------- | ------------------------------------------------------------ |
-| `route-state` | Reads the route app instance identity for API token queries. |
+| Module                                   | Why this module uses it                                                    |
+| ---------------------------------------- | -------------------------------------------------------------------------- |
+| `route-state`                            | Reads the route app instance identity for API token queries.               |
+| `detail/api-tokens/api-token-management` | Renders API endpoint display, API key creation, and API docs entry points. |
 
 ## External Modules
 

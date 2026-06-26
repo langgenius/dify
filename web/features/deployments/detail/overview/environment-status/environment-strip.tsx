@@ -11,7 +11,7 @@ import { openDeployDrawerAtom } from '../../../deploy-drawer/state'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState } from '../../../shared/components/empty-state'
 import { hasRuntimeInstanceDeployment } from '../../../shared/domain/runtime-status'
-import { OVERVIEW_CARD_CLASS_NAME } from '../components/card-styles'
+import { OVERVIEW_CARD_CLASS_NAME } from '../card-styles'
 import { EnvironmentTile } from './environment-tile'
 
 const OVERVIEW_RUNTIME_INSTANCE_LIMIT = 4

@@ -18,7 +18,7 @@ import { DeploymentStatusBadge } from '../../../shared/ui/deployment-status-badg
 import {
   deploymentStatusLabelKey,
 } from '../../../shared/ui/deployment-status-style'
-import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from '../components/card-styles'
+import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from '../card-styles'
 import {
   renderActionLabel,
   renderDriftTitle,

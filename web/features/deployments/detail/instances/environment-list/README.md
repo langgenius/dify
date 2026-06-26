@@ -4,14 +4,11 @@ Environment list section for rendering deployment rows and row-level status summ
 
 ## Internal Modules
 
-| Module                                                | Why this module uses it                                      |
-| ----------------------------------------------------- | ------------------------------------------------------------ |
-| `shared/components/detail-table`                      | Reuses the detail table layout for desktop and mobile rows.  |
-| `shared/domain/release`                               | Formats release metadata shown in deployment rows.           |
-| `shared/domain/runtime-status`                        | Reuses deployment status rules for row presentation.         |
-| `shared/ui/deployment-status-badge`                   | Reuses deployment status badge styling for environment rows. |
-| `detail/instances/row-actions/deployment-row-actions` | Renders row-level deployment actions for each environment.   |
-| `detail/instances/table-styles`                       | Uses instances-owned column class names for deployment rows. |
+| Module                         | Why this module uses it                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------ |
+| `shared`                       | Reuses shared deployment domain rules, UI primitives, hooks, or local helpers. |
+| `detail/instances`             | Uses instances-owned table column class names for deployment rows.             |
+| `detail/instances/row-actions` | Renders row-level deployment actions for each environment.                     |
 
 ## External Modules
 

@@ -16,7 +16,7 @@ import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState } from '../../../shared/components/empty-state'
 import { TitleTooltip } from '../../../shared/components/title-tooltip'
 import { formatDate, releaseCommit } from '../../../shared/domain/release'
-import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from '../components/card-styles'
+import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from '../card-styles'
 
 type ReleaseHeroProps = {
   latestRelease?: Release

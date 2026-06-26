@@ -4,14 +4,9 @@ Release creation dialog for selecting a source app or DSL file and creating a ne
 
 ## Internal Modules
 
-| Module                                          | Why this module uses it                                                                        |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `shared/components/title-tooltip`               | Shows full source app labels and descriptions when picker text is visually truncated.          |
-| `shared/components/unsupported-dsl-nodes-alert` | Presents unsupported DSL node feedback from release validation and submission errors.          |
-| `shared/domain/dsl`                             | Encodes DSL content and validates that imported DSL describes a workflow app.                  |
-| `shared/domain/error`                           | Converts deployment errors into user-facing feedback.                                          |
-| `shared/domain/feature-flags`                   | Gates the DSL release source consistently with the deployments feature flag.                   |
-| `shared/hooks/use-infinite-scroll`              | Centralizes infinite-scroll observation and next-page triggering for source app query results. |
+| Module   | Why this module uses it                                                        |
+| -------- | ------------------------------------------------------------------------------ |
+| `shared` | Reuses shared deployment domain rules, UI primitives, hooks, or local helpers. |
 
 ## External Modules
 
