@@ -28,10 +28,10 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../../table'
+} from '../../components/detail-table'
 import {
   API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../../table-styles'
+} from '../../components/detail-table-styles'
 
 function ApiKeyName({ apiKey }: {
   apiKey: ApiKey

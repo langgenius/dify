@@ -17,7 +17,7 @@ import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
 import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
-import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
+import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../components/detail-table-styles'
 import { DeleteReleaseDialog } from './delete-release-dialog'
 import {
   buildDeployMenuSections,

@@ -11,8 +11,8 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../../table'
-import { API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../table-styles'
+} from '../../components/detail-table'
+import { API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../components/detail-table-styles'
 
 const DEVELOPER_API_KEY_SKELETON_KEYS = ['primary-key', 'secondary-key']
 

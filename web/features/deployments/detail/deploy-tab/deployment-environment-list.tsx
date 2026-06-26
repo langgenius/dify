@@ -13,10 +13,10 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../table'
+} from '../components/detail-table'
 import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../table-styles'
+} from '../components/detail-table-styles'
 import { DeploymentRowActions } from './deployment-row-actions'
 import { DeploymentStatusSummary } from './deployment-status-summary'
 

@@ -3,12 +3,12 @@
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
-import { DeploymentStateMessage } from '../components/empty-state'
-import { hasRuntimeInstanceDeployment } from '../shared/domain/runtime-status'
-import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './overview-tab/access-status-section'
-import { EnvironmentStrip, EnvironmentStripSkeleton } from './overview-tab/environment-strip'
-import { ReleaseHero, ReleaseHeroSkeleton } from './overview-tab/release-hero'
-import { deploymentDetailOverviewQueryAtom } from './state'
+import { DeploymentStateMessage } from '../../components/empty-state'
+import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
+import { deploymentDetailOverviewQueryAtom } from '../state'
+import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './access-status-section'
+import { EnvironmentStrip, EnvironmentStripSkeleton } from './environment-strip'
+import { ReleaseHero, ReleaseHeroSkeleton } from './release-hero'
 
 function OverviewLayout({ children }: { children: React.ReactNode }) {
   return (

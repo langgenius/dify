@@ -1,5 +1,5 @@
 'use client'
-import { ReleaseHistoryTable } from './versions-tab/release-history-table'
+import { ReleaseHistoryTable } from './release-history-table'
 
 export function VersionsTab({ appInstanceId }: {
   appInstanceId: string

@@ -1,6 +1,6 @@
 'use client'
 
-import { DeveloperApiSection } from './settings-tab/access/developer-api-section'
+import { DeveloperApiSection } from './developer-api-section'
 
 export function DeveloperApiTab() {
   return (

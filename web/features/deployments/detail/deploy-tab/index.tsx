@@ -2,11 +2,8 @@
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../components/empty-state'
-import { hasRuntimeInstanceDeployment } from '../shared/domain/runtime-status'
-import { DeploymentEnvironmentList } from './deploy-tab/deployment-environment-list'
-import { NewDeploymentButton } from './deploy-tab/new-deployment-button'
-import { deploymentEnvironmentDeploymentsQueryAtom } from './state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import {
   DetailTable,
   DetailTableBody,
@@ -16,10 +13,13 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from './table'
+} from '../components/detail-table'
 import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from './table-styles'
+} from '../components/detail-table-styles'
+import { deploymentEnvironmentDeploymentsQueryAtom } from '../state'
+import { DeploymentEnvironmentList } from './deployment-environment-list'
+import { NewDeploymentButton } from './new-deployment-button'
 
 const DEPLOYMENT_TABLE_ROW_SKELETON_KEYS = ['production', 'staging']
 
