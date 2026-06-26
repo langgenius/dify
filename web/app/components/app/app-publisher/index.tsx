@@ -38,7 +38,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
-import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control/use-app-access-control'
+import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
@@ -46,7 +46,7 @@ import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { AccessControl } from '../app-access-control'
+import AccessControl from '../app-access-control'
 import {
   PublisherAccessSection,
   PublisherActionsSection,

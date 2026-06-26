@@ -4,7 +4,7 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import { AccessMode, AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
-import { AccessMode as AppAccessMode } from '@/models/access-control'
+import { AccessMode as AppAccessMode, SubjectType } from '@/models/access-control'
 import {
   accessControlSelectionFromSubjects,
   accessModeToPermissionKey,
@@ -79,6 +79,37 @@ describe('access policy subject conversion', () => {
       id: 'account-1',
       subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
       name: 'member@example.com',
+    })
+  })
+
+  it('should normalize resolved subjects that use app access-control subject types', () => {
+    expect(normalizeResolvedSubject({
+      subjectId: 'group-1',
+      subjectType: SubjectType.GROUP,
+      groupData: {
+        id: 'group-1',
+        name: 'Admins',
+        groupSize: 3,
+      },
+    })).toEqual({
+      id: 'group-1',
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
+      name: 'Admins',
+      memberCount: 3,
+    })
+
+    expect(normalizeResolvedSubject({
+      subjectId: 'account-1',
+      subjectType: SubjectType.ACCOUNT,
+      accountData: {
+        id: 'account-1',
+        name: 'Member',
+        email: 'member@example.com',
+      },
+    })).toEqual({
+      id: 'account-1',
+      subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
+      name: 'Member',
     })
   })
 
