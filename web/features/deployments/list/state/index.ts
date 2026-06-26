@@ -7,8 +7,9 @@ import { atomWithInfiniteQuery, atomWithQuery } from 'jotai-tanstack-query'
 import { useHydrateAtoms } from 'jotai/utils'
 import { parseAsString, useQueryState } from 'nuqs'
 import { consoleQuery } from '@/service/client'
-import { getNextPageParamFromPagination, SOURCE_APPS_PAGE_SIZE } from '../../shared/domain/pagination'
 import { deploymentStatusPollingInterval } from '../../shared/domain/runtime-status'
+
+const DEPLOYMENTS_LIST_PAGE_SIZE = 100
 
 export const envFilterQueryState = parseAsString.withOptions({ history: 'push' })
 export const keywordsQueryState = parseAsString.withDefault('').withOptions({ history: 'push' })
@@ -90,12 +91,17 @@ export const deploymentsListQueryAtom = atomWithInfiniteQuery((get) => {
     input: pageParam => ({
       query: {
         pageNumber: Number(pageParam),
-        resultsPerPage: SOURCE_APPS_PAGE_SIZE,
+        resultsPerPage: DEPLOYMENTS_LIST_PAGE_SIZE,
         ...(queryEnvironmentId ? { environmentId: queryEnvironmentId } : {}),
         ...(queryKeywords ? { displayName: queryKeywords } : {}),
       },
     }),
-    getNextPageParam: lastPage => getNextPageParamFromPagination(lastPage.pagination),
+    getNextPageParam: (lastPage) => {
+      const currentPage = lastPage.pagination?.currentPage ?? 1
+      const totalPages = lastPage.pagination?.totalPages ?? 1
+
+      return currentPage < totalPages ? currentPage + 1 : undefined
+    },
     initialPageParam: 1,
     placeholderData: keepPreviousData,
     refetchInterval: (query) => {
