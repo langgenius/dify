@@ -264,13 +264,13 @@ describe('AgentConfigurePublishBar', () => {
       },
     })
 
-    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeDisabled()
     expect(screen.getByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')).toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.publish/ }))
+    fireEvent.click(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ }))
 
     expect(onPublish).not.toHaveBeenCalled()
   })
