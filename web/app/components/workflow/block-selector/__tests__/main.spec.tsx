@@ -286,6 +286,39 @@ describe('NodeSelector', () => {
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
 
+  it('isolates popup keyboard events when opened from another keyboard-managed overlay', async () => {
+    const user = userEvent.setup()
+    const handleParentKeyDown = vi.fn()
+
+    renderNodeSelector(
+      <NodeSelector
+        open
+        isolateKeyboardEvents
+        onSelect={vi.fn()}
+        blocks={[
+          createBlock(BlockEnum.LLM, 'LLM'),
+          createBlock(BlockEnum.End, 'End'),
+        ]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.End]}
+      />,
+    )
+
+    const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock') as HTMLInputElement
+    document.body.addEventListener('keydown', handleParentKeyDown)
+
+    try {
+      await user.type(searchInput, 'LLM')
+    }
+    finally {
+      document.body.removeEventListener('keydown', handleParentKeyDown)
+    }
+
+    expect(searchInput.value).toBe('LLM')
+    expect(handleParentKeyDown).not.toHaveBeenCalled()
+    expect(screen.getByText('LLM')).toBeInTheDocument()
+    expect(screen.queryByText('End')).not.toBeInTheDocument()
+  })
+
   it('disables the start tab with a setup tooltip when an unconfigured start node is on the canvas', async () => {
     const user = userEvent.setup()
 

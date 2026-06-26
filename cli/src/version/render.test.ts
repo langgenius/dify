@@ -60,7 +60,7 @@ describe('renderVersionText', () => {
     }
     const text = renderVersionText(report)
 
-    expect(text).toContain('WARNING: This build is a rc release')
+    expect(text).toContain('WARNING: This build is a(n) rc release')
     expect(text).toContain('install or wait for the stable channel')
   })
 
@@ -72,7 +72,7 @@ describe('renderVersionText', () => {
     }
     const text = renderVersionText(report)
 
-    expect(text).toContain('WARNING: This build is a alpha release')
+    expect(text).toContain('WARNING: This build is a(n) alpha release')
     expect(text).toContain('install or wait for the stable channel')
   })
 
@@ -84,7 +84,7 @@ describe('renderVersionText', () => {
     }
     const text = renderVersionText(report)
 
-    expect(text).toContain('WARNING: This build is a edge release')
+    expect(text).toContain('WARNING: This build is a(n) edge release')
     expect(text).toContain('install or wait for the stable channel')
   })
 
@@ -140,7 +140,7 @@ describe('renderVersionText', () => {
     // RC warning) ran, yet the output is byte-clean.
     expect(plain).not.toMatch(ANSI_RE)
     expect(plain).toContain('Compatibility: incompatible')
-    expect(plain).toContain('WARNING: This build is a rc release')
+    expect(plain).toContain('WARNING: This build is a(n) rc release')
   })
 
   describe('with picocolors stubbed to always emit ANSI', () => {
@@ -183,7 +183,7 @@ describe('renderVersionText', () => {
       expect(colored).toMatch(ANSI_RE)
       expect(colored).toContain('Compatibility: incompatible')
       // prerelease warning lines also routed through yellow.
-      expect(colored).toContain('WARNING: This build is a rc release')
+      expect(colored).toContain('WARNING: This build is a(n) rc release')
     })
   })
 

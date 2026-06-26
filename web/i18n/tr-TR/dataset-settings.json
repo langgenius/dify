@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Anahtar Kelime Sayısı",
   "form.onSearchResults": "Arama sorgunuzla eşleşen üye yok.\nAramanızı tekrar deneyin.",
   "form.permissions": "İzinler",
+  "form.permissionsAccessConfig": "Erişim yapılandırmasına git",
   "form.permissionsAllMember": "Tüm takım üyeleri",
   "form.permissionsInvitedMembers": "Bazı takım üyeleri",
   "form.permissionsOnlyMe": "Sadece ben",

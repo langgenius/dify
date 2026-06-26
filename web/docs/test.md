@@ -46,6 +46,7 @@ pnpm test path/to/file.spec.tsx
 - **Semantic naming**: Use `should <behavior> when <condition>` and group related cases with `describe(<subject or scenario>)`.
 - **AAA / Given–When–Then**: Separate Arrange, Act, and Assert clearly with code blocks or comments.
 - **Minimal but sufficient assertions**: Keep only the expectations that express the essence of the behavior.
+- **Test product contracts, not cosmetic implementation**: Do not add or expand unit tests only to lock pure style classes, spacing, colors, backgrounds, or layout micro-adjustments. Cover visual-only fixes with browser/manual verification, screenshots, or E2E/visual checks when risk justifies it. Add unit tests only when the change affects user-observable behavior, accessibility semantics, state, data flow, routing, or a stable component API contract.
 - **Reusable test data**: Prefer test data builders or factories over hard-coded masses of data.
 - **De-flake**: Control time, randomness, network, concurrency, and ordering.
 - **Fast & stable**: Keep unit tests running in milliseconds; reserve integration tests for cross-module behavior with isolation.
@@ -179,7 +180,7 @@ Apply the following test scenarios based on component features:
 
 ### 2. Props Testing (REQUIRED - All Components)
 
-Exercise the prop combinations that change observable behavior. Show how required props gate functionality, how optional props fall back to their defaults, and how invalid combinations surface through user-facing safeguards. Let TypeScript catch structural issues; keep runtime assertions focused on what the component renders or triggers.
+Exercise the prop combinations that change observable behavior. Show how required props gate functionality, how optional props fall back to their defaults, and how invalid combinations surface through user-facing safeguards. Let TypeScript catch structural issues; keep runtime assertions focused on what the component renders or triggers. Do not test pass-through styling props such as `className` unless they are an explicit, stable component API whose absence would break a real integration contract.
 
 ### 3. State Management
 

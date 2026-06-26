@@ -1,3 +1,4 @@
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -8,12 +9,6 @@ from controllers.console.snippets import snippet_workflow_draft_variable as modu
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIABLE_NODE_ID
 from models.account import Account, AccountStatus
 from services.workflow_draft_variable_service import WorkflowDraftVariableList
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _make_account() -> Account:
@@ -66,7 +61,7 @@ def test_ensure_snippet_draft_variable_row_allowed_accepts_canvas_node_variable(
 
 def test_conversation_variables_returns_empty_list(app: Flask):
     api = module.SnippetConversationVariableCollectionApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/"):
         result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
@@ -76,7 +71,7 @@ def test_conversation_variables_returns_empty_list(app: Flask):
 
 def test_system_variables_returns_empty_list(app: Flask):
     api = module.SnippetSystemVariableCollectionApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/"):
         result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
@@ -91,7 +86,7 @@ def test_delete_variable_collection_deletes_current_user_variables(app: Flask, m
     db_session.return_value = SimpleNamespace()
     monkeypatch.setattr(module.db, "session", db_session)
     api = module.SnippetWorkflowVariableCollectionApi()
-    handler = _unwrap(api.delete)
+    handler = unwrap(api.delete)
 
     with app.test_request_context("/", method="DELETE"):
         response = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))
@@ -109,7 +104,7 @@ def test_variable_collection_get_raises_when_draft_workflow_missing(app: Flask, 
     )
 
     api = module.SnippetWorkflowVariableCollectionApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/?page=1&limit=20"):
         with pytest.raises(module.DraftWorkflowNotExist):
@@ -140,7 +135,7 @@ def test_node_variable_collection_get_lists_node_variables(app: Flask, monkeypat
     )
 
     api = module.SnippetNodeVariableCollectionApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/"):
         result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"), node_id="llm-1")
@@ -158,7 +153,7 @@ def test_node_variable_collection_delete_deletes_node_variables(app: Flask, monk
     monkeypatch.setattr(module.db, "session", db_session)
 
     api = module.SnippetNodeVariableCollectionApi()
-    handler = _unwrap(api.delete)
+    handler = unwrap(api.delete)
 
     with app.test_request_context("/", method="DELETE"):
         response = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"), node_id="llm-1")
@@ -177,7 +172,7 @@ def test_variable_patch_returns_variable_when_no_changes(app: Flask, monkeypatch
     monkeypatch.setattr(module, "WorkflowDraftVariableService", Mock(return_value=draft_var_service))
 
     api = module.SnippetVariableApi()
-    handler = _unwrap(api.patch)
+    handler = unwrap(api.patch)
 
     with app.test_request_context("/", method="PATCH", json={}):
         result = handler(
@@ -202,7 +197,7 @@ def test_variable_delete_deletes_variable(app: Flask, monkeypatch: pytest.Monkey
     monkeypatch.setattr(module, "WorkflowDraftVariableService", Mock(return_value=draft_var_service))
 
     api = module.SnippetVariableApi()
-    handler = _unwrap(api.delete)
+    handler = unwrap(api.delete)
 
     with app.test_request_context("/", method="DELETE"):
         response = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"), variable_id="var-1")
@@ -230,7 +225,7 @@ def test_variable_reset_returns_no_content_when_reset_result_is_none(app: Flask,
     )
 
     api = module.SnippetVariableResetApi()
-    handler = _unwrap(api.put)
+    handler = unwrap(api.put)
 
     with app.test_request_context("/", method="PUT"):
         response = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"), variable_id="var-1")
@@ -260,7 +255,7 @@ def test_environment_variables_returns_workflow_environment_variables(app: Flask
     )
 
     api = module.SnippetEnvironmentVariableCollectionApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/"):
         result = handler(api, _make_account(), snippet=SimpleNamespace(id="snippet-1"))

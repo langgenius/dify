@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "تعداد کلمات کلیدی",
   "form.onSearchResults": "هیچ عضوی با عبارت جستجوی شما مطابقت ندارد.\nجستجویتان را دوباره امتحان کنید.",
   "form.permissions": "مجوزها",
+  "form.permissionsAccessConfig": "رفتن به پیکربندی دسترسی",
   "form.permissionsAllMember": "تمام اعضای تیم",
   "form.permissionsInvitedMembers": "برخی از اعضای تیم",
   "form.permissionsOnlyMe": "فقط من",

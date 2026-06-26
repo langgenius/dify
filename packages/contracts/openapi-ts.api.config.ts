@@ -10,13 +10,21 @@ type SwaggerSchema = JsonObject & {
   $ref?: string
 }
 
+type OpenApiMediaType = JsonObject & {
+  schema?: SwaggerSchema
+}
+
+type OpenApiResponse = JsonObject & {
+  content?: Record<string, OpenApiMediaType>
+}
+
 type OpenApiComponents = JsonObject & {
   schemas?: Record<string, SwaggerSchema>
 }
 
 type SwaggerOperation = JsonObject & {
   operationId?: string
-  responses?: Record<string, unknown>
+  responses?: Record<string, OpenApiResponse>
 }
 
 type SwaggerDocument = JsonObject & {
@@ -52,6 +60,17 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url))
 const apiOpenApiDir = path.resolve(currentDir, 'openapi')
 
 const operationMethods = new Set(['delete', 'get', 'patch', 'post', 'put'])
+const pydanticDecimalStringPattern = '^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+const codegenSafeDecimalStringPattern = '^(?![-+.]*$)[+-]?0*\\d*\\.?\\d*$'
+
+const opaqueJsonContent = (): Record<string, OpenApiMediaType> => ({
+  'application/json': {
+    schema: {
+      additionalProperties: true,
+      type: 'object',
+    },
+  },
+})
 
 const apiSpecs: ApiSpec[] = [
   { filename: 'console-openapi.json', name: 'console' },
@@ -182,6 +201,46 @@ const addOperationIds = (document: SwaggerDocument) => {
   }
 }
 
+const isOpaqueContractResponse = (response: OpenApiResponse) => {
+  const content = response.content
+  if (!isObject(content))
+    return false
+
+  return Object.entries(content).some(([mediaType, media]) => {
+    if (!isObject(media))
+      return false
+
+    return (mediaType === 'application/json' || mediaType === 'text/event-stream') && !('schema' in media)
+  })
+}
+
+const hasOpaqueContractSuccessResponse = (operation: SwaggerOperation) => {
+  return Object.entries(operation.responses ?? {}).some(([status, response]) => {
+    return /^2\d\d$/.test(status) && isObject(response) && isOpaqueContractResponse(response)
+  })
+}
+
+const normalizeOpaqueContractResponses = (document: SwaggerDocument) => {
+  // Some backend endpoints has no schema (e.g. external) and will trap heyapi here
+  // So we forge an opaque schema here
+  for (const pathItem of Object.values(document.paths ?? {})) {
+    for (const [method, operation] of Object.entries(pathItem)) {
+      if (!operationMethods.has(method) || !isObject(operation))
+        continue
+
+      const swaggerOperation = operation as SwaggerOperation
+      if (!hasOpaqueContractSuccessResponse(swaggerOperation))
+        continue
+
+      Object.values(swaggerOperation.responses ?? {})
+        .filter(response => isObject(response) && isOpaqueContractResponse(response))
+        .forEach((response) => {
+          response.content = opaqueJsonContent()
+        })
+    }
+  }
+}
+
 const hasSuccessResponse = (operation: SwaggerOperation) => {
   return Object.entries(operation.responses ?? {}).some(([status, response]) => {
     if (!/^2\d\d$/.test(status))
@@ -215,6 +274,7 @@ const filterContractOperations = (document: SwaggerDocument) => {
 }
 
 const normalizeApiSwagger = (document: SwaggerDocument) => {
+  normalizeOpaqueContractResponses(document)
   filterContractOperations(document)
   addOperationIds(document)
 
@@ -380,10 +440,20 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
       'name': 'zod',
       '~resolvers': {
         string: (ctx) => {
-          if (ctx.schema.format !== 'binary')
-            return undefined
+          if (ctx.schema.format === 'binary')
+            return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
 
-          return $(ctx.symbols.z).attr('custom').call().generic($.type.or($.type('Blob'), $.type('File')))
+          if (ctx.schema.pattern === pydanticDecimalStringPattern) {
+            // the pydantic generated regex will emit error like
+            // regexp/no-useless-assertions, so patch the regex here
+            return $(ctx.symbols.z)
+              .attr('string')
+              .call()
+              .attr('regex')
+              .call($.regexp(codegenSafeDecimalStringPattern))
+          }
+
+          return undefined
         },
       },
     },

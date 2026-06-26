@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "จํานวนคําหลัก",
   "form.onSearchResults": "ไม่มีสมาชิกที่ตรงกับคําค้นหาของคุณ\nลองค้นหาอีกครั้ง",
   "form.permissions": "สิทธิ์",
+  "form.permissionsAccessConfig": "ไปที่การกำหนดค่าการเข้าถึง",
   "form.permissionsAllMember": "สมาชิกในทีมทุกคน",
   "form.permissionsInvitedMembers": "สมาชิกในทีมบางส่วน",
   "form.permissionsOnlyMe": "ฉันเท่านั้น",

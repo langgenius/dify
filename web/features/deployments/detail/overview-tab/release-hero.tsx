@@ -4,24 +4,21 @@ import type { Release } from '@dify/contracts/enterprise/types.gen'
 import type { ReactNode } from 'react'
 import { ReleaseSource } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
+import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState } from '../../components/empty-state'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { CreateReleaseControl } from '../../create-release'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { formatDate, releaseCommit } from '../../shared/domain/release'
-import {
-  deploymentSourceAppIdAtom,
-  deploymentSourceAppQueryAtom,
-} from '../state'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from './card-styles'
 
 type ReleaseHeroProps = {
-  appInstanceId: string
   latestRelease?: Release
   releaseCount: number
 }
@@ -32,8 +29,9 @@ type ReleaseMetaItemProps = {
   children: ReactNode
 }
 
-export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: ReleaseHeroProps) {
+export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const { formatTimeFromNow } = useFormatTimeFromNow()
 
   if (!latestRelease) {
@@ -43,7 +41,7 @@ export function ReleaseHero({ appInstanceId, latestRelease, releaseCount }: Rele
         icon="i-ri-stack-line"
         title={t('overview.hero.empty')}
         description={t('overview.hero.emptyDescription')}
-        action={<CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
+        action={appInstanceId ? <CreateReleaseControl appInstanceId={appInstanceId} size="medium" /> : undefined}
         className="min-h-44"
       />
     )
@@ -129,23 +127,17 @@ function LatestReleaseSource({ release }: {
     )
   }
 
-  return (
-    <ScopeProvider
-      key={sourceAppId}
-      atoms={[
-        [deploymentSourceAppIdAtom, sourceAppId],
-      ]}
-      name="DeploymentLatestReleaseSource"
-    >
-      <LatestReleaseSourceLink sourceAppId={sourceAppId} />
-    </ScopeProvider>
-  )
+  return <LatestReleaseSourceLink sourceAppId={sourceAppId} />
 }
 
 function LatestReleaseSourceLink({ sourceAppId }: {
   sourceAppId: string
 }) {
-  const sourceAppQuery = useAtomValue(deploymentSourceAppQueryAtom)
+  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
+    input: {
+      params: { app_id: sourceAppId },
+    },
+  }))
   const sourceAppName = sourceAppQuery.data?.name
   const label = sourceAppName || sourceAppId
   const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId

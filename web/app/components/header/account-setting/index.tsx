@@ -63,7 +63,7 @@ export default function AccountSetting({
   const activeMenu = (() => {
     if (normalizedActiveTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
-    if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.ACCESS_RULES) && !canManageWorkspaceRoles)
+    if ((normalizedActiveTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS || normalizedActiveTab === ACCOUNT_SETTING_TAB.PERMISSION_SET) && !canManageWorkspaceRoles)
       return ACCOUNT_SETTING_TAB.MEMBERS
     return normalizedActiveTab
   })()
@@ -83,15 +83,15 @@ export default function AccountSetting({
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.PERMISSIONS,
+      key: ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS,
       name: t('settings.rolesAndPermissions', { ns: 'common' }),
       icon: <span className={cn('i-ri-shield-user-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-shield-user-fill', iconClassName)} />,
     },
     {
-      key: ACCOUNT_SETTING_TAB.ACCESS_RULES,
-      name: t('settings.resourceAccess', { ns: 'common' }),
-      description: t('settings.resourceAccessDescription', { ns: 'common' }),
+      key: ACCOUNT_SETTING_TAB.PERMISSION_SET,
+      name: t('settings.permissionSet', { ns: 'common' }),
+      description: t('settings.permissionSetDescription', { ns: 'common' }),
       icon: <span className={cn('i-ri-lock-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-lock-2-fill', iconClassName)} />,
     },
@@ -136,8 +136,8 @@ export default function AccountSetting({
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
 
     if (canManageWorkspaceRoles) {
-      visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSIONS)
-      visibleTabs.push(ACCOUNT_SETTING_TAB.ACCESS_RULES)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
+      visibleTabs.push(ACCOUNT_SETTING_TAB.PERMISSION_SET)
     }
 
     if (canViewBilling)
@@ -262,8 +262,8 @@ export default function AccountSetting({
                 />
               )}
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
-              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSIONS && <PermissionsPage containerRef={scrollContainerRef} />}
-              {activeMenu === ACCOUNT_SETTING_TAB.ACCESS_RULES && <AccessRulesPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && <PermissionsPage containerRef={scrollContainerRef} />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}

@@ -101,6 +101,7 @@ export function PanelContextmenu({
             renderTrigger={renderAddBlockTrigger}
             renderTriggerAsButtonRoot
             onClose={onClose}
+            isolateKeyboardEvents
             offset={{
               mainAxis: -36,
               crossAxis: -4,

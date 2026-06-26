@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Število ključnih besed",
   "form.onSearchResults": "Noben član se ne ujema z vašo iskalno poizvedbo.\nPoskusite znova iskati.",
   "form.permissions": "Dovoljenja",
+  "form.permissionsAccessConfig": "Pojdi na konfiguracijo dostopa",
   "form.permissionsAllMember": "Vsi člani ekipe",
   "form.permissionsInvitedMembers": "Določeni člani ekipe",
   "form.permissionsOnlyMe": "Samo jaz",

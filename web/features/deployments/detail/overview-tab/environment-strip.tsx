@@ -3,12 +3,13 @@
 import type { EnvironmentDeployment, Release } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { DeploymentEmptyState } from '../../components/empty-state'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import { OVERVIEW_CARD_CLASS_NAME } from './card-styles'
 import { EnvironmentTile } from './environment-tile'
@@ -16,13 +17,13 @@ import { EnvironmentTile } from './environment-tile'
 const OVERVIEW_RUNTIME_INSTANCE_LIMIT = 4
 
 type EnvironmentStripProps = {
-  appInstanceId: string
   rows: EnvironmentDeployment[]
   releaseRows: Release[]
 }
 
-export function EnvironmentStrip({ appInstanceId, rows, releaseRows }: EnvironmentStripProps) {
+export function EnvironmentStrip({ rows, releaseRows }: EnvironmentStripProps) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const runtimeRows = rows.filter(hasRuntimeInstanceDeployment)
   const previewRows = runtimeRows.slice(0, OVERVIEW_RUNTIME_INSTANCE_LIMIT)
   const hasRuntimeRows = runtimeRows.length > 0
@@ -32,7 +33,7 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows }: Environme
     <section className="flex flex-col gap-3">
       <div className="flex min-w-0 items-baseline justify-between gap-3">
         <h3 className="system-sm-semibold text-text-primary">{t('overview.strip.title')}</h3>
-        {hasRuntimeRows && (
+        {hasRuntimeRows && appInstanceId && (
           <Link
             href={`/deployments/${appInstanceId}/instances`}
             className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
@@ -44,13 +45,12 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows }: Environme
       </div>
 
       {!hasRuntimeRows
-        ? <EnvironmentEmptyState appInstanceId={appInstanceId} canDeploy={hasRelease} />
+        ? <EnvironmentEmptyState canDeploy={hasRelease} />
         : (
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,360px),1fr))] gap-3">
               {previewRows.map(row => (
                 <EnvironmentTile
                   key={row.environment.id}
-                  appInstanceId={appInstanceId}
                   row={row}
                   releaseRows={releaseRows}
                 />
@@ -61,11 +61,11 @@ export function EnvironmentStrip({ appInstanceId, rows, releaseRows }: Environme
   )
 }
 
-function EnvironmentEmptyState({ appInstanceId, canDeploy }: {
-  appInstanceId: string
+function EnvironmentEmptyState({ canDeploy }: {
   canDeploy: boolean
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
 
   return (
@@ -75,7 +75,7 @@ function EnvironmentEmptyState({ appInstanceId, canDeploy }: {
       title={t('overview.strip.emptyTitle')}
       description={canDeploy ? t('overview.strip.emptyDeployableDescription') : t('overview.strip.emptyDescription')}
       className="min-h-44"
-      action={canDeploy
+      action={canDeploy && appInstanceId
         ? (
             <Button
               type="button"
