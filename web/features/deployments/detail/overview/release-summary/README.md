@@ -2,7 +2,7 @@
 
 Release summary section for showing the latest release and release creation entry point on the overview route.
 
-## External Modules
+## Internal Modules
 
 | Module                                   | Why this module uses it                                            |
 | ---------------------------------------- | ------------------------------------------------------------------ |
@@ -12,3 +12,7 @@ Release summary section for showing the latest release and release creation entr
 | `shared/components/title-tooltip`        | Shows full release labels when summary text is truncated.          |
 | `shared/domain/release`                  | Reuses release metadata formatting for the release summary card.   |
 | `detail/overview/components/card-styles` | Reuses overview card and icon styling shared by overview sections. |
+
+## External Modules
+
+None.

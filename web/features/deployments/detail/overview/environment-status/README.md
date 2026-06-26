@@ -2,7 +2,7 @@
 
 Environment status section for previewing runtime deployments and opening deployment actions from the overview route.
 
-## External Modules
+## Internal Modules
 
 | Module                                   | Why this module uses it                                                    |
 | ---------------------------------------- | -------------------------------------------------------------------------- |
@@ -15,3 +15,7 @@ Environment status section for previewing runtime deployments and opening deploy
 | `shared/ui/deployment-status-badge`      | Reuses deployment status badge styling for environment tiles.              |
 | `shared/ui/deployment-status-style`      | Reuses deployment status label mapping for environment tiles.              |
 | `detail/overview/components/card-styles` | Reuses overview card and icon styling shared by overview sections.         |
+
+## External Modules
+
+None.

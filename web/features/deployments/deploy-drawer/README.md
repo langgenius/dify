@@ -2,11 +2,10 @@
 
 Drawer workflow for choosing a release, selecting an environment, binding runtime credentials, and starting a deployment.
 
-## External Modules
+## Internal Modules
 
 | Module                                                | Why this module uses it                                                                        |
 | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `web/app/components/base/skeleton`                    | Reuses skeleton primitives for drawer form loading sections.                                   |
 | `shared/components/empty-state`                       | Reuses deployment empty/error state presentation inside drawer form sections.                  |
 | `shared/components/env-var-bindings`                  | Renders deployment environment variable inputs from release deployment options.                |
 | `shared/components/env-var-bindings-utils`            | Converts contract env var slots into the drawer's env var binding model.                       |
@@ -17,3 +16,9 @@ Drawer workflow for choosing a release, selecting an environment, binding runtim
 | `shared/domain/release`                               | Formats release metadata shown in the drawer.                                                  |
 | `shared/domain/release-action`                        | Reuses release/deployment action availability rules for the selected release target.           |
 | `shared/domain/runtime-status`                        | Reuses runtime deployment status rules for target availability and polling-sensitive behavior. |
+
+## External Modules
+
+| Module                         | Why this module uses it                                      |
+| ------------------------------ | ------------------------------------------------------------ |
+| `app/components/base/skeleton` | Reuses skeleton primitives for drawer form loading sections. |

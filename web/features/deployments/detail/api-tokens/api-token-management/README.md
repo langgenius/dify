@@ -2,7 +2,7 @@
 
 API token management section for API endpoint display, token creation, and token listing.
 
-## External Modules
+## Internal Modules
 
 | Module                                             | Why this module uses it                                          |
 | -------------------------------------------------- | ---------------------------------------------------------------- |
@@ -15,3 +15,7 @@ API token management section for API endpoint display, token creation, and token
 | `detail/api-tokens/docs/docs-drawer`               | Opens API documentation for the current endpoint.                |
 | `detail/api-tokens/state`                          | Reads API tokens route query data.                               |
 | `detail/api-tokens/table-styles`                   | Uses API-token-owned column class names for skeleton rows.       |
+
+## External Modules
+
+None.

@@ -2,7 +2,7 @@
 
 Environment list section for rendering deployment rows and row-level status summaries on the instances route.
 
-## External Modules
+## Internal Modules
 
 | Module                                                | Why this module uses it                                      |
 | ----------------------------------------------------- | ------------------------------------------------------------ |
@@ -12,3 +12,7 @@ Environment list section for rendering deployment rows and row-level status summ
 | `shared/ui/deployment-status-badge`                   | Reuses deployment status badge styling for environment rows. |
 | `detail/instances/row-actions/deployment-row-actions` | Renders row-level deployment actions for each environment.   |
 | `detail/instances/table-styles`                       | Uses instances-owned column class names for deployment rows. |
+
+## External Modules
+
+None.

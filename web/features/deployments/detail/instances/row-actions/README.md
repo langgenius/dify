@@ -2,7 +2,7 @@
 
 Row action menu and dialogs for deploying, redeploying, and undeploying an environment deployment.
 
-## External Modules
+## Internal Modules
 
 | Module                                  | Why this module uses it                                           |
 | --------------------------------------- | ----------------------------------------------------------------- |
@@ -11,3 +11,7 @@ Row action menu and dialogs for deploying, redeploying, and undeploying an envir
 | `shared/components/detail-table-styles` | Reuses action trigger styles shared by detail tables.             |
 | `shared/domain/idempotency`             | Generates idempotency keys for undeploy and redeploy actions.     |
 | `shared/domain/runtime-status`          | Reuses deployment status rules for action availability.           |
+
+## External Modules
+
+None.
