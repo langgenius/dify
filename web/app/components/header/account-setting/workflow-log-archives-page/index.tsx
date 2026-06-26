@@ -58,7 +58,7 @@ function buildArchiveDownloadFileUrl(downloadId: string) {
   return `${API_PREFIX}/workflow-run-archives/downloads/${downloadId}/file`
 }
 
-const tableGridClassName = 'grid-cols-[0.6fr_0.78fr_0.62fr_0.78fr_0.98fr]'
+const tableGridClassName = 'grid-cols-[0.66fr_0.78fr_0.78fr_1fr]'
 
 export default function WorkflowLogArchivesPage() {
   const { t } = useTranslation()
@@ -73,62 +73,52 @@ export default function WorkflowLogArchivesPage() {
       label: t('archives.summary.months', { ns: 'appLog' }),
       value: summary ? formatNumber(summary.archived_month_count) : '0',
       icon: 'i-ri-calendar-2-line',
-      accentClassName: 'bg-util-colors-blue-blue-500',
-      iconClassName: 'border-util-colors-blue-blue-200 bg-util-colors-blue-blue-50 text-util-colors-blue-blue-600',
     },
     {
       label: t('archives.summary.runs', { ns: 'appLog' }),
       value: summary ? formatNumber(summary.workflow_run_count) : '0',
       icon: 'i-ri-git-branch-line',
-      accentClassName: 'bg-util-colors-green-green-500',
-      iconClassName: 'border-util-colors-green-green-200 bg-util-colors-green-green-50 text-util-colors-green-green-600',
     },
     {
       label: t('archives.summary.size', { ns: 'appLog' }),
       value: summary ? formatBytes(summary.archive_bytes) : '0 B',
       icon: 'i-ri-hard-drive-2-line',
-      accentClassName: 'bg-util-colors-warning-warning-500',
-      iconClassName: 'border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 text-util-colors-warning-warning-600',
     },
     {
       label: t('archives.summary.latest', { ns: 'appLog' }),
       value: formatDate(summary?.latest_archived_at),
       icon: 'i-ri-time-line',
-      accentClassName: 'bg-util-colors-orange-orange-500',
-      iconClassName: 'border-util-colors-orange-orange-200 bg-util-colors-orange-orange-50 text-util-colors-orange-orange-600',
     },
   ]
 
   return (
     <div data-testid="workflow-log-archives-page" className="flex flex-col gap-4 pb-6">
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-        {summaryItems.map(item => (
-          <div key={item.label} className="relative flex min-h-28 flex-col overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg p-4 shadow-xs shadow-shadow-shadow-3">
-            <div className={cn('absolute inset-x-0 top-0 h-1', item.accentClassName)} />
-            <div className="flex items-start justify-between gap-3 pt-1">
-              <div className="min-h-8 min-w-0 system-xs-medium-uppercase text-text-tertiary">{item.label}</div>
-              <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-xl border-[0.5px] shadow-xs', item.iconClassName)}>
-                <span className={cn(item.icon, 'size-5')} aria-hidden="true" />
+      <div className="rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn p-2">
+        <div className="grid grid-cols-2 gap-1 lg:grid-cols-4">
+          {summaryItems.map(item => (
+            <div key={item.label} className="flex min-h-[92px] flex-col gap-2 rounded-xl bg-components-panel-bg p-4">
+              <span className={cn(item.icon, 'size-4 text-text-tertiary')} aria-hidden="true" />
+              <div className="system-xs-medium text-text-tertiary">{item.label}</div>
+              <div className="flex min-h-6 items-center">
+                {isLoading
+                  ? (
+                      <SkeletonRectangle className="h-5 w-20 animate-pulse rounded-md" />
+                    )
+                  : (
+                      <div className="system-md-semibold whitespace-nowrap text-text-primary">{item.value}</div>
+                    )}
               </div>
             </div>
-            {isLoading
-              ? (
-                  <SkeletonRectangle className="mt-auto h-8 w-24 animate-pulse rounded-md" />
-                )
-              : (
-                  <div className="mt-auto title-2xl-semi-bold whitespace-nowrap text-text-primary">{item.value}</div>
-                )}
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs">
         <div className="overflow-x-auto">
-          <div className="min-w-[520px]">
+          <div className="min-w-[460px]">
             <div className={cn('grid h-8 items-center gap-3 border-b border-divider-subtle bg-background-section-burn px-4 system-xs-medium-uppercase text-text-tertiary', tableGridClassName)}>
               <div className="text-center">{t('archives.table.month', { ns: 'appLog' })}</div>
               <div className="text-center">{t('archives.table.runs', { ns: 'appLog' })}</div>
-              <div className="text-center">{t('archives.table.files', { ns: 'appLog' })}</div>
               <div className="text-center">{t('archives.table.size', { ns: 'appLog' })}</div>
               <div className="text-center">{t('archives.table.action', { ns: 'appLog' })}</div>
             </div>
@@ -141,7 +131,6 @@ export default function WorkflowLogArchivesPage() {
                   >
                     <div className="flex justify-center"><SkeletonRectangle className="h-4 w-16 animate-pulse" /></div>
                     <div className="flex justify-center"><SkeletonRectangle className="h-4 w-16 animate-pulse" /></div>
-                    <div className="flex justify-center"><SkeletonRectangle className="h-4 w-12 animate-pulse" /></div>
                     <div className="flex justify-center"><SkeletonRectangle className="h-4 w-14 animate-pulse" /></div>
                     <div className="flex justify-center"><SkeletonRectangle className="h-8 w-24 animate-pulse rounded-lg" /></div>
                   </div>
@@ -263,9 +252,6 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
         <span className="truncate system-sm-semibold text-text-primary">{archiveMonth}</span>
       </div>
       <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatNumber(archive.workflow_run_count)}</div>
-      <div className="text-center system-sm-medium text-text-secondary tabular-nums">
-        {t('archives.table.fileCount', { ns: 'appLog', count: archive.bundle_count })}
-      </div>
       <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatBytes(archive.archive_bytes)}</div>
       <div className="flex min-w-0 justify-center">
         <Tooltip>
