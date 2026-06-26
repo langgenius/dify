@@ -120,9 +120,9 @@ describe('Button', () => {
       expect(button).toHaveFocus()
     })
 
-    it('sets aria-busy when loading', async () => {
+    it('does not set aria-busy when loading', async () => {
       const screen = await render(<Button loading>Click me</Button>)
-      await expect.element(screen.getByRole('button')).toHaveAttribute('aria-busy', 'true')
+      await expect.element(screen.getByRole('button')).not.toHaveAttribute('aria-busy')
     })
 
     it('does not set aria-busy when not loading', async () => {
