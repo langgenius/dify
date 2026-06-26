@@ -20,6 +20,7 @@ type BlockSelectorMockProps = {
   popupClassName: string
   availableBlocksTypes: BlockEnum[]
   showStartTab: boolean
+  isolateKeyboardEvents?: boolean
   defaultActiveTab?: unknown
 }
 
@@ -152,6 +153,7 @@ describe('AddBlock', () => {
         showStartTab: true,
         placement: 'right-start',
         popupClassName: 'min-w-[256px]!',
+        isolateKeyboardEvents: undefined,
       })
       expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
       expect(latestBlockSelectorProps?.offset).toEqual({
@@ -188,6 +190,14 @@ describe('AddBlock', () => {
 
       expect(latestBlockSelectorProps?.showStartTab).toBe(true)
       expect(latestBlockSelectorProps?.defaultActiveTab).toBeUndefined()
+    })
+
+    it('should pass keyboard isolation to the selector when requested by the caller', async () => {
+      renderWorkflowFlowComponent(<AddBlock isolateKeyboardEvents />, { nodes: [], edges: [] })
+
+      await waitFor(() => expect(latestBlockSelectorProps).not.toBeNull())
+
+      expect(latestBlockSelectorProps?.isolateKeyboardEvents).toBe(true)
     })
   })
 

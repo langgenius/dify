@@ -3,19 +3,19 @@
 import type { AccessChannels, ApiKeySummary } from '@dify/contracts/enterprise/types.gen'
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { DeploymentStatusBadge } from '../../shared/ui/deployment-status-badge'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 
 type AccessStatusSectionProps = {
-  appInstanceId: string
   accessChannels?: AccessChannels
 }
 
 type ApiTokenSummarySectionProps = {
-  appInstanceId: string
   accessChannels?: AccessChannels
   apiKeySummary?: ApiKeySummary
   deployedEnvironmentCount: number
@@ -32,8 +32,13 @@ type AccessStatusItem = {
 
 const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli']
 
-export function AccessStatusSection({ appInstanceId, accessChannels }: AccessStatusSectionProps) {
+export function AccessStatusSection({ accessChannels }: AccessStatusSectionProps) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
+
+  if (!appInstanceId)
+    return null
+
   const items: AccessStatusItem[] = [
     {
       key: 'webapp',
@@ -100,14 +105,17 @@ export function AccessStatusSection({ appInstanceId, accessChannels }: AccessSta
 }
 
 export function ApiTokenSummarySection({
-  appInstanceId,
   accessChannels,
   apiKeySummary,
   deployedEnvironmentCount,
 }: ApiTokenSummarySectionProps) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const apiEnabled = Boolean(accessChannels?.developerApiEnabled)
   const apiKeyCount = apiKeySummary?.apiKeyCount ?? 0
+
+  if (!appInstanceId)
+    return null
 
   return (
     <section className="flex min-w-0 flex-col gap-3">

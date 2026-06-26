@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
+import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../components/detail-table-styles'
 
 export function DeploymentActionsDropdown({
   currentReleaseId,
