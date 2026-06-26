@@ -1,4 +1,5 @@
 import type { AgentSoulConfig, WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-drawer-panel'
@@ -18,8 +19,14 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/features/agent-v2/agent-detail/configure/components/orchestrate', () => ({
-  AgentOrchestratePanel: () => (
-    <div role="region" aria-label="orchestrate-panel" />
+  AgentOrchestratePanel: (props: {
+    bottomBar?: ReactNode
+    headerAction?: ReactNode
+  }) => (
+    <div role="region" aria-label="orchestrate-panel">
+      {props.headerAction}
+      {props.bottomBar}
+    </div>
   ),
 }))
 
@@ -112,7 +119,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     mocks.saveDraft.mockResolvedValue(createInlineComposerState())
   })
 
-  function renderWorkspace() {
+  function renderWorkspace(props: {
+    onSaveInlineToRoster?: () => void
+  } = {}) {
     const queryClient = new QueryClient()
 
     render(
@@ -123,6 +132,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           inlineComposerState={createInlineComposerState()}
           isInline
           nodeId="node-1"
+          onSaveInlineToRoster={props.onSaveInlineToRoster}
           open
         />
       </QueryClientProvider>,
@@ -130,6 +140,16 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
   }
 
   describe('Working Directory', () => {
+    it('should show save-to-roster in the configure header menu without rendering the old action bar', () => {
+      renderWorkspace({
+        onSaveInlineToRoster: vi.fn(),
+      })
+
+      expect(screen.getByRole('button', { name: 'common.operation.more' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.save' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.cancel' })).not.toBeInTheDocument()
+    })
+
     it('should show the working directory panel when the header action is clicked', async () => {
       renderWorkspace()
 

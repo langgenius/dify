@@ -217,10 +217,9 @@ vi.mock('../components/agent-orchestrate-drawer-panel', () => ({
               agent_id: 'inline-agent-1',
               current_snapshot_id: 'latest-snapshot-2',
             })
-            props.onClose?.()
           }}
         >
-          Save inline modal
+          Autosave inline workspace
         </button>
       </div>
     )
@@ -683,7 +682,7 @@ describe('agent/panel', () => {
     )
   })
 
-  it('updates the inline binding snapshot from the modal save response before closing', () => {
+  it('updates the inline binding snapshot from the inline workspace autosave response', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     render(
       <AgentV2Panel
@@ -699,7 +698,7 @@ describe('agent/panel', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save inline modal' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Autosave inline workspace' }))
 
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
       {
@@ -717,7 +716,7 @@ describe('agent/panel', () => {
         notRefreshWhenSyncError: true,
       }),
     )
-    expect(mockStoreState.setOpenInlineAgentPanelNodeId).toHaveBeenCalledWith(undefined)
+    expect(mockStoreState.setOpenInlineAgentPanelNodeId).not.toHaveBeenCalledWith(undefined)
   })
 
   it('does not show start from scratch for an existing inline agent binding', () => {

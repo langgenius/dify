@@ -55,6 +55,7 @@ export function useWorkflowInlineAgentConfigureSync({
   baseConfig,
   currentModel,
   autoSaveEnabled = true,
+  onDraftSaved,
   enabled,
 }: {
   nodeId: string
@@ -65,6 +66,7 @@ export function useWorkflowInlineAgentConfigureSync({
     plugin_id?: string
   }
   autoSaveEnabled?: boolean
+  onDraftSaved?: (composerState: WorkflowAgentComposerResponse) => void
   enabled: boolean
 }) {
   const queryClient = useQueryClient()
@@ -76,6 +78,7 @@ export function useWorkflowInlineAgentConfigureSync({
   const baseConfigRef = useRef(baseConfig)
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
+  const onDraftSavedRef = useRef(onDraftSaved)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
   const saveComposerMutation = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
@@ -84,6 +87,7 @@ export function useWorkflowInlineAgentConfigureSync({
   baseConfigRef.current = baseConfig
   currentModelRef.current = currentModel
   enabledRef.current = enabled
+  onDraftSavedRef.current = onDraftSaved
 
   const getAgentSoulDraft = useCallback(() => formStateToAgentSoulConfig({
     baseConfig: baseConfigRef.current,
@@ -123,6 +127,7 @@ export function useWorkflowInlineAgentConfigureSync({
     setOriginalDraft(agentSoulConfigToFormState(composerState.agent_soul))
     setDraftSavedAt(Date.now())
     lastAutosavedDraftKeyRef.current = savedDraftKey
+    onDraftSavedRef.current?.(composerState)
     return composerState
   })
 
