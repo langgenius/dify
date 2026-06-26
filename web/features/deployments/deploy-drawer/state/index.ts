@@ -39,7 +39,7 @@ export const deployDrawerOpenAtom = atom(false)
 export const deployDrawerAppInstanceIdAtom = atom<string | undefined>(undefined)
 export const deployDrawerEnvironmentIdAtom = atom<string | undefined>(undefined)
 export const deployDrawerReleaseIdAtom = atom<string | undefined>(undefined)
-export const deployFormAppInstanceIdAtom = atom('')
+export const deployFormAppInstanceIdAtom = atom<string | undefined>(undefined)
 
 export const openDeployDrawerAtom = atom(null, (_get, set, params: OpenDeployDrawerParams) => {
   set(deployDrawerAppInstanceIdAtom, params.appInstanceId)
@@ -72,9 +72,11 @@ export const releaseDeploymentViewQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deployFormAppInstanceIdAtom)
 
   return consoleQuery.enterprise.releaseService.computeReleaseDeploymentView.queryOptions({
-    input: {
-      params: { appInstanceId },
-    },
+    input: appInstanceId
+      ? {
+          params: { appInstanceId },
+        }
+      : skipToken,
     enabled: Boolean(appInstanceId),
   })
 })
