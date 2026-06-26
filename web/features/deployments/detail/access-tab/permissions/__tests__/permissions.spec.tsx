@@ -20,22 +20,23 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
-vi.mock('@tanstack/react-query', () => ({
-  useInfiniteQuery: () => ({
-    data: { pages: [] },
-    fetchNextPage: vi.fn(),
-    isFetchingNextPage: false,
-    isLoading: false,
-  }),
-  useMutation: () => ({
-    isPending: false,
-    mutate: mockMutate,
-  }),
-  useQuery: () => ({
-    data: undefined,
-    isPending: false,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+
+  return {
+    ...actual,
+    useInfiniteQuery: () => ({
+      data: { pages: [] },
+      fetchNextPage: vi.fn(),
+      isFetchingNextPage: false,
+      isLoading: false,
+    }),
+    useMutation: () => ({
+      isPending: false,
+      mutate: mockMutate,
+    }),
+  }
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {

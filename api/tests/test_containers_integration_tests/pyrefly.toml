@@ -50,7 +50,6 @@ project-excludes = [
   "libs/broadcast_channel/redis/test_streams_channel.py",
   "libs/test_auto_renew_redis_lock_integration.py",
   "libs/test_rate_limiter_integration.py",
-  "models/test_account.py",
   "models/test_conversation_message_inputs.py",
   "models/test_types_enum_text.py",
   "repositories/test_sqlalchemy_api_workflow_node_execution_repository.py",

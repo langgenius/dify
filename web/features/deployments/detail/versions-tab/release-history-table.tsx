@@ -15,9 +15,7 @@ import {
   setReleaseHistoryCurrentPageAtom,
 } from './state'
 
-export function ReleaseHistoryTable({ appInstanceId }: {
-  appInstanceId: string
-}) {
+export function ReleaseHistoryTable() {
   const { t } = useTranslation('deployments')
   const currentPage = useAtomValue(releaseHistoryCurrentPageAtom)
   const setCurrentPage = useSetAtom(setReleaseHistoryCurrentPageAtom)
@@ -67,7 +65,6 @@ export function ReleaseHistoryTable({ appInstanceId }: {
   return (
     <div className="flex flex-col gap-3">
       <ReleaseHistoryRows
-        appInstanceId={appInstanceId}
         releaseRows={releaseRows}
         onReleaseDeleted={handleReleaseDeleted}
       />

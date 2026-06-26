@@ -424,6 +424,7 @@ export type Site = {
   icon_background?: string | null
   icon_type?: string | null
   readonly icon_url: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
@@ -1560,6 +1561,7 @@ export type SiteWritable = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string

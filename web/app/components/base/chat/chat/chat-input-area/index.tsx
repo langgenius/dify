@@ -23,6 +23,7 @@ import Operation from './operation'
 type ChatInputAreaProps = {
   readonly?: boolean
   botName?: string
+  customPlaceholder?: string
   showFeatureBar?: boolean
   showFileUpload?: boolean
   featureBarReadonly?: boolean
@@ -44,7 +45,7 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
@@ -147,7 +148,7 @@ const ChatInputArea = ({ readonly, botName, showFeatureBar, showFileUpload, feat
               <div ref={textValueRef} className="pointer-events-none invisible absolute size-auto p-1 body-lg-regular leading-6 whitespace-pre">
                 {query}
               </div>
-              <Textarea ref={ref => textareaRef.current = ref as any} className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden')} placeholder={decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')} autoFocus minRows={1} value={query} onChange={e => handleQueryChange(e.target.value)} onKeyDown={handleKeyDown} onCompositionStart={handleCompositionStart} onCompositionEnd={handleCompositionEnd} onPaste={handleClipboardPasteFile} onDragEnter={handleDragFileEnter} onDragLeave={handleDragFileLeave} onDragOver={handleDragFileOver} onDrop={handleDropFile} readOnly={readonly} />
+              <Textarea ref={ref => textareaRef.current = ref as any} className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden')} placeholder={!readonly && customPlaceholder?.trim() ? customPlaceholder : decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')} autoFocus minRows={1} value={query} onChange={e => handleQueryChange(e.target.value)} onKeyDown={handleKeyDown} onCompositionStart={handleCompositionStart} onCompositionEnd={handleCompositionEnd} onPaste={handleClipboardPasteFile} onDragEnter={handleDragFileEnter} onDragLeave={handleDragFileLeave} onDragOver={handleDragFileOver} onDrop={handleDropFile} readOnly={readonly} />
             </div>
             {!isMultipleLine && operation}
           </div>

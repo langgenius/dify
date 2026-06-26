@@ -16,12 +16,17 @@ vi.mock('jotai', async (importOriginal) => {
   }
 })
 
-vi.mock('@tanstack/react-query', () => ({
-  useMutation: () => ({
-    isPending: false,
-    mutate: mockToggleAccessChannel,
-  }),
-}))
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+
+  return {
+    ...actual,
+    useMutation: () => ({
+      isPending: false,
+      mutate: mockToggleAccessChannel,
+    }),
+  }
+})
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
