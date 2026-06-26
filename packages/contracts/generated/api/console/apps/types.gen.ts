@@ -4496,6 +4496,7 @@ export type DeleteAppsByAppIdTraceConfigData = {
 
 export type DeleteAppsByAppIdTraceConfigErrors = {
   400: unknown
+  403: unknown
 }
 
 export type DeleteAppsByAppIdTraceConfigResponses = {
@@ -4538,6 +4539,7 @@ export type PatchAppsByAppIdTraceConfigData = {
 
 export type PatchAppsByAppIdTraceConfigErrors = {
   400: unknown
+  403: unknown
 }
 
 export type PatchAppsByAppIdTraceConfigResponses = {
@@ -4558,6 +4560,7 @@ export type PostAppsByAppIdTraceConfigData = {
 
 export type PostAppsByAppIdTraceConfigErrors = {
   400: unknown
+  403: unknown
 }
 
 export type PostAppsByAppIdTraceConfigResponses = {
