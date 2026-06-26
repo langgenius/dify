@@ -381,10 +381,8 @@ function AgentPromptToolRows({
                 {expandedProviderIds.has(provider.id) && provider.tools.map(tool => (
                   <AgentPromptProviderToolActionRow
                     key={tool.name}
-                    provider={provider}
                     tool={tool}
                     language={language}
-                    selectedTools={selectedTools}
                     onClick={() => handleSelectTool(provider, tool)}
                   />
                 ))}
@@ -589,20 +587,14 @@ function AgentPromptToolFooter({
 }
 
 function AgentPromptProviderToolActionRow({
-  provider,
   tool,
   language,
-  selectedTools,
   onClick,
 }: {
-  provider: ToolWithProvider
   tool: Tool
   language: string
-  selectedTools: ToolValue[]
   onClick: () => void
 }) {
-  const selected = isToolSelected(selectedTools, provider, tool)
-
   return (
     <button
       type="button"
@@ -614,7 +606,6 @@ function AgentPromptProviderToolActionRow({
         <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
           {getLocalizedText(tool.label, language) || tool.name}
         </span>
-        {selected && <span aria-hidden className="i-ri-check-line size-3.5 shrink-0 text-text-tertiary" />}
       </span>
     </button>
   )
