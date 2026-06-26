@@ -4,10 +4,21 @@ import { AccessMode, AccessSubjectType } from '@dify/contracts/enterprise/types.
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
+import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
 import { EnvironmentPermissionRow } from '../permissions'
 import { AccessPermissionsSection } from '../permissions-section'
+import { accessSettingsQueryAtom } from '../state'
 
 const mockMutate = vi.hoisted(() => vi.fn())
+const mockUseAtomValue = vi.hoisted(() => vi.fn())
+
+vi.mock('jotai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('jotai')>()
+  return {
+    ...actual,
+    useAtomValue: mockUseAtomValue,
+  }
+})
 
 vi.mock('@tanstack/react-query', () => ({
   useInfiniteQuery: () => ({
@@ -94,6 +105,11 @@ function createEnvironmentAccessPolicy(): EnvironmentAccessPolicy {
 describe('EnvironmentPermissionRow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseAtomValue.mockImplementation((atom) => {
+      if (atom === deploymentRouteAppInstanceIdAtom)
+        return 'app-instance-1'
+      return undefined
+    })
     mockMutate.mockImplementation((_variables: unknown, options?: { onError?: () => void }) => {
       options?.onError?.()
     })
@@ -102,7 +118,6 @@ describe('EnvironmentPermissionRow', () => {
   it('should keep the previous permission visible when updating the policy fails', () => {
     renderWithAtomStore(
       <EnvironmentPermissionRow
-        appInstanceId="app-instance-1"
         environment={createEnvironment()}
         summaryPolicy={createAccessPolicy()}
       />,
@@ -123,7 +138,6 @@ describe('EnvironmentPermissionRow', () => {
 
     renderWithAtomStore(
       <EnvironmentPermissionRow
-        appInstanceId="app-instance-1"
         environment={createEnvironment()}
         summaryPolicy={createAccessPolicy()}
       />,
@@ -161,7 +175,6 @@ describe('EnvironmentPermissionRow', () => {
 
     renderWithAtomStore(
       <EnvironmentPermissionRow
-        appInstanceId="app-instance-1"
         environment={createEnvironment()}
         summaryPolicy={createSpecificAccessPolicy()}
       />,
@@ -202,7 +215,6 @@ describe('EnvironmentPermissionRow', () => {
   it('should show specific subject counts in the access summary', () => {
     renderWithAtomStore(
       <EnvironmentPermissionRow
-        appInstanceId="app-instance-1"
         environment={createEnvironment()}
         summaryPolicy={createSpecificAccessPolicy()}
       />,
@@ -220,17 +232,24 @@ describe('EnvironmentPermissionRow', () => {
 describe('AccessPermissionsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseAtomValue.mockImplementation((atom) => {
+      if (atom === deploymentRouteAppInstanceIdAtom)
+        return 'app-instance-1'
+      if (atom === accessSettingsQueryAtom) {
+        return {
+          data: {
+            environmentPolicies: [createEnvironmentAccessPolicy()],
+          },
+          isLoading: false,
+          isError: false,
+        }
+      }
+      return undefined
+    })
   })
 
   it('should render permission rows without column headers', () => {
-    renderWithAtomStore(
-      <AccessPermissionsSection
-        appInstanceId="app-instance-1"
-        environmentPolicies={[createEnvironmentAccessPolicy()]}
-        isLoading={false}
-        isError={false}
-      />,
-    )
+    renderWithAtomStore(<AccessPermissionsSection />)
 
     expect(screen.getByText('Production')).toBeInTheDocument()
     expect(screen.queryByText('deployments.access.permissions.col.environment')).not.toBeInTheDocument()

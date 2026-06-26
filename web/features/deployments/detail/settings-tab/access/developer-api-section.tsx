@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeveloperApiDocsDrawer } from './api-docs-drawer'
 import { ApiKeyGenerateMenu } from './api-key-generate-menu'
 import { ApiKeyList } from './api-key-list'
@@ -27,41 +28,25 @@ type CreatedApiToken = {
   token: string
 }
 
-function useDeveloperApiSettings() {
-  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
-  const accessChannels = developerApiSettingsQuery.data?.accessChannels
-  const apiEnabled = accessChannels?.developerApiEnabled ?? false
-  const environments = developerApiSettingsQuery.data?.environments ?? []
-  const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
-  const apiUrl = developerApiSettingsQuery.data?.developerApiUrl.apiUrl
-
-  return {
-    apiEnabled,
-    accessChannels,
-    apiUrl,
-    environments,
-    apiKeys,
-    isLoading: developerApiSettingsQuery.isLoading,
-    isError: developerApiSettingsQuery.isError,
-  }
-}
-
-function DeveloperApiSwitch({ appInstanceId, checked, accessChannels, disabled }: {
-  appInstanceId: string
+function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
   checked: boolean
   accessChannels?: AccessChannels
   disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const toggleDeveloperAPI = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch
       aria-label={t('access.api.developerTitle')}
       checked={checked}
-      disabled={disabled}
+      disabled={disabled || !appInstanceId}
       loading={toggleDeveloperAPI.isPending}
       onCheckedChange={(enabled) => {
+        if (!appInstanceId)
+          return
+
         toggleDeveloperAPI.mutate({
           params: { appInstanceId },
           body: {
@@ -75,18 +60,13 @@ function DeveloperApiSwitch({ appInstanceId, checked, accessChannels, disabled }
   )
 }
 
-export function DeveloperApiHeaderSwitch({ appInstanceId }: {
-  appInstanceId: string
-}) {
+export function DeveloperApiHeaderSwitch() {
   const { t } = useTranslation('deployments')
-  const {
-    apiEnabled,
-    accessChannels,
-    isLoading,
-    isError,
-  } = useDeveloperApiSettings()
+  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
+  const accessChannels = developerApiSettingsQuery.data?.accessChannels
+  const apiEnabled = accessChannels?.developerApiEnabled ?? false
 
-  if (isLoading)
+  if (developerApiSettingsQuery.isLoading)
     return <SwitchSkeleton />
 
   return (
@@ -95,10 +75,9 @@ export function DeveloperApiHeaderSwitch({ appInstanceId }: {
         {apiEnabled ? t('overview.enabled') : t('overview.disabled')}
       </span>
       <DeveloperApiSwitch
-        appInstanceId={appInstanceId}
         checked={apiEnabled}
         accessChannels={accessChannels}
-        disabled={isError}
+        disabled={developerApiSettingsQuery.isError}
       />
     </div>
   )
@@ -132,8 +111,7 @@ function ApiKeyListSection({ apiKeys, environments, action }: {
   )
 }
 
-function DeveloperApiEndpoint({ appInstanceId, apiUrl }: {
-  appInstanceId: string
+function DeveloperApiEndpoint({ apiUrl }: {
   apiUrl: string
 }) {
   const { t } = useTranslation('deployments')
@@ -156,7 +134,6 @@ function DeveloperApiEndpoint({ appInstanceId, apiUrl }: {
       </Button>
       <DeveloperApiDocsDrawer
         open={apiDocsOpen}
-        appInstanceId={appInstanceId}
         apiBaseUrl={apiUrl}
         onOpenChange={setApiDocsOpen}
       />
@@ -164,30 +141,25 @@ function DeveloperApiEndpoint({ appInstanceId, apiUrl }: {
   )
 }
 
-export function DeveloperApiSection({
-  appInstanceId,
-}: {
-  appInstanceId: string
-}) {
+export function DeveloperApiSection() {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const [createdApiToken, setCreatedApiToken] = useState<CreatedApiToken>()
-  const {
-    apiEnabled,
-    apiUrl,
-    apiKeys,
-    environments,
-    isLoading,
-    isError,
-  } = useDeveloperApiSettings()
-  const visibleCreatedApiToken = createdApiToken?.appInstanceId === appInstanceId
+  const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
+  const accessChannels = developerApiSettingsQuery.data?.accessChannels
+  const apiEnabled = accessChannels?.developerApiEnabled ?? false
+  const apiUrl = developerApiSettingsQuery.data?.developerApiUrl.apiUrl
+  const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
+  const environments = developerApiSettingsQuery.data?.environments ?? []
+  const visibleCreatedApiToken = createdApiToken && createdApiToken.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
   const hasSelectableEnvironment = environments.some(environment => Boolean(environment.id))
 
-  if (isLoading)
+  if (developerApiSettingsQuery.isLoading)
     return <DeveloperApiSkeleton />
 
-  if (isError)
+  if (developerApiSettingsQuery.isError || !appInstanceId)
     return <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
 
   if (!apiEnabled) {
@@ -205,14 +177,12 @@ export function DeveloperApiSection({
     <div className="flex flex-col gap-4">
       {apiUrl && (
         <DeveloperApiEndpoint
-          appInstanceId={appInstanceId}
           apiUrl={apiUrl}
         />
       )}
       {hasSelectableEnvironment
         ? (
             <ApiKeyGenerateMenu
-              appInstanceId={appInstanceId}
               environments={environments}
               triggerVariant="primary"
               onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}

@@ -1,11 +1,14 @@
 'use client'
 
 import type { EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { Section } from '../../common'
 import { EnvironmentPermissionRow } from './permissions'
+import { accessSettingsQueryAtom } from './state'
 
 const ACCESS_PERMISSIONS_SKELETON_KEYS = ['production', 'staging', 'development']
 
@@ -22,18 +25,13 @@ function AccessPermissionsSkeleton() {
   )
 }
 
-export function AccessPermissionsSection({
-  appInstanceId,
-  environmentPolicies,
-  isLoading,
-  isError,
-}: {
-  appInstanceId: string
-  environmentPolicies?: EnvironmentAccessPolicy[]
-  isLoading: boolean
-  isError: boolean
-}) {
+export function AccessPermissionsSection() {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
+  const accessSettingsQuery = useAtomValue(accessSettingsQueryAtom)
+  const environmentPolicies: EnvironmentAccessPolicy[] | undefined = accessSettingsQuery.data?.environmentPolicies
+  const isLoading = accessSettingsQuery.isLoading
+  const isError = accessSettingsQuery.isError
   const policyRows = environmentPolicies ?? []
 
   return (
@@ -43,7 +41,7 @@ export function AccessPermissionsSection({
     >
       {isLoading
         ? <AccessPermissionsSkeleton />
-        : isError
+        : isError || !appInstanceId
           ? <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
           : policyRows.length === 0
             ? (
@@ -61,7 +59,6 @@ export function AccessPermissionsSection({
                     return (
                       <EnvironmentPermissionRow
                         key={environment.id}
-                        appInstanceId={appInstanceId}
                         environment={environment}
                         summaryPolicy={environmentPolicy.policy}
                         resolvedSubjects={environmentPolicy.resolvedSubjects}

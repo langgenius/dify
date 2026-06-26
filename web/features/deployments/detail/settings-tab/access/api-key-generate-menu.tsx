@@ -24,20 +24,20 @@ import {
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { generateApiTokenName } from './api-token-name'
 
 export function ApiKeyGenerateMenu({
-  appInstanceId,
   environments,
   onCreatedToken,
   triggerVariant = 'secondary',
   triggerClassName,
   children,
 }: {
-  appInstanceId: string
   environments: Environment[]
   onCreatedToken: (token: string) => void
   triggerVariant?: ButtonProps['variant']
@@ -45,6 +45,7 @@ export function ApiKeyGenerateMenu({
   children?: (props: { trigger: ReactNode }) => ReactNode
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const nameInputId = useId()
   const nameInputRef = useRef<HTMLInputElement>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
@@ -56,7 +57,7 @@ export function ApiKeyGenerateMenu({
   const selectedEnvironment = selectedEnvironmentId
     ? selectableEnvironments.find(env => env.id === selectedEnvironmentId)
     : undefined
-  const disabled = selectableEnvironments.length === 0
+  const disabled = !appInstanceId || selectableEnvironments.length === 0
   const isCreating = generateApiKey.isPending
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export function ApiKeyGenerateMenu({
 
     const name = draftName.trim()
 
-    if (!selectedEnvironmentId || !name) {
+    if (!appInstanceId || !selectedEnvironmentId || !name) {
       setNameError(true)
       return
     }

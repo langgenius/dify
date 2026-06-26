@@ -4,12 +4,15 @@ import type { AccessChannels, AccessEndpoint } from '@dify/contracts/enterprise/
 import type { ReactNode } from 'react'
 import { Switch, SwitchSkeleton } from '@langgenius/dify-ui/switch'
 import { useMutation } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentNoticeState, DeploymentStateMessage } from '../../../components/empty-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { Section } from '../../common'
 import { CopyPill, EndpointRow } from './common'
+import { accessSettingsQueryAtom } from './state'
 import { getUrlOrigin } from './url'
 
 const ACCESS_CHANNEL_SKELETON_SECTIONS = [
@@ -17,22 +20,25 @@ const ACCESS_CHANNEL_SKELETON_SECTIONS = [
   { key: 'cli' },
 ]
 
-function AccessChannelsSwitch({ appInstanceId, checked, accessChannels, disabled }: {
-  appInstanceId: string
+function AccessChannelsSwitch({ checked, accessChannels, disabled }: {
   checked: boolean
   accessChannels?: AccessChannels
   disabled?: boolean
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const toggleAccessChannel = useMutation(consoleQuery.enterprise.accessService.updateAccessChannels.mutationOptions())
 
   return (
     <Switch
       aria-label={t('access.channels.title')}
       checked={checked}
-      disabled={disabled}
+      disabled={disabled || !appInstanceId}
       loading={toggleAccessChannel.isPending}
       onCheckedChange={(enabled) => {
+        if (!appInstanceId)
+          return
+
         toggleAccessChannel.mutate({
           params: { appInstanceId },
           body: {
@@ -106,22 +112,15 @@ function ChannelRow({ info, children }: {
   )
 }
 
-export function AccessChannelsSection({
-  appInstanceId,
-  accessChannels,
-  webAppEndpoints,
-  cliEndpoint,
-  isLoading,
-  isError,
-}: {
-  appInstanceId: string
-  accessChannels?: AccessChannels
-  webAppEndpoints?: AccessEndpoint[]
-  cliEndpoint?: AccessEndpoint
-  isLoading: boolean
-  isError: boolean
-}) {
+export function AccessChannelsSection() {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
+  const accessSettingsQuery = useAtomValue(accessSettingsQueryAtom)
+  const accessChannels = accessSettingsQuery.data?.accessChannels
+  const webAppEndpoints: AccessEndpoint[] | undefined = accessSettingsQuery.data?.webAppEndpoints
+  const cliEndpoint: AccessEndpoint | undefined = accessSettingsQuery.data?.cliEndpoint
+  const isLoading = accessSettingsQuery.isLoading
+  const isError = accessSettingsQuery.isError
   const runEnabled = accessChannels?.webAppEnabled ?? false
   const webappRows = webAppEndpoints?.flatMap((endpoint) => {
     const endpointUrl = endpoint.endpointUrl
@@ -148,7 +147,6 @@ export function AccessChannelsSection({
                   {runEnabled ? t('overview.enabled') : t('overview.disabled')}
                 </span>
                 <AccessChannelsSwitch
-                  appInstanceId={appInstanceId}
                   checked={runEnabled}
                   accessChannels={accessChannels}
                   disabled={isError}
@@ -159,7 +157,7 @@ export function AccessChannelsSection({
     >
       {isLoading
         ? <AccessChannelsSkeleton />
-        : isError
+        : isError || !appInstanceId
           ? <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
           : runEnabled
             ? (

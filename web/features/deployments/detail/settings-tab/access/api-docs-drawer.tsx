@@ -13,6 +13,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import TemplateWorkflowEn from '@/app/components/develop/template/template_workflow.en.mdx'
 import TemplateWorkflowJa from '@/app/components/develop/template/template_workflow.ja.mdx'
@@ -21,6 +22,7 @@ import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { getDocLanguage } from '@/i18n-config/language'
 import { AppModeEnum, Theme } from '@/types/app'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 
 type PromptVariable = { key: string, name: string }
 type WorkflowApiDocAppDetail = Pick<App, 'id' | 'mode' | 'api_base_url'>
@@ -67,19 +69,22 @@ function WorkflowDocTemplate({ docLanguage, appDetail, variables, inputs }: Work
 
 export function DeveloperApiDocsDrawer({
   open,
-  appInstanceId,
   apiBaseUrl,
   onOpenChange,
 }: {
   open: boolean
-  appInstanceId: string
   apiBaseUrl: string
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const locale = useLocale()
   const { theme } = useTheme()
   const docLanguage = getDocLanguage(locale)
+
+  if (!appInstanceId)
+    return null
+
   const appDetail: WorkflowApiDocAppDetail = {
     id: appInstanceId,
     mode: AppModeEnum.WORKFLOW,

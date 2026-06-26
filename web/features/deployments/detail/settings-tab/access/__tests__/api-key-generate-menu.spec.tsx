@@ -1,9 +1,19 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
 import { ApiKeyGenerateMenu } from '../api-key-generate-menu'
 
 const mockMutate = vi.hoisted(() => vi.fn())
+const mockUseAtomValue = vi.hoisted(() => vi.fn())
+
+vi.mock('jotai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('jotai')>()
+  return {
+    ...actual,
+    useAtomValue: mockUseAtomValue,
+  }
+})
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
@@ -34,12 +44,16 @@ function createEnvironment(): Environment {
 describe('ApiKeyGenerateMenu', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseAtomValue.mockImplementation((atom) => {
+      if (atom === deploymentRouteAppInstanceIdAtom)
+        return 'app-instance-1'
+      return undefined
+    })
   })
 
   it('should show the required name error when submitting an empty name', () => {
     render(
       <ApiKeyGenerateMenu
-        appInstanceId="app-instance-1"
         environments={[createEnvironment()]}
         onCreatedToken={vi.fn()}
       />,
@@ -58,7 +72,6 @@ describe('ApiKeyGenerateMenu', () => {
   it('should clear the required name error when typing a valid name', () => {
     render(
       <ApiKeyGenerateMenu
-        appInstanceId="app-instance-1"
         environments={[createEnvironment()]}
         onCreatedToken={vi.fn()}
       />,
@@ -78,5 +91,18 @@ describe('ApiKeyGenerateMenu', () => {
     })
 
     expect(screen.queryByText('deployments.access.api.nameRequired')).not.toBeInTheDocument()
+  })
+
+  it('should disable the trigger when route app instance is missing', () => {
+    mockUseAtomValue.mockReturnValue(undefined)
+
+    render(
+      <ApiKeyGenerateMenu
+        environments={[createEnvironment()]}
+        onCreatedToken={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'deployments.access.api.newKey' })).toBeDisabled()
   })
 })

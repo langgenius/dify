@@ -73,7 +73,7 @@ export function InstanceDetail({ appInstanceId, children }: {
                       <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
                       {activeTab === 'api-tokens' && (
                         <div className="shrink-0">
-                          <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
+                          <DeveloperApiHeaderSwitch />
                         </div>
                       )}
                     </div>

@@ -1,9 +1,20 @@
 import type { AccessChannels, AccessEndpoint } from '@dify/contracts/enterprise/types.gen'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
 import { AccessChannelsSection } from '../channels-section'
+import { accessSettingsQueryAtom } from '../state'
 
 const mockToggleAccessChannel = vi.hoisted(() => vi.fn())
+const mockUseAtomValue = vi.hoisted(() => vi.fn())
+
+vi.mock('jotai', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('jotai')>()
+  return {
+    ...actual,
+    useAtomValue: mockUseAtomValue,
+  }
+})
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
@@ -49,19 +60,26 @@ function createEndpoint(endpointUrl: string): AccessEndpoint {
 describe('AccessChannelsSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseAtomValue.mockImplementation((atom) => {
+      if (atom === deploymentRouteAppInstanceIdAtom)
+        return 'app-instance-1'
+      if (atom === accessSettingsQueryAtom) {
+        return {
+          data: {
+            accessChannels: createAccessChannels(),
+            webAppEndpoints: [createEndpoint('https://app.example.com/webapp')],
+            cliEndpoint: createEndpoint('https://cli.example.com/entry'),
+          },
+          isLoading: false,
+          isError: false,
+        }
+      }
+      return undefined
+    })
   })
 
   it('should render channel descriptions when access channels are enabled', () => {
-    render(
-      <AccessChannelsSection
-        appInstanceId="app-instance-1"
-        accessChannels={createAccessChannels()}
-        webAppEndpoints={[createEndpoint('https://app.example.com/webapp')]}
-        cliEndpoint={createEndpoint('https://cli.example.com/entry')}
-        isLoading={false}
-        isError={false}
-      />,
-    )
+    render(<AccessChannelsSection />)
 
     expect(screen.getByText('deployments.access.runAccess.webappDesc')).toBeInTheDocument()
     expect(screen.getByText('deployments.access.cli.description')).toBeInTheDocument()

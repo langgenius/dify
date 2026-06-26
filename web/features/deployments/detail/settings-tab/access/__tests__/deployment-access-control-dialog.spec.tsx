@@ -1,6 +1,6 @@
+import { AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { AccessMode } from '@/models/access-control'
 import { DeploymentAccessControlDialog } from '../deployment-access-control-dialog'
 
 const mockUseSearchAccessSubjects = vi.hoisted(() => vi.fn())
@@ -25,12 +25,21 @@ describe('DeploymentAccessControlDialog', () => {
 
     render(
       <DeploymentAccessControlDialog
-        initialDraft={{
-          currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-          specificGroups: [{ id: 'group-1', name: 'Group One', groupSize: 2 }],
-          specificMembers: [{ id: 'member-1', name: 'Member One', email: 'member@example.com', avatar: '', avatarUrl: '' }],
-          selectedGroupsForBreadcrumb: [],
-        }}
+        open
+        initialKind="specific"
+        initialSubjects={[
+          {
+            id: 'group-1',
+            subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
+            name: 'Group One',
+            memberCount: 2,
+          },
+          {
+            id: 'member-1',
+            subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
+            name: 'Member One',
+          },
+        ]}
         onClose={vi.fn()}
         onSubmit={handleSubmit}
       />,
@@ -38,9 +47,18 @@ describe('DeploymentAccessControlDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
 
-    expect(handleSubmit).toHaveBeenCalledWith('specific', {
-      groups: [{ id: 'group-1', name: 'Group One', groupSize: 2 }],
-      members: [{ id: 'member-1', name: 'Member One', email: 'member@example.com', avatar: '', avatarUrl: '' }],
-    })
+    expect(handleSubmit).toHaveBeenCalledWith('specific', [
+      {
+        id: 'group-1',
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP,
+        name: 'Group One',
+        memberCount: 2,
+      },
+      {
+        id: 'member-1',
+        subjectType: AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT,
+        name: 'Member One',
+      },
+    ])
   })
 })

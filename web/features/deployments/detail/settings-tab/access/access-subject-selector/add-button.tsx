@@ -2,10 +2,7 @@
 
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { AccessSubjectSelectionProps } from './types'
-import type {
-  AccessControlGroup,
-  Subject,
-} from '@/models/access-control'
+import type { AccessControlGroup, Subject } from '@/models/access-control'
 import {
   Combobox,
   ComboboxContent,
@@ -33,8 +30,6 @@ import {
 
 type AccessSubjectAddButtonProps = AccessSubjectSelectionProps & {
   disabled?: boolean
-  breadcrumbGroups?: AccessControlGroup[]
-  onBreadcrumbGroupsChange?: (groups: AccessControlGroup[]) => void
 }
 
 export function AccessSubjectAddButton({
@@ -42,20 +37,16 @@ export function AccessSubjectAddButton({
   selectedMembers,
   onChange,
   disabled,
-  breadcrumbGroups,
-  onBreadcrumbGroupsChange,
 }: AccessSubjectAddButtonProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [keyword, setKeyword] = useState('')
-  const [internalBreadcrumbGroups, setInternalBreadcrumbGroups] = useState<AccessControlGroup[]>([])
+  const [breadcrumbGroups, setBreadcrumbGroups] = useState<AccessControlGroup[]>([])
   const scrollRootRef = useRef<HTMLDivElement>(null)
   const anchorRef = useRef<HTMLDivElement>(null)
-  const selectedGroupsForBreadcrumb = breadcrumbGroups ?? internalBreadcrumbGroups
-  const setSelectedGroupsForBreadcrumb = onBreadcrumbGroupsChange ?? setInternalBreadcrumbGroups
   const debouncedKeyword = useDebounce(keyword, { wait: 500 })
 
-  const lastAvailableGroup = selectedGroupsForBreadcrumb[selectedGroupsForBreadcrumb.length - 1]
+  const lastAvailableGroup = breadcrumbGroups[breadcrumbGroups.length - 1]
   const { isLoading, isFetchingNextPage, fetchNextPage, data } = useSearchAccessSubjects({
     keyword: debouncedKeyword,
     groupId: lastAvailableGroup?.id,
@@ -68,7 +59,7 @@ export function AccessSubjectAddButton({
     members: selectedMembers,
   })
   const hasResults = pages.length > 0 && subjects.length > 0
-  const shouldShowBreadcrumb = hasResults || selectedGroupsForBreadcrumb.length > 0
+  const shouldShowBreadcrumb = hasResults || breadcrumbGroups.length > 0
   const hasMore = pages[pages.length - 1]?.hasMore ?? false
 
   useEffect(() => {
@@ -83,13 +74,21 @@ export function AccessSubjectAddButton({
     return () => observer?.disconnect()
   }, [fetchNextPage, hasMore, isFetchingNextPage, isLoading])
 
+  const closeMenu = () => {
+    setKeyword('')
+    setBreadcrumbGroups([])
+    setOpen(false)
+  }
+
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen && disabled)
       return
-    if (!nextOpen)
-      setKeyword('')
+    if (!nextOpen) {
+      closeMenu()
+      return
+    }
 
-    setOpen(nextOpen)
+    setOpen(true)
   }
 
   const handleInputValueChange = (inputValue: string, details: ComboboxRootChangeEventDetails) => {
@@ -122,6 +121,10 @@ export function AccessSubjectAddButton({
         icon={false}
         size="small"
         disabled={disabled}
+        onClick={() => {
+          if (open)
+            closeMenu()
+        }}
         className="h-6 w-auto min-w-[52px] shrink-0 rounded-md border-0 bg-transparent px-2 py-0 text-xs font-medium text-components-button-secondary-accent-text hover:bg-state-accent-hover focus-visible:bg-state-accent-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-accent-hover"
       >
         <span className="inline-flex min-w-0 items-center justify-center gap-x-0.5 whitespace-nowrap">
@@ -156,8 +159,8 @@ export function AccessSubjectAddButton({
                   {shouldShowBreadcrumb && (
                     <div className="flex h-7 items-center px-2 py-0.5">
                       <SelectedGroupsBreadCrumb
-                        selectedGroupsForBreadcrumb={selectedGroupsForBreadcrumb}
-                        onChange={setSelectedGroupsForBreadcrumb}
+                        selectedGroupsForBreadcrumb={breadcrumbGroups}
+                        onChange={setBreadcrumbGroups}
                       />
                     </div>
                   )}
@@ -171,7 +174,7 @@ export function AccessSubjectAddButton({
                                 subject={subject}
                                 selectedGroups={selectedGroups}
                                 selectedMembers={selectedMembers}
-                                onExpandGroup={group => setSelectedGroupsForBreadcrumb([...selectedGroupsForBreadcrumb, group])}
+                                onExpandGroup={group => setBreadcrumbGroups([...breadcrumbGroups, group])}
                               />
                             )}
                           </ComboboxList>
