@@ -14,6 +14,7 @@ import { MCPToolAvailabilityProvider } from '../_base/components/mcp-tool-availa
 import MemoryConfig from '../_base/components/memory-config'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import Split from '../_base/components/split'
+import ReasoningFormatConfig from '../llm/components/reasoning-format-config'
 import { AgentFeature } from './types'
 import useConfig from './use-config'
 
@@ -101,6 +102,15 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             />
           </>
         )}
+        <Split />
+        <ReasoningFormatConfig
+          value={inputs.reasoning_format || 'tagged'}
+          onChange={reasoningFormat => setInputs({
+            ...inputs,
+            reasoning_format: reasoningFormat,
+          })}
+          readonly={readOnly}
+        />
       </div>
       <div>
         <OutputVars>
@@ -109,6 +119,13 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             type="String"
             description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
           />
+          {inputs.reasoning_format === 'separated' && (
+            <VarItem
+              name="reasoning_content"
+              type="String"
+              description={t('nodes.llm.outputVars.reasoning_content', { ns: 'workflow' })}
+            />
+          )}
           <VarItem
             name="usage"
             type="object"

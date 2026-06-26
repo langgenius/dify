@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,7 +21,9 @@ from graphon.node_events import (
     NodeRunResult,
     StreamChunkEvent,
     StreamCompletedEvent,
+    StreamReasoningEvent,
 )
+from graphon.nodes.llm.reasoning import ThinkStreamFilter, extract_stream_reasoning
 from graphon.variables.segments import ArrayFileSegment
 from models import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
@@ -44,6 +46,7 @@ class AgentMessageTransformer:
         node_type: NodeType,
         node_id: str,
         node_execution_id: str,
+        reasoning_format: Literal["separated", "tagged"] = "tagged",
     ) -> Generator[NodeEventBase, None, None]:
         from core.plugin.impl.plugin import PluginInstaller
 
@@ -62,6 +65,33 @@ class AgentMessageTransformer:
         agent_execution_metadata: Mapping[WorkflowNodeExecutionMetadataKey, Any] = {}
         llm_usage = LLMUsage.empty_usage()
         variables: dict[str, Any] = {}
+        text_filter = ThinkStreamFilter() if reasoning_format == "separated" else None
+        reasoning_started = False
+
+        def yield_text_events(text_part: str) -> Generator[NodeEventBase, None, None]:
+            nonlocal reasoning_started
+            if text_filter is None:
+                yield StreamChunkEvent(
+                    selector=[node_id, "text"],
+                    chunk=text_part,
+                    is_final=False,
+                )
+                return
+
+            for piece in text_filter.feed(text_part):
+                if piece.kind == "text":
+                    yield StreamChunkEvent(
+                        selector=[node_id, "text"],
+                        chunk=piece.chunk,
+                        is_final=False,
+                    )
+                else:
+                    reasoning_started = True
+                    yield StreamReasoningEvent(
+                        selector=[node_id, "reasoning_content"],
+                        chunk=piece.chunk,
+                        is_final=False,
+                    )
 
         for message in message_stream:
             if message.type in {
@@ -125,12 +155,9 @@ class AgentMessageTransformer:
                 )
             elif message.type == ToolInvokeMessage.MessageType.TEXT:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                text += message.message.text
-                yield StreamChunkEvent(
-                    selector=[node_id, "text"],
-                    chunk=message.message.text,
-                    is_final=False,
-                )
+                text_part = message.message.text
+                text += text_part
+                yield from yield_text_events(text_part)
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
                 if node_type == BuiltinNodeTypes.AGENT:
@@ -151,11 +178,7 @@ class AgentMessageTransformer:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
-                yield StreamChunkEvent(
-                    selector=[node_id, "text"],
-                    chunk=stream_text,
-                    is_final=False,
-                )
+                yield from yield_text_events(stream_text)
             elif message.type == ToolInvokeMessage.MessageType.VARIABLE:
                 assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
                 variable_name = message.message.variable_name
@@ -268,6 +291,35 @@ class AgentMessageTransformer:
         else:
             json_output.append({"data": []})
 
+        if text_filter is not None:
+            final_pieces = text_filter.finalize()
+            has_final_reasoning = False
+            for index, piece in enumerate(final_pieces):
+                is_final_reasoning = piece.kind == "reasoning" and index == len(final_pieces) - 1
+                has_final_reasoning = has_final_reasoning or is_final_reasoning
+                if piece.kind == "text":
+                    yield StreamChunkEvent(
+                        selector=[node_id, "text"],
+                        chunk=piece.chunk,
+                        is_final=False,
+                    )
+                else:
+                    reasoning_started = True
+                    yield StreamReasoningEvent(
+                        selector=[node_id, "reasoning_content"],
+                        chunk=piece.chunk,
+                        is_final=is_final_reasoning,
+                    )
+            if reasoning_started and not has_final_reasoning:
+                yield StreamReasoningEvent(
+                    selector=[node_id, "reasoning_content"],
+                    chunk="",
+                    is_final=True,
+                )
+
+        clean_text, reasoning_content = extract_stream_reasoning(full_text=text, reasoning_format=reasoning_format)
+        output_text = clean_text if reasoning_format == "separated" else text
+
         yield StreamChunkEvent(
             selector=[node_id, "text"],
             chunk="",
@@ -285,7 +337,8 @@ class AgentMessageTransformer:
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={
-                    "text": text,
+                    "text": output_text,
+                    "reasoning_content": reasoning_content,
                     "usage": jsonable_encoder(llm_usage),
                     "files": ArrayFileSegment(value=files),
                     "json": json_output,

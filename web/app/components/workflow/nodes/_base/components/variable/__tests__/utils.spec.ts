@@ -1,4 +1,5 @@
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
+import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { AnswerNodeType } from '@/app/components/workflow/nodes/answer/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
@@ -44,6 +45,36 @@ const createLLMNodeData = (promptTemplate: PromptItem[]): LLMNodeType => ({
 
 describe('variable utils', () => {
   describe('toNodeAvailableVars', () => {
+    it('adds legacy Agent reasoning output only when tag separation is enabled', () => {
+      const node = createNode<AgentNodeType>({
+        type: BlockEnum.Agent,
+        title: 'Agent',
+        desc: '',
+        output_schema: {
+          properties: {},
+        },
+        reasoning_format: 'separated',
+      })
+
+      const availableVars = toNodeAvailableVars({
+        beforeNodes: [node],
+        isChatMode: false,
+        filterVar: () => true,
+        allPluginInfoList: {},
+      })
+
+      expect(availableVars).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'node-1',
+            vars: expect.arrayContaining([
+              { variable: 'reasoning_content', type: VarType.string },
+            ]),
+          }),
+        ]),
+      )
+    })
+
     it('uses Agent v2 default declared outputs for agent nodes', () => {
       const node = createNode<AgentV2NodeType>({
         type: BlockEnum.Agent,

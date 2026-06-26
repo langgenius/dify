@@ -614,7 +614,10 @@ const formatItem = (
           })
         },
       )
-      res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT]
+      const reasoningOutputs: Var[] = payload.reasoning_format === 'separated'
+        ? [{ variable: 'reasoning_content', type: VarType.string }]
+        : []
+      res.vars = [...outputs, ...TOOL_OUTPUT_STRUCT, ...AGENT_OUTPUT_STRUCT, ...reasoningOutputs]
       break
     }
 

@@ -11,6 +11,7 @@ export type AgentNodeType = CommonNodeType & {
   output_schema: Record<string, any>
   plugin_unique_identifier?: string
   memory?: Memory
+  reasoning_format?: 'tagged' | 'separated'
   version?: string
   tool_node_version?: string
 }

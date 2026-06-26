@@ -233,6 +233,7 @@ describe('agent/panel', () => {
     )
 
     expect(screen.getByText('text:String:workflow.nodes.agent.outputVars.text')).toBeInTheDocument()
+    expect(screen.queryByText('reasoning_content:String:workflow.nodes.llm.outputVars.reasoning_content')).not.toBeInTheDocument()
     expect(screen.getByText('usage:object:workflow.nodes.agent.outputVars.usage')).toBeInTheDocument()
     expect(screen.getByText('files:Array[File]:workflow.nodes.agent.outputVars.files.title')).toBeInTheDocument()
     expect(screen.getByText('json:Array[Object]:workflow.nodes.agent.outputVars.json')).toBeInTheDocument()
@@ -272,6 +273,34 @@ describe('agent/panel', () => {
       query_prompt_template: 'history',
     }))
     expect(mockResetEditor).toHaveBeenCalledTimes(1)
+  })
+
+  it('persists reasoning tag separation and exposes the reasoning output', async () => {
+    const user = userEvent.setup()
+    const setInputs = vi.fn()
+
+    mockUseConfig.mockReturnValue(createConfigResult({
+      inputs: createData({
+        reasoning_format: 'separated',
+      }),
+      setInputs,
+    }))
+
+    render(
+      <Panel
+        id="agent-node"
+        data={createData({ reasoning_format: 'separated' })}
+        panelProps={panelProps}
+      />,
+    )
+
+    expect(screen.getByText('reasoning_content:String:workflow.nodes.llm.outputVars.reasoning_content')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('switch'))
+
+    expect(setInputs).toHaveBeenCalledWith(expect.objectContaining({
+      reasoning_format: 'tagged',
+    }))
   })
 
   it('hides memory config when chat mode support is unavailable', () => {
