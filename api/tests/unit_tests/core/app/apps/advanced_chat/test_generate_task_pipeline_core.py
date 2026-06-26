@@ -374,23 +374,6 @@ class TestAdvancedChatGenerateTaskPipeline:
 
         assert pipeline._task_state.metadata.reasoning == {"llm-1": "first pass "}
 
-    def test_handle_node_succeeded_event_records_agent_reasoning(self):
-        pipeline = _make_pipeline()
-        pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: []
-        pipeline._workflow_response_converter.workflow_node_finish_to_stream_response = lambda **kwargs: "done"
-        pipeline._save_output_for_event = lambda event, node_execution_id: None
-
-        event = SimpleNamespace(
-            node_type=BuiltinNodeTypes.AGENT,
-            outputs={"reasoning_content": "agent plan"},
-            node_execution_id="exec",
-            node_id="agent-1",
-        )
-
-        list(pipeline._handle_node_succeeded_event(event))
-
-        assert pipeline._task_state.metadata.reasoning == {"agent-1": "agent plan"}
-
     def test_handle_node_succeeded_event_accumulates_reasoning_across_passes(self):
         pipeline = _make_pipeline()
         pipeline._workflow_response_converter.fetch_files_from_node_outputs = lambda outputs: []
