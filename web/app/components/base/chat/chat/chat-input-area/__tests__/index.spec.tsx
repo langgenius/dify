@@ -299,6 +299,21 @@ describe('ChatInputArea', () => {
       expect(getTextarea()!).toHaveAttribute('placeholder', expect.stringContaining('botName'))
     })
 
+    it('should render the custom placeholder when provided', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" />)
+      expect(screen.getByPlaceholderText('Ask the assistant')).toBeInTheDocument()
+    })
+
+    it('should fall back to the readonly placeholder when readonly has a custom placeholder', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="Ask the assistant" readonly />)
+      expect(screen.getByPlaceholderText(/inputDisabledPlaceholder/i)).toBeInTheDocument()
+    })
+
+    it('should fall back to the default placeholder when custom placeholder is blank', () => {
+      render(<ChatInputArea visionConfig={mockVisionConfig} customPlaceholder="   " />)
+      expect(getTextarea()!).toBeInTheDocument()
+    })
+
     it('should apply disabled styles when the disabled prop is true', () => {
       const { container } = render(<ChatInputArea visionConfig={mockVisionConfig} disabled />)
       expect(container.firstChild).toHaveClass('opacity-50')

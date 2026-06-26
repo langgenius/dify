@@ -40,6 +40,7 @@ class AppSiteUpdatePayload(BaseModel):
     customize_domain: str | None = Field(default=None)
     copyright: str | None = Field(default=None)
     privacy_policy: str | None = Field(default=None)
+    input_placeholder: str | None = Field(default=None)
     custom_disclaimer: str | None = Field(default=None)
     customize_token_strategy: Literal["must", "allow", "not_allow"] | None = Field(default=None)
     prompt_public: bool | None = Field(default=None)
@@ -66,6 +67,7 @@ class AppSiteResponse(ResponseModel):
     customize_domain: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
+    input_placeholder: str | None = None
     custom_disclaimer: str | None = None
     customize_token_strategy: str
     prompt_public: bool
@@ -110,6 +112,7 @@ class AppSite(Resource):
             "customize_domain",
             "copyright",
             "privacy_policy",
+            "input_placeholder",
             "custom_disclaimer",
             "customize_token_strategy",
             "prompt_public",

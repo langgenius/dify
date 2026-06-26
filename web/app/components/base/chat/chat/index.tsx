@@ -241,6 +241,7 @@ const Chat: FC<ChatProps> = ({
               !noChatInput && (
                 <ChatInputArea
                   botName={appData?.site?.title || 'Bot'}
+                  customPlaceholder={appData?.site?.input_placeholder}
                   disabled={inputDisabled}
                   showFeatureBar={showFeatureBar}
                   showFileUpload={showFileUpload}

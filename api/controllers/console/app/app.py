@@ -345,6 +345,7 @@ class Site(ResponseModel):
     customize_domain: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
+    input_placeholder: str | None = None
     custom_disclaimer: str | None = None
     customize_token_strategy: str | None = None
     prompt_public: bool | None = None
