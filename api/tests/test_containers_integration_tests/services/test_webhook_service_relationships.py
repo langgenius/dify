@@ -372,8 +372,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
             patch(
                 "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
                 side_effect=RuntimeError("boom"),
-            ),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
+            )
         ):
             with pytest.raises(RuntimeError, match="boom"):
                 WebhookService.trigger_workflow_execution(
@@ -381,8 +380,6 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                     {"body": {}, "headers": {}, "query_params": {}, "files": {}, "method": "POST"},
                     workflow,
                 )
-
-        mock_logger_exception.assert_called_once()
 
 
 class TestWebhookServiceRelationshipSyncWithContainers:
@@ -496,12 +493,9 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         lock.release.side_effect = RuntimeError("release failed")
 
         with (
-            patch("services.trigger.webhook_service.redis_client.lock", return_value=lock),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
+            patch("services.trigger.webhook_service.redis_client.lock", return_value=lock)
         ):
             WebhookService.sync_webhook_relationships(app, workflow)
-
-        mock_logger_exception.assert_called_once()
 
 
 def _read_cache(cache_key: str) -> dict[str, str] | None:

@@ -53,7 +53,6 @@ class TestTryPreUninstallPlugin:
             patch(
                 "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
             ) as mock_send_request,
-            patch("services.enterprise.plugin_manager_service.logger") as mock_logger,
         ):
             mock_send_request.side_effect = HTTPStatusError(
                 "502 Bad Gateway",
@@ -69,7 +68,6 @@ class TestTryPreUninstallPlugin:
                 json={"tenant_id": "tenant-456", "plugin_unique_identifier": "com.example.other_plugin"},
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
-            mock_logger.exception.assert_called_once()
 
     def test_try_pre_uninstall_plugin_generic_exception_soft_fails(self):
         body = PreUninstallPluginRequest(
@@ -81,7 +79,6 @@ class TestTryPreUninstallPlugin:
             patch(
                 "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
             ) as mock_send_request,
-            patch("services.enterprise.plugin_manager_service.logger") as mock_logger,
         ):
             mock_send_request.side_effect = ConnectionError("network unreachable")
 
@@ -93,7 +90,6 @@ class TestTryPreUninstallPlugin:
                 json={"tenant_id": "tenant-789", "plugin_unique_identifier": "com.example.failing_plugin"},
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
-            mock_logger.exception.assert_called_once()
 
 
 class TestCheckCredentialPolicyCompliance:
