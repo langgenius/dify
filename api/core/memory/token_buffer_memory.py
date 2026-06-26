@@ -153,16 +153,29 @@ class TokenBufferMemory:
 
         messages = list(reversed(thread_messages))
 
+        # Batch-fetch all MessageFile records to avoid N+1 queries
+        message_ids = [m.id for m in messages]
+        if message_ids:
+            all_files = db.session.scalars(
+                select(MessageFile).where(MessageFile.message_id.in_(message_ids))
+            ).all()
+        else:
+            all_files = []
+
+        # Group files by (message_id, belongs_to)
+        user_files_by_msg: dict[str, list[MessageFile]] = {}
+        assistant_files_by_msg: dict[str, list[MessageFile]] = {}
+        for f in all_files:
+            if f.belongs_to == "assistant":
+                assistant_files_by_msg.setdefault(f.message_id, []).append(f)
+            else:
+                user_files_by_msg.setdefault(f.message_id, []).append(f)
+
         curr_message_tokens = 0
         prompt_messages: list[PromptMessage] = []
         for message in messages:
             # Process user message with files
-            user_files = db.session.scalars(
-                select(MessageFile).where(
-                    MessageFile.message_id == message.id,
-                    (MessageFile.belongs_to == "user") | (MessageFile.belongs_to.is_(None)),
-                )
-            ).all()
+            user_files = user_files_by_msg.get(message.id, [])
 
             if user_files:
                 user_prompt_message = self._build_prompt_message_with_files(
@@ -177,9 +190,7 @@ class TokenBufferMemory:
                 prompt_messages.append(UserPromptMessage(content=message.query))
 
             # Process assistant message with files
-            assistant_files = db.session.scalars(
-                select(MessageFile).where(MessageFile.message_id == message.id, MessageFile.belongs_to == "assistant")
-            ).all()
+            assistant_files = assistant_files_by_msg.get(message.id, [])
 
             if assistant_files:
                 assistant_prompt_message = self._build_prompt_message_with_files(
