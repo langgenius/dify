@@ -54,11 +54,14 @@ function getPublishState({
   if (isPublishing)
     return 'publishing'
 
+  if (activeConfigIsPublished)
+    return 'published'
+
   if (isDirty)
     return 'unpublished'
 
   if (!activeConfigSnapshot)
-    return activeConfigIsPublished ? 'published' : 'draft'
+    return 'draft'
 
   if (!activeConfigIsPublished)
     return 'unpublished'

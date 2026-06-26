@@ -2,7 +2,7 @@ import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.ge
 import type { AgentSoulConfigFormState } from './form-state'
 import isEqual from 'fast-deep-equal'
 import { atom, useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useRef } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { agentSoulConfigToFormState } from './conversions'
 import { defaultAgentSoulConfigFormState } from './form-state'
 
@@ -45,7 +45,7 @@ function useHydrate({
   const resetKeyRef = useRef<string | undefined>(undefined)
   const hydratedKeyRef = useRef<string | undefined>(undefined)
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (resetKeyRef.current !== instanceKey) {
       resetKeyRef.current = instanceKey
       hydratedKeyRef.current = undefined

@@ -1,7 +1,8 @@
 'use client'
 
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppDetailWithSite, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
@@ -9,7 +10,7 @@ import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
+import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import {
   agentComposerDraftAtom,
@@ -75,9 +76,13 @@ export function useAgentConfigureSync({
     consoleQuery.agent.byAgentId.publish.post.mutationOptions(),
   )
 
-  const saveComposer = useSerialAsyncCallback(async (
-    configSnapshot: AgentSoulConfig,
-  ) => {
+  const saveComposer = useSerialAsyncCallback(async ({
+    configSnapshot,
+    draftBaseline,
+  }: {
+    configSnapshot: AgentSoulConfig
+    draftBaseline: AgentSoulConfigFormState
+  }) => {
     const savedDraftKey = JSON.stringify(configSnapshot)
     try {
       await saveComposerDraft({
@@ -96,7 +101,19 @@ export function useAgentConfigureSync({
       return false
     }
 
-    setOriginalDraft(agentSoulConfigToFormState(configSnapshot))
+    queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+      (agentDetail) => {
+        if (!agentDetail)
+          return agentDetail
+
+        return {
+          ...agentDetail,
+          active_config_is_published: false,
+        }
+      },
+    )
+    setOriginalDraft(draftBaseline)
     setDraftSavedAt(Date.now())
     lastAutosavedDraftKeyRef.current = savedDraftKey
     return true
@@ -108,7 +125,10 @@ export function useAgentConfigureSync({
     if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
       return
 
-    void saveComposer(getAgentSoulDraft())
+    void saveComposer({
+      configSnapshot: getAgentSoulDraft(),
+      draftBaseline: draft,
+    })
   }
 
   const debouncedSaveDraft = useMemo(() => debounce(() => {
@@ -124,7 +144,10 @@ export function useAgentConfigureSync({
       throw new InvalidKnowledgeConfigurationError()
 
     debouncedSaveDraft.cancel?.()
-    await saveComposer(getAgentSoulDraft())
+    await saveComposer({
+      configSnapshot: getAgentSoulDraft(),
+      draftBaseline: draft,
+    })
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
 
   useEffect(() => {
@@ -168,7 +191,10 @@ export function useAgentConfigureSync({
         formState: draft,
         currentModel: currentModelRef.current,
       })
-      const saved = await saveComposer(configSnapshot)
+      const saved = await saveComposer({
+        configSnapshot,
+        draftBaseline: draft,
+      })
       if (!saved)
         return
 
@@ -197,7 +223,7 @@ export function useAgentConfigureSync({
         queryKey: consoleQuery.agent.byAgentId.versions.get.key(),
       })
       setOriginalConfig(configSnapshot)
-      const publishedDraft = agentSoulConfigToFormState(configSnapshot)
+      const publishedDraft = draft
       setOriginalDraft(publishedDraft)
       setPublishedDraft(publishedDraft)
       toast.success(tCommon('api.actionSuccess'))

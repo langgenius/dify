@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
-import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
@@ -121,7 +121,13 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function renderUseAgentConfigureSync() {
+function renderUseAgentConfigureSync({
+  baseConfig,
+  currentModel,
+}: {
+  baseConfig?: Parameters<typeof useAgentConfigureSync>[0]['baseConfig']
+  currentModel?: Parameters<typeof useAgentConfigureSync>[0]['currentModel']
+} = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -140,6 +146,8 @@ function renderUseAgentConfigureSync() {
   return {
     ...renderHook(() => useAgentConfigureSync({
       agentId: 'agent-1',
+      baseConfig,
+      currentModel,
       enabled: true,
     }), { wrapper }),
     queryClient,
@@ -160,6 +168,10 @@ describe('useAgentConfigureSync', () => {
   it('should automatically save configure page changes to draft', async () => {
     vi.setSystemTime(1710000100000)
     const { queryClient, result, store } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: true,
+      name: 'Agent',
+    })
 
     expect(result.current.draftSavedAt).toBeUndefined()
 
@@ -189,6 +201,10 @@ describe('useAgentConfigureSync', () => {
       }),
     }))
     expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toBeUndefined()
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: false,
+      name: 'Agent',
+    })
     expect(result.current.draftSavedAt).toBe(1710000105000)
   })
 
@@ -398,6 +414,57 @@ describe('useAgentConfigureSync', () => {
       name: 'Agent',
     })
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+
+  it('should keep default model fallback from creating unpublished changes after publish', async () => {
+    const { result, store } = renderUseAgentConfigureSync({
+      currentModel: {
+        provider: 'langgenius/openai/openai',
+        model: 'gpt-4o-mini',
+      },
+    })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Published prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+    expect(store.get(agentComposerDraftAtom).model).toBeUndefined()
+    expect(store.get(agentComposerPublishedDraftAtom).model).toBeUndefined()
+    expect(store.get(agentComposerPublishedDraftAtom)).toEqual(store.get(agentComposerDraftAtom))
+  })
+
+  it('should keep base config fallback fields from creating unpublished changes after publish', async () => {
+    const { result, store } = renderUseAgentConfigureSync({
+      baseConfig: {
+        app_features: {
+          file_upload: {
+            enabled: true,
+          },
+        },
+      },
+    })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Published prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+
+    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+    expect(store.get(agentComposerDraftAtom).appFeatures).toBeUndefined()
+    expect(store.get(agentComposerPublishedDraftAtom).appFeatures).toBeUndefined()
+    expect(store.get(agentComposerPublishedDraftAtom)).toEqual(store.get(agentComposerDraftAtom))
   })
 
   it('should publish the current draft snapshot instead of a stale caller payload', async () => {
