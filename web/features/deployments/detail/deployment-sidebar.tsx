@@ -17,8 +17,8 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
-import { DeploymentActionsMenu } from '../components/deployment-actions'
 import { TitleTooltip } from '../components/title-tooltip'
+import { DeploymentActionsMenu } from '../deployment-actions'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { deploymentDetailAppInstanceQueryAtom } from './state'
 

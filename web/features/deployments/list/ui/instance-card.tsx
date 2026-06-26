@@ -8,9 +8,9 @@ import { useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
-import { DeploymentActionsMenu } from '../../components/deployment-actions'
 import { CreateReleaseControl } from '../../create-release'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { DeploymentActionsMenu } from '../../deployment-actions'
 import {
   DeploymentAccessLinks,
   DeploymentStatusContent,
