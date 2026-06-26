@@ -87,7 +87,7 @@ function DeploymentEnvironmentListSkeleton() {
   )
 }
 
-export function DeployTab() {
+export function InstancesTab() {
   const { t } = useTranslation('deployments')
   const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
   const environmentDeployments = environmentDeploymentsQuery.data

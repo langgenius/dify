@@ -5,10 +5,10 @@ import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 
-export const accessSettingsQueryAtom = atomWithQuery((get) => {
+export const developerApiSettingsQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
 
-  return consoleQuery.enterprise.accessService.getAccessSettings.queryOptions({
+  return consoleQuery.enterprise.accessService.getDeveloperApiSettings.queryOptions({
     input: appInstanceId
       ? {
           params: { appInstanceId },

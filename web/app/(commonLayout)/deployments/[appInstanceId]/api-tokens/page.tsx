@@ -1,5 +1,5 @@
-import { DeveloperApiTab } from '@/features/deployments/detail/access-tab/developer-api'
+import { ApiTokensTab } from '@/features/deployments/detail/api-tokens-tab'
 
 export default function InstanceDetailApiTokensPage() {
-  return <DeveloperApiTab />
+  return <ApiTokensTab />
 }

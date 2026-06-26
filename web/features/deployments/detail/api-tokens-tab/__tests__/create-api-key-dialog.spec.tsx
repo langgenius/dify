@@ -1,19 +1,10 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
-import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
-import { CreateApiKeyAction } from '../create-api-key-action'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { CreateApiKeyButton } from '../create-api-key-button'
+import { CreateApiKeyDialog } from '../create-api-key-dialog'
 
 const mockMutate = vi.hoisted(() => vi.fn())
-const mockUseAtomValue = vi.hoisted(() => vi.fn())
-
-vi.mock('jotai', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('jotai')>()
-  return {
-    ...actual,
-    useAtomValue: mockUseAtomValue,
-  }
-})
 
 vi.mock('@tanstack/react-query', () => ({
   useMutation: () => ({
@@ -41,25 +32,28 @@ function createEnvironment(): Environment {
   } as Environment
 }
 
-describe('CreateApiKeyAction', () => {
+function renderCreateApiKeyDialog() {
+  return render(
+    <CreateApiKeyDialog
+      appInstanceId="app-instance-1"
+      environments={[createEnvironment()]}
+      open
+      sessionKey={0}
+      onCreatedToken={vi.fn()}
+      onOpenChange={vi.fn()}
+    />,
+  )
+}
+
+// API token creation keeps validation and mutation payload shaping inside the dialog content.
+describe('CreateApiKeyDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseAtomValue.mockImplementation((atom) => {
-      if (atom === deploymentRouteAppInstanceIdAtom)
-        return 'app-instance-1'
-      return undefined
-    })
   })
 
   it('should show the required name error when submitting an empty name', () => {
-    render(
-      <CreateApiKeyAction
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    renderCreateApiKeyDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
     fireEvent.change(screen.getByLabelText('deployments.access.api.nameLabel'), {
       target: { value: '   ' },
     })
@@ -70,14 +64,8 @@ describe('CreateApiKeyAction', () => {
   })
 
   it('should clear the required name error when typing a valid name', () => {
-    render(
-      <CreateApiKeyAction
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    renderCreateApiKeyDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
     const nameInput = screen.getByLabelText('deployments.access.api.nameLabel')
 
     fireEvent.change(nameInput, {
@@ -94,14 +82,8 @@ describe('CreateApiKeyAction', () => {
   })
 
   it('should create an api key with the entered name and default environment', () => {
-    render(
-      <CreateApiKeyAction
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    renderCreateApiKeyDialog()
 
-    fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
     fireEvent.change(screen.getByLabelText('deployments.access.api.nameLabel'), {
       target: { value: ' Production key ' },
     })
@@ -122,16 +104,22 @@ describe('CreateApiKeyAction', () => {
       expect.any(Object),
     )
   })
+})
 
-  it('should disable the trigger when route app instance is missing', () => {
-    mockUseAtomValue.mockReturnValue(undefined)
+// The trigger is a placement-neutral button; the owning section controls dialog state.
+describe('CreateApiKeyButton', () => {
+  it('should call the supplied action when enabled', () => {
+    const handleClick = vi.fn()
 
-    render(
-      <CreateApiKeyAction
-        environments={[createEnvironment()]}
-        onCreatedToken={vi.fn()}
-      />,
-    )
+    render(<CreateApiKeyButton onClick={handleClick} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
+
+    expect(handleClick).toHaveBeenCalledOnce()
+  })
+
+  it('should disable the trigger when creation is not available', () => {
+    render(<CreateApiKeyButton disabled onClick={vi.fn()} />)
 
     expect(screen.getByRole('button', { name: 'deployments.access.api.newKey' })).toBeDisabled()
   })

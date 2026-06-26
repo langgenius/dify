@@ -83,7 +83,7 @@ export const setDeployReleaseMenuOpenAtom = atom(null, (get, set, {
     set(deployReleaseMenuOpenReleaseIdAtom, undefined)
 })
 
-export const versionsTabLocalAtoms = [
+export const releasesTabLocalAtoms = [
   releaseHistoryCurrentPageAtom,
   deployReleaseMenuOpenReleaseIdAtom,
 ] as const

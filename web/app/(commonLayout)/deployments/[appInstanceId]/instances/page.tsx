@@ -1,5 +1,5 @@
-import { DeployTab } from '@/features/deployments/detail/deploy-tab'
+import { InstancesTab } from '@/features/deployments/detail/instances-tab'
 
 export default function InstanceDetailInstancesPage() {
-  return <DeployTab />
+  return <InstancesTab />
 }

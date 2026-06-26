@@ -10,8 +10,8 @@ import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import { DeploymentEmptyState, DeploymentNoticeState, DeploymentStateMessage } from '../../../components/empty-state'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { CopyPill, EndpointRow } from '../../components/endpoint'
 import { Section } from '../../components/section'
-import { CopyPill, EndpointRow } from '../components/endpoint'
 import { accessSettingsQueryAtom } from '../state'
 import { getUrlOrigin } from './url'
 
@@ -112,6 +112,120 @@ function ChannelRow({ info, children }: {
   )
 }
 
+function WebAppChannelRow({ endpoints }: {
+  endpoints?: AccessEndpoint[]
+}) {
+  const { t } = useTranslation('deployments')
+  const webappRows = endpoints?.flatMap((endpoint) => {
+    const endpointUrl = endpoint.endpointUrl
+    if (!endpointUrl)
+      return []
+
+    return [{
+      endpoint,
+      endpointUrl,
+    }]
+  }) ?? []
+
+  return (
+    <ChannelRow
+      info={(
+        <ChannelInfo
+          icon={<span className="i-ri-global-line size-3.5" aria-hidden="true" />}
+          title={t('access.runAccess.webapp')}
+          description={t('access.runAccess.webappDesc')}
+        />
+      )}
+    >
+      {webappRows.length > 0
+        ? (
+            <div className="flex flex-col gap-1.5">
+              {webappRows.map(({ endpoint, endpointUrl }) => (
+                <EndpointRow
+                  key={`webapp-${endpoint.environment?.id ?? endpointUrl}`}
+                  envName={endpoint.environment?.displayName ?? '—'}
+                  label={t('access.runAccess.urlLabel')}
+                  value={endpointUrl}
+                  openLabel={t('access.runAccess.openWebapp')}
+                />
+              ))}
+            </div>
+          )
+        : (
+            <DeploymentNoticeState>
+              {t('access.runAccess.webappEmpty')}
+            </DeploymentNoticeState>
+          )}
+    </ChannelRow>
+  )
+}
+
+function CliChannelRow({ endpoint }: {
+  endpoint?: AccessEndpoint
+}) {
+  const { t } = useTranslation('deployments')
+  const cliDomain = getUrlOrigin(endpoint?.endpointUrl)
+  const cliDocsUrl = cliDomain ? `${cliDomain}/cli` : undefined
+
+  return (
+    <ChannelRow
+      info={(
+        <ChannelInfo
+          icon={<span className="i-ri-terminal-box-line size-3.5" aria-hidden="true" />}
+          title={t('access.cli.title')}
+          description={t('access.cli.description')}
+        />
+      )}
+    >
+      {cliDomain
+        ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <CopyPill
+                label={t('access.cli.domain')}
+                value={cliDomain}
+                className="min-w-0 flex-1"
+              />
+              <a
+                href={cliDocsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover"
+              >
+                <span className="i-ri-download-cloud-2-line size-3.5" />
+                {t('access.cli.install')}
+              </a>
+              <a
+                href={cliDocsUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover"
+              >
+                <span className="i-ri-book-open-line size-3.5" />
+                {t('access.cli.docs')}
+              </a>
+            </div>
+          )
+        : (
+            <DeploymentNoticeState>
+              {t('access.cli.empty')}
+            </DeploymentNoticeState>
+          )}
+    </ChannelRow>
+  )
+}
+
+function EnabledAccessChannels({ webAppEndpoints, cliEndpoint }: {
+  webAppEndpoints?: AccessEndpoint[]
+  cliEndpoint?: AccessEndpoint
+}) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
+      <WebAppChannelRow endpoints={webAppEndpoints} />
+      <CliChannelRow endpoint={cliEndpoint} />
+    </div>
+  )
+}
+
 export function AccessChannelsSection() {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
@@ -122,18 +236,6 @@ export function AccessChannelsSection() {
   const isLoading = accessSettingsQuery.isLoading
   const isError = accessSettingsQuery.isError
   const runEnabled = accessChannels?.webAppEnabled ?? false
-  const webappRows = webAppEndpoints?.flatMap((endpoint) => {
-    const endpointUrl = endpoint.endpointUrl
-    if (!endpointUrl)
-      return []
-
-    return [{
-      endpoint,
-      endpointUrl,
-    }]
-  }) ?? []
-  const cliDomain = getUrlOrigin(cliEndpoint?.endpointUrl)
-  const cliDocsUrl = cliDomain ? `${cliDomain}/cli` : undefined
 
   return (
     <Section
@@ -161,80 +263,10 @@ export function AccessChannelsSection() {
           ? <DeploymentStateMessage variant="section">{t('common.loadFailed')}</DeploymentStateMessage>
           : runEnabled
             ? (
-                <div className="overflow-hidden rounded-lg border border-divider-subtle bg-components-panel-bg">
-                  <ChannelRow
-                    info={(
-                      <ChannelInfo
-                        icon={<span className="i-ri-global-line size-3.5" aria-hidden="true" />}
-                        title={t('access.runAccess.webapp')}
-                        description={t('access.runAccess.webappDesc')}
-                      />
-                    )}
-                  >
-                    {webappRows.length > 0
-                      ? (
-                          <div className="flex flex-col gap-1.5">
-                            {webappRows.map(({ endpoint, endpointUrl }) => (
-                              <EndpointRow
-                                key={`webapp-${endpoint.environment?.id ?? endpointUrl}`}
-                                envName={endpoint.environment?.displayName ?? '—'}
-                                label={t('access.runAccess.urlLabel')}
-                                value={endpointUrl}
-                                openLabel={t('access.runAccess.openWebapp')}
-                              />
-                            ))}
-                          </div>
-                        )
-                      : (
-                          <DeploymentNoticeState>
-                            {t('access.runAccess.webappEmpty')}
-                          </DeploymentNoticeState>
-                        )}
-                  </ChannelRow>
-                  <ChannelRow
-                    info={(
-                      <ChannelInfo
-                        icon={<span className="i-ri-terminal-box-line size-3.5" aria-hidden="true" />}
-                        title={t('access.cli.title')}
-                        description={t('access.cli.description')}
-                      />
-                    )}
-                  >
-                    {cliDomain
-                      ? (
-                          <div className="flex flex-wrap items-center gap-2">
-                            <CopyPill
-                              label={t('access.cli.domain')}
-                              value={cliDomain}
-                              className="min-w-0 flex-1"
-                            />
-                            <a
-                              href={cliDocsUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover"
-                            >
-                              <span className="i-ri-download-cloud-2-line size-3.5" />
-                              {t('access.cli.install')}
-                            </a>
-                            <a
-                              href={cliDocsUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-components-button-secondary-border bg-components-button-secondary-bg px-3 system-sm-medium text-components-button-secondary-text hover:bg-components-button-secondary-bg-hover"
-                            >
-                              <span className="i-ri-book-open-line size-3.5" />
-                              {t('access.cli.docs')}
-                            </a>
-                          </div>
-                        )
-                      : (
-                          <DeploymentNoticeState>
-                            {t('access.cli.empty')}
-                          </DeploymentNoticeState>
-                        )}
-                  </ChannelRow>
-                </div>
+                <EnabledAccessChannels
+                  webAppEndpoints={webAppEndpoints}
+                  cliEndpoint={cliEndpoint}
+                />
               )
             : (
                 <DeploymentEmptyState

@@ -22,7 +22,7 @@ import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { getDocLanguage } from '@/i18n-config/language'
 import { AppModeEnum, Theme } from '@/types/app'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 
 type PromptVariable = { key: string, name: string }
 type WorkflowApiDocAppDetail = Pick<App, 'id' | 'mode' | 'api_base_url'>

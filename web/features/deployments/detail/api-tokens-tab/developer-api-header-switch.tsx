@@ -6,8 +6,8 @@ import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
-import { developerApiSettingsQueryAtom } from '../state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
+import { developerApiSettingsQueryAtom } from './state'
 
 function DeveloperApiSwitch({ checked, accessChannels, disabled }: {
   checked: boolean

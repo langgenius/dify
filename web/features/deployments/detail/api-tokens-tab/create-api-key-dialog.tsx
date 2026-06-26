@@ -41,7 +41,7 @@ export function CreateApiKeyDialog({
   onCreatedToken,
   onOpenChange,
 }: {
-  appInstanceId?: string
+  appInstanceId: string
   environments: Environment[]
   open: boolean
   sessionKey: number
@@ -86,7 +86,7 @@ function CreateApiKeyDialogContent({
   onCloseBlockedChange,
   onCreatedToken,
 }: {
-  appInstanceId?: string
+  appInstanceId: string
   environments: Environment[]
   onClose: () => void
   onCloseBlockedChange: (blocked: boolean) => void
@@ -108,7 +108,7 @@ function CreateApiKeyDialogContent({
     const displayName = values.displayName.trim()
     const environmentId = values.environmentId
 
-    if (!appInstanceId || !environmentId || !displayName)
+    if (!environmentId || !displayName)
       return
 
     onCloseBlockedChange(true)

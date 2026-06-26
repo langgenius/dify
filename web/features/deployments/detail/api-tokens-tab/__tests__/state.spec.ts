@@ -25,10 +25,10 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       accessService: {
-        getAccessSettings: {
+        getDeveloperApiSettings: {
           queryOptions: (options: QueryOptions) => ({
             ...options,
-            queryKey: ['getAccessSettings', options.input],
+            queryKey: ['getDeveloperApiSettings', options.input],
           }),
         },
       },
@@ -42,24 +42,24 @@ async function loadState() {
 
 function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1') {
   store.set(setNextRouteStateAtom, {
-    pathname: `/deployments/${appInstanceId}/access`,
+    pathname: `/deployments/${appInstanceId}/api-tokens`,
     params: { appInstanceId },
   })
 }
 
-describe('deployment access state', () => {
-  it('should gate access queries until a route app instance exists', async () => {
+describe('deployment api tokens state', () => {
+  it('should gate developer api settings until a route app instance exists', async () => {
     const state = await loadState()
     const store = createStore()
 
-    expect(store.get(state.accessSettingsQueryAtom)).toMatchObject({
+    expect(store.get(state.developerApiSettingsQueryAtom)).toMatchObject({
       enabled: false,
       input: skipToken,
     })
 
     setDeploymentRoute(store)
 
-    expect(store.get(state.accessSettingsQueryAtom)).toMatchObject({
+    expect(store.get(state.developerApiSettingsQueryAtom)).toMatchObject({
       enabled: true,
       input: { params: { appInstanceId: 'app-instance-1' } },
     })

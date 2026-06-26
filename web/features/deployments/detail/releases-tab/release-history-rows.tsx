@@ -116,60 +116,127 @@ function ReleaseSourceLink({ sourceAppId }: {
   )
 }
 
-function ReleaseHistoryMobileRows({ releaseRows, onReleaseDeleted }: {
+function ReleaseHistoryMobileRow({ release, releaseRows, onReleaseDeleted }: {
+  release: ReleaseWithSummaryDeployments
   releaseRows: ReleaseWithSummaryDeployments[]
   onReleaseDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
+  const hasDeployments = release.summaryDeployments.length > 0
 
   return (
-    <DetailTableCardList className="pc:hidden">
-      {releaseRows.map((row) => {
-        const release = row
-        const releaseId = release.id
-        const hasDeployments = row.summaryDeployments.length > 0
-
-        return (
-          <DetailTableCard key={releaseId}>
-            <div className="flex flex-col gap-3 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <ReleaseTitleTooltip release={release} />
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 system-xs-regular text-text-secondary">
-                    <CreatedAtCell createdAt={release.createdAt} />
-                    <span aria-hidden>·</span>
-                    <span>{row.createdBy.displayName}</span>
-                    {(release.sourceAppId || release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD) && (
-                      <>
-                        <span aria-hidden>·</span>
-                        <span className="inline-flex max-w-full min-w-0 items-baseline gap-1">
-                          <span className="shrink-0">{t('versions.col.sourceApp')}</span>
-                          <ReleaseSourceCell release={release} />
-                        </span>
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="flex shrink-0 justify-end gap-1">
-                  <DeployReleaseMenu
-                    release={release}
-                    releaseRows={releaseRows}
-                    onDeleted={onReleaseDeleted}
-                  />
-                </div>
-              </div>
-              {hasDeployments && (
-                <div className="flex min-w-0 flex-wrap items-center gap-1">
-                  <ReleaseDeploymentsContent
-                    items={row.summaryDeployments}
-                  />
-                </div>
+    <DetailTableCard>
+      <div className="flex flex-col gap-3 p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <ReleaseTitleTooltip release={release} />
+            <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 system-xs-regular text-text-secondary">
+              <CreatedAtCell createdAt={release.createdAt} />
+              <span aria-hidden>·</span>
+              <span>{release.createdBy.displayName}</span>
+              {(release.sourceAppId || release.source === ReleaseSource.RELEASE_SOURCE_UPLOAD) && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="inline-flex max-w-full min-w-0 items-baseline gap-1">
+                    <span className="shrink-0">{t('versions.col.sourceApp')}</span>
+                    <ReleaseSourceCell release={release} />
+                  </span>
+                </>
               )}
             </div>
-          </DetailTableCard>
-        )
-      })}
+          </div>
+          <div className="flex shrink-0 justify-end gap-1">
+            <DeployReleaseMenu
+              release={release}
+              releaseRows={releaseRows}
+              onDeleted={onReleaseDeleted}
+            />
+          </div>
+        </div>
+        {hasDeployments && (
+          <div className="flex min-w-0 flex-wrap items-center gap-1">
+            <ReleaseDeploymentsContent
+              items={release.summaryDeployments}
+            />
+          </div>
+        )}
+      </div>
+    </DetailTableCard>
+  )
+}
+
+function ReleaseHistoryMobileRows({ releaseRows, onReleaseDeleted }: {
+  releaseRows: ReleaseWithSummaryDeployments[]
+  onReleaseDeleted?: () => void
+}) {
+  return (
+    <DetailTableCardList className="pc:hidden">
+      {releaseRows.map(release => (
+        <ReleaseHistoryMobileRow
+          key={release.id}
+          release={release}
+          releaseRows={releaseRows}
+          onReleaseDeleted={onReleaseDeleted}
+        />
+      ))}
     </DetailTableCardList>
+  )
+}
+
+function ReleaseHistoryDesktopRow({ release, releaseRows, onReleaseDeleted }: {
+  release: ReleaseWithSummaryDeployments
+  releaseRows: ReleaseWithSummaryDeployments[]
+  onReleaseDeleted?: () => void
+}) {
+  return (
+    <DetailTableRow>
+      <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>
+        <ReleaseTitleTooltip release={release} />
+      </DetailTableCell>
+      <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>
+        <ReleaseSourceCell release={release} />
+      </DetailTableCell>
+      <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt} text-text-secondary`}>
+        <CreatedAtCell createdAt={release.createdAt} />
+      </DetailTableCell>
+      <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author} truncate text-text-secondary`}>
+        {release.createdBy.displayName}
+      </DetailTableCell>
+      <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>
+        <div className="flex flex-wrap gap-1">
+          <ReleaseDeploymentsContent
+            items={release.summaryDeployments}
+          />
+        </div>
+      </DetailTableCell>
+      <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action}>
+        <div className="flex justify-end">
+          <DeployReleaseMenu
+            release={release}
+            releaseRows={releaseRows}
+            onDeleted={onReleaseDeleted}
+          />
+        </div>
+      </DetailTableCell>
+    </DetailTableRow>
+  )
+}
+
+function ReleaseHistoryDesktopRows({ releaseRows, onReleaseDeleted }: {
+  releaseRows: ReleaseWithSummaryDeployments[]
+  onReleaseDeleted?: () => void
+}) {
+  return (
+    <>
+      {releaseRows.map(release => (
+        <ReleaseHistoryDesktopRow
+          key={release.id}
+          release={release}
+          releaseRows={releaseRows}
+          onReleaseDeleted={onReleaseDeleted}
+        />
+      ))}
+    </>
   )
 }
 
@@ -198,43 +265,10 @@ export function ReleaseHistoryRows({ releaseRows, onReleaseDeleted }: {
             </DetailTableRow>
           </DetailTableHeader>
           <DetailTableBody>
-            {releaseRows.map((row) => {
-              const release = row
-              const releaseId = release.id
-
-              return (
-                <DetailTableRow key={releaseId}>
-                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.release}>
-                    <ReleaseTitleTooltip release={release} />
-                  </DetailTableCell>
-                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.sourceApp}>
-                    <ReleaseSourceCell release={release} />
-                  </DetailTableCell>
-                  <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.createdAt} text-text-secondary`}>
-                    <CreatedAtCell createdAt={release.createdAt} />
-                  </DetailTableCell>
-                  <DetailTableCell className={`${RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.author} truncate text-text-secondary`}>
-                    {row.createdBy.displayName}
-                  </DetailTableCell>
-                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.deployedTo}>
-                    <div className="flex flex-wrap gap-1">
-                      <ReleaseDeploymentsContent
-                        items={row.summaryDeployments}
-                      />
-                    </div>
-                  </DetailTableCell>
-                  <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action}>
-                    <div className="flex justify-end">
-                      <DeployReleaseMenu
-                        release={release}
-                        releaseRows={releaseRows}
-                        onDeleted={onReleaseDeleted}
-                      />
-                    </div>
-                  </DetailTableCell>
-                </DetailTableRow>
-              )
-            })}
+            <ReleaseHistoryDesktopRows
+              releaseRows={releaseRows}
+              onReleaseDeleted={onReleaseDeleted}
+            />
           </DetailTableBody>
         </DetailTable>
       </div>

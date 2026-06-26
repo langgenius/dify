@@ -9,15 +9,16 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../../components/empty-state'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { CopyPill } from '../components/endpoint'
-import { developerApiSettingsQueryAtom } from '../state'
 import { ApiKeyList } from './api-key-list'
-import { CreateApiKeyAction } from './create-api-key-action'
+import { CreateApiKeyButton } from './create-api-key-button'
+import { CreateApiKeyDialog } from './create-api-key-dialog'
 import { CreatedApiTokenDialog } from './created-token-dialog'
 import { DeveloperApiDocsDrawer } from './docs-drawer'
 import { DeveloperApiSkeleton } from './skeleton'
+import { developerApiSettingsQueryAtom } from './state'
 
 type CreatedApiToken = {
   appInstanceId: string
@@ -82,20 +83,36 @@ function DeveloperApiEndpoint({ apiUrl }: {
   )
 }
 
-export function DeveloperApiSection() {
+export function ApiTokensSection() {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const [createdApiToken, setCreatedApiToken] = useState<CreatedApiToken>()
+  const [createDialogOpen, setCreateDialogOpen] = useState(false)
+  const [createDialogSessionKey, setCreateDialogSessionKey] = useState(0)
   const developerApiSettingsQuery = useAtomValue(developerApiSettingsQueryAtom)
   const accessChannels = developerApiSettingsQuery.data?.accessChannels
   const apiEnabled = accessChannels?.developerApiEnabled ?? false
   const apiUrl = developerApiSettingsQuery.data?.developerApiUrl.apiUrl
   const apiKeys: ApiKey[] = developerApiSettingsQuery.data?.apiKeys ?? []
   const environments = developerApiSettingsQuery.data?.environments ?? []
+  const selectableEnvironments = environments.flatMap((environment) => {
+    if (!environment.id)
+      return []
+
+    return [environment]
+  })
   const visibleCreatedApiToken = createdApiToken && createdApiToken.appInstanceId === appInstanceId
     ? createdApiToken.token
     : undefined
-  const hasSelectableEnvironment = environments.some(environment => Boolean(environment.id))
+  const hasSelectableEnvironment = selectableEnvironments.length > 0
+
+  function handleOpenCreateDialog() {
+    if (!hasSelectableEnvironment)
+      return
+
+    setCreateDialogSessionKey(sessionKey => sessionKey + 1)
+    setCreateDialogOpen(true)
+  }
 
   if (developerApiSettingsQuery.isLoading)
     return <DeveloperApiSkeleton />
@@ -122,31 +139,33 @@ export function DeveloperApiSection() {
         />
       )}
       {hasSelectableEnvironment
-        ? (
-            <CreateApiKeyAction
-              environments={environments}
-              triggerVariant="primary"
-              onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
-            >
-              {({ trigger }) => apiKeys.length === 0
-                ? (
-                    <DeploymentEmptyState
-                      variant="section"
-                      icon="i-ri-key-2-line"
-                      title={t('access.api.noKeysTitle')}
-                      description={t('access.api.noKeys')}
-                      action={trigger}
-                    />
-                  )
-                : (
-                    <ApiKeyListSection
-                      apiKeys={apiKeys}
-                      environments={environments}
-                      action={trigger}
-                    />
-                  )}
-            </CreateApiKeyAction>
-          )
+        ? apiKeys.length === 0
+          ? (
+              <DeploymentEmptyState
+                variant="section"
+                icon="i-ri-key-2-line"
+                title={t('access.api.noKeysTitle')}
+                description={t('access.api.noKeys')}
+                action={(
+                  <CreateApiKeyButton
+                    triggerVariant="primary"
+                    onClick={handleOpenCreateDialog}
+                  />
+                )}
+              />
+            )
+          : (
+              <ApiKeyListSection
+                apiKeys={apiKeys}
+                environments={environments}
+                action={(
+                  <CreateApiKeyButton
+                    triggerVariant="primary"
+                    onClick={handleOpenCreateDialog}
+                  />
+                )}
+              />
+            )
         : apiKeys.length === 0
           ? (
               <DeploymentEmptyState
@@ -162,6 +181,14 @@ export function DeveloperApiSection() {
                 environments={environments}
               />
             )}
+      <CreateApiKeyDialog
+        appInstanceId={appInstanceId}
+        environments={selectableEnvironments}
+        open={createDialogOpen}
+        sessionKey={createDialogSessionKey}
+        onCreatedToken={token => setCreatedApiToken({ appInstanceId, token })}
+        onOpenChange={setCreateDialogOpen}
+      />
       <CreatedApiTokenDialog
         token={visibleCreatedApiToken}
         apiUrl={apiUrl}
