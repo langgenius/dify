@@ -4,6 +4,11 @@ Slash-menu insertions are stored inline in the plain-string prompt as tokens:
 
     [§<kind>:<id>[:<label>]§]
 
+Workflow-node prompts also carry prompt-editor workflow variables as plain Dify
+template markers:
+
+    {{#<node-id>.<output>[.<child>...]#}}
+
 ``kind`` is a fixed lowercase word; ``id`` points at an item in the Agent
 runtime context. For prompt-owned entities that means Agent Soul lists such as
 ``tools`` / ``knowledge.sets`` / ``human.contacts`` and workflow job lists
@@ -17,7 +22,9 @@ The ``[§…§]`` wrapper uses the section sign ``§`` (U+00A7), which never app
 in Dify template syntax (``{{var}}`` / ``{{#a.b#}}``) nor in normal prompt text,
 so these tokens can never collide with the existing template parsers. Runtime
 expansion (and the final scrub that guarantees no internal marker ever reaches
-the model) is owned by the run-request builders.
+the model) is owned by the run-request builders. Frontend output blocks still
+accept a legacy bare ``§output:...§`` form during migrations, so the runtime
+parser accepts that alias too.
 """
 
 from __future__ import annotations
@@ -47,13 +54,16 @@ class MentionKind(StrEnum):
 
 
 MENTION_PATTERN = re.compile(
-    r"\[§(skill|file|tool|cli_tool|knowledge|human|node_output|output):([^:§]+?)(?::([^§]*?))?§\]"
+    r"(?:\[§(?P<bracket_kind>skill|file|tool|cli_tool|knowledge|human|node_output|output):"
+    r"(?P<bracket_id>[^:§]+?)(?::(?P<bracket_label>[^§]*?))?§\])"
+    r"|(?:§(?P<legacy_kind>output):(?P<legacy_id>[^:§]+?)(?::(?P<legacy_label>[^§]*?))?§)"
 )
 # Anything mention-shaped (``[§word:…§]``) that the strict pattern did not consume
 # — unknown kinds, malformed bodies. The ``§`` wrapper + a kind-word + ``:``
 # requirement keeps legacy ``{{#histories#}}`` / ``{{var}}`` template forms and
 # ordinary bracketed text out of scope.
 _RESIDUAL_MENTION_PATTERN = re.compile(r"\[§([A-Za-z_][A-Za-z0-9_]*:[^§]*?)§\]")
+WORKFLOW_VARIABLE_PATTERN = re.compile(r"\{\{#([^{}#]+?\.[^{}#]+?)#\}\}")
 
 MAX_MENTIONS_PER_PROMPT = 200
 # Drive keys are validated up to 512 Unicode code points before URL encoding.
@@ -98,6 +108,14 @@ class PromptMention:
 # Returns the model-readable replacement for a mention, or None when the id does
 # not resolve (the expander then degrades to label/id).
 MentionResolver = Callable[[PromptMention], str | None]
+WorkflowVariableResolver = Callable[[tuple[str, ...]], str | None]
+
+
+def _mention_groups(match: re.Match[str]) -> tuple[str, str, str | None]:
+    kind = match.group("bracket_kind") or match.group("legacy_kind")
+    ref_id = match.group("bracket_id") or match.group("legacy_id")
+    label = match.group("bracket_label") or match.group("legacy_label")
+    return kind, ref_id, label
 
 
 def parse_prompt_mentions(prompt: str) -> list[PromptMention]:
@@ -105,13 +123,12 @@ def parse_prompt_mentions(prompt: str) -> list[PromptMention]:
     (treated as malformed) — the runtime scrub still degrades them safely."""
     mentions: list[PromptMention] = []
     for match in MENTION_PATTERN.finditer(prompt or ""):
-        ref_id = match.group(2)
-        label = match.group(3)
+        kind, ref_id, label = _mention_groups(match)
         if len(ref_id) > MAX_MENTION_REF_ID_LENGTH or (label is not None and len(label) > MAX_MENTION_LABEL_LENGTH):
             continue
         mentions.append(
             PromptMention(
-                kind=MentionKind(match.group(1)),
+                kind=MentionKind(kind),
                 ref_id=ref_id,
                 label=label or None,
                 start=match.start(),
@@ -130,13 +147,13 @@ def expand_prompt_mentions(prompt: str, resolver: MentionResolver) -> str:
         return prompt
 
     def _replace(match: re.Match[str]) -> str:
-        ref_id = match.group(2)
-        label = match.group(3) or None
+        kind, ref_id, label = _mention_groups(match)
+        label = label or None
         fallback = (label or ref_id)[:MAX_MENTION_LABEL_LENGTH]
         if len(ref_id) > MAX_MENTION_REF_ID_LENGTH or (label is not None and len(label) > MAX_MENTION_LABEL_LENGTH):
             return fallback
         mention = PromptMention(
-            kind=MentionKind(match.group(1)),
+            kind=MentionKind(kind),
             ref_id=ref_id,
             label=label,
             start=match.start(),
@@ -159,6 +176,33 @@ def find_malformed_mention_markers(prompt: str) -> list[str]:
         return []
     parsed_spans = {(mention.start, mention.end) for mention in parse_prompt_mentions(prompt)}
     return [match.group(0) for match in _RESIDUAL_MENTION_PATTERN.finditer(prompt) if match.span() not in parsed_spans]
+
+
+def extract_workflow_variable_selectors(prompt: str) -> list[tuple[str, ...]]:
+    """Extract ``{{#node.output#}}``-style selectors from workflow prompts."""
+    selectors: list[tuple[str, ...]] = []
+    for match in WORKFLOW_VARIABLE_PATTERN.finditer(prompt or ""):
+        parts = tuple(part.strip() for part in match.group(1).split(".") if part.strip())
+        if len(parts) >= 2:
+            selectors.append(parts)
+    return selectors
+
+
+def expand_workflow_variable_markers(prompt: str, resolver: WorkflowVariableResolver) -> str:
+    """Replace ``{{#node.output#}}`` markers with resolved plain text."""
+    if not prompt:
+        return prompt
+
+    def _replace(match: re.Match[str]) -> str:
+        parts = tuple(part.strip() for part in match.group(1).split(".") if part.strip())
+        if len(parts) < 2:
+            return match.group(0)
+        resolved = resolver(parts)
+        if resolved is None or not resolved.strip():
+            return ".".join(parts)
+        return resolved
+
+    return WORKFLOW_VARIABLE_PATTERN.sub(_replace, prompt)
 
 
 def scrub_mention_markers(text: str) -> str:
@@ -280,7 +324,9 @@ __all__ = [
     "PromptMention",
     "build_node_job_mention_resolver",
     "build_soul_mention_resolver",
+    "expand_workflow_variable_markers",
     "expand_prompt_mentions",
+    "extract_workflow_variable_selectors",
     "find_malformed_mention_markers",
     "parse_prompt_mentions",
     "scrub_mention_markers",

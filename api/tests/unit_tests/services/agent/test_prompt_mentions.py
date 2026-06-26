@@ -19,7 +19,9 @@ from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
+    expand_workflow_variable_markers,
     expand_prompt_mentions,
+    extract_workflow_variable_selectors,
     parse_prompt_mentions,
     scrub_mention_markers,
 )
@@ -42,6 +44,13 @@ def test_parse_supports_ids_with_slash_and_dot():
     mentions = parse_prompt_mentions("[§tool:langgenius/tavily/tavily_search:tavily§] [§node_output:node-1.tenders§]")
     assert mentions[0].ref_id == "langgenius/tavily/tavily_search"
     assert mentions[1].ref_id == "node-1.tenders"
+
+
+def test_parse_supports_legacy_bare_output_tokens():
+    mentions = parse_prompt_mentions("Use §output:summary:summary§")
+    assert [(mention.kind, mention.ref_id, mention.label) for mention in mentions] == [
+        (MentionKind.OUTPUT, "summary", "summary")
+    ]
 
 
 def test_parse_ignores_legacy_template_forms_and_unknown_kinds():
@@ -87,6 +96,21 @@ def test_scrub_degrades_colon_tokens_without_label_to_id_part():
 
 def test_expand_empty_prompt_is_noop():
     assert expand_prompt_mentions("", lambda m: "x") == ""
+
+
+def test_extract_workflow_variable_selectors_supports_frontend_agent_task_format():
+    selectors = extract_workflow_variable_selectors(
+        "Read {{#node-1.output#}}, compare {{#start.question#}}, leave {{#context#}} alone."
+    )
+    assert selectors == [("node-1", "output"), ("start", "question")]
+
+
+def test_expand_workflow_variable_markers_replaces_frontend_agent_task_markers():
+    expanded = expand_workflow_variable_markers(
+        "Read {{#node-1.output#}} and {{#start.question#}}",
+        lambda selector: {"node-1.output": "Report body", "start.question": "Tender question"}.get(".".join(selector)),
+    )
+    assert expanded == "Read Report body and Tender question"
 
 
 # ── soul resolver ─────────────────────────────────────────────────────────────

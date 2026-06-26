@@ -18,9 +18,15 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import (
+    AgentSoulConfig,
+    DeclaredOutputConfig,
+    WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
+)
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
+from services.agent.prompt_mentions import extract_workflow_variable_selectors
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -36,6 +42,9 @@ class WorkflowAgentPublishService:
     _AGENT_BINDING_KEY = "agent_binding"
     _AGENT_TASK_KEY = "agent_task"
     _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
+    _NON_NODE_WORKFLOW_VARIABLE_PREFIXES = frozenset(
+        {"sys", "env", "conversation", "rag", "current", "last_run", "error_message", "$output"}
+    )
 
     @classmethod
     def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
@@ -425,6 +434,7 @@ class WorkflowAgentPublishService:
         agent_task = node_data.get(cls._AGENT_TASK_KEY)
         if isinstance(agent_task, str):
             node_job.workflow_prompt = agent_task
+            node_job.previous_node_output_refs = cls._previous_node_output_refs_from_prompt(agent_task)
 
         declared_outputs_payload = node_data.get(cls._AGENT_DECLARED_OUTPUTS_KEY)
         if declared_outputs_payload is not None:
@@ -438,6 +448,25 @@ class WorkflowAgentPublishService:
                 raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
         return node_job
+
+    @classmethod
+    def _previous_node_output_refs_from_prompt(cls, prompt: str) -> list[WorkflowPreviousNodeOutputRef]:
+        refs: list[WorkflowPreviousNodeOutputRef] = []
+        seen: set[tuple[str, ...]] = set()
+        for selector in extract_workflow_variable_selectors(prompt):
+            if selector[0] in cls._NON_NODE_WORKFLOW_VARIABLE_PREFIXES:
+                continue
+            if selector in seen:
+                continue
+            refs.append(
+                WorkflowPreviousNodeOutputRef(
+                    selector=list(selector),
+                    node_id=selector[0],
+                    output=selector[1],
+                )
+            )
+            seen.add(selector)
+        return refs
 
     @classmethod
     def copy_agent_node_bindings_to_published(

@@ -3407,6 +3407,54 @@ class TestWorkflowAgentDraftBindingSync:
             ],
         ).model_dump(mode="json")
 
+    def test_creates_roster_binding_deriving_previous_node_refs_from_agent_task(self):
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_task": "Review {{#previous-node.report#}} for {{#sys.query#}}.",
+                                "agent_binding": {
+                                    "binding_type": "roster_agent",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Agent",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="snapshot-2",
+        )
+        session = FakeSession(scalar=[agent], scalars=[[]])
+
+        WorkflowAgentPublishService.sync_roster_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        binding = next(item for item in session.added if isinstance(item, WorkflowAgentNodeBinding))
+        node_job = WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+        assert node_job.workflow_prompt == "Review {{#previous-node.report#}} for {{#sys.query#}}."
+        assert [ref.selector for ref in node_job.previous_node_output_refs] == [["previous-node", "report"]]
+
     def test_creates_inline_binding_from_agent_node_graph(self):
         workflow = Workflow(
             id="workflow-1",
