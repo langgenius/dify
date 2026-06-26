@@ -3,7 +3,7 @@ Prepare monthly workflow-run archive downloads.
 
 Console requests create a short-lived Redis task and Celery runs this module in the background. The DB bundle index is
 the online lookup source: this preparer never lists archive storage, and it validates the indexed bundle set against the
-stable download id before packaging objects into a single ZIP file.
+stable download id before packaging archive Parquet objects into one user-facing CSV ZIP file.
 """
 
 import datetime
@@ -14,6 +14,8 @@ import zipfile
 from collections.abc import Sequence
 from typing import cast
 
+import pyarrow.csv as pa_csv
+import pyarrow.parquet as pq
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -46,7 +48,7 @@ ARCHIVE_DOWNLOAD_MIME_TYPE = "application/zip"
 
 class WorkflowRunArchiveDownloadPreparer:
     """
-    Build one ready-to-download ZIP for a Redis archive download task.
+    Build one ready-to-download CSV ZIP for a Redis archive download task.
 
     The output object is deterministic for a given `download_id`, so retrying a failed task overwrites the same
     temporary object instead of creating unbounded duplicate files.
@@ -102,19 +104,30 @@ class WorkflowRunArchiveDownloadPreparer:
         bundles: Sequence[WorkflowRunArchiveBundle],
     ) -> bytes:
         zip_root = f"workflow-run-logs-{task.year:04d}-{task.month:02d}"
+        csv_buffers: dict[str, io.BytesIO] = {}
+        csv_headers_written: set[str] = set()
+
+        for bundle in bundles:
+            object_prefix = _build_archive_bundle_object_prefix(task, bundle)
+            _, manifest = _load_and_validate_manifest(storage, task, bundle, object_prefix)
+            for table_name in sorted(manifest["tables"]):
+                entry = manifest["tables"][table_name]
+                object_key = entry["object_key"]
+                table_payload = storage.get_object(object_key)
+                _validate_table_payload(object_key=object_key, entry=entry, payload=table_payload)
+                csv_payload = _parquet_payload_to_csv(
+                    table_payload,
+                    include_header=table_name not in csv_headers_written,
+                )
+                if not csv_payload:
+                    continue
+                csv_buffers.setdefault(table_name, io.BytesIO()).write(csv_payload)
+                csv_headers_written.add(table_name)
+
         buffer = io.BytesIO()
-        with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_STORED) as archive:
-            for bundle in bundles:
-                object_prefix = _build_archive_bundle_object_prefix(task, bundle)
-                manifest_data, manifest = _load_and_validate_manifest(storage, task, bundle, object_prefix)
-                bundle_file_stem = f"{bundle.shard}-{bundle.bundle_id}"
-                archive.writestr(f"{zip_root}/manifests/{bundle_file_stem}.json", manifest_data)
-                for table_name in sorted(manifest["tables"]):
-                    entry = manifest["tables"][table_name]
-                    object_key = entry["object_key"]
-                    table_payload = storage.get_object(object_key)
-                    _validate_table_payload(object_key=object_key, entry=entry, payload=table_payload)
-                    archive.writestr(f"{zip_root}/{table_name}/{bundle_file_stem}.parquet", table_payload)
+        with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for table_name, csv_buffer in sorted(csv_buffers.items()):
+                archive.writestr(f"{zip_root}/{table_name}.csv", csv_buffer.getvalue())
         return buffer.getvalue()
 
     def _mark_processing(self, task: WorkflowRunArchiveDownloadTask) -> WorkflowRunArchiveDownloadTask:
@@ -289,3 +302,16 @@ def _validate_table_payload(
     checksum = hashlib.md5(payload).hexdigest()
     if checksum != entry["checksum"]:
         raise ValueError(f"archive object checksum mismatch for {object_key}")
+
+
+def _parquet_payload_to_csv(payload: bytes, *, include_header: bool) -> bytes:
+    table = pq.read_table(io.BytesIO(payload))
+    if table.num_columns == 0:
+        return b""
+    buffer = io.BytesIO()
+    pa_csv.write_csv(
+        table,
+        buffer,
+        write_options=pa_csv.WriteOptions(include_header=include_header),
+    )
+    return buffer.getvalue()

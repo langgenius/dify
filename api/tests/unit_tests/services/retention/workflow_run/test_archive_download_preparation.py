@@ -6,6 +6,8 @@ import zipfile
 from types import SimpleNamespace
 from typing import cast
 
+import pyarrow as pa
+import pyarrow.parquet as pq
 from sqlalchemy.orm import Session, sessionmaker
 
 from libs.archive_storage import ArchiveStorage
@@ -94,30 +96,39 @@ class FakeSessionFactory:
         return FakeSessionContext(self.bundles)
 
 
-def _bundle() -> WorkflowRunArchiveBundle:
-    return cast(WorkflowRunArchiveBundle, SimpleNamespace(shard=SHARD, bundle_id=BUNDLE_ID))
+def _object_prefix(bundle_id: str = BUNDLE_ID) -> str:
+    return (
+        f"{ARCHIVE_BUNDLE_ROOT_PREFIX}tenant_prefix=1/tenant_id={TENANT_ID}/"
+        f"year=2025/month=03/shard={SHARD}/bundle={bundle_id}"
+    )
 
 
-def _task() -> WorkflowRunArchiveDownloadTask:
+def _bundle(bundle_id: str = BUNDLE_ID) -> WorkflowRunArchiveBundle:
+    return cast(WorkflowRunArchiveBundle, SimpleNamespace(shard=SHARD, bundle_id=bundle_id))
+
+
+def _task(bundle_refs: list[tuple[str, str]] | None = None) -> WorkflowRunArchiveDownloadTask:
+    refs = bundle_refs or [(SHARD, BUNDLE_ID)]
     return build_pending_archive_download_task(
         tenant_id=TENANT_ID,
         requested_by="account-1",
         year=2025,
         month=3,
-        bundle_ids=[BUNDLE_ID],
-        bundle_refs=[(SHARD, BUNDLE_ID)],
+        bundle_ids=[bundle_id for _, bundle_id in refs],
+        bundle_refs=refs,
         archive_bytes=1024,
         download_id=build_archive_download_id(
             tenant_id=TENANT_ID,
             year=2025,
             month=3,
-            bundle_refs=[(SHARD, BUNDLE_ID)],
+            bundle_refs=refs,
         ),
         now=datetime.datetime(2026, 6, 25, 8, 0, tzinfo=datetime.UTC),
     )
 
 
-def _manifest_bytes(table_payloads: dict[str, bytes]) -> bytes:
+def _manifest_bytes(table_payloads: dict[str, bytes], *, bundle_id: str = BUNDLE_ID) -> bytes:
+    object_prefix = _object_prefix(bundle_id)
     manifest = ArchiveBundleManifest(
         schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
         archive_format=ARCHIVE_BUNDLE_FORMAT,
@@ -126,8 +137,8 @@ def _manifest_bytes(table_payloads: dict[str, bytes]) -> bytes:
         year=2025,
         month=3,
         shard=SHARD,
-        bundle_id=BUNDLE_ID,
-        object_prefix=OBJECT_PREFIX,
+        bundle_id=bundle_id,
+        object_prefix=object_prefix,
         workflow_run_count=2,
         workflow_node_execution_count=0,
         min_created_at="2025-03-01T00:00:00+00:00",
@@ -140,7 +151,7 @@ def _manifest_bytes(table_payloads: dict[str, bytes]) -> bytes:
                 "row_count": 1,
                 "checksum": hashlib.md5(payload).hexdigest(),
                 "size_bytes": len(payload),
-                "object_key": f"{OBJECT_PREFIX}/{table_name}.parquet",
+                "object_key": f"{object_prefix}/{table_name}.parquet",
             }
             for table_name, payload in table_payloads.items()
         },
@@ -154,28 +165,59 @@ def _preparer(
     task: WorkflowRunArchiveDownloadTask,
     storage: FakeArchiveStorage,
     cache: FakeTaskCache,
+    bundles: list[WorkflowRunArchiveBundle] | None = None,
 ) -> WorkflowRunArchiveDownloadPreparer:
     return WorkflowRunArchiveDownloadPreparer(
         storage=cast(ArchiveStorage, storage),
         cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
-        session_factory=cast(sessionmaker[Session], FakeSessionFactory([_bundle()])),
+        session_factory=cast(sessionmaker[Session], FakeSessionFactory(bundles or [_bundle()])),
     )
 
 
-def test_prepare_workflow_run_archive_download_builds_zip_and_marks_ready() -> None:
-    task = _task()
-    table_payloads = {
-        "workflow_app_logs": b"app logs parquet",
-        "workflow_runs": b"runs parquet",
+def _parquet_bytes(records: list[dict[str, object]]) -> bytes:
+    buffer = io.BytesIO()
+    pq.write_table(pa.Table.from_pylist(records), buffer)
+    return buffer.getvalue()
+
+
+def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() -> None:
+    bundle_refs = [(SHARD, "bundle-a"), (SHARD, "bundle-b")]
+    task = _task(bundle_refs)
+    first_bundle_payloads = {
+        "workflow_app_logs": _parquet_bytes([{"id": "log-a", "workflow_run_id": "run-a"}]),
+        "workflow_runs": _parquet_bytes([{"id": "run-a", "status": "succeeded"}]),
+    }
+    second_bundle_payloads = {
+        "workflow_app_logs": _parquet_bytes([{"id": "log-b", "workflow_run_id": "run-b"}]),
+        "workflow_runs": _parquet_bytes([{"id": "run-b", "status": "failed"}]),
     }
     storage = FakeArchiveStorage(
         {
-            MANIFEST_KEY: _manifest_bytes(table_payloads),
-            **{f"{OBJECT_PREFIX}/{table}.parquet": payload for table, payload in table_payloads.items()},
+            f"{_object_prefix('bundle-a')}/manifest.json": _manifest_bytes(
+                first_bundle_payloads,
+                bundle_id="bundle-a",
+            ),
+            **{
+                f"{_object_prefix('bundle-a')}/{table}.parquet": payload
+                for table, payload in first_bundle_payloads.items()
+            },
+            f"{_object_prefix('bundle-b')}/manifest.json": _manifest_bytes(
+                second_bundle_payloads,
+                bundle_id="bundle-b",
+            ),
+            **{
+                f"{_object_prefix('bundle-b')}/{table}.parquet": payload
+                for table, payload in second_bundle_payloads.items()
+            },
         }
     )
     cache = FakeTaskCache(task)
-    preparer = _preparer(task=task, storage=storage, cache=cache)
+    preparer = _preparer(
+        task=task,
+        storage=storage,
+        cache=cache,
+        bundles=[_bundle("bundle-a"), _bundle("bundle-b")],
+    )
 
     result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
 
@@ -189,15 +231,19 @@ def test_prepare_workflow_run_archive_download_builds_zip_and_marks_ready() -> N
     archive_payload = storage.put_objects[result.storage_key]
     with zipfile.ZipFile(io.BytesIO(archive_payload)) as archive:
         names = set(archive.namelist())
-        assert f"workflow-run-logs-2025-03/manifests/{SHARD}-{BUNDLE_ID}.json" in names
-        assert f"workflow-run-logs-2025-03/workflow_runs/{SHARD}-{BUNDLE_ID}.parquet" in names
-        assert f"workflow-run-logs-2025-03/workflow_app_logs/{SHARD}-{BUNDLE_ID}.parquet" in names
-        assert archive.read(f"workflow-run-logs-2025-03/workflow_runs/{SHARD}-{BUNDLE_ID}.parquet") == b"runs parquet"
+        assert names == {
+            "workflow-run-logs-2025-03/workflow_app_logs.csv",
+            "workflow-run-logs-2025-03/workflow_runs.csv",
+        }
+        workflow_runs_csv = archive.read("workflow-run-logs-2025-03/workflow_runs.csv").decode("utf-8")
+        assert workflow_runs_csv.count('"id","status"') == 1
+        assert '"run-a","succeeded"' in workflow_runs_csv
+        assert '"run-b","failed"' in workflow_runs_csv
 
 
 def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch() -> None:
     task = _task()
-    table_payloads = {"workflow_runs": b"runs parquet"}
+    table_payloads = {"workflow_runs": _parquet_bytes([{"id": "run-a", "status": "succeeded"}])}
     manifest_data = json.loads(_manifest_bytes(table_payloads).decode("utf-8"))
     manifest_data["tables"]["workflow_runs"]["checksum"] = "bad-checksum"
     storage = FakeArchiveStorage(
