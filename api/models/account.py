@@ -118,6 +118,7 @@ class Account(UserMixin, TypeBase):
     )
 
     role: TenantAccountRole | None = field(default=None, init=False)
+    is_platform_admin: bool = field(default=False, init=False)
     _current_tenant: "Tenant | None" = field(default=None, init=False)
 
     @property

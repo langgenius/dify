@@ -1,5 +1,6 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import type { UserProfileResponse } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -25,10 +26,15 @@ import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
+import PlatformAdminPage from './platform-admin-page'
 
 const iconClassName = `
   w-4 h-4 mr-2
 `
+
+type EnterpriseUserProfile = UserProfileResponse & {
+  is_platform_admin?: boolean
+}
 
 type IAccountSettingProps = {
   onCancelAction: () => void
@@ -54,7 +60,8 @@ export default function AccountSetting({
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { workspacePermissionKeys } = useAppContext()
+  const { userProfile, workspacePermissionKeys } = useAppContext()
+  const enterpriseUserProfile = userProfile as EnterpriseUserProfile
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
@@ -127,6 +134,12 @@ export default function AccountSetting({
       icon: <span className={cn('i-ri-equalizer-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-equalizer-2-fill', iconClassName)} />,
     },
+    {
+      key: ACCOUNT_SETTING_TAB.PLATFORM_ADMIN,
+      name: t('settings.platformAdmin', { ns: 'common' }),
+      icon: <span className={cn('i-ri-building-4-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-building-4-fill', iconClassName)} />,
+    },
   ]
   const activeItem = settingItems.find(item => item.key === activeMenu)
 
@@ -165,6 +178,13 @@ export default function AccountSetting({
       key: 'user-group',
       items: preferenceItem ? [preferenceItem] : [],
     },
+    ...(enterpriseUserProfile.is_platform_admin
+      ? [{
+          key: 'enterprise-group',
+          name: t('settings.enterpriseGroup', { ns: 'common' }),
+          items: settingItems.filter(item => item.key === ACCOUNT_SETTING_TAB.PLATFORM_ADMIN),
+        }]
+      : []),
   ]
 
   const [searchValue, setSearchValue] = useState<string>('')
@@ -264,6 +284,7 @@ export default function AccountSetting({
               {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && <PermissionsPage containerRef={scrollContainerRef} />}
               {activeMenu === ACCOUNT_SETTING_TAB.PERMISSION_SET && <AccessRulesPage />}
+              {activeMenu === ACCOUNT_SETTING_TAB.PLATFORM_ADMIN && <PlatformAdminPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.BILLING && <BillingPage />}
               {activeMenu === ACCOUNT_SETTING_TAB.DATA_SOURCE && <DataSourcePage />}
               {activeMenu === ACCOUNT_SETTING_TAB.API_BASED_EXTENSION && <ApiBasedExtensionPage />}

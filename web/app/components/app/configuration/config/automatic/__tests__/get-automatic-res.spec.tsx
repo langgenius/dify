@@ -237,6 +237,73 @@ describe('GetAutomaticRes', () => {
     }))
   })
 
+  it('should normalize agent app mode to chat model mode for basic prompt generation', async () => {
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+      variables: [],
+      opening_statement: '',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.AGENT_CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="agent-flow"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText('generate.generate'))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(expect.objectContaining({
+        model_config: expect.objectContaining({
+          mode: 'chat',
+        }),
+      }))
+    })
+  })
+
+  it('should normalize stale stored agent mode before prompt generation', async () => {
+    localStorage.setItem('auto-gen-model', JSON.stringify({
+      name: 'stored-model',
+      provider: 'openai',
+      mode: 'agent-chat',
+      completion_params: {},
+    }))
+    mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
+      prompt: 'generated prompt',
+      variables: [],
+      opening_statement: '',
+    })
+
+    render(
+      <GetAutomaticRes
+        mode={AppModeEnum.CHAT}
+        isShow
+        onClose={mockOnClose}
+        onFinished={mockOnFinished}
+        flowId="flow-1"
+        isBasicMode
+      />,
+    )
+
+    fireEvent.click(screen.getByText('set-basic-instruction'))
+    fireEvent.click(screen.getByText('generate.generate'))
+
+    await waitFor(() => {
+      expect(mockGenerateBasicAppFirstTimeRule).toHaveBeenCalledWith(expect.objectContaining({
+        model_config: expect.objectContaining({
+          name: 'stored-model',
+          mode: 'chat',
+        }),
+      }))
+    })
+  })
+
   it('should close overwrite confirmation without applying the generated result when cancelled', async () => {
     mockGenerateBasicAppFirstTimeRule.mockResolvedValue({
       prompt: 'generated prompt',

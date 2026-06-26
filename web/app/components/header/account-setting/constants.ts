@@ -8,6 +8,7 @@ export const ACCOUNT_SETTING_TAB = {
   MEMBERS: 'members',
   ROLES_AND_PERMISSIONS: 'roles-and-permissions',
   PERMISSION_SET: 'permission-set',
+  PLATFORM_ADMIN: 'platform-admin',
   BILLING: 'billing',
   DATA_SOURCE: 'data-source',
   API_BASED_EXTENSION: 'custom-endpoint',

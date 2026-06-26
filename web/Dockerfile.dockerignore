@@ -16,7 +16,17 @@
 
 .git
 node_modules
+node_modules/**
+**/node_modules
+**/node_modules/**
+node_modules/.pnpm
+node_modules/.pnpm/**
+**/node_modules/.pnpm
+**/node_modules/.pnpm/**
 .pnpm-store
+.pnpm-store/**
+**/.pnpm-store
+**/.pnpm-store/**
 web/.env
 web/.env.*
 web/logs
@@ -32,5 +42,19 @@ web/.idea
 web/*.iml
 web/*.iws
 web/*.ipr
+api/.venv
+api/.venv/**
+**/.venv
+**/.venv/**
+/docker/volumes
+/docker/volumes/**
+/docker/volume_backups
+/docker/volume_backups/**
+docker/volumes
+docker/volumes/**
+docker/volume_backups
+docker/volume_backups/**
+**/docker/volume_backups
+**/docker/volume_backups/**
 e2e/node_modules
 sdks/nodejs-client/node_modules

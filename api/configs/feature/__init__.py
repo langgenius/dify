@@ -1418,6 +1418,10 @@ class LoginConfig(BaseSettings):
         description="whether to enable create workspace",
         default=False,
     )
+    PLATFORM_ADMIN_EMAILS: str = Field(
+        description="comma-separated platform administrator emails",
+        default="",
+    )
 
 
 class AccountConfig(BaseSettings):

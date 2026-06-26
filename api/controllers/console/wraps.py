@@ -24,6 +24,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
 from libs.login import current_account_with_tenant
+from libs.platform_admin import is_platform_admin_email
 from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
@@ -623,3 +624,18 @@ def model_validate[T, M: BaseModel, **P, R](
         return wrapper
 
     return decorator
+
+
+def platform_admin_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        current_user, _ = current_account_with_tenant()
+        if not is_platform_admin_email(current_user.email):
+            raise Forbidden()
+
+        current_user.is_platform_admin = True
+        return view(*args, **kwargs)
+
+    return decorated

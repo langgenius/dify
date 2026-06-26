@@ -52,6 +52,7 @@ from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
 from libs.login import login_required
+from libs.platform_admin import apply_platform_admin_flag
 from models import Account, AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
 from models.enums import CreatorUserRole
@@ -195,6 +196,7 @@ register_schema_models(
 
 
 def _serialize_account(account) -> dict[str, Any]:
+    apply_platform_admin_flag(account)
     return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
 
 

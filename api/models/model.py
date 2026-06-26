@@ -2535,6 +2535,43 @@ class DatasetRetrieverResource(TypeBase):
     )
 
 
+class EnterpriseMarketplaceAsset(Base):
+    __tablename__ = "enterprise_marketplace_assets"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="enterprise_marketplace_asset_pkey"),
+        sa.Index("enterprise_marketplace_asset_source_tenant_id_idx", "source_tenant_id"),
+        sa.Index("enterprise_marketplace_asset_status_idx", "status", "updated_at"),
+        sa.UniqueConstraint("source_app_id", name="unique_enterprise_marketplace_source_app"),
+    )
+
+    id = mapped_column(String(36), primary_key=True, default=lambda: str(uuid4()))
+    source_tenant_id = mapped_column(String(36), nullable=False)
+    source_app_id = mapped_column(String(36), nullable=False)
+    submitter_account_id = mapped_column(String(36), nullable=False)
+    reviewer_account_id = mapped_column(String(36), nullable=True)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str] = mapped_column(LongText, nullable=False, default="")
+    category: Mapped[str] = mapped_column(String(255), nullable=False, default="General")
+    tags = mapped_column(sa.JSON, nullable=False, default=list)
+    scenario: Mapped[str] = mapped_column(LongText, nullable=False, default="")
+    allow_show_workspace_name: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    review_note: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    )
+    reviewed_at = mapped_column(sa.DateTime, nullable=True)
+
+    @property
+    def source_app(self) -> App | None:
+        return db.session.scalar(select(App).where(App.id == self.source_app_id))
+
+    @property
+    def source_tenant(self) -> Tenant | None:
+        return db.session.scalar(select(Tenant).where(Tenant.id == self.source_tenant_id))
+
+
 class Tag(TypeBase):
     __tablename__ = "tags"
     __table_args__ = (
