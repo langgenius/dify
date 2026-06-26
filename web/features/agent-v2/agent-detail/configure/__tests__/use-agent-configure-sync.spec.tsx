@@ -8,6 +8,10 @@ import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
+const toastMock = vi.hoisted(() => ({
+  success: vi.fn(),
+}))
+
 const composerPutMutationFn = vi.hoisted(() => vi.fn(async (variables: {
   body: {
     agent_soul: Record<string, unknown>
@@ -76,6 +80,10 @@ function createDeferredPromise<T>() {
 
   return { promise, resolve }
 }
+
+vi.mock('@langgenius/dify-ui/toast', () => ({
+  toast: toastMock,
+}))
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
@@ -389,6 +397,7 @@ describe('useAgentConfigureSync', () => {
       active_config_is_published: true,
       name: 'Agent',
     })
+    expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
   it('should publish the current draft snapshot instead of a stale caller payload', async () => {

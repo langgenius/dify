@@ -2,10 +2,12 @@
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
@@ -37,6 +39,7 @@ export function useAgentConfigureSync({
   currentModel?: DefaultModel
   enabled: boolean
 }) {
+  const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const store = useStore()
   const setOriginalConfig = useSetAtom(agentComposerOriginalConfigAtom)
@@ -197,12 +200,13 @@ export function useAgentConfigureSync({
       const publishedDraft = agentSoulConfigToFormState(configSnapshot)
       setOriginalDraft(publishedDraft)
       setPublishedDraft(publishedDraft)
+      toast.success(tCommon('api.actionSuccess'))
     }
     finally {
       publishInFlightRef.current = false
       setIsPublishInFlight(false)
     }
-  }, [agentId, debouncedSaveDraft, publishAgent, queryClient, saveComposer, setOriginalConfig, setOriginalDraft, setPublishedDraft, store])
+  }, [agentId, debouncedSaveDraft, publishAgent, queryClient, saveComposer, setOriginalConfig, setOriginalDraft, setPublishedDraft, store, tCommon])
 
   return {
     draftSavedAt,
