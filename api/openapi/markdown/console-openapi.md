@@ -2868,6 +2868,7 @@ Delete an existing tracing configuration for an application
 | ---- | ----------- |
 | 204 | Tracing configuration deleted successfully |
 | 400 | Invalid request parameters or configuration not found |
+| 403 | Insufficient permissions |
 
 ### [GET] /apps/{app_id}/trace-config
 Get tracing configuration for an application
@@ -2909,6 +2910,7 @@ Update an existing tracing configuration for an application
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration updated successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters or configuration not found |  |
+| 403 | Insufficient permissions |  |
 
 ### [POST] /apps/{app_id}/trace-config
 **Create a new trace app configuration**
@@ -2933,6 +2935,7 @@ Create a new tracing configuration for an application
 | ---- | ----------- | ------ |
 | 201 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters or configuration already exists |  |
+| 403 | Insufficient permissions |  |
 
 ### [POST] /apps/{app_id}/trigger-enable
 **Update app trigger (enable/disable)**
