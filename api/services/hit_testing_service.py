@@ -4,6 +4,7 @@ import time
 from typing import Any, TypedDict, cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import Session, scoped_session
 
 from core.app.app_config.entities import ModelConfig
@@ -113,6 +114,8 @@ class HitTestingService:
         external_retrieval_model: dict[str, Any],
         attachment_ids: list | None = None,
         limit: int = 10,
+        *,
+        session: scoped_session,
     ):
         start = time.perf_counter()
 
@@ -196,6 +199,8 @@ class HitTestingService:
         account: Account,
         external_retrieval_model: dict[str, Any] | None = None,
         metadata_filtering_conditions: dict[str, Any] | None = None,
+        *,
+        session: scoped_session,
     ):
         if dataset.provider != "external":
             return {

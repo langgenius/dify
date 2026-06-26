@@ -313,7 +313,12 @@ def _infer_skill_tools_for_app(*, app_model: App, slug: str):
     if "/" in slug or not slug.strip():
         return {"code": "drive_key_invalid", "message": "skill slug must be a single path segment"}, 400
     try:
-        return SkillToolInferenceService().infer(tenant_id=app_model.tenant_id, agent_id=agent_id, slug=slug)
+        return SkillToolInferenceService().infer(
+            tenant_id=app_model.tenant_id,
+            agent_id=agent_id,
+            slug=slug,
+            session=db.session,
+        )
     except SkillToolInferenceError as exc:
         return {"code": exc.code, "message": exc.message}, exc.status_code
 

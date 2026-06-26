@@ -397,6 +397,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
                 account=current_user,
                 external_retrieval_model=payload.external_retrieval_model,
                 metadata_filtering_conditions=payload.metadata_filtering_conditions,
+                session=db.session,
             )
 
             return response

@@ -1,3 +1,5 @@
+from sqlalchemy.orm import Session
+
 """Service wrapper for the inner knowledge retrieval API.
 
 This service keeps the internal HTTP contract small while reusing the workflow

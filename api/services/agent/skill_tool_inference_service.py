@@ -19,6 +19,8 @@ from typing import Any
 
 import json_repair
 from pydantic import BaseModel, Field, ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from core.errors.error import ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -91,7 +93,7 @@ class SkillToolInferenceService:
     def __init__(self, *, drive_service: AgentDriveService | None = None) -> None:
         self._drive = drive_service or AgentDriveService()
 
-    def infer(self, *, tenant_id: str, agent_id: str, slug: str) -> dict[str, Any]:
+    def infer(self, *, tenant_id: str, agent_id: str, slug: str, session: scoped_session) -> dict[str, Any]:
         skill_md = self._load_skill_md(tenant_id=tenant_id, agent_id=agent_id, slug=slug)
 
         user_prompt = f"SKILL.md of skill '{slug}':\n\n{skill_md}"
