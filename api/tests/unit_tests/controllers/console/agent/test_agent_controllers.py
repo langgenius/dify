@@ -241,6 +241,8 @@ def test_agent_app_list_and_create_use_agent_route(
         lambda _self, **kwargs: {
             "app-list": SimpleNamespace(
                 id="agent-list",
+                app_id="app-list",
+                backing_app_id=None,
                 role="List role",
                 debug_conversation_id="debug-conversation-list",
                 active_config_snapshot_id=None,
@@ -252,6 +254,8 @@ def test_agent_app_list_and_create_use_agent_route(
         "get_app_backing_agent",
         lambda _self, **kwargs: SimpleNamespace(
             id="agent-created",
+            app_id="app-created",
+            backing_app_id=None,
             role="Created role",
             debug_conversation_id="debug-conversation-created",
             active_config_snapshot_id=None,
@@ -376,6 +380,14 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
+    agent = SimpleNamespace(
+        id=agent_id,
+        app_id="app-1",
+        backing_app_id=None,
+        role="Resolved role",
+        debug_conversation_id="debug-conversation-detail",
+        active_config_snapshot_id=None,
+    )
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
@@ -383,15 +395,12 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "get_agent_app_model",
         lambda _self, **kwargs: app_model,
     )
+    monkeypatch.setattr(roster_controller, "resolve_agent_runtime_app_model", lambda **kwargs: app_model)
+    monkeypatch.setattr(roster_controller.db.session, "scalar", lambda _stmt: agent)
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
-        lambda _self, **kwargs: SimpleNamespace(
-            id=agent_id,
-            role="Resolved role",
-            debug_conversation_id="debug-conversation-detail",
-            active_config_snapshot_id=None,
-        ),
+        lambda _self, **kwargs: agent,
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
@@ -882,7 +891,12 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
     restored = unwrap(AgentRosterVersionRestoreApi.post)(
         AgentRosterVersionRestoreApi(), "tenant-1", SimpleNamespace(id="account-1"), agent_id, version_id
     )
-    assert restored == {"result": "success", "active_config_snapshot_id": version_id}
+    assert restored == {
+        "result": "success",
+        "active_config_snapshot_id": version_id,
+        "draft_config_id": None,
+        "restored_version_id": None,
+    }
     assert captured_restore == {
         "tenant_id": "tenant-1",
         "agent_id": agent_id,
@@ -1018,7 +1032,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
                 },
             }
 
-    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda **kwargs: app_model)
+    monkeypatch.setattr(roster_controller, "resolve_agent_runtime_app_model", lambda **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_agent_observability_service", lambda: FakeObservabilityService())
 
     account = SimpleNamespace(id=account_id, timezone="UTC")
