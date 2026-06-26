@@ -12,14 +12,17 @@ import {
   FileTreeGuide,
 } from '@langgenius/dify-ui/file-tree'
 import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
-import { FILES_DRIVE_PREFIX, useAgentDriveApiContext, useAgentDriveFiles } from '../drive-context'
+import { AgentConfigureTipContent } from '../common/tip-content'
+import { FILES_DRIVE_PREFIX, useAgentDriveApiContext } from '../drive-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
 import { AgentFileTree } from './tree'
@@ -37,6 +40,16 @@ const findAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNod
       return child
   }
 }
+
+const removeAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode[] => files.flatMap((file) => {
+  if (file.id === fileId)
+    return []
+
+  if (file.children)
+    return [{ ...file, children: removeAgentFileNode(file.children, fileId) }]
+
+  return [file]
+})
 
 function AgentFileItem({
   children,
@@ -193,7 +206,9 @@ export function AgentFiles() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentDriveApiContext()
-  const { query: driveFilesQuery, files } = useAgentDriveFiles({ prefix: FILES_DRIVE_PREFIX })
+  const draftFiles = useAtomValue(agentComposerFilesAtom)
+  const setFiles = useSetAtom(agentComposerFilesAtom)
+  const files = draftFiles.filter(file => file.driveKey?.startsWith(FILES_DRIVE_PREFIX))
   const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.files.delete.mutationOptions())
   const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.files.delete.mutationOptions())
   const removeFile = useCallback((fileId: string) => {
@@ -204,7 +219,7 @@ export function AgentFiles() {
       return
 
     const onSuccess = () => {
-      void driveFilesQuery.refetch()
+      setFiles(files => removeAgentFileNode(files, fileId))
     }
     if (apiContext.workflow) {
       deleteWorkflowAgentFile({
@@ -227,17 +242,20 @@ export function AgentFiles() {
         key: driveKey,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, driveFilesQuery, files])
+  }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setFiles])
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
     setIsUploadOpen(true)
   }, [])
   useRegisterAgentOrchestrateAddAction('files', handleOpenUpload)
   const handleUploaded = useCallback((file: AgentFileNode) => {
-    void driveFilesQuery.refetch()
+    setFiles(files => [
+      ...removeAgentFileNode(files, file.id),
+      file,
+    ])
     promptAddCallbackRef.current?.(file)
     promptAddCallbackRef.current = undefined
-  }, [driveFilesQuery])
+  }, [setFiles])
   const handleUploadOpenChange = useCallback((open: boolean) => {
     if (!open)
       promptAddCallbackRef.current = undefined
@@ -249,7 +267,7 @@ export function AgentFiles() {
       <ConfigureSection
         label={t('agentDetail.configure.files.label')}
         labelId="agent-configure-files-label"
-        tip={filesTip}
+        tip={<AgentConfigureTipContent type="files" />}
         tipAriaLabel={filesTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="pb-4"

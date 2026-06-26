@@ -11,7 +11,7 @@ from dify_agent.agent_stub.cli._files import (
     upload_file_from_environment,
     upload_tool_file_resource_from_environment,
 )
-from dify_agent.agent_stub.client._errors import AgentStubTransferError
+from dify_agent.agent_stub.client._errors import AgentStubTransferError, AgentStubValidationError
 
 
 def _reference(record_id: str) -> str:
@@ -120,7 +120,7 @@ def test_download_file_from_environment_saves_bytes_and_renames_on_collision(
     result = download_file_from_environment(
         transfer_method="tool_file",
         reference_or_url=_reference("tool-file-1"),
-        directory=str(target_dir),
+        local_dir=str(target_dir),
     )
 
     assert result.path.name == "report (1).pdf"
@@ -157,7 +157,7 @@ def test_download_file_from_environment_sanitizes_server_filename(
     result = download_file_from_environment(
         transfer_method="tool_file",
         reference_or_url=_reference("tool-file-1"),
-        directory=str(target_dir),
+        local_dir=str(target_dir),
     )
 
     assert result.path.parent == target_dir
@@ -185,6 +185,62 @@ def test_upload_file_from_environment_rejects_non_canonical_reference(
 
     with pytest.raises(AgentStubTransferError, match="invalid canonical reference"):
         _ = upload_file_from_environment(path=str(source))
+
+
+def test_download_file_from_environment_supports_mapping_json(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    target_dir = tmp_path / "inputs"
+    monkeypatch.setenv("DIFY_AGENT_STUB_API_BASE_URL", "https://agent.example.com/agent-stub")
+    monkeypatch.setenv("DIFY_AGENT_STUB_AUTH_JWE", "test-jwe")
+    captured: dict[str, object] = {}
+
+    def fake_request_download(**kwargs):
+        captured["file"] = kwargs["file"]
+        return type(
+            "Response",
+            (),
+            {
+                "filename": "report.pdf",
+                "mime_type": "application/pdf",
+                "size": 12,
+                "download_url": "https://files.example.com/download",
+            },
+        )()
+
+    monkeypatch.setattr("dify_agent.agent_stub.cli._files.request_agent_stub_file_download_sync", fake_request_download)
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli._files.download_file_bytes_from_signed_url_sync",
+        lambda **_kwargs: b"downloaded",
+    )
+
+    result = download_file_from_environment(
+        mapping=json.dumps({"transfer_method": "tool_file", "reference": _reference("tool-file-1")}),
+        local_dir=str(target_dir),
+    )
+
+    assert captured["file"].model_dump() == {
+        "transfer_method": "tool_file",
+        "reference": _reference("tool-file-1"),
+        "url": None,
+    }
+    assert result.path == target_dir / "report.pdf"
+    assert result.path.read_bytes() == b"downloaded"
+
+
+def test_download_file_from_environment_requires_mapping_or_positional_pair() -> None:
+    with pytest.raises(AgentStubValidationError, match="requires either --mapping or TRANSFER_METHOD REFERENCE_OR_URL"):
+        _ = download_file_from_environment()
+
+
+def test_download_file_from_environment_rejects_mapping_mixed_with_positionals() -> None:
+    with pytest.raises(AgentStubValidationError, match="cannot be combined"):
+        _ = download_file_from_environment(
+            transfer_method="tool_file",
+            reference_or_url=_reference("tool-file-1"),
+            mapping=json.dumps({"transfer_method": "tool_file", "reference": _reference("tool-file-1")}),
+        )
 
 
 def test_upload_tool_file_resource_from_environment_rejects_missing_id(

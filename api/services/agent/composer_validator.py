@@ -148,15 +148,15 @@ class ComposerConfigValidator:
         cls,
         payload: ComposerSavePayload,
         *,
-        existing_dataset_ids: set[str] | None = None,
+        existing_knowledge_set_ids: set[str] | None = None,
     ) -> dict[str, Any]:
         """ENG-617 §5.3/§5.4 soft findings — never block save.
 
         ``warnings`` carries ``mention_target_missing`` / ``mention_malformed``
-        entries; ``knowledge_retrieval_placeholder`` keeps dangling knowledge
+        entries; ``knowledge_retrieval_placeholder`` keeps dangling knowledge-set
         mentions with a placeholder name (0522 consensus) instead of dropping or
-        rejecting them. With ``existing_dataset_ids`` provided, configured-but-
-        deleted datasets surface as placeholders too.
+        rejecting them. With ``existing_knowledge_set_ids`` provided, mentions
+        that no longer exist in the current Agent Soul surface as placeholders too.
         """
         warnings: list[dict[str, Any]] = []
         placeholders: list[dict[str, str]] = []
@@ -188,7 +188,7 @@ class ComposerConfigValidator:
                 resolved = resolver(mention)
                 if mention.kind == MentionKind.KNOWLEDGE:
                     dangling = resolved is None or (
-                        existing_dataset_ids is not None and mention.ref_id not in existing_dataset_ids
+                        existing_knowledge_set_ids is not None and mention.ref_id not in existing_knowledge_set_ids
                     )
                     if dangling:
                         placeholders.append(
