@@ -1,5 +1,8 @@
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from models.account import TenantPluginAutoUpgradeStrategy
 
@@ -227,7 +230,7 @@ class TestBackfillStrategyCategories:
         assert default_time % (15 * 60) == 0
         assert 0 <= default_time < 24 * 60 * 60
 
-    def test_creates_missing_categories_and_splits_known_plugins(self):
+    def test_creates_missing_categories_and_splits_known_plugins(self, caplog: pytest.LogCaptureFixture):
         p1, session = _patched_session()
         tool_strategy = SimpleNamespace(
             category=TenantPluginAutoUpgradeStrategy.PluginCategory.TOOL,
@@ -260,7 +263,11 @@ class TestBackfillStrategyCategories:
         installer = MagicMock()
         installer.list_plugins.return_value = installed_plugins
 
-        with p1, patch(f"{MODULE}.PluginInstaller", return_value=installer), patch(f"{MODULE}.logger") as logger:
+        with (
+            p1,
+            patch(f"{MODULE}.PluginInstaller", return_value=installer),
+            caplog.at_level(logging.WARNING, logger=MODULE),
+        ):
             from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 
             result = PluginAutoUpgradeService.backfill_strategy_categories("t1")
@@ -272,10 +279,7 @@ class TestBackfillStrategyCategories:
         assert tool_strategy.include_plugins == ["tool-plugin"]
         assert model_strategy.exclude_plugins == ["model-plugin"]
         assert model_strategy.include_plugins == ["model-plugin"]
-        logger.warning.assert_called_once_with(
+        assert (
             "Skipped unknown plugin IDs while backfilling plugin auto-upgrade strategies: "
-            "tenant_id=%s, field=%s, plugin_ids=%s",
-            "t1",
-            "exclude_plugins",
-            ["unknown-plugin"],
+            "tenant_id=t1, field=exclude_plugins, plugin_ids=['unknown-plugin']" in caplog.messages
         )

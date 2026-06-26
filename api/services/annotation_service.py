@@ -5,6 +5,7 @@ from typing import TypedDict
 
 import pandas as pd
 from sqlalchemy import delete, or_, select, update
+from sqlalchemy.orm import scoped_session
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
@@ -413,17 +414,19 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def update_app_annotation_directly(cls, args: UpdateAnnotationArgs, app_id: str, annotation_id: str):
+    def update_app_annotation_directly(
+        cls, args: UpdateAnnotationArgs, app_id: str, annotation_id: str, session: scoped_session
+    ):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
-        app = db.session.scalar(
+        app = session.scalar(
             select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
             raise NotFound("App not found")
 
-        annotation = db.session.get(MessageAnnotation, annotation_id)
+        annotation = session.get(MessageAnnotation, annotation_id)
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -439,9 +442,9 @@ class AppAnnotationService:
         annotation.content = answer
         annotation.question = question
 
-        db.session.commit()
+        session.commit()
         # if annotation reply is enabled , add annotation to index
-        app_annotation_setting = db.session.scalar(
+        app_annotation_setting = session.scalar(
             select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
 
@@ -457,33 +460,33 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def delete_app_annotation(cls, app_id: str, annotation_id: str):
+    def delete_app_annotation(cls, app_id: str, annotation_id: str, session: scoped_session):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
-        app = db.session.scalar(
+        app = session.scalar(
             select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)
         )
 
         if not app:
             raise NotFound("App not found")
 
-        annotation = db.session.get(MessageAnnotation, annotation_id)
+        annotation = session.get(MessageAnnotation, annotation_id)
 
         if not annotation:
             raise NotFound("Annotation not found")
 
-        db.session.delete(annotation)
+        session.delete(annotation)
 
-        annotation_hit_histories = db.session.scalars(
+        annotation_hit_histories = session.scalars(
             select(AppAnnotationHitHistory).where(AppAnnotationHitHistory.annotation_id == annotation_id)
         ).all()
         if annotation_hit_histories:
             for annotation_hit_history in annotation_hit_histories:
-                db.session.delete(annotation_hit_history)
+                session.delete(annotation_hit_history)
 
-        db.session.commit()
+        session.commit()
         # if annotation reply is enabled , delete annotation index
-        app_annotation_setting = db.session.scalar(
+        app_annotation_setting = session.scalar(
             select(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).limit(1)
         )
 

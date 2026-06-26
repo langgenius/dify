@@ -64,6 +64,7 @@ export type ChatProps = {
   switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
+  featureBarReadonly?: boolean
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
@@ -109,6 +110,7 @@ const Chat: FC<ChatProps> = ({
   switchSibling,
   showFeatureBar,
   showFileUpload,
+  featureBarReadonly,
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
@@ -242,6 +244,7 @@ const Chat: FC<ChatProps> = ({
                   disabled={inputDisabled}
                   showFeatureBar={showFeatureBar}
                   showFileUpload={showFileUpload}
+                  featureBarReadonly={featureBarReadonly}
                   featureBarDisabled={isResponding}
                   onFeatureBarClick={onFeatureBarClick}
                   visionConfig={config?.file_upload}

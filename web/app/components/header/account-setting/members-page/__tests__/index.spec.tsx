@@ -1,4 +1,5 @@
 import type { AppContextValue } from '@/context/app-context'
+import type { Role } from '@/models/access-control'
 import type { ICurrentWorkspace, Member } from '@/models/common'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -9,16 +10,31 @@ import { Plan } from '@/app/components/billing/type'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { useMembers } from '@/service/use-common'
 import MembersPage from '../index'
 
 vi.mock('@/context/app-context')
 vi.mock('@/context/provider-context')
 vi.mock('@/hooks/use-format-time-from-now')
+vi.mock('@/service/access-control/use-member-roles')
 vi.mock('@/service/use-common')
 
 const renderMembersPage = () => renderWithSystemFeatures(<MembersPage />, {
   systemFeatures: { is_email_setup: true },
+})
+
+const createRole = (overrides: Partial<Role>): Role => ({
+  id: 'role-1',
+  tenant_id: 'tenant-1',
+  type: 'workspace',
+  category: 'global_custom',
+  name: 'Role',
+  description: '',
+  is_builtin: false,
+  permission_keys: [],
+  role_tag: '',
+  ...overrides,
 })
 
 vi.mock('../edit-workspace-modal', () => ({
@@ -51,23 +67,72 @@ vi.mock('../invited-modal', () => ({
     </div>
   ),
 }))
-vi.mock('../operation', () => ({
-  default: ({ member }: { member: Member }) => (
-    <div>
-      Member Operation
-      {' '}
-      {member.role}
-    </div>
+vi.mock('../role-badges', () => ({
+  default: ({ roleNames }: { roleNames: string[] }) => (
+    <div data-testid="role-badges">{roleNames.join(',')}</div>
   ),
 }))
-vi.mock('../operation/transfer-ownership', () => ({
-  default: ({ onOperate }: { onOperate: () => void }) => <button onClick={onOperate}>Transfer ownership</button>,
+vi.mock('../member-menu', () => ({
+  default: ({
+    member,
+    isCurrentUser,
+    onTransferOwnership,
+    canTransferOwnership,
+  }: {
+    member: Member
+    isCurrentUser?: boolean
+    onTransferOwnership?: () => void
+    canTransferOwnership?: boolean
+  }) => (
+    <div data-testid="member-menu">
+      {member.role !== 'owner' && !isCurrentUser && (
+        <div>{`Member Operation ${member.role}`}</div>
+      )}
+      {canTransferOwnership && member.role === 'owner' && onTransferOwnership && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onTransferOwnership()
+          }}
+        >
+          Transfer ownership
+        </button>
+      )}
+    </div>
+  ),
 }))
 vi.mock('../transfer-ownership-modal', () => ({
   default: ({ onClose }: { onClose: () => void }) => (
     <div>
       <div>Transfer Ownership Modal</div>
       <button onClick={onClose}>Close Transfer Modal</button>
+    </div>
+  ),
+}))
+vi.mock('../member-details-modal', () => ({
+  default: ({
+    member,
+    onClose,
+    canAssignRoles,
+    onAssignSubmit,
+  }: {
+    member: Member
+    onClose: () => void
+    canAssignRoles?: boolean
+    onAssignSubmit?: (roles: Role[]) => void
+  }) => (
+    <div>
+      <div>Member Details Modal</div>
+      <div data-testid="details-member-name">{member.name}</div>
+      <div data-testid="details-can-assign">{String(canAssignRoles)}</div>
+      <button onClick={() => onAssignSubmit?.([
+        createRole({ id: 'role-next', name: 'Next role' }),
+        createRole({ id: 'role-extra', name: 'Extra role' }),
+      ])}
+      >
+        Submit Member Roles
+      </button>
+      <button onClick={onClose}>Close Member Details Modal</button>
     </div>
   ),
 }))
@@ -78,6 +143,7 @@ vi.mock('@/app/components/billing/upgrade-btn', () => ({
 describe('MembersPage', () => {
   const mockRefetch = vi.fn()
   const mockFormatTimeFromNow = vi.fn(() => 'just now')
+  const mockUpdateRolesOfMember = vi.fn()
 
   const mockAccounts: Member[] = [
     {
@@ -91,6 +157,7 @@ describe('MembersPage', () => {
       last_login_at: '1731000000',
       created_at: '1731000000',
       status: 'active',
+      roles: [createRole({ id: 'owner-role', name: 'Owner', is_builtin: true, role_tag: 'owner' })],
     },
     {
       id: '2',
@@ -103,6 +170,7 @@ describe('MembersPage', () => {
       last_login_at: '1731000000',
       created_at: '1731000000',
       status: 'active',
+      roles: [createRole({ id: 'admin-role', name: 'Admin', is_builtin: true })],
     },
   ]
 
@@ -114,12 +182,20 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'owner' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: true,
       isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as AppContextValue)
 
     vi.mocked(useMembers).mockReturnValue({
       data: { accounts: mockAccounts },
       refetch: mockRefetch,
     } as unknown as ReturnType<typeof useMembers>)
+    mockUpdateRolesOfMember.mockImplementation((_payload, options) => {
+      options?.onSuccess?.()
+      return Promise.resolve()
+    })
+    vi.mocked(useUpdateRolesOfMember).mockReturnValue({
+      mutateAsync: mockUpdateRolesOfMember,
+    } as unknown as ReturnType<typeof useUpdateRolesOfMember>)
 
     vi.mocked(useProviderContext).mockReturnValue(createMockProviderContextValue({
       enableBilling: false,
@@ -137,6 +213,27 @@ describe('MembersPage', () => {
     expect(screen.getByText('Test Workspace'))!.toBeInTheDocument()
     expect(screen.getByText('Owner User'))!.toBeInTheDocument()
     expect(screen.getByText('Admin User'))!.toBeInTheDocument()
+  })
+
+  it('should render fixed name column and flexible role column layout', () => {
+    renderMembersPage()
+
+    expect(screen.getByText('common.members.name', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('w-65', 'shrink-0')
+    expect(screen.getByText('common.members.role', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
+    expect(screen.getByTestId('member-row-1').children[0])!.toHaveClass('w-65', 'shrink-0')
+    expect(screen.getByTestId('member-row-1').children[2])!.toHaveClass('min-w-0', 'grow')
+  })
+
+  it('should render plural roles column header when RBAC is enabled', () => {
+    renderWithSystemFeatures(<MembersPage />, {
+      systemFeatures: {
+        is_email_setup: true,
+        rbac_enabled: true,
+      },
+    })
+
+    expect(screen.getByText('common.members.roles', { selector: '.system-xs-medium-uppercase' }))!.toHaveClass('min-w-0', 'grow')
+    expect(screen.queryByText('common.members.role', { selector: '.system-xs-medium-uppercase' })).not.toBeInTheDocument()
   })
 
   it('should open and close invite modal', async () => {
@@ -183,7 +280,7 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    expect(screen.getByText('common.members.owner'))!.toBeInTheDocument()
+    expect(screen.getByText('Owner'))!.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /transfer ownership/i })).not.toBeInTheDocument()
   })
 
@@ -294,6 +391,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as AppContextValue)
 
     renderMembersPage()
@@ -308,6 +406,7 @@ describe('MembersPage', () => {
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
       isCurrentWorkspaceOwner: false,
       isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
     } as unknown as AppContextValue)
     vi.mocked(useMembers).mockReturnValue({
       data: {
@@ -329,7 +428,6 @@ describe('MembersPage', () => {
     expect(screen.getByText('Member Operation normal'))!.toBeInTheDocument()
     expect(screen.getByText('Member Operation dataset_operator'))!.toBeInTheDocument()
     expect(screen.getByText('Member Operation admin'))!.toBeInTheDocument()
-    expect(screen.getAllByText('common.members.admin')).toHaveLength(1)
     expect(screen.queryByText('Member Operation owner')).not.toBeInTheDocument()
   })
 
@@ -380,7 +478,7 @@ describe('MembersPage', () => {
     expect(screen.getByText('1'))!.toBeInTheDocument()
   })
 
-  it('should show normal role as fallback for unknown role', () => {
+  it('should render role badge names from account roles', () => {
     vi.mocked(useAppContext).mockReturnValue({
       userProfile: { email: 'admin@example.com' },
       currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
@@ -394,7 +492,106 @@ describe('MembersPage', () => {
 
     renderMembersPage()
 
-    expect(screen.getByText('common.members.normal'))!.toBeInTheDocument()
+    expect(screen.getByText('Admin'))!.toBeInTheDocument()
+  })
+
+  it('should open member details modal when a member row is clicked', async () => {
+    const user = userEvent.setup()
+
+    renderMembersPage()
+
+    await user.click(screen.getByTestId('member-row-2'))
+
+    expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
+    expect(screen.getByTestId('details-member-name'))!.toHaveTextContent('Admin User')
+
+    await user.click(screen.getByRole('button', { name: 'Close Member Details Modal' }))
+    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
+  })
+
+  it('should open member details modal via keyboard Enter', async () => {
+    const user = userEvent.setup()
+
+    renderMembersPage()
+
+    const row = screen.getByTestId('member-row-2')
+    row.focus()
+    await user.keyboard('{Enter}')
+
+    expect(screen.getByText('Member Details Modal'))!.toBeInTheDocument()
+  })
+
+  it('should not allow assigning roles from member details when target is owner', async () => {
+    const user = userEvent.setup()
+
+    renderMembersPage()
+
+    await user.click(screen.getByTestId('member-row-1'))
+
+    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
+  })
+
+  it('should not allow assigning roles from member details when target is current user', async () => {
+    const user = userEvent.setup()
+    vi.mocked(useAppContext).mockReturnValue({
+      userProfile: { email: 'admin@example.com' },
+      currentWorkspace: { name: 'Test Workspace', role: 'admin' } as ICurrentWorkspace,
+      isCurrentWorkspaceOwner: false,
+      isCurrentWorkspaceManager: true,
+      workspacePermissionKeys: ['workspace.member.manage'],
+    } as unknown as AppContextValue)
+
+    renderMembersPage()
+
+    await user.click(screen.getByTestId('member-row-2'))
+
+    expect(screen.getByTestId('details-can-assign'))!.toHaveTextContent('false')
+  })
+
+  it('should submit only one member role when RBAC is disabled', async () => {
+    const user = userEvent.setup()
+
+    renderMembersPage()
+
+    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
+
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      memberId: '2',
+      roleIds: ['role-next'],
+    }, expect.any(Object))
+    expect(mockRefetch).toHaveBeenCalled()
+    expect(screen.getByText('Member Details Modal')).toBeInTheDocument()
+    expect(screen.getByTestId('details-member-name')).toHaveTextContent('Admin User')
+  })
+
+  it('should submit multiple member roles when RBAC is enabled', async () => {
+    const user = userEvent.setup()
+
+    renderWithSystemFeatures(<MembersPage />, {
+      systemFeatures: {
+        is_email_setup: true,
+        rbac_enabled: true,
+      },
+    })
+
+    await user.click(screen.getByTestId('member-row-2'))
+    await user.click(screen.getByRole('button', { name: 'Submit Member Roles' }))
+
+    expect(mockUpdateRolesOfMember).toHaveBeenCalledWith({
+      memberId: '2',
+      roleIds: ['role-next', 'role-extra'],
+    }, expect.any(Object))
+  })
+
+  it('should not open member details when clicking the member menu area', async () => {
+    const user = userEvent.setup()
+
+    renderMembersPage()
+
+    await user.click(screen.getByRole('button', { name: /transfer ownership/i }))
+
+    expect(screen.queryByText('Member Details Modal')).not.toBeInTheDocument()
   })
 
   it('should show upgrade button when member limit is full', () => {

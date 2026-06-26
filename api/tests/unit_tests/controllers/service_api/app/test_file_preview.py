@@ -2,7 +2,9 @@
 Unit tests for Service API File Preview endpoint
 """
 
+import logging
 import uuid
+from typing import Protocol, cast
 from unittest.mock import Mock, patch
 
 import pytest
@@ -10,6 +12,12 @@ import pytest
 from controllers.service_api.app.error import FileAccessDeniedError, FileNotFoundError
 from controllers.service_api.app.file_preview import FilePreviewApi
 from models.model import App, EndUser, Message, MessageFile, UploadFile
+
+
+class _FilePreviewLogRecord(Protocol):
+    file_id: str
+    app_id: str
+    error: str
 
 
 class TestFilePreviewApi:
@@ -348,8 +356,9 @@ class TestFilePreviewApi:
 
             assert "Storage error" in str(exc_info.value)
 
-    @patch("controllers.service_api.app.file_preview.logger")
-    def test_validate_file_ownership_unexpected_error_logging(self, mock_logger, file_preview_api: FilePreviewApi):
+    def test_validate_file_ownership_unexpected_error_logging(
+        self, file_preview_api: FilePreviewApi, caplog: pytest.LogCaptureFixture
+    ):
         """Test that unexpected errors are logged properly"""
         file_id = str(uuid.uuid4())
         app_id = str(uuid.uuid4())
@@ -359,14 +368,19 @@ class TestFilePreviewApi:
             mock_db.session.scalar.side_effect = Exception("Unexpected database error")
 
             # Execute and assert exception
-            with pytest.raises(FileAccessDeniedError) as exc_info:
-                file_preview_api._validate_file_ownership(file_id, app_id)
+            with caplog.at_level(logging.ERROR, logger="controllers.service_api.app.file_preview"):
+                with pytest.raises(FileAccessDeniedError) as exc_info:
+                    file_preview_api._validate_file_ownership(file_id, app_id)
 
             # Verify error message
             assert "File access validation failed" in str(exc_info.value)
 
-            # Verify logging was called
-            mock_logger.exception.assert_called_once_with(
-                "Unexpected error during file ownership validation",
-                extra={"file_id": file_id, "app_id": app_id, "error": "Unexpected database error"},
-            )
+            # Verify logging was called with the structured context fields. The ``extra`` keys
+            # are attached to the LogRecord as attributes, so they are not in ``caplog.text``.
+            assert len(caplog.records) == 1
+            log_record = caplog.records[0]
+            assert log_record.getMessage() == "Unexpected error during file ownership validation"
+            record = cast(_FilePreviewLogRecord, log_record)
+            assert record.file_id == file_id
+            assert record.app_id == app_id
+            assert record.error == "Unexpected database error"

@@ -628,7 +628,7 @@ docs = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'server'", specifier = "==0.136.0" },
-    { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.1" },
+    { name = "graphon", marker = "extra == 'server'", specifier = "==0.5.2" },
     { name = "grpclib", extras = ["protobuf"], marker = "extra == 'grpc'", specifier = ">=0.4.9,<0.5.0" },
     { name = "httpx", specifier = "==0.28.1" },
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
@@ -639,7 +639,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], marker = "extra == 'server'", specifier = ">=1.85.1,<2.0.0" },
     { name = "pydantic-settings", marker = "extra == 'server'", specifier = ">=2.12.0,<3.0.0" },
     { name = "redis", marker = "extra == 'server'", specifier = ">=7.4.0,<8.0.0" },
-    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.2.0" },
+    { name = "shell-session-manager", marker = "extra == 'server'", specifier = "==2.2.1" },
     { name = "typer", specifier = ">=0.16.1,<0.17" },
     { name = "typing-extensions", specifier = ">=4.12.2,<5.0.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'server'", specifier = "==0.46.0" },
@@ -808,7 +808,7 @@ wheels = [
 
 [[package]]
 name = "graphon"
-version = "0.5.1"
+version = "0.5.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "charset-normalizer" },
@@ -829,9 +829,9 @@ dependencies = [
     { name = "unstructured", extra = ["docx", "epub", "md", "ppt", "pptx"] },
     { name = "webvtt-py" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a2/fa/432fa802bcb13f7f51dc323ddef92594b15333eafef181d937ffa554116e/graphon-0.5.1.tar.gz", hash = "sha256:ca38cc62ef3fbc2f3072b68235bcb41e32a6369a1753b46418c1d761c57125fe", size = 269741, upload-time = "2026-06-11T03:01:38.197Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c2/16/f183da187414c335be67f52f6a1b7c2a33bf0b1d5090eda7e6c92d42d94a/graphon-0.5.2.tar.gz", hash = "sha256:d66a9edcd883766bd50e94f84a691c92ce536ea60e721552089e83ac8e94bf68", size = 269773, upload-time = "2026-06-16T04:06:22.074Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e9/c5/61e8634b89c320af9453083213e8be436071634dbc69cb14b5fe646763e4/graphon-0.5.1-py3-none-any.whl", hash = "sha256:70b49c244a46fb6e338905210cc895bd67584d9ab1412f6ba3cd4ed284010091", size = 381866, upload-time = "2026-06-11T03:01:36.693Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/e6/36a3981cd44e7a40a7cd7d374e26f01e02dd49410c5fbbd7df248750d5fb/graphon-0.5.2-py3-none-any.whl", hash = "sha256:11f89399e67ed1ddd2ce1c336accd9c4ad5b8fe2741f9167e6085af0b325cd14", size = 381908, upload-time = "2026-06-16T04:06:20.453Z" },
 ]
 
 [[package]]
@@ -3286,7 +3286,7 @@ wheels = [
 
 [[package]]
 name = "shell-session-manager"
-version = "2.2.0"
+version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiosqlite" },
@@ -3298,9 +3298,9 @@ dependencies = [
     { name = "typer" },
     { name = "uvicorn" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/84/aa6a86e7686b0c1e67b17ce4f5db6a42f115f1269d1f85362e22416b5829/shell_session_manager-2.2.0.tar.gz", hash = "sha256:ed31f12eecd30ad342dab9713651e2cb259b9beea6a6043842b73616c21b3070", size = 49479, upload-time = "2026-06-02T12:49:34.988Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/54/c3/83701914c5194e0390b93a05685ddfceda425348523254f43fdcb5024a37/shell_session_manager-2.2.1.tar.gz", hash = "sha256:421531c8bca5a586e9245282e13fdbe2566fca34e72a7320749c745cc2a935ee", size = 51380, upload-time = "2026-06-19T12:21:58.67Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/cc/71fa09d0d865ee652312067d9d13c51b7800cdc0e54afe0e076ad1a29520/shell_session_manager-2.2.0-py3-none-any.whl", hash = "sha256:338cca9716facec60cc3985c1d88837c2f23abbc17ff2b61e58b4e4a0f9f19ad", size = 47240, upload-time = "2026-06-02T12:49:33.585Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/b6/b8d84ff7e59661cef85a1f021f500c798451121775f5aafd7b670ba63117/shell_session_manager-2.2.1-py3-none-any.whl", hash = "sha256:b7452dd5d50b5f55d2a108a2c422ed9883a817e2145f884844d072ec95dcaff8", size = 48895, upload-time = "2026-06-19T12:21:57.183Z" },
 ]
 
 [[package]]

@@ -4,6 +4,8 @@ saved, using the deterministic fake backend client (no live stack)."""
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any, override
 from unittest.mock import MagicMock
@@ -11,7 +13,17 @@ from unittest.mock import MagicMock
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
-from dify_agent.protocol import CancelRunRequest, CancelRunResponse, RuntimeLayerSpec
+from dify_agent.protocol import (
+    CancelRunRequest,
+    CancelRunResponse,
+    PydanticAIStreamRunEvent,
+    RunEvent,
+    RunStartedEvent,
+    RunSucceededEvent,
+    RunSucceededEventData,
+    RuntimeLayerSpec,
+)
+from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -67,6 +79,58 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         return super().cancel_run(run_id, request=request)
 
 
+class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="hello ")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=TextPartDelta(content_delta="agent")),
+        )
+        yield RunSucceededEvent(
+            id="4-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "hello agent"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartStartEvent(index=0, part=TextPart(content="hello")),
+        )
+        yield RunSucceededEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "hello agent"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
 class _FakeSessionStore:
     def __init__(
         self,
@@ -75,6 +139,7 @@ class _FakeSessionStore:
     ) -> None:
         self.loaded = loaded
         self._loaded_session = loaded_session
+        self.loaded_scopes: list[AgentAppSessionScope] = []
         self.saved: list[
             tuple[
                 AgentAppSessionScope,
@@ -87,9 +152,11 @@ class _FakeSessionStore:
         ] = []
 
     def load_active_snapshot(self, scope: AgentAppSessionScope) -> CompositorSessionSnapshot | None:
+        self.loaded_scopes.append(scope)
         return self.loaded
 
     def load_active_session(self, scope: AgentAppSessionScope) -> StoredAgentAppSession | None:
+        self.loaded_scopes.append(scope)
         if self._loaded_session is not None:
             return self._loaded_session
         if self.loaded is None:
@@ -165,9 +232,13 @@ def _message_end(qm: _FakeQueueManager) -> QueueMessageEndEvent:
 
 
 def _saved_user_query(qm: _FakeQueueManager) -> str:
-    prompt_messages = _message_end(qm).llm_result.prompt_messages
+    llm_result = _message_end(qm).llm_result
+    assert llm_result is not None
+    prompt_messages = llm_result.prompt_messages
     assert len(prompt_messages) == 1
-    return prompt_messages[0].content
+    content = prompt_messages[0].content
+    assert isinstance(content, str)
+    return content
 
 
 def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
@@ -204,6 +275,35 @@ def test_successful_turn_publishes_chunk_and_message_end_and_saves_session():
     ]
 
 
+def test_successful_turn_forwards_agent_backend_stream_text_deltas_without_duplicate_terminal_chunk():
+    client = _StreamingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello ", "agent"]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
+    assert store.saved
+
+
+def test_successful_turn_forwards_part_start_text_and_publishes_missing_terminal_suffix():
+    client = _StreamingPartStartFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    end_events = [e for e in qm.events if isinstance(e, QueueMessageEndEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["hello", " agent"]
+    assert len(end_events) == 1
+    assert end_events[0].llm_result.message.content == "hello agent"
+
+
 def test_prior_session_snapshot_is_threaded_into_request():
     prior = CompositorSessionSnapshot(layers=[])
     client = FakeAgentBackendRunClient()
@@ -214,6 +314,31 @@ def test_prior_session_snapshot_is_threaded_into_request():
 
     assert client.request is not None
     assert client.request.session_snapshot is prior
+
+
+def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
+    prior = CompositorSessionSnapshot(layers=[])
+    client = FakeAgentBackendRunClient()
+    store = _FakeSessionStore(loaded=prior)
+    qm = _FakeQueueManager()
+
+    _runner(client, store).run(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-new",
+        agent_soul=_soul(),
+        conversation_id="conv-1",
+        query="hello",
+        message_id="msg-1",
+        model_name="gpt-4o-mini",
+        queue_manager=qm,  # type: ignore[arg-type]
+        session_scope_snapshot_id=None,
+    )
+
+    assert client.request is not None
+    assert client.request.session_snapshot is prior
+    assert store.loaded_scopes[0].agent_config_snapshot_id is None
+    assert store.saved[0][0].agent_config_snapshot_id is None
 
 
 def test_failed_run_raises_agent_backend_error():

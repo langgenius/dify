@@ -112,7 +112,7 @@ def test_run_uses_single_node_execution_branch(
     assert entry_kwargs["graph_runtime_state"] is graph_runtime_state
 
 
-def test_single_node_run_validates_target_node_config(monkeypatch) -> None:
+def test_single_node_run_validates_target_node_config(monkeypatch: pytest.MonkeyPatch) -> None:
     runner = WorkflowBasedAppRunner(
         queue_manager=MagicMock(spec=AppQueueManager),
         variable_loader=MagicMock(),

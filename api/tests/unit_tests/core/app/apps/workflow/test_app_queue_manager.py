@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import pytest
+from unittest.mock import patch
 
 from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueMessageEndEvent, QueuePingEvent
@@ -17,10 +16,15 @@ class TestWorkflowAppQueueManager:
             invoke_from=InvokeFrom.DEBUGGER,
             app_mode="workflow",
         )
-        manager._is_stopped = lambda: True
 
-        with pytest.raises(GenerateTaskStoppedError):
+        with (
+            patch.object(manager, "_is_stopped", return_value=True) as is_stopped,
+            patch.object(manager, "stop_listen") as stop_listen,
+        ):
             manager._publish(QueueMessageEndEvent(llm_result=None), PublishFrom.APPLICATION_MANAGER)
+
+        stop_listen.assert_called_once()
+        is_stopped.assert_not_called()
 
     def test_publish_non_stop_event_does_not_raise(self):
         manager = WorkflowAppQueueManager(

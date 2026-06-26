@@ -73,9 +73,12 @@ def _published_app_filter():
     has_published_workflow = exists(select(Workflow.id).where(Workflow.id == App.workflow_id))
     has_published_model_config = exists(select(AppModelConfig.id).where(AppModelConfig.id == App.app_model_config_id))
 
-    return or_(
-        and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
-        and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
+    return and_(
+        App.mode != AppMode.AGENT,
+        or_(
+            and_(App.mode.in_(workflow_app_modes), App.workflow_id.isnot(None), has_published_workflow),
+            and_(~App.mode.in_(workflow_app_modes), App.app_model_config_id.isnot(None), has_published_model_config),
+        ),
     )
 
 
@@ -172,7 +175,7 @@ class InstalledAppsListApi(Resource):
 
         if current_user.current_tenant is None:
             raise ValueError("current_user.current_tenant must not be None")
-        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
+        current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant, session=db.session)
         installed_app_list: list[dict[str, Any]] = []
         for installed_app, app_model in installed_apps:
             installed_app_list.append(

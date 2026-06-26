@@ -20,7 +20,7 @@ const CustomWebAppBrand = () => {
     webappBrandRemoved,
     uploadDisabled,
     workspaceLogo,
-    isCurrentWorkspaceManager,
+    canManageCustomBrand,
     isSandbox,
     handleApply,
     handleCancel,
@@ -36,7 +36,7 @@ const CustomWebAppBrand = () => {
         <Switch
           size="lg"
           checked={webappBrandRemoved ?? false}
-          disabled={isSandbox || !isCurrentWorkspaceManager}
+          disabled={isSandbox || !canManageCustomBrand}
           onCheckedChange={handleSwitch}
         />
       </div>
@@ -98,7 +98,7 @@ const CustomWebAppBrand = () => {
                 <Button
                   className="mr-2"
                   onClick={handleCancel}
-                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
+                  disabled={webappBrandRemoved || !canManageCustomBrand}
                 >
                   {t('operation.cancel', { ns: 'common' })}
                 </Button>
@@ -106,7 +106,7 @@ const CustomWebAppBrand = () => {
                   variant="primary"
                   className="mr-2"
                   onClick={handleApply}
-                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
+                  disabled={webappBrandRemoved || !canManageCustomBrand}
                 >
                   {t('apply', { ns: 'custom' })}
                 </Button>

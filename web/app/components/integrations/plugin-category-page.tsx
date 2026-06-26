@@ -15,6 +15,8 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type PluginCategoryPageProps = {
   canInstall?: boolean
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   category: PluginCategoryEnum
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   onSwitchToMarketplace?: () => void
@@ -25,6 +27,8 @@ const supportedLocalPackageExtensions = SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS.sp
 
 const PluginCategoryPageContent = ({
   canInstall = true,
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -65,7 +69,16 @@ const PluginCategoryPageContent = ({
 
   return (
     <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-components-panel-bg">
-      <PluginsPanel canInstall={canInstall} contentInset="compact" fixedCategory={category} layout={layout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
+      <PluginsPanel
+        canInstall={canInstall}
+        canDeletePlugin={canDeletePlugin}
+        canUpdatePlugin={canUpdatePlugin}
+        contentInset="compact"
+        fixedCategory={category}
+        layout={layout}
+        onSwitchToMarketplace={onSwitchToMarketplace}
+        toolbarAction={toolbarAction}
+      />
       {dragging && (
         <div
           className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
@@ -94,6 +107,8 @@ const PluginCategoryPageContent = ({
 
 const PluginCategoryPage = ({
   canInstall = true,
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -107,7 +122,15 @@ const PluginCategoryPage = ({
 
   return (
     <PluginPageContextProvider key={category} initialFilters={initialFilters}>
-      <PluginCategoryPageContent canInstall={canInstall} category={category} layout={layout} onSwitchToMarketplace={onSwitchToMarketplace} toolbarAction={toolbarAction} />
+      <PluginCategoryPageContent
+        canInstall={canInstall}
+        canDeletePlugin={canDeletePlugin}
+        canUpdatePlugin={canUpdatePlugin}
+        category={category}
+        layout={layout}
+        onSwitchToMarketplace={onSwitchToMarketplace}
+        toolbarAction={toolbarAction}
+      />
     </PluginPageContextProvider>
   )
 }

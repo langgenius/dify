@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
@@ -8,12 +9,6 @@ from werkzeug.exceptions import NotFound
 import controllers.console.explore.saved_message as module
 from controllers.console.explore.error import NotCompletionAppError
 from services.errors.message import MessageNotExistsError
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def make_saved_message():
@@ -68,7 +63,7 @@ class TestSavedMessageListApi:
             result = method(api, current_user, installed_app)
 
         pagination_mock.assert_called_once()
-        assert pagination_mock.call_args.args[1] is current_user
+        assert pagination_mock.call_args.args[2] is current_user
         assert result["limit"] == 20
         assert result["has_more"] is False
         assert len(result["data"]) == 2
@@ -101,7 +96,7 @@ class TestSavedMessageListApi:
             result = method(api, current_user, installed_app)
 
         save_mock.assert_called_once()
-        assert save_mock.call_args.args[1] is current_user
+        assert save_mock.call_args.args[2] is current_user
         assert result == {"result": "success"}
 
     def test_post_message_not_exists(self, app: Flask, payload_patch):
@@ -141,7 +136,7 @@ class TestSavedMessageApi:
             result, status = method(api, current_user, installed_app, str(uuid4()))
 
         delete_mock.assert_called_once()
-        assert delete_mock.call_args.args[1] is current_user
+        assert delete_mock.call_args.args[2] is current_user
         assert status == 204
         assert result == ""
 

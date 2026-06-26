@@ -73,7 +73,7 @@ def test_import_snippet_rejects_invalid_yaml_url_scheme() -> None:
     assert result.error == "Invalid URL scheme, only http and https are allowed"
 
 
-def test_import_snippet_returns_failed_when_yaml_url_fetch_fails(monkeypatch) -> None:
+def test_import_snippet_returns_failed_when_yaml_url_fetch_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr(
         "services.snippet_dsl_service.ssrf_proxy.get",
@@ -90,7 +90,7 @@ def test_import_snippet_returns_failed_when_yaml_url_fetch_fails(monkeypatch) ->
     assert result.error == "Failed to fetch YAML from URL: 404"
 
 
-def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch) -> None:
+def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
     monkeypatch.setattr(
@@ -108,7 +108,7 @@ def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch) -> None:
     assert "YAML content size exceeds maximum limit" in result.error
 
 
-def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch) -> None:
+def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr(
         "services.snippet_dsl_service.ssrf_proxy.get",
@@ -125,7 +125,7 @@ def test_import_snippet_returns_failed_when_yaml_url_fetch_raises(monkeypatch) -
     assert result.error == "Failed to fetch YAML from URL: network down"
 
 
-def test_import_snippet_rejects_oversized_yaml_content(monkeypatch) -> None:
+def test_import_snippet_rejects_oversized_yaml_content(monkeypatch: pytest.MonkeyPatch) -> None:
     service = SnippetDslService(session=SimpleNamespace())
     monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
 

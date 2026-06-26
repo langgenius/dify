@@ -50,6 +50,16 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canRun: boolean, canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canRun: true,
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
+
 const mockHandleSyncWorkflowDraft = vi.fn()
 const mockHandleCheckBeforePublish = vi.fn().mockResolvedValue(true)
 const mockHandleStopRun = vi.fn()
@@ -122,8 +132,29 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 const mockMutateDatasetRes = vi.fn()
+let mockDatasetPermissionKeys = ['dataset.acl.use']
+let mockDatasetMaintainer: string | undefined
+let mockCurrentUserId = 'user-1'
+let mockIsLoadingWorkspacePermissionKeys = false
+let mockWorkspacePermissionKeys: string[] = []
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: () => mockMutateDatasetRes,
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    dataset: {
+      permission_keys: mockDatasetPermissionKeys,
+      maintainer: mockDatasetMaintainer,
+    },
+    mutateDatasetRes: mockMutateDatasetRes,
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: Record<string, unknown>) => unknown) => selector({
+    userProfile: {
+      id: mockCurrentUserId,
+    },
+    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 const mockSetShowPricingModal = vi.fn()
@@ -221,6 +252,11 @@ describe('RagPipelineHeader', () => {
       setShowEnvPanel: mockSetShowEnvPanel,
     }
     mockProviderContextValue = createMockProviderContextValue()
+    mockDatasetPermissionKeys = ['dataset.acl.use']
+    mockDatasetMaintainer = undefined
+    mockCurrentUserId = 'user-1'
+    mockIsLoadingWorkspacePermissionKeys = false
+    mockWorkspacePermissionKeys = []
   })
 
   describe('Rendering', () => {

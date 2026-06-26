@@ -19,7 +19,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -33,7 +33,7 @@ jobs:
 
       - name: Setup UV and Python
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
         with:
           enable-cache: false
           python-version: "3.12"
@@ -53,6 +53,8 @@ jobs:
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          PYREFLY_OUTPUT_FORMAT: github
         run: make type-check-core
 
       - name: Dotenv check
@@ -71,7 +73,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -105,6 +107,14 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: vp run knip
 
+      - name: Web dead code check production
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip:production
+
+      - name: Web production unused declarations check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: vp run knip:production-unused-check
+
   ts-common-style:
     name: TS Common
     runs-on: depot-ubuntu-24.04
@@ -114,7 +124,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           persist-credentials: false
 
@@ -171,7 +181,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           fetch-depth: 0
           persist-credentials: false

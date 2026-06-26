@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import HTTPException, NotFound
 
 from controllers.console.snippets import snippet_workflow as snippet_workflow_module
@@ -52,7 +54,7 @@ def test_get_snippet_requires_snippet_id(app):
             view()
 
 
-def test_get_snippet_injects_resolved_snippet(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_snippet_injects_resolved_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = _snippet()
 
     @snippet_workflow_module.get_snippet
@@ -72,7 +74,7 @@ def test_get_snippet_injects_resolved_snippet(app, monkeypatch: pytest.MonkeyPat
     assert result is snippet
 
 
-def test_get_snippet_raises_not_found_when_snippet_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_snippet_raises_not_found_when_snippet_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     @snippet_workflow_module.get_snippet
     def view(**kwargs):
         return kwargs
@@ -89,7 +91,7 @@ def test_get_snippet_raises_not_found_when_snippet_missing(app, monkeypatch: pyt
             view(snippet_id="snippet-1")
 
 
-def test_draft_workflow_get_raises_when_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draft_workflow_get_raises_when_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = _snippet()
     monkeypatch.setattr(
         snippet_workflow_module,
@@ -105,7 +107,7 @@ def test_draft_workflow_get_raises_when_missing(app, monkeypatch: pytest.MonkeyP
             handler(api, snippet=snippet)
 
 
-def test_draft_workflow_post_returns_400_for_invalid_graph(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draft_workflow_post_returns_400_for_invalid_graph(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     user = _account("account-1")
     snippet = _snippet()
     sync_draft_workflow = Mock(side_effect=ValueError("invalid graph"))
@@ -145,7 +147,7 @@ def test_published_workflow_get_returns_none_when_not_published(app) -> None:
         assert handler(api, snippet=SimpleNamespace(id="snippet-1", is_published=False)) is None
 
 
-def test_published_workflow_post_returns_400_when_publish_fails(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_published_workflow_post_returns_400_when_publish_fails(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     user = _account("account-1")
     snippet = _snippet()
     merged_snippet = _snippet()
@@ -180,7 +182,7 @@ def test_published_workflow_post_returns_400_when_publish_fails(app, monkeypatch
     session.commit.assert_not_called()
 
 
-def test_default_block_configs_delegates_to_service(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_default_block_configs_delegates_to_service(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     get_default_block_configs = Mock(return_value=[{"type": "llm"}])
     monkeypatch.setattr(
         snippet_workflow_module,
@@ -198,7 +200,55 @@ def test_default_block_configs_delegates_to_service(app, monkeypatch: pytest.Mon
     get_default_block_configs.assert_called_once()
 
 
-def test_restore_published_snippet_workflow_to_draft_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_published_snippet_workflows_includes_input_fields(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow = SimpleNamespace(
+        id="workflow-1",
+        graph_dict={"nodes": [], "edges": []},
+        features_dict={},
+        unique_hash="hash-1",
+        version="2024-01-01 00:00:00",
+        marked_name="",
+        marked_comment="",
+        created_by_account=None,
+        created_at=datetime(2024, 1, 1),
+        updated_by_account=None,
+        updated_at=datetime(2024, 1, 1),
+        tool_published=False,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    input_fields = [{"variable": "query", "type": "text"}]
+    snippet = _snippet(input_fields=json.dumps(input_fields))
+
+    class SessionContext:
+        def __init__(self, engine):
+            self.engine = engine
+
+        def __enter__(self):
+            return Mock()
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(snippet_workflow_module, "Session", SessionContext)
+    monkeypatch.setattr(snippet_workflow_module, "db", SimpleNamespace(engine=object()))
+    monkeypatch.setattr(
+        snippet_workflow_module,
+        "SnippetService",
+        lambda: SimpleNamespace(get_all_published_workflows=Mock(return_value=([workflow], False))),
+    )
+
+    api = snippet_workflow_module.SnippetPublishedAllWorkflowApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/snippets/snippet-1/workflows?page=1&limit=20"):
+        response = handler(api, snippet=snippet)
+
+    assert response["items"][0]["input_fields"] == input_fields
+
+
+def test_restore_published_snippet_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = SimpleNamespace(
         unique_hash="restored-hash",
         updated_at=None,
@@ -226,7 +276,7 @@ def test_restore_published_snippet_workflow_to_draft_success(app, monkeypatch: p
     assert response["hash"] == "restored-hash"
 
 
-def test_restore_published_snippet_workflow_to_draft_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_restore_published_snippet_workflow_to_draft_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     user = _account("account-1")
     snippet = _snippet()
 
@@ -311,7 +361,7 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_gra
     assert exc.value.description == "invalid snippet workflow graph"
 
 
-def test_workflow_run_detail_raises_not_found_when_run_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_run_detail_raises_not_found_when_run_missing(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     snippet = _snippet()
     monkeypatch.setattr(
         snippet_workflow_module,
@@ -327,7 +377,9 @@ def test_workflow_run_detail_raises_not_found_when_run_missing(app, monkeypatch:
             handler(api, snippet=snippet, run_id="run-1")
 
 
-def test_draft_node_last_run_raises_not_found_when_execution_missing(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_draft_node_last_run_raises_not_found_when_execution_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
     snippet = _snippet()
     draft_workflow = SimpleNamespace(id="workflow-1")
     monkeypatch.setattr(
@@ -347,7 +399,7 @@ def test_draft_node_last_run_raises_not_found_when_execution_missing(app, monkey
             handler(api, snippet=snippet, node_id="llm-1")
 
 
-def test_workflow_task_stop_uses_queue_flag_and_graph_command(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_task_stop_uses_queue_flag_and_graph_command(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     set_stop_flag = Mock()
     send_stop_command = Mock()
     monkeypatch.setattr(

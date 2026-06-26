@@ -27,6 +27,23 @@ export type SyncDraftCallback = {
   onError?: () => void
   onSettled?: () => void
 }
+
+export type WorkflowAccessControl = {
+  canEdit: boolean
+  canComment: boolean
+  canRun: boolean
+  canImportExportDSL: boolean
+  canReleaseAndVersion: boolean
+}
+
+export const fullWorkflowAccessControl: WorkflowAccessControl = {
+  canEdit: true,
+  canComment: true,
+  canRun: true,
+  canImportExportDSL: true,
+  canReleaseAndVersion: true,
+}
+
 type CommonHooksFnMap = {
   doSyncWorkflowDraft: (
     notRefreshWhenSyncError?: boolean,
@@ -65,6 +82,7 @@ type CommonHooksFnMap = {
   invalidateSysVarValues: () => void
   resetConversationVar: (varId: string) => Promise<void>
   invalidateConversationVarValues: () => void
+  accessControl: WorkflowAccessControl
   configsMap?: {
     flowId: string
     flowType: FlowType
@@ -117,6 +135,7 @@ export const createHooksStore = ({
   resetConversationVar = async () => noop(),
   invalidateConversationVarValues = noop,
   configsMap,
+  accessControl = fullWorkflowAccessControl,
 }: Partial<Shape>) => {
   return createStore<Shape>(set => ({
     refreshAll: props => set(state => ({ ...state, ...props })),
@@ -155,6 +174,7 @@ export const createHooksStore = ({
     resetConversationVar,
     invalidateConversationVarValues,
     configsMap,
+    accessControl,
   }))
 }
 

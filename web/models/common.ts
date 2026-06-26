@@ -1,13 +1,10 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { Role } from './access-control'
 import type { I18nText } from '@/i18n-config/language'
 import type { Model } from '@/types/app'
 
 export type CommonResponse = {
   result: 'success' | 'fail'
-}
-
-export type OauthResponse = {
-  redirect_url: string
 }
 
 export type SetupStatusResponse = {
@@ -17,12 +14,6 @@ export type SetupStatusResponse = {
 
 export type InitValidateStatusResponse = {
   status: 'finished' | 'not_started'
-}
-
-export type UserProfileOriginResponse = {
-  json: () => Promise<GetAccountProfileResponse>
-  bodyUsed: boolean
-  headers: Headers
 }
 
 export type LangGeniusVersionResponse = {
@@ -42,6 +33,7 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   created_at?: string
   status: 'pending' | 'active' | 'banned' | 'closed'
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
+  roles: Role[]
 }
 
 const ProviderName = {
@@ -56,14 +48,14 @@ const ProviderName = {
   ChatGLM: 'chatglm',
 } as const
 type ProviderName = typeof ProviderName[keyof typeof ProviderName]
-export type ProviderAzureToken = {
+type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
 }
-export type ProviderAnthropicToken = {
+type ProviderAnthropicToken = {
   anthropic_api_key?: string
 }
-export type Provider = {
+type Provider = {
   [Name in ProviderName]: {
     provider_name: Name
   } & {
@@ -74,13 +66,6 @@ export type Provider = {
     token?: string | ProviderAzureToken | ProviderAnthropicToken
   }
 }[ProviderName]
-
-export type AccountIntegrate = {
-  provider: 'google' | 'github'
-  created_at: number
-  is_bound: boolean
-  link: string
-}
 
 export type IWorkspace = {
   id: string
@@ -132,27 +117,12 @@ export type DataSourceNotionWorkspace = {
   pages: DataSourceNotionPage[]
 }
 
-export type DataSourceNotion = {
-  id: string
-  provider: string
-  is_bound: boolean
-  source_info: DataSourceNotionWorkspace
-}
-
 export const DataSourceProvider = {
   fireCrawl: 'firecrawl',
   jinaReader: 'jinareader',
   waterCrawl: 'watercrawl',
 } as const
 export type DataSourceProvider = typeof DataSourceProvider[keyof typeof DataSourceProvider]
-
-export type PluginProvider = {
-  tool_name: string
-  is_enabled: boolean
-  credentials: {
-    api_key: string
-  } | null
-}
 
 export type FileUploadConfigResponse = {
   batch_count_limit: number
@@ -171,6 +141,10 @@ export type InvitationResult = {
   status: 'success'
   email: string
   url: string
+} | {
+  status: 'already_member'
+  email: string
+  message?: string
 } | {
   status: 'failed'
   email: string
@@ -212,11 +186,6 @@ export type ExternalDataTool = {
   config?: {
     api_based_extension_id?: string
   } & Partial<Record<string, string | undefined>>
-}
-
-export type ModerateResponse = {
-  flagged: boolean
-  text: string
 }
 
 export type StructuredOutputRulesRequestBody = {

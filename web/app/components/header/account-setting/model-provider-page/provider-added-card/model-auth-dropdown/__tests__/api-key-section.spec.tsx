@@ -3,6 +3,12 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { CustomConfigurationStatusEnum, PreferredProviderTypeEnum } from '../../../declarations'
 import ApiKeySection from '../api-key-section'
 
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  }),
+}))
+
 const createCredential = (overrides: Partial<Credential> = {}): Credential => ({
   credential_id: 'cred-1',
   credential_name: 'Test API Key',

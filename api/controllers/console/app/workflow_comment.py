@@ -8,12 +8,16 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.member_fields import AccountWithRole
 from libs.helper import build_avatar_url, dump_response, to_timestamp
@@ -218,8 +222,9 @@ class WorkflowCommentListApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model()
     def get(self, current_tenant_id: str, app_model: App):
         """Get all comments for a workflow."""
         comments = WorkflowCommentService.get_comments(tenant_id=current_tenant_id, app_id=app_model.id)
@@ -234,10 +239,11 @@ class WorkflowCommentListApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
+    @get_app_model()
     def post(self, current_tenant_id: str, current_user: Account, app_model: App):
         """Create a new workflow comment."""
         payload = WorkflowCommentCreatePayload.model_validate(console_ns.payload or {})
@@ -266,8 +272,9 @@ class WorkflowCommentDetailApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model()
     def get(self, current_tenant_id: str, app_model: App, comment_id: str):
         """Get a specific workflow comment."""
         comment = WorkflowCommentService.get_comment(
@@ -284,10 +291,11 @@ class WorkflowCommentDetailApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
+    @get_app_model()
     def put(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
         """Update a workflow comment."""
         payload = WorkflowCommentUpdatePayload.model_validate(console_ns.payload or {})
@@ -312,10 +320,11 @@ class WorkflowCommentDetailApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
+    @get_app_model()
     def delete(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
         """Delete a workflow comment."""
         WorkflowCommentService.delete_comment(
@@ -339,10 +348,11 @@ class WorkflowCommentResolveApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
+    @get_app_model()
     def post(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
         """Resolve a workflow comment."""
         comment = WorkflowCommentService.resolve_comment(
@@ -367,10 +377,11 @@ class WorkflowCommentReplyApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
+    @get_app_model()
     def post(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str):
         """Add a reply to a workflow comment."""
         # Validate comment access first
@@ -402,10 +413,11 @@ class WorkflowCommentReplyDetailApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
+    @get_app_model()
     def put(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str, reply_id: str):
         """Update a comment reply."""
         # Validate comment access first
@@ -434,10 +446,11 @@ class WorkflowCommentReplyDetailApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     @with_current_user
     @with_current_tenant_id
+    @get_app_model()
     def delete(self, current_tenant_id: str, current_user: Account, app_model: App, comment_id: str, reply_id: str):
         """Delete a comment reply."""
         # Validate comment access first
@@ -469,14 +482,15 @@ class WorkflowCommentMentionUsersApi(Resource):
     @login_required
     @setup_required
     @account_initialization_required
-    @get_app_model()
     @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @get_app_model()
     def get(self, current_user: Account, app_model: App):
         """Get all users in current tenant for mentions."""
         current_tenant = current_user.current_tenant  # need the tenant object here
         if current_tenant is None:
             raise ValueError("current tenant is required")
-        members = TenantService.get_tenant_members(current_tenant)
+        members = TenantService.get_tenant_members(current_tenant, session=db.session)
         users = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
         response = WorkflowCommentMentionUsersPayload(users=users)
         return response.model_dump(mode="json"), 200

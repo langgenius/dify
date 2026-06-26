@@ -41,7 +41,7 @@ class TestWorkspacesList:
         account = make_account()
         owner_tenant = account.current_tenant
         assert owner_tenant is not None
-        second = add_tenant_for_account(account, role="normal", name="Second WS")
+        second = add_tenant_for_account(account, session=db_session_with_containers, role="normal", name="Second WS")
 
         api = WorkspacesApi()
         with app.test_request_context("/openapi/v1/workspaces"):
@@ -90,7 +90,9 @@ class TestWorkspaceSwitch:
         account = make_account()
         owner_tenant = account.current_tenant
         assert owner_tenant is not None
-        target = add_tenant_for_account(account, role="normal", name="Switch Target")
+        target = add_tenant_for_account(
+            account, session=db_session_with_containers, role="normal", name="Switch Target"
+        )
 
         api = WorkspaceSwitchApi()
         with app.test_request_context(f"/openapi/v1/workspaces/{target.id}/switch", method="POST"):

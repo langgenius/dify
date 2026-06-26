@@ -16,6 +16,8 @@ const mockHandleSingleRun = vi.fn()
 const mockHandleStop = vi.fn()
 const mockHandleRunWithParams = vi.fn()
 let mockShowMessageLogModal = false
+let mockNodesReadOnly = false
+let mockCanRun = true
 let mockBuiltInTools = [{
   id: 'provider/tool',
   name: 'Tool',
@@ -27,6 +29,14 @@ let mockTriggerPlugins: Array<Record<string, unknown>> = []
 const mockLogsState = {
   showSpecialResultPanel: false,
 }
+
+const createMockSingleRunParams = () => ({
+  forms: [],
+  onStop: vi.fn(),
+  runningStatus: NodeRunningStatus.Succeeded,
+  existVarValuesInForms: [],
+  filteredExistVarForms: [],
+})
 
 const mockLastRunState = {
   isShowSingleRun: false,
@@ -43,13 +53,7 @@ const mockLastRunState = {
   setIsRunAfterSingleRun: vi.fn(),
   setTabType: vi.fn(),
   handleAfterCustomSingleRun: vi.fn(),
-  singleRunParams: {
-    forms: [],
-    onStop: vi.fn(),
-    runningStatus: NodeRunningStatus.Succeeded,
-    existVarValuesInForms: [],
-    filteredExistVarForms: [],
-  },
+  singleRunParams: createMockSingleRunParams(),
   nodeInfo: { id: 'node-1' },
   setRunInputData: vi.fn(),
   handleStop: () => mockHandleStop(),
@@ -113,7 +117,7 @@ vi.mock('@/app/components/workflow/hooks', () => ({
     },
   }),
   useNodesReadOnly: () => ({
-    nodesReadOnly: false,
+    nodesReadOnly: mockNodesReadOnly,
   }),
   useToolIcon: () => undefined,
   useWorkflowHistory: () => ({
@@ -126,10 +130,13 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: { configsMap: { flowId: string, flowType: string } }) => unknown) => selector({
+  useHooksStore: (selector: (state: { configsMap: { flowId: string, flowType: string }, accessControl: { canRun: boolean } }) => unknown) => selector({
     configsMap: {
       flowId: 'flow-1',
       flowType: 'app',
+    },
+    accessControl: {
+      canRun: mockCanRun,
     },
   }),
 }))
@@ -296,6 +303,8 @@ describe('workflow-panel index', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockShowMessageLogModal = false
+    mockNodesReadOnly = false
+    mockCanRun = true
     mockBuiltInTools = [{
       id: 'provider/tool',
       name: 'Tool',
@@ -306,6 +315,7 @@ describe('workflow-panel index', () => {
     mockLogsState.showSpecialResultPanel = false
     mockLastRunState.isShowSingleRun = false
     mockLastRunState.tabType = 'settings'
+    mockLastRunState.singleRunParams = createMockSingleRunParams()
   })
 
   it('should render the settings panel and wire title, description, run, and close actions', async () => {
@@ -346,6 +356,42 @@ describe('workflow-panel index', () => {
     expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ credential_id: 'credential-1' }),
     }))
+  })
+
+  it('should hide the single-run action when nodes are readonly even with run permission', () => {
+    mockNodesReadOnly = true
+
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()
+  })
+
+  it('should hide the single-run action when run permission is missing', () => {
+    mockCanRun = false
+
+    renderWorkflowComponent(
+      <BasePanel id="node-1" data={createData() as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(screen.queryByRole('button', { name: 'workflow.panel.runThisStep' })).not.toBeInTheDocument()
   })
 
   it('should render the special result panel when logs request it', () => {
@@ -458,6 +504,26 @@ describe('workflow-panel index', () => {
     )
 
     expect(screen.getByText('data-source-before-run-form')).toBeInTheDocument()
+  })
+
+  it('should keep the settings panel visible when single-run params have no forms', () => {
+    mockLastRunState.isShowSingleRun = true
+    mockLastRunState.singleRunParams = {} as ReturnType<typeof createMockSingleRunParams>
+
+    renderWorkflowComponent(
+      <BasePanel id="node-agent" data={createData({ type: BlockEnum.Agent }) as never}>
+        <div>panel-child</div>
+      </BasePanel>,
+      {
+        initialStoreState: {
+          nodePanelWidth: 480,
+          otherPanelWidth: 200,
+        },
+      },
+    )
+
+    expect(screen.queryByText('before-run-form')).not.toBeInTheDocument()
+    expect(screen.getByText('panel-child')).toBeInTheDocument()
   })
 
   it('should render data source authorization controls and jump to the settings modal', () => {

@@ -122,7 +122,7 @@ class TagListApi(Resource):
             raise Forbidden()
 
         payload = TagBasePayload.model_validate(console_ns.payload or {})
-        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type))
+        tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=payload.type), db.session)
 
         response = TagResponse.model_validate(
             {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
@@ -146,9 +146,9 @@ class TagUpdateDeleteApi(Resource):
             raise Forbidden()
 
         payload = TagUpdateRequestPayload.model_validate(console_ns.payload or {})
-        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str)
+        tag = TagService.update_tags(UpdateTagPayload(name=payload.name), tag_id_str, db.session)
 
-        binding_count = TagService.get_tag_binding_count(tag_id_str)
+        binding_count = TagService.get_tag_binding_count(tag_id_str, db.session)
 
         response = TagResponse.model_validate(
             {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count}
@@ -164,7 +164,7 @@ class TagUpdateDeleteApi(Resource):
     def delete(self, tag_id: UUID):
         tag_id_str = str(tag_id)
 
-        TagService.delete_tag(tag_id_str)
+        TagService.delete_tag(tag_id_str, db.session)
 
         return "", 204
 
@@ -189,7 +189,8 @@ def _create_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             tag_ids=payload.tag_ids,
             target_id=payload.target_id,
             type=payload.type,
-        )
+        ),
+        db.session,
     )
     return {"result": "success"}, 200
 
@@ -203,7 +204,8 @@ def _remove_tag_bindings(current_user: Account) -> tuple[dict[str, str], int]:
             tag_ids=payload.tag_ids,
             target_id=payload.target_id,
             type=payload.type,
-        )
+        ),
+        db.session,
     )
     return {"result": "success"}, 200
 

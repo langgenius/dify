@@ -120,6 +120,7 @@ def test_create_run_starts_background_task_and_returns_running() -> None:
             scheduler = RunScheduler(
                 store=store,
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
                 runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
             )
 
@@ -144,6 +145,7 @@ def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
             scheduler = RunScheduler(
                 store=store,
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
                 shutdown_grace_seconds=0,
                 runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
             )
@@ -165,7 +167,7 @@ def test_create_run_accepts_blank_prompt_and_runner_fails_asynchronously() -> No
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
 
             record = await scheduler.create_run(_request(["", "   "]))
             await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
@@ -182,7 +184,7 @@ def test_create_run_accepts_invalid_output_schema_and_runner_fails_asynchronousl
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
 
             record = await scheduler.create_run(
                 _request(
@@ -205,7 +207,12 @@ def test_create_run_honors_explicit_empty_layer_providers_by_failing_after_persi
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, layer_providers=())
+            scheduler = RunScheduler(
+                store=store,
+                plugin_daemon_http_client=client,
+                dify_api_http_client=client,
+                layer_providers=(),
+            )
 
             record = await scheduler.create_run(_request())
             await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
@@ -222,7 +229,7 @@ def test_create_run_accepts_closed_session_snapshot_and_runner_fails_asynchronou
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
             request = _request()
             request.session_snapshot = CompositorSessionSnapshot(
                 layers=[
@@ -248,7 +255,7 @@ def test_create_run_accepts_closed_session_snapshot_and_runner_fails_asynchronou
 def test_create_run_rejects_after_shutdown_starts() -> None:
     async def scenario() -> None:
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=FakeStore(), plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=FakeStore(), plugin_daemon_http_client=client, dify_api_http_client=client)
             await scheduler.shutdown()
 
             with pytest.raises(SchedulerStoppingError):
@@ -261,7 +268,7 @@ def test_create_run_rejects_invalid_request_after_shutdown_without_persisting() 
     async def scenario() -> None:
         store = FakeStore()
         async with httpx.AsyncClient() as client:
-            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client)
+            scheduler = RunScheduler(store=store, plugin_daemon_http_client=client, dify_api_http_client=client)
             await scheduler.shutdown()
 
             with pytest.raises(SchedulerStoppingError):
@@ -282,6 +289,7 @@ def test_shutdown_waits_for_in_flight_create_to_register_before_cancelling() -> 
             scheduler = RunScheduler(
                 store=store,
                 plugin_daemon_http_client=client,
+                dify_api_http_client=client,
                 shutdown_grace_seconds=0,
                 runner_factory=lambda _record, _request: ControlledRunner(
                     started=runner_started, release=asyncio.Event()

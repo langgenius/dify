@@ -5,14 +5,13 @@ import type {
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AccessControlTemplateLanguage } from '@/i18n-config/language'
 import type {
-  AccountIntegrate,
   CodeBasedExtension,
   CommonResponse,
   FileUploadConfigResponse,
   LangGeniusVersionResponse,
   Member,
-  PluginProvider,
   StructuredOutputRulesRequestBody,
   StructuredOutputRulesResponse,
 } from '@/models/common'
@@ -32,7 +31,6 @@ export const commonQueryKeys = {
   defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
   retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
   accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
-  pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
@@ -125,10 +123,14 @@ type MemberResponse = {
   accounts: Member[] | null
 }
 
-export const useMembers = () => {
+export const useMembers = (language?: AccessControlTemplateLanguage) => {
   return useQuery<MemberResponse>({
-    queryKey: commonQueryKeys.members,
-    queryFn: () => get<MemberResponse>('/workspaces/current/members', { params: {} }),
+    queryKey: [...commonQueryKeys.members, language],
+    queryFn: () => get<MemberResponse>('/workspaces/current/members', {
+      params: {
+        language,
+      },
+    }),
   })
 }
 
@@ -222,20 +224,6 @@ export const useSupportRetrievalMethods = () => {
   })
 }
 
-export const useAccountIntegrates = () => {
-  return useQuery<{ data: AccountIntegrate[] | null }>({
-    queryKey: commonQueryKeys.accountIntegrates,
-    queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
-  })
-}
-
-export const usePluginProviders = () => {
-  return useQuery<PluginProvider[] | null>({
-    queryKey: commonQueryKeys.pluginProviders,
-    queryFn: () => get<PluginProvider[] | null>('/workspaces/current/tool-providers'),
-  })
-}
-
 export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
@@ -248,7 +236,7 @@ export const useInvitationCheck = (params?: { workspace_id?: string, email?: str
     queryKey: commonQueryKeys.invitationCheck(params),
     queryFn: () => get<{
       is_valid: boolean
-      data: { workspace_name: string, email: string, workspace_id: string }
+      data: { workspace_name: string, email: string, workspace_id: string, account_status?: string, requires_setup?: boolean }
       result: string
     }>('/activate/check', { params }),
     enabled: enabled ?? !!params?.token,

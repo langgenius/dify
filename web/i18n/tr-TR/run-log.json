@@ -1,5 +1,4 @@
 {
-  "actionLogs": "Eylem Günlükleri",
   "circularInvocationTip": "Geçerli iş akışında araçların/düğümlerin döngüsel olarak çağrılması vardır.",
   "detail": "DETAY",
   "input": "GİRİŞ",
@@ -10,7 +9,6 @@
   "meta.time": "Geçen Zaman",
   "meta.title": "METADATA",
   "meta.tokens": "Toplam Token",
-  "meta.version": "Sürüm",
   "result": "SONUÇ",
   "resultEmpty.link": "detay paneli",
   "resultEmpty.tipLeft": "lütfen ",

@@ -20,7 +20,7 @@ const PluginList = async ({
   return (
     <PluginPage
       plugins={<PluginsPanel />}
-      marketplace={<Marketplace pluginTypeSwitchClassName="top-[60px]" />}
+      marketplace={<Marketplace showInstallButton pluginTypeSwitchClassName="top-[60px]" />}
     />
   )
 }

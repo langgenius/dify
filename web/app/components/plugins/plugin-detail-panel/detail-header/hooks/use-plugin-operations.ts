@@ -14,6 +14,8 @@ import { checkForUpdates, fetchReleases } from '../../../install-plugin/hooks'
 import { PluginSource } from '../../../types'
 
 type UsePluginOperationsParams = {
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   detail: PluginDetail
   modalStates: ModalStates
   versionPicker: {
@@ -31,6 +33,8 @@ type UsePluginOperationsReturn = {
 }
 
 export const usePluginOperations = ({
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   detail,
   modalStates,
   versionPicker,
@@ -50,6 +54,9 @@ export const usePluginOperations = ({
   }, [invalidateCheckInstalled, onUpdate])
 
   const handleUpdate = useCallback(async (isDowngrade?: boolean) => {
+    if (!canUpdatePlugin)
+      return
+
     if (isFromMarketplace) {
       versionPicker.setIsDowngrade(!!isDowngrade)
       modalStates.showUpdateModal()
@@ -91,6 +98,7 @@ export const usePluginOperations = ({
       })
     }
   }, [
+    canUpdatePlugin,
     isFromMarketplace,
     meta,
     author,
@@ -110,6 +118,9 @@ export const usePluginOperations = ({
   }, [handlePluginUpdated, modalStates])
 
   const handleDelete = useCallback(async () => {
+    if (!canDeletePlugin)
+      return
+
     modalStates.showDeleting()
     const res = await uninstallPlugin(id)
     modalStates.hideDeleting()
@@ -123,6 +134,7 @@ export const usePluginOperations = ({
       trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
     }
   }, [
+    canDeletePlugin,
     id,
     category,
     plugin_id,

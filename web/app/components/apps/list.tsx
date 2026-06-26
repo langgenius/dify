@@ -4,10 +4,9 @@ import type { AppListQuery, AppListSortBy } from '@/contract/console/apps'
 import { cn } from '@langgenius/dify-ui/cn'
 import { keepPreviousData, useInfiniteQuery, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useNeedRefreshAppList } from '@/app/components/apps/storage'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -15,7 +14,8 @@ import { CheckModal } from '@/hooks/use-pay'
 import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
-import AppCard from './app-card'
+import { hasPermission } from '@/utils/permission'
+import { AppCard } from './app-card'
 import { AppCardSkeleton } from './app-card-skeleton'
 import { AppListCreationModals } from './app-list-creation-modals'
 import { AppListHeaderFilters } from './app-list-header-filters'
@@ -40,7 +40,7 @@ function List({
 }: Props) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -62,17 +62,21 @@ function List({
   const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
-  const [needsRefreshAppList, setNeedsRefreshAppList] = useLocalStorage<string>(NEED_REFRESH_APP_LIST_KEY, '0', { raw: true })
+  const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
+  const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleDSLFileDropped = useCallback((file: File) => {
+    if (!canCreateApp)
+      return
+
     setDroppedDSLFile(file)
     setShowCreateFromDSLModal(true)
-  }, [])
+  }, [canCreateApp])
 
   const { dragging } = useDSLDragDrop({
     onDSLFileDropped: handleDSLFileDropped,
     containerRef,
-    enabled: isCurrentWorkspaceEditor,
+    enabled: canCreateApp,
   })
 
   useEffect(() => {
@@ -116,7 +120,6 @@ function List({
       initialPageParam: 1,
       placeholderData: keepPreviousData,
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
     refetchInterval: systemFeatures.enable_collaboration_mode ? 10000 : false,
   })
 
@@ -135,7 +138,6 @@ function List({
         query: starredAppListQuery,
       },
     }),
-    enabled: !isCurrentWorkspaceDatasetOperator,
   })
 
   const refreshAppLists = useCallback(() => {
@@ -158,8 +160,6 @@ function List({
   }, [needsRefreshAppList, refetch, setNeedsRefreshAppList])
 
   useEffect(() => {
-    if (isCurrentWorkspaceDatasetOperator)
-      return
     const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
@@ -184,7 +184,7 @@ function List({
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage])
 
   const pages = useMemo(() => data?.pages ?? [], [data?.pages])
   const apps = useMemo(() => pages.flatMap(({ data: pageApps }) => pageApps), [pages])
@@ -210,7 +210,19 @@ function List({
   const hasAnyApp = (pages[0]?.total ?? 0) > 0
   const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || creatorIDs.length > 0
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
-  const showFirstEmptyState = !showSkeleton && !hasAnyApp && isCurrentWorkspaceEditor && hasResolvedFirstPage && !hasActiveFilters
+  const showFirstEmptyState = !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const openCreateBlankModal = useCallback(() => {
+    if (canCreateApp)
+      setShowNewAppModal(true)
+  }, [canCreateApp])
+  const openCreateTemplateDialog = useCallback(() => {
+    if (canCreateApp)
+      setShowNewAppTemplateDialog(true)
+  }, [canCreateApp])
+  const openCreateFromDSLModal = useCallback(() => {
+    if (canCreateApp)
+      setShowCreateFromDSLModal(true)
+  }, [canCreateApp])
 
   return (
     <>
@@ -238,19 +250,20 @@ function List({
             onKeywordsChange={setKeywords}
             onCreatorIDsChange={setCreatorIDs}
             onSortByChange={setSortBy}
-            onCreateBlank={() => setShowNewAppModal(true)}
-            onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
-            onImportDSL={() => setShowCreateFromDSLModal(true)}
+            onCreateBlank={openCreateBlankModal}
+            onCreateTemplate={openCreateTemplateDialog}
+            onImportDSL={openCreateFromDSLModal}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
-            showCreateButton={isCurrentWorkspaceEditor}
+            showCreateButton={canCreateApp}
           />
         </StudioListHeader>
         {showFirstEmptyState
           ? (
               <FirstEmptyState
-                onCreateBlank={() => setShowNewAppModal(true)}
-                onCreateTemplate={() => setShowNewAppTemplateDialog(true)}
-                onImportDSL={() => setShowCreateFromDSLModal(true)}
+                onCreateBlank={openCreateBlankModal}
+                onCreateTemplate={openCreateTemplateDialog}
+                onImportDSL={openCreateFromDSLModal}
+                showLearnDify={systemFeatures.enable_learn_app}
               />
             )
           : (
@@ -258,7 +271,6 @@ function List({
                 {starredApps.length > 0 && (
                   <StarredAppList
                     apps={starredApps}
-                    isCurrentWorkspaceEditor={isCurrentWorkspaceEditor}
                     onRefresh={refreshAppLists}
                   />
                 )}
@@ -287,7 +299,7 @@ function List({
               </>
             )}
 
-        {isCurrentWorkspaceEditor && !showFirstEmptyState && (
+        {canCreateApp && !showFirstEmptyState && (
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
@@ -307,6 +319,7 @@ function List({
       </div>
 
       <AppListCreationModals
+        canCreateApp={canCreateApp}
         category={category}
         droppedDSLFile={droppedDSLFile}
         showCreateFromDSLModal={showCreateFromDSLModal}
