@@ -74,7 +74,6 @@ class CreditPoolService:
             pool_type=ProviderQuotaType.TRIAL,
         )
         session.add(credit_pool)
-        session.commit()
         return credit_pool
 
     @classmethod
