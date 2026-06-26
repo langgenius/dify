@@ -6,7 +6,7 @@ import threading
 import time
 import uuid
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 from flask import Flask, current_app
 from sqlalchemy import delete, func, select, update
@@ -601,7 +601,7 @@ class IndexingRunner:
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
-                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),  # type: ignore
+                args=(cast(Flask, current_app._get_current_object()), dataset.id, dataset_document.id, documents),
             )
             create_keyword_thread.start()
 
@@ -624,7 +624,7 @@ class IndexingRunner:
                     futures.append(
                         executor.submit(
                             self._process_chunk,
-                            current_app._get_current_object(),  # type: ignore
+                            cast(Flask, current_app._get_current_object()),
                             index_processor,
                             chunk_documents,
                             dataset,
@@ -764,7 +764,7 @@ class IndexingRunner:
 
         if extra_update_params:
             update_params.update(extra_update_params)
-        db.session.execute(update(DatasetDocument).where(DatasetDocument.id == document_id).values(update_params))  # type: ignore
+        db.session.execute(update(DatasetDocument).where(DatasetDocument.id == document_id).values(**update_params))
         db.session.commit()
 
     @staticmethod
