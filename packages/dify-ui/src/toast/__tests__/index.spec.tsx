@@ -166,6 +166,16 @@ describe('@langgenius/dify-ui/toast', () => {
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
+  it('should disable pointer events while a toast is exiting', async () => {
+    const screen = await render(<ToastHost />)
+
+    toast('Dismiss me')
+
+    await expect.element(screen.getByText('Dismiss me')).toBeInTheDocument()
+    const toastRoot = screen.getByRole('dialog', { name: 'Dismiss me' }).element()
+    expect(toastRoot).toHaveClass('data-ending-style:pointer-events-none')
+  })
+
   it('should keep zero-timeout toasts persistent', async () => {
     const screen = await render(<ToastHost />)
 
