@@ -170,6 +170,7 @@ const SnippetCard = ({
                 value={snippet.tags}
                 onOpenTagManagement={onOpenTagManagement}
                 onTagsChange={onTagsChange}
+                canBindOrUnbindTags={canManageSnippet}
               />
             </div>
           </div>

@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
   "type": "module",
-  "version": "1.14.2",
+  "version": "1.15.0",
   "private": true,
   "imports": {
     "#i18n": {
@@ -33,8 +33,10 @@
     "gen-doc-paths": "tsx ./scripts/gen-doc-paths.ts",
     "gen-icons": "pnpm --filter @dify/iconify-collections generate && node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
     "i18n:check": "tsx ./scripts/check-i18n.js",
+    "i18n:prune-unused": "tsx ./scripts/prune-unused-i18n.ts",
     "knip": "knip",
     "knip:production": "knip --production --include files",
+    "knip:production-unused-check": "node ./scripts/check-production-unused-after-knip-fix.mjs",
     "lint:tss": "tsslint --project tsconfig.json",
     "preinstall": "npx only-allow pnpm",
     "refactor-component": "node ./scripts/refactor-component.js",

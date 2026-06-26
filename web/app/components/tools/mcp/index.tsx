@@ -29,7 +29,7 @@ const MCPList = ({
   showCreateCard = true,
 }: Props) => {
   const canManageMCP = useCanManageMCP()
-  const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders(canManageMCP)
+  const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
   const filteredList = useMemo(() => {
@@ -95,9 +95,6 @@ const MCPList = ({
   }
   const contentPaddingClassName = toolsContentInsetClassNames[contentInset]
   const contentFrameClassName = cn(contentPaddingClassName, toolsUnifiedContentFrameClassName)
-  if (!canManageMCP)
-    return null
-
   return (
     <>
       <div
@@ -107,7 +104,7 @@ const MCPList = ({
           isLoading && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >
-        {!isLoading && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
+        {!isLoading && canManageMCP && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
         {isLoading
           ? <ToolCardSkeletonGrid variant="mcp" />
           : filteredList.map(provider => (

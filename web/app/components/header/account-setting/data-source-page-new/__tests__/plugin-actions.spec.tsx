@@ -96,7 +96,7 @@ vi.mock('@/utils/var', () => ({
 
 vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
   usePluginSettingsAccess: () => ({
-    canManagePlugin: true,
+    canDeletePlugin: true,
     canUpdatePlugin: true,
   }),
 }))

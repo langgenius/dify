@@ -15,9 +15,8 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 
 type PluginCategoryPageProps = {
   canInstall?: boolean
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
-  canViewInstalledPlugins?: boolean
   category: PluginCategoryEnum
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
   onSwitchToMarketplace?: () => void
@@ -28,9 +27,8 @@ const supportedLocalPackageExtensions = SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS.sp
 
 const PluginCategoryPageContent = ({
   canInstall = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -73,9 +71,8 @@ const PluginCategoryPageContent = ({
     <div ref={containerRef} className="relative flex h-0 grow flex-col overflow-hidden bg-components-panel-bg">
       <PluginsPanel
         canInstall={canInstall}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
-        canViewInstalledPlugins={canViewInstalledPlugins}
         contentInset="compact"
         fixedCategory={category}
         layout={layout}
@@ -110,9 +107,8 @@ const PluginCategoryPageContent = ({
 
 const PluginCategoryPage = ({
   canInstall = true,
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
-  canViewInstalledPlugins = true,
   category,
   layout,
   onSwitchToMarketplace,
@@ -128,9 +124,8 @@ const PluginCategoryPage = ({
     <PluginPageContextProvider key={category} initialFilters={initialFilters}>
       <PluginCategoryPageContent
         canInstall={canInstall}
-        canManagePlugin={canManagePlugin}
+        canDeletePlugin={canDeletePlugin}
         canUpdatePlugin={canUpdatePlugin}
-        canViewInstalledPlugins={canViewInstalledPlugins}
         category={category}
         layout={layout}
         onSwitchToMarketplace={onSwitchToMarketplace}

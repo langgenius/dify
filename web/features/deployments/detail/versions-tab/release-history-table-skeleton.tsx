@@ -11,8 +11,8 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../table'
-import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
+} from '../components/detail-table'
+import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../components/detail-table-styles'
 
 const RELEASE_TABLE_ROW_SKELETON_KEYS = ['latest', 'previous', 'older', 'archived', 'initial']
 
