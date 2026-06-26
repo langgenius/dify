@@ -536,6 +536,23 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
             },
           },
         },
+        publish: {
+          post: {
+            mutationOptions: {
+              onSuccess: (_publishResult, _variables, _onMutateResult, context) => {
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.get.key(),
+                })
+                context.client.invalidateQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+                context.client.removeQueries({
+                  queryKey: consoleQuery.agent.inviteOptions.get.key(),
+                })
+              },
+            },
+          },
+        },
         delete: {
           mutationOptions: {
             onSuccess: (_data, variables, _onMutateResult, context) => {

@@ -80,9 +80,9 @@ export function AgentWorkingDirectoryPanel({
   return (
     <Drawer open={open} onOpenChange={onOpenChange} swipeDirection="right">
       <DrawerPortal>
-        <DrawerBackdrop className="fixed bg-transparent" />
+        <DrawerBackdrop forceRender className="fixed bg-transparent" />
         <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:w-[360px]">
+          <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[360px]">
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex shrink-0 items-start gap-2 px-4 pt-3 pb-2">
                 <div className="min-w-0 flex-1">

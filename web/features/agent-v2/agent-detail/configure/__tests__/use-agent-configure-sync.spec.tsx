@@ -36,6 +36,38 @@ const composerPutMutationOptions = vi.hoisted(() => vi.fn((options?: {
   },
 })))
 
+type PublishAgentVariables = {
+  params: { agent_id: string }
+  body: Record<string, never>
+}
+
+type PublishAgentResponse = {
+  active_config_snapshot: Record<string, unknown> | null
+  active_config_snapshot_id: string
+  result: string
+}
+
+const publishAgentMutationFn = vi.hoisted(() => vi.fn(async (_variables: PublishAgentVariables): Promise<PublishAgentResponse> => ({
+  active_config_snapshot: {
+    id: 'snapshot-1',
+  },
+  active_config_snapshot_id: 'snapshot-1',
+  result: 'success',
+})))
+
+const publishAgentMutationOptions = vi.hoisted(() => vi.fn((options?: {
+  onSuccess?: (
+    data: PublishAgentResponse,
+    variables: PublishAgentVariables,
+  ) => void
+}) => ({
+  mutationFn: async (variables: PublishAgentVariables) => {
+    const data = await publishAgentMutationFn(variables)
+    options?.onSuccess?.(data, variables)
+    return data
+  },
+})))
+
 function createDeferredPromise<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((promiseResolve) => {
@@ -64,6 +96,11 @@ vi.mock('@/service/client', () => ({
           },
           put: {
             mutationOptions: composerPutMutationOptions,
+          },
+        },
+        publish: {
+          post: {
+            mutationOptions: publishAgentMutationOptions,
           },
         },
         versions: {
@@ -309,6 +346,7 @@ describe('useAgentConfigureSync', () => {
 
   it('should publish only when publishDraft is called explicitly', async () => {
     const { queryClient, result, store } = renderUseAgentConfigureSync()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: false,
       name: 'Agent',
@@ -330,7 +368,7 @@ describe('useAgentConfigureSync', () => {
       },
       body: expect.objectContaining({
         variant: 'agent_app',
-        save_strategy: 'save_as_new_version',
+        save_strategy: 'save_to_current_version',
         agent_soul: expect.objectContaining({
           prompt: expect.objectContaining({
             system_prompt: 'Published prompt',
@@ -338,12 +376,14 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     }))
-    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toMatchObject({
-      agent_soul: {
-        prompt: {
-          system_prompt: 'Published prompt',
-        },
+    expect(publishAgentMutationFn).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
       },
+      body: {},
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['agent-composer', 'agent-1'],
     })
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
       active_config_is_published: true,
@@ -367,6 +407,7 @@ describe('useAgentConfigureSync', () => {
 
     expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({
+        save_strategy: 'save_to_current_version',
         agent_soul: expect.objectContaining({
           prompt: expect.objectContaining({
             system_prompt: 'Current draft prompt',
@@ -374,6 +415,7 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     }))
+    expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
   })
 
   it('should reject publish when knowledge retrieval validation fails', async () => {
@@ -394,11 +436,12 @@ describe('useAgentConfigureSync', () => {
 
     await expect(result.current.publishDraft()).rejects.toThrow('Agent knowledge retrieval configuration is invalid.')
     expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
   })
 
   it('should expose publishing status from the publish mutation while publish is pending', async () => {
-    const publishDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
-    composerPutMutationFn.mockReturnValueOnce(publishDeferred.promise)
+    const publishDeferred = createDeferredPromise<PublishAgentResponse>()
+    publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
     const { result } = renderUseAgentConfigureSync()
     let publishPromise!: Promise<void>
     act(() => {
@@ -414,11 +457,9 @@ describe('useAgentConfigureSync', () => {
 
     await act(async () => {
       publishDeferred.resolve({
-        agent_soul: {
-          prompt: {
-            system_prompt: '',
-          },
-        },
+        active_config_snapshot: {},
+        active_config_snapshot_id: 'snapshot-1',
+        result: 'success',
       })
       await publishPromise
       await vi.advanceTimersByTimeAsync(0)
