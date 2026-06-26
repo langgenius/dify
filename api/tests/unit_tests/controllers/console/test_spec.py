@@ -1,6 +1,7 @@
-import pytest
 from inspect import unwrap
 from unittest.mock import patch
+
+import pytest
 
 import controllers.console.spec as spec_module
 
