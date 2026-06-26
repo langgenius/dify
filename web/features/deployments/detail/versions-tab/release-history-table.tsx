@@ -3,7 +3,7 @@
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../shared/domain/pagination'
 import { ReleaseHistoryRows } from './release-history-rows'
 import { ReleaseHistoryTableSkeleton } from './release-history-table-skeleton'

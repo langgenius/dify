@@ -2,7 +2,7 @@
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import {
   DetailTable,

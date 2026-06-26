@@ -9,7 +9,7 @@ import { debounce, useQueryState } from 'nuqs'
 import { useTranslation } from 'react-i18next'
 import { StudioListHeader } from '@/app/components/apps/studio-list-header'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../components/empty-state'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import { useInfiniteScroll } from '../../shared/hooks/use-infinite-scroll'
 import {
   deploymentsListHasFilterAtom,

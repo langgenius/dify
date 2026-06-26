@@ -1,6 +1,6 @@
 'use client'
 
-import type { UnsupportedDslNode } from '../shared/domain/error'
+import type { UnsupportedDslNode } from '../domain/error'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useTranslation } from 'react-i18next'
 

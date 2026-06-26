@@ -17,9 +17,9 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
-import { TitleTooltip } from '../components/title-tooltip'
 import { DeploymentActionsMenu } from '../deployment-actions'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
+import { TitleTooltip } from '../shared/components/title-tooltip'
 import { deploymentDetailAppInstanceQueryAtom } from './state'
 
 type TabDef = {

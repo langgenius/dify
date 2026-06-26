@@ -11,9 +11,6 @@ import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
 import {
   continueFromSourceAtom,
   dslFileAtom,
@@ -31,6 +28,9 @@ import {
   sourceSearchTextAtom,
   unsupportedDslNodesAtom,
 } from '@/features/deployments/create-guide/state'
+import { DeploymentStateMessage } from '@/features/deployments/shared/components/empty-state'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
 import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
 import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
 import { StepShell } from './layout'

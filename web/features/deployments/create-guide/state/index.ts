@@ -6,21 +6,21 @@ import type {
   Pagination,
 } from '@dify/contracts/enterprise/types.gen'
 import type { Getter } from 'jotai/vanilla'
-import type { EnvVarBindingSlot, EnvVarValues, EnvVarValueSelection } from '@/features/deployments/components/env-var-bindings'
-import type { RuntimeCredentialBindingSelections } from '@/features/deployments/components/runtime-credential-bindings-utils'
+import type { EnvVarBindingSlot, EnvVarValues, EnvVarValueSelection } from '@/features/deployments/shared/components/env-var-bindings'
+import type { RuntimeCredentialBindingSelections } from '@/features/deployments/shared/components/runtime-credential-bindings-utils'
 import type { UnsupportedDslNode } from '@/features/deployments/shared/domain/error'
 import type { App } from '@/types/app'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { keepPreviousData, queryOptions, skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithInfiniteQuery, atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
-import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/components/env-var-bindings-utils'
+import { envVarBindingSlotFromContract, envVarBindingValueType } from '@/features/deployments/shared/components/env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
   selectedDeploymentRuntimeCredentials,
   selectedRuntimeCredentialSelections,
-} from '@/features/deployments/components/runtime-credential-bindings-utils'
+} from '@/features/deployments/shared/components/runtime-credential-bindings-utils'
 import {
   dslAppName,
   dslEnvVarSlots,

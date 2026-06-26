@@ -10,14 +10,6 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
-  EnvVarBindingsPanel,
-} from '@/features/deployments/components/env-var-bindings'
-import {
-  RuntimeCredentialBindingsPanel,
-} from '@/features/deployments/components/runtime-credential-bindings'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
-import {
   canDeployAtom,
   canSkipDeploymentAtom,
   createDeploymentGuideSubmissionAtom,
@@ -38,6 +30,14 @@ import {
   stepAtom,
   unsupportedDslNodesAtom,
 } from '@/features/deployments/create-guide/state'
+import {
+  EnvVarBindingsPanel,
+} from '@/features/deployments/shared/components/env-var-bindings'
+import {
+  RuntimeCredentialBindingsPanel,
+} from '@/features/deployments/shared/components/runtime-credential-bindings'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
 import { deploymentErrorMessage } from '@/features/deployments/shared/domain/error'
 import { useRouter } from '@/next/navigation'
 import { StepShell } from './layout'

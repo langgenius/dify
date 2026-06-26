@@ -12,7 +12,7 @@ Deployment list page for browsing app instances, filtering by keyword or environ
 | `../../shared/domain/release`              | Reuses deployment release date formatting for release metadata previews.                                            |
 | `../../shared/hooks/use-infinite-scroll`   | Centralizes infinite-scroll observation and next-page triggering for query results.                                 |
 | `../../shared/ui/*`                        | Reuses deployment status badges and status label styling so list cards match detail surfaces.                       |
-| `../../components/empty-state`             | Reuses deployment empty/error state presentation.                                                                   |
+| `../../shared/components/empty-state`      | Reuses deployment empty/error state presentation.                                                                   |
 | `../../create-guide/link`                  | Links the create deployment CTA to the create-guide workflow while keeping list-owned button styling local.         |
 | `../../deployment-actions`                 | Reuses the deployment action menu for each card. The list supplies the app instance identity and placement only.    |
 | `../../create-release`                     | Reuses release creation entry points from card footer actions.                                                      |

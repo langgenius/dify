@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
-import { TitleTooltip } from '../../components/title-tooltip'
+import { TitleTooltip } from '../../shared/components/title-tooltip'
 import {
   formatDate,
   releaseCommit,
