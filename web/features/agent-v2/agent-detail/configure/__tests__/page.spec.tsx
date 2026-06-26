@@ -771,6 +771,89 @@ describe('AgentConfigurePage', () => {
       })
     })
 
+    it('should keep exiting build draft when debug conversation refresh fails after applying build draft', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      const refetchComposer = vi.fn(async () => {
+        mocks.queryState.composer = {
+          ...mocks.queryState.composer,
+          data: {
+            agent_soul: {
+              prompt: {
+                system_prompt: 'applied prompt',
+              },
+            },
+          },
+        }
+
+        return {}
+      })
+      mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'old draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchComposer,
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'apply build draft' }))
+
+      await waitFor(() => expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+        expect.any(Object),
+      ))
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          debug_conversation_id: 'debug-conversation-old',
+        },
+      }, expect.any(Object))
+      expect(refetchComposer).toHaveBeenCalled()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('prompt:applied prompt')
+      })
+    })
+
     it('should discard the build draft and start a new build session', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
@@ -822,6 +905,63 @@ describe('AgentConfigurePage', () => {
         },
       }, expect.any(Object))
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+    })
+
+    it('should keep exiting build draft when debug conversation refresh fails after discarding build draft', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {},
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'discard build draft' }))
+
+      await waitFor(() => expect(mocks.discardBuildDraft).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+        expect.any(Object),
+      ))
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          debug_conversation_id: 'debug-conversation-old',
+        },
+      }, expect.any(Object))
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
+      })
     })
   })
 })

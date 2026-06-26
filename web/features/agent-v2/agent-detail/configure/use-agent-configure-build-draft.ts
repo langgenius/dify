@@ -160,7 +160,7 @@ export function useAgentConfigureBuildDraftActions({
   }, [refetchBuildDraft])
 
   const exitBuildDraftMode = useCallback(async (shouldRefetchComposer: boolean) => {
-    await resetBuildChatSession()
+    await resetBuildChatSession().catch(() => undefined)
     setSoulSourceOverride('draft')
     queryClient.removeQueries({
       queryKey: buildDraftQueryOptions.queryKey,
