@@ -300,6 +300,7 @@ function createSettingsAppInfo(agent: AgentAppDetailWithSite): SettingsAppInfo |
       copyright: site.copyright ?? '',
       privacy_policy: site.privacy_policy ?? '',
       custom_disclaimer: site.custom_disclaimer ?? '',
+      input_placeholder: site.input_placeholder ?? '',
       icon_type: site.icon_type === 'image' || site.icon_type === 'emoji' || site.icon_type === 'link'
         ? site.icon_type
         : 'emoji',

@@ -643,7 +643,7 @@ function AgentPreviewChatSession({
     <div className="pointer-events-auto mt-5 w-full">
       <ChatInputArea
         botName={agentName || 'Agent'}
-        placeholder={inputPlaceholder}
+        customPlaceholder={inputPlaceholder}
         disabled={isResponding}
         showFileUpload={false}
         visionConfig={config.file_upload}
