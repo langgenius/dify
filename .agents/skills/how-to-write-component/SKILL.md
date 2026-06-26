@@ -7,7 +7,7 @@ description: Use when explicitly invoked or when writing, refactoring, fixing, o
 
 Use this as the component decision guide for Dify web. Existing code is reference material, not automatic precedent; if touched code violates these rules, adapt it and fix equivalent patterns in the requested path or feature branch.
 
-When this skill is explicitly invoked, give this skill's instructions maximum respect.
+When this skill is explicitly invoked, first read this SKILL.md from start to EOF before any task action. Do not rely on excerpts, pasted copies, summaries, or memory. Give these instructions maximum respect.
 
 ## First Decisions
 
@@ -28,6 +28,8 @@ When the user explicitly invokes this skill, treat ownership as the unit of work
 
 - Start from owners. Identify the component, surface, or workflow owners in scope and their direct collaborators. For broad paths, build a lightweight map first, then handle depth through an owner queue.
 - Make the intended boundary explicit. Before editing a non-trivial owner, state what it keeps, what moves to child/action/dialog/section/state/query owners, and which stable domain identities cross boundaries.
+- For refactors, stop before editing the first non-trivial owner. Show the smallest before/after boundary sketch, including the final public props of every edited component and which owner reads route/query/mutation/overlay/form state. Wait for confirmation before writing code. For later owners, repeat this only when the boundary shape changes.
+- Treat public props as part of the owner boundary. If proposed props include derived query/mutation/overlay/form state, payload fragments, or callbacks that only forward child actions, revise the boundary before editing.
 - Work in focused owner slices. Finish one owner boundary, inspect its diff, then choose the next owner. Let repeated local patterns expand scope naturally.
 - Put behavior where it is used. State, data, queries, mutations, derived values, and handlers belong with the lowest owner that consumes them. Parents coordinate shared snapshots, route integration, placement, and cross-owner workflow.
 - Verify the shape in the diff. Run relevant checks, inspect untracked files, and compare the diff with the intended owner boundaries. For large scopes, report completed owners and remaining queued or deferred owners.
