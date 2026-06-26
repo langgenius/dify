@@ -629,6 +629,41 @@ describe('AgentFiles', () => {
     })
   })
 
+  it('should upload a dropped file before committing it to the Agent App drive', async () => {
+    renderAgentFiles({
+      ...defaultAgentSoulConfigFormState,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }))
+
+    const uploadArea = screen.getByRole('group', { name: 'agentV2.agentDetail.configure.files.upload.title' })
+    const file = new File(['# Uploaded'], 'uploaded.md', { type: 'text/markdown' })
+    fireEvent.dragEnter(uploadArea, {
+      dataTransfer: {
+        files: [file],
+        types: ['Files'],
+      },
+    })
+    fireEvent.drop(uploadArea, {
+      dataTransfer: {
+        files: [file],
+        types: ['Files'],
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.upload.action' }))
+
+    await waitFor(() => {
+      expect(mocks.uploadFileMutationFn).toHaveBeenCalledWith(
+        {
+          body: {
+            file,
+          },
+        },
+        expect.anything(),
+      )
+    })
+  })
+
   it('should commit an uploaded file through workflow-node drive endpoints and refresh the list', async () => {
     const driveFiles = [
       {
