@@ -10,10 +10,10 @@ import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../create-release'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
-import { DeveloperApiHeaderSwitch } from './access-tab/developer-api/section'
-import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
+import { DeveloperApiHeaderSwitch } from './api-tokens/section'
+import { NewDeploymentHeaderAction } from './instances/new-deployment-button'
+import { releasesLocalAtoms } from './releases/state'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
-import { versionsTabLocalAtoms } from './versions-tab/state'
 
 function MobileDetailTabs({ appInstanceId, activeTab }: {
   appInstanceId: string
@@ -63,7 +63,7 @@ export function InstanceDetail({ children }: {
     <ScopeProvider
       key={appInstanceId}
       atoms={[
-        ...versionsTabLocalAtoms,
+        ...releasesLocalAtoms,
       ]}
       name="DeploymentDetail"
     >

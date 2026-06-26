@@ -1,6 +1,6 @@
 # Deployment Detail Shell
 
-Detail shell for the deployment app instance route, including sidebar navigation, tab headers, and tab-level action slots.
+Detail shell for the deployment app instance routes, including sidebar navigation, route headers, and route-level action slots.
 
 ## External Modules
 
@@ -15,6 +15,6 @@ Detail shell for the deployment app instance route, including sidebar navigation
 | `../route-state`                       | Reads the route app instance identity as the detail module's shared route boundary.                       |
 | `../shared/components/title-tooltip`   | Shows full sidebar labels when navigation text is truncated.                                              |
 | `../shared/domain/runtime-status`      | Reuses deployment polling intervals for detail-level query refresh.                                       |
-| `./access-tab/developer-api/section`   | Renders the developer API header switch for the API tokens tab.                                           |
-| `./deploy-tab/new-deployment-button`   | Renders the new deployment header action for the instances tab.                                           |
-| `./versions-tab/state`                 | Scopes versions-tab local state at the detail route boundary.                                             |
+| `./api-tokens/section`                 | Renders the developer API header switch for the API tokens route.                                         |
+| `./instances/new-deployment-button`    | Renders the new deployment header action for the instances route.                                         |
+| `./releases/state`                     | Scopes releases route local state at the detail route boundary.                                           |
