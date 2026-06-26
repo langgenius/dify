@@ -14,7 +14,6 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from core.db.session_factory import session_factory
 from core.errors.error import QuotaExceededError
-from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import TenantCreditPool
 from models.enums import ProviderQuotaType
@@ -66,7 +65,7 @@ class CreditPoolService:
         )
 
     @classmethod
-    def create_default_pool(cls, tenant_id: str) -> TenantCreditPool:
+    def create_default_pool(cls, tenant_id: str, session: Session) -> TenantCreditPool:
         """create default credit pool for new tenant"""
         credit_pool = TenantCreditPool(
             tenant_id=tenant_id,
@@ -74,8 +73,8 @@ class CreditPoolService:
             quota_used=0,
             pool_type=ProviderQuotaType.TRIAL,
         )
-        db.session.add(credit_pool)
-        db.session.commit()
+        session.add(credit_pool)
+        session.commit()
         return credit_pool
 
     @classmethod
