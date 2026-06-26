@@ -16,8 +16,10 @@ import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
 } from '../../shared/components/detail-table-styles'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
-import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
-import { deploymentEnvironmentDeploymentsQueryAtom } from '../state'
+import {
+  deploymentEnvironmentDeploymentsQueryAtom,
+  deploymentRuntimeInstanceRowsAtom,
+} from '../state'
 import { DeploymentEnvironmentList } from './environment-list/deployment-environment-list'
 import { NewDeploymentButton } from './header-actions/new-deployment-button'
 
@@ -90,8 +92,7 @@ function DeploymentEnvironmentListSkeleton() {
 export function DeploymentInstances() {
   const { t } = useTranslation('deployments')
   const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
-  const environmentDeployments = environmentDeploymentsQuery.data
-  const rows = environmentDeployments?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
+  const rows = useAtomValue(deploymentRuntimeInstanceRowsAtom)
   const isLoading = environmentDeploymentsQuery.isLoading
   const hasError = environmentDeploymentsQuery.isError
 

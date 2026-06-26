@@ -1,10 +1,14 @@
 'use client'
 
 import { skipToken } from '@tanstack/react-query'
+import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
-import { deploymentStatusPollingInterval } from '../shared/domain/runtime-status'
+import {
+  deploymentStatusPollingInterval,
+  hasRuntimeInstanceDeployment,
+} from '../shared/domain/runtime-status'
 
 export const deploymentDetailAppInstanceQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
@@ -31,4 +35,8 @@ export const deploymentEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => 
     enabled: Boolean(appInstanceId),
     refetchInterval: query => deploymentStatusPollingInterval(query.state.data?.environmentDeployments),
   })
+})
+
+export const deploymentRuntimeInstanceRowsAtom = atom((get) => {
+  return get(deploymentEnvironmentDeploymentsQueryAtom).data?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
 })

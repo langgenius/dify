@@ -5,8 +5,10 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { openDeployDrawerAtom } from '../../../deploy-drawer/state'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
-import { hasRuntimeInstanceDeployment } from '../../../shared/domain/runtime-status'
-import { deploymentEnvironmentDeploymentsQueryAtom } from '../../state'
+import {
+  deploymentEnvironmentDeploymentsQueryAtom,
+  deploymentRuntimeInstanceRowsAtom,
+} from '../../state'
 
 export function NewDeploymentButton() {
   const { t } = useTranslation('deployments')
@@ -33,7 +35,7 @@ export function NewDeploymentButton() {
 
 export function NewDeploymentHeaderAction() {
   const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
-  const rows = environmentDeploymentsQuery.data?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
+  const rows = useAtomValue(deploymentRuntimeInstanceRowsAtom)
 
   if (environmentDeploymentsQuery.isLoading || environmentDeploymentsQuery.isError || rows.length === 0)
     return null
