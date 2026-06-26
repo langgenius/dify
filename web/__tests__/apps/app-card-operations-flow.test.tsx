@@ -212,14 +212,19 @@ vi.mock('@/app/components/workflow/dsl-export-confirm-modal', () => ({
   ),
 }))
 
-vi.mock('@/app/components/app/app-access-control', () => ({
-  AccessControl: ({ onConfirm, onClose }: Record<string, unknown>) => (
+vi.mock('@/app/components/app/app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: Record<string, unknown>) => (
     <div data-testid="access-control-modal">
       <button data-testid="confirm-access" onClick={onConfirm as () => void}>Confirm</button>
       <button data-testid="cancel-access" onClick={onClose as () => void}>Cancel</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: overrides.id ?? 'app-1',
