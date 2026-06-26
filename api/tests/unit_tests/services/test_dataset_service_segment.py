@@ -304,6 +304,23 @@ class TestSegmentServiceQueries:
 
         assert result is None
 
+    def test_get_segment_by_id_can_scope_to_dataset_document(self):
+        with patch("services.dataset_service.db") as mock_db:
+            mock_db.session.scalar.return_value = None
+
+            SegmentService.get_segment_by_id(
+                "segment-1",
+                "tenant-1",
+                dataset_id="dataset-1",
+                document_id="doc-1",
+            )
+
+        statement = mock_db.session.scalar.call_args.args[0]
+        where_clause = str(statement.whereclause)
+
+        assert "document_segments.dataset_id" in where_clause
+        assert "document_segments.document_id" in where_clause
+
     def test_get_segments_by_document_and_dataset_returns_scalars_result(self):
         segment = DocumentSegment(
             tenant_id="tenant-1",

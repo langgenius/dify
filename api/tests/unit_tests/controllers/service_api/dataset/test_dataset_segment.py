@@ -2110,3 +2110,56 @@ class TestDatasetChildChunkApiDelete:
                     segment_id=segment_id,
                     child_chunk_id="cc-id",
                 )
+
+    @patch("controllers.service_api.dataset.segment.SegmentService")
+    @patch("controllers.service_api.dataset.segment.DocumentService")
+    @patch("controllers.service_api.dataset.segment.current_account_with_tenant")
+    @patch("controllers.service_api.dataset.segment.db")
+    @patch("controllers.service_api.wraps.validate_and_get_api_token")
+    def test_patch_child_chunk_success(
+        self,
+        mock_validate_token,
+        mock_db,
+        mock_account_fn,
+        mock_doc_svc,
+        mock_seg_svc,
+        app: Flask,
+        mock_tenant,
+        mock_dataset,
+    ):
+        mock_api_token = Mock()
+        mock_api_token.tenant_id = mock_tenant.id
+        mock_validate_token.return_value = mock_api_token
+        mock_account_fn.return_value = (Mock(), mock_tenant.id)
+        mock_db.session.scalar.return_value = mock_dataset
+        mock_doc_svc.get_document.return_value = Mock()
+
+        segment_id = str(uuid.uuid4())
+        mock_segment = Mock()
+        mock_segment.id = segment_id
+        mock_segment.document_id = "doc-id"
+        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+
+        child_chunk_id = str(uuid.uuid4())
+        mock_child = _child_chunk()
+        mock_child.segment_id = segment_id
+        mock_seg_svc.get_child_chunk_by_id.return_value = mock_child
+        mock_seg_svc.update_child_chunk.return_value = mock_child
+
+        with app.test_request_context(
+            f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/{child_chunk_id}",
+            method="PATCH",
+            json={"content": "updated"},
+            headers={"Authorization": "Bearer test_token"},
+        ):
+            api = DatasetChildChunkApi()
+            response, status = api.patch(
+                tenant_id=mock_tenant.id,
+                dataset_id=mock_dataset.id,
+                document_id="doc-id",
+                segment_id=segment_id,
+                child_chunk_id=child_chunk_id,
+            )
+
+        assert status == 200
+        assert "data" in response

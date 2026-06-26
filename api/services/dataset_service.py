@@ -4056,13 +4056,22 @@ class SegmentService:
         return paginated_segments.items, paginated_segments.total
 
     @classmethod
-    def get_segment_by_id(cls, segment_id: str, tenant_id: str) -> DocumentSegment | None:
-        """Get a segment by its ID."""
-        result = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
-            .limit(1)
-        )
+    def get_segment_by_id(
+        cls,
+        segment_id: str,
+        tenant_id: str,
+        dataset_id: str | None = None,
+        document_id: str | None = None,
+    ) -> DocumentSegment | None:
+        """Get a tenant segment, optionally bound to a dataset/document route."""
+        query = select(DocumentSegment).where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
+
+        if dataset_id is not None:
+            query = query.where(DocumentSegment.dataset_id == dataset_id)
+        if document_id is not None:
+            query = query.where(DocumentSegment.document_id == document_id)
+
+        result = db.session.scalar(query.limit(1))
         return result if isinstance(result, DocumentSegment) else None
 
     @classmethod
