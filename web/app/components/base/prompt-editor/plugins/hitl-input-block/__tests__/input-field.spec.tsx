@@ -93,7 +93,7 @@ describe('InputField', () => {
     fileUploadSettingMaxLength = 4
   })
 
-  it('should keep the header and actions visible while the field content scrolls internally', () => {
+  it('should keep the header and actions visible while long field content scrolls', () => {
     const { container } = render(
       <InputField
         nodeId="node-layout"
@@ -109,10 +109,11 @@ describe('InputField', () => {
     const scrollBody = panel?.children[1]
     const footer = panel?.lastElementChild
 
-    expect(panel).toHaveClass('max-h-(--shortcut-popup-max-height)', 'overflow-hidden')
-    expect(header).toHaveClass('shrink-0', 'pb-2')
-    expect(scrollBody).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto')
-    expect(footer).toHaveClass('shrink-0', 'bg-components-panel-bg')
+    expect(panel).toHaveClass('overflow-y-auto')
+    expect(panel).toHaveAttribute('style', 'max-height: var(--shortcut-popup-max-height, 80dvh);')
+    expect(header).toHaveClass('sticky', 'top-0', 'pb-2')
+    expect(scrollBody).toHaveClass('p-3', 'pt-0', 'pb-0')
+    expect(footer).toHaveClass('sticky', 'bottom-0', 'bg-components-panel-bg')
     expect(footer).not.toHaveClass('border-t')
   })
 

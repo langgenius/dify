@@ -216,11 +216,16 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="flex max-h-(--shortcut-popup-max-height) w-[372px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
-      <div className="shrink-0 p-3 pb-2">
+    <div
+      className="w-[372px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]"
+      style={{
+        maxHeight: 'var(--shortcut-popup-max-height, 80dvh)',
+      }}
+    >
+      <div className="sticky top-0 z-10 bg-components-panel-bg p-3 pb-2">
         <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-0 pb-0">
+      <div className="p-3 pt-0 pb-0">
         <div className="mt-3">
           <div className="system-xs-medium text-text-secondary">
             {t(`${i18nPrefix}.fieldType`, { ns: 'workflow' })}
@@ -334,7 +339,7 @@ const InputField: React.FC<InputFieldProps> = ({
           </div>
         )}
       </div>
-      <div className="shrink-0 bg-components-panel-bg p-3">
+      <div className="sticky bottom-0 z-10 bg-components-panel-bg p-3">
         <div className="flex justify-end space-x-2">
           <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
           {isEdit
