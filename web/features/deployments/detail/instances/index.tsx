@@ -18,8 +18,8 @@ import {
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import { deploymentEnvironmentDeploymentsQueryAtom } from '../state'
-import { DeploymentEnvironmentList } from './deployment-environment-list'
-import { NewDeploymentButton } from './new-deployment-button'
+import { DeploymentEnvironmentList } from './environment-list/deployment-environment-list'
+import { NewDeploymentButton } from './header-actions/new-deployment-button'
 
 const DEPLOYMENT_TABLE_ROW_SKELETON_KEYS = ['production', 'staging']
 

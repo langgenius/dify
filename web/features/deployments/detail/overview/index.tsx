@@ -7,9 +7,9 @@ import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { DeploymentStateMessage } from '../../shared/components/empty-state'
 import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import { deploymentDetailOverviewQueryAtom } from '../state'
-import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './access-status-section'
-import { EnvironmentStrip, EnvironmentStripSkeleton } from './environment-strip'
-import { ReleaseHero, ReleaseHeroSkeleton } from './release-hero'
+import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './access-summary/access-status-section'
+import { EnvironmentStrip, EnvironmentStripSkeleton } from './environment-status/environment-strip'
+import { ReleaseHero, ReleaseHeroSkeleton } from './release-summary/release-hero'
 
 function OverviewLayout({ children }: { children: React.ReactNode }) {
   return (

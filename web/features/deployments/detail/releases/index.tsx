@@ -1,5 +1,5 @@
 'use client'
-import { ReleaseHistoryTable } from './release-history-table'
+import { ReleaseHistoryTable } from './release-history/release-history-table'
 
 export function DeploymentReleases() {
   return (

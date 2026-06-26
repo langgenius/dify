@@ -1,6 +1,6 @@
 'use client'
 
-import { DeveloperApiSection } from './section'
+import { DeveloperApiSection } from './api-token-management/section'
 
 export function DeploymentApiTokens() {
   return (
