@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { TitleTooltip } from './title-tooltip'
+import { TitleTooltip } from '../title-tooltip'
 
 vi.mock('@langgenius/dify-ui/tooltip', () => ({
   Tooltip: ({ children }: { children: ReactNode }) => (

@@ -6,7 +6,7 @@ import type {
 import type { TFunction } from 'i18next'
 import { ReleaseSource, RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { describe, expect, it } from 'vitest'
-import { buildDeployMenuSections } from './deploy-release-menu-utils'
+import { buildDeployMenuSections } from '../deploy-release-menu-utils'
 
 const t = ((key: string, options?: { name?: string }) => {
   return options?.name ? `${key}:${options.name}` : key

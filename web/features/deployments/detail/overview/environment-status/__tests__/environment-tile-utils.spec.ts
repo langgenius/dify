@@ -6,7 +6,7 @@ import {
   renderDriftTitle,
   renderStatus,
   resolveConfig,
-} from './environment-tile-utils'
+} from '../environment-tile-utils'
 
 const t = ((key: string, options?: Record<string, unknown>) => {
   return options ? `${key}:${JSON.stringify(options)}` : key

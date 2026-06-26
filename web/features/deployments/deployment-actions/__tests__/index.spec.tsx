@@ -1,15 +1,15 @@
-import type { DeploymentActionAppInstance } from './types'
+import type { DeploymentActionAppInstance } from '../types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { DeploymentActionsMenu } from './index'
+import { DeploymentActionsMenu } from '../index'
 
 const editDialogMock = vi.hoisted(() => vi.fn())
 const deleteDialogMock = vi.hoisted(() => vi.fn())
 
-vi.mock('./edit-dialog', async () => {
+vi.mock('../edit-dialog', async () => {
   const { useAtomValue } = await import('jotai')
-  const { deploymentActionAppInstanceAtom, editDeploymentDialogOpenAtom } = await import('./state')
+  const { deploymentActionAppInstanceAtom, editDeploymentDialogOpenAtom } = await import('../state')
 
   return {
     EditDeploymentDialog: () => {
@@ -22,9 +22,9 @@ vi.mock('./edit-dialog', async () => {
   }
 })
 
-vi.mock('./delete-dialog', async () => {
+vi.mock('../delete-dialog', async () => {
   const { useAtomValue } = await import('jotai')
-  const { deleteDeploymentDialogOpenAtom, deploymentActionAppInstanceAtom } = await import('./state')
+  const { deleteDeploymentDialogOpenAtom, deploymentActionAppInstanceAtom } = await import('../state')
 
   return {
     DeleteDeploymentDialog: () => {
