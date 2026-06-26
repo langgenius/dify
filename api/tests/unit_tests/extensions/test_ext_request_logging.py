@@ -1,3 +1,4 @@
+from unittest.mock import MagicMock
 import json
 import logging
 from unittest import mock
@@ -73,8 +74,8 @@ class TestRequestLoggingExtension:
     def test_receiver_should_not_be_invoked_if_configuration_is_disabled(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        mock_request_receiver,
-        mock_response_receiver,
+        mock_request_receiver: MagicMock,
+        mock_response_receiver: MagicMock,
     ):
         monkeypatch.setattr(dify_config, "ENABLE_REQUEST_LOGGING", False)
 
@@ -90,8 +91,8 @@ class TestRequestLoggingExtension:
     def test_receiver_should_be_called_if_enabled(
         self,
         enable_request_logging,
-        mock_request_receiver,
-        mock_response_receiver,
+        mock_request_receiver: MagicMock,
+        mock_response_receiver: MagicMock,
     ):
         """
         Test the request logging extension with JSON data.
