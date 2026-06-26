@@ -221,13 +221,11 @@ export function DeveloperApiSection() {
                 environments={environments}
               />
             )}
-      {visibleCreatedApiToken && (
-        <CreatedApiTokenDialog
-          token={visibleCreatedApiToken}
-          apiUrl={apiUrl}
-          onDismiss={() => setCreatedApiToken(undefined)}
-        />
-      )}
+      <CreatedApiTokenDialog
+        token={visibleCreatedApiToken}
+        apiUrl={apiUrl}
+        onDismiss={() => setCreatedApiToken(undefined)}
+      />
     </div>
   )
 }

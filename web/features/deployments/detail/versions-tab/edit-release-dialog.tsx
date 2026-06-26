@@ -120,15 +120,17 @@ function EditReleaseForm({
 export function EditReleaseDialog({
   release,
   open,
+  resetKey,
   onOpenChange,
 }: {
   release: Release
   open: boolean
+  resetKey: number
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation('deployments')
   const updateRelease = useMutation(consoleQuery.enterprise.releaseService.updateRelease.mutationOptions())
-  const formKey = `${release.id}-${release.displayName}-${release.description}`
+  const formKey = `${resetKey}:${release.id}:${release.displayName}:${release.description}`
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && updateRelease.isPending)

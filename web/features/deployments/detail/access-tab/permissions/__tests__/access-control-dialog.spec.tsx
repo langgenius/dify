@@ -26,6 +26,7 @@ describe('DeploymentAccessControlDialog', () => {
     render(
       <DeploymentAccessControlDialog
         open
+        resetKey={1}
         initialKind="specific"
         initialSubjects={[
           {

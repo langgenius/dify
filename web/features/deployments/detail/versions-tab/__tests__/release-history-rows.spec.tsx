@@ -52,6 +52,13 @@ function createReleaseRow(overrides: Partial<ReleaseWithSummaryDeployments> = {}
   } as ReleaseWithSummaryDeployments
 }
 
+function requireElement<T extends Element>(element: T | null, label: string): T {
+  expect(element).not.toBeNull()
+  if (!element)
+    throw new Error(`${label} should exist`)
+  return element
+}
+
 describe('ReleaseHistoryRows', () => {
   it('should render the desktop release list with the knowledge table style', () => {
     const { container } = render(
@@ -60,11 +67,11 @@ describe('ReleaseHistoryRows', () => {
       />,
     )
 
-    const table = container.querySelector('table')
-    const tableScope = within(table!)
-    const header = table!.querySelector('thead')
-    const headerCell = table!.querySelector('th')
-    const bodyRow = table!.querySelector('tbody tr')
+    const table = requireElement(container.querySelector('table'), 'release table')
+    const tableScope = within(table)
+    const header = requireElement(table.querySelector('thead'), 'release table header')
+    const headerCell = requireElement(table.querySelector('th'), 'release table header cell')
+    const bodyRow = requireElement(table.querySelector('tbody tr'), 'release table row')
 
     expect(table).toHaveClass('w-full', 'border-collapse', 'border-0', 'text-sm')
     expect(header).toHaveClass('border-b', 'border-divider-subtle')
@@ -88,8 +95,8 @@ describe('ReleaseHistoryRows', () => {
       />,
     )
 
-    const table = container.querySelector('table')
-    const deploymentLabel = table!.querySelector('.text-util-colors-green-green-600')
+    const table = requireElement(container.querySelector('table'), 'release table')
+    const deploymentLabel = requireElement(table.querySelector('.text-util-colors-green-green-600'), 'deployment label')
 
     expect(deploymentLabel).toHaveTextContent('test-cpu')
     expect(deploymentLabel).toHaveClass('text-util-colors-green-green-600', 'system-xs-medium')
@@ -109,8 +116,8 @@ describe('ReleaseHistoryRows', () => {
       />,
     )
 
-    const table = container.querySelector('table')
-    const sourceLink = within(table!).getByRole('link', { name: /Source Workflow/ })
+    const table = requireElement(container.querySelector('table'), 'release table')
+    const sourceLink = within(table).getByRole('link', { name: /Source Workflow/ })
 
     expect(sourceLink).toHaveAttribute('href', '/app/source-app-1/workflow')
     expect(sourceLink).toHaveAttribute('target', '_blank')

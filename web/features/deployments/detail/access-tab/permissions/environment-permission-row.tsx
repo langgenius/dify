@@ -56,6 +56,7 @@ export function EnvironmentPermissionRow({
     : 'no-policy'
   const [draft, setDraft] = useState<AccessPermissionDraft>()
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [dialogSessionKey, setDialogSessionKey] = useState(0)
   const subjectLabelCandidates = [
     ...(draft?.subjects ?? []),
     ...resolvedSubjects
@@ -124,6 +125,11 @@ export function EnvironmentPermissionRow({
     })
   }
 
+  function handleOpenDialog() {
+    setDialogSessionKey(sessionKey => sessionKey + 1)
+    setDialogOpen(true)
+  }
+
   return (
     <div className="flex min-w-0 flex-col gap-2 border-b border-divider-subtle py-4 first:pt-0 last:border-b-0 last:pb-0">
       <div className="flex min-w-0 items-center">
@@ -137,10 +143,11 @@ export function EnvironmentPermissionRow({
         disabled={controlsDisabled}
         loading={isSaving}
         environmentLabel={envName}
-        onClick={() => setDialogOpen(true)}
+        onClick={handleOpenDialog}
       />
       <DeploymentAccessControlDialog
         open={dialogOpen}
+        resetKey={dialogSessionKey}
         initialKind={permissionKind}
         initialSubjects={subjects}
         saving={isSaving}

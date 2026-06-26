@@ -16,7 +16,6 @@ import {
 import { useDebounce } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { useSearchAccessSubjects } from '@/service/access-control/use-access-subjects'
 import { SelectedGroupsBreadCrumb, SubjectItem } from './subject-options'
@@ -66,7 +65,8 @@ export function AccessSubjectAddButton({
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
-        if (entries[0]!.isIntersecting && !isLoading && !isFetchingNextPage && hasMore)
+        const entry = entries[0]
+        if (entry?.isIntersecting && !isLoading && !isFetchingNextPage && hasMore)
           fetchNextPage()
       }, { root: scrollRootRef.current, rootMargin: '20px' })
       observer.observe(anchorRef.current)
@@ -178,7 +178,7 @@ export function AccessSubjectAddButton({
                               />
                             )}
                           </ComboboxList>
-                          {isFetchingNextPage && <Loading />}
+                          {isFetchingNextPage && <SubjectOptionsLoadingStatus />}
                           <div ref={anchorRef} className="h-0" />
                         </>
                       )
@@ -192,6 +192,20 @@ export function AccessSubjectAddButton({
         </div>
       </ComboboxContent>
     </Combobox>
+  )
+}
+
+function SubjectOptionsLoadingStatus() {
+  const { t } = useTranslation()
+
+  return (
+    <div
+      role="status"
+      aria-label={t('loading', { ns: 'appApi' })}
+      className="flex h-8 items-center justify-center"
+    >
+      <span aria-hidden className="i-ri-loader-2-line size-4 animate-spin text-text-tertiary motion-reduce:animate-none" />
+    </div>
   )
 }
 

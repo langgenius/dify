@@ -28,6 +28,7 @@ import { AccessSubjectSelectionList } from './access-subject-selector/selection-
 
 export function DeploymentAccessControlDialog({
   open,
+  resetKey,
   initialKind,
   initialSubjects,
   saving,
@@ -35,6 +36,7 @@ export function DeploymentAccessControlDialog({
   onSubmit,
 }: {
   open: boolean
+  resetKey: number
   initialKind: AccessPermissionKind
   initialSubjects: SelectableAccessSubject[]
   saving?: boolean
@@ -54,16 +56,14 @@ export function DeploymentAccessControlDialog({
         )}
       >
         <DialogCloseButton className="top-5 right-5 size-8" />
-        {open && (
-          <DeploymentAccessControlDialogBody
-            key={draftKey}
-            initialKind={initialKind}
-            initialSubjects={initialSubjects}
-            saving={saving}
-            onClose={onClose}
-            onSubmit={onSubmit}
-          />
-        )}
+        <DeploymentAccessControlDialogBody
+          key={`${resetKey}:${draftKey}`}
+          initialKind={initialKind}
+          initialSubjects={initialSubjects}
+          saving={saving}
+          onClose={onClose}
+          onSubmit={onSubmit}
+        />
       </DialogContent>
     </Dialog>
   )

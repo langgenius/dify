@@ -53,7 +53,7 @@ function CurlExample({ apiUrl, token }: {
   )
 }
 
-export function CreatedApiTokenDialog({ token, apiUrl, onDismiss }: {
+function CreatedApiTokenDialogContent({ token, apiUrl, onDismiss }: {
   token: string
   apiUrl?: string
   onDismiss: () => void
@@ -61,36 +61,54 @@ export function CreatedApiTokenDialog({ token, apiUrl, onDismiss }: {
   const { t } = useTranslation('deployments')
 
   return (
+    <>
+      <DialogCloseButton />
+      <div className="border-b border-divider-subtle px-6 py-5 pr-14">
+        <DialogTitle className="title-xl-semi-bold text-text-primary">
+          {t('access.api.newTokenTitle')}
+        </DialogTitle>
+        <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+          {t('access.api.newTokenDescription')}
+        </DialogDescription>
+      </div>
+
+      <div className="flex flex-col gap-5 px-6 py-5">
+        <CopyPill
+          label={t('access.api.newTokenLabel')}
+          value={token}
+        />
+        {apiUrl && (
+          <CurlExample
+            apiUrl={apiUrl}
+            token={token}
+          />
+        )}
+      </div>
+
+      <div className="flex justify-end border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
+        <Button variant="primary" onClick={onDismiss}>
+          {t('operation.confirm', { ns: 'common' })}
+        </Button>
+      </div>
+    </>
+  )
+}
+
+export function CreatedApiTokenDialog({ token, apiUrl, onDismiss }: {
+  token?: string
+  apiUrl?: string
+  onDismiss: () => void
+}) {
+  return (
     <Dialog open={Boolean(token)} onOpenChange={open => !open && onDismiss()} disablePointerDismissal>
       <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
-        <DialogCloseButton />
-        <div className="border-b border-divider-subtle px-6 py-5 pr-14">
-          <DialogTitle className="title-xl-semi-bold text-text-primary">
-            {t('access.api.newTokenTitle')}
-          </DialogTitle>
-          <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-            {t('access.api.newTokenDescription')}
-          </DialogDescription>
-        </div>
-
-        <div className="flex flex-col gap-5 px-6 py-5">
-          <CopyPill
-            label={t('access.api.newTokenLabel')}
-            value={token}
+        {token && (
+          <CreatedApiTokenDialogContent
+            token={token}
+            apiUrl={apiUrl}
+            onDismiss={onDismiss}
           />
-          {apiUrl && (
-            <CurlExample
-              apiUrl={apiUrl}
-              token={token}
-            />
-          )}
-        </div>
-
-        <div className="flex justify-end border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
-          <Button variant="primary" onClick={onDismiss}>
-            {t('operation.confirm', { ns: 'common' })}
-          </Button>
-        </div>
+        )}
       </DialogContent>
     </Dialog>
   )

@@ -24,7 +24,11 @@ function releaseDslFileName({ release, appInstanceName }: {
 }) {
   const projectName = sanitizeFileNamePart(appInstanceName)
   const releaseName = sanitizeFileNamePart(release.displayName) || 'release'
-  const baseName = [projectName, releaseName].filter(Boolean).join('-')
+  const fileNameParts: string[] = []
+  if (projectName)
+    fileNameParts.push(projectName)
+  fileNameParts.push(releaseName)
+  const baseName = fileNameParts.join('-')
 
   return `${baseName}.yaml`
 }

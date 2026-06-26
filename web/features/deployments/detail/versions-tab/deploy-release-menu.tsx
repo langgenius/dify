@@ -50,6 +50,7 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
   const openReleaseMenuId = useAtomValue(deployReleaseMenuOpenReleaseIdAtom)
   const setDeployReleaseMenuOpen = useSetAtom(setDeployReleaseMenuOpenAtom)
   const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editDialogSessionKey, setEditDialogSessionKey] = useState(0)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const open = openReleaseMenuId === releaseId
   const environmentDeploymentsQuery = useAtomValue(deployReleaseMenuEnvironmentDeploymentsQueryAtom)
@@ -148,96 +149,96 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
         >
           <span aria-hidden className="i-ri-more-fill size-4" />
         </DropdownMenuTrigger>
-        {open && (
-          <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">
+        <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">
+          <DropdownMenuItem
+            className="gap-2 px-3"
+            onClick={() => {
+              handleOpenChange(false)
+              setEditDialogSessionKey(sessionKey => sessionKey + 1)
+              setShowEditDialog(true)
+            }}
+          >
+            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+            <span className="system-sm-regular text-text-secondary">
+              {t('versions.editRelease')}
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            disabled={isExportingDsl}
+            aria-disabled={isExportingDsl}
+            className={cn(
+              'gap-2 px-3',
+              isExportingDsl && 'cursor-not-allowed opacity-60',
+            )}
+            onClick={handleExportDsl}
+          >
+            <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
+            <span className="system-sm-regular text-text-secondary">
+              {isExportingDsl ? t('versions.exportingDsl') : t('versions.exportDsl')}
+            </span>
+          </DropdownMenuItem>
+          {groupedRows.length > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
+          {groupedRows.map((section, sectionIndex) => (
+            <div key={section.group}>
+              {sectionIndex > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
+              <div className="px-3 pt-1.5 pb-1 system-2xs-medium-uppercase text-text-quaternary">
+                {t(`versions.groupHeader.${section.group}`)}
+              </div>
+              {section.rows.map((row) => {
+                const isDisabled = row.state === 'current' || row.state === 'deploying'
+                return (
+                  <TitleTooltip key={row.environmentId} content={isDisabled ? row.disabledReason : undefined}>
+                    <DropdownMenuItem
+                      disabled={isDisabled}
+                      aria-disabled={isDisabled}
+                      className={cn(
+                        'gap-2 px-3',
+                        isDisabled && 'cursor-not-allowed opacity-60',
+                      )}
+                      onClick={() => {
+                        if (isDisabled || !appInstanceId)
+                          return
+                        handleOpenChange(false)
+                        openDeployDrawer({ appInstanceId, environmentId: row.environmentId, releaseId })
+                      }}
+                    >
+                      <span className="system-sm-regular text-text-secondary">
+                        {row.label}
+                      </span>
+                    </DropdownMenuItem>
+                  </TitleTooltip>
+                )
+              })}
+            </div>
+          ))}
+          <div className="my-1 border-t border-divider-subtle" aria-hidden />
+          <TitleTooltip content={deleteDisabledReason}>
             <DropdownMenuItem
-              className="gap-2 px-3"
-              onClick={() => {
-                handleOpenChange(false)
-                setShowEditDialog(true)
-              }}
-            >
-              <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-              <span className="system-sm-regular text-text-secondary">
-                {t('versions.editRelease')}
-              </span>
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              disabled={isExportingDsl}
-              aria-disabled={isExportingDsl}
+              variant="destructive"
+              disabled={deleteActionDisabled}
+              aria-disabled={deleteActionDisabled}
               className={cn(
                 'gap-2 px-3',
-                isExportingDsl && 'cursor-not-allowed opacity-60',
+                deleteActionDisabled && 'cursor-not-allowed opacity-60',
               )}
-              onClick={handleExportDsl}
+              onClick={() => {
+                if (deleteActionDisabled)
+                  return
+                handleOpenChange(false)
+                setShowDeleteConfirm(true)
+              }}
             >
-              <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
-              <span className="system-sm-regular text-text-secondary">
-                {isExportingDsl ? t('versions.exportingDsl') : t('versions.exportDsl')}
-              </span>
+              <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+              <span className="system-sm-regular">{t('versions.deleteRelease')}</span>
             </DropdownMenuItem>
-            {groupedRows.length > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
-            {groupedRows.map((section, sectionIndex) => (
-              <div key={section.group}>
-                {sectionIndex > 0 && <div className="my-1 border-t border-divider-subtle" aria-hidden />}
-                <div className="px-3 pt-1.5 pb-1 system-2xs-medium-uppercase text-text-quaternary">
-                  {t(`versions.groupHeader.${section.group}`)}
-                </div>
-                {section.rows.map((row) => {
-                  const isDisabled = row.state === 'current' || row.state === 'deploying'
-                  return (
-                    <TitleTooltip key={row.environmentId} content={isDisabled ? row.disabledReason : undefined}>
-                      <DropdownMenuItem
-                        disabled={isDisabled}
-                        aria-disabled={isDisabled}
-                        className={cn(
-                          'gap-2 px-3',
-                          isDisabled && 'cursor-not-allowed opacity-60',
-                        )}
-                        onClick={() => {
-                          if (isDisabled || !appInstanceId)
-                            return
-                          handleOpenChange(false)
-                          openDeployDrawer({ appInstanceId, environmentId: row.environmentId, releaseId })
-                        }}
-                      >
-                        <span className="system-sm-regular text-text-secondary">
-                          {row.label}
-                        </span>
-                      </DropdownMenuItem>
-                    </TitleTooltip>
-                  )
-                })}
-              </div>
-            ))}
-            <div className="my-1 border-t border-divider-subtle" aria-hidden />
-            <TitleTooltip content={deleteDisabledReason}>
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={deleteActionDisabled}
-                aria-disabled={deleteActionDisabled}
-                className={cn(
-                  'gap-2 px-3',
-                  deleteActionDisabled && 'cursor-not-allowed opacity-60',
-                )}
-                onClick={() => {
-                  if (deleteActionDisabled)
-                    return
-                  handleOpenChange(false)
-                  setShowDeleteConfirm(true)
-                }}
-              >
-                <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-                <span className="system-sm-regular">{t('versions.deleteRelease')}</span>
-              </DropdownMenuItem>
-            </TitleTooltip>
-          </DropdownMenuContent>
-        )}
+          </TitleTooltip>
+        </DropdownMenuContent>
       </DropdownMenu>
 
       <EditReleaseDialog
         release={release}
         open={showEditDialog}
+        resetKey={editDialogSessionKey}
         onOpenChange={setShowEditDialog}
       />
 

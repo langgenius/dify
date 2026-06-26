@@ -91,7 +91,7 @@ function RenderGroupsAndMembers({
   return (
     <>
       <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">
-        {t('accessControlDialog.groups', { ns: 'app', count: selectedGroups.length ?? 0 })}
+        {t('accessControlDialog.groups', { ns: 'app', count: selectedGroups.length })}
       </p>
       <div className="flex flex-row flex-wrap gap-1">
         {selectedGroups.map(group => (
@@ -105,7 +105,7 @@ function RenderGroupsAndMembers({
         ))}
       </div>
       <p className="sticky top-0 system-2xs-medium-uppercase text-text-tertiary">
-        {t('accessControlDialog.members', { ns: 'app', count: selectedMembers.length ?? 0 })}
+        {t('accessControlDialog.members', { ns: 'app', count: selectedMembers.length })}
       </p>
       <div className="flex flex-row flex-wrap gap-1">
         {selectedMembers.map(member => (

@@ -87,24 +87,20 @@ export function DeploymentRowActions({ envId, row }: {
         onViewError={() => setShowErrorDetail(true)}
       />
 
-      {isDeployFailed && (
-        <DeploymentErrorDialog
-          open={showErrorDetail}
-          row={row}
-          onOpenChange={setShowErrorDetail}
-        />
-      )}
+      <DeploymentErrorDialog
+        open={showErrorDetail && isDeployFailed}
+        row={row}
+        onOpenChange={setShowErrorDetail}
+      />
 
-      {!isUndeployed && !isDeploymentInProgress && (
-        <UndeployDeploymentDialog
-          open={showUndeployConfirm}
-          row={row}
-          isRequesting={isUndeployRequesting}
-          disabled={undeployActionDisabled}
-          onConfirm={handleUndeploy}
-          onOpenChange={setShowUndeployConfirm}
-        />
-      )}
+      <UndeployDeploymentDialog
+        open={showUndeployConfirm && !isUndeployed && !isDeploymentInProgress}
+        row={row}
+        isRequesting={isUndeployRequesting}
+        disabled={undeployActionDisabled}
+        onConfirm={handleUndeploy}
+        onOpenChange={setShowUndeployConfirm}
+      />
     </div>
   )
 }

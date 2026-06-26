@@ -25,11 +25,209 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useEffect, useId, useRef, useState } from 'react'
+import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { generateApiTokenName } from './api-token-name'
+
+type CreateApiKeyMutationInput = Parameters<
+  NonNullable<ReturnType<typeof consoleQuery.enterprise.accessService.createApiKey.mutationOptions>['mutationFn']>
+>[0]
+
+function CreateApiKeyDialog({
+  appInstanceId,
+  environments,
+  open,
+  sessionKey,
+  onCreatedToken,
+  onOpenChange,
+}: {
+  appInstanceId?: string
+  environments: Environment[]
+  open: boolean
+  sessionKey: number
+  onCreatedToken: (token: string) => void
+  onOpenChange: (open: boolean) => void
+}) {
+  const { t } = useTranslation('deployments')
+  const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
+  const isCreating = generateApiKey.isPending
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen || isCreating)
+      return
+
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
+        <DialogCloseButton disabled={isCreating} />
+        <CreateApiKeyForm
+          key={sessionKey}
+          appInstanceId={appInstanceId}
+          environments={environments}
+          isCreating={isCreating}
+          onClose={() => handleOpenChange(false)}
+          onCreate={(input) => {
+            generateApiKey.mutate(input, {
+              onSuccess: (response) => {
+                if (response.token)
+                  onCreatedToken(response.token)
+                onOpenChange(false)
+              },
+              onError: () => {
+                toast.error(t('access.api.createFailed'))
+              },
+            })
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function CreateApiKeyForm({
+  appInstanceId,
+  environments,
+  isCreating,
+  onClose,
+  onCreate,
+}: {
+  appInstanceId?: string
+  environments: Environment[]
+  isCreating: boolean
+  onClose: () => void
+  onCreate: (input: CreateApiKeyMutationInput) => void
+}) {
+  const { t } = useTranslation('deployments')
+  const nameInputId = useId()
+  const firstEnvironment = environments[0]
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(firstEnvironment?.id)
+  const [draftName, setDraftName] = useState(() => generateApiTokenName())
+  const [nameError, setNameError] = useState(false)
+  const selectedEnvironment = selectedEnvironmentId
+    ? environments.find(env => env.id === selectedEnvironmentId)
+    : undefined
+
+  function handleEnvironmentChange(environmentId: string) {
+    setSelectedEnvironmentId(environmentId)
+    setNameError(false)
+  }
+
+  function handleDraftNameChange(nextDraftName: string) {
+    setDraftName(nextDraftName)
+    if (nameError && nextDraftName.trim())
+      setNameError(false)
+  }
+
+  function handleGenerateApiKey(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    const name = draftName.trim()
+
+    if (!appInstanceId || !selectedEnvironmentId || !name) {
+      setNameError(true)
+      return
+    }
+
+    onCreate({
+      params: {
+        appInstanceId,
+        environmentId: selectedEnvironmentId,
+      },
+      body: {
+        appInstanceId,
+        environmentId: selectedEnvironmentId,
+        displayName: name,
+      },
+    })
+  }
+
+  return (
+    <form onSubmit={handleGenerateApiKey}>
+      <div className="border-b border-divider-subtle px-6 py-5 pr-14">
+        <DialogTitle className="title-xl-semi-bold text-text-primary">
+          {t('access.api.createKeyTitle')}
+        </DialogTitle>
+        <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
+          {t('access.api.description')}
+        </DialogDescription>
+      </div>
+
+      <div className="flex flex-col gap-4 px-6 py-5">
+        <div>
+          <label
+            htmlFor={nameInputId}
+            className="mb-1 block system-sm-medium text-text-secondary"
+          >
+            {t('access.api.nameLabel')}
+          </label>
+          <Input
+            id={nameInputId}
+            value={draftName}
+            disabled={isCreating}
+            aria-invalid={nameError || undefined}
+            aria-describedby={nameError ? `${nameInputId}-error` : undefined}
+            placeholder={t('access.api.namePlaceholder')}
+            onChange={(event) => {
+              handleDraftNameChange(event.target.value)
+            }}
+          />
+          {nameError && (
+            <div id={`${nameInputId}-error`} className="mt-1 system-xs-regular text-text-destructive">
+              {t('access.api.nameRequired')}
+            </div>
+          )}
+        </div>
+
+        <div>
+          <Select
+            value={selectedEnvironmentId ?? null}
+            disabled={isCreating}
+            onValueChange={value => value && handleEnvironmentChange(value)}
+          >
+            <SelectLabel className="mb-1 block system-sm-medium text-text-secondary">
+              {t('access.api.table.environment')}
+            </SelectLabel>
+            <SelectTrigger>
+              {selectedEnvironment?.displayName ?? '—'}
+            </SelectTrigger>
+            <SelectContent>
+              {environments.map(env => (
+                <SelectItem key={env.id} value={env.id}>
+                  <SelectItemText>{env.displayName}</SelectItemText>
+                  <SelectItemIndicator />
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="flex justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={isCreating}
+          onClick={onClose}
+        >
+          {t('operation.cancel', { ns: 'common' })}
+        </Button>
+        <Button
+          type="submit"
+          variant="primary"
+          loading={isCreating}
+          disabled={isCreating || !selectedEnvironmentId}
+        >
+          {t('access.api.createKey')}
+        </Button>
+      </div>
+    </form>
+  )
+}
 
 export function ApiKeyGenerateMenu({
   environments,
@@ -46,94 +244,17 @@ export function ApiKeyGenerateMenu({
 }) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
-  const nameInputId = useId()
-  const nameInputRef = useRef<HTMLInputElement>(null)
   const [createDialogOpen, setCreateDialogOpen] = useState(false)
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>()
-  const [draftName, setDraftName] = useState('')
-  const [nameError, setNameError] = useState(false)
-  const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
-  const selectableEnvironments = environments
-  const selectedEnvironment = selectedEnvironmentId
-    ? selectableEnvironments.find(env => env.id === selectedEnvironmentId)
-    : undefined
-  const disabled = !appInstanceId || selectableEnvironments.length === 0
-  const isCreating = generateApiKey.isPending
-
-  useEffect(() => {
-    if (createDialogOpen)
-      nameInputRef.current?.focus()
-  }, [createDialogOpen])
+  const [createDialogSessionKey, setCreateDialogSessionKey] = useState(0)
+  const disabled = !appInstanceId || environments.length === 0
 
   function handleOpenCreateDialog() {
-    const firstEnvironment = selectableEnvironments[0]
+    const firstEnvironment = environments[0]
     if (!firstEnvironment)
       return
 
-    setSelectedEnvironmentId(firstEnvironment.id)
-    setDraftName(generateApiTokenName())
-    setNameError(false)
+    setCreateDialogSessionKey(sessionKey => sessionKey + 1)
     setCreateDialogOpen(true)
-  }
-
-  function handleEnvironmentChange(environmentId: string) {
-    setSelectedEnvironmentId(environmentId)
-    setNameError(false)
-  }
-
-  function handleDraftNameChange(nextDraftName: string) {
-    setDraftName(nextDraftName)
-    if (nameError && nextDraftName.trim())
-      setNameError(false)
-  }
-
-  function resetCreateDialog() {
-    setCreateDialogOpen(false)
-    setSelectedEnvironmentId(undefined)
-    setDraftName('')
-    setNameError(false)
-  }
-
-  function handleDialogOpenChange(nextOpen: boolean) {
-    if (nextOpen || isCreating)
-      return
-
-    resetCreateDialog()
-  }
-
-  function handleGenerateApiKey(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const name = draftName.trim()
-
-    if (!appInstanceId || !selectedEnvironmentId || !name) {
-      setNameError(true)
-      return
-    }
-
-    generateApiKey.mutate(
-      {
-        params: {
-          appInstanceId,
-          environmentId: selectedEnvironmentId,
-        },
-        body: {
-          appInstanceId,
-          environmentId: selectedEnvironmentId,
-          displayName: name,
-        },
-      },
-      {
-        onSuccess: (response) => {
-          if (response.token)
-            onCreatedToken(response.token)
-          resetCreateDialog()
-        },
-        onError: () => {
-          toast.error(t('access.api.createFailed'))
-        },
-      },
-    )
   }
 
   const trigger = (
@@ -152,91 +273,14 @@ export function ApiKeyGenerateMenu({
   return (
     <>
       {children ? children({ trigger }) : trigger}
-      <Dialog open={createDialogOpen} onOpenChange={handleDialogOpenChange}>
-        <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
-          <DialogCloseButton disabled={isCreating} />
-          <form onSubmit={handleGenerateApiKey}>
-            <div className="border-b border-divider-subtle px-6 py-5 pr-14">
-              <DialogTitle className="title-xl-semi-bold text-text-primary">
-                {t('access.api.createKeyTitle')}
-              </DialogTitle>
-              <DialogDescription className="mt-1 system-sm-regular text-text-tertiary">
-                {t('access.api.description')}
-              </DialogDescription>
-            </div>
-
-            <div className="flex flex-col gap-4 px-6 py-5">
-              <div>
-                <label
-                  htmlFor={nameInputId}
-                  className="mb-1 block system-sm-medium text-text-secondary"
-                >
-                  {t('access.api.nameLabel')}
-                </label>
-                <Input
-                  ref={nameInputRef}
-                  id={nameInputId}
-                  value={draftName}
-                  disabled={isCreating}
-                  aria-invalid={nameError || undefined}
-                  aria-describedby={nameError ? `${nameInputId}-error` : undefined}
-                  placeholder={t('access.api.namePlaceholder')}
-                  onChange={(event) => {
-                    handleDraftNameChange(event.target.value)
-                  }}
-                />
-                {nameError && (
-                  <div id={`${nameInputId}-error`} className="mt-1 system-xs-regular text-text-destructive">
-                    {t('access.api.nameRequired')}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <Select
-                  value={selectedEnvironmentId ?? null}
-                  disabled={isCreating}
-                  onValueChange={value => value && handleEnvironmentChange(value)}
-                >
-                  <SelectLabel className="mb-1 block system-sm-medium text-text-secondary">
-                    {t('access.api.table.environment')}
-                  </SelectLabel>
-                  <SelectTrigger>
-                    {selectedEnvironment?.displayName ?? '—'}
-                  </SelectTrigger>
-                  <SelectContent>
-                    {selectableEnvironments.map(env => (
-                      <SelectItem key={env.id} value={env.id}>
-                        <SelectItemText>{env.displayName}</SelectItemText>
-                        <SelectItemIndicator />
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
-              <Button
-                type="button"
-                variant="secondary"
-                disabled={isCreating}
-                onClick={() => handleDialogOpenChange(false)}
-              >
-                {t('operation.cancel', { ns: 'common' })}
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                loading={isCreating}
-                disabled={isCreating || !selectedEnvironmentId}
-              >
-                {t('access.api.createKey')}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <CreateApiKeyDialog
+        appInstanceId={appInstanceId}
+        environments={environments}
+        open={createDialogOpen}
+        sessionKey={createDialogSessionKey}
+        onCreatedToken={onCreatedToken}
+        onOpenChange={setCreateDialogOpen}
+      />
     </>
   )
 }
