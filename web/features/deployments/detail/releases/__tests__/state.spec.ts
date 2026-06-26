@@ -25,22 +25,6 @@ vi.mock('jotai-tanstack-query', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
-      appInstanceService: {
-        getAppInstance: {
-          queryOptions: (options: QueryOptions) => ({
-            ...options,
-            queryKey: ['getAppInstance', options.input],
-          }),
-        },
-      },
-      deploymentService: {
-        listEnvironmentDeployments: {
-          queryOptions: (options: QueryOptions) => ({
-            ...options,
-            queryKey: ['listEnvironmentDeployments', options.input],
-          }),
-        },
-      },
       releaseService: {
         listReleaseSummaries: {
           queryOptions: (options: QueryOptions) => ({
@@ -64,20 +48,12 @@ function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId
   })
 }
 
-describe('versions tab state', () => {
-  it('should gate release history and menu queries until route and menu state are ready', async () => {
+describe('deployment releases state', () => {
+  it('should gate release history query until route state is ready', async () => {
     const state = await loadState()
     const store = createStore()
 
     expect(store.get(state.releaseHistoryQueryAtom)).toMatchObject({
-      enabled: false,
-      input: skipToken,
-    })
-    expect(store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)).toMatchObject({
-      enabled: false,
-      input: skipToken,
-    })
-    expect(store.get(state.deployReleaseMenuAppInstanceQueryAtom)).toMatchObject({
       enabled: false,
       input: skipToken,
     })
@@ -101,39 +77,6 @@ describe('versions tab state', () => {
         },
       },
     })
-  })
-
-  it('should scope deploy menu queries to the open release id', async () => {
-    const state = await loadState()
-    const store = createStore()
-    setDeploymentRoute(store)
-
-    store.set(state.setDeployReleaseMenuOpenAtom, {
-      releaseId: 'release-1',
-      open: true,
-    })
-
-    expect(store.get(state.deployReleaseMenuOpenReleaseIdAtom)).toBe('release-1')
-    expect(store.get(state.deployReleaseMenuEnvironmentDeploymentsQueryAtom)).toMatchObject({
-      enabled: true,
-      input: { params: { appInstanceId: 'app-instance-1' } },
-    })
-    expect(store.get(state.deployReleaseMenuAppInstanceQueryAtom)).toMatchObject({
-      enabled: true,
-      input: { params: { appInstanceId: 'app-instance-1' } },
-    })
-
-    store.set(state.setDeployReleaseMenuOpenAtom, {
-      releaseId: 'release-2',
-      open: false,
-    })
-    expect(store.get(state.deployReleaseMenuOpenReleaseIdAtom)).toBe('release-1')
-
-    store.set(state.setDeployReleaseMenuOpenAtom, {
-      releaseId: 'release-1',
-      open: false,
-    })
-    expect(store.get(state.deployReleaseMenuOpenReleaseIdAtom)).toBeUndefined()
   })
 
   it('should adjust the release page only when deleting the last row on a later page', async () => {

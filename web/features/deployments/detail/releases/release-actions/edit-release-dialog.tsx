@@ -1,7 +1,6 @@
 'use client'
 
 import type { Release } from '@dify/contracts/enterprise/types.gen'
-import type { FormEvent } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
@@ -10,17 +9,41 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Input } from '@langgenius/dify-ui/input'
+import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useAtom, useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
+import {
+  editReleaseDialogOpenAtom,
+  releaseActionItemAtom,
+} from './state'
 
 type EditReleaseFormValues = {
   name: string
   description: string
+}
+
+function normalizedEditReleaseFormValues(value: EditReleaseFormValues) {
+  return {
+    name: value.name.trim(),
+    description: value.description.trim(),
+  }
+}
+
+function canSubmitEditReleaseForm(initialValues: EditReleaseFormValues, value: EditReleaseFormValues) {
+  const normalizedValues = normalizedEditReleaseFormValues(value)
+
+  return Boolean(
+    normalizedValues.name
+    && (
+      normalizedValues.name !== initialValues.name
+      || normalizedValues.description !== initialValues.description
+    ),
+  )
 }
 
 function EditReleaseForm({
@@ -35,66 +58,47 @@ function EditReleaseForm({
   onSubmit: (values: EditReleaseFormValues) => void
 }) {
   const { t } = useTranslation('deployments')
-  const initialName = release.displayName
-  const initialDescription = release.description
-  const [name, setName] = useState(initialName)
-  const [description, setDescription] = useState(initialDescription)
-  const normalizedName = name.trim()
-  const normalizedDescription = description.trim()
-  const nameRequired = !normalizedName
-  const hasChanges = normalizedName !== initialName || normalizedDescription !== initialDescription
-  const canSave = Boolean(!nameRequired && hasChanges && !isSaving)
+  const nameLabel = t('versions.releaseNameLabel')
+  const initialValues = {
+    name: release.displayName,
+    description: release.description,
+  }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!canSave)
+  function handleSubmit(values: EditReleaseFormValues) {
+    if (!canSubmitEditReleaseForm(initialValues, values))
       return
 
-    onSubmit({
-      name: normalizedName,
-      description: normalizedDescription,
-    })
+    onSubmit(normalizedEditReleaseFormValues(values))
   }
 
   return (
-    <form className="flex flex-col gap-4" noValidate autoComplete="off" onSubmit={handleSubmit}>
-      <div className="flex flex-col gap-2">
-        <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-edit-name">
-          {t('versions.releaseNameLabel')}
-        </label>
-        <Input
-          id="release-edit-name"
+    <Form<EditReleaseFormValues> className="flex flex-col gap-4" onFormSubmit={handleSubmit}>
+      <FieldRoot name="name" className="gap-2">
+        <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
+          {nameLabel}
+        </FieldLabel>
+        <FieldControl
           type="text"
-          value={name}
+          required
+          defaultValue={initialValues.name}
           maxLength={128}
           autoComplete="off"
-          aria-invalid={nameRequired || undefined}
-          aria-describedby={nameRequired ? 'release-edit-name-error' : undefined}
-          onChange={event => setName(event.target.value)}
           className="h-8"
         />
-        {nameRequired && (
-          <div id="release-edit-name-error" role="alert" className="system-xs-regular text-text-destructive">
-            {t('versions.releaseNameRequired')}
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-1.5">
-          <label className="system-xs-medium-uppercase text-text-tertiary" htmlFor="release-edit-description">
-            {t('versions.releaseDescriptionLabel')}
-          </label>
-          <span className="system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
-        </div>
+        <FieldError match="valueMissing">{t('versions.releaseNameRequired')}</FieldError>
+      </FieldRoot>
+      <FieldRoot name="description" className="gap-2">
+        <FieldLabel className="system-xs-medium-uppercase text-text-tertiary">
+          {t('versions.releaseDescriptionLabel')}
+          <span className="ml-1.5 system-xs-regular text-text-quaternary">{t('versions.optional')}</span>
+        </FieldLabel>
         <Textarea
-          id="release-edit-description"
-          value={description}
+          defaultValue={initialValues.description}
           maxLength={512}
           autoComplete="off"
-          onValueChange={setDescription}
           className="min-h-24"
         />
-      </div>
+      </FieldRoot>
       <div className="flex justify-end gap-2 pt-2">
         <Button
           type="button"
@@ -107,33 +111,32 @@ function EditReleaseForm({
         <Button
           type="submit"
           variant="primary"
-          disabled={!canSave}
+          disabled={isSaving}
           loading={isSaving}
         >
           {t('versions.saveEdit')}
         </Button>
       </div>
-    </form>
+    </Form>
   )
 }
 
-export function EditReleaseDialog({
-  release,
-  open,
-  onOpenChange,
-}: {
-  release: Release
-  open: boolean
-  onOpenChange: (open: boolean) => void
-}) {
+export function EditReleaseDialog() {
   const { t } = useTranslation('deployments')
+  const { releaseId, releaseRows } = useAtomValue(releaseActionItemAtom)
+  const [open, setOpen] = useAtom(editReleaseDialogOpenAtom)
   const updateRelease = useMutation(consoleQuery.enterprise.releaseService.updateRelease.mutationOptions())
+  const targetRelease = releaseRows.find(release => release.id === releaseId)
+  if (!targetRelease)
+    return null
+
+  const release = targetRelease
   const formKey = `${release.id}-${release.displayName}-${release.description}`
 
   function handleOpenChange(nextOpen: boolean) {
     if (!nextOpen && updateRelease.isPending)
       return
-    onOpenChange(nextOpen)
+    setOpen(nextOpen)
   }
 
   function handleSubmit(values: EditReleaseFormValues) {

@@ -1,6 +1,5 @@
 'use client'
 
-import type { Release } from '@dify/contracts/enterprise/types.gen'
 import {
   AlertDialog,
   AlertDialogActions,
@@ -10,22 +9,26 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
+import { useAtom, useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import {
+  deleteReleaseDialogOpenAtom,
+  releaseActionItemAtom,
+} from './state'
 
 export function DeleteReleaseDialog({
-  open,
-  release,
   isDeleting,
-  onOpenChange,
   onConfirm,
 }: {
-  open: boolean
-  release: Release
   isDeleting: boolean
-  onOpenChange: (open: boolean) => void
   onConfirm: () => void
 }) {
   const { t } = useTranslation('deployments')
+  const { releaseId, releaseRows } = useAtomValue(releaseActionItemAtom)
+  const [open, setOpen] = useAtom(deleteReleaseDialogOpenAtom)
+  const release = releaseRows.find(release => release.id === releaseId)
+  if (!release)
+    return null
 
   return (
     <AlertDialog
@@ -33,7 +36,7 @@ export function DeleteReleaseDialog({
       onOpenChange={(nextOpen) => {
         if (isDeleting)
           return
-        onOpenChange(nextOpen)
+        setOpen(nextOpen)
       }}
     >
       <AlertDialogContent className="w-120">

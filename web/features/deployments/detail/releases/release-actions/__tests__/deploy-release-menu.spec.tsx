@@ -35,8 +35,8 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-vi.mock('../../state', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../state')>()
+vi.mock('../state', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../state')>()
   const { atom } = await import('jotai')
 
   return {
@@ -50,9 +50,16 @@ vi.mock('../edit-release-dialog', () => ({
   EditReleaseDialog: () => null,
 }))
 
-vi.mock('../delete-release-dialog', () => ({
-  DeleteReleaseDialog: ({ open }: { open: boolean }) => open ? <div role="dialog">delete confirm</div> : null,
-}))
+vi.mock('../delete-release-dialog', async () => {
+  const { useAtomValue } = await import('jotai')
+  const { deleteReleaseDialogOpenAtom } = await import('../state')
+
+  return {
+    DeleteReleaseDialog: () => useAtomValue(deleteReleaseDialogOpenAtom)
+      ? <div role="dialog">delete confirm</div>
+      : null,
+  }
+})
 
 vi.mock('../release-dsl-export', () => ({
   exportReleaseDsl: vi.fn(),

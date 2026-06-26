@@ -8,7 +8,6 @@ import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { RELEASE_HISTORY_PAGE_SIZE } from '../../shared/domain/pagination'
 
 export const releaseHistoryCurrentPageAtom = atom(0)
-export const deployReleaseMenuOpenReleaseIdAtom = atom<string | undefined>(undefined)
 
 export const releaseHistoryQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
@@ -29,34 +28,6 @@ export const releaseHistoryQueryAtom = atomWithQuery((get) => {
   })
 })
 
-export const deployReleaseMenuEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
-  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
-  const openReleaseId = get(deployReleaseMenuOpenReleaseIdAtom)
-
-  return consoleQuery.enterprise.deploymentService.listEnvironmentDeployments.queryOptions({
-    input: appInstanceId
-      ? {
-          params: { appInstanceId },
-        }
-      : skipToken,
-    enabled: Boolean(appInstanceId && openReleaseId),
-  })
-})
-
-export const deployReleaseMenuAppInstanceQueryAtom = atomWithQuery((get) => {
-  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
-  const openReleaseId = get(deployReleaseMenuOpenReleaseIdAtom)
-
-  return consoleQuery.enterprise.appInstanceService.getAppInstance.queryOptions({
-    input: appInstanceId
-      ? {
-          params: { appInstanceId },
-        }
-      : skipToken,
-    enabled: Boolean(appInstanceId && openReleaseId),
-  })
-})
-
 export const setReleaseHistoryCurrentPageAtom = atom(null, (_get, set, page: number) => {
   set(releaseHistoryCurrentPageAtom, Math.max(page, 0))
 })
@@ -67,23 +38,6 @@ export const adjustReleaseHistoryPageAfterDeleteAtom = atom(null, (get, set, rem
     set(releaseHistoryCurrentPageAtom, currentPage - 1)
 })
 
-export const setDeployReleaseMenuOpenAtom = atom(null, (get, set, {
-  releaseId,
-  open,
-}: {
-  releaseId: string
-  open: boolean
-}) => {
-  if (open) {
-    set(deployReleaseMenuOpenReleaseIdAtom, releaseId)
-    return
-  }
-
-  if (get(deployReleaseMenuOpenReleaseIdAtom) === releaseId)
-    set(deployReleaseMenuOpenReleaseIdAtom, undefined)
-})
-
 export const releasesLocalAtoms = [
   releaseHistoryCurrentPageAtom,
-  deployReleaseMenuOpenReleaseIdAtom,
 ] as const

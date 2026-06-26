@@ -10,8 +10,8 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { mutationOptions, useMutation } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { useState } from 'react'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { openDeployDrawerAtom } from '../../../deploy-drawer/state'
@@ -19,12 +19,6 @@ import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../../../shared/components/detail-table-styles'
 import { TitleTooltip } from '../../../shared/components/title-tooltip'
 import { isUndeployedDeploymentRow } from '../../../shared/domain/runtime-status'
-import {
-  deployReleaseMenuAppInstanceQueryAtom,
-  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
-  deployReleaseMenuOpenReleaseIdAtom,
-  setDeployReleaseMenuOpenAtom,
-} from '../state'
 import { DeleteReleaseDialog } from './delete-release-dialog'
 import {
   buildDeployMenuSections,
@@ -32,6 +26,16 @@ import {
 } from './deploy-release-menu-utils'
 import { EditReleaseDialog } from './edit-release-dialog'
 import { exportReleaseDsl } from './release-dsl-export'
+import {
+  deleteReleaseDialogOpenAtom,
+  deployReleaseMenuAppInstanceQueryAtom,
+  deployReleaseMenuEnvironmentDeploymentsQueryAtom,
+  deployReleaseMenuOpenAtom,
+  openDeleteReleaseDialogAtom,
+  openEditReleaseDialogAtom,
+  releaseActionItemAtom,
+  releaseActionLocalAtoms,
+} from './state'
 
 type ExportReleaseDslInput = {
   release: Release
@@ -39,19 +43,17 @@ type ExportReleaseDslInput = {
   appInstanceName?: string
 }
 
-export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
-  releaseId: string
-  releaseRows: Release[]
+function DeployReleaseMenuContent({ onDeleted }: {
   onDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
-  const openReleaseMenuId = useAtomValue(deployReleaseMenuOpenReleaseIdAtom)
-  const setDeployReleaseMenuOpen = useSetAtom(setDeployReleaseMenuOpenAtom)
-  const [showEditDialog, setShowEditDialog] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const open = openReleaseMenuId === releaseId
+  const { releaseId, releaseRows } = useAtomValue(releaseActionItemAtom)
+  const [open, setOpen] = useAtom(deployReleaseMenuOpenAtom)
+  const setDeleteReleaseDialogOpen = useSetAtom(deleteReleaseDialogOpenAtom)
+  const openEditReleaseDialog = useSetAtom(openEditReleaseDialogAtom)
+  const openDeleteReleaseDialog = useSetAtom(openDeleteReleaseDialogAtom)
   const environmentDeploymentsQuery = useAtomValue(deployReleaseMenuEnvironmentDeploymentsQueryAtom)
   const appInstanceQuery = useAtomValue(deployReleaseMenuAppInstanceQueryAtom)
   const deleteRelease = useMutation(consoleQuery.enterprise.releaseService.deleteRelease.mutationOptions())
@@ -86,10 +88,6 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
         : undefined
   const deleteActionDisabled = isDeletingRelease || isCheckingDeleteUsage || hasDeleteUsageCheckFailed || isReleaseInUse
 
-  function handleOpenChange(nextOpen: boolean) {
-    setDeployReleaseMenuOpen({ releaseId, open: nextOpen })
-  }
-
   function handleExportDsl() {
     if (isExportingDsl)
       return
@@ -98,7 +96,7 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
       { release, releaseId, appInstanceName },
       {
         onSuccess: () => {
-          handleOpenChange(false)
+          setOpen(false)
         },
         onError: () => {
           toast.error(t('versions.exportDslFailed'))
@@ -119,7 +117,7 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
       },
       {
         onSuccess: () => {
-          setShowDeleteConfirm(false)
+          setDeleteReleaseDialogOpen(false)
           toast.success(t('versions.deleteSuccess', { name: targetReleaseName }))
           onDeleted?.()
         },
@@ -141,7 +139,7 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
 
   return (
     <>
-      <DropdownMenu modal={false} open={open} onOpenChange={handleOpenChange}>
+      <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           aria-label={t('versions.moreActions')}
           className={DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME}
@@ -152,10 +150,7 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
           <DropdownMenuContent placement="bottom-end" sideOffset={4} popupClassName="w-60">
             <DropdownMenuItem
               className="gap-2 px-3"
-              onClick={() => {
-                handleOpenChange(false)
-                setShowEditDialog(true)
-              }}
+              onClick={openEditReleaseDialog}
             >
               <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
               <span className="system-sm-regular text-text-secondary">
@@ -197,7 +192,7 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
                         onClick={() => {
                           if (isDisabled || !appInstanceId)
                             return
-                          handleOpenChange(false)
+                          setOpen(false)
                           openDeployDrawer({ appInstanceId, environmentId: row.environmentId, releaseId })
                         }}
                       >
@@ -223,8 +218,7 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
                 onClick={() => {
                   if (deleteActionDisabled)
                     return
-                  handleOpenChange(false)
-                  setShowDeleteConfirm(true)
+                  openDeleteReleaseDialog()
                 }}
               >
                 <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
@@ -235,19 +229,31 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
         )}
       </DropdownMenu>
 
-      <EditReleaseDialog
-        release={release}
-        open={showEditDialog}
-        onOpenChange={setShowEditDialog}
-      />
+      <EditReleaseDialog />
 
       <DeleteReleaseDialog
-        open={showDeleteConfirm}
-        release={release}
         isDeleting={isDeletingRelease}
-        onOpenChange={setShowDeleteConfirm}
         onConfirm={handleDeleteRelease}
       />
     </>
+  )
+}
+
+export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
+  releaseId: string
+  releaseRows: Release[]
+  onDeleted?: () => void
+}) {
+  return (
+    <ScopeProvider
+      key={releaseId}
+      atoms={[
+        [releaseActionItemAtom, { releaseId, releaseRows }],
+        ...releaseActionLocalAtoms,
+      ]}
+      name="DeploymentReleaseActions"
+    >
+      <DeployReleaseMenuContent onDeleted={onDeleted} />
+    </ScopeProvider>
   )
 }
