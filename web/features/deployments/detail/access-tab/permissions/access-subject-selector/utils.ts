@@ -8,6 +8,10 @@ import type {
 } from '@/models/access-control'
 import { SubjectType } from '@/models/access-control'
 
+function isSubjectGroup(subject: Subject): subject is SubjectGroup {
+  return subject.subjectType === SubjectType.GROUP
+}
+
 function groupToSubject(group: AccessControlGroup): SubjectGroup {
   return {
     subjectId: group.id,
@@ -25,10 +29,10 @@ function memberToSubject(member: AccessControlAccount): SubjectAccount {
 }
 
 export function getSubjectLabel(subject: Subject) {
-  if (subject.subjectType === SubjectType.GROUP)
-    return (subject as SubjectGroup).groupData.name
+  if (isSubjectGroup(subject))
+    return subject.groupData.name
 
-  return (subject as SubjectAccount).accountData.name
+  return subject.accountData.name
 }
 
 export function getSubjectValue(subject: Subject) {
@@ -54,10 +58,10 @@ export function subjectsToSelectionValue(subjects: Subject[]): AccessSubjectSele
   const members: AccessControlAccount[] = []
 
   subjects.forEach((subject) => {
-    if (subject.subjectType === SubjectType.GROUP)
-      groups.push((subject as SubjectGroup).groupData)
+    if (isSubjectGroup(subject))
+      groups.push(subject.groupData)
     else
-      members.push((subject as SubjectAccount).accountData)
+      members.push(subject.accountData)
   })
 
   return { groups, members }

@@ -27,12 +27,10 @@ import {
 } from './environment-tile-utils'
 import { computeDrift, latestReleaseId } from './overview-drift'
 
-type EnvironmentTileProps = {
+export function EnvironmentTile({ row, releaseRows }: {
   row: EnvironmentDeployment
   releaseRows: Release[]
-}
-
-export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
+}) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
@@ -102,8 +100,8 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
           </h4>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <RuntimeStatusSignal status={status} t={t} />
-          {showStatusSignal && <StatusSignal config={config} drift={drift} t={t} />}
+          <RuntimeStatusSignal status={status} />
+          {showStatusSignal && <StatusSignal config={config} drift={drift} />}
         </div>
       </div>
 
@@ -138,10 +136,10 @@ export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
   )
 }
 
-function RuntimeStatusSignal({ status, t }: {
+function RuntimeStatusSignal({ status }: {
   status: RuntimeInstanceStatusValue
-  t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
+  const { t } = useTranslation('deployments')
   const label = t(deploymentStatusLabelKey(status))
 
   return (
@@ -151,12 +149,12 @@ function RuntimeStatusSignal({ status, t }: {
   )
 }
 
-function StatusSignal({ className, config, drift, t }: {
+function StatusSignal({ className, config, drift }: {
   className?: string
   config: TileConfig
   drift: ReturnType<typeof computeDrift>
-  t: ReturnType<typeof useTranslation<'deployments'>>['t']
 }) {
+  const { t } = useTranslation('deployments')
   const title = renderDriftTitle(config.kind, drift, t)
 
   return (

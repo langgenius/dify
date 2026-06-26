@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
@@ -11,7 +12,7 @@ import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySectio
 import { EnvironmentStrip, EnvironmentStripSkeleton } from './environment-strip'
 import { ReleaseHero, ReleaseHeroSkeleton } from './release-hero'
 
-function OverviewLayout({ children }: { children: React.ReactNode }) {
+function OverviewLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex w-full min-w-0 flex-col gap-6 px-6 py-6">
       {children}
@@ -20,7 +21,7 @@ function OverviewLayout({ children }: { children: React.ReactNode }) {
 }
 
 function LatestReleaseSection({ children }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)

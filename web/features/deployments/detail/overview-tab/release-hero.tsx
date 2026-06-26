@@ -18,18 +18,10 @@ import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { formatDate, releaseCommit } from '../../shared/domain/release'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from './card-styles'
 
-type ReleaseHeroProps = {
+export function ReleaseHero({ latestRelease, releaseCount }: {
   latestRelease?: Release
   releaseCount: number
-}
-
-type ReleaseMetaItemProps = {
-  label?: string
-  showSeparator?: boolean
-  children: ReactNode
-}
-
-export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
+}) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const { formatTimeFromNow } = useFormatTimeFromNow()
@@ -99,7 +91,11 @@ export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
   )
 }
 
-function ReleaseMetaItem({ label, showSeparator = true, children }: ReleaseMetaItemProps) {
+function ReleaseMetaItem({ label, showSeparator = true, children }: {
+  label?: string
+  showSeparator?: boolean
+  children: ReactNode
+}) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5">
       {showSeparator && (

@@ -1,5 +1,7 @@
 'use client'
 
+import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
+import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -10,26 +12,17 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isRuntimeDeploymentInProgress, isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../components/detail-table-styles'
 
 export function DeploymentActionsDropdown({
-  currentReleaseId,
-  deployActionLabel,
-  failedReleaseId,
-  isDeployFailed,
-  isDeploymentInProgress,
-  isUndeployed,
+  row,
   undeployActionDisabled,
   onDeploy,
   onRequestUndeploy,
   onViewError,
 }: {
-  currentReleaseId?: string
-  deployActionLabel: string
-  failedReleaseId?: string
-  isDeployFailed: boolean
-  isDeploymentInProgress: boolean
-  isUndeployed: boolean
+  row: EnvironmentDeployment
   undeployActionDisabled: boolean
   onDeploy: (releaseId?: string) => void
   onRequestUndeploy: () => void
@@ -37,6 +30,15 @@ export function DeploymentActionsDropdown({
 }) {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
+  const isUndeployed = isUndeployedDeploymentRow(row)
+  const status = row.status
+  const isDeploymentInProgress = isRuntimeDeploymentInProgress(status)
+  const isDeployFailed = status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED
+  const currentReleaseId = row.currentRelease?.id
+  const failedReleaseId = row.desiredRelease?.id ?? row.currentRelease?.id
+  const deployActionLabel = isUndeployed
+    ? t('deployDrawer.deploy')
+    : t('deployTab.deployOtherVersion')
 
   if (isDeploymentInProgress)
     return null

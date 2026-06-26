@@ -5,7 +5,6 @@ import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
@@ -18,7 +17,6 @@ import { UndeployDeploymentDialog } from './undeploy-deployment-dialog'
 export function DeploymentRowActions({ row }: {
   row: EnvironmentDeployment
 }) {
-  const { t } = useTranslation('deployments')
   const routeAppInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const undeployDeployment = useMutation(consoleQuery.enterprise.deploymentService.undeploy.mutationOptions())
@@ -31,11 +29,6 @@ export function DeploymentRowActions({ row }: {
   const undeployActionDisabled = isUndeployRequesting
   const isDeploymentInProgress = isRuntimeDeploymentInProgress(status)
   const isDeployFailed = status === RuntimeInstanceStatus.RUNTIME_INSTANCE_STATUS_FAILED
-  const currentReleaseId = row.currentRelease?.id
-  const failedReleaseId = row.desiredRelease?.id ?? row.currentRelease?.id
-  const deployActionLabel = isUndeployed
-    ? t('deployDrawer.deploy')
-    : t('deployTab.deployOtherVersion')
 
   if (!routeAppInstanceId)
     return null
@@ -75,12 +68,7 @@ export function DeploymentRowActions({ row }: {
       onKeyDown={e => e.stopPropagation()}
     >
       <DeploymentActionsDropdown
-        currentReleaseId={currentReleaseId}
-        deployActionLabel={deployActionLabel}
-        failedReleaseId={failedReleaseId}
-        isDeployFailed={isDeployFailed}
-        isDeploymentInProgress={isDeploymentInProgress}
-        isUndeployed={isUndeployed}
+        row={row}
         undeployActionDisabled={undeployActionDisabled}
         onDeploy={handleDeployAction}
         onRequestUndeploy={() => setShowUndeployConfirm(true)}

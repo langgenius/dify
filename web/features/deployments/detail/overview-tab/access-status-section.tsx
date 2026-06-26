@@ -11,16 +11,6 @@ import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { DeploymentStatusBadge } from '../../shared/ui/deployment-status-badge'
 import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from './card-styles'
 
-type AccessStatusSectionProps = {
-  accessChannels?: AccessChannels
-}
-
-type ApiTokenSummarySectionProps = {
-  accessChannels?: AccessChannels
-  apiKeySummary?: ApiKeySummary
-  deployedEnvironmentCount: number
-}
-
 type AccessStatusItem = {
   key: 'webapp' | 'cli'
   href: string
@@ -32,7 +22,9 @@ type AccessStatusItem = {
 
 const ACCESS_STATUS_SKELETON_KEYS = ['webapp', 'cli']
 
-export function AccessStatusSection({ accessChannels }: AccessStatusSectionProps) {
+export function AccessStatusSection({ accessChannels }: {
+  accessChannels?: AccessChannels
+}) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
 
@@ -108,7 +100,11 @@ export function ApiTokenSummarySection({
   accessChannels,
   apiKeySummary,
   deployedEnvironmentCount,
-}: ApiTokenSummarySectionProps) {
+}: {
+  accessChannels?: AccessChannels
+  apiKeySummary?: ApiKeySummary
+  deployedEnvironmentCount: number
+}) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const apiEnabled = Boolean(accessChannels?.developerApiEnabled)

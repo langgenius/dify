@@ -29,7 +29,11 @@ const API_TOKEN_NAME_NOUNS = [
 ]
 
 function randomListItem(items: string[]) {
-  return items[Math.floor(Math.random() * items.length)]!
+  const item = items[Math.floor(Math.random() * items.length)]
+  if (item === undefined)
+    throw new Error('Cannot generate an API token name from an empty list.')
+
+  return item
 }
 
 export function generateApiTokenName() {

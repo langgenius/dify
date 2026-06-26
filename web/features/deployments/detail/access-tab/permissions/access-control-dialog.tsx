@@ -1,6 +1,6 @@
 'use client'
 
-import type { PropsWithChildren } from 'react'
+import type { ReactNode } from 'react'
 import type { AccessPermissionKind, SelectableAccessSubject } from './access-policy'
 import type { AccessSubjectSelectionValue } from './access-subject-selector/types'
 import { Button } from '@langgenius/dify-ui/button'
@@ -169,9 +169,10 @@ function DeploymentAccessControlDialogBody({
   )
 }
 
-function AccessControlItem({ type, children }: PropsWithChildren<{
+function AccessControlItem({ type, children }: {
   type: AppAccessMode
-}>) {
+  children: ReactNode
+}) {
   return (
     <RadioRoot<AppAccessMode>
       value={type}

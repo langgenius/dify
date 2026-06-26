@@ -5,7 +5,6 @@ import type {
   AccessControlAccount,
   AccessControlGroup,
   Subject,
-  SubjectAccount,
   SubjectGroup,
 } from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
@@ -19,6 +18,10 @@ import { useTranslation } from 'react-i18next'
 import { useSelector } from '@/context/app-context'
 import { SubjectType } from '@/models/access-control'
 
+function isSubjectGroup(subject: Subject): subject is SubjectGroup {
+  return subject.subjectType === SubjectType.GROUP
+}
+
 export function SubjectItem({
   subject,
   selectedGroups,
@@ -30,10 +33,10 @@ export function SubjectItem({
   selectedMembers: AccessControlAccount[]
   onExpandGroup: (group: AccessControlGroup) => void
 }) {
-  if (subject.subjectType === SubjectType.GROUP) {
+  if (isSubjectGroup(subject)) {
     return (
       <GroupItem
-        group={(subject as SubjectGroup).groupData}
+        group={subject.groupData}
         subject={subject}
         selectedGroups={selectedGroups}
         onExpandGroup={onExpandGroup}
@@ -43,7 +46,7 @@ export function SubjectItem({
 
   return (
     <MemberItem
-      member={(subject as SubjectAccount).accountData}
+      member={subject.accountData}
       subject={subject}
       selectedMembers={selectedMembers}
     />

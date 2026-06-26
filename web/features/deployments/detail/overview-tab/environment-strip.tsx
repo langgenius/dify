@@ -16,12 +16,10 @@ import { EnvironmentTile } from './environment-tile'
 
 const OVERVIEW_RUNTIME_INSTANCE_LIMIT = 4
 
-type EnvironmentStripProps = {
+export function EnvironmentStrip({ rows, releaseRows }: {
   rows: EnvironmentDeployment[]
   releaseRows: Release[]
-}
-
-export function EnvironmentStrip({ rows, releaseRows }: EnvironmentStripProps) {
+}) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const runtimeRows = rows.filter(hasRuntimeInstanceDeployment)
