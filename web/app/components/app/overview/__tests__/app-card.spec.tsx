@@ -80,14 +80,19 @@ vi.mock('../customize', () => ({
   default: ({ isShow, onClose }: { isShow: boolean, onClose: () => void }) => isShow ? <button data-testid="customize-modal" onClick={onClose}>customize-modal</button> : null,
 }))
 
-vi.mock('../../app-access-control', () => ({
-  AccessControl: ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({ onConfirm, onClose }: { onConfirm: () => Promise<void>, onClose: () => void }) => (
     <div data-testid="access-control-modal">
       <button onClick={() => void onConfirm()}>confirm-access-control</button>
       <button onClick={onClose}>close-access-control</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 const mockWindowOpen = vi.fn()
 Object.defineProperty(window, 'open', {

@@ -8,8 +8,8 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../create-release'
+import { DeveloperApiHeaderSwitch } from './access-tab/developer-api/section'
 import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
-import { DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
 import { versionsTabLocalAtoms } from './versions-tab/state'
 
@@ -73,7 +73,7 @@ export function InstanceDetail({ appInstanceId, children }: {
                       <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
                       {activeTab === 'api-tokens' && (
                         <div className="shrink-0">
-                          <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
+                          <DeveloperApiHeaderSwitch />
                         </div>
                       )}
                     </div>

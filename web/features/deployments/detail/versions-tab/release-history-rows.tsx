@@ -15,10 +15,6 @@ import {
   releaseCommit,
 } from '../../shared/domain/release'
 import {
-  deploymentSourceAppIdAtom,
-  deploymentSourceAppQueryAtom,
-} from '../state'
-import {
   DetailTable,
   DetailTableBody,
   DetailTableCard,
@@ -27,8 +23,12 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../table'
-import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
+} from '../components/detail-table'
+import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../components/detail-table-styles'
+import {
+  deploymentSourceAppIdAtom,
+  deploymentSourceAppQueryAtom,
+} from '../state'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import {
   ReleaseDeploymentsContent,

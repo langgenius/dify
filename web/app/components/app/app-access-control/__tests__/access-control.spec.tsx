@@ -1,23 +1,24 @@
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import type { App } from '@/types/app'
-import { AccessSubjectType as EnterpriseSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithSystemFeatures as render } from '@/__tests__/utils/mock-system-features'
+import useAccessControlStore from '@/context/access-control-store'
 import { AccessMode, SubjectType } from '@/models/access-control'
-import { AccessControlDialog } from '../access-control-dialog'
-import { AccessControlItem } from '../access-control-item'
-import { AddMemberOrGroupDialog } from '../add-member-or-group-pop'
-import { AccessControl } from '../index'
-import { SpecificGroupsOrMembers } from '../specific-groups-or-members'
-import { AccessControlRadioGroupHarness } from './access-control-radio-group-harness'
-import { createAccessControlDraftHarness } from './access-control-test-utils'
+import AccessControlDialog from '../access-control-dialog'
+import AccessControlItem from '../access-control-item'
+import AddMemberOrGroupDialog from '../add-member-or-group-pop'
+import AccessControl from '../index'
+import SpecificGroupsOrMembers from '../specific-groups-or-members'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
-const mockMutate = vi.fn()
-const mockUseMutation = vi.hoisted(() => vi.fn())
+const mockMutateAsync = vi.fn()
+const mockUseUpdateAccessMode = vi.fn(() => ({
+  isPending: false,
+  mutateAsync: mockMutateAsync,
+}))
 const intersectionObserverMocks = vi.hoisted(() => ({
   callback: null as null | ((entries: Array<{ isIntersecting: boolean }>) => void),
 }))
@@ -35,18 +36,11 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/service/access-control/use-app-access-control', () => ({
+vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
+  useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
-  return {
-    ...actual,
-    useMutation: (...args: unknown[]) => mockUseMutation(...args),
-  }
-})
 
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()
@@ -100,12 +94,10 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  mockMutate.mockImplementation((_: unknown, options?: { onSuccess?: () => void }) => {
-    options?.onSuccess?.()
-  })
-  mockUseMutation.mockReturnValue({
+  mockMutateAsync.mockResolvedValue(undefined)
+  mockUseUpdateAccessMode.mockReturnValue({
     isPending: false,
-    mutate: mockMutate,
+    mutateAsync: mockMutateAsync,
   })
   mockUseAppWhiteListSubjects.mockReturnValue({
     isPending: false,
@@ -125,39 +117,33 @@ beforeEach(() => {
 // AccessControlItem handles selected vs. unselected styling and click state updates
 describe('AccessControlItem', () => {
   it('should update current menu when selecting a different access type', () => {
-    const harness = createAccessControlDraftHarness(
-      <AccessControlRadioGroupHarness>
-        <AccessControlItem type={AccessMode.ORGANIZATION}>
-          <span>Organization Only</span>
-        </AccessControlItem>
-      </AccessControlRadioGroupHarness>,
-      { currentMenu: AccessMode.PUBLIC },
+    useAccessControlStore.setState({ currentMenu: AccessMode.PUBLIC })
+    render(
+      <AccessControlItem type={AccessMode.ORGANIZATION}>
+        <span>Organization Only</span>
+      </AccessControlItem>,
     )
-    render(harness.element)
 
-    const option = screen.getByRole('radio', { name: 'Organization Only' })
+    const option = screen.getByText('Organization Only').parentElement as HTMLElement
     expect(option).toHaveClass('cursor-pointer')
 
     fireEvent.click(option)
 
-    expect(harness.getSnapshot().currentMenu).toBe(AccessMode.ORGANIZATION)
+    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
   })
 
   it('should keep current menu when clicking the selected access type', () => {
-    const harness = createAccessControlDraftHarness(
-      <AccessControlRadioGroupHarness>
-        <AccessControlItem type={AccessMode.ORGANIZATION}>
-          <span>Organization Only</span>
-        </AccessControlItem>
-      </AccessControlRadioGroupHarness>,
-      { currentMenu: AccessMode.ORGANIZATION },
+    useAccessControlStore.setState({ currentMenu: AccessMode.ORGANIZATION })
+    render(
+      <AccessControlItem type={AccessMode.ORGANIZATION}>
+        <span>Organization Only</span>
+      </AccessControlItem>,
     )
-    render(harness.element)
 
-    const option = screen.getByRole('radio', { name: 'Organization Only' })
+    const option = screen.getByText('Organization Only').parentElement as HTMLElement
     fireEvent.click(option)
 
-    expect(harness.getSnapshot().currentMenu).toBe(AccessMode.ORGANIZATION)
+    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
   })
 })
 
@@ -194,40 +180,32 @@ describe('AccessControlDialog', () => {
 // SpecificGroupsOrMembers syncs store state with fetched data and supports removals
 describe('SpecificGroupsOrMembers', () => {
   it('should render collapsed view when not in specific selection mode', () => {
-    const harness = createAccessControlDraftHarness(
-      <SpecificGroupsOrMembers />,
-      { currentMenu: AccessMode.ORGANIZATION },
-    )
+    useAccessControlStore.setState({ currentMenu: AccessMode.ORGANIZATION })
 
-    render(harness.element)
+    render(<SpecificGroupsOrMembers />)
 
     expect(screen.getByText('app.accessControlDialog.accessItems.specific')).toBeInTheDocument()
     expect(screen.queryByText(baseGroup.name)).not.toBeInTheDocument()
   })
 
   it('should show loading state while pending', async () => {
-    const harness = createAccessControlDraftHarness(
-      <SpecificGroupsOrMembers loading />,
-      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-    )
+    useAccessControlStore.setState({ appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS })
+    mockUseAppWhiteListSubjects.mockReturnValue({
+      isPending: true,
+      data: undefined,
+    })
 
-    render(harness.element)
+    const { container } = render(<SpecificGroupsOrMembers />)
 
-    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    await waitFor(() => {
+      expect(container.querySelector('.spin-animation')).toBeInTheDocument()
+    })
   })
 
   it('should render fetched groups and members and support removal', async () => {
-    const harness = createAccessControlDraftHarness(
-      <SpecificGroupsOrMembers />,
-      {
-        appId: 'app-1',
-        currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-        specificGroups: [baseGroup],
-        specificMembers: [baseMember],
-      },
-    )
+    useAccessControlStore.setState({ appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS })
 
-    render(harness.element)
+    render(<SpecificGroupsOrMembers />)
 
     await waitFor(() => {
       expect(screen.getByText(baseGroup.name)).toBeInTheDocument()
@@ -256,12 +234,8 @@ describe('SpecificGroupsOrMembers', () => {
 describe('AddMemberOrGroupDialog', () => {
   it('should open search popover and display candidates', async () => {
     const user = userEvent.setup()
-    const harness = createAccessControlDraftHarness(
-      <AddMemberOrGroupDialog />,
-      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-    )
 
-    render(harness.element)
+    render(<AddMemberOrGroupDialog />)
 
     await user.click(screen.getByText('common.operation.add'))
 
@@ -272,21 +246,17 @@ describe('AddMemberOrGroupDialog', () => {
 
   it('should allow selecting members and expanding groups', async () => {
     const user = userEvent.setup()
-    const harness = createAccessControlDraftHarness(
-      <AddMemberOrGroupDialog />,
-      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-    )
-    render(harness.element)
+    render(<AddMemberOrGroupDialog />)
 
     await user.click(screen.getByText('common.operation.add'))
 
     const expandButton = screen.getByText('app.accessControlDialog.operateGroupAndMember.expand')
     await user.click(expandButton)
-    expect(harness.getSnapshot().selectedGroupsForBreadcrumb).toEqual([baseGroup])
+    expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
     await user.click(screen.getByRole('option', { name: /Member One/ }))
 
-    expect(harness.getSnapshot().specificMembers).toEqual([baseMember])
+    expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
   })
 
   it('should update the keyword, fetch the next page, and support deselection and breadcrumb reset', async () => {
@@ -299,11 +269,7 @@ describe('AddMemberOrGroupDialog', () => {
     })
 
     const user = userEvent.setup()
-    const harness = createAccessControlDraftHarness(
-      <AddMemberOrGroupDialog />,
-      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-    )
-    render(harness.element)
+    render(<AddMemberOrGroupDialog />)
 
     await user.click(screen.getByText('common.operation.add'))
     await user.type(screen.getByPlaceholderText('app.accessControlDialog.operateGroupAndMember.searchPlaceholder'), 'Group')
@@ -320,9 +286,9 @@ describe('AddMemberOrGroupDialog', () => {
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.expand'))
     fireEvent.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.allMembers'))
 
-    expect(harness.getSnapshot().specificGroups).toEqual([])
-    expect(harness.getSnapshot().specificMembers).toEqual([])
-    expect(harness.getSnapshot().selectedGroupsForBreadcrumb).toEqual([])
+    expect(useAccessControlStore.getState().specificGroups).toEqual([])
+    expect(useAccessControlStore.getState().specificMembers).toEqual([])
+    expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([])
     expect(fetchNextPage).not.toHaveBeenCalled()
   })
 
@@ -335,11 +301,7 @@ describe('AddMemberOrGroupDialog', () => {
     })
 
     const user = userEvent.setup()
-    const harness = createAccessControlDraftHarness(
-      <AddMemberOrGroupDialog />,
-      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
-    )
-    render(harness.element)
+    render(<AddMemberOrGroupDialog />)
 
     await user.click(screen.getByText('common.operation.add'))
 
@@ -353,6 +315,10 @@ describe('AccessControl', () => {
     const onClose = vi.fn()
     const onConfirm = vi.fn()
     const toastSpy = vi.spyOn(toast, 'success').mockReturnValue('toast-success')
+    useAccessControlStore.setState({
+      specificGroups: [baseGroup],
+      specificMembers: [baseMember],
+    })
     const app = {
       id: 'app-id-1',
       access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
@@ -366,22 +332,21 @@ describe('AccessControl', () => {
       />,
     )
 
+    await waitFor(() => {
+      expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.SPECIFIC_GROUPS_MEMBERS)
+    })
+
     fireEvent.click(screen.getByText('common.operation.confirm'))
 
     await waitFor(() => {
-      expect(mockMutate).toHaveBeenCalledWith(
-        {
-          body: {
-            appId: app.id,
-            accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
-            subjects: [
-              { subjectId: baseGroup.id, subjectType: EnterpriseSubjectType.ACCESS_SUBJECT_TYPE_GROUP },
-              { subjectId: baseMember.id, subjectType: EnterpriseSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT },
-            ],
-          },
-        },
-        expect.objectContaining({ onSuccess: expect.any(Function) }),
-      )
+      expect(mockMutateAsync).toHaveBeenCalledWith({
+        appId: app.id,
+        accessMode: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+        subjects: [
+          { subjectId: baseGroup.id, subjectType: SubjectType.GROUP },
+          { subjectId: baseMember.id, subjectType: SubjectType.ACCOUNT },
+        ],
+      })
       expect(toastSpy).toHaveBeenCalledWith('app.accessControlDialog.updateSuccess')
       expect(onConfirm).toHaveBeenCalled()
     })
