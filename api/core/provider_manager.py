@@ -4,7 +4,7 @@ import contextlib
 from collections import defaultdict
 from collections.abc import Sequence
 from json import JSONDecodeError
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
@@ -689,8 +689,8 @@ class ProviderManager:
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
                                 provider_type=ProviderType.SYSTEM,
-                                quota_type=quota.quota_type,  # type: ignore[arg-type]
-                                quota_limit=0,  # type: ignore
+                                quota_type=cast(Any, quota.quota_type),
+                                quota_limit=cast(Any, 0),
                                 quota_used=0,
                                 is_valid=True,
                             )
@@ -970,7 +970,9 @@ class ProviderManager:
                 continue
 
             if provider_record.quota_type is not None:
-                quota_type_to_provider_records_dict[provider_record.quota_type] = provider_record  # type: ignore[index]
+                quota_type_to_provider_records_dict[cast(ProviderQuotaType, provider_record.quota_type)] = (
+                    provider_record
+                )
         quota_configurations = []
 
         if dify_config.EDITION == "CLOUD":
