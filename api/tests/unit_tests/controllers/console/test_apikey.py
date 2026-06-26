@@ -71,7 +71,8 @@ def test_build_masked_api_key_list_masks_every_token() -> None:
             created_at=None,
         ),
     ]
-    result = build_masked_api_key_list(keys)
+    # SimpleNamespace stands in for ApiToken rows (read via from_attributes)
+    result = build_masked_api_key_list(cast("list[ApiToken]", keys))
     assert result.data[0].token == "datas...dddd"
     assert result.data[0].dataset_id == "ds-1"
 
