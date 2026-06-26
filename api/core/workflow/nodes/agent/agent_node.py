@@ -156,6 +156,7 @@ class AgentNode(Node[AgentNodeData]):
                 node_type=self.node_type,
                 node_id=self._node_id,
                 node_execution_id=self.id,
+                reasoning_format=self.node_data.reasoning_format,
             )
         except PluginDaemonClientSideError as e:
             transform_error = AgentMessageTransformError(
