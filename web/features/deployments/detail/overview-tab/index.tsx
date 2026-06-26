@@ -4,6 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { DeploymentStateMessage } from '../../components/empty-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import { deploymentDetailOverviewQueryAtom } from '../state'
 import { AccessStatusSection, AccessStatusSectionSkeleton, ApiTokenSummarySection, ApiTokenSummarySectionSkeleton } from './access-status-section'
@@ -18,11 +19,11 @@ function OverviewLayout({ children }: { children: React.ReactNode }) {
   )
 }
 
-function LatestReleaseSection({ appInstanceId, children }: {
-  appInstanceId: string
+function LatestReleaseSection({ children }: {
   children: React.ReactNode
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
 
   return (
     <section className="flex min-w-0 flex-col gap-3">
@@ -30,13 +31,15 @@ function LatestReleaseSection({ appInstanceId, children }: {
         <h3 className="system-sm-semibold text-text-primary">
           {t('overview.latestReleaseTitle')}
         </h3>
-        <Link
-          href={`/deployments/${appInstanceId}/releases`}
-          className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
-        >
-          {t('overview.previousReleases.viewAll')}
-          <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
-        </Link>
+        {appInstanceId && (
+          <Link
+            href={`/deployments/${appInstanceId}/releases`}
+            className="inline-flex shrink-0 items-center gap-1 system-xs-medium text-text-tertiary transition-colors hover:text-text-secondary"
+          >
+            {t('overview.previousReleases.viewAll')}
+            <span aria-hidden className="i-ri-arrow-right-line size-3.5" />
+          </Link>
+        )}
       </div>
       <div className="flex min-w-0 flex-col gap-3">
         {children}
@@ -45,13 +48,11 @@ function LatestReleaseSection({ appInstanceId, children }: {
   )
 }
 
-function OverviewLoadingSkeleton({ appInstanceId }: {
-  appInstanceId: string
-}) {
+function OverviewLoadingSkeleton() {
   return (
     <OverviewLayout>
       <EnvironmentStripSkeleton />
-      <LatestReleaseSection appInstanceId={appInstanceId}>
+      <LatestReleaseSection>
         <ReleaseHeroSkeleton />
       </LatestReleaseSection>
       <AccessStatusSectionSkeleton />
@@ -60,15 +61,13 @@ function OverviewLoadingSkeleton({ appInstanceId }: {
   )
 }
 
-export function OverviewTab({ appInstanceId }: {
-  appInstanceId: string
-}) {
+export function OverviewTab() {
   const { t } = useTranslation('deployments')
   const overviewQuery = useAtomValue(deploymentDetailOverviewQueryAtom)
   const overview = overviewQuery.data
 
   if (overviewQuery.isLoading)
-    return <OverviewLoadingSkeleton appInstanceId={appInstanceId} />
+    return <OverviewLoadingSkeleton />
 
   if (overviewQuery.isError) {
     return (
@@ -98,20 +97,17 @@ export function OverviewTab({ appInstanceId }: {
   return (
     <OverviewLayout>
       <EnvironmentStrip
-        appInstanceId={appInstanceId}
         rows={runtimeRows}
         releaseRows={releaseRows}
       />
-      <LatestReleaseSection appInstanceId={appInstanceId}>
+      <LatestReleaseSection>
         <ReleaseHero
-          appInstanceId={appInstanceId}
           latestRelease={latestRelease}
           releaseCount={releaseCount}
         />
       </LatestReleaseSection>
-      <AccessStatusSection appInstanceId={appInstanceId} accessChannels={accessChannels} />
+      <AccessStatusSection accessChannels={accessChannels} />
       <ApiTokenSummarySection
-        appInstanceId={appInstanceId}
         accessChannels={accessChannels}
         apiKeySummary={apiKeySummary}
         deployedEnvironmentCount={deployedEnvironmentCount}

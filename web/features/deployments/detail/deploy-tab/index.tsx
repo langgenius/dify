@@ -87,9 +87,7 @@ function DeploymentEnvironmentListSkeleton() {
   )
 }
 
-export function DeployTab({ appInstanceId }: {
-  appInstanceId: string
-}) {
+export function DeployTab() {
   const { t } = useTranslation('deployments')
   const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
   const environmentDeployments = environmentDeploymentsQuery.data
@@ -109,11 +107,11 @@ export function DeployTab({ appInstanceId }: {
                   icon="i-ri-server-line"
                   title={t('deployTab.emptyTitle')}
                   description={t('deployTab.emptyDescription')}
-                  action={<NewDeploymentButton appInstanceId={appInstanceId} />}
+                  action={<NewDeploymentButton />}
                 />
               )
             : (
-                <DeploymentEnvironmentList appInstanceId={appInstanceId} rows={rows} />
+                <DeploymentEnvironmentList rows={rows} />
               )}
     </div>
   )

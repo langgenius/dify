@@ -4,13 +4,13 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import { deploymentEnvironmentDeploymentsQueryAtom } from '../state'
 
-export function NewDeploymentButton({ appInstanceId }: {
-  appInstanceId: string
-}) {
+export function NewDeploymentButton() {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
 
   return (
@@ -18,7 +18,12 @@ export function NewDeploymentButton({ appInstanceId }: {
       size="medium"
       variant="primary"
       className="gap-1.5"
-      onClick={() => openDeployDrawer({ appInstanceId })}
+      disabled={!appInstanceId}
+      onClick={() => {
+        if (!appInstanceId)
+          return
+        openDeployDrawer({ appInstanceId })
+      }}
     >
       <span className="i-ri-rocket-line size-4 shrink-0" aria-hidden="true" />
       {t('deployTab.newDeployment')}
@@ -26,14 +31,12 @@ export function NewDeploymentButton({ appInstanceId }: {
   )
 }
 
-export function NewDeploymentHeaderAction({ appInstanceId }: {
-  appInstanceId: string
-}) {
+export function NewDeploymentHeaderAction() {
   const environmentDeploymentsQuery = useAtomValue(deploymentEnvironmentDeploymentsQueryAtom)
   const rows = environmentDeploymentsQuery.data?.environmentDeployments.filter(hasRuntimeInstanceDeployment) ?? []
 
   if (environmentDeploymentsQuery.isLoading || environmentDeploymentsQuery.isError || rows.length === 0)
     return null
 
-  return <NewDeploymentButton appInstanceId={appInstanceId} />
+  return <NewDeploymentButton />
 }

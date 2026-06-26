@@ -8,20 +8,30 @@ vi.mock('../deploy-release-menu', () => ({
   DeployReleaseMenu: () => <button type="button">Actions</button>,
 }))
 
-vi.mock('../../state', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../state')>()
-  const { atom } = await import('jotai')
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
   return {
     ...actual,
-    deploymentSourceAppIdAtom: atom<string | undefined>(undefined),
-    deploymentSourceAppQueryAtom: atom({
+    useQuery: () => ({
       data: {
         name: 'Source Workflow',
       },
     }),
   }
 })
+
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        get: {
+          queryOptions: (options: unknown) => options,
+        },
+      },
+    },
+  },
+}))
 
 function createReleaseRow(overrides: Partial<ReleaseWithSummaryDeployments> = {}): ReleaseWithSummaryDeployments {
   return {
@@ -46,7 +56,6 @@ describe('ReleaseHistoryRows', () => {
   it('should render the desktop release list with the knowledge table style', () => {
     const { container } = render(
       <ReleaseHistoryRows
-        appInstanceId="app-instance-1"
         releaseRows={[createReleaseRow()]}
       />,
     )
@@ -67,7 +76,6 @@ describe('ReleaseHistoryRows', () => {
   it('should render release deployments with the dot status style', () => {
     const { container } = render(
       <ReleaseHistoryRows
-        appInstanceId="app-instance-1"
         releaseRows={[
           createReleaseRow({
             summaryDeployments: [{
@@ -93,7 +101,6 @@ describe('ReleaseHistoryRows', () => {
   it('should render release source app links with scoped source app state', () => {
     const { container } = render(
       <ReleaseHistoryRows
-        appInstanceId="app-instance-1"
         releaseRows={[
           createReleaseRow({
             sourceAppId: 'source-app-1',
