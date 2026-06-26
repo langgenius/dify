@@ -1,5 +1,5 @@
 import logging
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +21,7 @@ def _load_yaml_file(*, file_path: str):
             raise YAMLError(f"Failed to load YAML file {file_path}: {e}") from e
 
 
-@lru_cache(maxsize=128)
+@cache
 def load_yaml_file_cached(file_path: str) -> Any:
     """
     Cached version of load_yaml_file for static configuration files.

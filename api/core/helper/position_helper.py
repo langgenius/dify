@@ -1,13 +1,13 @@
 import os
 from collections import OrderedDict
 from collections.abc import Callable
-from functools import lru_cache
+from functools import cache
 
 from configs import dify_config
 from core.tools.utils.yaml_utils import load_yaml_file_cached
 
 
-@lru_cache(maxsize=128)
+@cache
 def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> dict[str, int]:
     """
     Get the mapping from name to index from a YAML file
@@ -15,7 +15,6 @@ def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> 
     :param file_name: the YAML file name, default to '_position.yaml'
     :return: a dict with name as key and index as value
     """
-    # FIXME(-LAN-): Cache position maps to prevent file descriptor exhaustion during high-load benchmarks
     position_file_path = os.path.join(folder_path, file_name)
     try:
         yaml_content = load_yaml_file_cached(file_path=position_file_path)
@@ -25,7 +24,7 @@ def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> 
     return {name: index for index, name in enumerate(positions)}
 
 
-@lru_cache(maxsize=128)
+@cache
 def get_tool_position_map(folder_path: str, file_name: str = "_position.yaml") -> dict[str, int]:
     """
     Get the mapping for tools from name to index from a YAML file.
