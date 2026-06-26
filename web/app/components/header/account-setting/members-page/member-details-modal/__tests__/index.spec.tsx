@@ -145,11 +145,11 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.queryByRole('button', { name: /Custom role/i })).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Custom role/i })).toBeInTheDocument()
 
-      await user.click(screen.getByText('Custom role'))
+      await user.click(screen.getByRole('button', { name: /Custom role/i }))
 
-      expect(screen.queryByRole('menuitem', { name: /common\.operation\.remove/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /common\.operation\.remove/i })).not.toBeInTheDocument()
     })
 
     it('should not show role removal controls when role assignment is not allowed', () => {
@@ -191,7 +191,7 @@ describe('MemberDetailsModal', () => {
 
       await user.click(screen.getByRole('button', { name: /Custom role/i }))
 
-      await user.click(screen.getByRole('menuitem', { name: /common\.operation\.remove/i }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.remove/i }))
 
       expect(handleAssignSubmit).not.toHaveBeenCalled()
 
