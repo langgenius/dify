@@ -1,8 +1,7 @@
 from collections.abc import Sequence
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import InstrumentedAttribute
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import InstrumentedAttribute, Session
 
 from models.account import Account
 from models.credential_permission import CredentialPermission
