@@ -1,11 +1,11 @@
 ---
 name: how-to-write-component
-description: Use when writing, refactoring, or reviewing React/TypeScript components in Dify web, especially decisions about component ownership, props/types, URL/query state, Jotai state, async state, generated API contracts, queries/mutations, overlays, effects, navigation, performance, and empty states.
+description: Use when explicitly invoked or when writing, refactoring, fixing, or reviewing React/TypeScript components in Dify web, especially decisions about component ownership, props/types, URL/query state, Jotai state, async state, generated API contracts, queries/mutations, overlays, effects, navigation, performance, and empty states.
 ---
 
 # How To Write A Component
 
-Use this as the component decision guide for Dify web. Existing code is reference material, not automatic precedent; if touched code violates these rules, adapt it and fix equivalent patterns in the same feature branch.
+Use this as the component decision guide for Dify web. Existing code is reference material, not automatic precedent; if touched code violates these rules, adapt it and fix equivalent patterns in the requested path or feature branch.
 
 When this skill is explicitly invoked, give this skill's instructions maximum respect.
 
@@ -21,6 +21,24 @@ When this skill is explicitly invoked, give this skill's instructions maximum re
 | Should this query/mutation become an atom? | Use TanStack Query hooks at the lowest owner. | It reads atom state, feeds derived atoms, or participates in shared Jotai workflow orchestration. |
 | Should this be a helper/wrapper? | Prefer direct readable code at the use site. | The name captures a stable domain rule or the wrapper owns real behavior, validation, state, error handling, or semantics. |
 | Is an Effect needed? | No. Derive during render or handle the user action in the event handler. | It synchronizes with an external system such as browser APIs, subscriptions, timers, analytics, or imperative DOM/non-React widgets. |
+
+## Explicit Invocation Scope
+
+When the user explicitly invokes this skill, treat every named component, file, folder, route, tab, or feature surface as governed by this guide, regardless of whether the user asks to write, refactor, fix, review, clean up, or add behavior. Do not reduce the work to the smallest low-risk slice unless the user asks for an incremental pass.
+
+For explicit path-level work:
+
+- Audit the requested path for ownership, props, query/mutation placement, overlays, route state, effects, generated API usage, nullable handling, and file/folder naming.
+- Fix all high-confidence violations in that path in the same change, especially repeated instances of the same pattern and any violations in code you touch.
+- Prefer cohesive file moves and extractions over leaving known violations because the diff is larger.
+- Keep behavior stable, but do not treat behavior stability as a reason to avoid structural ownership changes.
+- If a violation is risky to fix now, leave it only after naming the risk and the exact follow-up.
+
+When choosing between a narrow local fix and a broader ownership cleanup inside the requested path, prefer the broader cleanup if it removes prop drilling, moves state/data to the owning surface, separates hidden secondary surfaces, or eliminates misleading files/folders without changing product behavior.
+
+For narrow feature or bugfix work without a path, the governed scope is the touched owner surface plus directly related siblings that share the same violated pattern. New code must comply with the whole guide; touched existing code should be brought into compliance rather than preserving a known violation as local precedent.
+
+Work is not complete just because tests pass or one example was improved. It should leave the governed scope consistently aligned with this guide.
 
 ## Core Defaults
 
