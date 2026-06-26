@@ -83,6 +83,13 @@ def test_get_pool_uses_configured_session_factory_without_flask_app_context() ->
     assert pool.quota_used == 2
 
 
+def test_credit_pool_balance_unlimited_remaining_and_sufficiency() -> None:
+    pool = CreditPoolBalance(tenant_id="tenant-1", pool_type="paid", quota_limit=-1, quota_used=999)
+
+    assert pool.remaining_credits == -1
+    assert pool.has_sufficient_credits(10_000)
+
+
 def test_check_and_deduct_credits_deducts_exact_amount_when_sufficient() -> None:
     engine, tenant_id, pool_id = _create_engine_with_pool(quota_limit=10, quota_used=2)
 
@@ -351,6 +358,31 @@ def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails
         bucket="trial",
         reservation_id="reservation-1",
     )
+
+
+def test_check_and_deduct_credits_logs_when_billing_release_fails() -> None:
+    with (
+        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
+        patch("services.billing_service.BillingService.quota_release", side_effect=RuntimeError("release failed"))
+        as quota_release,
+        patch("services.credit_pool_service.logger.warning") as logger_warning,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
+
+    quota_release.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+    )
+    logger_warning.assert_called_once()
+    assert logger_warning.call_args.args[3] == "reservation-1"
+    assert logger_warning.call_args.kwargs["exc_info"] is True
 
 
 def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> None:
