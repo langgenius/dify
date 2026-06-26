@@ -2,7 +2,7 @@ import type { AgentSoulConfig, WorkflowAgentComposerResponse } from '@dify/contr
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-drawer-panel'
+import { WorkflowInlineAgentConfigureWorkspace } from '../agent-orchestrate-panel-content'
 
 const mocks = vi.hoisted(() => ({
   checkoutBuildDraft: vi.fn(),
@@ -130,7 +130,6 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           agentId="agent-1"
           appId="app-1"
           inlineComposerState={createInlineComposerState()}
-          isInline
           nodeId="node-1"
           onSaveInlineToRoster={props.onSaveInlineToRoster}
           open

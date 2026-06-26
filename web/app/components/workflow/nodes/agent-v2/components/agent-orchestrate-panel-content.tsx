@@ -29,11 +29,16 @@ import { usePrepareAgentBuildDraftBeforeRun } from '@/features/agent-v2/agent-de
 import { consoleQuery } from '@/service/client'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
-type AgentOrchestrateDrawerPanelProps = {
+type WorkflowRosterAgentOrchestratePanelContentProps = {
+  agentId?: string
+  nodeId: string
+  open: boolean
+}
+
+type WorkflowInlineAgentConfigureWorkspaceProps = {
   agentId?: string
   appId?: string
   inlineComposerState?: WorkflowAgentComposerResponse
-  isInline: boolean
   nodeId: string
   onClose?: () => void
   onSaved?: (binding: AgentComposerBindingResponse) => void
@@ -41,15 +46,15 @@ type AgentOrchestrateDrawerPanelProps = {
   open: boolean
 }
 
-export function AgentOrchestrateDrawerPanel(props: AgentOrchestrateDrawerPanelProps) {
+export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRosterAgentOrchestratePanelContentProps) {
   return (
     <AgentComposerProvider>
-      <AgentOrchestrateDrawerPanelContent {...props} />
+      <WorkflowRosterAgentOrchestratePanelContentInner {...props} />
     </AgentComposerProvider>
   )
 }
 
-export function WorkflowInlineAgentConfigureWorkspace(props: AgentOrchestrateDrawerPanelProps) {
+export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgentConfigureWorkspaceProps) {
   return (
     <AgentComposerProvider>
       <WorkflowInlineAgentConfigureWorkspaceContent {...props} />
@@ -57,16 +62,13 @@ export function WorkflowInlineAgentConfigureWorkspace(props: AgentOrchestrateDra
   )
 }
 
-function AgentOrchestrateDrawerPanelContent({
+function WorkflowRosterAgentOrchestratePanelContentInner({
   agentId,
-  appId,
-  inlineComposerState,
-  isInline,
   nodeId,
   open,
-}: AgentOrchestrateDrawerPanelProps) {
+}: WorkflowRosterAgentOrchestratePanelContentProps) {
   const rosterComposerQuery = useQuery(consoleQuery.agent.byAgentId.composer.get.queryOptions({
-    input: open && !isInline && agentId
+    input: open && agentId
       ? {
           params: {
             agent_id: agentId,
@@ -74,21 +76,15 @@ function AgentOrchestrateDrawerPanelContent({
         }
       : skipToken,
   }))
-  const composerState = isInline ? inlineComposerState : rosterComposerQuery.data
+  const composerState = rosterComposerQuery.data
   const agentSoulConfig = composerState?.agent_soul
   const activeConfigSnapshot = ('active_config_snapshot' in (composerState ?? {}))
     ? composerState?.active_config_snapshot as AgentConfigSnapshotSummaryResponse | null | undefined
     : undefined
   const { currentModel, setConfigureModel, textGenerationModelList } = useAgentOrchestrateModelOptions()
-  const { draftSavedAt, saveDraft } = useWorkflowInlineAgentConfigureSync({
-    nodeId,
-    baseConfig: agentSoulConfig,
-    currentModel,
-    enabled: open && isInline && !!agentSoulConfig,
-  })
 
   useHydrateAgentSoulConfigDraft({
-    agentId: isInline ? `${nodeId}:${agentId ?? 'pending'}` : agentId ?? nodeId,
+    agentId: agentId ?? nodeId,
     activeVersionId: activeConfigSnapshot?.id,
     config: agentSoulConfig as AgentSoulConfig | undefined,
   })
@@ -104,22 +100,17 @@ function AgentOrchestrateDrawerPanelContent({
   return (
     <AgentOrchestratePanel
       agentId={agentId}
-      appId={isInline ? appId : undefined}
-      nodeId={isInline ? nodeId : undefined}
       activeConfigSnapshot={activeConfigSnapshot}
       agentSoulConfig={agentSoulConfig as AgentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
       textGenerationModelList={textGenerationModelList}
-      draftSavedAt={draftSavedAt}
-      readOnly={!isInline}
+      readOnly
       showHeader={false}
       showPublishBar={false}
       className="h-full max-w-none min-w-0 flex-none rounded-none border-0"
       onSelectModel={setConfigureModel}
-      onPublish={() => {
-        void saveDraft()
-      }}
+      onPublish={() => undefined}
       onOpenVersions={() => undefined}
     />
   )
@@ -134,7 +125,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   onSaved,
   onSaveInlineToRoster,
   open,
-}: AgentOrchestrateDrawerPanelProps) {
+}: WorkflowInlineAgentConfigureWorkspaceProps) {
   const { t } = useTranslation()
   const [clearChatList, setClearChatList] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
