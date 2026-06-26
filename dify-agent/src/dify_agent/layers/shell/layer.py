@@ -623,7 +623,13 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         timeout: float,
         env: dict[str, str] | None,
     ) -> RemoteCommandResult:
-        """Run a workspace-scoped script to completion and delete its job state."""
+        """Run a workspace-scoped script to completion and delete its job state.
+
+        Shellctl's ``truncated`` flag is per output window: it means the caller
+        should continue from the returned offset. After this helper drains those
+        windows, only the final window can describe whether output is still
+        unread, usually because the safety window cap was reached.
+        """
         client = self._require_client()
         job_id: str | None = None
         try:
@@ -631,13 +637,11 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             job_id = result.job_id
             self._track_job_result(result)
             output_parts = [result.output]
-            truncated = result.truncated
             windows = 1
             while (result.truncated or not result.done) and windows < _REMOTE_COMMAND_MAX_OUTPUT_WINDOWS:
                 result = await client.wait(result.job_id, offset=self._tracked_offset(result.job_id), timeout=timeout)
                 self._track_job_result(result)
                 output_parts.append(result.output)
-                truncated = truncated or result.truncated
                 windows += 1
             return RemoteCommandResult(
                 job_id=result.job_id,
@@ -646,7 +650,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 exit_code=result.exit_code,
                 output="".join(output_parts),
                 offset=result.offset,
-                truncated=truncated,
+                truncated=result.truncated,
                 output_path=result.output_path,
             )
         finally:

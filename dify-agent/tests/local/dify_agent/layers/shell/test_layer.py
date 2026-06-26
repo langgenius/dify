@@ -728,6 +728,7 @@ def test_run_remote_script_uses_workspace_cwd_accumulates_output_and_deletes_job
             result = await layer.run_remote_script("printf 'hello world'", timeout=7.5)
             assert result.output == "hello world"
             assert result.exit_code == 0
+            assert result.truncated is False
 
     asyncio.run(scenario())
 
