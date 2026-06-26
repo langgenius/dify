@@ -2,6 +2,7 @@ from types import SimpleNamespace
 from typing import cast
 from unittest.mock import MagicMock, patch
 
+import pytest
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.ask_human import AskHumanToolResult
 from dify_agent.protocol import RunStartedEvent, RunSucceededEvent, RunSucceededEventData
@@ -48,6 +49,13 @@ class FakeCredentialsProvider:
         assert provider_name == "openai"
         assert model_name == "gpt-test"
         return {"api_key": "secret-key"}
+
+
+@pytest.fixture(autouse=True)
+def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
+    )
 
 
 def _restored_file(*, transfer_method: FileTransferMethod, reference: str) -> File:
@@ -243,6 +251,23 @@ def _node(
         failure_orchestrator=OutputFailureOrchestrator(),
         session_store=cast(WorkflowAgentRuntimeSessionStore | None, session_store),
     )
+
+
+def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_markers():
+    mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent-node",
+        node_data={
+            "agent_task": (
+                "Review {{#previous-node.report#}}, ignore {{#sys.query#}}, "
+                "ignore [§node_output:legacy-node.output:LEGACY§], then use {{#previous-node.report#}} again."
+            )
+        },
+    )
+
+    assert mapping == {
+        "agent-node.previous-node.report": ["previous-node", "report"],
+    }
 
 
 def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():

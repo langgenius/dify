@@ -149,22 +149,32 @@ def test_dangling_knowledge_without_label_gets_fallback_name():
     ]
 
 
-def test_configured_but_deleted_dataset_surfaces_as_placeholder():
+def test_configured_but_deleted_knowledge_set_surfaces_as_placeholder():
     payload = ComposerSavePayload.model_validate(
         {
             "variant": "agent_app",
             "agent_soul": {
-                "prompt": {"system_prompt": "see [§knowledge:ds-1:产品手册§]"},
-                "knowledge": {"datasets": [{"id": "ds-1", "name": "产品手册"}]},
+                "prompt": {"system_prompt": "see [§knowledge:kb-1:产品手册§]"},
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "kb-1",
+                            "name": "产品手册",
+                            "datasets": [{"id": "ds-1", "name": "产品手册"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 4},
+                        }
+                    ]
+                },
             },
             "save_strategy": "save_to_current_version",
         }
     )
-    # configured + DB row exists -> clean
-    assert _findings(payload, existing_dataset_ids={"ds-1"})["knowledge_retrieval_placeholder"] == []
-    # configured but deleted in DB -> placeholder
-    assert _findings(payload, existing_dataset_ids=set())["knowledge_retrieval_placeholder"] == [
-        {"id": "ds-1", "placeholder_name": "产品手册"}
+    # configured + current Agent Soul row exists -> clean
+    assert _findings(payload, existing_knowledge_set_ids={"kb-1"})["knowledge_retrieval_placeholder"] == []
+    # configured but removed from the current Agent Soul surface -> placeholder
+    assert _findings(payload, existing_knowledge_set_ids=set())["knowledge_retrieval_placeholder"] == [
+        {"id": "kb-1", "placeholder_name": "产品手册"}
     ]
 
 

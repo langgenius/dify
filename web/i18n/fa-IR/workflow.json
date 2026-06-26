@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "وظیفه عامل",
   "nodes.agent.task.mention": "اشاره",
   "nodes.agent.task.placeholder": "شرح دهید این عامل باید چه کاری انجام دهد...",
-  "nodes.agent.task.tooltip": "دستورالعمل‌های وظیفه‌ای را که این عامل باید در این گردش کار دنبال کند تعریف کنید.",
+  "nodes.agent.task.tooltip": "پرامپت اضافی برای کمک به عامل در مدیریت همین گره. از / برای ارجاع صریح به متغیرها استفاده کنید.\nاگر به‌درستی پیکربندی شود، می‌توانید به عامل خود اعتماد کنید تا خودش مسائل را حل کند.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} مجوز ندارد",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} نصب نشده است",
   "nodes.agent.toolbox": "جعبه ابزار",
