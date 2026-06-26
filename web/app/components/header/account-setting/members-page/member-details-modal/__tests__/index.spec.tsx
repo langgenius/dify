@@ -145,9 +145,9 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /Custom role/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /^Custom role$/i })).toBeInTheDocument()
 
-      await user.click(screen.getByRole('button', { name: /Custom role/i }))
+      await user.click(screen.getByRole('button', { name: /^Custom role$/i }))
 
       expect(screen.queryByRole('button', { name: /common\.operation\.remove/i })).not.toBeInTheDocument()
     })
@@ -189,9 +189,7 @@ describe('MemberDetailsModal', () => {
         />,
       )
 
-      await user.click(screen.getByRole('button', { name: /Custom role/i }))
-
-      await user.click(screen.getByRole('button', { name: /common\.operation\.remove/i }))
+      await user.click(screen.getByRole('button', { name: /common\.operation\.remove.*Custom role/i }))
 
       expect(handleAssignSubmit).not.toHaveBeenCalled()
 
