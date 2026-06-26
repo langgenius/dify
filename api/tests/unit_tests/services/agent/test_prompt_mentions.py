@@ -116,9 +116,7 @@ def test_extract_workflow_node_output_selectors_supports_current_frontend_marker
 
 
 def test_workflow_previous_node_output_refs_from_selectors_materializes_refs():
-    refs = workflow_previous_node_output_refs_from_selectors(
-        [("node-1", "output"), ("node-2", "report", "url")]
-    )
+    refs = workflow_previous_node_output_refs_from_selectors([("node-1", "output"), ("node-2", "report", "url")])
 
     assert refs == [
         WorkflowPreviousNodeOutputRef(selector=["node-1", "output"], node_id="node-1", output="output"),
@@ -259,12 +257,11 @@ def test_normalize_previous_node_output_selector_returns_canonical_selector():
     assert normalize_previous_node_output_selector(
         WorkflowPreviousNodeOutputRef(selector=["node-1", "report", "url"])
     ) == ("node-1", "report", "url")
-    assert normalize_previous_node_output_selector(
-        WorkflowPreviousNodeOutputRef(node_id="node-2", output="text")
-    ) == ("node-2", "text")
-    assert normalize_previous_node_output_selector(
-        WorkflowPreviousNodeOutputRef(selector=["node-3", 1])
-    ) is None
+    assert normalize_previous_node_output_selector(WorkflowPreviousNodeOutputRef(node_id="node-2", output="text")) == (
+        "node-2",
+        "text",
+    )
+    assert normalize_previous_node_output_selector(WorkflowPreviousNodeOutputRef(selector=["node-3", 1])) is None
 
 
 # ── allowlists ────────────────────────────────────────────────────────────────

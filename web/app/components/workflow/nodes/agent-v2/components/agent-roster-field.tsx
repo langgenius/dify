@@ -1,9 +1,9 @@
-import type { ReactNode, RefObject } from 'react'
+import type { ReactElement, ReactNode, RefObject } from 'react'
 import type { AgentRosterNodeData } from '@/app/components/workflow/block-selector/types'
 import type { AppIconType } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import {
   Drawer,
   DrawerCloseButton,
@@ -248,24 +248,24 @@ function AgentRosterInlineConfigureDialog({
   agent,
   children,
   open,
-  onClose,
+  trigger,
+  onOpenChange,
 }: {
   agent: AgentRosterDisplayData
   children?: ReactNode
   open: boolean
-  onClose: () => void
+  trigger: ReactElement
+  onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation()
 
   return (
     <Dialog
       open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen)
-          onClose()
-      }}
+      onOpenChange={onOpenChange}
       disablePointerDismissal
     >
+      <DialogTrigger render={trigger} />
       <DialogContent className="h-[min(760px,calc(100dvh-32px))] w-[min(1120px,calc(100vw-32px))] max-w-none overflow-hidden p-0">
         <DialogTitle className="sr-only">
           {agent.name}
@@ -351,6 +351,20 @@ export function AgentRosterField({
       </span>
     </>
   )
+  const renderPanelTrigger = (name: string, onClick?: () => void) => (
+    <button
+      type="button"
+      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name })}
+      aria-busy={isLoading || undefined}
+      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+      onClick={onClick}
+    >
+      {isLoading ? loadingContent : agentContent}
+      <span className="flex shrink-0 items-center text-text-tertiary">
+        <span aria-hidden className="i-ri-arrow-right-line size-4" />
+      </span>
+    </button>
+  )
 
   return (
     <FieldRoot name="agent_binding" className="gap-1 px-4 py-2">
@@ -406,43 +420,35 @@ export function AgentRosterField({
             canOpenPanel
               ? (
                   <>
-                    <button
-                      type="button"
-                      aria-label={t(`${i18nPrefix}.roster.openPanel`, { ns: 'workflow', name: isInlineSetup ? inlineSetupName : agent.name })}
-                      aria-busy={isLoading || undefined}
-                      className="flex h-13 w-full min-w-0 cursor-pointer items-center gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg py-2 pr-4 pl-2 text-left shadow-xs shadow-shadow-shadow-3 hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                      onClick={() => setPanelOpen(true)}
-                    >
-                      {isLoading ? loadingContent : agentContent}
-                      <span className="flex shrink-0 items-center text-text-tertiary">
-                        <span aria-hidden className="i-ri-arrow-right-line size-4" />
-                      </span>
-                    </button>
                     {isInlineSetup
                       ? (
                           <AgentRosterInlineConfigureDialog
                             agent={agent}
                             open={panelOpen}
-                            onClose={() => setPanelOpen(false)}
+                            trigger={renderPanelTrigger(inlineSetupName)}
+                            onOpenChange={setPanelOpen}
                           >
                             {panelBody}
                           </AgentRosterInlineConfigureDialog>
                         )
                       : (
-                          <AgentRosterDrawer
-                            agent={agent}
-                            mode={panelMode}
-                            open={panelOpen}
-                            portalContainerRef={portalContainerRef}
-                            showAccessIcon
-                            showDetailActions={showPanelDetailActions}
-                            isCopyPending={isPanelCopyPending}
-                            onMakeCopy={onMakeCopy}
-                            onSaveInlineToRoster={onSaveInlineToRoster}
-                            onClose={() => setPanelOpen(false)}
-                          >
-                            {panelBody}
-                          </AgentRosterDrawer>
+                          <>
+                            {renderPanelTrigger(agent.name, () => setPanelOpen(true))}
+                            <AgentRosterDrawer
+                              agent={agent}
+                              mode={panelMode}
+                              open={panelOpen}
+                              portalContainerRef={portalContainerRef}
+                              showAccessIcon
+                              showDetailActions={showPanelDetailActions}
+                              isCopyPending={isPanelCopyPending}
+                              onMakeCopy={onMakeCopy}
+                              onSaveInlineToRoster={onSaveInlineToRoster}
+                              onClose={() => setPanelOpen(false)}
+                            >
+                              {panelBody}
+                            </AgentRosterDrawer>
+                          </>
                         )}
                   </>
                 )

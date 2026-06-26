@@ -3178,9 +3178,7 @@ class TestWorkflowAgentDraftBindingSync:
                 node_job_config=WorkflowNodeJobConfig.model_validate(
                     {
                         "workflow_prompt": "Old prompt",
-                        "previous_node_output_refs": [
-                            {"selector": selector} for selector in existing_ref_selectors
-                        ],
+                        "previous_node_output_refs": [{"selector": selector} for selector in existing_ref_selectors],
                     }
                 ),
             )
@@ -3192,9 +3190,7 @@ class TestWorkflowAgentDraftBindingSync:
             account_id="account-1",
         )
 
-        binding = existing_binding or next(
-            item for item in session.added if isinstance(item, WorkflowAgentNodeBinding)
-        )
+        binding = existing_binding or next(item for item in session.added if isinstance(item, WorkflowAgentNodeBinding))
         return WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
 
     def test_publish_validation_rejects_agent_soul_publish_only_errors(self):

@@ -452,9 +452,7 @@ class WorkflowAgentPublishService:
     @classmethod
     def _previous_node_output_refs_from_prompt(cls, prompt: str) -> list[WorkflowPreviousNodeOutputRef]:
         """Derive persisted refs from the current frontend workflow markers only."""
-        return workflow_previous_node_output_refs_from_selectors(
-            extract_workflow_node_output_selectors(prompt)
-        )
+        return workflow_previous_node_output_refs_from_selectors(extract_workflow_node_output_selectors(prompt))
 
     @classmethod
     def copy_agent_node_bindings_to_published(
