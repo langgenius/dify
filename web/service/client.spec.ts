@@ -46,6 +46,8 @@ const createApiBasedExtension = (overrides: Partial<ApiBasedExtensionResponse> =
 
 type AgentMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.post.mutationOptions>['onSuccess']>>[0]
 type AgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.composer.put.mutationOptions>['onSuccess']>>[0]
+type AgentPublishMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.agent.byAgentId.publish.post.mutationOptions>['onSuccess']>>[0]
+type WorkflowAgentComposerMutationResponse = Parameters<NonNullable<ReturnType<typeof ConsoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions>['onSuccess']>>[0]
 
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
@@ -53,6 +55,7 @@ const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutat
   enable_api: overrides.enable_api ?? true,
   enable_site: overrides.enable_site ?? true,
   description: overrides.description ?? 'Agent description',
+  hidden_app_backed: overrides.hidden_app_backed ?? false,
   id: overrides.id ?? 'agent-1',
   icon_url: overrides.icon_url ?? null,
   mode: overrides.mode ?? 'agent',
@@ -68,6 +71,7 @@ const createComposerState = (overrides: Partial<AgentComposerMutationResponse> =
   agent: {
     active_config_snapshot_id: 'snapshot-1',
     description: 'Agent description',
+    hidden_app_backed: false,
     id: 'agent-1',
     name: 'Agent',
     scope: 'roster',
@@ -76,8 +80,55 @@ const createComposerState = (overrides: Partial<AgentComposerMutationResponse> =
   agent_soul: {
     schema_version: 1,
   },
+  hidden_app_backed: false,
   save_options: ['save_to_current_version', 'save_as_new_version'],
   variant: 'agent_app',
+  ...overrides,
+})
+
+const createAgentPublishResponse = (overrides: Partial<AgentPublishMutationResponse> = {}): AgentPublishMutationResponse => ({
+  active_config_snapshot: {
+    id: 'snapshot-1',
+    version: 1,
+  },
+  active_config_snapshot_id: 'snapshot-1',
+  result: 'success',
+  ...overrides,
+})
+
+const createWorkflowComposerState = (overrides: Partial<WorkflowAgentComposerMutationResponse> = {}): WorkflowAgentComposerMutationResponse => ({
+  agent: {
+    active_config_snapshot_id: 'snapshot-1',
+    description: 'Agent description',
+    hidden_app_backed: false,
+    id: 'agent-1',
+    name: 'Agent',
+    scope: 'roster',
+    status: 'active',
+  },
+  agent_soul: {
+    schema_version: 1,
+  },
+  hidden_app_backed: false,
+  binding: {
+    agent_id: 'agent-1',
+    binding_type: 'roster_agent',
+    current_snapshot_id: 'snapshot-1',
+    id: 'binding-1',
+    node_id: 'node-1',
+    workflow_id: 'workflow-1',
+  },
+  node_job: {
+    mode: 'tell_agent_what_to_do',
+    schema_version: 1,
+    workflow_prompt: '',
+  },
+  save_options: ['node_job_only', 'save_as_new_agent'],
+  soul_lock: {
+    can_unlock: false,
+    locked: true,
+  },
+  variant: 'workflow',
   ...overrides,
 })
 
@@ -222,6 +273,145 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it('should cache workflow composer state after copying a roster agent into an inline agent', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+        body: {
+          source_agent_id: 'roster-agent-1',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+      },
+    }))).toEqual(composerState)
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).not.toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+  })
+
+  it('should cache workflow composer state after saving workflow node composer', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const composerState = createWorkflowComposerState({
+      binding: {
+        agent_id: 'inline-agent-1',
+        binding_type: 'inline_agent',
+        current_snapshot_id: 'inline-snapshot-1',
+        id: 'binding-1',
+        node_id: 'node-1',
+        workflow_id: 'workflow-1',
+      },
+    })
+
+    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'node_job_only',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+      },
+    }))).toEqual(composerState)
+  })
+
+  it('should cache workflow composer state and invalidate roster lists after saving inline agent to roster', async () => {
+    const consoleQuery = await loadConsoleQuery()
+    const queryClient = new QueryClient()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
+    const composerState = createWorkflowComposerState()
+
+    const mutationOptions = consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.saveToRoster.post.mutationOptions()
+    await mutationOptions.onSuccess?.(
+      composerState,
+      {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+        body: {
+          variant: 'workflow',
+          save_strategy: 'save_to_roster',
+          new_agent_name: 'Saved Agent',
+          description: 'Agent description',
+          role: 'Assistant',
+        },
+      },
+      undefined,
+      createMutationContext(queryClient),
+    )
+
+    expect(queryClient.getQueryData(consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+      input: {
+        params: {
+          app_id: 'app-1',
+          node_id: 'node-1',
+        },
+      },
+    }))).toEqual(composerState)
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.inviteOptions.get.key(),
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: consoleQuery.agent.byAgentId.get.queryKey({
+        input: {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+      }),
+    })
+  })
+
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
@@ -277,6 +467,7 @@ describe('consoleQuery agent mutation defaults', () => {
           created_by: null,
           description: 'Agent description',
           existing_node_ids: [],
+          hidden_app_backed: false,
           icon: null,
           icon_background: null,
           icon_type: null,
@@ -303,20 +494,14 @@ describe('consoleQuery agent mutation defaults', () => {
       total: 1,
     })
 
-    const mutationOptions = consoleQuery.agent.byAgentId.composer.put.mutationOptions()
+    const mutationOptions = consoleQuery.agent.byAgentId.publish.post.mutationOptions()
     await mutationOptions.onSuccess?.(
-      createComposerState(),
+      createAgentPublishResponse(),
       {
         params: {
           agent_id: 'agent-1',
         },
-        body: {
-          variant: 'agent_app',
-          save_strategy: 'save_as_new_version',
-          agent_soul: {
-            schema_version: 1,
-          },
-        },
+        body: {},
       },
       undefined,
       createMutationContext(queryClient),
