@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sys
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock
 
@@ -15,7 +16,6 @@ from werkzeug.exceptions import NotFound
 from controllers.common.human_input import HumanInputFormSubmitPayload
 from controllers.service_api.app.human_input_form import WorkflowHumanInputFormApi
 from models.human_input import RecipientType
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 class TestWorkflowHumanInputFormApi:
@@ -45,7 +45,7 @@ class TestWorkflowHumanInputFormApi:
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
 
         api = WorkflowHumanInputFormApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
@@ -98,7 +98,7 @@ class TestWorkflowHumanInputFormApi:
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
 
         api = WorkflowHumanInputFormApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
@@ -121,7 +121,7 @@ class TestWorkflowHumanInputFormApi:
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
 
         api = WorkflowHumanInputFormApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
@@ -153,7 +153,7 @@ class TestWorkflowHumanInputFormApi:
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
 
         api = WorkflowHumanInputFormApi()
-        handler = _unwrap(api.get)
+        handler = unwrap(api.get)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
 
         with app.test_request_context("/form/human_input/token-1", method="GET"):
@@ -175,7 +175,7 @@ class TestWorkflowHumanInputFormApi:
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
 
         api = WorkflowHumanInputFormApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
         end_user = SimpleNamespace(id="end-user-1")
 
@@ -209,7 +209,7 @@ class TestWorkflowHumanInputFormApi:
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
 
         api = WorkflowHumanInputFormApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
         end_user = SimpleNamespace(id="end-user-1")
         inputs = {
@@ -285,7 +285,7 @@ class TestWorkflowHumanInputFormApi:
         monkeypatch.setattr(workflow_module, "db", SimpleNamespace(engine=object()))
 
         api = WorkflowHumanInputFormApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1")
         end_user = SimpleNamespace(id="end-user-1")
 

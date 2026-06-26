@@ -5,26 +5,16 @@ import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from sqlalchemy import Row, delete, func, select, update
 from sqlalchemy.orm import Session, scoped_session
-
-from core.db.session_factory import session_factory
-
-
-class InvitationData(TypedDict):
-    account_id: str
-    email: str
-    workspace_id: str
-
-
-_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import get_valid_language, language_timezone_mapping
+from core.db.session_factory import session_factory
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -45,8 +35,10 @@ from models.account import (
     TenantPluginAutoUpgradeStrategy,
     TenantStatus,
 )
-from models.model import DifySetup
+from models.dataset import Dataset
+from models.model import App, DifySetup
 from services.billing_service import BillingService
+from services.enterprise.rbac_service import ListOption, RBACService
 from services.entities.auth_entities import (
     ChangeEmailNewEmailToken,
     ChangeEmailOldEmailToken,
@@ -70,6 +62,7 @@ from services.errors.account import (
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
+from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from tasks.delete_account_task import delete_account_task
 from tasks.mail_account_deletion_task import send_account_deletion_verification_code
 from tasks.mail_change_mail_task import (
@@ -88,6 +81,17 @@ from tasks.mail_reset_password_task import (
     send_reset_password_mail_task,
     send_reset_password_mail_task_when_account_not_exist,
 )
+
+
+class InvitationData(TypedDict):
+    account_id: str
+    email: str
+    workspace_id: str
+    role: NotRequired[str]
+    requires_setup: NotRequired[bool]
+
+
+_invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +149,67 @@ class AccountService:
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
     EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
+
+    @staticmethod
+    def _resolve_legacy_role_id(tenant_id: str, account_id: str, role: TenantAccountRole) -> str:
+        """Resolve a legacy workspace role to the corresponding RBAC role id.
+
+        Looks up the builtin RBAC role whose tag matches the legacy role name
+        (e.g. ``TenantAccountRole.ADMIN`` → builtin role with tag ``"admin"``).
+        """
+        options = ListOption(page_number=1, results_per_page=100)
+        roles = RBACService.Roles.list(tenant_id, account_id, options=options).data
+
+        expected_tag = {
+            TenantAccountRole.OWNER: "owner",
+            TenantAccountRole.ADMIN: "admin",
+            TenantAccountRole.EDITOR: "editor",
+            TenantAccountRole.NORMAL: "normal",
+            TenantAccountRole.DATASET_OPERATOR: "dataset_operator",
+        }[role]
+        for rbac_role in roles:
+            if (
+                rbac_role.is_builtin
+                and rbac_role.category == "global_system_default"
+                and rbac_role.role_tag == expected_tag
+            ):
+                return str(rbac_role.id)
+
+        raise ValueError(f"Builtin RBAC role not found for {role.value} in tenant {tenant_id}")
+
+    @staticmethod
+    def get_workspace_permission_keys(tenant_id: str, account_id: str) -> set[str]:
+        permissions = RBACService.MyPermissions.get(tenant_id, account_id)
+        return set(getattr(getattr(permissions, "workspace", None), "permission_keys", []) or [])
+
+    @staticmethod
+    def get_rbac_workspace_owner_account_id(tenant_id: str, actor_account_id: str) -> str:
+        """Return the account id bound to the workspace owner RBAC role."""
+        owner_role_id = AccountService._resolve_legacy_role_id(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            role=TenantAccountRole.OWNER,
+        )
+        owner_members = RBACService.Roles.members(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            role_id=owner_role_id,
+            options=ListOption(page_number=1, results_per_page=1),
+        ).data
+        if not owner_members:
+            raise ValueError(f"Workspace RBAC owner not found for tenant {tenant_id}.")
+        return owner_members[0].account_id
+
+    @staticmethod
+    def is_rbac_workspace_owner(tenant_id: str, actor_account_id: str, member_account_id: str) -> bool:
+        roles = RBACService.MemberRoles.get(
+            tenant_id=tenant_id,
+            account_id=actor_account_id,
+            member_account_id=member_account_id,
+        ).roles
+        return any(
+            role.is_builtin and role.category == "global_system_default" and role.role_tag == "owner" for role in roles
+        )
 
     @staticmethod
     def _get_refresh_token_key(refresh_token: str) -> str:
@@ -263,6 +328,7 @@ class AccountService:
 
             account.set_tenant_id(available_ta.tenant_id)
             available_ta.current = True
+            available_ta.last_opened_at = naive_utc_now()
             db.session.commit()
 
         AccountService._refresh_account_last_active(account)
@@ -1167,15 +1233,17 @@ class TenantService:
         db.session.add(tenant)
         db.session.commit()
 
-        plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
-            tenant_id=tenant.id,
-            strategy_setting=TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY,
-            upgrade_time_of_day=0,
-            upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
-            exclude_plugins=[],
-            include_plugins=[],
-        )
-        db.session.add(plugin_upgrade_strategy)
+        for category in TenantPluginAutoUpgradeStrategy.PluginCategory:
+            plugin_upgrade_strategy = TenantPluginAutoUpgradeStrategy(
+                tenant_id=tenant.id,
+                category=category,
+                strategy_setting=PluginAutoUpgradeService.default_strategy_setting_for_category(category),
+                upgrade_time_of_day=PluginAutoUpgradeService.default_upgrade_time_of_day(tenant.id),
+                upgrade_mode=TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+                exclude_plugins=[],
+                include_plugins=[],
+            )
+            db.session.add(plugin_upgrade_strategy)
         db.session.commit()
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
@@ -1212,20 +1280,30 @@ class TenantService:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
         else:
             tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
-        TenantService.create_tenant_member(tenant, account, role="owner")
+        TenantService.create_tenant_member(tenant, account, db.session, role="owner")
+        if dify_config.RBAC_ENABLED:
+            owner_role_id = AccountService._resolve_legacy_role_id(str(tenant.id), account.id, TenantAccountRole.OWNER)
+            RBACService.MemberRoles.replace(
+                tenant_id=str(tenant.id),
+                account_id=account.id,
+                member_account_id=account.id,
+                role_ids=[owner_role_id],
+            )
         account.current_tenant = tenant
         db.session.commit()
         tenant_was_created.send(tenant)
 
     @staticmethod
-    def create_tenant_member(tenant: Tenant, account: Account, role: str = "normal") -> TenantAccountJoin:
+    def create_tenant_member(
+        tenant: Tenant, account: Account, session: scoped_session, role: str = "normal"
+    ) -> TenantAccountJoin:
         """Create tenant member"""
         if role == TenantAccountRole.OWNER:
             if TenantService.has_roles(tenant, [TenantAccountRole.OWNER]):
                 logger.error("Tenant %s has already an owner.", tenant.id)
                 raise Exception("Tenant already has an owner.")
 
-        ta = db.session.scalar(
+        ta = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
             .limit(1)
@@ -1234,9 +1312,9 @@ class TenantService:
             ta.role = TenantAccountRole(role)
         else:
             ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=TenantAccountRole(role))
-            db.session.add(ta)
+            session.add(ta)
 
-        db.session.commit()
+        session.commit()
         if dify_config.BILLING_ENABLED:
             BillingService.clean_billing_info_cache(tenant.id)
         return ta
@@ -1341,6 +1419,7 @@ class TenantService:
         """
         if not account_id:
             return None
+
         role = session.execute(
             select(TenantAccountJoin.role).where(
                 TenantAccountJoin.tenant_id == tenant_id,
@@ -1414,7 +1493,7 @@ class TenantService:
             .limit(1)
         )
         if ta:
-            tenant.role = ta.role
+            object.__setattr__(tenant, "role", ta.role)
         else:
             raise TenantNotFoundError("Tenant not found for the account.")
         return tenant
@@ -1447,6 +1526,7 @@ class TenantService:
                 .values(current=False)
             )
             tenant_account_join.current = True
+            tenant_account_join.last_opened_at = naive_utc_now()
             # Set the current tenant for the account
             account.set_tenant_id(tenant_account_join.tenant_id)
             db.session.commit()
@@ -1526,17 +1606,37 @@ class TenantService:
     @staticmethod
     def check_member_permission(tenant: Tenant, operator: Account, member: Account | None, action: str):
         """Check member permission"""
-        perms = {
-            "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-            "remove": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-            "update": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
-        }
         if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
 
         if member:
             if operator.id == member.id:
                 raise CannotOperateSelfError("Cannot operate self.")
+
+        if dify_config.RBAC_ENABLED:
+            workspace_permission_keys = AccountService.get_workspace_permission_keys(
+                str(tenant.id),
+                str(operator.id),
+            )
+            required_permission_key = (
+                "workspace.member.manage" if action in {"add", "remove"} else "workspace.role.manage"
+            )
+            if required_permission_key not in workspace_permission_keys:
+                raise NoPermissionError(f"No permission to {action} member.")
+
+            if (
+                action == "remove"
+                and member
+                and AccountService.is_rbac_workspace_owner(str(tenant.id), str(operator.id), str(member.id))
+            ):
+                raise NoPermissionError(f"No permission to {action} member.")
+            return
+
+        perms = {
+            "add": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+            "remove": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+            "update": [TenantAccountRole.OWNER, TenantAccountRole.ADMIN],
+        }
 
         ta_operator = db.session.scalar(
             select(TenantAccountJoin)
@@ -1560,6 +1660,8 @@ class TenantService:
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account):
         """Remove member from tenant.
 
+        Apps and datasets maintained by the removed member are reassigned to
+        the workspace owner without changing their immutable creator records.
         If the removed member has ``AccountStatus.PENDING`` (invited but never
         activated) and no remaining workspace memberships, the orphaned account
         record is deleted as well.
@@ -1582,6 +1684,37 @@ class TenantService:
         account_id = account.id
         account_email = account.email
 
+        owner_id: str | None
+        if dify_config.RBAC_ENABLED:
+            owner_id = AccountService.get_rbac_workspace_owner_account_id(str(tenant.id), str(operator.id))
+        else:
+            owner_id = db.session.scalar(
+                select(TenantAccountJoin.account_id)
+                .where(
+                    TenantAccountJoin.tenant_id == tenant.id,
+                    TenantAccountJoin.role == TenantAccountRole.OWNER,
+                )
+                .limit(1)
+            )
+        if owner_id is None:
+            raise ValueError(f"Workspace owner not found for tenant {tenant.id}.")
+
+        db.session.execute(
+            update(App)
+            .where(
+                App.tenant_id == tenant.id,
+                App.maintainer == account_id,
+            )
+            .values(maintainer=owner_id)
+        )
+        db.session.execute(
+            update(Dataset)
+            .where(
+                Dataset.tenant_id == tenant.id,
+                Dataset.maintainer == account_id,
+            )
+            .values(maintainer=owner_id)
+        )
         db.session.delete(ta)
 
         # Clean up orphaned pending accounts (invited but never activated)
@@ -1653,11 +1786,37 @@ class TenantService:
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.role == "owner")
                 .limit(1)
             )
-            if current_owner_join:
-                current_owner_join.role = TenantAccountRole.ADMIN
+            if not dify_config.RBAC_ENABLED:
+                if current_owner_join:
+                    current_owner_join.role = TenantAccountRole.ADMIN
+            elif current_owner_join:
+                admin_role_id = AccountService._resolve_legacy_role_id(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    role=TenantAccountRole.ADMIN,
+                )
+                RBACService.MemberRoles.replace(
+                    tenant_id=str(tenant.id),
+                    account_id=operator.id,
+                    member_account_id=str(current_owner_join.account_id),
+                    role_ids=[admin_role_id],
+                )
 
         # Update the role of the target member
-        target_member_join.role = new_tenant_role
+        if dify_config.RBAC_ENABLED:
+            resolved_role_id = AccountService._resolve_legacy_role_id(
+                tenant_id=str(tenant.id),
+                account_id=operator.id,
+                role=TenantAccountRole.OWNER,
+            )
+            RBACService.MemberRoles.replace(
+                tenant_id=str(tenant.id),
+                account_id=operator.id,
+                member_account_id=member.id,
+                role_ids=[resolved_role_id],
+            )
+        else:
+            target_member_join.role = new_tenant_role
         db.session.commit()
 
     @staticmethod
@@ -1758,7 +1917,7 @@ class RegisterService:
             ):
                 try:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    TenantService.create_tenant_member(tenant, account, db.session, role="owner")
                     account.current_tenant = tenant
                     tenant_was_created.send(tenant)
                 except Exception:
@@ -1791,6 +1950,7 @@ class RegisterService:
             raise ValueError("Inviter is required")
 
         normalized_email = email.lower()
+        tenant_join_role = TenantAccountRole.NORMAL.value if dify_config.RBAC_ENABLED else role
 
         """Invite new member"""
         # Check workspace permission for member invitations
@@ -1800,6 +1960,7 @@ class RegisterService:
 
         account = AccountService.get_account_by_email_with_case_fallback(email)
 
+        requires_setup = False
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
             name = normalized_email.split("@")[0]
@@ -1811,9 +1972,9 @@ class RegisterService:
                 status=AccountStatus.PENDING,
                 is_setup=True,
             )
-            # Create new tenant member for invited tenant
-            TenantService.create_tenant_member(tenant, account, role)
+            TenantService.create_tenant_member(tenant, account, db.session, tenant_join_role)
             TenantService.switch_tenant(account, tenant.id)
+            requires_setup = True
         else:
             TenantService.check_member_permission(tenant, inviter, account, "add")
             ta = db.session.scalar(
@@ -1821,15 +1982,33 @@ class RegisterService:
                 .where(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == account.id)
                 .limit(1)
             )
+            requires_setup = account.status == AccountStatus.PENDING
 
-            if not ta:
-                TenantService.create_tenant_member(tenant, account, role)
+            if not ta and (account.status == AccountStatus.PENDING or dify_config.RBAC_ENABLED):
+                TenantService.create_tenant_member(tenant, account, db.session, tenant_join_role)
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
-                raise AccountAlreadyInTenantError("Account already in tenant.")
+                if dify_config.RBAC_ENABLED and not ta:
+                    RBACService.MemberRoles.replace(
+                        tenant_id=str(tenant.id),
+                        account_id=inviter.id,
+                        member_account_id=account.id,
+                        role_ids=[role],
+                    )
+                if ta or dify_config.RBAC_ENABLED:
+                    raise AccountAlreadyInTenantError("Account already in tenant.")
 
-        token = cls.generate_invite_token(tenant, account)
+        # Assign RBAC role if RBAC is enabled
+        if dify_config.RBAC_ENABLED:
+            RBACService.MemberRoles.replace(
+                tenant_id=str(tenant.id),
+                account_id=inviter.id,
+                member_account_id=account.id,
+                role_ids=[role],
+            )
+
+        token = cls.generate_invite_token(tenant, account, role, requires_setup=requires_setup)
         language = account.interface_language or "en-US"
 
         # send email
@@ -1844,12 +2023,16 @@ class RegisterService:
         return token
 
     @classmethod
-    def generate_invite_token(cls, tenant: Tenant, account: Account) -> str:
+    def generate_invite_token(
+        cls, tenant: Tenant, account: Account, role: str = "normal", *, requires_setup: bool = False
+    ) -> str:
         token = str(uuid.uuid4())
         invitation_data = {
             "account_id": account.id,
             "email": account.email,
             "workspace_id": tenant.id,
+            "role": str(role),
+            "requires_setup": requires_setup,
         }
         expiry_hours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
@@ -1884,16 +2067,7 @@ class RegisterService:
         if not tenant:
             return None
 
-        tenant_account = db.session.execute(
-            select(Account, TenantAccountJoin.role)
-            .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
-            .where(Account.email == invitation_data["email"], TenantAccountJoin.tenant_id == tenant.id)
-        ).first()
-
-        if not tenant_account:
-            return None
-
-        account = tenant_account[0]
+        account = db.session.scalar(select(Account).where(Account.email == invitation_data["email"]).limit(1))
         if not account:
             return None
 

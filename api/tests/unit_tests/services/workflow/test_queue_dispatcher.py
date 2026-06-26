@@ -1,9 +1,6 @@
 from unittest.mock import patch
 
-import pytest
-
 from services.workflow.queue_dispatcher import (
-    BaseQueueDispatcher,
     ProfessionalQueueDispatcher,
     QueueDispatcherManager,
     QueuePriority,
@@ -34,10 +31,6 @@ class TestDispatchers:
         d = SandboxQueueDispatcher()
         assert d.get_queue_name() == QueuePriority.SANDBOX
         assert d.get_priority() == 10
-
-    def test_base_dispatcher_is_abstract(self):
-        with pytest.raises(TypeError):
-            BaseQueueDispatcher()
 
 
 class TestQueueDispatcherManager:

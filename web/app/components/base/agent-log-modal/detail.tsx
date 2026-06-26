@@ -15,12 +15,12 @@ import { fetchAgentLogDetail } from '@/service/log'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
 
-type AgentLogDetailProps = {
+type AgentLogDetailProps = Readonly<{
   activeTab?: 'DETAIL' | 'TRACING'
   conversationID: string
   log: IChatItem
   messageID: string
-}
+}>
 const AgentLogDetail: FC<AgentLogDetailProps> = ({ activeTab = 'DETAIL', conversationID, messageID, log }) => {
   const { t } = useTranslation()
   const [currentTab, setCurrentTab] = useState<string>(activeTab)

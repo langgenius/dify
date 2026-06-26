@@ -3,6 +3,7 @@ import type { FormInputItem, FormInputItemDefault, ParagraphFormInput } from '@/
 import type { UploadFileSetting, ValueSelector } from '@/app/components/workflow/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Input } from '@langgenius/dify-ui/input'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { produce } from 'immer'
@@ -11,7 +12,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TypeSelector from '@/app/components/app/configuration/config-var/config-modal/type-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import Input from '@/app/components/base/input'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import {
@@ -97,6 +97,16 @@ const InputField: React.FC<InputFieldProps> = ({
   const handleSave = useCallback(() => {
     if (!nameValid)
       return
+    if (isFileListFormInput(tempPayload)) {
+      const value = tempPayload.number_limits ?? 5
+      if (!Number.isFinite(value)) {
+        onChange({
+          ...tempPayload,
+          number_limits: 1,
+        })
+        return
+      }
+    }
     onChange(tempPayload)
   }, [nameValid, onChange, tempPayload])
   const handleTypeChange = useCallback((item: TypeSelectItem) => {
@@ -206,9 +216,11 @@ const InputField: React.FC<InputFieldProps> = ({
   }, [handleSave])
 
   return (
-    <div className="flex max-h-[540px] w-[372px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
-      <div className="min-h-0 flex-1 overflow-y-auto p-3 pb-0">
+    <div className="flex max-h-(--shortcut-popup-max-height) w-[372px] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
+      <div className="shrink-0 p-3 pb-2">
         <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 pt-0 pb-0">
         <div className="mt-3">
           <div className="system-xs-medium text-text-secondary">
             {t(`${i18nPrefix}.fieldType`, { ns: 'workflow' })}
@@ -322,7 +334,7 @@ const InputField: React.FC<InputFieldProps> = ({
           </div>
         )}
       </div>
-      <div className="shrink-0 p-3">
+      <div className="shrink-0 bg-components-panel-bg p-3">
         <div className="flex justify-end space-x-2">
           <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
           {isEdit

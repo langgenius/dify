@@ -62,7 +62,7 @@ def _create_app_with_site(session: Session) -> tuple[App, Account]:
         tenant_id=tenant.id,
         name="Test App",
         description="",
-        mode=AppMode.WORKFLOW.value,
+        mode=AppMode.WORKFLOW,
         icon_type="emoji",
         icon="app",
         icon_background="#ffffff",

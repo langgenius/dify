@@ -5,7 +5,8 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload
-from controllers.common.schema import register_schema_model
+from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
+from controllers.common.schema import register_response_schema_models, register_schema_model
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -34,6 +35,7 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 register_schema_model(console_ns, TextToAudioPayload)
+register_response_schema_models(console_ns, AudioBinaryResponse, AudioTranscriptResponse)
 
 
 @console_ns.route(
@@ -41,6 +43,7 @@ register_schema_model(console_ns, TextToAudioPayload)
     endpoint="installed_app_audio",
 )
 class ChatAudioApi(InstalledAppResource):
+    @console_ns.response(200, "Success", console_ns.models[AudioTranscriptResponse.__name__])
     def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:
@@ -84,6 +87,7 @@ class ChatAudioApi(InstalledAppResource):
 )
 class ChatTextApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AudioBinaryResponse.__name__])
     def post(self, installed_app: InstalledApp):
         app_model = installed_app.app
         if app_model is None:

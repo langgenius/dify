@@ -24,6 +24,7 @@ let mockInstalledApps: InstalledApp[] = []
 let mockIsUninstallPending = false
 
 vi.mock('@/next/navigation', () => ({
+  usePathname: () => '/explore',
   useSelectedLayoutSegments: () => mockSegments,
   useRouter: () => ({
     push: mockPush,

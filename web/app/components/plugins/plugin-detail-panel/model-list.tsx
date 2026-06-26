@@ -5,9 +5,9 @@ import ModelIcon from '@/app/components/header/account-setting/model-provider-pa
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import { useModelProviderModelList } from '@/service/use-models'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 
 const ModelList = ({
   detail,

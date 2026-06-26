@@ -7,19 +7,19 @@ import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useNodesReadOnly, useNodesReadOnlyByCanEdit } from '@/app/components/workflow/hooks/use-workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { API_PREFIX } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { postWithKeepalive } from '@/service/fetch'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useWorkflowRefreshDraft } from '.'
 
-export const useNodesSyncDraft = () => {
+const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
-  const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const { data: isCollaborationEnabled } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -32,7 +32,13 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
-    const nodes = getNodes().filter(node => !node.data?._isTempNode)
+    const allNodes = getNodes()
+    const nodes = allNodes.filter(node => !node.data?._isTempNode && node.data?.type !== BlockEnum.StartPlaceholder)
+    const skippedNodeIds = new Set(
+      allNodes
+        .filter(node => node.data?._isTempNode || node.data?.type === BlockEnum.StartPlaceholder)
+        .map(node => node.id),
+    )
     const [x, y, zoom] = transform
     const {
       appId,
@@ -54,7 +60,7 @@ export const useNodesSyncDraft = () => {
         })
       })
     })
-    const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
+    const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp && !skippedNodeIds.has(edge.source) && !skippedNodeIds.has(edge.target)), (draft) => {
       draft.forEach((edge) => {
         Object.keys(edge.data).forEach((key) => {
           if (key.startsWith('_'))
@@ -173,4 +179,16 @@ export const useNodesSyncDraft = () => {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
   }
+}
+
+export const useNodesSyncDraftByCanEdit = (canEdit: boolean) => {
+  const { getNodesReadOnly } = useNodesReadOnlyByCanEdit(canEdit)
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
+}
+
+export const useNodesSyncDraft = () => {
+  const { getNodesReadOnly } = useNodesReadOnly()
+
+  return useNodesSyncDraftBase(getNodesReadOnly)
 }

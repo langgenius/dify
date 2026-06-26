@@ -8,6 +8,18 @@
     "compat": {
       "minDify": "1.14.0",
       "maxDify": "1.15.0"
+    },
+    "release": {
+      "tagPrefix": "difyctl-v",
+      "binName": "difyctl",
+      "checksumsSuffix": "-checksums.txt",
+      "targets": [
+        { "id": "linux-x64", "bunTarget": "bun-linux-x64", "exe": false },
+        { "id": "linux-arm64", "bunTarget": "bun-linux-arm64", "exe": false },
+        { "id": "darwin-x64", "bunTarget": "bun-darwin-x64", "exe": false },
+        { "id": "darwin-arm64", "bunTarget": "bun-darwin-arm64", "exe": false },
+        { "id": "windows-x64", "bunTarget": "bun-windows-x64", "exe": true }
+      ]
     }
   },
   "license": "Apache-2.0",
@@ -30,6 +42,9 @@
     "dev": "bun bin/dev.js",
     "test": "vp test",
     "test:coverage": "vp test --coverage",
+    "test:e2e": "vp test --config vitest.e2e.config.ts",
+    "test:e2e:smoke": "vp test --config vitest.e2e.config.ts --testNamePattern \"\\[P0\\]\"",
+    "test:e2e:local": "DIFY_E2E_MODE=local vp test --config vitest.e2e.config.ts",
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "type-check": "tsgo",
@@ -46,6 +61,9 @@
   "dependencies": {
     "@dify/contracts": "workspace:*",
     "@napi-rs/keyring": "catalog:",
+    "@orpc/client": "catalog:",
+    "@orpc/contract": "catalog:",
+    "@orpc/openapi-client": "catalog:",
     "cli-table3": "catalog:",
     "eventsource-parser": "catalog:",
     "js-yaml": "catalog:",

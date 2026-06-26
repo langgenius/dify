@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Annotated, Any, Final, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
+
+from core.workflow.file_reference import is_canonical_file_reference
+from graphon.file import FileTransferMethod
 
 
 class AgentKnowledgeQueryMode(StrEnum):
@@ -24,6 +27,44 @@ class DeclaredOutputType(StrEnum):
     ARRAY = "array"
     BOOLEAN = "boolean"
     FILE = "file"
+
+
+_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "name": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": [item.value for item in DeclaredOutputType],
+            },
+            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "required": {"type": "boolean"},
+            "file": {"type": "object", "additionalProperties": True},
+            "array_item": {
+                "type": "object",
+                "additionalProperties": True,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [item.value for item in DeclaredOutputType],
+                    },
+                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                },
+            },
+            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "required": ["name", "type"],
+    },
+}
+
+DeclaredOutputChildren = Annotated[
+    list["DeclaredOutputChildConfig"],
+    WithJsonSchema(_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA),
+]
 
 
 class AgentCliToolAuthorizationStatus(StrEnum):
@@ -87,10 +128,19 @@ class AgentFlexibleConfig(BaseModel):
 
 class AgentFileRefConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
+    file_id: str | None = Field(default=None, max_length=255)
+    upload_file_id: str | None = Field(default=None, max_length=255)
+    reference: str | None = Field(default=None, max_length=255)
+    tenant_id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
     transfer_method: str | None = Field(default=None, max_length=64)
     url: str | None = None
+    remote_url: str | None = None
+    # Drive key once the file is committed to the agent drive ("files/<name>",
+    # ENG-625). Files without it are plain upload references and stay invisible
+    # to the runtime drive manifest.
+    drive_key: str | None = Field(default=None, max_length=512)
 
 
 class AgentSkillRefConfig(AgentFlexibleConfig):
@@ -99,20 +149,91 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     description: str | None = None
     file_id: str | None = Field(default=None, max_length=255)
     path: str | None = None
+    # Standardization outputs (ENG-594) — previously riding along via
+    # ``extra="allow"``, promoted to the explicit schema because the runtime
+    # drive manifest (ENG-623) keys off them.
+    skill_md_key: str | None = Field(default=None, max_length=512)
+    skill_md_file_id: str | None = Field(default=None, max_length=255)
+    full_archive_key: str | None = Field(default=None, max_length=512)
+    full_archive_file_id: str | None = Field(default=None, max_length=255)
+    # Zip member path listing from standardization (ENG-371): lets infer-tools
+    # show the model strong signals like ``scripts/*.sh`` without unpacking.
+    manifest_files: list[str] | None = None
+
+
+class AgentPermissionConfig(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    allowed: bool | None = None
+    status: str | None = Field(default=None, max_length=64)
+    state: str | None = Field(default=None, max_length=64)
+
+
+class AgentEnvVariableConfig(AgentFlexibleConfig):
+    name: str | None = Field(default=None, max_length=255)
+    key: str | None = Field(default=None, max_length=255)
+    env_name: str | None = Field(default=None, max_length=255)
+    variable: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    value: RuntimeParameterValue = None
+    default: RuntimeParameterValue = None
+    required: bool = False
+
+
+class AgentSecretRefConfig(AgentFlexibleConfig):
+    name: str | None = Field(default=None, max_length=255)
+    key: str | None = Field(default=None, max_length=255)
+    env_name: str | None = Field(default=None, max_length=255)
+    variable: str | None = Field(default=None, max_length=255)
+    type: str | None = Field(default=None, max_length=64)
+    # UI-facing selected secret reference. This is a credential/ref id, not the
+    # plaintext secret value; runtime maps it to the shell-layer ``ref``.
+    value: str | None = Field(default=None, max_length=255)
+    id: str | None = Field(default=None, max_length=255)
+    ref: str | None = Field(default=None, max_length=255)
+    credential_id: str | None = Field(default=None, max_length=255)
+    provider_credential_id: str | None = Field(default=None, max_length=255)
+    provider: str | None = Field(default=None, max_length=255)
+    permission: AgentPermissionConfig | None = None
+    permission_status: str | None = Field(default=None, max_length=64)
+
+
+class AgentCliToolEnvConfig(BaseModel):
+    variables: list[AgentEnvVariableConfig] = Field(default_factory=list)
+    secret_refs: list[AgentSecretRefConfig] = Field(default_factory=list)
 
 
 class AgentCliToolConfig(AgentFlexibleConfig):
+    # Stable mention/reference id (minted by the frontend on creation, backfilled at
+    # composer save) so renaming a CLI tool never breaks `[§cli_tool:<id>§]` mentions.
+    id: str | None = Field(default=None, max_length=255)
     enabled: bool = True
     name: str | None = Field(default=None, max_length=255)
+    tool_name: str | None = Field(default=None, max_length=255)
+    label: str | None = Field(default=None, max_length=255)
     description: str | None = None
     command: str | None = None
+    install_commands: list[str] = Field(default_factory=list)
+    install_command: str | None = None
+    install: str | None = None
+    setup_command: str | None = None
     invoke_metadata: dict[str, Any] = Field(default_factory=dict)
+    env: AgentCliToolEnvConfig = Field(default_factory=AgentCliToolEnvConfig)
     pre_authorized: bool | None = None
     authorization_status: AgentCliToolAuthorizationStatus | None = None
-    permission: dict[str, Any] = Field(default_factory=dict)
+    permission: AgentPermissionConfig | None = None
     dangerous: bool = False
+    dangerous_command: bool = False
+    requires_confirmation: bool = False
     dangerous_acknowledged: bool = False
+    dangerous_accepted: bool = False
+    risk_accepted: bool = False
+    approved: bool = False
     risk_level: AgentCliToolRiskLevel | None = None
+    # Slug of the skill an infer-tools suggestion came from (ENG-371); drives
+    # the "inferred from <skill>" badge. Plain provenance metadata — saving an
+    # inferred tool still passes every composer validation rule.
+    inferred_from: str | None = Field(default=None, max_length=255)
 
 
 class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):
@@ -132,8 +253,12 @@ class AgentHumanContactConfig(AgentFlexibleConfig):
     id: str | None = Field(default=None, max_length=255)
     contact_id: str | None = Field(default=None, max_length=255)
     human_id: str | None = Field(default=None, max_length=255)
+    tenant_id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
     email: str | None = Field(default=None, max_length=255)
+    channel: str | None = Field(default=None, max_length=64)
+    method: str | None = Field(default=None, max_length=64)
+    contact_method: str | None = Field(default=None, max_length=64)
 
 
 class AgentHumanToolConfig(AgentFlexibleConfig):
@@ -142,26 +267,11 @@ class AgentHumanToolConfig(AgentFlexibleConfig):
     description: str | None = None
 
 
-class AgentEnvVariableConfig(AgentFlexibleConfig):
-    name: str | None = Field(default=None, max_length=255)
-    type: str | None = Field(default=None, max_length=64)
-    value: RuntimeParameterValue = None
-    required: bool = False
-
-
-class AgentSecretRefConfig(AgentFlexibleConfig):
-    name: str | None = Field(default=None, max_length=255)
-    type: str | None = Field(default=None, max_length=64)
-    id: str | None = Field(default=None, max_length=255)
-    provider: str | None = Field(default=None, max_length=255)
-    permission: dict[str, Any] = Field(default_factory=dict)
-    permission_status: str | None = Field(default=None, max_length=64)
-
-
 class AgentSandboxProviderConfig(AgentFlexibleConfig):
     image: str | None = None
     working_dir: str | None = None
     env: list[AgentEnvVariableConfig] = Field(default_factory=list)
+    cpu: int | None = Field(default=None, ge=1)
 
 
 class AgentMemoryArtifactConfig(AgentFlexibleConfig):
@@ -176,7 +286,7 @@ class AgentModelResponseFormatConfig(AgentFlexibleConfig):
 
 
 class AgentSoulModelSettings(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     temperature: float | None = None
     top_p: float | None = None
@@ -241,9 +351,10 @@ class WorkflowPreviousNodeOutputRef(AgentFlexibleConfig):
 
 
 class WorkflowNodeJobMetadata(BaseModel):
-    model_config = ConfigDict(extra="allow")
+    model_config = ConfigDict(extra="ignore")
 
     file_refs: list[AgentFileRefConfig] | None = None
+    agent_soul: dict[str, Any] | None = Field(default=None)
 
 
 class AgentSoulPromptConfig(BaseModel):
@@ -294,7 +405,11 @@ class AgentSoulDifyToolConfig(BaseModel):
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)
     provider: str | None = Field(default=None, max_length=255)
-    tool_name: str = Field(min_length=1, max_length=255)
+    # ``None`` = provider-level entry selecting ALL tools of the provider (a
+    # provider hosts many tools, like an MCP server). The runtime expands the
+    # entry into every tool the provider currently declares; ``credential_ref``
+    # applies to all of them. Mention form: ``[§tool:<provider>/*§]``.
+    tool_name: str | None = Field(default=None, min_length=1, max_length=255)
     credential_type: Literal["api-key", "oauth2", "unauthorized"] = "api-key"
     credential_ref: AgentSoulDifyToolCredentialRef | None = None
     # Reserved for a future user-rename UX. Accepted but currently rejected at
@@ -391,7 +506,7 @@ class AppVariableConfig(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     type: str = Field(min_length=1, max_length=64)
     required: bool = False
-    default: Any = None
+    default: Any = Field(default=None)
 
 
 class AgentSoulConfig(BaseModel):
@@ -433,11 +548,55 @@ class DeclaredArrayItem(BaseModel):
 
     type: DeclaredOutputType
     description: str | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _reject_nested_array(self) -> DeclaredArrayItem:
         if self.type == DeclaredOutputType.ARRAY:
             raise ValueError("nested arrays are not supported as array_item.type")
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("array_item.children is only allowed when array_item.type is object")
+        return self
+
+
+class DeclaredOutputChildConfig(BaseModel):
+    """Nested field under an object-shaped declared output.
+
+    The first backend version keeps child fields lightweight: they describe the
+    variable-picker/schema tree but do not own independent retry/check behavior.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    type: DeclaredOutputType
+    description: str | None = None
+    required: bool = True
+    file: DeclaredOutputFileConfig | None = None
+    array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> DeclaredOutputChildConfig:
+        if not _OUTPUT_NAME_PATTERN.fullmatch(self.name):
+            raise ValueError(
+                f"output child name {self.name!r} must match {_OUTPUT_NAME_PATTERN.pattern} "
+                "(JSON-schema-friendly identifier)"
+            )
+        if self.type == DeclaredOutputType.FILE:
+            if self.file is None:
+                self.file = DeclaredOutputFileConfig()
+        elif self.file is not None:
+            raise ValueError("file metadata is only allowed for file output children")
+
+        if self.type == DeclaredOutputType.ARRAY:
+            if self.array_item is None:
+                self.array_item = DeclaredArrayItem(type=DeclaredOutputType.OBJECT)
+        elif self.array_item is not None:
+            raise ValueError("array_item is only allowed when child type is array")
+
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object output children")
         return self
 
 
@@ -490,7 +649,7 @@ class DeclaredOutputFailureStrategy(BaseModel):
     # When ``on_failure == DEFAULT_VALUE`` this value replaces the failed output. The
     # value's shape must match the owning ``DeclaredOutputConfig.type``; that match is
     # enforced at ``DeclaredOutputConfig`` level so the strategy stays type-agnostic.
-    default_value: Any = None
+    default_value: Any = Field(default=None)
 
     @model_validator(mode="after")
     def _require_default_value_when_default_strategy(self) -> DeclaredOutputFailureStrategy:
@@ -518,6 +677,7 @@ class DeclaredOutputConfig(BaseModel):
     required: bool = True
     file: DeclaredOutputFileConfig | None = None
     array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
     check: DeclaredOutputCheckConfig | None = None
     failure_strategy: DeclaredOutputFailureStrategy = Field(default_factory=DeclaredOutputFailureStrategy)
 
@@ -551,6 +711,9 @@ class DeclaredOutputConfig(BaseModel):
         elif self.array_item is not None:
             raise ValueError("array_item is only allowed when type is array")
 
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object outputs")
+
         # Per PRD §OUTPUT 配置框: output check is file-only.
         if self.check is not None and self.check.enabled and self.type != DeclaredOutputType.FILE:
             raise ValueError("output check is only allowed for file outputs")
@@ -575,14 +738,42 @@ class DeclaredOutputConfig(BaseModel):
             ok = isinstance(value, dict)
         elif type_ == DeclaredOutputType.ARRAY:
             ok = isinstance(value, list)
+            if ok and self.array_item is not None and self.array_item.type == DeclaredOutputType.FILE:
+                ok = all(self._is_valid_file_default_value(item) for item in value)
         elif type_ == DeclaredOutputType.FILE:
-            ok = isinstance(value, dict) and "file_id" in value
+            ok = self._is_valid_file_default_value(value)
         else:
             ok = False
         if not ok:
             raise ValueError(
                 f"default_value shape does not match output type {type_.value!r}: got {type(value).__name__}"
             )
+
+    @staticmethod
+    def _is_valid_file_default_value(value: Any) -> bool:
+        if not isinstance(value, dict):
+            return False
+        transfer_method_raw = value.get("transfer_method")
+        if not isinstance(transfer_method_raw, str):
+            return False
+        try:
+            transfer_method = FileTransferMethod.value_of(transfer_method_raw)
+        except ValueError:
+            return False
+
+        if transfer_method == FileTransferMethod.REMOTE_URL:
+            return (
+                set(value) == {"transfer_method", "url"}
+                and isinstance(value.get("url"), str)
+                and bool(value.get("url"))
+            )
+
+        reference = value.get("reference")
+        return (
+            set(value) == {"transfer_method", "reference"}
+            and isinstance(reference, str)
+            and is_canonical_file_reference(reference)
+        )
 
 
 # PRD §OUTPUT 配置框 0522 共识: "Output 如果没有配置，则 text, files, json"

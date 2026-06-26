@@ -9,10 +9,10 @@ import { useDocLink } from '@/context/i18n'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   isRunning: boolean
   onRun: (url: string) => void
-}
+}>
 
 const UrlInput: FC<Props> = ({
   isRunning,

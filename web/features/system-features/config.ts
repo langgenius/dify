@@ -3,6 +3,7 @@ import { env } from '@/env'
 import { InstallationScope, LicenseStatus } from './constants'
 
 export const defaultSystemFeatures = {
+  enable_app_deploy: false,
   sso_enforced_for_signin: false,
   sso_enforced_for_signin_protocol: '',
   enable_marketplace: false,
@@ -47,6 +48,7 @@ export const defaultSystemFeatures = {
   plugin_manager: {
     enabled: false,
   },
+  rbac_enabled: false,
   enable_creators_platform: false,
   enable_trial_app: false,
   enable_explore_banner: false,

@@ -28,14 +28,14 @@ import CodeEditor from '../editor/code-editor'
 import TextEditor from '../editor/text-editor'
 import BoolInput from './bool-input'
 
-type Props = {
+type Props = Readonly<{
   payload: InputVar
   value: any
   onChange: (value: any) => void
   className?: string
   autoFocus?: boolean
   inStepRun?: boolean
-}
+}>
 
 const FormItem: FC<Props> = ({
   payload,

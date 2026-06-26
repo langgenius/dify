@@ -4,7 +4,7 @@ import Cookies from 'js-cookie'
 import { useEffect, useRef } from 'react'
 import { useSearchParams } from '@/next/navigation'
 import { sendGAEvent } from '@/utils/gtag'
-import { trackEvent } from './base/amplitude'
+import { rememberRegistrationSuccess } from './base/amplitude/registration-tracking'
 
 const OAUTH_NEW_USER_PARAM = 'oauth_new_user'
 
@@ -48,10 +48,10 @@ export function OAuthRegistrationAnalytics() {
 
     const eventName = utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success'
 
-    trackEvent(eventName, {
-      method: 'oauth',
-      ...utmInfo,
-    })
+    // Defer the Amplitude event until the user ID is attached. It is flushed in
+    // AppContextProvider after setUserId runs. Firing it here would record it under an
+    // anonymous Amplitude profile (no user ID set yet).
+    rememberRegistrationSuccess({ method: 'oauth', utmInfo })
 
     sendGAEvent(eventName, {
       method: 'oauth',

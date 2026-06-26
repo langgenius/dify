@@ -41,13 +41,7 @@ def encode_code(code: str) -> str:
     return base64.b64encode(code.encode("utf-8")).decode()
 
 
-def _unwrap(func):
-    bound_self = getattr(func, "__self__", None)
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    if bound_self is not None:
-        return func.__get__(bound_self, bound_self.__class__)
-    return func
+from inspect import unwrap
 
 
 class TestLoginApi:
@@ -510,7 +504,7 @@ class TestLogoutApi:
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = _unwrap(logout_api.post)(mock_account)
+            response = unwrap(logout_api.post)(logout_api, mock_account)
 
         # Assert
         mock_service_logout.assert_called_once_with(account=mock_account)
@@ -536,7 +530,7 @@ class TestLogoutApi:
         # Act
         with app.test_request_context("/logout", method="POST"):
             logout_api = LogoutApi()
-            response = _unwrap(logout_api.post)(anonymous_user)
+            response = unwrap(logout_api.post)(logout_api, anonymous_user)
 
         # Assert
         assert response.json["result"] == "success"

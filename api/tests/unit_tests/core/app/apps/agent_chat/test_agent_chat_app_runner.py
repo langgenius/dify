@@ -14,7 +14,7 @@ def runner():
 
 
 class TestAgentChatAppRunnerRun:
-    def test_run_app_not_found(self, runner, mocker: MockerFixture):
+    def test_run_app_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", agent=mocker.MagicMock())
         generate_entity = mocker.MagicMock(app_config=app_config, inputs={}, query="q", files=[], stream=True)
 
@@ -23,7 +23,7 @@ class TestAgentChatAppRunnerRun:
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
 
-    def test_run_moderation_error_direct_output(self, runner, mocker: MockerFixture):
+    def test_run_moderation_error_direct_output(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = mocker.MagicMock()
@@ -46,7 +46,7 @@ class TestAgentChatAppRunnerRun:
 
         runner.direct_output.assert_called_once()
 
-    def test_run_annotation_reply_short_circuits(self, runner, mocker: MockerFixture):
+    def test_run_annotation_reply_short_circuits(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = mocker.MagicMock()
@@ -75,7 +75,7 @@ class TestAgentChatAppRunnerRun:
         queue_manager.publish.assert_called_once()
         runner.direct_output.assert_called_once()
 
-    def test_run_hosting_moderation_short_circuits(self, runner, mocker: MockerFixture):
+    def test_run_hosting_moderation_short_circuits(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = mocker.MagicMock()
@@ -99,7 +99,7 @@ class TestAgentChatAppRunnerRun:
 
         runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
 
-    def test_run_model_schema_missing(self, runner, mocker: MockerFixture):
+    def test_run_model_schema_missing(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)
@@ -141,7 +141,7 @@ class TestAgentChatAppRunnerRun:
             (LLMMode.COMPLETION, "CotCompletionAgentRunner"),
         ],
     )
-    def test_run_chain_of_thought_modes(self, runner, mocker: MockerFixture, mode, expected_runner):
+    def test_run_chain_of_thought_modes(self, runner: AgentChatAppRunner, mocker: MockerFixture, mode, expected_runner):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)
@@ -197,7 +197,7 @@ class TestAgentChatAppRunnerRun:
         runner_instance.run.assert_called_once()
         runner._handle_invoke_result.assert_called_once()
 
-    def test_run_invalid_llm_mode_raises(self, runner, mocker: MockerFixture):
+    def test_run_invalid_llm_mode_raises(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)
@@ -243,7 +243,9 @@ class TestAgentChatAppRunnerRun:
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), conversation, message)
 
-    def test_run_function_calling_strategy_selected_by_features(self, runner, mocker: MockerFixture):
+    def test_run_function_calling_strategy_selected_by_features(
+        self, runner: AgentChatAppRunner, mocker: MockerFixture
+    ):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.CHAIN_OF_THOUGHT)
@@ -299,7 +301,7 @@ class TestAgentChatAppRunnerRun:
         assert app_config.agent.strategy == AgentEntity.Strategy.FUNCTION_CALLING
         runner_instance.run.assert_called_once()
 
-    def test_run_conversation_not_found(self, runner, mocker: MockerFixture):
+    def test_run_conversation_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.FUNCTION_CALLING)
@@ -333,7 +335,7 @@ class TestAgentChatAppRunnerRun:
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
 
-    def test_run_message_not_found(self, runner, mocker: MockerFixture):
+    def test_run_message_not_found(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = AgentEntity(provider="p", model="m", strategy=AgentEntity.Strategy.FUNCTION_CALLING)
@@ -367,7 +369,7 @@ class TestAgentChatAppRunnerRun:
         with pytest.raises(ValueError):
             runner.run(generate_entity, mocker.MagicMock(), mocker.MagicMock(id="conv"), mocker.MagicMock(id="msg"))
 
-    def test_run_invalid_agent_strategy_raises(self, runner, mocker: MockerFixture):
+    def test_run_invalid_agent_strategy_raises(self, runner: AgentChatAppRunner, mocker: MockerFixture):
         app_record = mocker.MagicMock(id="app1", tenant_id="tenant")
         app_config = mocker.MagicMock(app_id="app1", tenant_id="tenant", prompt_template=mocker.MagicMock())
         app_config.agent = mocker.MagicMock(strategy="invalid", provider="p", model="m")

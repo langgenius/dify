@@ -102,10 +102,10 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     def test_should_normalize_new_email_phase(
         self,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_change_data,
+        mock_extract_ip: MagicMock,
+        mock_is_ip_limit: MagicMock,
+        mock_send_email: MagicMock,
+        mock_get_change_data: MagicMock,
         app: Flask,
     ):
         mock_account = _build_account("current@example.com", "acc1")
@@ -143,10 +143,10 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     def test_should_reject_new_email_phase_when_token_phase_is_not_old_verified(
         self,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_change_data,
+        mock_extract_ip: MagicMock,
+        mock_is_ip_limit: MagicMock,
+        mock_send_email: MagicMock,
+        mock_get_change_data: MagicMock,
         app: Flask,
     ):
         """GHSA-4q3w-q5mc-45rq: a phase-1 token must not unlock the new-email send step."""
@@ -178,10 +178,10 @@ class TestChangeEmailSend:
     @patch("controllers.console.workspace.account.extract_remote_ip", return_value="127.0.0.1")
     def test_should_reject_new_email_phase_when_token_account_id_does_not_match_current_user(
         self,
-        mock_extract_ip,
-        mock_is_ip_limit,
-        mock_send_email,
-        mock_get_change_data,
+        mock_extract_ip: MagicMock,
+        mock_is_ip_limit: MagicMock,
+        mock_send_email: MagicMock,
+        mock_get_change_data: MagicMock,
         app: Flask,
     ):
         from controllers.console.auth.error import InvalidTokenError

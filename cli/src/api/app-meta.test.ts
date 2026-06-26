@@ -37,11 +37,11 @@ describe('AppMetaClient', () => {
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache })
 
-    const m1 = await client.get('app-1', 'ws-1', [FieldInfo])
+    const m1 = await client.get('app-1', [FieldInfo])
     expect(m1.info?.id).toBe('app-1')
     expect(spy).toHaveBeenCalledTimes(1)
 
-    const m2 = await client.get('app-1', 'ws-1', [FieldInfo])
+    const m2 = await client.get('app-1', [FieldInfo])
     expect(m2.info?.id).toBe('app-1')
     expect(spy).toHaveBeenCalledTimes(1)
   })
@@ -52,10 +52,10 @@ describe('AppMetaClient', () => {
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache })
 
-    await client.get('app-1', 'ws-1', [FieldInfo])
+    await client.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(1)
 
-    const full = await client.get('app-1', 'ws-1', [FieldInfo, FieldParameters])
+    const full = await client.get('app-1', [FieldInfo, FieldParameters])
     expect(spy).toHaveBeenCalledTimes(2)
     expect(full.coveredFields.has(FieldParameters)).toBe(true)
   })
@@ -66,11 +66,11 @@ describe('AppMetaClient', () => {
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache, now: () => new Date('2026-05-09T00:00:00Z') })
 
-    await client.get('app-1', 'ws-1', [FieldInfo])
+    await client.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(1)
 
     const client2 = new AppMetaClient({ apps, host: mock.url, cache, now: () => new Date('2026-05-09T00:00:01Z') })
-    await client2.get('app-1', 'ws-1', [FieldInfo])
+    await client2.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(2)
   })
 
@@ -80,11 +80,11 @@ describe('AppMetaClient', () => {
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url, cache })
 
-    await client.get('app-1', 'ws-1', [FieldInfo])
+    await client.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(1)
 
     await client.invalidate('app-1')
-    await client.get('app-1', 'ws-1', [FieldInfo])
+    await client.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(2)
   })
 
@@ -93,8 +93,8 @@ describe('AppMetaClient', () => {
     const spy = vi.spyOn(apps, 'describe')
     const client = new AppMetaClient({ apps, host: mock.url })
 
-    await client.get('app-1', 'ws-1', [FieldInfo])
-    await client.get('app-1', 'ws-1', [FieldInfo])
+    await client.get('app-1', [FieldInfo])
+    await client.get('app-1', [FieldInfo])
     expect(spy).toHaveBeenCalledTimes(2)
   })
 })

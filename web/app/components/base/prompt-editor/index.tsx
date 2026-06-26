@@ -5,8 +5,9 @@ import type {
   EditorState,
 } from 'lexical'
 import type { FC } from 'react'
-import type { Hotkey, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
+import type { Hotkey, ShortcutPopupDisplayMode, ShortcutPopupInsertHandler } from './plugins/shortcuts-popup-plugin'
 import type {
+  AgentOutputBlockType,
   ContextBlockType,
   CurrentBlockType,
   ErrorMessageBlockType,
@@ -16,6 +17,7 @@ import type {
   LastRunBlockType,
   QueryBlockType,
   RequestURLBlockType,
+  RosterReferenceBlockType,
   VariableBlockType,
   WorkflowVariableBlockType,
 } from './types'
@@ -34,6 +36,7 @@ import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
+import { AgentOutputBlockNode } from './plugins/agent-output-block/node'
 import {
   ContextBlockNode,
 } from './plugins/context-block'
@@ -44,10 +47,10 @@ import { CustomTextNode } from './plugins/custom-text/node'
 import {
   ErrorMessageBlockNode,
 } from './plugins/error-message-block'
+
 import {
   HistoryBlockNode,
 } from './plugins/history-block'
-
 import {
   HITLInputNode,
 } from './plugins/hitl-input-block'
@@ -60,6 +63,7 @@ import {
 import {
   RequestURLBlockNode,
 } from './plugins/request-url-block'
+import { RosterReferenceBlockNode } from './plugins/roster-reference-block/node'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import {
   WorkflowVariableBlockNode,
@@ -108,6 +112,7 @@ const EditableSyncPlugin: FC<{ editable: boolean }> = ({ editable }) => {
 
 export type PromptEditorProps = {
   instanceId?: string
+  children?: React.ReactNode
   compact?: boolean
   wrapperClassName?: string
   className?: string
@@ -124,18 +129,27 @@ export type PromptEditorProps = {
   requestURLBlock?: RequestURLBlockType
   historyBlock?: HistoryBlockType
   variableBlock?: VariableBlockType
+  rosterReferenceBlock?: RosterReferenceBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  agentOutputBlock?: AgentOutputBlockType
   hitlInputBlock?: HITLInputBlockType
   currentBlock?: CurrentBlockType
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }> }>
+  disableSlashPicker?: boolean
+  disableBracePicker?: boolean
+  shortcutPopups?: Array<{
+    hotkey: Hotkey
+    displayMode?: ShortcutPopupDisplayMode
+    Popup: React.ComponentType<{ onClose: () => void, onInsert: ShortcutPopupInsertHandler }>
+  }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
   instanceId,
+  children,
   compact,
   wrapperClassName,
   className,
@@ -152,13 +166,17 @@ const PromptEditor: FC<PromptEditorProps> = ({
   requestURLBlock,
   historyBlock,
   variableBlock,
+  rosterReferenceBlock,
   externalToolBlock,
   workflowVariableBlock,
+  agentOutputBlock,
   hitlInputBlock,
   currentBlock,
   errorMessageBlock,
   lastRunBlock,
   isSupportFileVar,
+  disableSlashPicker = false,
+  disableBracePicker = false,
   shortcutPopups = [],
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
@@ -173,6 +191,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {
         replace: TextNode,
         with: (node: TextNode) => new CustomTextNode(node.__text),
+        withKlass: CustomTextNode,
       },
       ContextBlockNode,
       HistoryBlockNode,
@@ -180,10 +199,12 @@ const PromptEditor: FC<PromptEditorProps> = ({
       RequestURLBlockNode,
       WorkflowVariableBlockNode,
       VariableValueBlockNode,
+      RosterReferenceBlockNode,
       HITLInputNode,
       CurrentBlockNode,
       ErrorMessageBlockNode,
       LastRunBlockNode, // LastRunBlockNode is used for error message block replacement
+      AgentOutputBlockNode,
     ],
     editorState: textToEditorState(value || ''),
     onError: (error: Error) => {
@@ -238,13 +259,17 @@ const PromptEditor: FC<PromptEditorProps> = ({
           requestURLBlock={requestURLBlock}
           historyBlock={historyBlock}
           variableBlock={variableBlock}
+          rosterReferenceBlock={rosterReferenceBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          agentOutputBlock={agentOutputBlock}
           hitlInputBlock={hitlInputBlock}
           currentBlock={currentBlock}
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
           isSupportFileVar={isSupportFileVar}
+          disableSlashPicker={disableSlashPicker}
+          disableBracePicker={disableBracePicker}
           onBlur={onBlur}
           onFocus={onFocus}
           instanceId={instanceId}
@@ -253,6 +278,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         />
         <ValueSyncPlugin value={value} />
         <EditableSyncPlugin editable={editable} />
+        {children}
       </div>
     </LexicalComposer>
   )

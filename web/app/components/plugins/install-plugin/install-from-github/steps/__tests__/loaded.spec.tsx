@@ -16,10 +16,10 @@ vi.mock('@/service/plugins', () => ({
 }))
 
 const mockInstallPackageFromGitHub = vi.fn()
-const mockHandleRefetch = vi.fn()
+const mockHandleInstallTaskStart = vi.fn()
 vi.mock('@/service/use-plugins', () => ({
   useInstallPackageFromGitHub: () => ({ mutateAsync: mockInstallPackageFromGitHub }),
-  usePluginTaskList: () => ({ handleRefetch: mockHandleRefetch }),
+  usePluginTaskList: () => ({ handleInstallTaskStart: mockHandleInstallTaskStart }),
 }))
 
 const mockCheck = vi.fn()
@@ -316,7 +316,7 @@ describe('Loaded', () => {
       fireEvent.click(screen.getByRole('button', { name: /plugin.installModal.install/i }))
 
       await waitFor(() => {
-        expect(mockHandleRefetch).toHaveBeenCalled()
+        expect(mockHandleInstallTaskStart).toHaveBeenCalledWith({ all_installed: false, task_id: 'task-1' })
         expect(mockCheck).toHaveBeenCalledWith({
           taskId: 'task-1',
           pluginUniqueIdentifier: 'test-unique-id',

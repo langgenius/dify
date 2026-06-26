@@ -305,6 +305,7 @@ export type TextChunkResponse = {
   event: string
   data: {
     text: string
+    from_variable_selector?: string[]
   }
 }
 
@@ -433,6 +434,8 @@ export type PublishWorkflowParams = {
   title: string
   releaseNotes: string
 }
+
+export type WorkflowKind = 'standard'
 
 export type UpdateWorkflowParams = {
   url: string

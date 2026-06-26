@@ -15,7 +15,7 @@ import VarReferencePicker from './variable/var-reference-picker'
 
 const i18nPrefix = 'nodes.llm'
 
-type Props = {
+type Props = Readonly<{
   isVisionModel: boolean
   readOnly: boolean
   enabled: boolean
@@ -23,7 +23,7 @@ type Props = {
   nodeId: string
   config?: VisionSetting
   onConfigChange: (config: VisionSetting) => void
-}
+}>
 
 const ConfigVision: FC<Props> = ({
   isVisionModel,

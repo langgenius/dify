@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
@@ -7,9 +8,10 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
-from controllers.common.fields import SimpleResultResponse
+from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -20,9 +22,14 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
     with_current_user_id,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
@@ -36,7 +43,7 @@ from core.helper.trace_id_helper import get_external_trace_id
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models import Account
 from models.model import App, AppMode
 from services.app_generate_service import AppGenerateService
@@ -63,8 +70,14 @@ class BaseMessagePayload(BaseModel):
     # Soul, so no override ``model_config`` is sent; chat / agent-chat / completion
     # debugging still pass it. Optional here, required in practice by those modes
     # downstream when their config is built from args.
-    model_config_data: dict[str, Any] = Field(default_factory=dict, alias="model_config")
-    files: list[Any] | None = Field(default=None, description="Uploaded files")
+    model_config_data: dict[str, Any] = Field(
+        default_factory=dict,
+        alias="model_config",
+    )
+    files: list[Any] | None = Field(
+        default=None,
+        description="Uploaded files",
+    )
     response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
     retriever_from: str = Field(default="dev", description="Retriever source")
 
@@ -87,7 +100,7 @@ class ChatMessagePayload(BaseMessagePayload):
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
 
 
 # define completion message api for user
@@ -97,14 +110,16 @@ class CompletionMessageApi(Resource):
     @console_ns.doc(description="Generate completion message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
-    @console_ns.response(200, "Completion generated successfully")
+    @console_ns.response(200, "Completion generated successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
     @get_app_model(mode=AppMode.COMPLETION)
-    def post(self, app_model: App):
+    def post(self, current_user: Account, app_model: App):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
@@ -112,8 +127,6 @@ class CompletionMessageApi(Resource):
         args["auto_generate_name"] = False
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
             response = AppGenerateService.generate(
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
             )
@@ -150,8 +163,8 @@ class CompletionMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=AppMode.COMPLETION)
     @with_current_user_id
+    @get_app_model(mode=AppMode.COMPLETION)
     def post(self, current_user_id: str, app_model: App, task_id: str):
 
         AppTaskService.stop_task(
@@ -170,62 +183,39 @@ class ChatMessageApi(Resource):
     @console_ns.doc(description="Generate chat message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Chat message generated successfully")
+    @console_ns.response(200, "Chat message generated successfully", console_ns.models[GeneratedAppResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App or conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
     @edit_permission_required
-    def post(self, app_model: App):
-        raw_payload = console_ns.payload or {}
-        args_model = ChatMessagePayload.model_validate(raw_payload)
-        args = args_model.model_dump(exclude_none=True, by_alias=True)
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.AGENT])
+    def post(self, current_user: Account, app_model: App):
+        return _create_chat_message(current_user=current_user, app_model=app_model)
 
-        streaming = _resolve_debugger_chat_streaming(
-            app_mode=AppMode.value_of(app_model.mode),
-            response_mode=args_model.response_mode,
-            response_mode_provided=isinstance(raw_payload, dict) and "response_mode" in raw_payload,
-        )
-        if AppMode.value_of(app_model.mode) == AppMode.AGENT:
-            args["response_mode"] = "streaming"
-        args["auto_generate_name"] = False
 
-        external_trace_id = get_external_trace_id(request)
-        if external_trace_id:
-            args["external_trace_id"] = external_trace_id
-
-        try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account or EndUser instance")
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
-            )
-
-            return helper.compact_generate_response(response)
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except InvokeRateLimitError as ex:
-            raise InvokeRateLimitHttpError(ex.description)
-        except InvokeError as e:
-            raise CompletionRequestError(e.description)
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logger.exception("internal server error.")
-            raise InternalServerError()
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages")
+class AgentChatMessageApi(Resource):
+    @console_ns.doc("create_agent_chat_message")
+    @console_ns.doc(description="Generate an Agent App chat message for debugging")
+    @console_ns.doc(params={"agent_id": "Agent ID"})
+    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
+    @console_ns.response(200, "Chat message generated successfully", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(404, "Agent or conversation not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TEST_AND_RUN)
+    @with_current_user
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _create_chat_message(current_user=current_user, app_model=app_model)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
@@ -237,15 +227,82 @@ class ChatMessageStopApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     @with_current_user_id
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
     def post(self, current_user_id: str, app_model: App, task_id: str):
+        return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 
-        AppTaskService.stop_task(
-            task_id=task_id,
-            invoke_from=InvokeFrom.DEBUGGER,
-            user_id=current_user_id,
-            app_mode=AppMode.value_of(app_model.mode),
+
+@console_ns.route("/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop")
+class AgentChatMessageStopApi(Resource):
+    @console_ns.doc("stop_agent_chat_message")
+    @console_ns.doc(description="Stop a running Agent App chat message generation")
+    @console_ns.doc(params={"agent_id": "Agent ID", "task_id": "Task ID to stop"})
+    @console_ns.response(200, "Task stopped successfully", console_ns.models[SimpleResultResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user_id
+    @with_current_tenant_id
+    def post(self, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
+
+
+def _create_chat_message(*, current_user: Account, app_model: App):
+    raw_payload = console_ns.payload or {}
+    args_model = ChatMessagePayload.model_validate(raw_payload)
+    args = args_model.model_dump(exclude_none=True, by_alias=True)
+
+    streaming = _resolve_debugger_chat_streaming(
+        app_mode=AppMode.value_of(app_model.mode),
+        response_mode=args_model.response_mode,
+        response_mode_provided=isinstance(raw_payload, dict) and "response_mode" in raw_payload,
+    )
+    if AppMode.value_of(app_model.mode) == AppMode.AGENT:
+        args["response_mode"] = "streaming"
+    args["auto_generate_name"] = False
+
+    external_trace_id = get_external_trace_id(request)
+    if external_trace_id:
+        args["external_trace_id"] = external_trace_id
+
+    try:
+        response = AppGenerateService.generate(
+            app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
         )
 
-        return {"result": "success"}, 200
+        return helper.compact_generate_response(response)
+    except services.errors.conversation.ConversationNotExistsError:
+        raise NotFound("Conversation Not Exists.")
+    except services.errors.conversation.ConversationCompletedError:
+        raise ConversationCompletedError()
+    except services.errors.app_model_config.AppModelConfigBrokenError:
+        logger.exception("App model config broken.")
+        raise AppUnavailableError()
+    except ProviderTokenNotInitError as ex:
+        raise ProviderNotInitializeError(ex.description)
+    except QuotaExceededError:
+        raise ProviderQuotaExceededError()
+    except ModelCurrentlyNotSupportError:
+        raise ProviderModelCurrentlyNotSupportError()
+    except InvokeRateLimitError as ex:
+        raise InvokeRateLimitHttpError(ex.description)
+    except InvokeError as e:
+        raise CompletionRequestError(e.description)
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        logger.exception("internal server error.")
+        raise InternalServerError()
+
+
+def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):
+    AppTaskService.stop_task(
+        task_id=task_id,
+        invoke_from=InvokeFrom.DEBUGGER,
+        user_id=current_user_id,
+        app_mode=AppMode.value_of(app_model.mode),
+    )
+
+    return {"result": "success"}, 200

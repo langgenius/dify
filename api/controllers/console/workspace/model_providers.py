@@ -5,16 +5,20 @@ from flask import request, send_file
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.fields import SimpleResultResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.fields import BinaryFileResponse, SimpleResultResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_tenant_id,
     with_current_user,
 )
+from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -22,6 +26,7 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
 from services.billing_service import BillingService
+from services.entities.model_provider_entities import ProviderResponse
 from services.model_provider_service import ModelProviderService
 
 
@@ -82,6 +87,23 @@ class ParserPreferredProviderType(BaseModel):
     preferred_provider_type: Literal["system", "custom"]
 
 
+class ModelProviderListResponse(ResponseModel):
+    data: list[ProviderResponse]
+
+
+class ProviderCredentialResponse(ResponseModel):
+    credentials: dict[str, Any] | None = Field(default=None)
+
+
+class ProviderCredentialValidateResponse(ResponseModel):
+    result: Literal["success", "error"]
+    error: str | None = None
+
+
+class ModelProviderPaymentCheckoutUrlResponse(ResponseModel):
+    payment_link: str
+
+
 register_schema_models(
     console_ns,
     ParserModelList,
@@ -93,12 +115,21 @@ register_schema_models(
     ParserCredentialValidate,
     ParserPreferredProviderType,
 )
-register_response_schema_models(console_ns, SimpleResultResponse)
+register_response_schema_models(
+    console_ns,
+    BinaryFileResponse,
+    SimpleResultResponse,
+    ModelProviderListResponse,
+    ModelProviderPaymentCheckoutUrlResponse,
+    ProviderCredentialResponse,
+    ProviderCredentialValidateResponse,
+)
 
 
 @console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
-    @console_ns.expect(console_ns.models[ParserModelList.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserModelList))
+    @console_ns.response(200, "Success", console_ns.models[ModelProviderListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -115,7 +146,8 @@ class ModelProviderListApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
-    @console_ns.expect(console_ns.models[ParserCredentialId.__name__])
+    @console_ns.doc(params=query_params_from_model(ParserCredentialId))
+    @console_ns.response(200, "Success", console_ns.models[ProviderCredentialResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -133,9 +165,11 @@ class ModelProviderCredentialApi(Resource):
         return {"credentials": credentials}
 
     @console_ns.expect(console_ns.models[ParserCredentialCreate.__name__])
+    @console_ns.response(201, "Credential created successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider: str):
@@ -157,9 +191,11 @@ class ModelProviderCredentialApi(Resource):
         return {"result": "success"}, 201
 
     @console_ns.expect(console_ns.models[ParserCredentialUpdate.__name__])
+    @console_ns.response(200, "Credential updated successfully", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def put(self, current_tenant_id: str, provider: str):
@@ -186,6 +222,7 @@ class ModelProviderCredentialApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, provider: str):
@@ -207,6 +244,7 @@ class ModelProviderCredentialSwitchApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, current_tenant_id: str, provider: str):
@@ -225,6 +263,11 @@ class ModelProviderCredentialSwitchApi(Resource):
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
 class ModelProviderValidateApi(Resource):
     @console_ns.expect(console_ns.models[ParserCredentialValidate.__name__])
+    @console_ns.response(
+        200,
+        "Credential validation result",
+        console_ns.models[ProviderCredentialValidateResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -262,6 +305,7 @@ class ModelProviderIconApi(Resource):
     Get model provider icon
     """
 
+    @console_ns.response(200, "Success", console_ns.models[BinaryFileResponse.__name__])
     def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
@@ -282,6 +326,7 @@ class PreferredProviderTypeUpdateApi(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.CREDENTIAL_MANAGE, resource_required=False)
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, provider: str):
@@ -298,6 +343,7 @@ class PreferredProviderTypeUpdateApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/checkout-url")
 class ModelProviderPaymentCheckoutUrlApi(Resource):
+    @console_ns.response(200, "Success", console_ns.models[ModelProviderPaymentCheckoutUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

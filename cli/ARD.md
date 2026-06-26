@@ -78,7 +78,7 @@ export default class MyCommand extends DifyCommand {
     const { args, flags } = this.parse(MyCommand, argv)
 
     // Authed: authedCtx() sets outputFormat + builds context
-    const ctx = await this.authedCtx({ retryFlag: flags['http-retry'], format: flags.output })
+    const ctx = await this.authedCtx({ format: flags.output })
 
     process.stdout.write(await runMyThing({ /* args */ }, { bundle: ctx.bundle, http: ctx.http, io: ctx.io }))
   }

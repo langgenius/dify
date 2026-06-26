@@ -50,6 +50,10 @@ const InsertBlock = ({
         open={open}
         onOpenChange={handleOpenChange}
         onSelect={handleInsert}
+        snippetInsertPayload={{
+          nextNodeId: startNodeId,
+          nextNodeTargetHandle: 'target',
+        }}
         availableBlocksTypes={availableBlocksTypes}
         triggerClassName={() => 'hover:scale-125 transition-all'}
       />

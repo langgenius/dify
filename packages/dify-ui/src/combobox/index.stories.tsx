@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Virtualizer } from '@tanstack/react-virtual'
-import type { RefObject } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
+import * as React from 'react'
+import { expect } from 'storybook/test'
 import {
   Combobox,
   ComboboxChip,
@@ -278,9 +278,9 @@ const GroupedToolList = () => {
 const VirtualizedModelList = ({
   virtualizerRef,
 }: {
-  virtualizerRef: RefObject<StoryVirtualizer | null>
+  virtualizerRef: React.RefObject<StoryVirtualizer | null>
 }) => {
-  const scrollRef = useRef<HTMLDivElement | null>(null)
+  const scrollRef = React.useRef<HTMLDivElement | null>(null)
   const filteredItems = useComboboxFilteredItems<Option>()
   const virtualizer = useVirtualizer({
     count: filteredItems.length,
@@ -289,7 +289,7 @@ const VirtualizedModelList = ({
     overscan: 6,
   })
 
-  useEffect(() => {
+  React.useEffect(() => {
     virtualizerRef.current = virtualizer
 
     return () => {
@@ -345,8 +345,8 @@ const FilteredModelStatus = () => {
 }
 
 const VirtualizedLongListDemo = () => {
-  const [value, setValue] = useState<Option | null>(modelCatalogOptions[137]!)
-  const virtualizerRef = useRef<StoryVirtualizer | null>(null)
+  const [value, setValue] = React.useState<Option | null>(modelCatalogOptions[137]!)
+  const virtualizerRef = React.useRef<StoryVirtualizer | null>(null)
 
   return (
     <div className={fieldWidth}>
@@ -375,15 +375,15 @@ const VirtualizedLongListDemo = () => {
 }
 
 const AsyncDirectoryDemo = () => {
-  const [searchResults, setSearchResults] = useState<Option[]>([])
-  const [selectedValue, setSelectedValue] = useState<Option | null>(null)
-  const [searchValue, setSearchValue] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [searchResults, setSearchResults] = React.useState<Option[]>([])
+  const [selectedValue, setSelectedValue] = React.useState<Option | null>(null)
+  const [searchValue, setSearchValue] = React.useState('')
+  const [error, setError] = React.useState<string | null>(null)
+  const [isPending, startTransition] = React.useTransition()
   const { contains } = useComboboxFilter()
-  const abortControllerRef = useRef<AbortController | null>(null)
+  const abortControllerRef = React.useRef<AbortController | null>(null)
   const trimmedSearchValue = searchValue.trim()
-  const items = useMemo(() => {
+  const items = React.useMemo(() => {
     if (!selectedValue || searchResults.some(option => option.value === selectedValue.value))
       return searchResults
 
@@ -477,18 +477,18 @@ const AsyncDirectoryDemo = () => {
 }
 
 const AsyncReviewerDemo = () => {
-  const [searchResults, setSearchResults] = useState<Option[]>([])
-  const [selectedValues, setSelectedValues] = useState<Option[]>(defaultAsyncReviewers)
-  const [searchValue, setSearchValue] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [blockStartStatus, setBlockStartStatus] = useState(false)
-  const [isPending, startTransition] = useTransition()
+  const [searchResults, setSearchResults] = React.useState<Option[]>([])
+  const [selectedValues, setSelectedValues] = React.useState<Option[]>(defaultAsyncReviewers)
+  const [searchValue, setSearchValue] = React.useState('')
+  const [error, setError] = React.useState<string | null>(null)
+  const [blockStartStatus, setBlockStartStatus] = React.useState(false)
+  const [isPending, startTransition] = React.useTransition()
   const { contains } = useComboboxFilter()
-  const abortControllerRef = useRef<AbortController | null>(null)
-  const selectedValuesRef = useRef<Option[]>(defaultAsyncReviewers)
+  const abortControllerRef = React.useRef<AbortController | null>(null)
+  const selectedValuesRef = React.useRef<Option[]>(defaultAsyncReviewers)
   const trimmedSearchValue = searchValue.trim()
 
-  const items = useMemo(() => {
+  const items = React.useMemo(() => {
     if (selectedValues.length === 0)
       return searchResults
 
@@ -587,7 +587,7 @@ const AsyncReviewerDemo = () => {
           <ComboboxChips>
             <ComboboxValue>
               {(selectedValue: Option[]) => (
-                <>
+                <React.Fragment>
                   {selectedValue.map(item => (
                     <ComboboxChip key={item.value} aria-label={item.label}>
                       <span className="max-w-32 truncate">{item.label}</span>
@@ -595,7 +595,7 @@ const AsyncReviewerDemo = () => {
                     </ComboboxChip>
                   ))}
                   <ComboboxInput placeholder={selectedValue.length ? '' : 'Search reviewers…'} className="min-w-24 px-1 py-0.5" />
-                </>
+                </React.Fragment>
               )}
             </ComboboxValue>
           </ComboboxChips>
@@ -735,7 +735,7 @@ export const Grouped: Story = {
 }
 
 const MultipleChipsDemo = () => {
-  const [value, setValue] = useState<Option[]>(defaultReviewers)
+  const [value, setValue] = React.useState<Option[]>(defaultReviewers)
 
   return (
     <FieldRoot name="reviewers" className={fieldWidth}>
@@ -745,7 +745,7 @@ const MultipleChipsDemo = () => {
           <ComboboxChips>
             <ComboboxValue>
               {(selectedValue: Option[]) => (
-                <>
+                <React.Fragment>
                   {selectedValue.map(item => (
                     <ComboboxChip key={item.value}>
                       <span className="max-w-32 truncate">{item.label}</span>
@@ -753,7 +753,7 @@ const MultipleChipsDemo = () => {
                     </ComboboxChip>
                   ))}
                   <ComboboxInput placeholder={selectedValue.length ? '' : 'Assign reviewers…'} className="min-w-24 px-1 py-0.5" />
-                </>
+                </React.Fragment>
               )}
             </ComboboxValue>
           </ComboboxChips>
@@ -769,6 +769,15 @@ const MultipleChipsDemo = () => {
 
 export const MultipleChips: Story = {
   render: () => <MultipleChipsDemo />,
+  play: async ({ canvas, userEvent }) => {
+    await expect(canvas.getByText('Maya Chen')).toBeVisible()
+    await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+
+    await userEvent.click(canvas.getByRole('button', { name: 'Remove Maya Chen' }))
+
+    await expect(canvas.queryByText('Maya Chen')).not.toBeInTheDocument()
+    await expect(canvas.getByText('Liam Brooks')).toBeVisible()
+  },
 }
 
 export const VirtualizedLongList: Story = {
@@ -829,7 +838,7 @@ export const DisabledAndReadOnly: Story = {
 }
 
 const ControlledDemo = () => {
-  const [value, setValue] = useState<Option | null>(defaultTag)
+  const [value, setValue] = React.useState<Option | null>(defaultTag)
 
   return (
     <div className="flex w-80 flex-col items-start gap-3">

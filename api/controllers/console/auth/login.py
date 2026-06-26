@@ -35,6 +35,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from events.tenant_event import tenant_was_created
+from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
 from libs.token import (
@@ -299,7 +300,7 @@ class EmailCodeLoginApi(Resource):
                     raise NotAllowedCreateWorkspace()
                 else:
                     new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(new_tenant, account, role="owner")
+                    TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
                     account.current_tenant = new_tenant
                     tenant_was_created.send(new_tenant)
 

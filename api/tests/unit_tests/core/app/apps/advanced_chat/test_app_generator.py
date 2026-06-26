@@ -290,7 +290,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow=workflow,
             node_id="node-1",
             user=SimpleNamespace(id="user-id"),
-            args={"inputs": {"foo": "bar"}},
+            args={"inputs": {"foo": "bar"}, "trace_session_id": "session-1"},
             streaming=False,
         )
 
@@ -298,6 +298,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
         assert captured["application_generate_entity"].single_iteration_run.node_id == "node-1"
+        assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
 
     def test_single_loop_generate_builds_debug_task(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()
@@ -348,7 +349,7 @@ class TestAdvancedChatAppGeneratorInternals:
             workflow=workflow,
             node_id="node-2",
             user=SimpleNamespace(id="user-id"),
-            args=SimpleNamespace(inputs={"foo": "bar"}),
+            args=SimpleNamespace(inputs={"foo": "bar"}, trace_session_id="session-1"),
             streaming=False,
         )
 
@@ -356,6 +357,7 @@ class TestAdvancedChatAppGeneratorInternals:
         assert prefill_calls == [(workflow, "user-id")]
         assert captured["variable_loader"] is var_loader
         assert captured["application_generate_entity"].single_loop_run.node_id == "node-2"
+        assert captured["application_generate_entity"].extras["trace_session_id"] == "session-1"
 
     def test_generate_internal_flow_initial_conversation_with_pause_layer(self, monkeypatch: pytest.MonkeyPatch):
         generator = AdvancedChatAppGenerator()

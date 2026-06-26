@@ -6,9 +6,9 @@ import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
-import { useModalContextSelector } from '@/context/modal-context'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
@@ -35,7 +35,7 @@ const OnlineDrive = ({
   const docLink = useDocLink()
   const [isInitialMount, setIsInitialMount] = useState(true)
   const pipelineId = useDatasetDetailContextWithSelector(s => s.dataset?.pipeline_id)
-  const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const openIntegrationsSetting = useIntegrationsSetting()
   const {
     nextPageParameters,
     breadcrumbs,
@@ -184,10 +184,10 @@ const OnlineDrive = ({
   }, [dataSourceStore])
 
   const handleSetting = useCallback(() => {
-    setShowAccountSettingModal({
+    openIntegrationsSetting({
       payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
-  }, [setShowAccountSettingModal])
+  }, [openIntegrationsSetting])
 
   return (
     <div className="flex flex-col gap-y-2">

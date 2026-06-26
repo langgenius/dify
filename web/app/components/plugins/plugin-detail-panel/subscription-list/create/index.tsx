@@ -19,11 +19,11 @@ import { CommonCreateModal } from './common-modal'
 import { OAuthClientSettingsModal } from './oauth-client'
 import { CreateButtonType, DEFAULT_METHOD } from './types'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   buttonType?: CreateButtonType
   shape?: 'square' | 'circle'
-}
+}>
 
 const MAX_COUNT = 10
 

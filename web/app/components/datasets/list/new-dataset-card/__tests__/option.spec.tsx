@@ -1,11 +1,10 @@
-import { RiAddLine } from '@remixicon/react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import Option from '../option'
 
 describe('Option', () => {
   const defaultProps = {
-    Icon: RiAddLine,
+    iconClassName: 'i-ri-add-line',
     text: 'Test Option',
     href: '/test-path',
   }
@@ -52,13 +51,13 @@ describe('Option', () => {
     it('should have correct base styling', () => {
       render(<Option {...defaultProps} />)
       const link = screen.getByRole('link')
-      expect(link).toHaveClass('flex', 'w-full', 'items-center', 'gap-x-2', 'rounded-lg')
+      expect(link).toHaveClass('flex', 'w-full', 'items-center', 'gap-2', 'rounded-lg')
     })
 
     it('should have text span with correct styling', () => {
       render(<Option {...defaultProps} />)
       const textSpan = screen.getByText('Test Option')
-      expect(textSpan).toHaveClass('system-sm-medium', 'grow', 'text-left')
+      expect(textSpan).toHaveClass('min-w-0', 'grow', 'truncate')
     })
   })
 

@@ -1,7 +1,7 @@
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
-export type TagType = 'knowledge' | 'app'
+export type TagType = 'knowledge' | 'app' | 'snippet'
 
 export type Tag = {
   id: string

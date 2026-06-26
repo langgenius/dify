@@ -2,7 +2,7 @@ import type { AnchorHTMLAttributes, ReactElement } from 'react'
 import { fireEvent, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
-import Header from '../index'
+import { Header } from '../index'
 
 function createMockComponent(testId: string) {
   return () => <div data-testid={testId} />
@@ -21,7 +21,7 @@ vi.mock('@/app/components/header/app-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/dataset-nav', () => ({
-  default: createMockComponent('dataset-nav'),
+  DatasetNav: createMockComponent('dataset-nav'),
 }))
 
 vi.mock('@/app/components/header/env-nav', () => ({
@@ -29,7 +29,7 @@ vi.mock('@/app/components/header/env-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/explore-nav', () => ({
-  default: createMockComponent('explore-nav'),
+  ExploreNav: createMockComponent('explore-nav'),
 }))
 
 vi.mock('@/app/components/header/license-env', () => ({
@@ -41,7 +41,7 @@ vi.mock('@/app/components/header/plugins-nav', () => ({
 }))
 
 vi.mock('@/app/components/header/tools-nav', () => ({
-  default: createMockComponent('tools-nav'),
+  ToolsNav: createMockComponent('tools-nav'),
 }))
 
 vi.mock('@/app/components/header/plan-badge', () => ({
@@ -50,16 +50,13 @@ vi.mock('@/app/components/header/plan-badge', () => ({
   ),
 }))
 
-vi.mock('@/context/workspace-context-provider', () => ({
-  WorkspaceProvider: ({ children }: { children?: React.ReactNode }) => children,
-}))
-
 vi.mock('@/next/link', () => ({
   default: ({ children, href, ...props }: AnchorHTMLAttributes<HTMLAnchorElement> & { href?: string }) => <a href={href} {...props}>{children}</a>,
 }))
 
 let mockIsWorkspaceEditor = false
 let mockIsDatasetOperator = false
+let mockWorkspacePermissionKeys: string[] = []
 let mockMedia = 'desktop'
 let mockEnableBilling = false
 let mockPlanType = 'sandbox'
@@ -73,6 +70,9 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsWorkspaceEditor,
     isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator,
+  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
   }),
 }))
 
@@ -111,6 +111,7 @@ describe('Header', () => {
     vi.clearAllMocks()
     mockIsWorkspaceEditor = false
     mockIsDatasetOperator = false
+    mockWorkspacePermissionKeys = ['app_library.access', 'tool.manage']
     mockMedia = 'desktop'
     mockEnableBilling = false
     mockPlanType = 'sandbox'
@@ -126,6 +127,7 @@ describe('Header', () => {
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument()
     expect(screen.queryByRole('img', { name: /dify logo/i })).not.toBeInTheDocument()
     expect(screen.getByTestId('workplace-selector')).toBeInTheDocument()
+    expect(screen.getByTestId('explore-nav')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
     expect(screen.getByTestId('account-dropdown')).toBeInTheDocument()
   })
@@ -142,8 +144,8 @@ describe('Header', () => {
     expect(screen.getByTestId('plan-badge')).toBeInTheDocument()
   })
 
-  it('should hide explore nav when user is dataset operator', () => {
-    mockIsDatasetOperator = true
+  it('should hide explore nav when workspace lacks app library access', () => {
+    mockWorkspacePermissionKeys = ['tool.manage']
     renderHeader()
 
     expect(screen.queryByTestId('explore-nav')).not.toBeInTheDocument()
@@ -205,36 +207,41 @@ describe('Header', () => {
     expect(screen.getByRole('link', { name: 'Dify' })).toHaveAttribute('href', '/apps')
   })
 
-  it('should show dataset nav for editor who is not dataset operator', () => {
-    mockIsWorkspaceEditor = true
-    mockIsDatasetOperator = false
+  it('should show app and dataset nav without page-level permissions', () => {
+    mockWorkspacePermissionKeys = []
 
     renderHeader()
 
     expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
-    expect(screen.getByTestId('explore-nav')).toBeInTheDocument()
     expect(screen.getByTestId('app-nav')).toBeInTheDocument()
   })
 
-  it('should hide dataset nav when neither editor nor dataset operator', () => {
-    mockIsWorkspaceEditor = false
-    mockIsDatasetOperator = false
+  it('should show dataset nav when workspace only has dataset mutation permissions', () => {
+    mockWorkspacePermissionKeys = ['dataset.create_and_management', 'dataset.tag.manage', 'dataset.external.connect']
 
     renderHeader()
 
-    expect(screen.queryByTestId('dataset-nav')).not.toBeInTheDocument()
+    expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
   })
 
-  it('should render mobile layout with dataset operator nav restrictions', () => {
+  it('should render mobile layout with page permission nav restrictions', () => {
     mockMedia = 'mobile'
-    mockIsDatasetOperator = true
+    mockWorkspacePermissionKeys = []
 
     renderHeader()
 
     expect(screen.queryByTestId('explore-nav')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('app-nav')).not.toBeInTheDocument()
     expect(screen.queryByTestId('tools-nav')).not.toBeInTheDocument()
+    expect(screen.getByTestId('app-nav')).toBeInTheDocument()
     expect(screen.getByTestId('dataset-nav')).toBeInTheDocument()
+  })
+
+  it('should show tools nav when workspace has MCP management access', () => {
+    mockWorkspacePermissionKeys = ['mcp.manage']
+
+    renderHeader()
+
+    expect(screen.getByTestId('tools-nav')).toBeInTheDocument()
   })
 
   it('should render mobile layout with billing enabled', () => {

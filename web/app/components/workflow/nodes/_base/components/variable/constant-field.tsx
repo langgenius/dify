@@ -9,14 +9,14 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
-type Props = {
+type Props = Readonly<{
   schema: Partial<CredentialFormSchema>
   readonly: boolean
   value: string
   onChange: (value: string | number, varKindType: VarKindType, varInfo?: Var) => void
   onOpenChange?: (open: boolean) => void
   isLoading?: boolean
-}
+}>
 
 const DEFAULT_SCHEMA = {} as CredentialFormSchema
 

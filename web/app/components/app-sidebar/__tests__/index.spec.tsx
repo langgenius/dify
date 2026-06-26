@@ -3,24 +3,11 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import AppDetailNav from '..'
 
-let mockAppSidebarExpand = 'expand'
-const mockSetAppSidebarExpand = vi.fn()
-let mockPathname = '/app/123/overview'
+let mockDetailSidebarMode = 'expand'
+const mockSetDetailSidebarMode = vi.fn()
 
-vi.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) => selector({
-    appDetail: { id: 'app-1', name: 'Test', mode: 'chat', icon: '🤖', icon_type: 'emoji', icon_background: '#fff' },
-    appSidebarExpand: mockAppSidebarExpand,
-    setAppSidebarExpand: mockSetAppSidebarExpand,
-  }),
-}))
-
-vi.mock('zustand/react/shallow', () => ({
-  useShallow: (fn: unknown) => fn,
-}))
-
-vi.mock('@/next/navigation', () => ({
-  usePathname: () => mockPathname,
+vi.mock('@/app/components/main-nav/storage', () => ({
+  useDetailSidebarMode: () => [mockDetailSidebarMode, mockSetDetailSidebarMode],
 }))
 
 let mockIsHovering = true
@@ -41,16 +28,6 @@ vi.mock('@/hooks/use-breakpoints', () => ({
   MediaType: { mobile: 'mobile', desktop: 'desktop' },
 }))
 
-let mockSubscriptionCallback: ((v: unknown) => void) | null = null
-
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      useSubscription: (cb: (v: unknown) => void) => { mockSubscriptionCallback = cb },
-    },
-  }),
-}))
-
 vi.mock('../../base/divider', () => ({
   default: ({ className }: { className?: string }) => <hr data-testid="divider" className={className} />,
 }))
@@ -64,21 +41,9 @@ vi.mock('../app-info', () => ({
   ),
 }))
 
-vi.mock('../app-sidebar-dropdown', () => ({
-  default: ({ navigation }: { navigation: unknown[] }) => (
-    <div data-testid="app-sidebar-dropdown" data-nav-count={navigation.length} />
-  ),
-}))
-
 vi.mock('../dataset-info', () => ({
   default: ({ expand }: { expand: boolean }) => (
     <div data-testid="dataset-info" data-expand={expand} />
-  ),
-}))
-
-vi.mock('../dataset-sidebar-dropdown', () => ({
-  default: ({ navigation }: { navigation: unknown[] }) => (
-    <div data-testid="dataset-sidebar-dropdown" data-nav-count={navigation.length} />
   ),
 }))
 
@@ -106,8 +71,7 @@ const navigation = [
 describe('AppDetailNav', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppSidebarExpand = 'expand'
-    mockPathname = '/app/123/overview'
+    mockDetailSidebarMode = 'expand'
     mockIsHovering = true
     mockKeyPressCallback = null
   })
@@ -138,11 +102,11 @@ describe('AppDetailNav', () => {
     it('should apply expanded width class', () => {
       const { container } = render(<AppDetailNav navigation={navigation} />)
       const sidebar = container.firstElementChild as HTMLElement
-      expect(sidebar).toHaveClass('w-[216px]')
+      expect(sidebar).toHaveClass('w-55')
     })
 
     it('should apply collapsed width class', () => {
-      mockAppSidebarExpand = 'collapse'
+      mockDetailSidebarMode = 'collapse'
       const { container } = render(<AppDetailNav navigation={navigation} />)
       const sidebar = container.firstElementChild as HTMLElement
       expect(sidebar).toHaveClass('w-14')
@@ -168,39 +132,20 @@ describe('AppDetailNav', () => {
       )
       expect(screen.queryByTestId('extra-info')).not.toBeInTheDocument()
     })
-  })
 
-  describe('Workflow canvas mode', () => {
-    it('should render AppSidebarDropdown when in workflow canvas with hidden header', () => {
-      mockPathname = '/app/123/workflow'
-      localStorage.setItem('workflow-canvas-maximize', 'true')
+    it('should render custom header and navigation when provided', () => {
+      render(
+        <AppDetailNav
+          navigation={navigation}
+          renderHeader={mode => <div data-testid="custom-header" data-mode={mode} />}
+          renderNavigation={mode => <div data-testid="custom-navigation" data-mode={mode} />}
+        />,
+      )
 
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.getByTestId('app-sidebar-dropdown')).toBeInTheDocument()
+      expect(screen.getByTestId('custom-header')).toHaveAttribute('data-mode', 'expand')
+      expect(screen.getByTestId('custom-navigation')).toHaveAttribute('data-mode', 'expand')
       expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
-    })
-
-    it('should render normal sidebar when workflow canvas is not maximized', () => {
-      mockPathname = '/app/123/workflow'
-      localStorage.setItem('workflow-canvas-maximize', 'false')
-
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.queryByTestId('app-sidebar-dropdown')).not.toBeInTheDocument()
-      expect(screen.getByTestId('app-info')).toBeInTheDocument()
-    })
-  })
-
-  describe('Pipeline canvas mode', () => {
-    it('should render DatasetSidebarDropdown when in pipeline canvas with hidden header', () => {
-      mockPathname = '/dataset/123/pipeline'
-      localStorage.setItem('workflow-canvas-maximize', 'true')
-
-      render(<AppDetailNav navigation={navigation} />)
-
-      expect(screen.getByTestId('dataset-sidebar-dropdown')).toBeInTheDocument()
-      expect(screen.queryByTestId('app-info')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('nav-link-Overview')).not.toBeInTheDocument()
     })
   })
 
@@ -211,37 +156,30 @@ describe('AppDetailNav', () => {
     })
 
     it('should pass collapse mode to nav links when collapsed', () => {
-      mockAppSidebarExpand = 'collapse'
+      mockDetailSidebarMode = 'collapse'
       render(<AppDetailNav navigation={navigation} />)
       expect(screen.getByTestId('nav-link-Overview')).toHaveAttribute('data-mode', 'collapse')
     })
   })
 
   describe('Toggle behavior', () => {
-    it('should call setAppSidebarExpand on toggle', async () => {
+    it('should collapse detail sidebar on toggle', async () => {
       const user = userEvent.setup()
       render(<AppDetailNav navigation={navigation} />)
 
       await user.click(screen.getByTestId('toggle-button'))
 
-      expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+      expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
     })
 
     it('should toggle from collapse to expand', async () => {
       const user = userEvent.setup()
-      mockAppSidebarExpand = 'collapse'
+      mockDetailSidebarMode = 'collapse'
       render(<AppDetailNav navigation={navigation} />)
 
       await user.click(screen.getByTestId('toggle-button'))
 
-      expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('expand')
-    })
-  })
-
-  describe('Sidebar persistence', () => {
-    it('should persist expand state to localStorage', () => {
-      render(<AppDetailNav navigation={navigation} />)
-      expect(localStorage.setItem).toHaveBeenCalledWith('app-detail-collapse-or-expand', 'expand')
+      expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('expand')
     })
   })
 
@@ -256,28 +194,6 @@ describe('AppDetailNav', () => {
     })
   })
 
-  describe('Event emitter subscription', () => {
-    it('should handle workflow-canvas-maximize event', () => {
-      mockPathname = '/app/123/workflow'
-      render(<AppDetailNav navigation={navigation} />)
-
-      const cb = mockSubscriptionCallback
-      expect(cb).not.toBeNull()
-      act(() => {
-        cb!({ type: 'workflow-canvas-maximize', payload: true })
-      })
-    })
-
-    it('should ignore non-maximize events', () => {
-      render(<AppDetailNav navigation={navigation} />)
-
-      const cb = mockSubscriptionCallback
-      act(() => {
-        cb!({ type: 'other-event' })
-      })
-    })
-  })
-
   describe('Keyboard shortcut', () => {
     it('should toggle sidebar on Mod+B', () => {
       render(<AppDetailNav navigation={navigation} />)
@@ -287,7 +203,7 @@ describe('AppDetailNav', () => {
       act(() => {
         cb!({ preventDefault: vi.fn() })
       })
-      expect(mockSetAppSidebarExpand).toHaveBeenCalledWith('collapse')
+      expect(mockSetDetailSidebarMode).toHaveBeenCalledWith('collapse')
     })
   })
 

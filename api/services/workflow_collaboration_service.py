@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Mapping
+from typing import override
 
 from sqlalchemy import select
 
@@ -19,6 +20,7 @@ class WorkflowCollaborationService:
         self._repository = repository
         self._socketio = socketio
 
+    @override
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}(repository={self._repository})"
 

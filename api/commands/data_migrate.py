@@ -145,7 +145,7 @@ def legacy_model_types(
         option_name="--model-types",
     )
     selected_model_types = (
-        tuple(ModelType.value_of(model_type) for model_type in normalized_model_types)
+        tuple(ModelType(model_type) for model_type in normalized_model_types)
         if normalized_model_types
         else (
             ModelType.LLM,

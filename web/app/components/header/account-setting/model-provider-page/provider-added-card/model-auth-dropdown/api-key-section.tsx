@@ -2,6 +2,8 @@ import type { Credential, CustomModel, ModelProvider } from '../../declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { hasPermission } from '@/utils/permission'
 import CredentialItem from '../../model-auth/authorized/credential-item'
 
 type ApiKeySectionProps = {
@@ -27,6 +29,8 @@ function ApiKeySection({
 }: ApiKeySectionProps) {
   const { t } = useTranslation()
   const notAllowCustomCredential = provider.allow_custom_token === false
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
 
   if (!credentials.length) {
     return (
@@ -41,7 +45,7 @@ function ApiKeySection({
             </div>
           </div>
         </div>
-        {!notAllowCustomCredential && (
+        {!notAllowCustomCredential && canManageCredential && (
           <Button
             onClick={onAdd}
             className="w-full"
@@ -59,7 +63,7 @@ function ApiKeySection({
         <div className="pt-3 pr-2 pb-1 pl-7 system-xs-medium-uppercase text-text-tertiary">
           {t('modelProvider.auth.apiKeys', { ns: 'common' })}
         </div>
-        <div className="max-h-[200px] overflow-y-auto">
+        <div className="max-h-50 overflow-y-auto">
           {credentials.map(credential => (
             <CredentialItem
               key={credential.credential_id}
@@ -70,11 +74,13 @@ function ApiKeySection({
               onItemClick={onItemClick}
               onEdit={onEdit}
               onDelete={onDelete}
+              disableEdit={!canManageCredential}
+              disableDelete={!canManageCredential}
             />
           ))}
         </div>
       </div>
-      {!notAllowCustomCredential && (
+      {!notAllowCustomCredential && canManageCredential && (
         <div className="p-2">
           <Button
             onClick={onAdd}

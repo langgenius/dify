@@ -59,6 +59,57 @@ vi.mock('../install-from-marketplace', () => ({
   default: () => <div data-testid="install-from-marketplace" />,
 }))
 
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  useCanSetPluginSettings: () => ({
+    canSetPermissions: true,
+    canSetPluginPreferences: true,
+  }),
+  usePluginSettingsAccess: () => ({
+    canSetPermissions: true,
+    canSetPluginPreferences: true,
+    canViewInstalledPlugins: true,
+  }),
+  default: () => ({
+    referenceSetting: {
+      permission: {},
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+    setReferenceSettings: vi.fn(),
+  }),
+}))
+
+vi.mock('@/service/use-plugins', () => ({
+  usePluginAutoUpgradeSettings: () => ({
+    data: {
+      category: 'model',
+      auto_upgrade: {
+        strategy_setting: 'latest',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+    error: undefined,
+    isFetching: false,
+    isLoading: false,
+  }),
+  useMutationPluginAutoUpgradeSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+}))
+
+vi.mock('@/app/components/plugins/reference-setting-modal', () => ({
+  default: () => <div data-testid="reference-setting-modal" />,
+}))
+
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const originalPlugins = actual.consoleQuery.plugins as unknown as Record<string, unknown>

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import { useState } from 'react'
+import * as React from 'react'
 import { RadioGroup } from '.'
 import {
   FieldDescription,
@@ -28,7 +28,7 @@ export default meta
 type Story = StoryObj<typeof meta>
 
 function StandardFormRowsDemo() {
-  const [value, setValue] = useState('vector')
+  const [value, setValue] = React.useState('vector')
 
   return (
     <FieldRoot name="retrievalIndex" className="w-80">
@@ -67,7 +67,7 @@ export const StandardFormRows: Story = {
 }
 
 function BooleanInlineDemo() {
-  const [value, setValue] = useState(true)
+  const [value, setValue] = React.useState(true)
 
   return (
     <FieldRoot name="streaming" className="w-80">
@@ -108,7 +108,7 @@ export const BooleanInline: Story = {
 }
 
 function OptionCardsDemo() {
-  const [value, setValue] = useState('default')
+  const [value, setValue] = React.useState('default')
 
   return (
     <FieldRoot name="promptMode" className="w-100">
@@ -174,7 +174,7 @@ function DynamicFormFieldDemo() {
     { value: 'high_quality', label: 'High quality' },
     { value: 'economy', label: 'Economy' },
   ]
-  const [selected, setSelected] = useState('automatic')
+  const [selected, setSelected] = React.useState('automatic')
 
   return (
     <FieldRoot name="generation_mode" className="flex w-80 flex-col gap-2">

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field
+from pydantic import BaseModel, ConfigDict, Field, RootModel, computed_field
 
 from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
@@ -22,6 +22,34 @@ class SystemParameters(BaseModel):
 
 class SimpleResultResponse(ResponseModel):
     result: str
+
+
+class GeneratedAppResponse(RootModel[JSONValue]):
+    root: JSONValue
+
+
+class EventStreamResponse(RootModel[str]):
+    root: str
+
+
+class TextFileResponse(RootModel[str]):
+    root: str
+
+
+class RedirectResponse(RootModel[str]):
+    root: str
+
+
+class BinaryFileResponse(RootModel[bytes]):
+    root: bytes
+
+
+class AudioBinaryResponse(RootModel[bytes]):
+    root: bytes
+
+
+class AudioTranscriptResponse(ResponseModel):
+    text: str
 
 
 class SimpleResultMessageResponse(ResponseModel):
@@ -125,6 +153,7 @@ class ApiBaseUrlResponse(ResponseModel):
 
 class NewAppResponse(ResponseModel):
     new_app_id: str
+    permission_keys: list[str] = Field(default_factory=list)
 
 
 class Parameters(BaseModel):

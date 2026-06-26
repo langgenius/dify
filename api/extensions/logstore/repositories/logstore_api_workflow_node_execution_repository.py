@@ -87,24 +87,26 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
 
     # Handle datetime fields
     created_at = data.get("created_at")
-    if created_at:
-        if isinstance(created_at, str):
+    match created_at:
+        case None:
+            # Provide default created_at if missing
+            model.created_at = datetime.now()
+        case str():
             model.created_at = datetime.fromisoformat(created_at)
-        elif isinstance(created_at, (int, float)):
+        case int() | float():
             model.created_at = datetime.fromtimestamp(created_at)
-        else:
+        case _:
             model.created_at = created_at
-    else:
-        # Provide default created_at if missing
-        model.created_at = datetime.now()
 
     finished_at = data.get("finished_at")
-    if finished_at:
-        if isinstance(finished_at, str):
+    match finished_at:
+        case None:
+            ...
+        case str():
             model.finished_at = datetime.fromisoformat(finished_at)
-        elif isinstance(finished_at, (int, float)):
+        case int() | float():
             model.finished_at = datetime.fromtimestamp(finished_at)
-        else:
+        case _:
             model.finished_at = finished_at
 
     return model

@@ -25,7 +25,13 @@ from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 
 
 def _execution_context_config() -> DifyExecutionContextLayerConfig:
-    return DifyExecutionContextLayerConfig(tenant_id="tenant-1", user_id="user-1", invoke_from="workflow_run")
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        user_from="account",
+        agent_mode="workflow_run",
+        invoke_from="service-api",
+    )
 
 
 def _llm_config() -> DifyPluginLLMLayerConfig:

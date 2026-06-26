@@ -3,7 +3,9 @@
 import logging
 import re
 import uuid
-from typing import Any, TypedDict, cast
+from typing import Any, TypedDict, cast, override
+
+from sqlalchemy.orm import scoped_session
 
 logger = logging.getLogger(__name__)
 
@@ -16,9 +18,7 @@ from core.llm_generator.prompts import DEFAULT_GENERATOR_SUMMARY_PROMPT
 from core.model_manager import ModelInstance
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.rag.cleaner.clean_processor import CleanProcessor
-from core.rag.data_post_processor.data_post_processor import RerankingModelDict
 from core.rag.datasource.keyword.keyword_factory import Keyword
-from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.entities import Rule
@@ -28,7 +28,6 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from core.workflow.file_reference import build_file_reference
 from extensions.ext_database import db
@@ -61,6 +60,7 @@ class ParagraphFormatPreviewDict(TypedDict):
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
+    @override
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
             extract_setting=extract_setting,
@@ -71,6 +71,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         return text_docs
 
+    @override
     def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
@@ -120,6 +121,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             all_documents.extend(split_documents)
         return all_documents
 
+    @override
     def load(
         self,
         dataset: Dataset,
@@ -142,6 +144,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.add_texts(documents)
 
+    @override
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs) -> None:
         # Note: Summary indexes are now disabled (not deleted) when segments are disabled.
         # This method is called for actual deletion scenarios (e.g., when segment is deleted).
@@ -178,34 +181,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.delete()
 
-    def retrieve(
-        self,
-        retrieval_method: RetrievalMethod,
-        query: str,
-        dataset: Dataset,
-        top_k: int,
-        score_threshold: float,
-        reranking_model: RerankingModelDict,
-    ) -> list[Document]:
-        # Set search parameters.
-        results = RetrievalService.retrieve(
-            retrieval_method=retrieval_method,
-            dataset_id=dataset.id,
-            query=query,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            reranking_model=reranking_model,
-        )
-        # Organize results.
-        docs = []
-        for result in results:
-            metadata = result.metadata
-            metadata["score"] = result.score
-            if result.score >= score_threshold:
-                doc = Document(page_content=result.page_content, metadata=metadata)
-                docs.append(doc)
-        return docs
-
+    @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: Any) -> None:
         documents: list[Any] = []
         all_multimodal_documents: list[Any] = []
@@ -271,6 +247,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
 
+    @override
     def format_preview(self, chunks: Any) -> ParagraphFormatPreviewDict:
         if isinstance(chunks, list):
             preview = []
@@ -285,6 +262,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         else:
             raise ValueError("Chunks is not a list")
 
+    @override
     def generate_summary_preview(
         self,
         tenant_id: str,
@@ -435,11 +413,13 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if supports_vision:
             # First, try to get images from SegmentAttachmentBinding (preferred method)
             if segment_id:
-                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(tenant_id, segment_id)
+                image_files = ParagraphIndexProcessor._extract_images_from_segment_attachments(
+                    tenant_id, segment_id, db.session
+                )
 
             # If no images from attachments, fall back to extracting from text
             if not image_files:
-                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text)
+                image_files = ParagraphIndexProcessor._extract_images_from_text(tenant_id, text, db.session)
 
         # Build prompt messages
         prompt_messages = []
@@ -493,7 +473,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return summary_content, usage
 
     @staticmethod
-    def _extract_images_from_text(tenant_id: str, text: str) -> list[File]:
+    def _extract_images_from_text(tenant_id: str, text: str, session: scoped_session) -> list[File]:
         """
         Extract images from markdown text and convert them to File objects.
 
@@ -542,7 +522,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.scalars(
+        upload_files = session.scalars(
             select(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids), UploadFile.tenant_id == tenant_id)
         ).all()
 
@@ -573,7 +553,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return file_objects
 
     @staticmethod
-    def _extract_images_from_segment_attachments(tenant_id: str, segment_id: str) -> list[File]:
+    def _extract_images_from_segment_attachments(
+        tenant_id: str, segment_id: str, session: scoped_session
+    ) -> list[File]:
         """
         Extract images from SegmentAttachmentBinding table (preferred method).
         This matches how DatasetRetrieval gets segment attachments.
@@ -588,7 +570,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         from sqlalchemy import select
 
         # Query attachments from SegmentAttachmentBinding table
-        attachments_with_bindings = db.session.execute(
+        attachments_with_bindings = session.execute(
             select(SegmentAttachmentBinding, UploadFile)
             .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
             .where(

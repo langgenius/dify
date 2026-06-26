@@ -7,6 +7,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
 import { useAppContext } from '@/context/app-context'
+import { BillingPermission, hasPermission } from '@/utils/permission'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
 import { SelfHostedPlan } from '../../../type'
 import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
@@ -51,11 +52,11 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
+  const canManageBilling = hasPermission(workspacePermissionKeys, BillingPermission.Manage)
 
   const handleGetPayUrl = useCallback(() => {
-    // Only workspace manager can buy plan
-    if (!isCurrentWorkspaceManager) {
+    if (!canManageBilling) {
       toast.error(t('buyPermissionDeniedTip', { ns: 'billing' }))
       return
     }
@@ -70,7 +71,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
 
     if (isEnterprisePlan)
       window.location.href = contactSalesUrl
-  }, [isCurrentWorkspaceManager, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
+  }, [canManageBilling, isFreePlan, isPremiumPlan, isEnterprisePlan, t])
 
   return (
     <div className="relative flex flex-1 flex-col overflow-hidden">

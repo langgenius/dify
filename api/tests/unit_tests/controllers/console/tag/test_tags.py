@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import Forbidden
 
 import controllers.console.tag.tags as module
@@ -17,6 +18,11 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.enums import TagType
 from services.tag_service import UpdateTagPayload
+
+
+class SessionMatcher:
+    def __eq__(self, other):
+        return isinstance(other, Session | scoped_session)
 
 
 def unwrap(func):
@@ -105,6 +111,30 @@ class TestTagListApi:
         assert status == 200
         assert result == [{"id": "1", "name": "tag", "type": "knowledge", "binding_count": "1"}]
 
+    def test_get_snippet_tags(self, app: Flask):
+        api = TagListApi()
+        method = unwrap(api.get)
+
+        with app.test_request_context("/?type=snippet"):
+            with (
+                patch(
+                    "controllers.console.tag.tags.TagService.get_tags",
+                    return_value=[
+                        SimpleNamespace(
+                            id="1",
+                            name="snippet-tag",
+                            type=TagType.SNIPPET,
+                            binding_count=1,
+                        )
+                    ],
+                ) as get_tags_mock,
+            ):
+                result, status = method(api, "tenant-1")
+
+        get_tags_mock.assert_called_once_with(SessionMatcher(), "snippet", "tenant-1", None)
+        assert status == 200
+        assert result == [{"id": "1", "name": "snippet-tag", "type": "snippet", "binding_count": "1"}]
+
     def test_post_success(self, app: Flask, admin_user, tag, payload_patch):
         api = TagListApi()
         method = unwrap(api.post)
@@ -161,9 +191,10 @@ class TestTagUpdateDeleteApi:
                 result, status = method(api, admin_user, "tag-1")
 
         assert status == 200
-        update_payload, tag_id = update_tags_mock.call_args.args
+        update_payload, tag_id, session = update_tags_mock.call_args.args
         assert update_payload == UpdateTagPayload(name="updated")
         assert tag_id == "tag-1"
+        assert session == module.db.session
         assert result["binding_count"] == "3"
 
     def test_patch_forbidden(self, app: Flask, readonly_user, payload_patch):
@@ -189,7 +220,7 @@ class TestTagUpdateDeleteApi:
         ):
             result, status = method(api, "tag-1")
 
-        delete_mock.assert_called_once_with("tag-1")
+        delete_mock.assert_called_once_with("tag-1", module.db.session)
         assert status == 204
 
 
@@ -212,6 +243,30 @@ class TestTagBindingCollectionApi:
                 result, status = method(api, admin_user)
 
         save_mock.assert_called_once()
+        assert status == 200
+        assert result["result"] == "success"
+
+    def test_create_snippet_binding_success(self, app: Flask, admin_user, payload_patch):
+        api = TagBindingCollectionApi()
+        method = unwrap(api.post)
+
+        payload = {
+            "tag_ids": ["tag-1"],
+            "target_id": "snippet-1",
+            "type": "snippet",
+        }
+
+        with app.test_request_context("/", json=payload):
+            with (
+                payload_patch(payload),
+                patch("controllers.console.tag.tags.TagService.save_tag_binding") as save_mock,
+            ):
+                result, status = method(api, admin_user)
+
+        save_mock.assert_called_once()
+        binding_payload = save_mock.call_args.args[0]
+        assert binding_payload.type == TagType.SNIPPET
+        assert binding_payload.target_id == "snippet-1"
         assert status == 200
         assert result["result"] == "success"
 

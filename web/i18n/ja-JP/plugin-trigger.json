@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} が含まれています",
-  "events.description": "このトリガープラグインがサブスクライブできるイベント",
+  "events.description": "このトリガーインテグレーションがサブスクライブできるイベント",
   "events.empty": "利用可能なイベントがありません",
   "events.event": "イベント",
   "events.events": "イベント",

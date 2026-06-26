@@ -348,54 +348,56 @@ export function SelectionContextmenu({
     return null
 
   return (
-    <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
-      <ContextMenuGroup>
-        <ContextMenuItem
-          className="justify-between px-3 text-text-secondary"
-          onClick={handleCopyNodes}
-        >
-          <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
-          <ShortcutKbd shortcut="workflow.copy" />
-        </ContextMenuItem>
-        <ContextMenuItem
-          className="justify-between px-3 text-text-secondary"
-          onClick={handleDuplicateNodes}
-        >
-          <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
-          <ShortcutKbd shortcut="workflow.duplicate" />
-        </ContextMenuItem>
-      </ContextMenuGroup>
-      <ContextMenuSeparator />
-      <ContextMenuGroup>
-        <ContextMenuItem
-          className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
-          onClick={handleDeleteNodes}
-        >
-          <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
-          <ShortcutKbd shortcut="workflow.delete" />
-        </ContextMenuItem>
-      </ContextMenuGroup>
-      <ContextMenuSeparator />
-      {menuSections.map((section, sectionIndex) => (
-        <ContextMenuGroup key={section.titleKey}>
-          {sectionIndex > 0 && <ContextMenuSeparator />}
-          <ContextMenuLabel>
-            {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
-          </ContextMenuLabel>
-          {section.items.map((item) => {
-            return (
-              <ContextMenuItem
-                key={item.alignType}
-                data-testid={`selection-contextmenu-item-${item.alignType}`}
-                onClick={() => handleAlignNodes(item.alignType)}
-              >
-                <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
-                {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
-              </ContextMenuItem>
-            )
-          })}
+    <>
+      <ContextMenuContent popupClassName="w-[240px]" sideOffset={4}>
+        <ContextMenuGroup>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary"
+            onClick={handleCopyNodes}
+          >
+            <span>{t('common.copy', { defaultValue: 'common.copy', ns: 'workflow' })}</span>
+            <ShortcutKbd shortcut="workflow.copy" />
+          </ContextMenuItem>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary"
+            onClick={handleDuplicateNodes}
+          >
+            <span>{t('common.duplicate', { defaultValue: 'common.duplicate', ns: 'workflow' })}</span>
+            <ShortcutKbd shortcut="workflow.duplicate" />
+          </ContextMenuItem>
         </ContextMenuGroup>
-      ))}
-    </ContextMenuContent>
+        <ContextMenuSeparator />
+        <ContextMenuGroup>
+          <ContextMenuItem
+            className="justify-between px-3 text-text-secondary data-highlighted:bg-state-destructive-hover data-highlighted:text-text-destructive"
+            onClick={handleDeleteNodes}
+          >
+            <span>{t('operation.delete', { defaultValue: 'operation.delete', ns: 'common' })}</span>
+            <ShortcutKbd shortcut="workflow.delete" />
+          </ContextMenuItem>
+        </ContextMenuGroup>
+        <ContextMenuSeparator />
+        {menuSections.map((section, sectionIndex) => (
+          <ContextMenuGroup key={section.titleKey}>
+            {sectionIndex > 0 && <ContextMenuSeparator />}
+            <ContextMenuLabel>
+              {t(section.titleKey, { defaultValue: section.titleKey, ns: 'workflow' })}
+            </ContextMenuLabel>
+            {section.items.map((item) => {
+              return (
+                <ContextMenuItem
+                  key={item.alignType}
+                  data-testid={`selection-contextmenu-item-${item.alignType}`}
+                  onClick={() => handleAlignNodes(item.alignType)}
+                >
+                  <span aria-hidden className={`${item.icon} h-4 w-4 ${item.iconClassName ?? ''}`.trim()} />
+                  {t(item.translationKey, { defaultValue: item.translationKey, ns: 'workflow' })}
+                </ContextMenuItem>
+              )
+            })}
+          </ContextMenuGroup>
+        ))}
+      </ContextMenuContent>
+    </>
   )
 }

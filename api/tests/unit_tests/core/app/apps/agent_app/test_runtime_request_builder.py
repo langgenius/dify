@@ -20,12 +20,17 @@ from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeRequestBuilder,
     AgentAppRuntimeRequestBuildError,
 )
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models.agent_config_entities import AgentSoulConfig
 
 
 def _exec_ctx() -> DifyExecutionContextLayerConfig:
-    return DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="agent_app")
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_from="end-user",
+        invoke_from="web-app",
+        agent_mode="agent_app",
+    )
 
 
 class TestBuildForAgentApp:
@@ -85,6 +90,7 @@ def _ctx(soul: AgentSoulConfig, *, query: str = "hello") -> AgentAppRuntimeBuild
         tenant_id="tenant-1",
         app_id="app-1",
         user_id="user-1",
+        user_from=UserFrom.END_USER,
         invoke_from=InvokeFrom.WEB_APP,
     )
     return AgentAppRuntimeBuildContext(
@@ -130,10 +136,47 @@ class TestAgentAppRuntimeRequestBuilder:
         # execution context carries conversation + agent_app invoke source.
         exec_ctx = next(layer for layer in req.composition.layers if layer.name == "execution_context")
         assert exec_ctx.config.conversation_id == "conv-1"
-        assert exec_ctx.config.invoke_from == "agent_app"
+        # Real Dify access context forwarded; agent run mode in agent_mode.
+        assert exec_ctx.config.user_from == "end-user"
+        assert exec_ctx.config.invoke_from == "web-app"
+        assert exec_ctx.config.agent_mode == "agent_app"
         # credentials are redacted in the log-safe view.
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
+
+    def test_build_maps_agent_soul_knowledge_to_knowledge_layer(self):
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "knowledge": {
+                    "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
+                    "query_config": {
+                        "top_k": 3,
+                        "score_threshold": 0.5,
+                        "score_threshold_enabled": False,
+                    },
+                },
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        knowledge = next(layer for layer in result.request.composition.layers if layer.name == "knowledge")
+        assert knowledge.type == "dify.knowledge_base"
+        assert knowledge.deps == {"execution_context": "execution_context"}
+        dumped_config = knowledge.config.model_dump(mode="json", by_alias=True)
+        assert dumped_config["dataset_ids"] == ["dataset-1", "dataset-2"]
+        assert dumped_config["retrieval"]["mode"] == "multiple"
+        assert dumped_config["retrieval"]["top_k"] == 3
+        assert dumped_config["retrieval"]["score_threshold"] == 0.0
 
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(
@@ -177,3 +220,52 @@ class TestAgentAppRuntimeRequestBuilder:
             "dify_tool_names": [],
             "cli_tool_count": 1,
         }
+
+
+# ── ENG-623: drive declaration on the Agent App surface ──────────────────────
+
+
+def _soul_with_model_and_skill() -> AgentSoulConfig:
+    from models.agent_config_entities import AgentSkillRefConfig
+
+    soul = _soul_with_model()
+    soul.skills_files.skills = [
+        AgentSkillRefConfig.model_validate(
+            {
+                "id": "abc",
+                "name": "Tender Analyzer",
+                "description": "Parses RFPs.",
+                "skill_md_key": "tender-analyzer/SKILL.md",
+            }
+        )
+    ]
+    return soul
+
+
+class TestAgentAppDriveLayer:
+    def test_drive_layer_injected_when_flag_enabled(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model_and_skill()))
+
+        drive = next(layer for layer in result.request.composition.layers if layer.name == "drive")
+        assert drive.type == "dify.drive"
+        assert drive.config.drive_ref == "agent-agent-1"
+        assert [skill.skill_md_key for skill in drive.config.skills] == ["tender-analyzer/SKILL.md"]
+        # injected right after execution_context, mirroring the workflow surface
+        names = [layer.name for layer in result.request.composition.layers]
+        assert names.index("drive") == names.index("execution_context") + 1
+
+    def test_no_drive_layer_when_flag_disabled(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        result = builder.build(_ctx(_soul_with_model_and_skill()))
+        assert all(layer.name != "drive" for layer in result.request.composition.layers)

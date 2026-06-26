@@ -69,6 +69,11 @@ class ProviderConfiguration(BaseModel):
     nested schema and model lookups reuse the caller scope that was already
     resolved by the composition layer.
 
+    The ``provider`` field already contains the resolved provider schema that
+    was used to build this configuration. Reuse that schema for nested model
+    lookups instead of refetching the full provider catalog from the runtime on
+    every request-scoped lookup.
+
     TODO: lots of logic in a BaseModel entity should be separated, the exceptions should be classified
     """
 
@@ -83,15 +88,19 @@ class ProviderConfiguration(BaseModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     _bound_model_runtime: ModelRuntime | None = PrivateAttr(default=None)
+    _cached_provider_schema: ProviderEntity | None = PrivateAttr(default=None)
+    _original_provider_configurate_methods: tuple[ConfigurateMethod, ...] = PrivateAttr(default_factory=tuple)
 
     @model_validator(mode="after")
     def _(self):
+        self._original_provider_configurate_methods = tuple(self.provider.configurate_methods)
+
         if self.provider.provider not in original_provider_configurate_methods:
             original_provider_configurate_methods[self.provider.provider] = []
             for configurate_method in self.provider.configurate_methods:
                 original_provider_configurate_methods[self.provider.provider].append(configurate_method)
 
-        if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+        if list(self._original_provider_configurate_methods) == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
             if (
                 any(
                     len(quota_configuration.restrict_models) > 0
@@ -105,6 +114,29 @@ class ProviderConfiguration(BaseModel):
     def bind_model_runtime(self, model_runtime: ModelRuntime) -> None:
         """Attach the already-composed runtime for request-bound call chains."""
         self._bound_model_runtime = model_runtime
+        self._cached_provider_schema = self.provider
+
+    def _get_original_provider_configurate_methods(self) -> list[ConfigurateMethod]:
+        return list(self._original_provider_configurate_methods)
+
+    def _get_provider_schema(self, *, model_provider_factory: ModelProviderFactory | None = None) -> ProviderEntity:
+        """Resolve the provider schema lazily while preserving bound-runtime reuse."""
+        if self._cached_provider_schema is None:
+            if self.provider.models:
+                self._cached_provider_schema = self.provider
+            else:
+                provider_factory = model_provider_factory or self.get_model_provider_factory()
+                self._cached_provider_schema = provider_factory.get_provider_schema(provider=self.provider.provider)
+
+        return self._cached_provider_schema
+
+    def _get_model_runtime(self) -> ModelRuntime:
+        """Return the runtime aligned with this request-scoped configuration."""
+        if self._bound_model_runtime is not None:
+            return self._bound_model_runtime
+
+        model_assembly = create_plugin_model_assembly(tenant_id=self.tenant_id)
+        return model_assembly.model_runtime
 
     def _get_runtime_and_provider_factory(self) -> tuple[ModelRuntime, ModelProviderFactory]:
         """Resolve a provider factory that stays aligned with the runtime used by the caller."""
@@ -153,7 +185,6 @@ class ProviderConfiguration(BaseModel):
                         and restrict_model.base_model_name
                     ):
                         copy_credentials["base_model_name"] = restrict_model.base_model_name
-
             return copy_credentials
         else:
             credentials = None
@@ -189,7 +220,6 @@ class ProviderConfiguration(BaseModel):
                             provider=self.provider.provider,
                             credential_type=PluginCredentialType.MODEL,
                         )
-
             return credentials
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
@@ -1399,8 +1429,13 @@ class ProviderConfiguration(BaseModel):
         :param model_type: model type
         :return:
         """
-        model_runtime, model_provider_factory = self._get_runtime_and_provider_factory()
-        provider_schema = model_provider_factory.get_provider_schema(provider=self.provider.provider)
+        if self._bound_model_runtime is not None:
+            model_runtime = self._bound_model_runtime
+        else:
+            model_runtime, _ = self._get_runtime_and_provider_factory()
+
+        provider_schema = self._cached_provider_schema or self.provider
+
         return create_model_type_instance(
             runtime=model_runtime,
             provider_schema=provider_schema,
@@ -1410,12 +1445,13 @@ class ProviderConfiguration(BaseModel):
     def get_model_schema(
         self, model_type: ModelType, model: str, credentials: dict[str, Any] | None
     ) -> AIModelEntity | None:
-        """
-        Get model schema
-        """
-        model_provider_factory = self.get_model_provider_factory()
-        return model_provider_factory.get_model_schema(
-            provider=self.provider.provider, model_type=model_type, model=model, credentials=credentials
+        """Get model schema with the request-bound runtime and canonical provider id."""
+        model_runtime = self._get_model_runtime()
+        return model_runtime.get_model_schema(
+            provider=self.provider.provider,
+            model_type=model_type,
+            model=model,
+            credentials=credentials or {},
         )
 
     def switch_preferred_provider_type(self, provider_type: ProviderType, session: Session | None = None):
@@ -1515,8 +1551,7 @@ class ProviderConfiguration(BaseModel):
         :param model: model name
         :return:
         """
-        model_provider_factory = self.get_model_provider_factory()
-        provider_schema = model_provider_factory.get_provider_schema(self.provider.provider)
+        provider_schema = self._get_provider_schema()
 
         model_types: list[ModelType] = []
         if model_type:
@@ -1531,7 +1566,10 @@ class ProviderConfiguration(BaseModel):
 
         if self.using_provider_type == ProviderType.SYSTEM:
             provider_models = self._get_system_provider_models(
-                model_types=model_types, provider_schema=provider_schema, model_setting_map=model_setting_map
+                model_types=model_types,
+                provider_schema=provider_schema,
+                model_setting_map=model_setting_map,
+                model=model,
             )
         else:
             provider_models = self._get_custom_provider_models(
@@ -1573,6 +1611,7 @@ class ProviderConfiguration(BaseModel):
         model_types: Sequence[ModelType],
         provider_schema: ProviderEntity,
         model_setting_map: dict[ModelType, dict[str, ModelSettings]],
+        model: str | None = None,
     ) -> list[ModelWithProviderEntity]:
         """
         Get system provider models.
@@ -1586,6 +1625,8 @@ class ProviderConfiguration(BaseModel):
         for model_type in model_types:
             for m in provider_schema.models:
                 if m.model_type != model_type:
+                    continue
+                if model and m.model != model:
                     continue
 
                 status = ModelStatus.ACTIVE
@@ -1608,13 +1649,9 @@ class ProviderConfiguration(BaseModel):
                     )
                 )
 
-        if self.provider.provider not in original_provider_configurate_methods:
-            original_provider_configurate_methods[self.provider.provider] = []
-            for configurate_method in provider_schema.configurate_methods:
-                original_provider_configurate_methods[self.provider.provider].append(configurate_method)
-
+        original_configurate_methods = self._get_original_provider_configurate_methods()
         should_use_custom_model = False
-        if original_provider_configurate_methods[self.provider.provider] == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
+        if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
             should_use_custom_model = True
 
         for quota_configuration in self.system_configuration.quota_configurations:
@@ -1626,11 +1663,12 @@ class ProviderConfiguration(BaseModel):
                 break
 
             if should_use_custom_model:
-                if original_provider_configurate_methods[self.provider.provider] == [
-                    ConfigurateMethod.CUSTOMIZABLE_MODEL
-                ]:
+                if original_configurate_methods == [ConfigurateMethod.CUSTOMIZABLE_MODEL]:
                     # only customizable model
                     for restrict_model in restrict_models:
+                        if model and restrict_model.model != model:
+                            continue
+
                         copy_credentials = (
                             self.system_configuration.credentials.copy()
                             if self.system_configuration.credentials
@@ -1680,11 +1718,11 @@ class ProviderConfiguration(BaseModel):
 
             # if llm name not in restricted llm list, remove it
             restrict_model_names = [rm.model for rm in restrict_models]
-            for model in provider_models:
-                if model.model_type == ModelType.LLM and model.model not in restrict_model_names:
-                    model.status = ModelStatus.NO_PERMISSION
+            for provider_model in provider_models:
+                if provider_model.model_type == ModelType.LLM and provider_model.model not in restrict_model_names:
+                    provider_model.status = ModelStatus.NO_PERMISSION
                 elif not quota_configuration.is_valid:
-                    model.status = ModelStatus.QUOTA_EXCEEDED
+                    provider_model.status = ModelStatus.QUOTA_EXCEEDED
 
         return provider_models
 
@@ -1709,12 +1747,21 @@ class ProviderConfiguration(BaseModel):
         if self.custom_configuration.provider:
             credentials = self.custom_configuration.provider.credentials
 
+        requested_predefined_model = False
+        if model:
+            requested_predefined_model = any(
+                predefined_model.model_type in model_types and predefined_model.model == model
+                for predefined_model in provider_schema.models
+            )
+
         for model_type in model_types:
             if model_type not in self.provider.supported_model_types:
                 continue
 
             for m in provider_schema.models:
                 if m.model_type != model_type:
+                    continue
+                if requested_predefined_model and model and m.model != model:
                     continue
 
                 status = ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE

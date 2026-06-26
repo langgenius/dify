@@ -16,10 +16,10 @@ import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
 import { Theme } from '@/types/app'
 
-type Props = {
+type Props = Readonly<{
   file: FileItem | undefined
   updateFile: (file?: FileItem) => void
-}
+}>
 const CSVUploader: FC<Props> = ({ file, updateFile }) => {
   const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)

@@ -1,7 +1,9 @@
 import pytest
 
 import dify_agent.runtime.compositor_factory as compositor_factory_module
+from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 
@@ -75,3 +77,29 @@ def test_shell_provider_rejects_blank_settings_entrypoint_only_when_shell_layer_
 
     with pytest.raises(ValueError, match="DIFY_AGENT_SHELLCTL_ENTRYPOINT"):
         _ = shell_provider.create_layer(DifyShellLayerConfig())
+
+
+def test_default_layer_providers_build_agent_stub_token_factory_from_agent_stub_codec() -> None:
+    codec = AgentStubTokenCodec.from_server_secret("MTExMTExMTExMTExMTExMTExMTExMTExMTExMTExMTE")
+
+    providers = create_default_layer_providers(
+        shellctl_entrypoint="http://shellctl.example",
+        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_token_codec=codec,
+    )
+    shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)
+    shell_layer = shell_provider.create_layer(DifyShellLayerConfig())
+
+    token = shell_layer.agent_stub_token_factory(
+        DifyExecutionContextLayerConfig(
+            tenant_id="tenant-1",
+            user_id="user-1",
+            user_from="account",
+            agent_mode="workflow_run",
+            invoke_from="service-api",
+        ),
+        session_id="abc12ff",
+    )
+
+    assert isinstance(token, str)
+    assert token

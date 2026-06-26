@@ -13,6 +13,8 @@ from .agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDriveFile,
+    AgentDriveFileKind,
     AgentIconType,
     AgentKind,
     AgentRuntimeSession,
@@ -71,6 +73,7 @@ from .model import (
     AppMCPServer,
     AppMode,
     AppModelConfig,
+    AppStar,
     Conversation,
     DatasetRetrieverResource,
     DifySetup,
@@ -106,6 +109,7 @@ from .provider import (
     TenantDefaultModel,
     TenantPreferredModelProvider,
 )
+from .snippet import CustomizedSnippet, SnippetType
 from .source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from .task import CeleryTask, CeleryTaskSet
 from .tools import (
@@ -131,12 +135,14 @@ from .workflow import (
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
     WorkflowArchiveLog,
+    WorkflowKind,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowPause,
     WorkflowRun,
     WorkflowType,
+    resolve_workflow_kind,
 )
 
 __all__ = [
@@ -150,6 +156,8 @@ __all__ = [
     "AgentConfigRevision",
     "AgentConfigRevisionOperation",
     "AgentConfigSnapshot",
+    "AgentDriveFile",
+    "AgentDriveFileKind",
     "AgentIconType",
     "AgentKind",
     "AgentRuntimeSession",
@@ -168,6 +176,7 @@ __all__ = [
     "AppMCPServer",
     "AppMode",
     "AppModelConfig",
+    "AppStar",
     "AppTrigger",
     "AppTriggerStatus",
     "AppTriggerType",
@@ -179,6 +188,7 @@ __all__ = [
     "CreatorUserRole",
     "CredentialPermission",
     "CredentialPermissionType",
+    "CustomizedSnippet",
     "DataSourceApiKeyAuthBinding",
     "DataSourceOauthBinding",
     "Dataset",
@@ -227,6 +237,7 @@ __all__ = [
     "RecommendedApp",
     "SavedMessage",
     "Site",
+    "SnippetType",
     "Tag",
     "TagBinding",
     "Tenant",
@@ -259,6 +270,7 @@ __all__ = [
     "WorkflowComment",
     "WorkflowCommentMention",
     "WorkflowCommentReply",
+    "WorkflowKind",
     "WorkflowNodeExecutionModel",
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",
@@ -269,4 +281,5 @@ __all__ = [
     "WorkflowToolProvider",
     "WorkflowTriggerStatus",
     "WorkflowType",
+    "resolve_workflow_kind",
 ]

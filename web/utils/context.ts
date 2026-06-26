@@ -1,9 +1,11 @@
 import type { Context, Provider } from 'react'
-import { createContext, useContext } from 'react'
+import { createContext, use } from 'react'
 import * as selector from 'use-context-selector'
 
+type UseContextImpl = <T>(context: Context<T>) => T
+
 const createCreateCtxFunction = (
-  useContextImpl: typeof useContext,
+  useContextImpl: UseContextImpl,
   createContextImpl: typeof createContext,
 ) => {
   return function<T>({ name, defaultValue }: CreateCtxOptions<T> = {}): CreateCtxReturn<T> {
@@ -39,9 +41,9 @@ type CreateCtxReturn<T> = [Provider<T>, () => T, Context<T>] & {
 // example
 // const [AppProvider, useApp, AppContext] = createCtx<AppContextValue>()
 
-export const createCtx = createCreateCtxFunction(useContext, createContext)
+export const createCtx = createCreateCtxFunction(use, createContext)
 
 export const createSelectorCtx = createCreateCtxFunction(
-  selector.useContext,
+  selector.useContext as UseContextImpl,
   selector.createContext as typeof createContext,
 )

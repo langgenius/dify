@@ -8,6 +8,7 @@ import { runGetApp } from './run'
 
 const APP_MODE_VALUES: readonly AppMode[] = [
   'advanced-chat',
+  'agent',
   'agent-chat',
   'channel',
   'chat',
@@ -41,7 +42,6 @@ export default class GetApp extends DifyCommand {
     'limit': Flags.string({ description: 'page size [1..200]' }),
     'mode': Flags.string({ description: 'filter by app mode', options: APP_MODE_VALUES }),
     'name': Flags.string({ description: 'filter by app name (server-side substring)' }),
-    'tag': Flags.string({ description: 'filter by tag name (server-side exact match)' }),
     'http-retry': httpRetryFlag,
     'output': Flags.outputFormat({ options: [OutputFormat.JSON, OutputFormat.YAML, OutputFormat.NAME, OutputFormat.WIDE], default: '' }),
   }
@@ -56,9 +56,8 @@ export default class GetApp extends DifyCommand {
       allWorkspaces: flags['all-workspaces'],
       page: flags.page,
       limitRaw: flags.limit,
-      mode: flags.mode,
+      mode: flags.mode as AppMode | undefined,
       name: flags.name,
-      tag: flags.tag,
       format,
     }, { active: ctx.active, http: ctx.http, io: ctx.io })
     return table({

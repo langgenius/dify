@@ -57,7 +57,7 @@ const mockInstallPackageFromMarketPlace = vi.fn()
 const mockUpdatePackageFromMarketPlace = vi.fn()
 const mockCheckTaskStatus = vi.fn()
 const mockStopTaskStatus = vi.fn()
-const mockHandleRefetch = vi.fn()
+const mockHandleInstallTaskStart = vi.fn()
 let mockPluginDeclaration: { manifest: { meta: { minimum_dify_version: string } } } | undefined
 let mockCanInstall = true
 let mockLangGeniusVersionInfo = { current_version: '1.0.0' }
@@ -68,6 +68,12 @@ vi.mock('@/app/components/plugins/install-plugin/hooks/use-check-installed', () 
     installedInfo: mockInstalledInfo,
     isLoading: mockIsLoading,
     error: null,
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    langGeniusVersionInfo: mockLangGeniusVersionInfo,
   }),
 }))
 
@@ -83,7 +89,7 @@ vi.mock('@/service/use-plugins', () => ({
     data: mockPluginDeclaration,
   }),
   usePluginTaskList: () => ({
-    handleRefetch: mockHandleRefetch,
+    handleInstallTaskStart: mockHandleInstallTaskStart,
   }),
 }))
 
@@ -95,10 +101,10 @@ vi.mock('../../../base/check-task-status', () => ({
   }),
 }))
 
-// Mock useAppContext
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    langGeniusVersionInfo: mockLangGeniusVersionInfo,
+vi.mock('@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission', () => ({
+  default: () => ({
+    canInstallPlugin: true,
+    currentDifyVersion: mockLangGeniusVersionInfo.current_version,
   }),
 }))
 
@@ -153,6 +159,7 @@ describe('Install Component (steps/install.tsx)', () => {
     payload: createMockManifest(),
     onCancel: vi.fn(),
     onStartToInstall: vi.fn(),
+    onTaskStarted: vi.fn(),
     onInstalled: vi.fn(),
     onFailed: vi.fn(),
   }
@@ -413,11 +420,52 @@ describe('Install Component (steps/install.tsx)', () => {
       })
 
       await waitFor(() => {
-        expect(mockHandleRefetch).toHaveBeenCalled()
+        expect(mockHandleInstallTaskStart).toHaveBeenCalledWith({
+          all_installed: false,
+          task_id: 'task-123',
+        })
         expect(mockCheckTaskStatus).toHaveBeenCalledWith({
           taskId: 'task-123',
           pluginUniqueIdentifier: 'test-unique-identifier',
         })
+      })
+    })
+
+    it('should hand off to plugin tasks without waiting for status when start response includes task', async () => {
+      const response = {
+        all_installed: false,
+        task_id: 'task-123',
+        task: {
+          id: 'task-123',
+          created_at: '2026-06-05T03:34:59.578653Z',
+          updated_at: '2026-06-05T03:34:59.578653Z',
+          status: TaskStatus.running,
+          total_plugins: 1,
+          completed_plugins: 0,
+          plugins: [
+            {
+              plugin_unique_identifier: 'test-unique-identifier',
+              plugin_id: 'test-plugin-id',
+              source: 'marketplace',
+              status: TaskStatus.pending,
+              message: '',
+              icon: 'test-icon.png',
+              labels: { en_US: 'Test Plugin' },
+            },
+          ],
+        },
+      }
+      mockInstallPackageFromMarketPlace.mockResolvedValue(response)
+      render(<Install {...defaultProps} />)
+
+      await act(async () => {
+        fireEvent.click(screen.getByText('plugin.installModal.install'))
+      })
+
+      await waitFor(() => {
+        expect(mockHandleInstallTaskStart).toHaveBeenCalledWith(response)
+        expect(defaultProps.onTaskStarted).toHaveBeenCalled()
+        expect(mockCheckTaskStatus).not.toHaveBeenCalled()
       })
     })
 

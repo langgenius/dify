@@ -66,6 +66,11 @@ Workflow applications offers non-session support and is ideal for translation, a
         1. Header: via HTTP Header `X-Trace-Id`, highest priority.
         2. Query parameter: via URL query parameter `trace_id`.
         3. Request Body: via request body field `trace_id` (i.e., this field).
+      - `trace_session_id` (string) Optional
+        Trace session ID for observability grouping. Tracing providers that support session grouping can use this value as the exported session identifier. It does not change conversation_id, workflow_run_id, trace_id, or span relationships. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Session-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_session_id`.
+        3. Request Body: via request body field `trace_session_id` (i.e., this field).
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.
@@ -680,6 +685,11 @@ Workflow applications offers non-session support and is ideal for translation, a
         1. Header: via HTTP Header `X-Trace-Id`, highest priority.
         2. Query parameter: via URL query parameter `trace_id`.
         3. Request Body: via request body field `trace_id` (i.e., this field).
+      - `trace_session_id` (string) Optional
+        Trace session ID for observability grouping. Tracing providers that support session grouping can use this value as the exported session identifier. It does not change conversation_id, workflow_run_id, trace_id, or span relationships. Supports the following three ways to pass, in order of priority:
+        1. Header: via HTTP Header `X-Trace-Session-Id`, highest priority.
+        2. Query parameter: via URL query parameter `trace_session_id`.
+        3. Request Body: via request body field `trace_session_id` (i.e., this field).
 
     ### Response
     When `response_mode` is `blocking`, return a CompletionResponse object.

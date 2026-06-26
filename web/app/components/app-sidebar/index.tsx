@@ -4,17 +4,12 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useHotkey } from '@tanstack/react-hotkeys'
 import { useHover } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
-import { useShallow } from 'zustand/react/shallow'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useCallback } from 'react'
+import { useDetailSidebarMode } from '@/app/components/main-nav/storage'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { usePathname } from '@/next/navigation'
 import Divider from '../base/divider'
 import AppInfo, { AppInfoView } from './app-info'
-import AppSidebarDropdown from './app-sidebar-dropdown'
 import DatasetInfo from './dataset-info'
-import DatasetSidebarDropdown from './dataset-sidebar-dropdown'
 import NavLink from './nav-link'
 import ToggleButton from './toggle-button'
 
@@ -28,49 +23,30 @@ type IAppDetailNavProps = {
     disabled?: boolean
   }>
   extraInfo?: (modeState: string) => React.ReactNode
+  renderHeader?: (modeState: string) => React.ReactNode
+  renderNavigation?: (modeState: string) => React.ReactNode
   appInfoActions?: AppInfoActions
 }
 
 const AppDetailNav = ({
   navigation,
   extraInfo,
+  renderHeader,
+  renderNavigation,
   iconType = 'app',
   appInfoActions,
 }: IAppDetailNavProps) => {
-  const { appSidebarExpand, setAppSidebarExpand } = useAppStore(useShallow(state => ({
-    appSidebarExpand: state.appSidebarExpand,
-    setAppSidebarExpand: state.setAppSidebarExpand,
-  })))
+  const [detailSidebarMode, setDetailSidebarMode] = useDetailSidebarMode()
   const sidebarRef = React.useRef<HTMLDivElement>(null)
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const expand = appSidebarExpand === 'expand'
+  const expand = detailSidebarMode === 'expand'
 
   const handleToggle = useCallback(() => {
-    setAppSidebarExpand(appSidebarExpand === 'expand' ? 'collapse' : 'expand')
-  }, [appSidebarExpand, setAppSidebarExpand])
+    setDetailSidebarMode(detailSidebarMode === 'expand' ? 'collapse' : 'expand')
+  }, [detailSidebarMode, setDetailSidebarMode])
 
   const isHoveringSidebar = useHover(sidebarRef)
-
-  // Check if the current path is a workflow canvas & fullscreen
-  const pathname = usePathname()
-  const inWorkflowCanvas = pathname.endsWith('/workflow')
-  const isPipelineCanvas = pathname.endsWith('/pipeline')
-  const workflowCanvasMaximize = localStorage.getItem('workflow-canvas-maximize') === 'true'
-  const [hideHeader, setHideHeader] = useState(workflowCanvasMaximize)
-  const { eventEmitter } = useEventEmitterContextContext()
-
-  eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === 'workflow-canvas-maximize')
-      setHideHeader(v.payload)
-  })
-
-  useEffect(() => {
-    if (appSidebarExpand) {
-      localStorage.setItem('app-detail-collapse-or-expand', appSidebarExpand)
-      setAppSidebarExpand(appSidebarExpand)
-    }
-  }, [appSidebarExpand, setAppSidebarExpand])
 
   useHotkey('Mod+B', (e) => {
     e.preventDefault()
@@ -79,31 +55,12 @@ const AppDetailNav = ({
     ignoreInputs: true,
   })
 
-  if (inWorkflowCanvas && hideHeader) {
-    return (
-      <div className="flex w-0 shrink-0">
-        <AppSidebarDropdown
-          navigation={navigation}
-          appInfoActions={appInfoActions}
-        />
-      </div>
-    )
-  }
-
-  if (isPipelineCanvas && hideHeader) {
-    return (
-      <div className="flex w-0 shrink-0">
-        <DatasetSidebarDropdown navigation={navigation} />
-      </div>
-    )
-  }
-
   return (
     <div
       ref={sidebarRef}
       className={cn(
         'flex shrink-0 flex-col border-r border-divider-burn bg-background-default-subtle transition-all',
-        expand ? 'w-[216px]' : 'w-14',
+        expand ? 'w-55' : 'w-14',
       )}
     >
       <div
@@ -112,18 +69,20 @@ const AppDetailNav = ({
           expand ? 'p-2' : 'p-1',
         )}
       >
-        {iconType === 'app' && (
-          appInfoActions
-            ? (
-                <AppInfoView
-                  expand={expand}
-                  actions={appInfoActions}
-                  renderDetail={false}
-                />
-              )
-            : <AppInfo expand={expand} />
-        )}
-        {iconType !== 'app' && (
+        {renderHeader
+          ? renderHeader(detailSidebarMode)
+          : iconType === 'app' && (
+            appInfoActions
+              ? (
+                  <AppInfoView
+                    expand={expand}
+                    actions={appInfoActions}
+                    renderDetail={false}
+                  />
+                )
+              : <AppInfo expand={expand} />
+          )}
+        {!renderHeader && iconType !== 'app' && (
           <DatasetInfo expand={expand} />
         )}
       </div>
@@ -152,20 +111,22 @@ const AppDetailNav = ({
           expand ? 'px-3 py-2' : 'p-3',
         )}
       >
-        {navigation.map((item, index) => {
-          return (
-            <NavLink
-              key={index}
-              mode={appSidebarExpand}
-              iconMap={{ selected: item.selectedIcon, normal: item.icon }}
-              name={item.name}
-              href={item.href}
-              disabled={!!item.disabled}
-            />
-          )
-        })}
+        {renderNavigation
+          ? renderNavigation(detailSidebarMode)
+          : navigation.map((item, index) => {
+              return (
+                <NavLink
+                  key={index}
+                  mode={detailSidebarMode}
+                  iconMap={{ selected: item.selectedIcon, normal: item.icon }}
+                  name={item.name}
+                  href={item.href}
+                  disabled={!!item.disabled}
+                />
+              )
+            })}
       </nav>
-      {iconType !== 'app' && extraInfo && extraInfo(appSidebarExpand)}
+      {iconType !== 'app' && extraInfo && extraInfo(detailSidebarMode)}
     </div>
   )
 }

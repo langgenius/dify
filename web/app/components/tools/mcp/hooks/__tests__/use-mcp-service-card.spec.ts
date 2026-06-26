@@ -6,6 +6,7 @@ import { act, renderHook } from '@testing-library/react'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppModeEnum } from '@/types/app'
+import { AppACLPermission } from '@/utils/permission'
 import { useMCPServiceCardState } from '../use-mcp-service-card'
 
 // Mutable mock data for MCP server detail
@@ -22,20 +23,29 @@ let mockMCPServerDetailData: {
   description: 'Test server',
   parameters: {},
 }
+const mockUpdateMCPServer = vi.fn().mockResolvedValue({})
+const mockRefreshMCPServerCode = vi.fn().mockResolvedValue({})
+const mockInvalidateMCPServerDetail = vi.fn()
+let mockUseMCPServerDetailAppID = ''
+let mockUseMCPServerDetailEnabled: boolean | undefined
 
 // Mock service hooks
 vi.mock('@/service/use-tools', () => ({
   useUpdateMCPServer: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
+    mutateAsync: mockUpdateMCPServer,
   }),
   useRefreshMCPServerCode: () => ({
-    mutateAsync: vi.fn().mockResolvedValue({}),
+    mutateAsync: mockRefreshMCPServerCode,
     isPending: false,
   }),
-  useMCPServerDetail: () => ({
-    data: mockMCPServerDetailData,
-  }),
-  useInvalidateMCPServerDetail: () => vi.fn(),
+  useMCPServerDetail: (appID: string, enabled?: boolean) => {
+    mockUseMCPServerDetailAppID = appID
+    mockUseMCPServerDetailEnabled = enabled
+    return {
+      data: mockMCPServerDetailData,
+    }
+  },
+  useInvalidateMCPServerDetail: () => mockInvalidateMCPServerDetail,
 }))
 
 // Mock workflow hook
@@ -50,14 +60,6 @@ vi.mock('@/service/use-workflow', () => ({
           },
         }
       : undefined,
-  }),
-}))
-
-// Mock app context
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-    isCurrentWorkspaceEditor: true,
   }),
 }))
 
@@ -84,14 +86,19 @@ describe('useMCPServiceCardState', () => {
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
 
-  const createMockAppInfo = (mode: AppModeEnum = AppModeEnum.CHAT): AppDetailResponse & Partial<AppSSO> => ({
+  const createMockAppInfo = (
+    mode: AppModeEnum = AppModeEnum.CHAT,
+    permissionKeys: string[] = [AppACLPermission.Edit],
+  ): AppDetailResponse & Partial<AppSSO> => ({
     id: 'app-123',
     name: 'Test App',
     mode,
     api_base_url: 'https://api.example.com/v1',
+    permission_keys: permissionKeys,
   } as AppDetailResponse & Partial<AppSSO>)
 
   beforeEach(() => {
+    vi.clearAllMocks()
     // Reset mock data to default (published server)
     mockMCPServerDetailData = {
       id: 'server-123',
@@ -100,6 +107,8 @@ describe('useMCPServiceCardState', () => {
       description: 'Test server',
       parameters: {},
     }
+    mockUseMCPServerDetailAppID = ''
+    mockUseMCPServerDetailEnabled = undefined
   })
 
   describe('Initialization', () => {
@@ -150,14 +159,58 @@ describe('useMCPServiceCardState', () => {
   })
 
   describe('Permission Flags', () => {
-    it('should have isCurrentWorkspaceManager as true', () => {
+    it('should expose MCP manage capability from app edit ACL', () => {
       const appInfo = createMockAppInfo()
       const { result } = renderHook(
         () => useMCPServiceCardState(appInfo, false),
         { wrapper: createWrapper() },
       )
 
-      expect(result.current.isCurrentWorkspaceManager).toBe(true)
+      expect(result.current.canManageMCP).toBe(true)
+    })
+
+    it('should keep MCP server status readable and disable mutations without app edit ACL', async () => {
+      const appInfo = createMockAppInfo(AppModeEnum.CHAT, [])
+      const { result } = renderHook(
+        () => useMCPServiceCardState(appInfo, false),
+        { wrapper: createWrapper() },
+      )
+
+      expect(result.current.canManageMCP).toBe(false)
+      expect(result.current.toggleDisabled).toBe(true)
+      expect(result.current.serverPublished).toBe(true)
+      expect(result.current.serverActivated).toBe(true)
+      expect(result.current.serverURL).toBe('https://api.example.com/mcp/server/abc123/mcp')
+      expect(mockUseMCPServerDetailAppID).toBe('app-123')
+      expect(mockUseMCPServerDetailEnabled).toBe(true)
+
+      act(() => {
+        result.current.openServerModal()
+        result.current.openConfirmDelete()
+      })
+      expect(result.current.showMCPServerModal).toBe(false)
+      expect(result.current.showConfirmDelete).toBe(false)
+
+      await act(async () => {
+        await result.current.handleGenCode()
+        await result.current.handleStatusChange(true)
+      })
+      expect(mockRefreshMCPServerCode).not.toHaveBeenCalled()
+      expect(mockUpdateMCPServer).not.toHaveBeenCalled()
+    })
+
+    it('should read workflow state without app edit ACL for workflow apps', () => {
+      const appInfo = createMockAppInfo(AppModeEnum.WORKFLOW, [])
+      const { result } = renderHook(
+        () => useMCPServiceCardState(appInfo, false),
+        { wrapper: createWrapper() },
+      )
+
+      expect(result.current.canManageMCP).toBe(false)
+      expect(result.current.isLoading).toBe(false)
+      expect(result.current.appUnpublished).toBe(false)
+      expect(result.current.missingStartNode).toBe(false)
+      expect(result.current.toggleDisabled).toBe(true)
     })
 
     it('should have toggleDisabled false when editor has permissions', () => {

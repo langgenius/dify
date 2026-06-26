@@ -353,7 +353,7 @@ describe('InstallFromLocalPackage', () => {
       fireEvent.click(screen.getByTestId('bundle-step-installed-btn'))
 
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 
@@ -1050,7 +1050,7 @@ describe('InstallFromLocalPackage', () => {
       })
       fireEvent.click(screen.getByTestId('bundle-step-installed-btn'))
       await waitFor(() => {
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
   })
@@ -2012,7 +2012,7 @@ describe('Complete Installation Flows', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('bundle-step')).toHaveTextContent('installed')
-        expect(screen.getByText('plugin.installModal.installComplete')).toBeInTheDocument()
+        expect(screen.getByText('plugin.installModal.installedSuccessfully')).toBeInTheDocument()
       })
     })
 

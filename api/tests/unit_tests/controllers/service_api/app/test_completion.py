@@ -12,6 +12,7 @@ Focus on:
 """
 
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -42,12 +43,6 @@ from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestCompletionRequestPayload:
@@ -426,7 +421,7 @@ class TestChatRequestPayloadController:
 class TestCompletionApiController:
     def test_wrong_mode(self, app: Flask) -> None:
         api = CompletionApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -444,7 +439,7 @@ class TestCompletionApiController:
         end_user = SimpleNamespace()
 
         api = CompletionApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
 
         with app.test_request_context("/completion-messages", method="POST", json={"inputs": {}}):
             with pytest.raises(NotFound):
@@ -454,7 +449,7 @@ class TestCompletionApiController:
 class TestCompletionStopApiController:
     def test_wrong_mode(self, app: Flask) -> None:
         api = CompletionStopApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace(id="u1")
 
@@ -467,7 +462,7 @@ class TestCompletionStopApiController:
         monkeypatch.setattr(AppTaskService, "stop_task", stop_mock)
 
         api = CompletionStopApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace(id="u1")
 
@@ -481,7 +476,7 @@ class TestCompletionStopApiController:
 class TestChatApiController:
     def test_wrong_mode(self, app: Flask) -> None:
         api = ChatApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION.value)
         end_user = SimpleNamespace()
 
@@ -497,7 +492,7 @@ class TestChatApiController:
         )
 
         api = ChatApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -513,7 +508,7 @@ class TestChatApiController:
         )
 
         api = ChatApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.CHAT.value)
         end_user = SimpleNamespace()
 
@@ -525,7 +520,7 @@ class TestChatApiController:
 class TestChatStopApiController:
     def test_wrong_mode(self, app: Flask) -> None:
         api = ChatStopApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(mode=AppMode.COMPLETION)
         end_user = SimpleNamespace(id="u1")
 

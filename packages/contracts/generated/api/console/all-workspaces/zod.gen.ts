@@ -2,6 +2,27 @@
 
 import * as z from 'zod'
 
+/**
+ * WorkspaceListItemResponse
+ */
+export const zWorkspaceListItemResponse = z.object({
+  created_at: z.int().nullish(),
+  id: z.string(),
+  name: z.string().nullish(),
+  status: z.string().nullish(),
+})
+
+/**
+ * WorkspaceListResponse
+ */
+export const zWorkspaceListResponse = z.object({
+  data: z.array(zWorkspaceListItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
 export const zGetAllWorkspacesQuery = z.object({
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
@@ -10,4 +31,4 @@ export const zGetAllWorkspacesQuery = z.object({
 /**
  * Success
  */
-export const zGetAllWorkspacesResponse = z.record(z.string(), z.unknown())
+export const zGetAllWorkspacesResponse = zWorkspaceListResponse

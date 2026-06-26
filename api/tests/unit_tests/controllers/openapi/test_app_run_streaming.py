@@ -6,6 +6,9 @@ import sys
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
+from flask import Flask
+
 from controllers.openapi._models import AppRunRequest
 
 
@@ -30,7 +33,9 @@ def test_app_run_request_with_query():
     assert req.query == "hello"
 
 
-def test_run_chat_always_calls_generate_with_streaming_true(app, bypass_pipeline, monkeypatch):
+def test_run_chat_always_calls_generate_with_streaming_true(
+    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+):
     """_run_chat must always invoke AppGenerateService.generate with streaming=True."""
     from controllers.openapi.app_run import _run_chat
 
@@ -56,7 +61,7 @@ def test_stop_task_endpoint_registered(openapi_app):
     assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>/stop" in rules
 
 
-def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, monkeypatch):
+def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     import uuid
 
     from controllers.openapi.app_run import AppRunTaskStopApi
@@ -94,4 +99,4 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, mo
 
     queue_mock.set_stop_flag_no_user_check.assert_called_once_with("task-1")
     graph_instance.send_stop_command.assert_called_once_with("task-1")
-    assert result == {"result": "success"}
+    assert result == ({"result": "success"}, 200)

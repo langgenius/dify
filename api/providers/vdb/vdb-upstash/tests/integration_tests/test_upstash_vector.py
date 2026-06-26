@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_upstash.upstash_vector import UpstashVector, UpstashVectorConfig
 
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
@@ -15,10 +17,12 @@ class UpstashVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) != 0
 
+    @override
     def search_by_full_text(self):
         hits_by_full_text: list[Document] = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0

@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   Select,
@@ -13,7 +14,7 @@ import {
 } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
-const renderWithSafeViewport = (ui: import('react').ReactNode) => render(
+const renderWithSafeViewport = (ui: React.ReactNode) => render(
   <div style={{ minHeight: '100vh', minWidth: '100vw', padding: '240px' }}>
     {ui}
   </div>,

@@ -5,13 +5,13 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   name: string
   value: boolean
   required?: boolean
   onChange: (value: boolean) => void
   readonly?: boolean
-}
+}>
 
 const BoolInput: FC<Props> = ({
   value,

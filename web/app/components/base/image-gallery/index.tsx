@@ -6,9 +6,9 @@ import { useState } from 'react'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import s from './style.module.css'
 
-type Props = {
+type Props = Readonly<{
   srcs: string[]
-}
+}>
 
 const getWidthStyle = (imgNum: number) => {
   if (imgNum === 1) {

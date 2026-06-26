@@ -6,11 +6,11 @@ import { useTranslation } from 'react-i18next'
 import ListEmpty from '@/app/components/base/list-empty'
 import VarReferenceVars from './var-reference-vars'
 
-type Props = {
+type Props = Readonly<{
   vars: NodeOutPutVar[]
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
-}
+}>
 const AssignedVarReferencePopup: FC<Props> = ({
   vars,
   onChange,

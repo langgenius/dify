@@ -15,12 +15,12 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import FileIcon from '../document-file-icon'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   value?: DocumentItem
   files: DocumentItem[]
   onChange: (value: DocumentItem) => void
-}
+}>
 
 const PreviewDocumentPicker: FC<Props> = ({
   className,

@@ -1,11 +1,11 @@
 import type { FC } from 'react'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   loading?: boolean
   className?: string
   children?: React.ReactNode | string
-}
+}>
 
 const Spinner: FC<Props> = ({ loading = false, children, className }) => {
   return (

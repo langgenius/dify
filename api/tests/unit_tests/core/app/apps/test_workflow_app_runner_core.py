@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueHumanInputFormFilledEvent,
@@ -85,6 +85,35 @@ class TestWorkflowBasedAppRunner:
                 invoke_from=InvokeFrom.DEBUGGER,
             )
 
+    def test_init_graph_includes_trace_session_id_in_run_context(self, monkeypatch: pytest.MonkeyPatch):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        captured = {}
+
+        def fake_from_graph_init_context(**kwargs):
+            captured["run_context"] = kwargs["graph_init_context"].run_context
+            return SimpleNamespace()
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            fake_from_graph_init_context,
+        )
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: SimpleNamespace())
+
+        runner._init_graph(
+            graph_config={"nodes": [], "edges": []},
+            graph_runtime_state=runtime_state,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            root_node_id="root",
+            trace_session_id="session-1",
+        )
+
+        assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+
     def test_prepare_single_node_execution_requires_run(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
 
@@ -144,6 +173,57 @@ class TestWorkflowBasedAppRunner:
 
         assert graph is not None
         assert variable_pool is graph_runtime_state.variable_pool
+
+    def test_get_graph_and_variable_pool_for_single_node_run_includes_trace_session_id(
+        self, monkeypatch: pytest.MonkeyPatch
+    ):
+        runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
+        graph_runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        graph_config = {
+            "nodes": [{"id": "node-1", "data": {"type": "start", "version": "1"}}],
+            "edges": [],
+        }
+        workflow = SimpleNamespace(tenant_id="tenant", id="workflow", graph_dict=graph_config)
+        captured = {}
+
+        def fake_from_graph_init_context(**kwargs):
+            captured["run_context"] = kwargs["graph_init_context"].run_context
+            return SimpleNamespace()
+
+        class _NodeCls:
+            @staticmethod
+            def extract_variable_selector_to_variable_mapping(graph_config, config):
+                return {}
+
+        from core.app.apps import workflow_app_runner
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            fake_from_graph_init_context,
+        )
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **kwargs: SimpleNamespace())
+        monkeypatch.setattr(workflow_app_runner, "resolve_workflow_node_class", lambda **_kwargs: _NodeCls)
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.load_into_variable_pool", lambda **kwargs: None)
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.WorkflowEntry.mapping_user_inputs_to_variable_pool",
+            lambda **kwargs: None,
+        )
+
+        runner._get_graph_and_variable_pool_for_single_node_run(
+            workflow=workflow,
+            node_id="node-1",
+            user_inputs={},
+            graph_runtime_state=graph_runtime_state,
+            node_type_filter_key="iteration_id",
+            node_type_label="iteration",
+            user_id="00000000-0000-0000-0000-000000000001",
+            trace_session_id="session-1",
+        )
+
+        assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
 
     def test_get_graph_and_variable_pool_preloads_constructor_variables_before_graph_init(
         self, monkeypatch: pytest.MonkeyPatch

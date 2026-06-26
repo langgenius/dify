@@ -9,6 +9,7 @@ Tests coverage for:
 
 import io
 import uuid
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
@@ -39,12 +40,6 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def _file_data():
@@ -194,7 +189,7 @@ class TestAudioApi:
     def test_success(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: {"text": "ok"})
         api = AudioApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="a1")
         end_user = SimpleNamespace(id="u1")
 
@@ -220,7 +215,7 @@ class TestAudioApi:
     def test_error_mapping(self, app: Flask, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
         monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
         api = AudioApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="a1")
         end_user = SimpleNamespace(id="u1")
 
@@ -233,7 +228,7 @@ class TestAudioApi:
             AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(RuntimeError("boom"))
         )
         api = AudioApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="a1")
         end_user = SimpleNamespace(id="u1")
 
@@ -247,7 +242,7 @@ class TestTextApi:
         monkeypatch.setattr(AudioService, "transcript_tts", lambda **_kwargs: {"audio": "ok"})
 
         api = TextApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="a1")
         end_user = SimpleNamespace(external_user_id="ext")
 
@@ -266,7 +261,7 @@ class TestTextApi:
         )
 
         api = TextApi()
-        handler = _unwrap(api.post)
+        handler = unwrap(api.post)
         app_model = SimpleNamespace(id="a1")
         end_user = SimpleNamespace(external_user_id="ext")
 

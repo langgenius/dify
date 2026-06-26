@@ -6,23 +6,22 @@ import {
   RiHammerLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 
-type ToolsNavProps = {
-  className?: string
-}
-
-const ToolsNav = ({
+export function ToolsNav({
   className,
-}: ToolsNavProps) => {
+}: {
+  className?: string
+}) {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
-  const activated = selectedSegment === 'tools'
+  const activated = selectedSegment === 'integrations' || selectedSegment === 'tools'
 
   return (
     <Link
-      href="/tools"
+      href={buildIntegrationPath('builtin')}
       className={cn('group text-sm font-medium', activated && 'hover:bg-components-main-nav-nav-button-bg-active-hover bg-components-main-nav-nav-button-bg-active font-semibold shadow-md', activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover', className)}
     >
       {
@@ -30,11 +29,9 @@ const ToolsNav = ({
           ? <RiHammerFill className="size-4" />
           : <RiHammerLine className="size-4" />
       }
-      <div className="ml-2 max-[1024px]:hidden">
+      <div className="ml-2 max-[1120px]:hidden">
         {t('menus.tools', { ns: 'common' })}
       </div>
     </Link>
   )
 }
-
-export default ToolsNav

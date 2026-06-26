@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { ComponentProps } from 'react'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   Radio,
   RadioSkeleton,
@@ -36,8 +35,8 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-function RadioDemo(args: Partial<ComponentProps<typeof Radio>>) {
-  const [value, setValue] = useState('ssd')
+function RadioDemo(args: Partial<React.ComponentProps<typeof Radio>>) {
+  const [value, setValue] = React.useState('ssd')
 
   return (
     <FieldRoot name="storageType">

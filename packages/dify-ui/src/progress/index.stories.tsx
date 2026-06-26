@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { ProgressCircleColor, ProgressCircleSize } from '.'
-import { Fragment } from 'react'
+import * as React from 'react'
 import { ProgressCircle } from '.'
 
 const colors: ProgressCircleColor[] = ['gray', 'white', 'blue', 'warning', 'error']
@@ -48,7 +48,7 @@ export const CircleMatrix: Story = {
         </div>
       ))}
       {colors.map(color => (
-        <Fragment key={color}>
+        <React.Fragment key={color}>
           <div className="system-xs-semibold-uppercase text-text-secondary">
             {color}
           </div>
@@ -61,7 +61,7 @@ export const CircleMatrix: Story = {
               aria-label={`${color} ${size} progress`}
             />
           ))}
-        </Fragment>
+        </React.Fragment>
       ))}
     </div>
   ),

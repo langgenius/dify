@@ -1,9 +1,9 @@
 import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import useAccessControlStore from '@/context/access-control-store'
-import { SubjectType } from '@/models/access-control'
-import AddMemberOrGroupDialog from '../add-member-or-group-pop'
+import { AccessMode, SubjectType } from '@/models/access-control'
+import { AddMemberOrGroupDialog } from '../add-member-or-group-pop'
+import { createAccessControlDraftHarness } from './access-control-test-utils'
 
 const mockUseSearchForWhiteListCandidates = vi.fn()
 const intersectionObserverMocks = vi.hoisted(() => ({
@@ -18,7 +18,7 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
 }))
 
@@ -69,13 +69,6 @@ describe('AddMemberOrGroupDialog', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    useAccessControlStore.setState({
-      appId: 'app-1',
-      specificGroups: [],
-      specificMembers: [],
-      currentMenu: SubjectType.GROUP as never,
-      selectedGroupsForBreadcrumb: [],
-    })
     mockUseSearchForWhiteListCandidates.mockReturnValue({
       isLoading: false,
       isFetchingNextPage: false,
@@ -88,7 +81,11 @@ describe('AddMemberOrGroupDialog', () => {
 
   it('should open the search popover and display candidates', async () => {
     const user = userEvent.setup()
-    render(<AddMemberOrGroupDialog />)
+    const harness = createAccessControlDraftHarness(
+      <AddMemberOrGroupDialog />,
+      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
+    )
+    render(harness.element)
 
     await user.click(screen.getByText('common.operation.add'))
 
@@ -99,16 +96,20 @@ describe('AddMemberOrGroupDialog', () => {
 
   it('should allow expanding groups and selecting members', async () => {
     const user = userEvent.setup()
-    render(<AddMemberOrGroupDialog />)
+    const harness = createAccessControlDraftHarness(
+      <AddMemberOrGroupDialog />,
+      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
+    )
+    render(harness.element)
 
     await user.click(screen.getByText('common.operation.add'))
     await user.click(screen.getByText('app.accessControlDialog.operateGroupAndMember.expand'))
 
-    expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([baseGroup])
+    expect(harness.getSnapshot().selectedGroupsForBreadcrumb).toEqual([baseGroup])
 
     await user.click(screen.getByRole('option', { name: /Member One/ }))
 
-    expect(useAccessControlStore.getState().specificMembers).toEqual([baseMember])
+    expect(harness.getSnapshot().specificMembers).toEqual([baseMember])
   })
 
   it('should show the empty state when no candidates are returned', async () => {
@@ -120,7 +121,11 @@ describe('AddMemberOrGroupDialog', () => {
     })
 
     const user = userEvent.setup()
-    render(<AddMemberOrGroupDialog />)
+    const harness = createAccessControlDraftHarness(
+      <AddMemberOrGroupDialog />,
+      { appId: 'app-1', currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS },
+    )
+    render(harness.element)
 
     await user.click(screen.getByText('common.operation.add'))
 
@@ -128,9 +133,6 @@ describe('AddMemberOrGroupDialog', () => {
   })
 
   it('should keep breadcrumbs visible when the current group has no candidates', async () => {
-    useAccessControlStore.setState({
-      selectedGroupsForBreadcrumb: [baseGroup],
-    })
     mockUseSearchForWhiteListCandidates.mockReturnValue({
       isLoading: false,
       isFetchingNextPage: false,
@@ -139,7 +141,15 @@ describe('AddMemberOrGroupDialog', () => {
     })
 
     const user = userEvent.setup()
-    render(<AddMemberOrGroupDialog />)
+    const harness = createAccessControlDraftHarness(
+      <AddMemberOrGroupDialog />,
+      {
+        appId: 'app-1',
+        currentMenu: AccessMode.SPECIFIC_GROUPS_MEMBERS,
+        selectedGroupsForBreadcrumb: [baseGroup],
+      },
+    )
+    render(harness.element)
 
     await user.click(screen.getByText('common.operation.add'))
 
@@ -149,6 +159,6 @@ describe('AddMemberOrGroupDialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'app.accessControlDialog.operateGroupAndMember.allMembers' }))
 
-    expect(useAccessControlStore.getState().selectedGroupsForBreadcrumb).toEqual([])
+    expect(harness.getSnapshot().selectedGroupsForBreadcrumb).toEqual([])
   })
 })

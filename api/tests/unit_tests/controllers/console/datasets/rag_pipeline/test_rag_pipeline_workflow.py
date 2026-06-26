@@ -1,18 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
+from inspect import unwrap as unwrap_all
 from types import SimpleNamespace
 from unittest.mock import PropertyMock, patch
 
 import pytest
+from flask import Flask
 
 from controllers.console.datasets.rag_pipeline import rag_pipeline_workflow as module
-
-
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+from models.account import Account, TenantAccountRole
+from models.dataset import Pipeline
 
 
 def _make_workflow(**overrides):
@@ -38,6 +36,19 @@ def _make_workflow(**overrides):
     return workflow
 
 
+def _account() -> Account:
+    account = Account(name="Alice", email="alice@example.com")
+    account.id = "user-1"
+    account.role = TenantAccountRole.EDITOR
+    return account
+
+
+def _pipeline() -> Pipeline:
+    pipeline = Pipeline(tenant_id="tenant-1", name="Pipeline", description="desc")
+    pipeline.id = "pipeline-1"
+    return pipeline
+
+
 def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow()
     monkeypatch.setattr(
@@ -45,9 +56,9 @@ def test_draft_rag_pipeline_workflow_get_serializes_response_model(monkeypatch: 
     )
 
     api = module.DraftRagPipelineApi()
-    handler = _unwrap(api.get)
+    handler = unwrap_all(api.get)
 
-    response = handler(api, pipeline=SimpleNamespace(id="pipeline-1"))
+    response = handler(api, _pipeline())
 
     assert response["id"] == "workflow-1"
     assert response["graph"] == {"nodes": [], "edges": []}
@@ -63,7 +74,7 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
     app, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     api = module.PublishedAllRagPipelineApi()
-    handler = _unwrap(api.get)
+    handler = unwrap_all(api.get)
     session_state = {"open": False}
 
     class _SessionContext:
@@ -88,7 +99,6 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
 
     monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
     monkeypatch.setattr(module, "sessionmaker", lambda *_args, **_kwargs: _SessionMaker())
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (SimpleNamespace(id="user-1"), "tenant-1"))
     monkeypatch.setattr(
         module,
         "RagPipelineService",
@@ -100,7 +110,7 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
         method="GET",
         query_string={"page": 1, "limit": 10, "user_id": "", "named_only": "false"},
     ):
-        response = handler(api, pipeline=SimpleNamespace(id="pipeline-1"))
+        response = handler(api, _account(), pipeline=_pipeline())
 
     assert response["items"][0]["id"] == "workflow-1"
     assert response["page"] == 1
@@ -108,9 +118,8 @@ def test_published_rag_pipeline_workflows_serialize_items_before_session_closes(
     assert response["has_more"] is False
 
 
-def test_rag_pipeline_workflow_patch_serializes_response_model(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_rag_pipeline_workflow_patch_serializes_response_model(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     workflow = _make_workflow(marked_name="Updated release")
-    monkeypatch.setattr(module, "current_account_with_tenant", lambda: (SimpleNamespace(id="user-1"), "tenant-1"))
 
     class _SessionContext:
         def __enter__(self):
@@ -133,7 +142,7 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(app, monkeypatch:
     payload: dict[str, object] = {"marked_name": "Updated release"}
 
     api = module.RagPipelineByIdApi()
-    handler = _unwrap(api.patch)
+    handler = unwrap_all(api.patch)
 
     with (
         app.test_request_context("/rag/pipelines/pipeline-1/workflows/workflow-1", method="PATCH", json=payload),
@@ -141,7 +150,8 @@ def test_rag_pipeline_workflow_patch_serializes_response_model(app, monkeypatch:
     ):
         response = handler(
             api,
-            pipeline=SimpleNamespace(id="pipeline-1", tenant_id="tenant-1"),
+            _account(),
+            pipeline=_pipeline(),
             workflow_id="workflow-1",
         )
 

@@ -4,14 +4,14 @@ import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import UsageInfo from '@/app/components/billing/usage-info'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   onClose: () => void
   onUpgrade: () => void
   usage: number
   total: number
   resetInDays?: number
-}
+}>
 
 export default function TriggerEventsLimitModal({
   show,

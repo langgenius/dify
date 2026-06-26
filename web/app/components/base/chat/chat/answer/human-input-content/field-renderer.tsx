@@ -20,11 +20,11 @@ import {
 
 export type HumanInputFieldValue = string | FileEntity | FileEntity[] | null
 
-type Props = {
+type Props = Readonly<{
   field: FormInputItem
   value?: HumanInputFieldValue
   onChange: (value: HumanInputFieldValue) => void
-}
+}>
 
 const HumanInputFieldRenderer = ({
   field,

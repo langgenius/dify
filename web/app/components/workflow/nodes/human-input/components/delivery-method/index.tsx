@@ -14,7 +14,7 @@ import { UpgradeModal } from './upgrade-modal'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   value: DeliveryMethod[]
   nodesOutputVars?: NodeOutPutVar[]
@@ -23,7 +23,7 @@ type Props = {
   formInputs?: FormInputItem[]
   onChange: (value: DeliveryMethod[]) => void
   readonly?: boolean
-}
+}>
 
 const DeliveryMethodForm: React.FC<Props> = ({
   nodeId,

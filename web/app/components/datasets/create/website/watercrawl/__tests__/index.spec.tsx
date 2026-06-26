@@ -6,6 +6,17 @@ import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datas
 import { sleep } from '@/utils'
 import WaterCrawl from '../index'
 
+const { mockRouterPush, mockSetShowAccountSettingModal } = vi.hoisted(() => ({
+  mockRouterPush: vi.fn(),
+  mockSetShowAccountSettingModal: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: mockRouterPush,
+  }),
+}))
+
 vi.mock('@/service/datasets', () => ({
   createWatercrawlTask: vi.fn(),
   checkWatercrawlTaskStatus: vi.fn(),
@@ -16,7 +27,6 @@ vi.mock('@/utils', () => ({
 }))
 
 // Mock modal context
-const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -381,12 +391,14 @@ describe('WaterCrawl', () => {
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(1)
+      expect(mockRouterPush).not.toHaveBeenCalled()
 
       // Rerender and click again
       rerender(<WaterCrawl {...props} />)
       fireEvent.click(configButton)
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledTimes(2)
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
@@ -430,9 +442,8 @@ describe('WaterCrawl', () => {
       const configButton = screen.getByText('datasetCreation.stepOne.website.configureWatercrawl')
       await userEvent.click(configButton)
 
-      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
-        payload: 'data-source',
-      })
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: 'data-source' })
+      expect(mockRouterPush).not.toHaveBeenCalled()
     })
 
     it('should handle URL input and run button click', async () => {

@@ -69,6 +69,28 @@ describe('@langgenius/dify-ui/toast', () => {
     dispatchToastMouseOut(viewport)
   })
 
+  it('should clamp varying-height toasts to the frontmost stack height when collapsed', async () => {
+    const screen = await render(<ToastHost />)
+
+    toast.info('Long background toast', {
+      description: 'This longer toast intentionally spans multiple lines so it would overflow the collapsed stack without matching the frontmost toast height.',
+    })
+    toast.success('Short front toast', {
+      description: 'Short message.',
+    })
+
+    await expect.element(screen.getByText('Short front toast')).toBeInTheDocument()
+    await expect.element(screen.getByText('Long background toast')).toBeInTheDocument()
+    await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
+    await expect.element(screen.getByRole('dialog', { name: 'Short front toast' })).toBeInTheDocument()
+    await expect.element(screen.getByRole('dialog', { name: 'Long background toast' })).toBeInTheDocument()
+
+    const longToastContent = screen.getByText('Long background toast').element().closest('[class*="transition-opacity"]')
+    expect(longToastContent).toHaveAttribute('data-behind')
+    expect(longToastContent).toHaveClass('h-full')
+    expect(longToastContent?.parentElement).toHaveClass('h-full')
+  })
+
   it('should render a neutral toast when called directly', async () => {
     const screen = await render(<ToastHost />)
 
@@ -76,6 +98,24 @@ describe('@langgenius/dify-ui/toast', () => {
 
     await expect.element(screen.getByText('Neutral toast')).toBeInTheDocument()
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-information-2-fill')).not.toBeInTheDocument()
+  })
+
+  it('should wrap long unbroken toast content within the card width', async () => {
+    const screen = await render(<ToastHost />)
+    const longTitle = 'operation error S3: PutObject, exceeded maximum number of attempts, 3, StatusCode: 0, RequestID: , HostID: , request send failed'
+    const longDescription = 'Put "https://plugin/assets/1bd032bb73218a5d141b80cab7111?x-id=PutObject": dial tcp 192.168.0.200:19000: connect: connection refused, icon small en_US failed to remap assets failed to store plugin asset'
+
+    toast.error(longTitle, {
+      description: longDescription,
+    })
+
+    await expect.element(screen.getByText(longTitle)).toBeInTheDocument()
+    await expect.element(screen.getByText(longDescription)).toBeInTheDocument()
+
+    const title = asHTMLElement(screen.getByText(longTitle).element())
+    const description = asHTMLElement(screen.getByText(longDescription).element())
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth)
+    expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth)
   })
 
   it('should mark overflow toasts as limited when the stack exceeds the configured limit', async () => {

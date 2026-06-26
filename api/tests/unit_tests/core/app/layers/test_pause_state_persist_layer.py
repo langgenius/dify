@@ -351,6 +351,7 @@ def _build_workflow_generate_entity_for_roundtrip() -> WorkflowResumptionContext
                 stream=False,
                 invoke_from=InvokeFrom.DEBUGGER,
                 workflow_execution_id="workflow-exec-roundtrip",
+                extras={"trace_session_id": "session-1"},
             )
         ),
     )
@@ -379,6 +380,7 @@ def _build_advanced_chat_generate_entity_for_roundtrip() -> WorkflowResumptionCo
                 invoke_from=InvokeFrom.DEBUGGER,
                 workflow_run_id="advanced-run-id",
                 query="Explain serialization behavior",
+                extras={"trace_session_id": "session-1"},
             )
         ),
     )
@@ -406,3 +408,4 @@ def test_workflow_resumption_context_dumps_loads_roundtrip(state: WorkflowResump
     assert loaded.serialized_graph_runtime_state == state.serialized_graph_runtime_state
     restored_entity = loaded.get_generate_entity()
     assert isinstance(restored_entity, type(state.generate_entity.entity))
+    assert restored_entity.extras["trace_session_id"] == "session-1"

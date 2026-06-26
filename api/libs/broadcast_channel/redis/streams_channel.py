@@ -138,10 +138,11 @@ class _StreamsSubscription(Subscription):
                         if isinstance(fields, dict):
                             data = fields.get(b"data")
                         data_bytes: bytes | None = None
-                        if isinstance(data, str):
-                            data_bytes = data.encode()
-                        elif isinstance(data, (bytes, bytearray)):
-                            data_bytes = bytes(data)
+                        match data:
+                            case str():
+                                data_bytes = data.encode()
+                            case bytes() | bytearray():
+                                data_bytes = bytes(data)
                         if data_bytes is not None:
                             self._queue.put_nowait(data_bytes)
                         last_id = entry_id

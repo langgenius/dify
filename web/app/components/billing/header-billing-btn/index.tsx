@@ -6,10 +6,10 @@ import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../type'
 import UpgradeBtn from '../upgrade-btn'
 
-type Props = {
+type Props = Readonly<{
   onClick?: () => void
   isDisplayOnly?: boolean
-}
+}>
 
 const HeaderBillingBtn: FC<Props> = ({
   onClick,

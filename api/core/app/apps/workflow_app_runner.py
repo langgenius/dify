@@ -104,7 +104,7 @@ class WorkflowBasedAppRunner:
 
     @staticmethod
     def _resolve_user_from(invoke_from: InvokeFrom) -> UserFrom:
-        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}:
+        if invoke_from.runs_as_account():
             return UserFrom.ACCOUNT
         return UserFrom.END_USER
 
@@ -118,6 +118,7 @@ class WorkflowBasedAppRunner:
         tenant_id: str = "",
         user_id: str = "",
         root_node_id: str | None = None,
+        trace_session_id: str | None = None,
     ) -> Graph:
         """
         Init graph
@@ -138,6 +139,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
+            trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow_id,
@@ -171,6 +173,7 @@ class WorkflowBasedAppRunner:
         single_loop_run: Any | None = None,
         *,
         user_id: str,
+        trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
         """
         Prepare graph, variable pool, and runtime state for single node execution
@@ -208,6 +211,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="iteration_id",
                 node_type_label="iteration",
                 user_id=user_id,
+                trace_session_id=trace_session_id,
             )
         elif single_loop_run:
             graph, variable_pool = self._get_graph_and_variable_pool_for_single_node_run(
@@ -218,6 +222,7 @@ class WorkflowBasedAppRunner:
                 node_type_filter_key="loop_id",
                 node_type_label="loop",
                 user_id=user_id,
+                trace_session_id=trace_session_id,
             )
         else:
             raise ValueError("Neither single_iteration_run nor single_loop_run is specified")
@@ -236,6 +241,7 @@ class WorkflowBasedAppRunner:
         node_type_label: str = "node",  # 'iteration' or 'loop' for error messages
         *,
         user_id: str = "",
+        trace_session_id: str | None = None,
     ) -> tuple[Graph, VariablePool]:
         """
         Get graph and variable pool for single node execution (iteration or loop).
@@ -301,6 +307,7 @@ class WorkflowBasedAppRunner:
             user_id=user_id,
             user_from=UserFrom.ACCOUNT,
             invoke_from=InvokeFrom.DEBUGGER,
+            trace_session_id=trace_session_id,
         )
         graph_init_context = DifyGraphInitContext(
             workflow_id=workflow.id,

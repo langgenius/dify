@@ -5,6 +5,7 @@ import { useQueryState } from 'nuqs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
+import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 // Import mocked modules for assertions
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
@@ -41,15 +42,54 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: true,
     isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: { current_version: '1.0.0' },
+    workspacePermissionKeys: ['plugin.install', 'plugin.manage', 'plugin.debug', 'plugin.plugin_preferences'],
   }),
 }))
 
 vi.mock('@/service/use-plugins', () => ({
+  hasPluginPermission: (permission: string | undefined, isAdmin: boolean) => {
+    if (!permission)
+      return false
+    if (permission === 'noone')
+      return false
+    if (permission === 'everyone')
+      return true
+    return isAdmin
+  },
   useReferenceSettings: () => ({
     data: {
       permission: {
         install_permission: 'everyone',
         debug_permission: 'admins',
+      },
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
+      },
+    },
+  }),
+  usePluginPermissionSettings: () => ({
+    data: {
+      install_permission: 'everyone',
+      debug_permission: 'admins',
+    },
+  }),
+  useMutationPluginPermissionSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  usePluginAutoUpgradeSettings: () => ({
+    data: {
+      auto_upgrade: {
+        strategy_setting: 'fix_only',
+        upgrade_time_of_day: 0,
+        upgrade_mode: 'all',
+        exclude_plugins: [],
+        include_plugins: [],
       },
     },
   }),
@@ -184,6 +224,20 @@ describe('PluginPage Component', () => {
       expect(screen.getByText(/requestAPlugin/i)).toBeInTheDocument()
     })
 
+    it('should use plugins as document title on plugins tab', () => {
+      vi.mocked(useQueryState).mockReturnValue(['plugins', vi.fn()])
+
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+      expect(useDocumentTitle).toHaveBeenCalledWith('plugin.metadata.title')
+    })
+
+    it('should use marketplace as document title when exploring marketplace', () => {
+      vi.mocked(useQueryState).mockReturnValue(['discover', vi.fn()])
+
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+      expect(useDocumentTitle).toHaveBeenCalledWith('common.mainNav.marketplace')
+    })
+
     it('should render TabSlider', () => {
       render(<PluginPageWithContext {...createDefaultProps()} />)
       // TabSlider renders tab options
@@ -274,12 +328,34 @@ describe('PluginPage Component', () => {
     it('should use noop for file handlers when canManagement is false', () => {
       // Override mock to disable management permission
       vi.doMock('@/service/use-plugins', () => ({
+        hasPluginPermission: (permission: string | undefined, isAdmin: boolean) => {
+          if (!permission)
+            return false
+          if (permission === 'noone')
+            return false
+          if (permission === 'everyone')
+            return true
+          return isAdmin
+        },
         useReferenceSettings: () => ({
           data: {
             permission: {
               install_permission: 'noone',
               debug_permission: 'noone',
             },
+            auto_upgrade: {
+              strategy_setting: 'fix_only',
+              upgrade_time_of_day: 0,
+              upgrade_mode: 'all',
+              exclude_plugins: [],
+              include_plugins: [],
+            },
+          },
+        }),
+        usePluginPermissionSettings: () => ({
+          data: {
+            install_permission: 'noone',
+            debug_permission: 'noone',
           },
         }),
         useMutationReferenceSettings: () => ({

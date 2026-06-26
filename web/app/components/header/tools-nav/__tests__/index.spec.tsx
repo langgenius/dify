@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import ToolsNav from '../index'
+import { ToolsNav } from '../index'
 
 const mockUseSelectedLayoutSegment = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -28,7 +28,7 @@ describe('ToolsNav', () => {
       render(<ToolsNav />)
 
       const link = screen.getByRole('link')
-      expect(link).toHaveAttribute('href', '/tools')
+      expect(link).toHaveAttribute('href', '/integrations/tools/built-in')
       expect(screen.getByText('common.menus.tools')).toBeInTheDocument()
 
       expect(screen.getByTestId('icon-hammer-line')).toBeInTheDocument()
@@ -56,6 +56,15 @@ describe('ToolsNav', () => {
 
       expect(screen.getByTestId('icon-hammer-fill')).toBeInTheDocument()
       expect(screen.queryByTestId('icon-hammer-line')).not.toBeInTheDocument()
+    })
+
+    it('should render active state for the integrations segment', () => {
+      mockUseSelectedLayoutSegment.mockReturnValue('integrations')
+
+      render(<ToolsNav />)
+
+      expect(screen.getByRole('link')).toHaveClass('bg-components-main-nav-nav-button-bg-active')
+      expect(screen.getByTestId('icon-hammer-fill')).toBeInTheDocument()
     })
   })
 

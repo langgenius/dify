@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any, cast
 
+from sqlalchemy.orm import scoped_session
+
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.features.opening_statement.manager import OpeningStatementConfigManager
 from core.app.app_config.features.retrieval_resource.manager import RetrievalResourceConfigManager
@@ -21,7 +23,6 @@ from core.app.app_config.features.suggested_questions_after_answer.manager impor
     SuggestedQuestionsAfterAnswerConfigManager,
 )
 from core.app.app_config.features.text_to_speech.manager import TextToSpeechConfigManager
-from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.account import Account
 from models.model import App, AppModelConfig, AppModelConfigDict
@@ -67,7 +68,9 @@ class AgentAppFeatureConfigService:
         return cast(AppModelConfigDict, filtered)
 
     @classmethod
-    def update_features(cls, *, app_model: App, account: Account, config: dict[str, Any]) -> AppModelConfig:
+    def update_features(
+        cls, *, app_model: App, account: Account, config: dict[str, Any], session: scoped_session
+    ) -> AppModelConfig:
         """Persist the presentation features as a new app_model_config version.
 
         Returns the new ``AppModelConfig`` row (now referenced by the app); the
@@ -82,13 +85,13 @@ class AgentAppFeatureConfigService:
             updated_by=account.id,
         ).from_model_config_dict(validated)
 
-        db.session.add(new_config)
-        db.session.flush()
+        session.add(new_config)
+        session.flush()
 
         app_model.app_model_config_id = new_config.id
         app_model.updated_by = account.id
         app_model.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         return new_config
 

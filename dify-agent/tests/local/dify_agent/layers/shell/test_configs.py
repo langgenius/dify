@@ -43,7 +43,10 @@ def test_shell_layer_config_accepts_agent_soul_shell_settings() -> None:
     config = DifyShellLayerConfig(
         cli_tools=[
             DifyShellCliToolConfig(
-                name="ripgrep", install_commands=["  apt-get update  ", "", "apt-get install -y ripgrep"]
+                name="ripgrep",
+                install_commands=["  apt-get update  ", "", "apt-get install -y ripgrep"],
+                env=[DifyShellEnvVarConfig(name="RG_CONFIG_PATH", value="/workspace/.ripgreprc")],
+                secret_refs=[DifyShellSecretRefConfig(name="GITHUB_TOKEN", ref="credential-2")],
             )
         ],
         env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo")],
@@ -52,6 +55,8 @@ def test_shell_layer_config_accepts_agent_soul_shell_settings() -> None:
     )
 
     assert config.cli_tools[0].install_commands == ["apt-get update", "apt-get install -y ripgrep"]
+    assert config.cli_tools[0].env[0].name == "RG_CONFIG_PATH"
+    assert config.cli_tools[0].secret_refs[0].ref == "credential-2"
     assert config.env[0].name == "PROJECT_NAME"
     assert config.secret_refs[0].ref == "credential-1"
     assert config.sandbox is not None

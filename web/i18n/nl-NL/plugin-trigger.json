@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} INCLUDED",
-  "events.description": "Events that this trigger plugin can subscribe to",
+  "events.description": "Events that this trigger integratie can subscribe to",
   "events.empty": "No events available",
   "events.event": "Event",
   "events.events": "Events",

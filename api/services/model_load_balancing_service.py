@@ -66,7 +66,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Enable model load balancing
-        provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType(model_type))
 
     def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
         """
@@ -87,7 +87,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # disable model load balancing
-        provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType(model_type))
 
     def get_load_balancing_configs(
         self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
@@ -109,7 +109,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         # Get provider model setting
         provider_model_setting = provider_configuration.get_provider_model_setting(
@@ -250,7 +250,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         # Get load balancing configurations
         load_balancing_model_config = db.session.scalar(
@@ -338,7 +338,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
@@ -524,7 +524,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = ModelType(model_type)
 
         load_balancing_model_config = None
         if config_id:

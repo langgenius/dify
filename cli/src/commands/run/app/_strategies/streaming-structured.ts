@@ -1,16 +1,14 @@
 import type { RunContext, RunStrategy } from './index'
 import type { SseEvent } from '@/http/sse'
 import { buildRunBody } from '@/api/app-run'
-import { chatConversationHint, newAppRunObject, RUN_MODES } from '@/commands/run/app/handlers'
+import { CHAT_MODES, chatConversationHint, newAppRunObject, RUN_MODES } from '@/commands/run/app/handlers'
 import { renderHitlHint, renderHitlOutput } from '@/commands/run/app/hitl-render'
 import { collect, HitlPauseError } from '@/commands/run/app/sse-collector'
 import { formatted, stringifyOutput } from '@/framework/output'
 import { handle, unhandle } from '@/sys/index'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
 import { startSpinner } from '@/sys/io/spinner'
-import { extractThinkBlocks, stripThinkBlocks } from '@/sys/io/think-filter'
-
-const CHAT_MODES: ReadonlySet<string> = new Set([RUN_MODES.Chat, RUN_MODES.AgentChat, RUN_MODES.AdvancedChat])
+import { extractThinkBlocks, filterThinkInOutputs, stripThinkBlocks } from '@/sys/io/think-filter'
 
 async function* captureTaskId(
   iter: AsyncIterable<SseEvent>,
@@ -56,7 +54,7 @@ export class StreamingStructuredStrategy implements RunStrategy {
 
     let resp: Record<string, unknown>
     try {
-      const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal })
+      const events = await ctx.runClient.runStream(opts.appId, body, { signal: ctrl.signal, retryOnRateLimit: opts.retryOnRateLimit })
       const wrappedEvents = captureTaskId(events, (id) => {
         taskId = id
       })
@@ -86,6 +84,18 @@ export class StreamingStructuredStrategy implements RunStrategy {
       }
       else {
         processedResp = { ...processedResp, answer: stripThinkBlocks(processedResp.answer) }
+      }
+    }
+    else if (mode === RUN_MODES.Workflow) {
+      const data = processedResp.data
+      if (data !== null && typeof data === 'object' && 'outputs' in data) {
+        const raw = (data as { outputs: unknown }).outputs
+        if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+          const { outputs, thinking } = filterThinkInOutputs(raw as Record<string, unknown>, ctx.think)
+          if (ctx.think && thinking !== '')
+            deps.io.err.write(`${thinking}\n`)
+          processedResp = { ...processedResp, data: { ...(data as Record<string, unknown>), outputs } }
+        }
       }
     }
 

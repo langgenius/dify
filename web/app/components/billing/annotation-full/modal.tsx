@@ -9,10 +9,10 @@ import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 import Usage from './usage'
 
-type Props = {
+type Props = Readonly<{
   show: boolean
   onHide: () => void
-}
+}>
 const AnnotationFullModal: FC<Props> = ({
   show,
   onHide,

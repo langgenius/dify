@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
+import pytest
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -45,7 +46,8 @@ class TestGetPermission:
         assert result.install_permission == TenantPluginPermission.InstallPermission.ADMINS
         assert result.debug_permission == TenantPluginPermission.DebugPermission.EVERYONE
 
-    def test_returns_none_when_not_found(self, db_session_with_containers: Session) -> None:
+    @pytest.mark.usefixtures("flask_app_with_containers")
+    def test_returns_none_when_not_found(self) -> None:
         result = PluginPermissionService.get_permission(_tenant_id())
 
         assert result is None

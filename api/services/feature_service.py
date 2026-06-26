@@ -160,6 +160,7 @@ class PluginManagerModel(FeatureResponseModel):
 
 
 class SystemFeatureModel(FeatureResponseModel):
+    enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -180,6 +181,7 @@ class SystemFeatureModel(FeatureResponseModel):
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+    rbac_enabled: bool = False
 
 
 class FeatureService:
@@ -246,6 +248,7 @@ class FeatureService:
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
+        system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
 
@@ -418,6 +421,9 @@ class FeatureService:
 
         if "IsAllowCreateWorkspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
+
+        if "EnableAppDeploy" in enterprise_info:
+            features.enable_app_deploy = enterprise_info["EnableAppDeploy"]
 
         if "Branding" in enterprise_info:
             features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")

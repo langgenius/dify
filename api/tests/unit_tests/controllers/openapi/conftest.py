@@ -35,7 +35,7 @@ def _stub_execute(
 
 
 @pytest.fixture
-def bypass_pipeline(monkeypatch):
+def bypass_pipeline(monkeypatch: pytest.MonkeyPatch):
     """Stub PipelineRouter._execute so endpoints skip real auth at request time.
 
     Module-level @auth_router.guard(...) captures the real router at import

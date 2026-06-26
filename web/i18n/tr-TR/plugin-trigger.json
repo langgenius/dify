@@ -1,6 +1,6 @@
 {
   "events.actionNum": "{{num}} {{event}} DAHİL",
-  "events.description": "Bu tetikleyici eklentisinin abone olabileceği etkinlikler",
+  "events.description": "Bu tetikleyici entegrasyonsinin abone olabileceği etkinlikler",
   "events.empty": "Hiç etkinlik yok",
   "events.event": "Etkinlik",
   "events.events": "Etkinlikler",

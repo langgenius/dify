@@ -27,7 +27,7 @@ import {
 import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 import style from './style.module.css'
 
-type Props = {
+type Props = Readonly<{
   siteInfo?: SiteInfo
   isShow: boolean
   onClose: () => void
@@ -35,7 +35,7 @@ type Props = {
   appBaseUrl?: string
   hiddenInputs?: WorkflowHiddenStartVariable[]
   className?: string
-}
+}>
 
 const OPTION_KEYS = ['iframe', 'scripts', 'chromePlugin'] as const
 const prefixEmbedded = 'overview.appInfo.embedded'

@@ -30,6 +30,11 @@ class CelerySSLOptionsDict(TypedDict):
     ssl_keyfile: str | None
 
 
+class CeleryBeatScheduleEntry(TypedDict):
+    task: str
+    schedule: crontab | timedelta
+
+
 def get_celery_ssl_options() -> CelerySSLOptionsDict | None:
     """Get SSL configuration for Celery broker/backend connections."""
     # Only apply SSL if we're using Redis as broker/backend
@@ -148,11 +153,12 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trigger_processing_tasks",  # async trigger processing
         "tasks.generate_summary_index_task",  # summary index generation
         "tasks.regenerate_summary_index_task",  # summary index regeneration
+        "tasks.app_generate.resume_agent_app_task",  # ENG-635: Agent v2 chat ask_human resume
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
-    beat_schedule = {}
+    beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")
         beat_schedule["clean_embedding_cache_task"] = {

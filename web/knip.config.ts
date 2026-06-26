@@ -13,8 +13,14 @@ const config: KnipConfig = {
   ignore: [
     'public/**',
   ],
+  ignoreFiles: [
+    'features/agent-v2/agent-detail/configure/components/orchestrate/memory.tsx',
+    'features/agent-v2/agent-detail/configure/components/orchestrate/prompt-editor/option-menu.tsx',
+  ],
   ignoreBinaries: [
     'only-allow',
+    'pbcopy',
+    'which',
   ],
   ignoreDependencies: [
     '@iconify-json/*',

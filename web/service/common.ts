@@ -20,7 +20,6 @@ import type {
   ICurrentWorkspace,
   InitValidateStatusResponse,
   InvitationResponse,
-  IWorkspace,
   LangGeniusVersionResponse,
   Member,
   ModerateResponse,
@@ -141,14 +140,6 @@ export const updateCurrentWorkspace = ({ url, body }: { url: string, body: Recor
   return post<ICurrentWorkspace>(url, { body })
 }
 
-export const fetchWorkspaces = ({ url, params }: { url: string, params: Record<string, any> }): Promise<{ workspaces: IWorkspace[] }> => {
-  return get<{ workspaces: IWorkspace[] }>(url, { params })
-}
-
-export const switchWorkspace = ({ url, body }: { url: string, body: Record<string, any> }): Promise<CommonResponse & { new_tenant: IWorkspace }> => {
-  return post<CommonResponse & { new_tenant: IWorkspace }>(url, { body })
-}
-
 export const updateWorkspaceInfo = ({ url, body }: { url: string, body: Record<string, any> }): Promise<ICurrentWorkspace> => {
   return post<ICurrentWorkspace>(url, { body })
 }
@@ -176,11 +167,26 @@ export const updatePluginProviderAIKey = ({ url, body }: { url: string, body: { 
   return post<UpdateOpenAIKeyResponse>(url, { body })
 }
 
-export const invitationCheck = ({ url, params }: { url: string, params: { workspace_id?: string, email?: string, token: string } }): Promise<CommonResponse & { is_valid: boolean, data: { workspace_name: string, email: string, workspace_id: string } }> => {
-  return get<CommonResponse & { is_valid: boolean, data: { workspace_name: string, email: string, workspace_id: string } }>(url, { params })
+type InvitationCheckData = {
+  workspace_name: string
+  email: string
+  workspace_id: string
+  account_status?: string
+  requires_setup?: boolean
 }
 
-export const activateMember = ({ url, body }: { url: string, body: any }): Promise<LoginResponse> => {
+type ActivateMemberBody = {
+  token: string
+  name?: string
+  interface_language?: string
+  timezone?: string
+}
+
+export const invitationCheck = ({ url, params }: { url: string, params: { workspace_id?: string, email?: string, token: string } }): Promise<CommonResponse & { is_valid: boolean, data: InvitationCheckData }> => {
+  return get<CommonResponse & { is_valid: boolean, data: InvitationCheckData }>(url, { params })
+}
+
+export const activateMember = ({ url, body }: { url: string, body: ActivateMemberBody }): Promise<LoginResponse> => {
   return post<LoginResponse>(url, { body })
 }
 

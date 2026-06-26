@@ -6,7 +6,7 @@ import { renderHook } from '@testing-library/react'
  * and automatic error handling when context is used outside of its provider.
  *
  * Two variants are provided:
- * - createCtx: Standard React context using useContext/createContext
+ * - createCtx: Standard React context using React's use/createContext
  * - createSelectorCtx: Context with selector support using use-context-selector library
  */
 import * as React from 'react'

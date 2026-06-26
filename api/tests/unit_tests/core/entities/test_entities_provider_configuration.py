@@ -433,10 +433,9 @@ def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
     mock_model_type_instance = Mock()
     mock_schema = _build_ai_model("gpt-4o")
     mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = configuration.provider
-    mock_factory.get_model_schema.return_value = mock_schema
     mock_assembly = Mock()
     mock_assembly.model_runtime = Mock()
+    mock_assembly.model_runtime.get_model_schema.return_value = mock_schema
     mock_assembly.model_provider_factory = mock_factory
 
     with (
@@ -455,13 +454,12 @@ def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
     assert model_type_instance is mock_model_type_instance
     assert model_schema is mock_schema
     assert mock_assembly_builder.call_count == 2
-    mock_factory.get_provider_schema.assert_called_once_with(provider="openai")
     mock_model_builder.assert_called_once_with(
         runtime=mock_assembly.model_runtime,
         provider_schema=configuration.provider,
         model_type=ModelType.LLM,
     )
-    mock_factory.get_model_schema.assert_called_once_with(
+    mock_assembly.model_runtime.get_model_schema.assert_called_once_with(
         provider="openai",
         model_type=ModelType.LLM,
         model="gpt-4o",
@@ -472,18 +470,13 @@ def test_get_model_type_instance_and_schema_delegate_to_factory() -> None:
 def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> None:
     configuration = _build_provider_configuration()
     bound_runtime = Mock()
+    bound_runtime.get_model_schema.return_value = _build_ai_model("gpt-4o")
     configuration.bind_model_runtime(bound_runtime)
 
     mock_model_type_instance = Mock()
-    mock_schema = _build_ai_model("gpt-4o")
-    mock_factory = Mock()
-    mock_factory.get_provider_schema.return_value = configuration.provider
-    mock_factory.get_model_schema.return_value = mock_schema
 
     with (
-        patch(
-            "core.entities.provider_configuration.ModelProviderFactory", return_value=mock_factory
-        ) as mock_factory_cls,
+        patch("core.entities.provider_configuration.ModelProviderFactory") as mock_factory_cls,
         patch("core.entities.provider_configuration.create_plugin_model_assembly") as mock_assembly_builder,
         patch(
             "core.entities.provider_configuration.create_model_type_instance",
@@ -494,15 +487,19 @@ def test_get_model_type_instance_and_schema_reuse_bound_runtime_factory() -> Non
         model_schema = configuration.get_model_schema(ModelType.LLM, "gpt-4o", {"api_key": "x"})
 
     assert model_type_instance is mock_model_type_instance
-    assert model_schema is mock_schema
-    assert mock_factory_cls.call_count == 2
-    mock_factory_cls.assert_called_with(runtime=bound_runtime)
+    assert model_schema == bound_runtime.get_model_schema.return_value
+    mock_factory_cls.assert_not_called()
     mock_assembly_builder.assert_not_called()
-    mock_factory.get_provider_schema.assert_called_once_with(provider="openai")
     mock_model_builder.assert_called_once_with(
         runtime=bound_runtime,
         provider_schema=configuration.provider,
         model_type=ModelType.LLM,
+    )
+    bound_runtime.get_model_schema.assert_called_once_with(
+        provider="openai",
+        model_type=ModelType.LLM,
+        model="gpt-4o",
+        credentials={"api_key": "x"},
     )
 
 
@@ -542,6 +539,99 @@ def test_get_provider_models_system_deduplicates_sorts_and_filters_active() -> N
     assert [model.model for model in all_models] == ["b-model", "a-model"]
     assert [model.status for model in all_models] == [ModelStatus.ACTIVE, ModelStatus.DISABLED]
     assert [model.model for model in active_models] == ["b-model"]
+
+
+def test_get_provider_models_system_filters_requested_model() -> None:
+    configuration = _build_provider_configuration()
+    provider_schema = ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        models=[_build_ai_model("a-model"), _build_ai_model("target-model"), _build_ai_model("b-model")],
+    )
+    mock_factory = Mock()
+    mock_factory.get_provider_schema.return_value = provider_schema
+
+    with patch(
+        "core.entities.provider_configuration.create_plugin_model_assembly",
+        return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
+    ):
+        models = configuration.get_provider_models(
+            model_type=ModelType.LLM,
+            only_active=False,
+            model="target-model",
+        )
+
+    assert [model.model for model in models] == ["target-model"]
+
+
+def test_get_provider_models_system_customizable_filters_requested_restricted_model() -> None:
+    provider = ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.CUSTOMIZABLE_MODEL],
+    )
+    system_configuration = SystemConfiguration(
+        enabled=True,
+        credentials={"api_key": "test-key"},
+        current_quota_type=ProviderQuotaType.TRIAL,
+        quota_configurations=[
+            QuotaConfiguration(
+                quota_type=ProviderQuotaType.TRIAL,
+                quota_unit=QuotaUnit.TOKENS,
+                quota_limit=1_000,
+                quota_used=0,
+                is_valid=True,
+                restrict_models=[
+                    RestrictModel(model="target-model", base_model_name="base-model", model_type=ModelType.LLM),
+                    RestrictModel(model="other-model", base_model_name="base-model", model_type=ModelType.LLM),
+                ],
+            )
+        ],
+    )
+    provider_schema = ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        models=[],
+    )
+    mock_factory = Mock()
+    mock_factory.get_provider_schema.return_value = provider_schema
+
+    with patch("core.entities.provider_configuration.original_provider_configurate_methods", {}):
+        configuration = ProviderConfiguration(
+            tenant_id="tenant-1",
+            provider=provider,
+            preferred_provider_type=ProviderType.SYSTEM,
+            using_provider_type=ProviderType.SYSTEM,
+            system_configuration=system_configuration,
+            custom_configuration=CustomConfiguration(provider=None, models=[]),
+            model_settings=[],
+        )
+
+    with (
+        patch(
+            "core.entities.provider_configuration.create_plugin_model_assembly",
+            return_value=SimpleNamespace(model_runtime=Mock(), model_provider_factory=mock_factory),
+        ),
+        patch.object(
+            ProviderConfiguration,
+            "get_model_schema",
+            side_effect=lambda *args, **kwargs: _build_ai_model(kwargs["model"]),
+        ) as mock_get_model_schema,
+    ):
+        models = configuration.get_provider_models(
+            model_type=ModelType.LLM,
+            only_active=False,
+            model="target-model",
+        )
+
+    assert [model.model for model in models] == ["target-model"]
+    mock_get_model_schema.assert_called_once()
+    assert mock_get_model_schema.call_args.kwargs["model"] == "target-model"
 
 
 def test_get_custom_provider_models_sets_status_for_removed_credentials_and_invalid_lb_configs() -> None:
@@ -609,6 +699,48 @@ def test_get_custom_provider_models_sets_status_for_removed_credentials_and_inva
     assert status_map["custom-model"] == ModelStatus.CREDENTIAL_REMOVED
     assert invalid_lb_map["base-model"] is True
     assert invalid_lb_map["custom-model"] is True
+
+
+def test_get_custom_provider_models_filters_requested_base_model() -> None:
+    configuration = _build_provider_configuration()
+    configuration.using_provider_type = ProviderType.CUSTOM
+    configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={"api_key": "provider-key"})
+    provider_schema = ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        models=[_build_ai_model("base-model"), _build_ai_model("target-model")],
+    )
+
+    models = configuration._get_custom_provider_models(
+        model_types=[ModelType.LLM],
+        provider_schema=provider_schema,
+        model_setting_map={},
+        model="target-model",
+    )
+
+    assert [model.model for model in models] == ["target-model"]
+
+
+def test_get_provider_models_reuses_cached_provider_schema() -> None:
+    configuration = _build_provider_configuration()
+    provider_schema = ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        models=[_build_ai_model("a-model"), _build_ai_model("b-model")],
+    )
+    configuration.provider = provider_schema
+
+    with patch(
+        "core.entities.provider_configuration.create_plugin_model_assembly",
+    ) as mock_assembly_builder:
+        configuration.get_provider_models(model_type=ModelType.LLM, model="a-model")
+        configuration.get_provider_models(model_type=ModelType.LLM, model="b-model")
+
+    mock_assembly_builder.assert_not_called()
 
 
 def test_validator_adds_predefined_model_for_customizable_provider_with_restrictions() -> None:
@@ -1402,25 +1534,22 @@ def test_system_and_custom_provider_model_helpers_cover_remaining_skip_paths() -
             return _build_ai_model("embed-model", model_type=ModelType.TEXT_EMBEDDING)
         return _build_ai_model("target")
 
-    with patch(
-        "core.entities.provider_configuration.original_provider_configurate_methods",
-        {"openai": [ConfigurateMethod.CUSTOMIZABLE_MODEL]},
-    ):
-        with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_system_schema):
-            system_models = configuration._get_system_provider_models(
-                model_types=[ModelType.LLM],
-                provider_schema=provider_schema,
-                model_setting_map={
-                    ModelType.LLM: {
-                        "target": ModelSettings(
-                            model="target",
-                            model_type=ModelType.LLM,
-                            enabled=False,
-                            load_balancing_configs=[],
-                        )
-                    }
-                },
-            )
+    configuration._original_provider_configurate_methods = (ConfigurateMethod.CUSTOMIZABLE_MODEL,)
+    with patch.object(ProviderConfiguration, "get_model_schema", side_effect=_system_schema):
+        system_models = configuration._get_system_provider_models(
+            model_types=[ModelType.LLM],
+            provider_schema=provider_schema,
+            model_setting_map={
+                ModelType.LLM: {
+                    "target": ModelSettings(
+                        model="target",
+                        model_type=ModelType.LLM,
+                        enabled=False,
+                        load_balancing_configs=[],
+                    )
+                }
+            },
+        )
     assert any(model.model == "target" and model.status == ModelStatus.DISABLED for model in system_models)
 
     configuration.using_provider_type = ProviderType.CUSTOM

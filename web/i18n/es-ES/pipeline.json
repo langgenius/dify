@@ -4,7 +4,7 @@
   "common.goToAddDocuments": "Ir a agregar documentos",
   "common.preparingDataSource": "Preparar el origen de datos",
   "common.processing": "Tratamiento",
-  "common.publishAs": "Publicar como una canalización de conocimiento",
+  "common.publishAs": "Publicar como canalización de conocimiento",
   "common.publishAsPipeline.description": "Descripción del conocimiento",
   "common.publishAsPipeline.descriptionPlaceholder": "Ingrese la descripción de este canal de conocimiento. (Opcional)",
   "common.publishAsPipeline.name": "Nombre e icono de la tubería",

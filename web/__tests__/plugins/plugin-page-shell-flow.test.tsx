@@ -34,10 +34,19 @@ vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceManager: false,
     isCurrentWorkspaceOwner: false,
+    langGeniusVersionInfo: {
+      current_version: '1.0.0',
+    },
+    workspacePermissionKeys: [
+      'plugin.install',
+      'plugin.manage',
+      'plugin.plugin_preferences',
+    ],
   }),
 }))
 
 vi.mock('@/service/use-plugins', () => ({
+  hasPluginPermission: () => true,
   useReferenceSettings: () => ({
     data: {
       permission: {
@@ -51,6 +60,24 @@ vi.mock('@/service/use-plugins', () => ({
     isPending: false,
   }),
   useInvalidateReferenceSettings: () => vi.fn(),
+  usePluginPermissionSettings: () => ({
+    data: {
+      install_permission: 'everyone',
+      debug_permission: 'noOne',
+    },
+  }),
+  useMutationPluginPermissionSettings: () => ({
+    mutate: vi.fn(),
+    isPending: false,
+  }),
+  usePluginAutoUpgradeSettings: () => ({
+    data: {
+      auto_upgrade: false,
+      strategy_setting: {},
+      exclude_plugins: [],
+      include_plugins: [],
+    },
+  }),
   useInstalledPluginList: () => ({
     data: {
       total: 2,
