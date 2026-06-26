@@ -365,8 +365,9 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails() -> None:
         patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
-        patch("services.billing_service.BillingService.quota_release", side_effect=RuntimeError("release failed"))
-        as quota_release,
+        patch(
+            "services.billing_service.BillingService.quota_release", side_effect=RuntimeError("release failed")
+        ) as quota_release,
         patch("services.credit_pool_service.logger.warning") as logger_warning,
     ):
         quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
