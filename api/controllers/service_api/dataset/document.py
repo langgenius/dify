@@ -58,7 +58,8 @@ from fields.document_fields import (
     DocumentStatusListResponse,
 )
 from libs.helper import dump_response
-from libs.login import current_user
+from controllers.service_api.wraps import with_current_user
+from models.account import Account
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import SegmentStatus
 from services.dataset_service import DatasetService, DocumentService
@@ -341,7 +342,7 @@ register_response_schema_models(
 )
 
 
-def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
+def _create_document_by_text(current_user: Account, tenant_id: str, dataset_id: UUID) -> tuple[Mapping[str, object], int]:
     """Create a document from text for both canonical and legacy routes."""
     payload = DocumentTextCreatePayload.model_validate(service_api_ns.payload or {})
     args = payload.model_dump(exclude_none=True)
@@ -408,7 +409,7 @@ def _create_document_by_text(tenant_id: str, dataset_id: UUID) -> tuple[Mapping[
     return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
 
 
-def _update_document_by_text(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
+def _update_document_by_text(current_user: Account, tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
     """Update a document from text for both canonical and legacy routes."""
     payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
     dataset = db.session.scalar(
@@ -506,9 +507,10 @@ class DocumentAddByTextApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str, dataset_id: UUID):
         """Create document by text."""
-        return _create_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id)
+        return _create_document_by_text(current_user=current_user, tenant_id=tenant_id, dataset_id=dataset_id)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/document/create_by_text")
@@ -538,9 +540,10 @@ class DeprecatedDocumentAddByTextApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str, dataset_id: UUID):
         """Create document by text through the deprecated underscore alias."""
-        return _create_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id)
+        return _create_document_by_text(current_user=current_user, tenant_id=tenant_id, dataset_id=dataset_id)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-text")
@@ -582,9 +585,10 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
-        return _update_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
+        return _update_document_by_text(current_user=current_user, tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_text")
@@ -613,9 +617,10 @@ class DeprecatedDocumentUpdateByTextApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text through the deprecated underscore alias."""
-        return _update_document_by_text(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
+        return _update_document_by_text(current_user=current_user, tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
 
 @service_api_ns.route(
@@ -672,7 +677,8 @@ class DocumentAddByFileApi(DatasetApiResource):
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_resource_check("documents", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id, dataset_id: UUID):
         """Create document by upload file."""
         dataset = db.session.scalar(
             select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).limit(1)
@@ -763,7 +769,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         return dump_response(DocumentAndBatchResponse, {"document": document, "batch": batch}), 200
 
 
-def _update_document_by_file(tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
+def _update_document_by_file(current_user: Account, tenant_id: str, dataset_id: UUID, document_id: UUID) -> tuple[Mapping[str, object], int]:
     """Update a document from an uploaded file for canonical and deprecated routes."""
     dataset_id_str = str(dataset_id)
     tenant_id_str = str(tenant_id)
@@ -888,9 +894,10 @@ class DeprecatedDocumentUpdateByFileApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by file through the deprecated file-update aliases."""
-        return _update_document_by_file(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
+        return _update_document_by_file(current_user=current_user, tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents")
@@ -920,7 +927,8 @@ class DocumentListApi(DatasetApiResource):
     @service_api_ns.response(
         200, "Documents retrieved successfully", service_api_ns.models[DocumentListResponse.__name__]
     )
-    def get(self, tenant_id, dataset_id: UUID):
+    @with_current_user
+    def get(self, current_user: Account, tenant_id, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         tenant_id = str(tenant_id)
         query_params = DocumentListQuery.model_validate(request.args.to_dict())
@@ -994,7 +1002,8 @@ class DocumentBatchDownloadZipApi(DatasetApiResource):
     )
     @service_api_ns.response(200, "ZIP archive generated successfully")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id, dataset_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id, dataset_id: UUID):
         payload = DocumentBatchDownloadZipPayload.model_validate(service_api_ns.payload or {})
 
         upload_files, download_name = DocumentService.prepare_document_batch_download_zip(
@@ -1048,7 +1057,8 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         "Indexing status retrieved successfully",
         service_api_ns.models[DocumentStatusListResponse.__name__],
     )
-    def get(self, tenant_id, dataset_id: UUID, batch: str):
+    @with_current_user
+    def get(self, current_user: Account, tenant_id, dataset_id: UUID, batch: str):
         dataset_id_str = str(dataset_id)
         tenant_id = str(tenant_id)
         # get dataset
@@ -1132,7 +1142,8 @@ class DocumentDownloadApi(DatasetApiResource):
         service_api_ns.models[UrlResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def get(self, tenant_id, dataset_id: UUID, document_id: UUID):
+    @with_current_user
+    def get(self, current_user: Account, tenant_id, dataset_id: UUID, document_id: UUID):
         dataset = self.get_dataset(str(dataset_id), str(tenant_id))
         document = DocumentService.get_document(dataset.id, str(document_id))
 
@@ -1184,7 +1195,8 @@ class DocumentApi(DatasetApiResource):
         "Document retrieved successfully",
         service_api_ns.models[DocumentDetailResponse.__name__],
     )
-    def get(self, tenant_id, dataset_id: UUID, document_id: UUID):
+    @with_current_user
+    def get(self, current_user: Account, tenant_id, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
 
@@ -1304,9 +1316,10 @@ class DocumentApi(DatasetApiResource):
     )
     @cloud_edition_billing_resource_check("vector_space", "dataset")
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
+    @with_current_user
+    def patch(self, current_user: Account, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by file on the canonical document resource."""
-        return _update_document_by_file(tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
+        return _update_document_by_file(current_user=current_user, tenant_id=tenant_id, dataset_id=dataset_id, document_id=document_id)
 
     @service_api_ns.doc(
         summary="Delete Document",
@@ -1331,7 +1344,8 @@ class DocumentApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, tenant_id, dataset_id: UUID, document_id: UUID):
+    @with_current_user
+    def delete(self, current_user: Account, tenant_id, dataset_id: UUID, document_id: UUID):
         """Delete document."""
         document_id_str = str(document_id)
         dataset_id_str = str(dataset_id)

@@ -20,6 +20,16 @@ from inspect import unwrap
 from unittest.mock import ANY, Mock, patch
 
 import pytest
+
+@pytest.fixture(autouse=True)
+def mock_current_account_with_tenant_fixture(mocker):
+    from models.account import Account
+    from unittest.mock import Mock
+    mock_account = Mock()
+    mock_account.id = "user-1"
+    mock_account.current_tenant_id = "tenant-1"
+    mocker.patch("controllers.service_api.wraps.current_account_with_tenant", return_value=(mock_account, "tenant-1"))
+
 from flask import Flask
 from werkzeug.exceptions import NotFound
 
@@ -65,14 +75,16 @@ class TestDatasetMetadataCreatePost:
 
     @staticmethod
     def _call_post(api, **kwargs):
+        from unittest.mock import Mock
+        kwargs.setdefault('current_user', Mock())
         return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
-    @patch("controllers.service_api.dataset.metadata.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     def test_create_metadata_success(
         self,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_dataset_svc,
         mock_meta_svc,
         app: Flask,
@@ -195,14 +207,16 @@ class TestDatasetMetadataServiceApiPatch:
 
     @staticmethod
     def _call_patch(api, **kwargs):
+        from unittest.mock import Mock
+        kwargs.setdefault('current_user', Mock())
         return unwrap(api.patch)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
-    @patch("controllers.service_api.dataset.metadata.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     def test_update_metadata_name_success(
         self,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_dataset_svc,
         mock_meta_svc,
         app: Flask,
@@ -267,14 +281,16 @@ class TestDatasetMetadataServiceApiDelete:
 
     @staticmethod
     def _call_delete(api, **kwargs):
+        from unittest.mock import Mock
+        kwargs.setdefault('current_user', Mock())
         return unwrap(api.delete)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
-    @patch("controllers.service_api.dataset.metadata.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     def test_delete_metadata_success(
         self,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_dataset_svc,
         mock_meta_svc,
         app: Flask,
@@ -376,14 +392,16 @@ class TestDatasetMetadataBuiltInFieldAction:
 
     @staticmethod
     def _call_post(api, **kwargs):
+        from unittest.mock import Mock
+        kwargs.setdefault('current_user', Mock())
         return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
-    @patch("controllers.service_api.dataset.metadata.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     def test_enable_built_in_field(
         self,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_dataset_svc,
         mock_meta_svc,
         app: Flask,
@@ -412,10 +430,10 @@ class TestDatasetMetadataBuiltInFieldAction:
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
-    @patch("controllers.service_api.dataset.metadata.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     def test_disable_built_in_field(
         self,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_dataset_svc,
         mock_meta_svc,
         app: Flask,
@@ -479,14 +497,16 @@ class TestDocumentMetadataEditPost:
 
     @staticmethod
     def _call_post(api, **kwargs):
+        from unittest.mock import Mock
+        kwargs.setdefault('current_user', Mock())
         return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
-    @patch("controllers.service_api.dataset.metadata.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     def test_update_documents_metadata_success(
         self,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_dataset_svc,
         mock_meta_svc,
         app: Flask,

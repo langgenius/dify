@@ -16,9 +16,21 @@ Focus on:
 """
 
 import uuid
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, ANY
 
 import pytest
+
+@pytest.fixture(autouse=True)
+def mock_current_account_with_tenant_fixture(mocker):
+    from models.account import Account
+    from unittest.mock import Mock
+    mock_account = Mock()
+    mock_account.id = "user-1"
+    mock_account.current_tenant_id = "tenant-1"
+    # For magic mock if they set id etc.
+    # We will just patch it
+    mocker.patch("controllers.service_api.wraps.current_account_with_tenant", return_value=(mock_account, "tenant-1"))
+
 from flask import Flask
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -1030,7 +1042,7 @@ class TestDocumentAddByTextApi:
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.KnowledgeConfig")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1039,7 +1051,7 @@ class TestDocumentAddByTextApi:
         mock_validate_token,
         mock_feature_svc,
         mock_db,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_file_svc_cls,
         mock_knowledge_config,
         mock_doc_svc,
@@ -1047,13 +1059,14 @@ class TestDocumentAddByTextApi:
         mock_tenant,
         mock_dataset,
     ):
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, 'tenant-1')
         """Test successful document creation by text."""
         # Arrange — neutralise billing decorators
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
 
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset.indexing_technique = "economy"
-        mock_current_user.id = str(uuid.uuid4())
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.id = str(uuid.uuid4())
 
         mock_upload_file = Mock()
         mock_upload_file.id = str(uuid.uuid4())
@@ -1218,7 +1231,7 @@ class TestDocumentUpdateByTextApiPost:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1227,20 +1240,21 @@ class TestDocumentUpdateByTextApiPost:
         mock_validate_token,
         mock_feature_svc,
         mock_db,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_file_svc_cls,
         mock_doc_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, 'tenant-1')
         """Test successful document update by text."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
         mock_dataset.latest_process_rule = Mock()
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_current_user.id = "user-1"
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.id = "user-1"
         mock_upload = Mock()
         mock_upload.id = str(uuid.uuid4())
         mock_file_svc_cls.return_value.upload_text.return_value = mock_upload
@@ -1310,7 +1324,7 @@ class TestDocumentAddByFileApiPost:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1319,13 +1333,14 @@ class TestDocumentAddByFileApiPost:
         mock_validate_token,
         mock_feature_svc,
         mock_db,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_file_svc_cls,
         mock_doc_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, 'tenant-1')
         """Test successful document creation by file."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_dataset.provider = "vendor"
@@ -1335,7 +1350,7 @@ class TestDocumentAddByFileApiPost:
         mock_dataset.created_by_account = Mock()
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_current_user.id = "user-1"
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.id = "user-1"
         mock_upload = Mock()
         mock_upload.id = str(uuid.uuid4())
         mock_file_svc_cls.return_value.upload_file.return_value = mock_upload
@@ -1531,6 +1546,7 @@ class TestDocumentUpdateByFileApiPatch:
         assert status == 200
         assert response["batch"] == "batch-1"
         mock_update_document_by_file.assert_called_once_with(
+            current_user=ANY,
             tenant_id=mock_tenant.id,
             dataset_id=mock_dataset.id,
             document_id=doc_id,
@@ -1609,7 +1625,7 @@ class TestDocumentUpdateByFileApiPatch:
 
     @patch("controllers.service_api.dataset.document.DocumentService")
     @patch("controllers.service_api.dataset.document.FileService")
-    @patch("controllers.service_api.dataset.document.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     @patch("controllers.service_api.dataset.document.db")
     @patch("controllers.service_api.wraps.FeatureService")
     @patch("controllers.service_api.wraps.validate_and_get_api_token")
@@ -1618,13 +1634,14 @@ class TestDocumentUpdateByFileApiPatch:
         mock_validate_token,
         mock_feature_svc,
         mock_db,
-        mock_current_user,
+        mock_current_account_with_tenant,
         mock_file_svc_cls,
         mock_doc_svc,
         app: Flask,
         mock_tenant,
         mock_dataset,
     ):
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, 'tenant-1')
         """Test successful document update by file."""
         _setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
@@ -1634,7 +1651,7 @@ class TestDocumentUpdateByFileApiPatch:
         mock_dataset.created_by_account = Mock()
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_current_user.id = "user-1"
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.id = "user-1"
         mock_upload = Mock()
         mock_upload.id = str(uuid.uuid4())
         mock_file_svc_cls.return_value.upload_file.return_value = mock_upload

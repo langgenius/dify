@@ -4,7 +4,7 @@ import time
 from collections.abc import Callable
 from enum import StrEnum, auto
 from functools import wraps
-from typing import Protocol, cast, overload
+from typing import Protocol, cast, overload, Concatenate
 
 from flask import current_app, request
 from flask_login import user_logged_in
@@ -399,3 +399,18 @@ class DatasetApiResource(Resource):
             raise NotFound("Dataset not found.")
 
         return dataset
+
+
+from models.account import Account
+from libs.login import current_account_with_tenant
+
+def with_current_user[T, **P, R](
+    view: Callable[Concatenate[T, Account, P], R],
+) -> Callable[Concatenate[T, P], R]:
+    """Inject the current authenticated Account into the handler as the first argument after self."""
+    @wraps(view)
+    def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
+        current_user, _ = current_account_with_tenant()
+        return view(self, current_user, *args, **kwargs)
+
+    return decorated
