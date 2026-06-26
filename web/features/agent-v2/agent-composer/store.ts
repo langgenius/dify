@@ -1,7 +1,7 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigFormState } from './form-state'
 import isEqual from 'fast-deep-equal'
-import { atom, useAtomValue, useSetAtom } from 'jotai'
+import { atom, useSetAtom } from 'jotai'
 import { useLayoutEffect, useRef } from 'react'
 import { agentSoulConfigToFormState } from './conversions'
 import { defaultAgentSoulConfigFormState } from './form-state'
@@ -18,7 +18,7 @@ export const isAgentComposerDirtyAtom = atom((get) => {
   return !isEqual(draft, originalDraft ?? defaultAgentSoulConfigFormState)
 })
 
-const hasAgentComposerUnpublishedChangesAtom = atom((get) => {
+export const hasAgentComposerUnpublishedChangesAtom = atom((get) => {
   const publishedDraft = get(agentComposerPublishedDraftAtom)
   const draft = get(agentComposerDraftAtom)
 
@@ -88,8 +88,4 @@ export function useHydrateAgentSoulConfigDraft({
     originalConfig: config,
     waitForDraft: !!activeVersionId && !config,
   })
-}
-
-export function useHasAgentComposerUnpublishedChanges() {
-  return useAtomValue(hasAgentComposerUnpublishedChangesAtom)
 }
