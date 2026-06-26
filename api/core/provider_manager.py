@@ -489,7 +489,11 @@ def _load_provider_model_setting_cache_entries(tenant_id: str) -> list[_Provider
 
 def _load_provider_model_credential_cache_entries(tenant_id: str) -> list[_ProviderModelCredentialCacheEntry]:
     with session_factory.create_session() as session:
-        stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
+        stmt = (
+            select(ProviderModelCredential)
+            .where(ProviderModelCredential.tenant_id == tenant_id)
+            .order_by(ProviderModelCredential.created_at.desc())
+        )
         return [
             _ProviderModelCredentialCacheEntry.from_record(provider_model_credential)
             for provider_model_credential in session.scalars(stmt)
@@ -498,7 +502,11 @@ def _load_provider_model_credential_cache_entries(tenant_id: str) -> list[_Provi
 
 def _load_provider_credential_cache_entries(tenant_id: str) -> list[_ProviderCredentialCacheEntry]:
     with session_factory.create_session() as session:
-        stmt = select(ProviderCredential).where(ProviderCredential.tenant_id == tenant_id)
+        stmt = (
+            select(ProviderCredential)
+            .where(ProviderCredential.tenant_id == tenant_id)
+            .order_by(ProviderCredential.created_at.desc())
+        )
         return [
             _ProviderCredentialCacheEntry.from_record(provider_credential)
             for provider_credential in session.scalars(stmt)
