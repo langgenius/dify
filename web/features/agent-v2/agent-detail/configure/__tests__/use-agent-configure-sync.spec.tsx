@@ -182,6 +182,12 @@ describe('useAgentConfigureSync', () => {
       })
     })
 
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: false,
+      name: 'Agent',
+    })
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+
     await act(async () => {
       await vi.advanceTimersByTimeAsync(5000)
     })
