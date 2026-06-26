@@ -13,6 +13,7 @@ import { Plan } from '@/app/components/billing/type'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '@/app/components/explore/learn-dify/storage'
 import { useGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '@/app/components/step-by-step-tour/constants'
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
@@ -919,6 +920,53 @@ describe('MainNav', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
+  it('shows Step-by-step Tour switch in help menu and stores the current workspace override', async () => {
+    renderMainNav({ enable_learn_app: true })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })
+    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'false')
+
+    fireEvent.click(stepByStepTourItem)
+
+    await waitFor(() => {
+      expect(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)).toContain('"manuallyEnabledWorkspaceIds":["workspace-1"]')
+    })
+    expect(screen.getByRole('region', { name: 'Step-by-step Tour' })).toBeInTheDocument()
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '0 of 4 steps completed')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('restores the expanded Step-by-step Tour after toggling it off and on again', async () => {
+    renderMainNav({ enable_learn_app: true })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })
+
+    fireEvent.click(stepByStepTourItem)
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: 'Step-by-step Tour' })).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
+    const enabledStepByStepTourItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })
+
+    fireEvent.click(enabledStepByStepTourItem)
+
+    await waitFor(() => {
+      expect(screen.queryByRole('region', { name: 'Step-by-step Tour' })).not.toBeInTheDocument()
+    })
+
+    fireEvent.click(enabledStepByStepTourItem)
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: 'Step-by-step Tour' })).toBeVisible()
+    })
+    expect(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)).toContain('"manuallyEnabledWorkspaceIds":["workspace-1"]')
+  })
+
   it('hides Learn Dify switch in help menu when learn app is disabled', async () => {
     renderMainNav({ enable_learn_app: false })
 
@@ -937,6 +985,7 @@ describe('MainNav', () => {
       'common.mainNav.help.docs',
       'common.userProfile.roadmap',
       'common.mainNav.help.learnDify',
+      'common.mainNav.help.stepByStepTour',
       'common.userProfile.compliance',
       'common.userProfile.forum',
       'common.userProfile.community',

@@ -14,6 +14,7 @@ import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
+import StepByStepTourMount from '@/app/components/step-by-step-tour/mount'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
@@ -311,6 +312,9 @@ const MainNav = ({
             </div>
           )}
         </div>
+        {bottomNavigationExpanded && (
+          <StepByStepTourMount className="relative z-40 shrink-0 overflow-visible px-2 pb-2" />
+        )}
         <div className={cn(
           !bottomNavigationExpanded
             ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'

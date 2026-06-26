@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { Switch } from '@langgenius/dify-ui/switch'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,6 +21,10 @@ import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'
 import GithubStar from '@/app/components/header/github-star'
+import {
+  useSetStepByStepTourAccountState,
+  useStepByStepTourAccountStateValue,
+} from '@/app/components/step-by-step-tour/storage'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useDocLink } from '@/context/i18n'
@@ -44,6 +49,30 @@ const defaultTriggerIcon = (
   </svg>
 )
 
+const addWorkspaceId = (workspaceIds: string[], workspaceId: string) => {
+  if (workspaceIds.includes(workspaceId))
+    return workspaceIds
+
+  return [...workspaceIds, workspaceId]
+}
+
+const removeWorkspaceId = (workspaceIds: string[], workspaceId: string) =>
+  workspaceIds.filter(id => id !== workspaceId)
+
+const MenuSwitchIndicator = ({
+  checked,
+}: {
+  checked: boolean
+}) => (
+  <Switch
+    checked={checked}
+    readOnly
+    aria-hidden="true"
+    tabIndex={-1}
+    className="pointer-events-none"
+  />
+)
+
 const HelpMenu = ({
   triggerIcon = defaultTriggerIcon,
   triggerClassName,
@@ -51,12 +80,37 @@ const HelpMenu = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const { langGeniusVersionInfo, isCurrentWorkspaceOwner } = useAppContext()
+  const { langGeniusVersionInfo, isCurrentWorkspaceOwner, currentWorkspace } = useAppContext()
   const learnDifyHidden = useLearnDifyHiddenValue()
   const setLearnDifyHidden = useSetLearnDifyHidden()
+  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
+  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
   const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
+  const currentWorkspaceId = currentWorkspace.id
+  const stepByStepTourEnabled = !stepByStepTourAccountState.skipped
+    && !stepByStepTourAccountState.manuallyDisabledWorkspaceIds.includes(currentWorkspaceId)
+    && (
+      stepByStepTourAccountState.firstWorkspaceId === currentWorkspaceId
+      || stepByStepTourAccountState.manuallyEnabledWorkspaceIds.includes(currentWorkspaceId)
+    )
+
+  const handleStepByStepTourCheckedChange = (checked: boolean) => {
+    setStepByStepTourAccountState({
+      ...stepByStepTourAccountState,
+      skipped: checked ? false : stepByStepTourAccountState.skipped,
+      manuallyEnabledWorkspaceIds: checked
+        ? addWorkspaceId(stepByStepTourAccountState.manuallyEnabledWorkspaceIds, currentWorkspaceId)
+        : removeWorkspaceId(stepByStepTourAccountState.manuallyEnabledWorkspaceIds, currentWorkspaceId),
+      manuallyDisabledWorkspaceIds: checked
+        ? removeWorkspaceId(stepByStepTourAccountState.manuallyDisabledWorkspaceIds, currentWorkspaceId)
+        : addWorkspaceId(stepByStepTourAccountState.manuallyDisabledWorkspaceIds, currentWorkspaceId),
+    })
+
+    if (checked)
+      setOpen(false)
+  }
 
   if (systemFeatures.branding.enabled)
     return null
@@ -107,20 +161,21 @@ const HelpMenu = ({
                   <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
                     {t('mainNav.help.learnDify', { ns: 'common' })}
                   </span>
-                  <span
-                    aria-hidden
-                    className={cn(
-                      'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
-                      !learnDifyHidden ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
-                        !learnDifyHidden && 'translate-x-3.5',
-                      )}
-                    />
+                  <MenuSwitchIndicator checked={!learnDifyHidden} />
+                </DropdownMenuCheckboxItem>
+              )}
+              {IS_CLOUD_EDITION && (
+                <DropdownMenuCheckboxItem
+                  checked={stepByStepTourEnabled}
+                  closeOnClick={false}
+                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  onCheckedChange={handleStepByStepTourCheckedChange}
+                >
+                  <span aria-hidden className="i-custom-vender-line-education-book-open-01 size-4 shrink-0 text-text-tertiary" />
+                  <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
+                    {t('mainNav.help.stepByStepTour', { ns: 'common' })}
                   </span>
+                  <MenuSwitchIndicator checked={stepByStepTourEnabled} />
                 </DropdownMenuCheckboxItem>
               )}
               {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}

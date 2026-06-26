@@ -233,6 +233,7 @@ Open questions:
 - Help menu can manually enable current workspace.
 - Floating checklist renders and task CTAs route.
 - Key locale copy exists.
+- Current widget implementation can receive copy through props first; full locale wiring can follow after the visual and interaction contract is approved.
 
 ### Slice 2: Controller Cleanup
 
