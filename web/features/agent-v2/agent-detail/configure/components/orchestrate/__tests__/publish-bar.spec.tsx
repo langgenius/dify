@@ -442,7 +442,7 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.publishing')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-disabled', 'true')
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.publishing' })).not.toHaveAttribute('aria-busy')
     expect(screen.queryByText('display:Mod')).not.toBeInTheDocument()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
@@ -512,7 +512,7 @@ describe('AgentConfigurePublishBar', () => {
     rerender(rerenderPublishBar({ isPublishing: true }))
     expect(await screen.findByRole('button', {
       name: 'agentV2.agentDetail.configure.publishBar.publishing',
-    })).toHaveAttribute('aria-busy', 'true')
+    })).not.toHaveAttribute('aria-busy')
 
     await act(async () => {
       publishDeferred.resolve()
