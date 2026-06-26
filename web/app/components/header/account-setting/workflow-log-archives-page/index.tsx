@@ -1,13 +1,19 @@
 'use client'
 
-import type { WorkflowRunArchiveMonthResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
+import type {
+  WorkflowRunArchiveDownloadStatus,
+  WorkflowRunArchiveDownloadTaskResponse,
+  WorkflowRunArchiveMonthResponse,
+} from '@dify/contracts/api/console/workflow-run-archives/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
+import { API_PREFIX } from '@/config'
 import { consoleQuery } from '@/service/client'
 
 const numberFormatter = new Intl.NumberFormat()
@@ -15,6 +21,7 @@ const byteFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 1,
 })
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
+const DOWNLOAD_TASK_POLLING_INTERVAL = 3000
 
 function formatNumber(value: number) {
   return numberFormatter.format(value)
@@ -43,41 +50,23 @@ function formatDate(value: string | null | undefined) {
   return value.slice(0, 10)
 }
 
-const tableGridClassName = 'grid-cols-[0.62fr_0.8fr_0.65fr_0.8fr_0.75fr]'
+function isPreparingStatus(status: WorkflowRunArchiveDownloadStatus | undefined) {
+  return status === 'pending' || status === 'processing'
+}
+
+function buildArchiveDownloadFileUrl(downloadId: string) {
+  return `${API_PREFIX}/workflow-run-archives/downloads/${downloadId}/file`
+}
+
+const tableGridClassName = 'grid-cols-[0.6fr_0.78fr_0.62fr_0.78fr_0.98fr]'
 
 export default function WorkflowLogArchivesPage() {
   const { t } = useTranslation()
   const archiveListQuery = useQuery(consoleQuery.workflowRunArchives.get.queryOptions())
-  const createDownloadMutation = useMutation(consoleQuery.workflowRunArchives.downloads.post.mutationOptions())
-  const [pendingArchiveKey, setPendingArchiveKey] = useState<string | null>(null)
   const archiveData = archiveListQuery.data
   const archiveMonths = archiveData?.months ?? []
   const summary = archiveData?.summary
   const isLoading = archiveListQuery.isLoading
-
-  const handleDownload = (archive: WorkflowRunArchiveMonthResponse) => {
-    if (createDownloadMutation.isPending)
-      return
-
-    const archiveKey = formatMonth(archive.year, archive.month)
-    setPendingArchiveKey(archiveKey)
-    createDownloadMutation.mutate({
-      body: {
-        year: archive.year,
-        month: archive.month,
-      },
-    }, {
-      onSuccess: () => {
-        toast.success(t('archives.action.prepareStarted', { ns: 'appLog' }))
-      },
-      onError: () => {
-        toast.error(t('archives.action.prepareFailed', { ns: 'appLog' }))
-      },
-      onSettled: () => {
-        setPendingArchiveKey(null)
-      },
-    })
-  }
 
   const summaryItems = [
     {
@@ -175,42 +164,132 @@ export default function WorkflowLogArchivesPage() {
             )}
             {!isLoading && !archiveListQuery.isError && archiveMonths.map((archive) => {
               const archiveMonth = formatMonth(archive.year, archive.month)
-              const isDownloadPending = createDownloadMutation.isPending && pendingArchiveKey === archiveMonth
 
               return (
-                <div
+                <WorkflowArchiveMonthRow
                   key={archiveMonth}
-                  className={cn('grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0', tableGridClassName)}
-                >
-                  <div className="min-w-0 text-center">
-                    <span className="truncate system-sm-semibold text-text-primary">{archiveMonth}</span>
-                  </div>
-                  <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatNumber(archive.workflow_run_count)}</div>
-                  <div className="text-center system-sm-medium text-text-secondary tabular-nums">
-                    {t('archives.table.fileCount', { ns: 'appLog', count: archive.bundle_count })}
-                  </div>
-                  <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatBytes(archive.archive_bytes)}</div>
-                  <div className="flex justify-center">
-                    <Button
-                      size="small"
-                      variant="secondary"
-                      loading={isDownloadPending}
-                      disabled={createDownloadMutation.isPending}
-                      className="gap-1 px-2"
-                      aria-label={t('archives.action.downloadMonth', { ns: 'appLog', month: archiveMonth })}
-                      onClick={() => handleDownload(archive)}
-                    >
-                      {!isDownloadPending && <span className="i-ri-download-2-line size-3.5" aria-hidden="true" />}
-                      {isDownloadPending
-                        ? t('archives.action.preparing', { ns: 'appLog' })
-                        : t('operation.download', { ns: 'common' })}
-                    </Button>
-                  </div>
-                </div>
+                  archive={archive}
+                />
               )
             })}
           </div>
         </div>
+      </div>
+    </div>
+  )
+}
+
+function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonthResponse }) {
+  const { t } = useTranslation()
+  const [downloadTask, setDownloadTask] = useState<WorkflowRunArchiveDownloadTaskResponse | null>(null)
+  const archiveMonth = formatMonth(archive.year, archive.month)
+  const downloadTaskId = downloadTask?.download_id
+  const taskQuery = useQuery(consoleQuery.workflowRunArchives.downloads.byDownloadId.get.queryOptions({
+    input: downloadTaskId
+      ? {
+          params: {
+            download_id: downloadTaskId,
+          },
+        }
+      : skipToken,
+    enabled: !!downloadTaskId && isPreparingStatus(downloadTask?.status),
+    refetchInterval: query => isPreparingStatus(query.state.data?.status ?? downloadTask?.status)
+      ? DOWNLOAD_TASK_POLLING_INTERVAL
+      : false,
+  }))
+  const createDownloadMutation = useMutation(consoleQuery.workflowRunArchives.downloads.post.mutationOptions())
+  const currentTask = taskQuery.data ?? downloadTask
+  const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
+  const isReady = currentTask?.status === 'ready'
+  const isFailed = currentTask?.status === 'failed'
+  const downloadHint = isReady
+    ? t('archives.downloadHint.ready', { ns: 'appLog' })
+    : isFailed
+      ? t('archives.downloadHint.failed', { ns: 'appLog' })
+      : isPreparing
+        ? t('archives.downloadHint.preparing', { ns: 'appLog' })
+        : t('archives.downloadHint.prepare', { ns: 'appLog' })
+
+  const prepareDownload = () => {
+    if (createDownloadMutation.isPending)
+      return
+
+    createDownloadMutation.mutate({
+      body: {
+        year: archive.year,
+        month: archive.month,
+      },
+    }, {
+      onSuccess: (task) => {
+        setDownloadTask(task)
+        toast.success(t('archives.action.prepareStarted', { ns: 'appLog' }))
+      },
+      onError: () => {
+        toast.error(t('archives.action.prepareFailed', { ns: 'appLog' }))
+      },
+    })
+  }
+
+  const downloadArchive = () => {
+    if (!currentTask || currentTask.status !== 'ready')
+      return
+
+    globalThis.location.assign(buildArchiveDownloadFileUrl(currentTask.download_id))
+  }
+
+  const buttonContent = (() => {
+    if (isPreparing)
+      return t('archives.action.preparing', { ns: 'appLog' })
+    if (isReady)
+      return t('operation.download', { ns: 'common' })
+    if (isFailed)
+      return t('operation.retry', { ns: 'common' })
+    return t('archives.action.prepareDownload', { ns: 'appLog' })
+  })()
+
+  const buttonAriaLabel = isReady
+    ? t('archives.action.downloadMonth', { ns: 'appLog', month: archiveMonth })
+    : t('archives.action.prepareMonth', { ns: 'appLog', month: archiveMonth })
+  const buttonIconClassName = isReady ? 'i-ri-download-2-line' : 'i-ri-inbox-archive-line'
+  const onAction = isReady ? downloadArchive : prepareDownload
+
+  return (
+    <div
+      className={cn('grid min-h-15 items-center gap-3 border-b border-divider-subtle px-4 py-3 last:border-b-0', tableGridClassName)}
+    >
+      <div className="min-w-0 text-center">
+        <span className="truncate system-sm-semibold text-text-primary">{archiveMonth}</span>
+      </div>
+      <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatNumber(archive.workflow_run_count)}</div>
+      <div className="text-center system-sm-medium text-text-secondary tabular-nums">
+        {t('archives.table.fileCount', { ns: 'appLog', count: archive.bundle_count })}
+      </div>
+      <div className="text-center system-sm-medium text-text-secondary tabular-nums">{formatBytes(archive.archive_bytes)}</div>
+      <div className="flex min-w-0 justify-center">
+        <Tooltip>
+          <TooltipTrigger
+            render={(
+              <Button
+                size="small"
+                variant="secondary"
+                loading={isPreparing}
+                disabled={isPreparing}
+                className="gap-1 px-2"
+                aria-label={buttonAriaLabel}
+                onClick={onAction}
+              >
+                {!isPreparing && <span className={cn(buttonIconClassName, 'size-3.5')} aria-hidden="true" />}
+                {buttonContent}
+              </Button>
+            )}
+          />
+          <TooltipContent
+            placement="top"
+            className="max-w-[260px] text-center text-text-tertiary"
+          >
+            {downloadHint}
+          </TooltipContent>
+        </Tooltip>
       </div>
     </div>
   )
