@@ -229,6 +229,7 @@ export const zParameters = z.object({
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponse = z.object({
+  description: z.string().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),

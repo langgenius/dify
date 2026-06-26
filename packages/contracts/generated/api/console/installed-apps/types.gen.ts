@@ -232,6 +232,7 @@ export type SavedMessageItem = {
 }
 
 export type InstalledAppInfoResponse = {
+  description?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
