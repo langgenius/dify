@@ -8,7 +8,6 @@ type QueryOptions = {
   enabled?: boolean
   input?: unknown
   queryKey?: readonly unknown[]
-  refetchInterval?: (query: { state: { data?: unknown } }) => number | false
 }
 
 vi.mock('jotai-tanstack-query', () => ({
@@ -26,18 +25,10 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       appInstanceService: {
-        getAppInstance: {
+        getAppInstanceOverview: {
           queryOptions: (options: QueryOptions) => ({
             ...options,
-            queryKey: ['getAppInstance', options.input],
-          }),
-        },
-      },
-      deploymentService: {
-        listEnvironmentDeployments: {
-          queryOptions: (options: QueryOptions) => ({
-            ...options,
-            queryKey: ['listEnvironmentDeployments', options.input],
+            queryKey: ['getAppInstanceOverview', options.input],
           }),
         },
       },
@@ -56,37 +47,26 @@ function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId
   })
 }
 
-describe('deployment detail state', () => {
-  it('should disable detail queries with skipToken until a route app instance exists', async () => {
+describe('deployment overview state', () => {
+  it('should disable overview query with skipToken until route state is ready', async () => {
     const state = await loadState()
     const store = createStore()
 
-    expect(store.get(state.deploymentDetailAppInstanceQueryAtom)).toMatchObject({
-      enabled: false,
-      input: skipToken,
-    })
-    expect(store.get(state.deploymentEnvironmentDeploymentsQueryAtom)).toMatchObject({
+    expect(store.get(state.deploymentOverviewQueryAtom)).toMatchObject({
       enabled: false,
       input: skipToken,
     })
   })
 
-  it('should build detail query inputs from route identity', async () => {
+  it('should build overview query input from route identity', async () => {
     const state = await loadState()
     const store = createStore()
 
     setDeploymentRoute(store)
 
-    expect(store.get(state.deploymentDetailAppInstanceQueryAtom)).toMatchObject({
+    expect(store.get(state.deploymentOverviewQueryAtom)).toMatchObject({
       enabled: true,
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
-
-    const environmentDeploymentsQuery = store.get(state.deploymentEnvironmentDeploymentsQueryAtom) as unknown as QueryOptions
-    expect(environmentDeploymentsQuery).toMatchObject({
-      enabled: true,
-      input: { params: { appInstanceId: 'app-instance-1' } },
-    })
-    expect(environmentDeploymentsQuery.refetchInterval).toEqual(expect.any(Function))
   })
 })

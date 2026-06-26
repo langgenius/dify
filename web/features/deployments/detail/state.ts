@@ -19,19 +19,6 @@ export const deploymentDetailAppInstanceQueryAtom = atomWithQuery((get) => {
   })
 })
 
-export const deploymentDetailOverviewQueryAtom = atomWithQuery((get) => {
-  const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
-
-  return consoleQuery.enterprise.appInstanceService.getAppInstanceOverview.queryOptions({
-    input: appInstanceId
-      ? {
-          params: { appInstanceId },
-        }
-      : skipToken,
-    enabled: Boolean(appInstanceId),
-  })
-})
-
 export const deploymentEnvironmentDeploymentsQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)
 
