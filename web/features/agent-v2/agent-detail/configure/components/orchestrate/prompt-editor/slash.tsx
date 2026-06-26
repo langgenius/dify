@@ -14,7 +14,9 @@ import { useTranslation } from 'react-i18next'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
+import BlockIcon from '@/app/components/workflow/block-icon'
 import { ToolTypeEnum as ToolTabEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useGetLanguage } from '@/context/i18n'
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import {
@@ -24,6 +26,7 @@ import {
   useAllWorkflowTools,
 } from '@/service/use-tools'
 import { addProviderTools } from '../tools/hooks'
+import { useAgentPromptToolIconResolver } from './hooks'
 
 export type SlashMenuView = 'main' | 'skills' | 'files' | 'tools' | 'knowledge'
 
@@ -278,6 +281,10 @@ function AgentPromptToolRows({
 }) {
   const { t } = useTranslation('agentV2')
   const language = useGetLanguage()
+  const {
+    getProviderIcon,
+    getProviderIcons,
+  } = useAgentPromptToolIconResolver()
   const [activeTab, setActiveTab] = useState<ToolPromptTab>('all')
   const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set())
   const { data: builtInTools = [] } = useAllBuiltInTools()
@@ -331,12 +338,14 @@ function AgentPromptToolRows({
   }
 
   const handleSelectProvider = (provider: ToolWithProvider) => {
-    selectTools(provider.tools.map(tool => toToolDefaultValue(provider, tool, language)))
+    const { icon, iconDark } = getProviderIcons(provider)
+    selectTools(provider.tools.map(tool => toToolDefaultValue(provider, tool, language, icon, iconDark)))
     onSelect(createReferenceToken('tool', `${provider.id}/*`, getProviderLabel(provider, language)))
   }
 
   const handleSelectTool = (provider: ToolWithProvider, tool: Tool) => {
-    const selectedTool = toToolDefaultValue(provider, tool, language)
+    const { icon, iconDark } = getProviderIcons(provider)
+    const selectedTool = toToolDefaultValue(provider, tool, language, icon, iconDark)
     selectTools([selectedTool])
     onSelect(createReferenceToken('tool', `${provider.id}/${tool.name}`, selectedTool.tool_label))
   }
@@ -375,6 +384,7 @@ function AgentPromptToolRows({
                   selectedTools={selectedTools}
                   language={language}
                   isExpanded={expandedProviderIds.has(provider.id)}
+                  getProviderIcon={getProviderIcon}
                   onClick={() => handleSelectProvider(provider)}
                   onToggle={() => toggleProvider(provider.id)}
                 />
@@ -423,6 +433,8 @@ function toToolDefaultValue(
   provider: ToolWithProvider,
   tool: Tool,
   language: string,
+  providerIcon: ToolWithProvider['icon'] | undefined,
+  providerIconDark: ToolWithProvider['icon'] | undefined,
 ): AgentProviderToolDefaultValue {
   const params: Record<string, string> = {}
   tool.parameters?.forEach((parameter) => {
@@ -440,8 +452,8 @@ function toToolDefaultValue(
     provider_show_name: providerLabel,
     plugin_id: provider.plugin_id,
     plugin_unique_identifier: provider.plugin_unique_identifier,
-    provider_icon: provider.icon,
-    provider_icon_dark: provider.icon_dark,
+    provider_icon: providerIcon,
+    provider_icon_dark: providerIconDark,
     tool_name: tool.name,
     tool_label: label,
     tool_description: description,
@@ -486,6 +498,7 @@ function AgentPromptProviderToolRow({
   selectedTools,
   language,
   isExpanded,
+  getProviderIcon,
   onClick,
   onToggle,
 }: {
@@ -494,6 +507,7 @@ function AgentPromptProviderToolRow({
   selectedTools: ToolValue[]
   language: string
   isExpanded: boolean
+  getProviderIcon: (provider: ToolWithProvider) => ToolWithProvider['icon'] | undefined
   onClick: () => void
   onToggle: () => void
 }) {
@@ -507,9 +521,7 @@ function AgentPromptProviderToolRow({
         className="flex min-w-0 flex-1 items-center gap-1.5 rounded-l-md py-1 pr-1 pl-2 text-left group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
         onClick={onClick}
       >
-        <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge">
-          <AgentPromptProviderIcon provider={provider} />
-        </span>
+        <AgentPromptProviderIcon provider={provider} getProviderIcon={getProviderIcon} />
         <span className="flex min-w-0 flex-1 items-center">
           <span className="min-w-0 truncate system-sm-regular text-text-secondary">{providerLabel}</span>
           {selectedToolsCount > 0 && selectedToolsCount < provider.tools.length && (
@@ -534,23 +546,20 @@ function AgentPromptProviderToolRow({
 
 function AgentPromptProviderIcon({
   provider,
+  getProviderIcon,
 }: {
   provider: ToolWithProvider
+  getProviderIcon: (provider: ToolWithProvider) => ToolWithProvider['icon'] | undefined
 }) {
-  if (typeof provider.icon === 'string') {
-    return provider.icon.startsWith('/') || provider.icon.startsWith('http')
-      ? <img src={provider.icon} alt="" className="size-full object-cover" />
-      : <span aria-hidden className="i-custom-public-other-default-tool-icon size-3.5 text-text-tertiary" />
-  }
+  const icon = getProviderIcon(provider)
 
   return (
-    <span
-      aria-hidden
-      className="flex size-full items-center justify-center text-xs"
-      style={{ backgroundColor: provider.icon?.background }}
-    >
-      {provider.icon?.content}
-    </span>
+    <BlockIcon
+      className="shrink-0"
+      type={BlockEnum.Tool}
+      size="sm"
+      toolIcon={icon}
+    />
   )
 }
 
