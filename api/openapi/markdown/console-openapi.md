@@ -2868,6 +2868,7 @@ Delete an existing tracing configuration for an application
 | ---- | ----------- |
 | 204 | Tracing configuration deleted successfully |
 | 400 | Invalid request parameters or configuration not found |
+| 403 | Insufficient permissions |
 
 ### [GET] /apps/{app_id}/trace-config
 Get tracing configuration for an application
@@ -2909,6 +2910,7 @@ Update an existing tracing configuration for an application
 | ---- | ----------- | ------ |
 | 200 | Tracing configuration updated successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters or configuration not found |  |
+| 403 | Insufficient permissions |  |
 
 ### [POST] /apps/{app_id}/trace-config
 **Create a new trace app configuration**
@@ -2933,6 +2935,7 @@ Create a new tracing configuration for an application
 | ---- | ----------- | ------ |
 | 201 | Tracing configuration created successfully | **application/json**: [TraceAppConfigResponse](#traceappconfigresponse)<br> |
 | 400 | Invalid request parameters or configuration already exists |  |
+| 403 | Insufficient permissions |  |
 
 ### [POST] /apps/{app_id}/trigger-enable
 **Update app trigger (enable/disable)**
@@ -13429,7 +13432,6 @@ Soft lifecycle state for Agent records.
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |
 | id | string |  | Yes |
-| message_chain_id | string |  | No |
 | message_id | string |  | Yes |
 | observation | string |  | No |
 | position | integer |  | Yes |
@@ -14540,8 +14542,8 @@ Enum class for configurate method of provider model.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | annotation_create_account | [SimpleAccount](#simpleaccount) |  | No |
+| annotation_id | string |  | Yes |
 | created_at | integer |  | No |
-| id | string |  | Yes |
 
 #### ConversationDetail
 
@@ -16710,6 +16712,7 @@ Input field definition for snippet parameters.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -17079,6 +17082,7 @@ Enum class for large language model mode.
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | No |
 | annotation | [ConversationAnnotation](#conversationannotation) |  | No |
 | annotation_hit_history | [ConversationAnnotationHitHistory](#conversationannotationhithistory) |  | No |
+| answer | string |  | Yes |
 | answer_tokens | integer |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
@@ -17092,12 +17096,11 @@ Enum class for large language model mode.
 | inputs | object |  | Yes |
 | message | [JSONValue](#jsonvalue) |  | No |
 | message_files | [ [MessageFile](#messagefile) ] |  | No |
-| message_metadata_dict | [JSONValue](#jsonvalue) |  | No |
 | message_tokens | integer |  | No |
+| metadata | [JSONValue](#jsonvalue) |  | No |
 | parent_message_id | string |  | No |
 | provider_response_latency | number |  | No |
 | query | string |  | Yes |
-| re_sign_file_url_answer | string |  | Yes |
 | status | string |  | Yes |
 | workflow_run_id | string |  | No |
 

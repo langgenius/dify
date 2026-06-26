@@ -77,6 +77,25 @@ class AnnotationApi(Resource):
     assert "prefer dump_response" in checks[0].reason
 
 
+def test_constructor_variable_model_dump_is_valid(tmp_path: Path):
+    checks = _checks_for_source(
+        tmp_path,
+        """
+@ns.route("/annotations")
+class AnnotationApi(Resource):
+    @ns.response(201, "Created", ns.models[AnnotationResponse.__name__])
+    def post(self):
+        response = AnnotationResponse(id="new", name=name)
+        return response.model_dump(mode="json"), 201
+""",
+    )
+
+    assert len(checks) == 1
+    assert checks[0].classification == "valid"
+    assert checks[0].actual[0].kind == "model"
+    assert checks[0].actual[0].model == "AnnotationResponse"
+
+
 def test_variable_model_dump_with_wrong_documented_schema_is_mismatch(tmp_path: Path):
     checks = _checks_for_source(
         tmp_path,
@@ -115,6 +134,38 @@ class StreamApi(Resource):
     assert len(checks) == 1
     assert checks[0].classification == "valid"
     assert {actual.model for actual in checks[0].actual} == {"StreamResponse"}
+
+
+def test_response_contract_ignore_comment_skips_route_method(tmp_path: Path):
+    checks = _checks_for_source(
+        tmp_path,
+        """
+@ns.route("/binary")
+class BinaryApi(Resource):
+    # response-contract:ignore binary response
+    @ns.response(200, "Binary file")
+    def get(self):
+        return send_file(path)
+
+
+# response-contract:ignore compact Flask response
+@ns.route("/compact")
+class CompactApi(Resource):
+    def get(self):
+        return make_response({"url": "https://example.com"})
+
+
+@ns.route("/regular")
+class RegularApi(Resource):
+    @ns.response(200, "OK", ns.models[RegularResponse.__name__])
+    def get(self):
+        return dump_response(RegularResponse, {})
+""",
+    )
+
+    assert len(checks) == 1
+    assert checks[0].class_name == "RegularApi"
+    assert checks[0].classification == "valid"
 
 
 def test_main_is_report_only_by_default_for_mismatches(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

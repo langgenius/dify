@@ -990,6 +990,12 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | last_used_at | string |  | No |
 | prefix | string |  | Yes |
 
+#### SimpleResultResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| result | string |  | Yes |
+
 #### SupportedAppType
 
 App types the ``app`` usage face (``get app``) lists and filters.
