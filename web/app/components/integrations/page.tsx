@@ -162,7 +162,7 @@ export default function IntegrationsPage({
       return
     }
 
-    window.open(getMarketplaceUrl(marketplaceUrlPath), '_blank', 'noopener,noreferrer')
+    window.open(getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }), '_blank', 'noopener,noreferrer')
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
