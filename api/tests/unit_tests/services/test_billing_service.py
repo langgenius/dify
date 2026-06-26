@@ -779,9 +779,7 @@ class TestBillingServiceQuotaOperations:
     def test_quota_release_with_bucket(self, mock_send_request):
         mock_send_request.return_value = {"available": 100, "reserved": 0, "released": 1}
 
-        BillingService.quota_release(
-            tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial"
-        )
+        BillingService.quota_release(tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial")
 
         call_json = mock_send_request.call_args[1]["json"]
         assert call_json["bucket"] == "trial"
