@@ -14,6 +14,7 @@ from dify_agent.layers.dify_plugin import (
     DifyPluginToolConfig,
     DifyPluginToolsLayerConfig,
 )
+from dify_agent.layers.drive import DifyDriveLayerConfig
 from dify_agent.layers.execution_context import DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID, DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID
@@ -42,7 +43,7 @@ from clients.agent_backend import (
     extract_runtime_layer_specs,
     redact_for_agent_backend_log,
 )
-from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from clients.agent_backend.request_builder import DIFY_DRIVE_LAYER_ID, DIFY_SHELL_LAYER_ID
 
 
 def _run_input() -> AgentBackendWorkflowNodeRunInput:
@@ -108,7 +109,9 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
 
     dumped = request.model_dump(mode="json")
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are a careful reviewer."
-    assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Review the previous node output."
+    workflow_job_config = dumped["composition"]["layers"][1]["config"]
+    assert workflow_job_config["user"] == "Review the previous node output."
+    assert not workflow_job_config.get("prefix")
     assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
 
 
@@ -161,8 +164,15 @@ def test_request_builder_adds_knowledge_layer_when_configured():
     run_input = _run_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {
-            "dataset_ids": ["dataset-1"],
-            "retrieval": {"mode": "multiple", "top_k": 4},
+            "sets": [
+                {
+                    "id": "support",
+                    "name": "Support KB",
+                    "datasets": [{"id": "dataset-1"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 4},
+                }
+            ],
         }
     )
 
@@ -173,7 +183,7 @@ def test_request_builder_adds_knowledge_layer_when_configured():
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].type == DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     knowledge_config = cast(DifyKnowledgeBaseLayerConfig, layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
-    assert knowledge_config.dataset_ids == ["dataset-1"]
+    assert knowledge_config.sets[0].dataset_ids == ["dataset-1"]
 
 
 def test_request_builder_can_delete_on_exit_for_cleanup_paths():
@@ -331,6 +341,22 @@ def test_workflow_request_builder_adds_shell_layer_when_include_shell():
     assert shell_config.env[0].name == "PROJECT_NAME"
 
 
+def test_workflow_request_builder_binds_drive_to_shell_when_configured():
+    run_input = _run_input()
+    run_input.include_shell = True
+    run_input.drive_config = DifyDriveLayerConfig(drive_ref="agent-agent-1")
+
+    request = AgentBackendRunRequestBuilder().build_for_workflow_node(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+    layer_names = [layer.name for layer in request.composition.layers]
+
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
+    assert shell_config.agent_stub_drive_ref == "agent-agent-1"
+    assert layers[DIFY_DRIVE_LAYER_ID].deps == {"shell": DIFY_SHELL_LAYER_ID}
+    assert layer_names.index(DIFY_SHELL_LAYER_ID) < layer_names.index(DIFY_DRIVE_LAYER_ID)
+
+
 def test_agent_app_request_builder_omits_shell_layer_by_default():
     request = AgentBackendRunRequestBuilder().build_for_agent_app(_agent_app_input())
     assert DIFY_SHELL_LAYER_ID not in {layer.name for layer in request.composition.layers}
@@ -350,12 +376,34 @@ def test_agent_app_request_builder_adds_shell_layer_when_include_shell():
     assert shell_config.env[0].name == "APP_ENV"
 
 
+def test_agent_app_request_builder_binds_drive_to_shell_when_configured():
+    run_input = _agent_app_input(include_shell=True)
+    run_input.drive_config = DifyDriveLayerConfig(drive_ref="agent-agent-1")
+
+    request = AgentBackendRunRequestBuilder().build_for_agent_app(run_input)
+    layers = {layer.name: layer for layer in request.composition.layers}
+    layer_names = [layer.name for layer in request.composition.layers]
+
+    assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+    shell_config = cast(DifyShellLayerConfig, layers[DIFY_SHELL_LAYER_ID].config)
+    assert shell_config.agent_stub_drive_ref == "agent-agent-1"
+    assert layers[DIFY_DRIVE_LAYER_ID].deps == {"shell": DIFY_SHELL_LAYER_ID}
+    assert layer_names.index(DIFY_SHELL_LAYER_ID) < layer_names.index(DIFY_DRIVE_LAYER_ID)
+
+
 def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
     run_input = _agent_app_input()
     run_input.knowledge = DifyKnowledgeBaseLayerConfig.model_validate(
         {
-            "dataset_ids": ["dataset-1", "dataset-2"],
-            "retrieval": {"mode": "multiple", "top_k": 2},
+            "sets": [
+                {
+                    "id": "support",
+                    "name": "Support KB",
+                    "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
+                    "query": {"mode": "generated_query"},
+                    "retrieval": {"mode": "multiple", "top_k": 2},
+                }
+            ],
         }
     )
 
@@ -366,7 +414,7 @@ def test_agent_app_request_builder_adds_knowledge_layer_when_configured():
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].type == DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID
     assert layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].deps == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
     knowledge_config = cast(DifyKnowledgeBaseLayerConfig, layers[DIFY_KNOWLEDGE_BASE_LAYER_ID].config)
-    assert knowledge_config.dataset_ids == ["dataset-1", "dataset-2"]
+    assert knowledge_config.sets[0].dataset_ids == ["dataset-1", "dataset-2"]
 
 
 # ── ENG-635 / ENG-638: ask_human layer injection + deferred_tool_results ─────

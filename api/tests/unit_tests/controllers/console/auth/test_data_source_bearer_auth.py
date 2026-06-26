@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import PropertyMock, patch
+from unittest.mock import ANY, PropertyMock, patch
 
 from controllers.console import console_ns
 from controllers.console.auth.data_source_bearer_auth import (
@@ -34,13 +34,16 @@ def test_list_data_source_auth_uses_injected_tenant_id() -> None:
         updated_at=datetime(2026, 1, 2, tzinfo=UTC),
     )
 
-    with patch(
-        "controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.get_provider_auth_list",
-        return_value=[binding],
-    ) as get_provider_auth_list:
+    with (
+        patch("controllers.console.auth.data_source_bearer_auth.db"),
+        patch(
+            "controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.get_provider_auth_list",
+            return_value=[binding],
+        ) as get_provider_auth_list,
+    ):
         result = method(api, "tenant-1")
 
-    get_provider_auth_list.assert_called_once_with("tenant-1")
+    get_provider_auth_list.assert_called_once_with(ANY, "tenant-1")
     assert result["sources"][0]["id"] == "binding-1"
     assert result["sources"][0]["provider"] == "custom"
 
@@ -56,12 +59,13 @@ def test_create_data_source_auth_binding_uses_injected_tenant_id() -> None:
 
     with (
         _payload_patch(payload),
+        patch("controllers.console.auth.data_source_bearer_auth.db"),
         patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.validate_api_key_auth_args"),
         patch("controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.create_provider_auth") as create_auth,
     ):
         result, status = method(api, "tenant-1")
 
-    create_auth.assert_called_once_with("tenant-1", payload)
+    create_auth.assert_called_once_with(ANY, "tenant-1", payload)
     assert result == {"result": "success"}
     assert status == 200
 
@@ -70,11 +74,14 @@ def test_delete_data_source_auth_binding_uses_injected_tenant_id() -> None:
     api = ApiKeyAuthDataSourceBindingDelete()
     method = unwrap(api.delete)
 
-    with patch(
-        "controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.delete_provider_auth"
-    ) as delete_provider_auth:
+    with (
+        patch("controllers.console.auth.data_source_bearer_auth.db"),
+        patch(
+            "controllers.console.auth.data_source_bearer_auth.ApiKeyAuthService.delete_provider_auth"
+        ) as delete_provider_auth,
+    ):
         result, status = method(api, "tenant-1", "binding-1")
 
-    delete_provider_auth.assert_called_once_with("tenant-1", "binding-1")
+    delete_provider_auth.assert_called_once_with(ANY, "tenant-1", "binding-1")
     assert result == ""
     assert status == 204

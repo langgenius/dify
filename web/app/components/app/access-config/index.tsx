@@ -2,12 +2,14 @@
 
 import type { ResourceOpenScope } from '@/models/access-control'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AccessRulesEditor from '@/app/components/access-rules-editor'
 import { useStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import {
   useAppAccessRules,
@@ -103,13 +105,16 @@ const AppAccessConfigContent = ({ appId, maintainerId }: AppAccessConfigContentP
 }
 
 const AppAccessConfigPage = ({ appId }: AppAccessConfigPageProps) => {
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { userProfile, workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const appDetail = useStore(state => state.appDetail)
   const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
     currentUserId: userProfile?.id,
     resourceMaintainer: appDetail?.maintainer,
     workspacePermissionKeys,
-  }), [appDetail?.maintainer, appDetail?.permission_keys, userProfile?.id, workspacePermissionKeys])
+    isRbacEnabled,
+  }), [appDetail?.maintainer, appDetail?.permission_keys, isRbacEnabled, userProfile?.id, workspacePermissionKeys])
 
   if (!appDetail || appDetail.id !== appId || !appACLCapabilities.canAccessConfig)
     return null

@@ -23,8 +23,8 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../table'
-import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
+} from '../components/detail-table'
+import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../components/detail-table-styles'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import {
   ReleaseDeploymentsContent,
@@ -77,10 +77,6 @@ function ReleaseSourceCell({ release }: {
 }) {
   const { t } = useTranslation('deployments')
   const sourceAppId = release.sourceAppId
-  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
-    input: { params: { app_id: sourceAppId ?? '' } },
-    enabled: Boolean(sourceAppId),
-  }))
 
   if (!sourceAppId) {
     return (
@@ -90,6 +86,17 @@ function ReleaseSourceCell({ release }: {
     )
   }
 
+  return <ReleaseSourceLink sourceAppId={sourceAppId} />
+}
+
+function ReleaseSourceLink({ sourceAppId }: {
+  sourceAppId: string
+}) {
+  const sourceAppQuery = useQuery(consoleQuery.apps.byAppId.get.queryOptions({
+    input: {
+      params: { app_id: sourceAppId },
+    },
+  }))
   const sourceAppName = sourceAppQuery.data?.name
   const label = sourceAppName || sourceAppId
   const title = sourceAppName ? `${sourceAppName} (${sourceAppId})` : sourceAppId
@@ -109,8 +116,7 @@ function ReleaseSourceCell({ release }: {
   )
 }
 
-function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
-  appInstanceId: string
+function ReleaseHistoryMobileRows({ releaseRows, onReleaseDeleted }: {
   releaseRows: ReleaseWithSummaryDeployments[]
   onReleaseDeleted?: () => void
 }) {
@@ -147,7 +153,6 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
                 <div className="flex shrink-0 justify-end gap-1">
                   <DeployReleaseMenu
                     releaseId={releaseId}
-                    appInstanceId={appInstanceId}
                     releaseRows={releaseRows}
                     onDeleted={onReleaseDeleted}
                   />
@@ -168,8 +173,7 @@ function ReleaseHistoryMobileRows({ appInstanceId, releaseRows, onReleaseDeleted
   )
 }
 
-export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDeleted }: {
-  appInstanceId: string
+export function ReleaseHistoryRows({ releaseRows, onReleaseDeleted }: {
   releaseRows: ReleaseWithSummaryDeployments[]
   onReleaseDeleted?: () => void
 }) {
@@ -178,7 +182,6 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDelete
   return (
     <>
       <ReleaseHistoryMobileRows
-        appInstanceId={appInstanceId}
         releaseRows={releaseRows}
         onReleaseDeleted={onReleaseDeleted}
       />
@@ -224,7 +227,6 @@ export function ReleaseHistoryRows({ appInstanceId, releaseRows, onReleaseDelete
                     <div className="flex justify-end">
                       <DeployReleaseMenu
                         releaseId={releaseId}
-                        appInstanceId={appInstanceId}
                         releaseRows={releaseRows}
                         onDeleted={onReleaseDeleted}
                       />

@@ -50,7 +50,7 @@ const Card = ({
   onPluginUpdate,
 }: CardProps) => {
   const { t } = useTranslation()
-  const { canUseCredential, canManageCredential } = useCredentialPermissions()
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const renderI18nObject = useRenderI18nObject()
   const {
     icon,
@@ -178,7 +178,7 @@ const Card = ({
             pluginPayload={pluginPayload}
             item={item}
             onUpdate={handleAuthUpdate}
-            disabled={disabled || !canManageCredential}
+            disabled={disabled || !canCreateCredential}
           />
         </div>
       </div>

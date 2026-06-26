@@ -1,7 +1,15 @@
 'use client'
 import type { Role } from '@/models/access-control'
 import type { Member } from '@/models/common'
-import { cn } from '@langgenius/dify-ui/cn'
+import {
+  AlertDialog,
+  AlertDialogActions,
+  AlertDialogCancelButton,
+  AlertDialogConfirmButton,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogTitle,
+} from '@langgenius/dify-ui/alert-dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +46,8 @@ const MemberMenu = ({
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [assignModalOpen, setAssignModalOpen] = useState(false)
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   const isOwner = member.role === 'owner'
   const canAssignRoles = !isOwner && !isCurrentUser
@@ -45,6 +55,10 @@ const MemberMenu = ({
   const showTransferOwnership = isOwner && canTransferOwnership
 
   const selectedRoles = member.roles || []
+  const memberName = member.name || member.email
+  const assignRolesLabel = allowMultipleRoles
+    ? t('members.assignRoles', { ns: 'common', defaultValue: 'Assign Roles' })
+    : t('members.editRole', { ns: 'common', defaultValue: 'Edit Role' })
 
   const handleOpenAssignRoles = useCallback(() => {
     setOpen(false)
@@ -68,14 +82,23 @@ const MemberMenu = ({
     })
   }, [allowMultipleRoles, member.id, t, updateRolesOfMember])
 
-  const handleRemove = useCallback(async () => {
+  const handleOpenRemoveConfirm = useCallback(() => {
     setOpen(false)
+    setRemoveConfirmOpen(true)
+  }, [])
+
+  const handleRemove = useCallback(async () => {
+    setRemoving(true)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       void queryClient.invalidateQueries({ queryKey: commonQueryKeys.members })
       toast.success(t('actionMsg.modifiedSuccessfully', { ns: 'common' }))
+      setRemoveConfirmOpen(false)
     }
     catch {
+    }
+    finally {
+      setRemoving(false)
     }
   }, [member.id, queryClient, t])
 
@@ -84,26 +107,17 @@ const MemberMenu = ({
     onTransferOwnership?.()
   }, [onTransferOwnership])
 
-  const stopPropagationOnClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation()
-  }, [])
-
-  const stopPropagationOnKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Enter' || e.key === ' ')
-      e.stopPropagation()
-  }, [])
-
   if (!canAssignRoles && !canRemove && !showTransferOwnership)
     return null
 
   return (
-    <div role="presentation" onClick={stopPropagationOnClick} onKeyDown={stopPropagationOnKeyDown}>
+    <div role="presentation">
       <DropdownMenu open={open} onOpenChange={setOpen}>
         <DropdownMenuTrigger
           render={(
             <ActionButton
               size="l"
-              className={cn(open && 'bg-state-base-hover')}
+              className="data-popup-open:bg-state-base-hover"
               aria-label={t('members.memberActions', { ns: 'common', defaultValue: 'Member actions' })}
             />
           )}
@@ -120,7 +134,7 @@ const MemberMenu = ({
               className="system-sm-medium text-text-secondary"
               onClick={handleOpenAssignRoles}
             >
-              {t('members.assignRoles', { ns: 'common', defaultValue: 'Assign Roles' })}
+              {assignRolesLabel}
             </DropdownMenuItem>
           )}
           {showTransferOwnership && (
@@ -138,13 +152,34 @@ const MemberMenu = ({
             <DropdownMenuItem
               variant="destructive"
               className="system-sm-medium"
-              onClick={handleRemove}
+              onClick={handleOpenRemoveConfirm}
             >
               {t('members.removeFromTeam', { ns: 'common' })}
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <AlertDialog open={removeConfirmOpen} onOpenChange={open => !open && setRemoveConfirmOpen(false)}>
+        <AlertDialogContent backdropProps={{ forceRender: true }}>
+          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
+            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              {t('members.removeFromTeamConfirmTitle', { ns: 'common', memberName })}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+              {t('members.removeFromTeamConfirmDescription', { ns: 'common' })}
+            </AlertDialogDescription>
+          </div>
+          <AlertDialogActions>
+            <AlertDialogCancelButton>{t('operation.cancel', { ns: 'common' })}</AlertDialogCancelButton>
+            <AlertDialogConfirmButton
+              disabled={removing}
+              onClick={handleRemove}
+            >
+              {t('operation.confirm', { ns: 'common' })}
+            </AlertDialogConfirmButton>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
       {assignModalOpen && (
         <AssignRolesModal
           selectedRoles={selectedRoles}

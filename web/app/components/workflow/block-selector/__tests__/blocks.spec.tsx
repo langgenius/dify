@@ -356,7 +356,7 @@ describe('Blocks', () => {
     )
 
     await user.click(screen.getByRole('button', { name: 'Agent' }))
-    await user.click(await screen.findByRole('button', { name: 'agentV2.roster.nodeSelector.startFromScratch' }))
+    await user.click(await screen.findByRole('option', { name: 'agentV2.roster.nodeSelector.startFromScratch' }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {

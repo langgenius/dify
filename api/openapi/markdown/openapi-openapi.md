@@ -80,10 +80,9 @@ User-scoped operations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
+| mode | query | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. | No | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| tag | query |  | No | string |
 | workspace_id | query |  | Yes | string |
 
 #### Responses
@@ -319,7 +318,7 @@ Upload a file to use as an input variable when running the app
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | limit | query |  | No | integer, <br>**Default:** 20 |
-| mode | query |  | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "channel", "chat", "completion", "rag-pipeline", "workflow" |
+| mode | query | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. | No | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" |
 | name | query |  | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
 
@@ -328,6 +327,22 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Permitted external apps list | **application/json**: [PermittedExternalAppsListResponse](#permittedexternalappslistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /permitted-external-apps/{app_id}/describe
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| fields | query |  | No | string |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Permitted external app description | **application/json**: [AppDescribeResponse](#appdescriberesponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -507,14 +522,12 @@ Upload a file to use as an input variable when running the app
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | is_agent | boolean |  | No |
 | mode | string |  | Yes |
 | name | string |  | Yes |
 | service_api_enabled | boolean |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 
 #### AppDescribeQuery
@@ -568,28 +581,25 @@ Request body for POST /workspaces/<workspace_id>/apps/imports.
 | yaml_content | string | Inline YAML DSL string (required when mode is yaml-content) | No |
 | yaml_url | string | Remote URL to fetch YAML from (required when mode is yaml-url) | No |
 
-#### AppInfoResponse
+#### AppInfo
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| author | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | string |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 
 #### AppListQuery
 
-mode is a closed enum.
+mode is a closed enum of listable app types.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 |  | No |
-| mode | [AppMode](#appmode) |  | No |
+| mode | [SupportedAppType](#supportedapptype) |  | No |
 | name | string |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| tag | string |  | No |
 | workspace_id | string |  | Yes |
 
 #### AppListResponse
@@ -606,12 +616,10 @@ mode is a closed enum.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| created_by_name | string |  | No |
 | description | string |  | No |
 | id | string |  | Yes |
 | mode | [AppMode](#appmode) |  | Yes |
 | name | string |  | Yes |
-| tags | [ [TagItem](#tagitem) ], <br>**Default:**  |  | No |
 | updated_at | string |  | No |
 | workspace_id | string |  | No |
 | workspace_name | string |  | No |
@@ -914,7 +922,7 @@ Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | limit | integer, <br>**Default:** 20 |  | No |
-| mode | [AppMode](#appmode) |  | No |
+| mode | [SupportedAppType](#supportedapptype) |  | No |
 | name | string |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
 
@@ -982,11 +990,29 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | last_used_at | string |  | No |
 | prefix | string |  | Yes |
 
-#### TagItem
+#### SimpleResultResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| name | string |  | Yes |
+| result | string |  | Yes |
+
+#### SupportedAppType
+
+App types the ``app`` usage face (``get app``) lists and filters.
+
+A curated subset of :class:`AppMode`: the real, user-facing app categories.
+Excludes runtime-only mode tags that are not standalone apps
+(``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+Members reference ``AppMode.*.value`` so the subset relationship is
+type-checked: dropping a member from ``AppMode`` breaks this at import.
+This is the single source for the listable set — params, filters, and the
+generated CLI whitelist all derive from it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SupportedAppType | string | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. |  |
 
 #### TaskStopResponse
 

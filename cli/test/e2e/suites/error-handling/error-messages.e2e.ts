@@ -82,10 +82,9 @@ describe('E2E / error message standards (spec 5.3)', () => {
 
   // ── 5.63  dfoe_ token insufficient_scope ──────────────────────────────────
 
-  itWithSso('[P0] 5.63 dfoe_ SSO token with workspace returns insufficient_scope for management commands', async () => {
-    // Spec 5.63: an external SSO token (dfoe_) must not be able to access
-    // internal management APIs; the CLI must return an insufficient_scope
-    // error with exit 1.
+  itWithSso('[P0] dfoe_ SSO token is denied account-only management commands', async () => {
+    // A dfoe_ SSO token is rejected with a non-zero exit when it targets an
+    // account-only management command (`export studio-app`).
     const { mkdir } = await import('node:fs/promises')
     const ssoTmp = await withTempConfig()
     try {
@@ -95,16 +94,13 @@ describe('E2E / error message standards (spec 5.3)', () => {
         `token_storage: file`,
         `tokens:`,
         `  bearer: ${E.ssoToken}`,
-        `workspace:`,
-        `  id: ${E.workspaceId}`,
-        `  name: "${E.workspaceName}"`,
-        `  role: member`,
+        `external_subject:`,
+        `  email: sso@example.com`,
+        `  issuer: https://issuer.example.com`,
       ].join('\n')}\n`
       await writeFile(join(ssoTmp.configDir, 'hosts.yml'), hostsYml, { mode: 0o600 })
-      const result = await run(['get', 'app'], { configDir: ssoTmp.configDir })
+      const result = await run(['export', 'studio-app', E.chatAppId], { configDir: ssoTmp.configDir })
       assertNonZeroExit(result)
-      // In this environment ssoToken may be a dfoa_ token; the server returns
-      // either insufficient_scope or server_5xx — both are non-zero exits.
       expect(result.stderr.trim().length, 'stderr must contain an error message').toBeGreaterThan(0)
     }
     finally {

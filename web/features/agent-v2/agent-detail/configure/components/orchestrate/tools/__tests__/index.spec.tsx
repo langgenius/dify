@@ -291,7 +291,7 @@ describe('AgentTools', () => {
 
       expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
       expect(screen.queryByText('DuckDuckGo Search')).not.toBeInTheDocument()
-      expect(screen.getByText('Lark CLI')).toBeInTheDocument()
+      expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
     })
 
     it('should keep the add trigger mounted while the tool picker is open', async () => {
@@ -301,6 +301,9 @@ describe('AgentTools', () => {
       await user.click(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.add',
       }))
+      expect(screen.queryByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.cliTool\.label/,
+      })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.tool\.label/,
       }))
@@ -332,6 +335,18 @@ describe('AgentTools', () => {
       expect(screen.queryByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"DuckDuckGo Image Search"}',
       })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
+        name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
+      })).not.toBeInTheDocument()
+    })
+
+    it('should hide CLI tool rows while CLI tools are disabled', () => {
+      renderAgentTools()
+
+      expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
       expect(screen.queryByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
       })).not.toBeInTheDocument()

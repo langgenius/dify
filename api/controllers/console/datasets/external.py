@@ -26,6 +26,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.dataset_fields import (
     dataset_detail_fields,
@@ -381,7 +382,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -390,6 +391,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
         try:
             response = HitTestingService.external_retrieve(
+                session=db.session,
                 dataset=dataset,
                 query=payload.query,
                 account=current_user,

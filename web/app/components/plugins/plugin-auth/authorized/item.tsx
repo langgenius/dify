@@ -16,7 +16,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
 import Input from '@/app/components/base/input'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { hasPermission } from '@/utils/permission'
+import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { CredentialTypeEnum } from '../types'
 
 type ItemProps = {
@@ -55,9 +55,7 @@ const Item = ({
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const [renameValue, setRenameValue] = useState(credential.name)
-  const workspacePermissionKeys = useAppContextWithSelector(s => s.workspacePermissionKeys)
-  const canManageCredential = hasPermission(workspacePermissionKeys, 'credential.manage')
-  const canUseCredential = hasPermission(workspacePermissionKeys, ['credential.use', 'credential.manage'])
+  const { canUseCredential, canManageCredential } = useCredentialPermissions()
   const isOAuth = credential.credential_type === CredentialTypeEnum.OAUTH2
   const isPersonal = credential.visibility === 'only_me'
   const userProfile = useAppContextWithSelector(state => state.userProfile)

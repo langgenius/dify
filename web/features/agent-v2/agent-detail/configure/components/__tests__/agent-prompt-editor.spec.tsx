@@ -3,6 +3,7 @@ import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { API_PREFIX } from '@/config'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
@@ -20,7 +21,8 @@ const mockBuiltInTools = vi.hoisted(() => [
     name: 'DuckDuckGo',
     author: 'Dify',
     description: { en_US: 'DuckDuckGo tools' },
-    icon: '/duckduckgo.svg',
+    icon: 'duckduckgo.svg',
+    icon_dark: 'duckduckgo-dark.svg',
     label: { en_US: 'DuckDuckGo' },
     type: 'builtin',
     team_credentials: {},
@@ -78,6 +80,13 @@ vi.mock('foxact/use-clipboard', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
+  useDocLink: () => 'https://docs.example.com',
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (value: { currentWorkspace: { id: string } }) => string) => selector({
+    currentWorkspace: { id: 'workspace-123' },
+  }),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -89,6 +98,19 @@ vi.mock('@/service/use-tools', () => ({
 
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
+}))
+
+vi.mock('../orchestrate/drive-context', () => ({
+  useAgentDriveSkills: () => ({
+    skills: [
+      {
+        id: 'playwright/SKILL.md',
+        name: 'Playwright',
+        skillMdKey: 'playwright/SKILL.md',
+      },
+    ],
+  }),
+  useAgentDriveFiles: () => ({ files: [] }),
 }))
 
 const duckDuckGoSearchAction = {
@@ -112,12 +134,6 @@ const duckDuckGoProviderTool: AgentTool = {
 
 const promptEditorDraft = {
   ...defaultAgentSoulConfigFormState,
-  skills: [
-    {
-      id: 'playwright',
-      name: 'Playwright',
-    },
-  ],
   tools: [duckDuckGoProviderTool],
 } satisfies typeof defaultAgentSoulConfigFormState
 
@@ -214,7 +230,12 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should render selected tool reference icons from configured tools', () => {
-      renderAgentPromptEditor('Run tools')
+      renderAgentPromptEditor('Run tools', {
+        tools: [{
+          ...duckDuckGoProviderTool,
+          iconClassName: 'i-custom-public-other-default-tool-icon',
+        }],
+      })
 
       const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
       const renderIcon = promptEditorProps.rosterReferenceBlock?.renderIcon
@@ -230,7 +251,11 @@ describe('AgentPromptEditor', () => {
         </>,
       )
 
-      expect(container.querySelector('.i-simple-icons-duckduckgo')).toBeInTheDocument()
+      const providerIcon = Array.from(container.querySelectorAll<HTMLElement>('[style]'))
+        .find(element => element.style.backgroundImage)
+      expect(providerIcon).toHaveStyle({
+        backgroundImage: `url(${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg)`,
+      })
 
       rerender(
         <>
@@ -242,7 +267,7 @@ describe('AgentPromptEditor', () => {
         </>,
       )
 
-      expect(container.querySelector('.i-ri-terminal-box-line')).toBeInTheDocument()
+      expect(container.querySelector('.i-ri-terminal-box-line')).not.toBeInTheDocument()
     })
   })
 
@@ -268,7 +293,7 @@ describe('AgentPromptEditor', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Playwright/i }))
 
-      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright:Playwright§]')
+      expect(store.get(agentComposerPromptAtom)).toBe('Review these tenders [§skill:playwright%2FSKILL.md:Playwright§]')
       await waitFor(() => {
         expect(screen.queryByRole('button', { name: /Playwright/i })).not.toBeInTheDocument()
       })
@@ -288,7 +313,7 @@ describe('AgentPromptEditor', () => {
       expect(screen.queryByRole('button', { name: /agentDetail\.configure\.prompt\.mention\.label/i })).not.toBeInTheDocument()
     })
 
-    it('should insert references after prompt add actions create skills, files, CLI tools, or knowledge retrievals', () => {
+    it('should insert references after prompt add actions create skills, files, or knowledge retrievals', () => {
       const onSelect = vi.fn()
       const categories = [
         { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
@@ -305,7 +330,7 @@ describe('AgentPromptEditor', () => {
           files={[]}
           tools={[]}
           onToolsChange={vi.fn()}
-          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One' })}
+          onAddSkill={options => options?.onAdded?.({ id: 'skill-1', name: 'Skill One', skillMdKey: 'skills/skill-1/SKILL.md' })}
           retrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
@@ -313,7 +338,7 @@ describe('AgentPromptEditor', () => {
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.skills\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§skill:skill-1:Skill One§]')
+      expect(onSelect).toHaveBeenCalledWith('[§skill:skills%2Fskill-1%2FSKILL.md:Skill One§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -323,7 +348,7 @@ describe('AgentPromptEditor', () => {
           files={[]}
           tools={[]}
           onToolsChange={vi.fn()}
-          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown' })}
+          onAddFile={options => options?.onAdded?.({ id: 'file-1', name: 'Guide.md', icon: 'markdown', driveKey: 'files/Guide.md' })}
           retrievals={[]}
           onBack={vi.fn()}
           onOpenCategory={vi.fn()}
@@ -331,7 +356,7 @@ describe('AgentPromptEditor', () => {
         />,
       )
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.files\.add/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§file:file-1:Guide.md§]')
+      expect(onSelect).toHaveBeenCalledWith('[§file:files%2FGuide.md:Guide.md§]')
 
       rerender(
         <AgentPromptSlashMenu
@@ -366,15 +391,20 @@ describe('AgentPromptEditor', () => {
           onSelect={onSelect}
         />,
       )
-      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i }))
-      expect(onSelect).toHaveBeenCalledWith('[§cli_tool:cli-1:Lark CLI§]')
+      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.toolTabs\.cli/i })).not.toBeInTheDocument()
     })
 
     it('should append available provider tool references and add missing tools to the configuration', () => {
       const { store, rerenderWithValue } = renderAgentPromptEditor('Research/', { tools: [] })
+      const expectedProviderIcon = `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`
 
       fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
+      const providerButton = screen.getByRole('button', { name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i })
+      const providerIcon = Array.from(providerButton.querySelectorAll<HTMLElement>('[style]'))
+        .find(element => element.style.backgroundImage)
+      expect(providerIcon).toHaveStyle({ backgroundImage: `url(${expectedProviderIcon})` })
       fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
       fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo Search/i }))
 
@@ -382,6 +412,7 @@ describe('AgentPromptEditor', () => {
       expect(store.get(agentComposerDraftAtom).tools).toEqual([
         expect.objectContaining({
           id: 'duckduckgo',
+          icon: expectedProviderIcon,
           actions: [
             expect.objectContaining({
               name: 'DuckDuckGo Search',

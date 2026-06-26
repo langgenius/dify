@@ -71,13 +71,25 @@ describe('app-redirection', () => {
     it('returns access config path when app ACL can only configure access', () => {
       const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [AppACLPermission.AccessConfig] }
 
-      expect(getRedirectionPath(app)).toBe('/app/app-123/access-config')
+      expect(getRedirectionPath(app, { isRbacEnabled: true })).toBe('/app/app-123/access-config')
+    })
+
+    it('returns develop path for access config only apps when RBAC is disabled', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [AppACLPermission.AccessConfig] }
+
+      expect(getRedirectionPath(app, { isRbacEnabled: false })).toBe('/app/app-123/develop')
     })
 
     it('returns overview path when app ACL can only monitor the app', () => {
       const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [AppACLPermission.Monitor] }
 
       expect(getRedirectionPath(app)).toBe('/app/app-123/overview')
+    })
+
+    it('returns logs path when app ACL can only access logs and annotations', () => {
+      const app = { id: 'app-123', mode: AppModeEnum.CHAT, permission_keys: [AppACLPermission.LogAndAnnotation] }
+
+      expect(getRedirectionPath(app)).toBe('/app/app-123/logs')
     })
   })
 

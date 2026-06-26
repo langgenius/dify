@@ -39,7 +39,7 @@ vi.mock('@/context/app-context', () => ({
     },
     workspacePermissionKeys: [
       'plugin.install',
-      'plugin.manage',
+      'plugin.delete',
       'plugin.plugin_preferences',
     ],
   }),

@@ -11,19 +11,27 @@ does not pull in FastAPI, Redis, shellctl, or JWE runtime dependencies.
 from __future__ import annotations
 
 import sys
+from typing import cast
 
 import typer
 from typer.main import get_command
 
 from dify_agent.agent_stub.cli._agent_stub import connect_from_environment
 from dify_agent.agent_stub.cli._drive import (
-    list_drive_from_environment,
+    DrivePushKind,
+    format_drive_manifest,
+    list_drive_manifest_from_environment,
     pull_drive_from_environment,
     push_drive_from_environment,
 )
-from dify_agent.agent_stub.cli._env import MissingAgentStubEnvironmentError, has_agent_stub_environment
+from dify_agent.agent_stub.cli._env import (
+    MissingAgentStubEnvironmentError,
+    has_agent_stub_environment,
+    read_agent_stub_drive_base,
+)
 from dify_agent.agent_stub.cli._files import download_file_from_environment, upload_file_from_environment
 from dify_agent.agent_stub.client._errors import AgentStubClientError
+from dify_agent.agent_stub.protocol.agent_stub import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
 
 
 app = typer.Typer(
@@ -55,21 +63,23 @@ def upload(path: str = typer.Argument(..., metavar="PATH")) -> None:
 
 @file_app.command("download")
 def download(
-    transfer_method: str = typer.Argument(..., metavar="TRANSFER_METHOD"),
-    reference_or_url: str = typer.Argument(..., metavar="REFERENCE_OR_URL"),
-    directory: str | None = typer.Argument(default=None, metavar="DIR"),
+    transfer_method: str | None = typer.Argument(None, metavar="TRANSFER_METHOD"),
+    reference_or_url: str | None = typer.Argument(None, metavar="REFERENCE_OR_URL"),
+    mapping: str | None = typer.Option(None, "--mapping", help="Download one file from a mapping JSON object."),
+    local_dir: str | None = typer.Option(None, "--to", help="Local directory for the downloaded file."),
 ) -> None:
     """Download one workflow file mapping into the local sandbox directory."""
     _run_file_download(
         transfer_method=transfer_method,
         reference_or_url=reference_or_url,
-        directory=directory,
+        mapping=mapping,
+        local_dir=local_dir,
     )
 
 
 @drive_app.command("list")
 def drive_list(
-    path_prefix: str = typer.Argument("", metavar="PATH_PREFIX"),
+    path_prefix: str = typer.Argument("", metavar="REMOTE_PREFIX"),
     json_output: bool = typer.Option(False, "--json", help="Emit the drive manifest as JSON."),
 ) -> None:
     """List drive files visible to the current sandbox execution."""
@@ -78,21 +88,39 @@ def drive_list(
 
 @drive_app.command("pull")
 def drive_pull(
-    path_prefix: str = typer.Argument("", metavar="PATH_PREFIX"),
-    drive_base: str = typer.Option("/mnt/drive", "--drive-base", help="Local base directory for pulled drive files."),
+    targets: list[str] = typer.Argument(None, metavar="REMOTE"),
+    local_base: str | None = typer.Option(
+        None,
+        "--to",
+        help=(
+            f"Local base directory for pulled drive files. Defaults to ${AGENT_STUB_DRIVE_BASE_ENV_VAR} "
+            f"or {DEFAULT_AGENT_STUB_DRIVE_BASE}."
+        ),
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
 ) -> None:
-    """Pull drive files into one local directory tree."""
-    _run_drive_pull(path_prefix=path_prefix, drive_base=drive_base)
+    """Pull one or more drive keys/prefixes into one local directory tree.
+
+    Passing no ``TARGET`` preserves the historical whole-drive behavior by
+    pulling from the empty prefix.
+    """
+    _run_drive_pull(targets=targets or None, local_base=local_base, json_output=json_output)
 
 
 @drive_app.command("push")
 def drive_push(
     local_path: str = typer.Argument(..., metavar="LOCAL_PATH"),
-    drive_path: str = typer.Argument(..., metavar="DRIVE_PATH"),
-    recursive: bool = typer.Option(False, "-r", "--recursive", help="Recursively upload directory contents."),
+    drive_path: str = typer.Argument(..., metavar="REMOTE_PATH"),
+    kind: str | None = typer.Option(None, "--kind", help="Directory upload kind: skill or dir."),
+    json_output: bool = typer.Option(
+        False,
+        "--json",
+        help="Accepted for consistency; drive push output is already emitted as JSON.",
+    ),
 ) -> None:
     """Upload one local file or directory into the agent drive."""
-    _run_drive_push(local_path=local_path, drive_path=drive_path, recursive=recursive)
+    del json_output
+    _run_drive_push(local_path=local_path, drive_path=drive_path, kind=kind)
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -174,12 +202,19 @@ def _run_file_upload(*, path: str) -> None:
     typer.echo(response.model_dump_json())
 
 
-def _run_file_download(*, transfer_method: str, reference_or_url: str, directory: str | None) -> None:
+def _run_file_download(
+    *,
+    transfer_method: str | None,
+    reference_or_url: str | None,
+    mapping: str | None,
+    local_dir: str | None,
+) -> None:
     try:
         response = download_file_from_environment(
             transfer_method=transfer_method,
             reference_or_url=reference_or_url,
-            directory=directory,
+            mapping=mapping,
+            local_dir=local_dir,
         )
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
@@ -192,7 +227,7 @@ def _run_file_download(*, transfer_method: str, reference_or_url: str, directory
 
 def _run_drive_list(*, path_prefix: str, json_output: bool) -> None:
     try:
-        response = list_drive_from_environment(prefix=path_prefix, json_output=json_output)
+        response = list_drive_manifest_from_environment(prefix=path_prefix)
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
@@ -200,29 +235,34 @@ def _run_drive_list(*, path_prefix: str, json_output: bool) -> None:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     if json_output:
-        if isinstance(response, str):
-            raise RuntimeError("drive list JSON output expected a manifest response")
         typer.echo(response.model_dump_json())
         return
-    typer.echo(response)
+    typer.echo(format_drive_manifest(response))
 
 
-def _run_drive_pull(*, path_prefix: str, drive_base: str) -> None:
+def _run_drive_pull(*, targets: list[str] | None, local_base: str | None, json_output: bool) -> None:
     try:
-        response = pull_drive_from_environment(prefix=path_prefix, drive_base=drive_base)
+        response = pull_drive_from_environment(targets=targets, local_base=local_base or read_agent_stub_drive_base())
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc
     except AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
-    for path in response:
-        typer.echo(str(path))
+    if json_output:
+        typer.echo(response.model_dump_json())
+        return
+    for item in response.items:
+        typer.echo(item.local_path)
 
 
-def _run_drive_push(*, local_path: str, drive_path: str, recursive: bool) -> None:
+def _run_drive_push(*, local_path: str, drive_path: str, kind: str | None) -> None:
     try:
-        response = push_drive_from_environment(local_path=local_path, drive_path=drive_path, recursive=recursive)
+        response = push_drive_from_environment(
+            local_path=local_path,
+            drive_path=drive_path,
+            kind=cast(DrivePushKind | None, kind),
+        )
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc

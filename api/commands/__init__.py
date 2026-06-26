@@ -25,6 +25,7 @@ from .plugin import (
 from .rbac import migrate_member_roles_to_rbac
 from .retention import (
     archive_workflow_runs,
+    archive_workflow_runs_plan,
     clean_expired_messages,
     clean_workflow_runs,
     cleanup_orphaned_draft_variables,
@@ -51,6 +52,7 @@ from .vector import (
 __all__ = [
     "add_qdrant_index",
     "archive_workflow_runs",
+    "archive_workflow_runs_plan",
     "backfill_plugin_auto_upgrade",
     "clean_expired_messages",
     "clean_workflow_runs",

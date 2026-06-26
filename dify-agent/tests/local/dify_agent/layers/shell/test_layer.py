@@ -3,12 +3,17 @@ from collections.abc import Callable, Mapping
 import secrets
 import time
 from dataclasses import dataclass
+from typing import cast
 
 import pytest
 
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from agenton.layers import LifecycleState
-from dify_agent.agent_stub.server.shell_agent_stub_env import AGENT_STUB_AUTH_JWE_ENV_VAR, AGENT_STUB_URL_ENV_VAR
+from dify_agent.agent_stub.server.shell_agent_stub_env import (
+    AGENT_STUB_AUTH_JWE_ENV_VAR,
+    AGENT_STUB_DRIVE_BASE_ENV_VAR,
+    AGENT_STUB_API_BASE_URL_ENV_VAR,
+)
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import (
@@ -440,7 +445,6 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
         assert 'export GITHUB_TOKEN="${GITHUB_TOKEN:-}"' in script
         assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
         assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
-        assert '. ".dify/env.sh"' in script
         assert "apt-get install -y ripgrep" in script
         return _job_result("bootstrap-job", status=JobStatusName.EXITED, done=True, exit_code=0)
 
@@ -475,10 +479,60 @@ def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pyte
     assert layer.runtime_state.job_ids == ["mkdir-job", "bootstrap-job"]
 
 
+def test_shell_layer_injects_agent_soul_env_without_workspace_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(time, "time", lambda: 0xABC12)
+
+    def token_hex(_nbytes: int) -> str:
+        return "ff"
+
+    monkeypatch.setattr(secrets, "token_hex", token_hex)
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
+        del timeout
+        assert env is None
+        if cwd is None:
+            return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+
+        assert cwd == "~/workspace/abc12ff"
+        assert "export PROJECT_NAME='demo project'" in script
+        assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
+        assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
+        assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
+        assert script.endswith("\npwd")
+        return _job_result("user-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+
+    client = FakeShellctlClient(run_handler=run_handler)
+    layer = _shell_layer(
+        client_factory=lambda _entrypoint: client,
+        config=DifyShellLayerConfig(
+            env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project")],
+            secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="secret-1")],
+            sandbox=DifyShellSandboxConfig(provider="independent", config={"cpu": 2}),
+        ),
+    )
+    tools = {tool.name: tool for tool in layer.tools}
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            await layer.on_context_create()
+            run_result = cast(
+                Mapping[str, object],
+                await tools["shell_run"].function_schema.call(
+                    {"script": "pwd"},
+                    None,  # pyright: ignore[reportArgumentType]
+                ),
+            )
+            assert run_result["job_id"] == "user-job"
+
+    asyncio.run(scenario())
+
+    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ff"]
+    assert layer.runtime_state.job_ids == ["mkdir-job", "user-job"]
+
+
 def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script.endswith("\npwd")
-        assert '. ".dify/env.sh"' in script
+        assert script == "pwd"
         assert cwd == "~/workspace/abc12ff"
         assert env is None
         assert timeout == 2.5
@@ -594,8 +648,7 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
 def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
         del cwd, timeout
-        if script.endswith("\npwd"):
-            assert '. ".dify/env.sh"' in script
+        if script == "pwd":
             assert env is not None
             return _job_result("user-job", status=JobStatusName.EXITED, done=True, exit_code=0)
         assert env is None
@@ -603,10 +656,10 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
 
     client = FakeShellctlClient(run_handler=run_handler)
     layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(),
+        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
@@ -625,12 +678,13 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
 
     asyncio.run(scenario())
 
-    user_run_call = next(call for call in client.run_calls if call.script.endswith("\npwd"))
-    internal_run_calls = [call for call in client.run_calls if not call.script.endswith("\npwd")]
+    user_run_call = next(call for call in client.run_calls if call.script == "pwd")
+    internal_run_calls = [call for call in client.run_calls if call.script != "pwd"]
 
     assert user_run_call.env == {
-        AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+        AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
         AGENT_STUB_AUTH_JWE_ENV_VAR: f"token-for:tenant-1:{layer.runtime_state.session_id}",
+        AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
     }
     assert internal_run_calls
     assert all(call.env is None for call in internal_run_calls)
@@ -674,6 +728,7 @@ def test_run_remote_script_uses_workspace_cwd_accumulates_output_and_deletes_job
             result = await layer.run_remote_script("printf 'hello world'", timeout=7.5)
             assert result.output == "hello world"
             assert result.exit_code == 0
+            assert result.truncated is False
 
     asyncio.run(scenario())
 
@@ -721,17 +776,18 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
         del timeout
         assert cwd == "~/workspace/abc12ff"
         assert env == {
-            AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+            AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
             AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
+            AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
         }
         return _job_result("remote-upload", status=JobStatusName.EXITED, done=True, exit_code=0, output="{}")
 
     client = FakeShellctlClient(run_handler=run_handler)
     layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(),
+        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
@@ -761,7 +817,7 @@ def test_run_remote_script_raises_when_agent_stub_env_is_unavailable() -> None:
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
@@ -791,7 +847,7 @@ def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency()
         DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         agent_stub_token_factory=lambda execution_context, *, session_id: (
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),

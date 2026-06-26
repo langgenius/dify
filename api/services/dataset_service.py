@@ -248,7 +248,7 @@ class DatasetService:
     def get_datasets(
         page,
         per_page,
-        session: scoped_session | Session | None = None,
+        session: scoped_session | Session,
         tenant_id=None,
         user=None,
         search=None,
@@ -257,7 +257,7 @@ class DatasetService:
         accessible_dataset_ids: list[str] | None = None,
         include_own_datasets: bool = False,
     ):
-        session = session or db.session
+        """Return visible datasets for a tenant, using the injected session for auxiliary permission lookups."""
         query = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
 
         if dify_config.RBAC_ENABLED and accessible_dataset_ids is not None:
@@ -268,7 +268,7 @@ class DatasetService:
 
         if user:
             # get permitted dataset ids
-            dataset_permission = db.session.scalars(
+            dataset_permission = session.scalars(
                 select(DatasetPermission).where(
                     DatasetPermission.account_id == user.id, DatasetPermission.tenant_id == tenant_id
                 )
@@ -652,7 +652,7 @@ class DatasetService:
                 raise ValueError("Dataset name already exists")
 
         # Verify user has permission to update this dataset
-        DatasetService.check_dataset_permission(dataset, user)
+        DatasetService.check_dataset_permission(dataset, user, db.session)
 
         # Handle external dataset updates
         if dataset.provider == "external":
@@ -1311,7 +1311,7 @@ class DatasetService:
         if dataset is None:
             return False
 
-        DatasetService.check_dataset_permission(dataset, user)
+        DatasetService.check_dataset_permission(dataset, user, db.session)
 
         dataset_was_deleted.send(dataset)
 
@@ -1325,7 +1325,8 @@ class DatasetService:
         return db.session.execute(stmt).scalar_one()
 
     @staticmethod
-    def check_dataset_permission(dataset, user):
+    def check_dataset_permission(dataset, user, session: scoped_session | Session):
+        """Validate dataset access for a user, using the injected session for partial-member lookups."""
         if dataset.tenant_id != user.current_tenant_id:
             logger.debug("User %s does not have permission to access dataset %s", user.id, dataset.id)
             raise NoPermissionError("You do not have permission to access this dataset.")
@@ -1336,7 +1337,7 @@ class DatasetService:
             if dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
                 # For partial team permission, user needs explicit permission or be the maintainer.
                 if dataset.maintainer != user.id:
-                    user_permission = db.session.scalar(
+                    user_permission = session.scalar(
                         select(DatasetPermission)
                         .where(DatasetPermission.dataset_id == dataset.id, DatasetPermission.account_id == user.id)
                         .limit(1)
@@ -1728,7 +1729,7 @@ class DocumentService:
         if not dataset:
             raise NotFound("Dataset not found.")
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -1778,7 +1779,7 @@ class DocumentService:
             invalid_source_message="Document does not have an uploaded file to download.",
             missing_file_message="Uploaded file not found.",
         )
-        upload_files_by_id = FileService.get_upload_files_by_ids(document.tenant_id, [upload_file_id])
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), document.tenant_id, [upload_file_id])
         upload_file = upload_files_by_id.get(upload_file_id)
         if not upload_file:
             raise NotFound("Uploaded file not found.")
@@ -1817,7 +1818,7 @@ class DocumentService:
             upload_file_ids.append(upload_file_id)
             upload_file_ids_by_document_id[document_id] = upload_file_id
 
-        upload_files_by_id = FileService.get_upload_files_by_ids(tenant_id, upload_file_ids)
+        upload_files_by_id = FileService.get_upload_files_by_ids(db.session(), tenant_id, upload_file_ids)
         missing_upload_file_ids: set[str] = set(upload_file_ids) - set(upload_files_by_id.keys())
         if missing_upload_file_ids:
             raise NotFound("Only uploaded-file documents can be downloaded as ZIP.")

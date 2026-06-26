@@ -14,7 +14,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Drawer,
-  DrawerBackdrop,
   DrawerContent,
   DrawerPopup,
   DrawerPortal,
@@ -82,8 +81,9 @@ const ProviderDetail = ({
   const isAuthed = collection.is_team_authorization
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
-  const { canUseCredential, canManageCredential } = useCredentialPermissions()
-  const canOpenCredentialSettings = isAuthed ? canUseCredential : canManageCredential
+  const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
+  const canOpenCredentialSettings = isAuthed ? canUseCredential : canCreateCredential
+  const canSaveCredentialSettings = isAuthed ? canManageCredential : canCreateCredential
   const canManageTools = useCanManageTools()
   const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
@@ -163,9 +163,6 @@ const ProviderDetail = ({
   // workflow provider
   const [workflowToolDrawerOpen, setWorkflowToolDrawerOpen] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
-    if (!canManageTools)
-      return
-
     setIsDetailLoading(true)
     const res = await fetchWorkflowToolDetail(collection.id)
     const payload = {
@@ -183,7 +180,7 @@ const ProviderDetail = ({
     }
     setCustomCollection(payload)
     setIsDetailLoading(false)
-  }, [canManageTools, collection.id])
+  }, [collection.id])
   const removeWorkflowToolProvider = async () => {
     if (!canManageTools)
       return
@@ -242,24 +239,18 @@ const ProviderDetail = ({
         setToolList([])
       }
       else {
-        if (!canManageTools) {
-          setToolList([])
-          setIsDetailLoading(false)
-          return
-        }
-
         const list = await fetchCustomToolList(collection.name)
         setToolList(list)
       }
     }
     catch { }
     setIsDetailLoading(false)
-  }, [canManageTools, collection.name, collection.type])
+  }, [collection.name, collection.type])
 
   useEffect(() => {
     if (collection.type === CollectionType.custom && canManageTools)
       getCustomProvider()
-    if (collection.type === CollectionType.workflow && canManageTools)
+    if (collection.type === CollectionType.workflow)
       getWorkflowToolProvider()
     getProviderToolList()
   }, [canManageTools, collection.name, collection.type, getCustomProvider, getProviderToolList, getWorkflowToolProvider])
@@ -267,7 +258,8 @@ const ProviderDetail = ({
   return (
     <Drawer
       open={!!collection}
-      modal
+      modal={false}
+      disablePointerDismissal
       swipeDirection="right"
       onOpenChange={(open) => {
         if (!open)
@@ -275,9 +267,8 @@ const ProviderDetail = ({
       }}
     >
       <DrawerPortal>
-        <DrawerBackdrop className="bg-transparent" />
-        <DrawerViewport>
-          <DrawerPopup className={cn('justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
+        <DrawerViewport className="pointer-events-none">
+          <DrawerPopup className={cn('pointer-events-auto touch-auto justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-[400px] data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border')}>
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               <div className="flex h-full flex-col p-4">
                 <div className="shrink-0">
@@ -330,7 +321,7 @@ const ProviderDetail = ({
                         nativeButton={false}
                         variant="primary"
                         className={cn('my-3 h-8 min-w-0 flex-1 rounded-lg px-3 py-2')}
-                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" />}
+                        render={<a href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank" aria-label={t('openInStudio', { ns: 'tools' })} />}
                       >
                         <span className="min-w-0 truncate px-0.5 system-sm-medium">{t('openInStudio', { ns: 'tools' })}</span>
                         <span aria-hidden className="i-ri-arrow-right-up-line size-4 shrink-0" />
@@ -432,7 +423,7 @@ const ProviderDetail = ({
                     collection={collection}
                     onCancel={() => setShowSettingAuth(false)}
                     onSaved={async (value) => {
-                      if (!canManageCredential)
+                      if (!canSaveCredentialSettings)
                         return
 
                       await updateBuiltInToolCredential(collection.name, value)
@@ -449,7 +440,7 @@ const ProviderDetail = ({
                       await onRefreshData()
                       setShowSettingAuth(false)
                     }}
-                    readonly={!canManageCredential}
+                    readonly={!canSaveCredentialSettings}
                   />
                 )}
                 {isShowEditCollectionToolModal && canManageTools && (

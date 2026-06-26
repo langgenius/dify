@@ -212,18 +212,30 @@ describe('run() catch routing', () => {
     expect(result.exit).toBe(ExitCode.Generic)
   })
 
-  it('falls through to generic Error branch and exits 1', async () => {
+  it('routes non-BaseError to JSON envelope with -o json (exit 1)', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw new Error('boom')
+      }
+    }
+    const result = await captureRun(makeTree(Throwing), ['cmd', '-o', 'json'])
+    expect(result.stderr).toBe(`${JSON.stringify({ error: { code: 'unknown', message: 'boom' } })}\n`)
+    expect(result.exit).toBe(ExitCode.Generic)
+    expect(result.stdout).toBe('')
+  })
+
+  it('wraps a generic Error into the human unknown form and exits 1', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
         throw new Error('oops')
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
-    expect(result.stderr).toBe('oops\n')
-    expect(result.exit).toBe(1)
+    expect(result.stderr).toBe('unknown: oops\n')
+    expect(result.exit).toBe(ExitCode.Generic)
   })
 
-  it('handles non-Error throw via String() coercion', async () => {
+  it('wraps a non-Error throw via String() coercion into unknown form', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
         // eslint-disable-next-line no-throw-literal
@@ -231,8 +243,52 @@ describe('run() catch routing', () => {
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
-    expect(result.stderr).toBe('plain string\n')
-    expect(result.exit).toBe(1)
+    expect(result.stderr).toBe('unknown: plain string\n')
+    expect(result.exit).toBe(ExitCode.Generic)
+  })
+
+  it('exits 0 on EPIPE without writing an error envelope', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw Object.assign(new Error('broken pipe'), { code: 'EPIPE' })
+      }
+    }
+    // process.exit is typed `never`; stub it to halt (throw) like the real call,
+    // so the EPIPE early-exit doesn't fall through to the envelope path.
+    let exitCode: number | undefined
+    let stderr = ''
+    const origExit = process.exit.bind(process)
+    const origStderr = process.stderr.write.bind(process.stderr)
+    process.exit = ((code?: number) => {
+      exitCode = code
+      throw new Error('__exit__')
+    }) as typeof process.exit
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderr += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+      return true
+    }) as typeof process.stderr.write
+    try {
+      await run(makeTree(Throwing), ['cmd', '-o', 'json'])
+    }
+    catch (e) {
+      expect((e as Error).message).toBe('__exit__')
+    }
+    finally {
+      process.exit = origExit
+      process.stderr.write = origStderr
+    }
+    expect(exitCode).toBe(0)
+    expect(stderr).toBe('')
+  })
+
+  it('preserves RateLimited semantic exit code through the collapsed catch', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw newError(ErrorCode.RateLimited, 'slow down')
+      }
+    }
+    const result = await captureRun(makeTree(Throwing), ['cmd'])
+    expect(result.exit).toBe(ExitCode.RateLimited)
   })
 
   it('does not call process.exit when command runs successfully', async () => {

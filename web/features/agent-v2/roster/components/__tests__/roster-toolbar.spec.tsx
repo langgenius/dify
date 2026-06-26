@@ -1,8 +1,14 @@
 import type { RosterFilterValue } from '../roster-filter'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { RosterToolbar } from '../roster-toolbar'
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
+}))
 
 const renderToolbar = ({
   filter = 'all',
@@ -48,16 +54,12 @@ describe('RosterToolbar', () => {
   it('renders stable filter count badges and omits the all count', () => {
     renderToolbar()
 
-    expect(screen.getByRole('button', { name: /agentV2\.roster\.filters\.all/ })).not.toHaveTextContent('3')
+    const allFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.all/ })
+    const publishedFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.published/ })
+    const draftsFilter = screen.getByRole('button', { name: /agentV2\.roster\.filters\.drafts/ })
 
-    expect(screen.getByText('1').parentElement).toHaveClass(
-      'min-w-4',
-      'shrink-0',
-      'border-divider-deep',
-      'py-0.5',
-      'system-2xs-medium-uppercase',
-      'tabular-nums',
-    )
-    expect(screen.getByText('1')).toHaveClass('min-w-px', 'flex-1', 'text-center')
+    expect(allFilter).not.toHaveTextContent('3')
+    expect(within(publishedFilter).getByText('1')).toBeInTheDocument()
+    expect(within(draftsFilter).getByText('2')).toBeInTheDocument()
   })
 })

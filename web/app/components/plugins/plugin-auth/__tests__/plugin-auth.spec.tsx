@@ -7,7 +7,7 @@ import { AuthCategory } from '../types'
 const mockUsePluginAuth = vi.fn()
 const mockSetShowAccountSettingModal = vi.fn()
 const mockAppContext = vi.hoisted(() => ({
-  workspacePermissionKeys: ['credential.manage', 'credential.use'] as string[],
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
 }))
 
 vi.mock('../hooks/use-plugin-auth', () => ({
@@ -44,7 +44,7 @@ const defaultPayload = {
 describe('PluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockAppContext.workspacePermissionKeys = ['credential.manage', 'credential.use']
+    mockAppContext.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
   })
 
   afterEach(() => {
@@ -142,7 +142,7 @@ describe('PluginAuth', () => {
     expect(mockUsePluginAuth).toHaveBeenCalledWith(defaultPayload, true)
   })
 
-  it('renders permission hint and disables authorization configuration when credential.manage is missing', () => {
+  it('renders permission hint and disables authorization configuration when credential.create is missing', () => {
     mockAppContext.workspacePermissionKeys = ['credential.use']
     mockUsePluginAuth.mockReturnValue({
       isAuthorized: false,

@@ -8,7 +8,7 @@ import { ConfigurationMethodEnum } from '../../declarations'
 import ProviderAddedCard from '../index'
 
 let mockIsCurrentWorkspaceManager = true
-let mockWorkspacePermissionKeys: string[] = ['plugin.manage', 'credential.manage', 'credential.use']
+let mockWorkspacePermissionKeys: string[] = ['plugin.model_config', 'credential.use', 'credential.create', 'credential.manage']
 const mockFetchModelProviderModels = vi.fn()
 const mockQueryOptions = vi.fn(({ input, ...options }: { input: { params: { provider: string } }, enabled?: boolean }) => ({
   queryKey: ['console', 'modelProviders', 'models', input.params.provider],
@@ -105,7 +105,7 @@ describe('ProviderAddedCard', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockIsCurrentWorkspaceManager = true
-    mockWorkspacePermissionKeys = ['plugin.manage', 'credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = ['plugin.model_config', 'credential.use', 'credential.create', 'credential.manage']
   })
 
   it('should render provider added card component', () => {
@@ -201,7 +201,7 @@ describe('ProviderAddedCard', () => {
     expect(screen.getByText('common.modelProvider.configureTip')).toBeInTheDocument()
   })
 
-  it('should render custom model actions when user can manage plugins', () => {
+  it('should render custom model actions when user can configure models', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
@@ -213,17 +213,17 @@ describe('ProviderAddedCard', () => {
 
     unmount()
     mockIsCurrentWorkspaceManager = false
-    mockWorkspacePermissionKeys = ['credential.manage', 'credential.use']
+    mockWorkspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
     expect(screen.queryByTestId('manage-custom-model')).not.toBeInTheDocument()
   })
 
-  it('should render custom model actions when user can manage plugins without credential permissions', () => {
+  it('should render custom model actions when user can configure models without credential permissions', () => {
     const customConfigProvider = {
       ...mockProvider,
       configurate_methods: [ConfigurationMethodEnum.customizableModel],
     } as unknown as ModelProvider
-    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config']
 
     renderWithQueryClient(<ProviderAddedCard provider={customConfigProvider} />)
 

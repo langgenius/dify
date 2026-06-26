@@ -14,6 +14,7 @@ from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
+from controllers.common.app_access import resolve_app_access_filter
 from controllers.common.fields import RedirectUrlResponse, SimpleResultResponse
 from controllers.common.helpers import FileInfo
 from controllers.common.schema import (
@@ -78,7 +79,6 @@ _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 AppListMode = Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "agent", "channel", "all"]
 DEFAULT_APP_LIST_MODE: AppListMode = "all"
-APP_LIST_PERMISSION_KEYS = frozenset({"app.preview", "app.acl.preview", "app.full_access"})
 
 
 class AppListBaseQuery(BaseModel):
@@ -165,10 +165,6 @@ def _normalize_app_list_query_args(query_args: MultiDict[str, str]) -> dict[str,
         normalized["creator_ids"] = [value for _, value in sorted(indexed_creator_ids)]
 
     return normalized
-
-
-def _has_app_list_permission(permission_keys: Sequence[str]) -> bool:
-    return any(permission_key in APP_LIST_PERMISSION_KEYS for permission_key in permission_keys)
 
 
 class CreateAppPayload(BaseModel):
@@ -335,7 +331,7 @@ class ModelConfig(ResponseModel):
         return to_timestamp(value)
 
 
-class Site(ResponseModel):
+class AppDetailSiteResponse(ResponseModel):
     access_token: str | None = Field(default=None, validation_alias="code")
     code: str | None = None
     title: str | None = None
@@ -349,6 +345,7 @@ class Site(ResponseModel):
     customize_domain: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
+    input_placeholder: str | None = None
     custom_disclaimer: str | None = None
     customize_token_strategy: str | None = None
     prompt_public: bool | None = None
@@ -465,7 +462,7 @@ class AppDetailWithSite(AppDetail):
     api_base_url: str | None = None
     max_active_requests: int | None = None
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
-    site: Site | None = None
+    site: AppDetailSiteResponse | None = None
     # For Agent App type: the roster Agent backing this app (None otherwise).
     bound_agent_id: str | None = None
     # For Agent App responses exposed through /agent.
@@ -550,7 +547,7 @@ register_schema_models(
     WorkflowPartial,
     ModelConfigPartial,
     ModelConfig,
-    Site,
+    AppDetailSiteResponse,
     DeletedTool,
     AppDetail,
     AppExportResponse,
@@ -612,38 +609,12 @@ class AppListApi(Resource):
             current_user_id,
         )
         if dify_config.RBAC_ENABLED:
-            whitelist_scope = enterprise_rbac_service.RBACService.AppAccess.whitelist_resources(
+            access_filter = resolve_app_access_filter(
                 str(current_tenant_id),
                 current_user_id,
+                permissions=permissions,
             )
-            can_manage_own_apps = "app.create_and_management" in permissions.workspace.permission_keys
-            has_default_preview = _has_app_list_permission(
-                permissions.app.default_permission_keys
-            ) or _has_app_list_permission(permissions.workspace.permission_keys)
-            permission_app_ids: set[str] | None = None
-            if not has_default_preview:
-                permission_app_ids = {
-                    override.resource_id
-                    for override in permissions.app.overrides
-                    if _has_app_list_permission(override.permission_keys)
-                }
-
-            if getattr(whitelist_scope, "unrestricted", False):
-                accessible_app_ids = permission_app_ids
-            else:
-                accessible_app_ids = set(whitelist_scope.resource_ids)
-                if permission_app_ids is not None:
-                    accessible_app_ids |= permission_app_ids
-                elif has_default_preview:
-                    accessible_app_ids = None
-
-            if accessible_app_ids:
-                params.accessible_app_ids = sorted(accessible_app_ids)
-                params.include_own_apps = can_manage_own_apps
-            elif accessible_app_ids is not None and can_manage_own_apps:
-                params.is_created_by_me = True
-            elif accessible_app_ids is not None:
-                params.accessible_app_ids = []
+            access_filter.apply_to_params(params)
 
         # get app list
         app_service = AppService()
@@ -1124,7 +1095,7 @@ class AppTraceApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def post(self, app_model: App):
         # add app trace

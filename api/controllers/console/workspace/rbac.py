@@ -201,21 +201,23 @@ def _legacy_workspace_roles(
     This keeps the new `/rbac/roles` endpoint compatible with the original
     Dify role model when enterprise RBAC is disabled.
     """
-
-    legacy_roles = [
-        svc.RBACRole(
-            id=role_name,
-            tenant_id="",
-            type=svc.RBACRoleType.WORKSPACE.value,
-            category="global_system_default",
-            name=role_name,
-            description="",
-            is_builtin=True,
-            permission_keys=list(_LEGACY_ROLE_PERMISSION_KEYS[role_name]),
-            role_tag="owner" if role_name == "owner" else "",
+    legacy_roles = []
+    for role_name in ("owner", "admin", "editor", "normal", "dataset_operator"):
+        if not dify_config.DATASET_OPERATOR_ENABLED and role_name == "dataset_operator":
+            continue
+        legacy_roles.append(
+            svc.RBACRole(
+                id=role_name,
+                tenant_id="",
+                type=svc.RBACRoleType.WORKSPACE.value,
+                category="global_system_default",
+                name=role_name,
+                description="",
+                is_builtin=True,
+                permission_keys=list(dict.fromkeys(_LEGACY_ROLE_PERMISSION_KEYS[role_name])),
+                role_tag="owner" if role_name == "owner" else "",
+            )
         )
-        for role_name in ("owner", "admin", "editor", "normal", "dataset_operator")
-    ]
 
     if not include_owner:
         legacy_roles = [r for r in legacy_roles if r.name != "owner"]
@@ -242,11 +244,6 @@ def _legacy_workspace_roles(
             total_pages=total_pages,
         ),
     )
-
-
-# ---------------------------------------------------------------------------
-# Permission catalogs.
-# ---------------------------------------------------------------------------
 
 
 @console_ns.route("/workspaces/current/rbac/role-permissions/catalog")
@@ -373,30 +370,6 @@ class RBACRoleCopyApi(Resource):
         request = _payload(CopyRoleParam)
         role = svc.RBACService.Roles.copy(tenant_id, account_id, str(role_id), copy_member=request.copy_member)
         return _dump(role), 201
-
-
-@console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/members")
-class RBACRoleMembersApi(Resource):
-    @login_required
-    @rbac_permission_required(
-        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
-    )
-    @console_ns.response(200, "Success", console_ns.models[_RBACRoleAccountList.__name__])
-    def get(self, role_id):
-        tenant_id, account_id = _current_ids()
-        return _dump(
-            svc.RBACService.Roles.members(
-                tenant_id,
-                account_id,
-                str(role_id),
-                options=_pagination_options(),
-            )
-        )
-
-
-# ---------------------------------------------------------------------------
-# Access policies (tenant-level permission sets).
-# ---------------------------------------------------------------------------
 
 
 class _AccessPolicyCreateRequest(BaseModel):
@@ -786,11 +759,6 @@ class RBACDatasetMemberBindingsApi(Resource):
             svc.DeleteMemberBindings(account_ids=request_body.account_ids),
         )
         return {"result": "success"}
-
-
-# ---------------------------------------------------------------------------
-# Workspace-level access (Settings > Access Rules).
-# ---------------------------------------------------------------------------
 
 
 @console_ns.route("/workspaces/current/rbac/workspace/apps/access-policy")

@@ -5,7 +5,6 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
-  ComboboxClear,
   ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
@@ -95,7 +94,6 @@ export function AgentLogSourcePicker({
               placeholder={t('agentDetail.logs.filters.source.searchPlaceholder')}
               className="block h-4.5 grow px-1 py-0 system-sm-regular text-components-input-text-filled"
             />
-            <ComboboxClear className="mr-0" />
           </ComboboxInputGroup>
         </div>
         {isLoading && (

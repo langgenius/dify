@@ -4,16 +4,33 @@ import { render, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ReleaseHistoryRows } from '../release-history-rows'
 
+vi.mock('../deploy-release-menu', () => ({
+  DeployReleaseMenu: () => <button type="button">Actions</button>,
+}))
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+
   return {
     ...actual,
-    useQuery: () => ({ data: undefined }),
+    useQuery: () => ({
+      data: {
+        name: 'Source Workflow',
+      },
+    }),
   }
 })
 
-vi.mock('../deploy-release-menu', () => ({
-  DeployReleaseMenu: () => <button type="button">Actions</button>,
+vi.mock('@/service/client', () => ({
+  consoleQuery: {
+    apps: {
+      byAppId: {
+        get: {
+          queryOptions: (options: unknown) => options,
+        },
+      },
+    },
+  },
 }))
 
 function createReleaseRow(overrides: Partial<ReleaseWithSummaryDeployments> = {}): ReleaseWithSummaryDeployments {
@@ -39,7 +56,6 @@ describe('ReleaseHistoryRows', () => {
   it('should render the desktop release list with the knowledge table style', () => {
     const { container } = render(
       <ReleaseHistoryRows
-        appInstanceId="app-instance-1"
         releaseRows={[createReleaseRow()]}
       />,
     )
@@ -60,7 +76,6 @@ describe('ReleaseHistoryRows', () => {
   it('should render release deployments with the dot status style', () => {
     const { container } = render(
       <ReleaseHistoryRows
-        appInstanceId="app-instance-1"
         releaseRows={[
           createReleaseRow({
             summaryDeployments: [{
@@ -81,5 +96,23 @@ describe('ReleaseHistoryRows', () => {
     expect(deploymentLabel).not.toHaveClass('border', 'rounded-md', 'bg-util-colors-green-green-50')
     expect(deploymentLabel).not.toHaveAttribute('data-base-ui-tooltip-trigger')
     expect(container.querySelector('.shadow-status-indicator-green-shadow')).toBeInTheDocument()
+  })
+
+  it('should render release source app links with scoped source app state', () => {
+    const { container } = render(
+      <ReleaseHistoryRows
+        releaseRows={[
+          createReleaseRow({
+            sourceAppId: 'source-app-1',
+          }),
+        ]}
+      />,
+    )
+
+    const table = container.querySelector('table')
+    const sourceLink = within(table!).getByRole('link', { name: /Source Workflow/ })
+
+    expect(sourceLink).toHaveAttribute('href', '/app/source-app-1/workflow')
+    expect(sourceLink).toHaveAttribute('target', '_blank')
   })
 })

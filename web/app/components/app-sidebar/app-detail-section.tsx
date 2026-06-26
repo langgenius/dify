@@ -15,12 +15,14 @@ import {
   RiTerminalWindowFill,
   RiTerminalWindowLine,
 } from '@remixicon/react'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
 import Divider from '@/app/components/base/divider'
 import Annotations from '@/app/components/base/icons/src/vender/Annotations'
 import { useAppContext } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { usePathname } from '@/next/navigation'
 import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
@@ -71,7 +73,9 @@ const AppDetailSection = ({
 }: AppDetailSectionProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { userProfile, workspacePermissionKeys } = useAppContext()
+  const isRbacEnabled = systemFeatures.rbac_enabled
   const appDetail = useStore(state => state.appDetail)
   const appInfoActions = useAppInfoActions({
     resetKey: appDetail?.id,
@@ -88,6 +92,7 @@ const AppDetailSection = ({
       currentUserId: userProfile?.id,
       resourceMaintainer: appDetail.maintainer,
       workspacePermissionKeys,
+      isRbacEnabled,
     })
 
     return [
@@ -106,7 +111,7 @@ const AppDetailSection = ({
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
-      ...(appACLCapabilities.canMonitor
+      ...(appACLCapabilities.canAccessLogAndAnnotation
         ? [{
             name: t('appMenus.logs', { ns: 'common' }),
             href: `/app/${appId}/logs`,
@@ -115,7 +120,7 @@ const AppDetailSection = ({
           }]
         : []
       ),
-      ...(appACLCapabilities.canEdit && supportsAnnotations
+      ...(appACLCapabilities.canAccessLogAndAnnotation && supportsAnnotations
         ? [{
             name: t('appMenus.annotations', { ns: 'common' }),
             href: `/app/${appId}/annotations`,
@@ -143,7 +148,7 @@ const AppDetailSection = ({
         : []
       ),
     ]
-  }, [appDetail, t, userProfile?.id, workspacePermissionKeys])
+  }, [appDetail, t, userProfile?.id, workspacePermissionKeys, isRbacEnabled])
 
   if (!appDetail)
     return null

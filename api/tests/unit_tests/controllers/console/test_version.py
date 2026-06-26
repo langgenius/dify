@@ -65,7 +65,7 @@ class TestCheckVersionUpdate:
         assert result.features.can_replace_logo is True
         assert result.features.model_load_balancing_enabled is False
 
-    def test_http_error_fallback(self):
+    def test_http_error_fallback(self, caplog: pytest.LogCaptureFixture):
         query = version_module.VersionQuery(current_version="1.0.0")
 
         with (
@@ -79,15 +79,12 @@ class TestCheckVersionUpdate:
                 "get",
                 side_effect=Exception("boom"),
             ),
-            patch.object(
-                version_module.logger,
-                "warning",
-            ) as log_warning,
+            caplog.at_level(logging.WARNING, logger="controllers.console.version"),
         ):
             result = version_module.check_version_update(query)
 
         assert result.version == "1.0.0"
-        log_warning.assert_called_once()
+        assert "Check update version error" in caplog.text
 
     def test_new_version_available(self):
         query = version_module.VersionQuery(current_version="1.0.0")
