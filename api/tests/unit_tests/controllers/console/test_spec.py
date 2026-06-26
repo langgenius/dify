@@ -26,12 +26,10 @@ class TestSpecSchemaDefinitionsApi:
         api = spec_module.SpecSchemaDefinitionsApi()
         method = unwrap(api.get)
 
-        with (
-            patch.object(
-                spec_module,
-                "SchemaManager",
-                side_effect=Exception("boom"),
-            )
+        with patch.object(
+            spec_module,
+            "SchemaManager",
+            side_effect=Exception("boom"),
         ):
             resp, status = method(api)
 
