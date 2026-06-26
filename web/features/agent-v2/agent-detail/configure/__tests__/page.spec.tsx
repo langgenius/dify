@@ -170,7 +170,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('../components/orchestrate', () => ({
   AgentOrchestratePanel: (props: {
-    bottomBar?: ReactNode
+    bottomAction?: ReactNode
     isBuildDraftActive?: boolean
     onOpenVersions?: () => void
     readOnly?: boolean
@@ -181,7 +181,7 @@ vi.mock('../components/orchestrate', () => ({
       <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
       <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
       <button type="button" onClick={props.onOpenVersions}>open versions</button>
-      {props.bottomBar}
+      {props.bottomAction}
     </div>
   ),
 }))

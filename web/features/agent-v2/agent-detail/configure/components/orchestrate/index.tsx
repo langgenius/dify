@@ -9,6 +9,7 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
+import { AgentOrchestrateBottomActions } from './bottom-actions'
 import { AgentDriveApiContextProvider } from './drive-context'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
@@ -39,7 +40,7 @@ type AgentOrchestratePanelProps = {
   showHeader?: boolean
   showPublishBar?: boolean
   headerAction?: ReactNode
-  bottomBar?: ReactNode
+  bottomAction?: ReactNode
   onSelectModel: (model: DefaultModel) => void
   onPublish: () => void | Promise<void>
   onExitVersions?: () => void
@@ -65,7 +66,7 @@ export function AgentOrchestratePanel({
   showHeader = true,
   showPublishBar = true,
   headerAction,
-  bottomBar,
+  bottomAction,
   onSelectModel,
   onPublish,
   onExitVersions,
@@ -74,7 +75,23 @@ export function AgentOrchestratePanel({
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
   const orchestrateLabel = t('agentDetail.configure.title')
-  const hasBottomBar = showPublishBar || !!bottomBar
+  const orchestrateBottomAction = bottomAction ?? (showPublishBar
+    ? (
+        <AgentConfigurePublishBar
+          agentId={agentId}
+          activeConfigIsPublished={activeConfigIsPublished}
+          activeConfigSnapshot={activeConfigSnapshot}
+          agentName={agentName}
+          draftSavedAt={draftSavedAt}
+          isPublishing={isPublishing}
+          selectedVersionSnapshot={selectedVersionSnapshot}
+          onPublish={onPublish}
+          onExitVersions={onExitVersions}
+          onOpenVersions={onOpenVersions}
+        />
+      )
+    : null)
+  const hasBottomAction = !!orchestrateBottomAction
   const driveApiContext = useMemo(() => appId && nodeId
     ? {
         agentId,
@@ -100,8 +117,8 @@ export function AgentOrchestratePanel({
             labelledBy={showHeader ? orchestrateHeadingId : undefined}
             slotClassNames={{
               viewport: 'overscroll-contain',
-              content: cn('min-h-full px-4 py-3', hasBottomBar && 'pb-20'),
-              scrollbar: hasBottomBar ? 'z-20' : undefined,
+              content: cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20'),
+              scrollbar: hasBottomAction ? 'z-20' : undefined,
             }}
           >
             <AgentDriveApiContextProvider value={driveApiContext}>
@@ -123,21 +140,13 @@ export function AgentOrchestratePanel({
         </div>
       </AgentOrchestrateReadOnlyContext>
 
-      {bottomBar}
-      {showPublishBar && !bottomBar && (
-        <AgentConfigurePublishBar
-          agentId={agentId}
-          activeConfigIsPublished={activeConfigIsPublished}
-          activeConfigSnapshot={activeConfigSnapshot}
-          agentName={agentName}
-          draftSavedAt={draftSavedAt}
-          isPublishing={isPublishing}
-          selectedVersionSnapshot={selectedVersionSnapshot}
-          onPublish={onPublish}
-          onExitVersions={onExitVersions}
-          onOpenVersions={onOpenVersions}
-        />
-      )}
+      {orchestrateBottomAction
+        ? (
+            <AgentOrchestrateBottomActions>
+              {orchestrateBottomAction}
+            </AgentOrchestrateBottomActions>
+          )
+        : null}
     </div>
   )
 }

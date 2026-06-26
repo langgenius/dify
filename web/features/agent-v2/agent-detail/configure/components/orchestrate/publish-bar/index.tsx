@@ -2,7 +2,6 @@
 
 import type { AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
-import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -273,55 +272,31 @@ export function AgentConfigurePublishBar({
     : currentStateMeta.metaLabel
 
   return (
-    <PublishBarBottomActions>
-      <CollapsibleRoot
-        open={isConfirmingImpact}
-        className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
-      >
-        <CollapsiblePanel className="system-sm-regular text-text-secondary">
-          <AgentPublishImpactDetails
-            publishActionLabel={currentStateMeta.actionLabel}
-            agentName={agentName}
-            references={impactReferences}
-          />
-        </CollapsiblePanel>
-        <PublishBarActions
-          actionIcon={currentStateMeta.actionIcon}
-          actionLabel={currentStateMeta.actionLabel}
-          dotStatus={currentStateMeta.dotStatus}
-          isPublishing={isPublishing}
-          metaLabel={effectiveMetaLabel}
-          showShortcut={currentStateMeta.showShortcut}
-          statusLabel={currentStateMeta.statusLabel}
-          canPublish={canPublish}
-          onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
-          onOpenVersions={onOpenVersions}
-          onPublishRequest={handlePublishRequest}
-        />
-      </CollapsibleRoot>
-    </PublishBarBottomActions>
-  )
-}
-
-export function PublishBarBottomActions({
-  children,
-}: {
-  children: ReactNode
-}) {
-  return (
-    <div
-      className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex h-[72px] flex-col items-center justify-end px-4 pt-4 pb-2 transition-[height] duration-150 ease-out has-[[data-open]]:h-[307px] motion-reduce:transition-none"
+    <CollapsibleRoot
+      open={isConfirmingImpact}
+      className="group/publish-bar pointer-events-auto w-full overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
     >
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-components-panel-bg to-components-panel-bg-transparent [mask-image:linear-gradient(to_top,black,transparent)] backdrop-blur-[2px] [-webkit-mask-image:linear-gradient(to_top,black,transparent)]"
+      <CollapsiblePanel className="system-sm-regular text-text-secondary">
+        <AgentPublishImpactDetails
+          publishActionLabel={currentStateMeta.actionLabel}
+          agentName={agentName}
+          references={impactReferences}
+        />
+      </CollapsiblePanel>
+      <PublishBarActions
+        actionIcon={currentStateMeta.actionIcon}
+        actionLabel={currentStateMeta.actionLabel}
+        dotStatus={currentStateMeta.dotStatus}
+        isPublishing={isPublishing}
+        metaLabel={effectiveMetaLabel}
+        showShortcut={currentStateMeta.showShortcut}
+        statusLabel={currentStateMeta.statusLabel}
+        canPublish={canPublish}
+        onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
+        onOpenVersions={onOpenVersions}
+        onPublishRequest={handlePublishRequest}
       />
-      <div
-        className="relative z-10 flex w-full max-w-[506px] flex-col items-center justify-end transition-[max-width] duration-150 ease-out has-[[data-open]]:max-w-96 motion-reduce:transition-none"
-      >
-        {children}
-      </div>
-    </div>
+    </CollapsibleRoot>
   )
 }
 
@@ -419,45 +394,43 @@ function AgentVersionRestoreBar({
     : formatTime(version.created_at, t('roster.dateTimeFormat'))
 
   return (
-    <PublishBarBottomActions>
-      <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
-        <div className="flex min-w-0 flex-col justify-center gap-0.5 pr-4 pl-2">
-          <div className="flex min-w-0 items-center gap-1">
-            <p className="min-w-0 truncate system-sm-semibold text-text-primary">
-              {versionLabel}
-            </p>
-            <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
-              {t('agentDetail.versionHistory.viewOnly')}
-            </span>
-          </div>
-          {(createdAt || version.created_by) && (
-            <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
-              {createdAt}
-              {createdAt && version.created_by && ' · '}
-              {version.created_by}
-            </p>
-          )}
+    <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2.5 pl-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+      <div className="flex min-w-0 flex-col justify-center gap-0.5 pr-4 pl-2">
+        <div className="flex min-w-0 items-center gap-1">
+          <p className="min-w-0 truncate system-sm-semibold text-text-primary">
+            {versionLabel}
+          </p>
+          <span className="shrink-0 rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-accent-secondary">
+            {t('agentDetail.versionHistory.viewOnly')}
+          </span>
         </div>
-        <Button
-          type="button"
-          variant="primary"
-          disabled={!onRestoreVersion}
-          loading={isRestoring}
-          className="h-8 rounded-lg px-3"
-          onClick={() => onRestoreVersion?.(version.id)}
-        >
-          {t('agentDetail.versionHistory.restore')}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          className="h-8 gap-1 rounded-lg px-3 text-text-accent"
-          onClick={onExitVersions}
-        >
-          <span aria-hidden className="i-ri-arrow-go-back-line size-4 shrink-0" />
-          <span className="shrink-0">{t('agentDetail.versionHistory.exitVersions')}</span>
-        </Button>
+        {(createdAt || version.created_by) && (
+          <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
+            {createdAt}
+            {createdAt && version.created_by && ' · '}
+            {version.created_by}
+          </p>
+        )}
       </div>
-    </PublishBarBottomActions>
+      <Button
+        type="button"
+        variant="primary"
+        disabled={!onRestoreVersion}
+        loading={isRestoring}
+        className="h-8 rounded-lg px-3"
+        onClick={() => onRestoreVersion?.(version.id)}
+      >
+        {t('agentDetail.versionHistory.restore')}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        className="h-8 gap-1 rounded-lg px-3 text-text-accent"
+        onClick={onExitVersions}
+      >
+        <span aria-hidden className="i-ri-arrow-go-back-line size-4 shrink-0" />
+        <span className="shrink-0">{t('agentDetail.versionHistory.exitVersions')}</span>
+      </Button>
+    </div>
   )
 }

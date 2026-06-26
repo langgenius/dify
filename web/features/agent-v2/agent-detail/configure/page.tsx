@@ -244,7 +244,7 @@ function AgentConfigurePageLoadedContent({
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           showPublishBar={!buildDraft.isActive}
-          bottomBar={showBuildDraftBar
+          bottomAction={showBuildDraftBar
             ? (
                 <AgentBuildDraftBar
                   changesCount={buildDraft.changesCount}
