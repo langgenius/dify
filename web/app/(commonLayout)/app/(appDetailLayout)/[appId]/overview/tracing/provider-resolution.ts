@@ -8,10 +8,10 @@ import type {
   OpikConfig,
   PhoenixConfig,
   TencentConfig,
-  TracingProvider,
   WeaveConfig,
 } from './type'
 import type { TracingStatus } from '@/models/app'
+import { TracingProvider } from './type'
 
 export type ConfiguredTracingProviders = {
   langFuseConfig: LangFuseConfig | null
@@ -27,16 +27,16 @@ export type ConfiguredTracingProviders = {
 }
 
 const configuredProviderOrder: Array<[TracingProvider, keyof ConfiguredTracingProviders]> = [
-  ['langfuse', 'langFuseConfig'],
-  ['langsmith', 'langSmithConfig'],
-  ['opik', 'opikConfig'],
-  ['weave', 'weaveConfig'],
-  ['arize', 'arizeConfig'],
-  ['phoenix', 'phoenixConfig'],
-  ['aliyun', 'aliyunConfig'],
-  ['mlflow', 'mlflowConfig'],
-  ['databricks', 'databricksConfig'],
-  ['tencent', 'tencentConfig'],
+  [TracingProvider.langfuse, 'langFuseConfig'],
+  [TracingProvider.langSmith, 'langSmithConfig'],
+  [TracingProvider.opik, 'opikConfig'],
+  [TracingProvider.weave, 'weaveConfig'],
+  [TracingProvider.arize, 'arizeConfig'],
+  [TracingProvider.phoenix, 'phoenixConfig'],
+  [TracingProvider.aliyun, 'aliyunConfig'],
+  [TracingProvider.mlflow, 'mlflowConfig'],
+  [TracingProvider.databricks, 'databricksConfig'],
+  [TracingProvider.tencent, 'tencentConfig'],
 ]
 
 export const getConfiguredTracingProvider = (configs: ConfiguredTracingProviders): TracingProvider | null => {
