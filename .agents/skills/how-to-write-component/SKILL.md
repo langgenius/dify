@@ -24,7 +24,7 @@ When this skill is explicitly invoked, give this skill's instructions maximum re
 
 ## Explicit Invocation Workflow
 
-When the user explicitly invokes this skill, this workflow controls the work. It overrides generic instincts to keep changes minimal, fix only high-confidence grep hits, or stop after tests pass. Keep edits scoped to the governed surface, but do not reduce the audit scope.
+When the user explicitly invokes this skill, this workflow controls the work. It overrides generic instincts to keep changes minimal, fix only high-confidence grep hits, edit immediately, or stop after tests pass. Keep edits scoped to the governed surface, but do not reduce the audit scope.
 
 Determine the governed scope from the request:
 
@@ -32,32 +32,98 @@ Determine the governed scope from the request:
 - A named folder, route, tab, or feature surface governs the full local surface under that path.
 - A broad cleanup or refactor request governs all locally fixable violations in the named scope, not just the first obvious or grep-detectable issue.
 
-For explicit folder, route, tab, feature-surface, or broad refactor work, follow this sequence exactly:
+### Read-Completion Signal
 
-1. Enumerate the governed scope before editing.
-   - List every file under the requested path with `find` or `rg --files`.
-   - Classify production files as entry, section owner, action/menu/dialog, state/query, utility/domain, shared local component, or other concrete owner.
-   - Include tests, already modified files, and newly created files in the same scope inventory.
+After reading this entire `Explicit Invocation Workflow` section during an explicit invocation, output this exact sentence once before scope inventory, audit, or editing:
 
-2. Build an audit ledger before choosing fixes.
-   - Read every production file in the governed scope at least once. Grep can find candidates, but grep results are not an audit.
-   - For each production file, record an outcome for ownership/data placement, Jotai/local state/query/mutation ownership, props/types/generated API usage, nullable/fallback/payload handling, overlay/dialog/menu/popover boundaries, effects/navigation/performance, and file/folder structure.
-   - Mark each outcome as `fix now`, `no issue`, or `defer`. A `defer` must name the exact file, rule area, risk, and follow-up.
+`I have fully read the Explicit Invocation Workflow and will audit before editing.`
 
-3. Implement behavior-preserving fixes after the ledger exists.
-   - Fix all locally safe violations found in the ledger, including repeated patterns, cohesive file moves, owner cleanup, and hidden secondary surface separation.
-   - Prefer owner cleanup when it removes prop drilling, moves state/data to the owner that renders it, separates independent actions or dialogs, or removes misleading structure.
-   - Defer only when the fix needs product decisions, cross-feature API changes, route/URL behavior changes, visual redesign, generated contract changes, or shared primitive changes outside the governed scope.
+Do not output this sentence before reaching the end of this section. Do not paraphrase it.
 
-4. Inspect structure before finishing.
-   - Re-check the governed root folder shape. If it mixes independent sections, actions, dialogs, utilities, and tests in one flat directory, split first-level folders by workflow or visual/action owner when that is locally safe.
-   - Keep route/tab entry files focused on route integration, provider wiring, close behavior, and high-level composition.
+### Hard Gates
 
-5. Use verification as evidence, not completion.
-   - Run the narrow relevant tests, type-check, lint, or other checks that match the risk of the edits.
-   - Passing tests, type-check, lint, successful grep scans, or one improved example are not completion criteria for explicit path-level work.
+For explicit folder, route, tab, feature-surface, or broad refactor work, editing is forbidden until all hard gates are satisfied:
 
-Before final response, inspect the actual diff, untracked files, and audit ledger. Do not claim completion unless every governed production file has an audit outcome and every known local violation is either fixed or explicitly deferred. If touched code still has a known local violation, keep working. If a violation cannot be fixed in this pass, report the task as incomplete with the exact file, rule area, reason, and follow-up.
+1. The governed scope has been enumerated with file counts.
+2. Every production file in scope has been read at least once.
+3. A user-visible audit ledger exists for every production file.
+4. Planned fixes are derived from ledger entries, not from grep results alone.
+
+If the governed scope has more than 10 production files, produce an audit checkpoint before editing unless the user explicitly asked to skip the checkpoint. The checkpoint must include the scope counts, the ledger summary, and the proposed `fix now` list. If the user asks only to "verify", "check", "audit", or "review with this skill", stop after the checkpoint and do not edit.
+
+### Scope Inventory
+
+Enumerate the governed scope before editing:
+
+- List every file under the requested path with `find` or `rg --files`.
+- Classify production files as `entry`, `section owner`, `action/menu/dialog`, `state/query`, `utility/domain`, `shared local component`, or another concrete owner.
+- Include tests, already modified files, and newly created files in the same inventory.
+- Record counts for total files, production files, test files, and untracked files.
+
+### Audit Ledger
+
+Build an audit ledger before choosing fixes:
+
+- Read every production file in the governed scope at least once. Grep can seed the audit, but grep results are not an audit.
+- For each production file, record outcomes for ownership/data placement, Jotai/local state/query/mutation ownership, props/types/generated API usage, nullable/fallback/payload handling, overlay/dialog/menu/popover boundaries, effects/navigation/performance, and file/folder structure.
+- Use exactly one outcome per file: `fix now`, `no issue`, or `defer`.
+- A `fix now` must name the violated rule area and why the change is locally safe.
+- A `defer` must name the exact file, rule area, risk, and follow-up.
+- A `no issue` must mean the file was checked against the relevant rule areas, not merely skipped.
+
+Use this ledger shape for explicit path-level work:
+
+| File | Owner Type | Ownership/Data | Jotai/Query/Mutation | Props/Types/API | Nullable/Fallback | Overlay/Effect/Nav | Structure | Outcome |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+
+### Anti-Shortcuts
+
+- Do not edit before the ledger exists.
+- Do not let passing tests, type-check, lint, or a successful grep scan replace the ledger.
+- Do not implement a fix just because a grep hit looks suspicious. Read the owning file first and explain the rule violation in its ledger row.
+- Do not stop after improving one example when repeated local violations remain in the governed scope.
+- Do not claim a file has no issue if any required rule area was not inspected.
+
+### Implementation
+
+Implement behavior-preserving fixes after the ledger exists:
+
+- Fix all locally safe violations marked `fix now`, including repeated patterns, cohesive file moves, owner cleanup, and hidden secondary surface separation.
+- Prefer owner cleanup when it removes prop drilling, moves state/data to the owner that renders it, separates independent actions or dialogs, or removes misleading structure.
+- Keep changes scoped to the governed surface and directly related siblings that share the same violated pattern.
+- Defer only when the fix needs product decisions, cross-feature API changes, route/URL behavior changes, visual redesign, generated contract changes, or shared primitive changes outside the governed scope.
+- If a planned fix would require broad behavior changes, stop and mark it `defer` instead of guessing.
+
+### Structure Pass
+
+Inspect structure before finishing:
+
+- Re-check the governed root folder shape after implementation.
+- If the root mixes independent sections, actions, dialogs, utilities, and tests in one flat directory, split first-level folders by workflow or visual/action owner when that is locally safe.
+- Keep route/tab entry files focused on route integration, provider wiring, close behavior, and high-level composition.
+- If structure remains noisy but splitting would create churn or cross-feature changes, mark it `defer` with the exact reason.
+
+### Verification
+
+Use verification as evidence, not completion:
+
+- Run the narrow relevant tests, type-check, lint, or other checks that match the risk of the edits.
+- Inspect the actual diff and untracked files after verification.
+- Passing tests, type-check, lint, successful grep scans, or one improved example are not completion criteria for explicit path-level work.
+
+### Final Response Contract
+
+Before final response, inspect the actual diff, untracked files, and audit ledger. Do not claim completion unless every governed production file has an audit outcome and every known local violation is either fixed or explicitly deferred.
+
+For explicit path-level work, the final response must include:
+
+- Governed scope counts: total files, production files, tests, and untracked files.
+- Fixed violations grouped by rule area.
+- Deferred violations, if any, with exact file, rule area, reason, and follow-up.
+- Verification commands run.
+- Confirmation that the final diff was inspected.
+
+If touched code still has a known local violation, keep working. If a violation cannot be fixed in this pass, report the task as incomplete with the exact file, rule area, reason, and follow-up.
 
 ## Core Defaults
 
