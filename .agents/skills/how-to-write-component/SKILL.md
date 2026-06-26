@@ -25,6 +25,8 @@ Use this as the component decision guide for Dify web. Existing code is referenc
 - Search before adding UI, hooks, helpers, query utilities, or styling patterns. Reuse existing base components, feature components, hooks, utilities, and design styles when they fit.
 - Follow Dify's CSS-first Tailwind v4 contract from `packages/dify-ui/README.md` and `packages/dify-ui/AGENTS.md`. Prefer design-system tokens, utilities, and radius mappings over generic Tailwind choices.
 - Group feature code by workflow, route, or ownership area with route-aligned names: components, hooks, local types, query helpers, atoms, constants, tests, and small utilities should live near the code that changes with them.
+- For each feature module, keep a module-local `README.md` as a boundary note. Start with the module name, a brief one-sentence description, and an `External Modules` table: list project modules imported from outside the module and why they are used; omit npm packages, workspace package dependencies, and whitelisted plumbing modules.
+- Module README whitelist: `@/service/client`, `@/next/*`.
 - Keep source/default selection, validation, dirty checks, and payload shaping close to the workflow that owns submit behavior. Do not hide flow-specific priority order, fallback behavior, or submit semantics in generic utilities.
 - Prefer direct conditionals for small branch-specific decisions, especially form source selection and request payload assembly.
 - Loading states for page sections, cards, lists, tables, forms, and drawers should be skeletons scoped to the content being loaded. Use spinners only for small inline busy indicators.
