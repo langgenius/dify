@@ -2,6 +2,7 @@ import logging
 from datetime import datetime
 
 from flask import request
+from flask_login import current_user
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
@@ -33,7 +34,6 @@ from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import OptionalTimestampField, TimestampField, dump_response, to_timestamp
 from libs.login import login_required
-from flask_login import current_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
@@ -335,7 +335,9 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, db.session, current_user)), 200
+        return dump_response(
+            TenantInfoResponse, WorkspaceService.get_tenant_info(tenant, db.session, current_user)
+        ), 200
 
 
 @console_ns.route("/workspaces/switch")
@@ -362,7 +364,9 @@ class SwitchWorkspaceApi(Resource):
 
         return {
             "result": "success",
-            "new_tenant": marshal(WorkspaceService.get_tenant_info(new_tenant, db.session, current_user), tenant_fields),
+            "new_tenant": marshal(
+                WorkspaceService.get_tenant_info(new_tenant, db.session, current_user), tenant_fields
+            ),
         }
 
 
