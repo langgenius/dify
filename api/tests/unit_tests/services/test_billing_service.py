@@ -1031,8 +1031,7 @@ class TestBillingServiceAccountManagement:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.billing_service.db.session") as mock_session:
-            yield mock_session
+        return MagicMock()
 
     def test_delete_account(self, mock_send_request):
         """Test account deletion."""

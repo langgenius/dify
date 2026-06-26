@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import InstrumentedAttribute, Session
+from sqlalchemy.orm import InstrumentedAttribute, Session, scoped_session
 
 from models.account import Account
 from models.credential_permission import CredentialPermission
@@ -16,7 +16,9 @@ class CredentialPermissionService:
     """
 
     @classmethod
-    def get_partial_member_list(cls, session: Session, credential_id: str, credential_type: str) -> Sequence[str]:
+    def get_partial_member_list(
+        cls, session: Session | scoped_session, credential_id: str, credential_type: str
+    ) -> Sequence[str]:
         """Return account_ids that have partial-member access to a credential."""
         return session.scalars(
             select(CredentialPermission.account_id).where(
