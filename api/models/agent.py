@@ -188,6 +188,16 @@ class Agent(DefaultFieldsMixin, Base):
     active_config_has_model: Mapped[bool] = mapped_column(
         sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
     )
+    active_config_is_published: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        nullable=False,
+        default=False,
+        server_default=sa.text("false"),
+        comment=(
+            "Whether the normal shared Agent draft has been published into the active config snapshot. "
+            "User-scoped debug drafts do not affect this flag."
+        ),
+    )
     status: Mapped[AgentStatus] = mapped_column(
         EnumText(AgentStatus, length=32), nullable=False, default=AgentStatus.ACTIVE
     )
