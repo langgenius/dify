@@ -24,20 +24,24 @@ When this skill is explicitly invoked, give this skill's instructions maximum re
 
 ## Explicit Invocation Scope
 
-When the user explicitly invokes this skill, treat every named component, file, folder, route, tab, or feature surface as governed by this guide, regardless of whether the user asks to write, refactor, fix, review, clean up, or add behavior. Maximize the skill's effect inside the named scope; do not reduce the work to the smallest low-risk slice unless the user asks for an incremental pass.
+When the user explicitly invokes this skill, treat every named component, file, folder, route, tab, or feature surface as governed by this guide. Existing code in that scope is reference material, not precedent.
+
+Determine scope from the request:
+
+- A named component or file governs that owner plus directly related siblings that share the same violated pattern.
+- A named folder, route, tab, or feature surface governs the full local surface under that path.
+- A broad cleanup or refactor request governs all locally fixable violations in the named scope, not just the first obvious or grep-detectable issue.
 
 For explicit path-level work:
 
 - Treat the request as a refactor pass across the path, not a narrow bugfix.
-- Audit ownership/data placement, overlay boundaries, props/types/API usage, route/state ownership, effects, nullable handling, and file structure.
-- Fix behavior-preserving, locally testable violations contained to the requested path, including repeated patterns, cohesive file moves, and extractions; high-confidence does not mean small diff or single-file.
-- Prefer broader owner cleanup when it removes prop drilling, moves state/data to the owning surface, separates hidden secondary surfaces, or removes misleading structure.
-- Before finishing, inspect the governed root folder shape. If a route or tab root contains more than its entry file, cross-owner state, and a few truly shared primitives, classify the remaining files by workflow or visual/action owner and split first-level folders accordingly. A stale folder rename is incomplete when the renamed root still mixes independent sections, actions, dialogs, utilities, and tests in one flat directory.
-- Defer only when the fix needs product decisions, cross-feature API changes, route/URL behavior changes, visual redesign, generated contract changes, or shared primitive changes outside the path. Name the risk and exact follow-up.
+- Audit every applicable section of this guide against the governed scope, including ownership/data placement, Jotai state, props/types, generated API and nullable handling, queries/mutations, overlays, effects, navigation, performance, and file structure.
+- Fix behavior-preserving, locally testable violations contained to the requested path, including repeated patterns, cohesive file moves, and extractions.
+- Prefer owner cleanup when it removes prop drilling, moves state/data to the owning surface, separates hidden secondary surfaces, or removes misleading structure.
+- Inspect the governed root folder shape before finishing. If it mixes independent sections, actions, dialogs, utilities, and tests in one flat directory, split first-level folders by workflow or visual/action owner.
+- Defer only when the fix needs product decisions, cross-feature API changes, route/URL behavior changes, visual redesign, generated contract changes, or shared primitive changes outside the path. Name the exact file, rule area, risk, and follow-up.
 
-Do not stop at grep-detectable cleanup such as removing `React.FC`, `memo`, props aliases, casts, or old imports while clear ownership, data, overlay, route/state, or file-structure violations remain. Work is not complete just because tests pass or one example was improved; leave the governed scope consistently aligned with this guide.
-
-For narrow feature or bugfix work without a path, the governed scope is the touched owner surface plus directly related siblings that share the same violated pattern. New code must comply with the whole guide; touched existing code should be brought into compliance rather than preserving a known violation as local precedent.
+Before final response, inspect the actual diff, including untracked files, and check every applicable section of this guide against the governed scope. Do not stop after fixing one category of violation or one representative example. Tests passing, type-check passing, or one improved example is not completion. If touched code still has a known local violation, keep working; if a violation cannot be fixed in this pass, explicitly report the task as incomplete with the exact file, rule area, reason, and follow-up.
 
 ## Core Defaults
 
