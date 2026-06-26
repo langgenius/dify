@@ -3,7 +3,7 @@
 import { skipToken } from '@tanstack/react-query'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 
 export const accessSettingsQueryAtom = atomWithQuery((get) => {
   const appInstanceId = get(deploymentRouteAppInstanceIdAtom)

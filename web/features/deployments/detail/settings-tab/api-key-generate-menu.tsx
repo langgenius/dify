@@ -28,7 +28,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { generateApiTokenName } from './api-token-name'
 
 export function ApiKeyGenerateMenu({

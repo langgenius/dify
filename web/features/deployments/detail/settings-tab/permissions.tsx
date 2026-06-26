@@ -15,7 +15,7 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import {
   accessModeToPermissionKey,
   normalizeResolvedSubject,

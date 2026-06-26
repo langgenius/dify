@@ -4,7 +4,7 @@ import { AccessMode, AccessSubjectType } from '@dify/contracts/enterprise/types.
 import { fireEvent, render, screen } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { describe, expect, it, vi } from 'vitest'
-import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { EnvironmentPermissionRow } from '../permissions'
 import { AccessPermissionsSection } from '../permissions-section'
 import { accessSettingsQueryAtom } from '../state'

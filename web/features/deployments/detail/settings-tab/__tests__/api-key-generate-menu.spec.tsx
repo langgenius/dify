@@ -1,7 +1,7 @@
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { ApiKeyGenerateMenu } from '../api-key-generate-menu'
 
 const mockMutate = vi.hoisted(() => vi.fn())

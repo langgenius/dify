@@ -48,7 +48,7 @@ async function loadState() {
 
 function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1') {
   store.set(setNextRouteStateAtom, {
-    pathname: `/deployments/${appInstanceId}/settings/access`,
+    pathname: `/deployments/${appInstanceId}/access`,
     params: { appInstanceId },
   })
 }
