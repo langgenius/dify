@@ -791,6 +791,9 @@ class WorkflowRunArchiver:
             for stat in table_stats
         }
         sorted_runs = sorted(runs, key=lambda run: (run.created_at, run.id))
+        end_before = self.end_before
+        if end_before is None:
+            raise ValueError("archive window end must be set")
         return ArchiveManifestDict(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
             archive_format=ARCHIVE_BUNDLE_FORMAT,
@@ -810,7 +813,7 @@ class WorkflowRunArchiver:
             archived_at=datetime.datetime.now(datetime.UTC).isoformat(),
             campaign_id=self.campaign_id,
             archive_window_start=self._format_window_datetime(self.start_from),
-            archive_window_end=self._format_window_datetime(self.end_before),
+            archive_window_end=end_before.isoformat(),
             run_shard=identity.shard,
             tables=tables,
             run_ids=[run.id for run in sorted_runs],
@@ -943,7 +946,9 @@ class WorkflowRunArchiver:
 
         manifest_keys = sorted(set(index["manifest_keys"]) | {self._get_manifest_object_key(identity)})
         indexed_run_ids = sorted(set(index["run_ids"]) | set(run_ids))
-        campaign_ids = sorted(set(index.get("campaign_ids", [])) | {self.campaign_id})
+        campaign_id_set: set[str] = set(index.get("campaign_ids", []))
+        campaign_id_set.add(self.campaign_id)
+        campaign_ids = sorted(campaign_id_set)
         updated_index = ArchiveBundleIndexDict(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
             archive_format=ARCHIVE_BUNDLE_FORMAT,
