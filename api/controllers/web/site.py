@@ -14,7 +14,7 @@ from fields.base import ResponseModel
 from libs.helper import AppIconUrlField
 from models.account import TenantStatus
 from models.model import App, EndUser, Site
-from services.feature_service import FeatureService
+from services.feature_service import FeatureModel, FeatureService
 
 
 class AppSiteModelConfigResponse(ResponseModel):
@@ -129,9 +129,15 @@ class AppSiteApi(WebApiResource):
         if app_model.tenant and app_model.tenant.status == TenantStatus.ARCHIVE:
             raise Forbidden()
 
-        can_replace_logo = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True).can_replace_logo
+        features = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True)
 
-        return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
+        return AppSiteInfo(
+            app_model.tenant,
+            app_model,
+            serialize_runtime_site(site, features),
+            end_user.id,
+            features.can_replace_logo,
+        )
 
 
 class AppSiteInfo:
@@ -166,7 +172,23 @@ def serialize_site(site: Site) -> dict[str, Any]:
     return cast(dict[str, Any], marshal(site, AppSiteApi.site_fields))
 
 
+def serialize_runtime_site(site: Site, features: FeatureModel) -> dict[str, Any]:
+    site_payload = serialize_site(site)
+    if not features.billing.enabled or features.webapp_copyright_enabled:
+        return site_payload
+
+    site_payload["copyright"] = None
+    site_payload["input_placeholder"] = None
+    return site_payload
+
+
 def serialize_app_site_payload(app_model: App, site: Site, end_user_id: str | None) -> dict[str, Any]:
-    can_replace_logo = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True).can_replace_logo
-    app_site_info = AppSiteInfo(app_model.tenant, app_model, site, end_user_id, can_replace_logo)
+    features = FeatureService.get_features(app_model.tenant_id, exclude_vector_space=True)
+    app_site_info = AppSiteInfo(
+        app_model.tenant,
+        app_model,
+        serialize_runtime_site(site, features),
+        end_user_id,
+        features.can_replace_logo,
+    )
     return cast(dict[str, Any], marshal(app_site_info, AppSiteApi.app_fields))

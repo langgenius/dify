@@ -13,6 +13,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.web.site import AppSiteApi, AppSiteInfo
 from models import Tenant, TenantStatus
 from models.model import App, AppMode, CustomizeTokenStrategy, Site
+from services.feature_service import FeatureModel
 
 
 @pytest.fixture
@@ -71,7 +72,7 @@ class TestAppSiteApi:
         app_model = _create_app(db_session_with_containers, tenant.id)
         _create_site(db_session_with_containers, app_model.id)
         end_user = SimpleNamespace(id="eu-1")
-        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
+        mock_features.return_value = FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True)
 
         with app.test_request_context("/site"):
             result = AppSiteApi().get(app_model, end_user)
@@ -100,7 +101,7 @@ class TestAppSiteApi:
         app_model = _create_app(db_session_with_containers, tenant.id)
         _create_site(db_session_with_containers, app_model.id)
         end_user = SimpleNamespace(id="eu-1")
-        mock_features.return_value = SimpleNamespace(can_replace_logo=False)
+        mock_features.return_value = FeatureModel(can_replace_logo=False, webapp_copyright_enabled=True)
 
         with app.test_request_context("/site"):
             with pytest.raises(Forbidden):
