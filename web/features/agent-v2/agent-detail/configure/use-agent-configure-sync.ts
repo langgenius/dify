@@ -64,6 +64,21 @@ export function useAgentConfigureSync({
     currentModel: currentModelRef.current,
   }), [store])
 
+  const markActiveConfigUnpublished = useCallback(() => {
+    queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+      (agentDetail) => {
+        if (!agentDetail)
+          return agentDetail
+
+        return {
+          ...agentDetail,
+          active_config_is_published: false,
+        }
+      },
+    )
+  }, [agentId, queryClient])
+
   const {
     mutateAsync: saveComposerDraft,
   } = useMutation(
@@ -101,18 +116,7 @@ export function useAgentConfigureSync({
       return false
     }
 
-    queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-      (agentDetail) => {
-        if (!agentDetail)
-          return agentDetail
-
-        return {
-          ...agentDetail,
-          active_config_is_published: false,
-        }
-      },
-    )
+    markActiveConfigUnpublished()
     setOriginalDraft(draftBaseline)
     setDraftSavedAt(Date.now())
     lastAutosavedDraftKeyRef.current = savedDraftKey
@@ -154,11 +158,19 @@ export function useAgentConfigureSync({
     return store.sub(agentComposerDraftAtom, () => {
       const agentSoulDraft = getAgentSoulDraft()
       const agentSoulDraftKey = JSON.stringify(agentSoulDraft)
+      const isDirty = store.get(isAgentComposerDirtyAtom)
 
       if (
         !enabledRef.current
-        || !store.get(isAgentComposerDirtyAtom)
-        || !validateKnowledgeRetrievals(store.get(agentComposerDraftAtom).knowledgeRetrievals).isValid
+        || !isDirty
+      ) {
+        return
+      }
+
+      markActiveConfigUnpublished()
+
+      if (
+        !validateKnowledgeRetrievals(store.get(agentComposerDraftAtom).knowledgeRetrievals).isValid
         || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
         return
@@ -166,7 +178,7 @@ export function useAgentConfigureSync({
 
       debouncedSaveDraft()
     })
-  }, [debouncedSaveDraft, getAgentSoulDraft, store])
+  }, [debouncedSaveDraft, getAgentSoulDraft, markActiveConfigUnpublished, store])
 
   useEffect(() => {
     return () => {
