@@ -22,26 +22,42 @@ When this skill is explicitly invoked, give this skill's instructions maximum re
 | Should this be a helper/wrapper? | Prefer direct readable code at the use site. | The name captures a stable domain rule or the wrapper owns real behavior, validation, state, error handling, or semantics. |
 | Is an Effect needed? | No. Derive during render or handle the user action in the event handler. | It synchronizes with an external system such as browser APIs, subscriptions, timers, analytics, or imperative DOM/non-React widgets. |
 
-## Explicit Invocation Scope
+## Explicit Invocation Workflow
 
-When the user explicitly invokes this skill, treat every named component, file, folder, route, tab, or feature surface as governed by this guide. Existing code in that scope is reference material, not precedent.
+When the user explicitly invokes this skill, this workflow controls the work. It overrides generic instincts to keep changes minimal, fix only high-confidence grep hits, or stop after tests pass. Keep edits scoped to the governed surface, but do not reduce the audit scope.
 
-Determine scope from the request:
+Determine the governed scope from the request:
 
 - A named component or file governs that owner plus directly related siblings that share the same violated pattern.
 - A named folder, route, tab, or feature surface governs the full local surface under that path.
 - A broad cleanup or refactor request governs all locally fixable violations in the named scope, not just the first obvious or grep-detectable issue.
 
-For explicit path-level work:
+For explicit folder, route, tab, feature-surface, or broad refactor work, follow this sequence exactly:
 
-- Treat the request as a refactor pass across the path, not a narrow bugfix.
-- Audit every applicable section of this guide against the governed scope, including ownership/data placement, Jotai state, props/types, generated API and nullable handling, queries/mutations, overlays, effects, navigation, performance, and file structure.
-- Fix behavior-preserving, locally testable violations contained to the requested path, including repeated patterns, cohesive file moves, and extractions.
-- Prefer owner cleanup when it removes prop drilling, moves state/data to the owning surface, separates hidden secondary surfaces, or removes misleading structure.
-- Inspect the governed root folder shape before finishing. If it mixes independent sections, actions, dialogs, utilities, and tests in one flat directory, split first-level folders by workflow or visual/action owner.
-- Defer only when the fix needs product decisions, cross-feature API changes, route/URL behavior changes, visual redesign, generated contract changes, or shared primitive changes outside the path. Name the exact file, rule area, risk, and follow-up.
+1. Enumerate the governed scope before editing.
+   - List every file under the requested path with `find` or `rg --files`.
+   - Classify production files as entry, section owner, action/menu/dialog, state/query, utility/domain, shared local component, or other concrete owner.
+   - Include tests, already modified files, and newly created files in the same scope inventory.
 
-Before final response, inspect the actual diff, including untracked files, and check every applicable section of this guide against the governed scope. Do not stop after fixing one category of violation or one representative example. Tests passing, type-check passing, or one improved example is not completion. If touched code still has a known local violation, keep working; if a violation cannot be fixed in this pass, explicitly report the task as incomplete with the exact file, rule area, reason, and follow-up.
+2. Build an audit ledger before choosing fixes.
+   - Read every production file in the governed scope at least once. Grep can find candidates, but grep results are not an audit.
+   - For each production file, record an outcome for ownership/data placement, Jotai/local state/query/mutation ownership, props/types/generated API usage, nullable/fallback/payload handling, overlay/dialog/menu/popover boundaries, effects/navigation/performance, and file/folder structure.
+   - Mark each outcome as `fix now`, `no issue`, or `defer`. A `defer` must name the exact file, rule area, risk, and follow-up.
+
+3. Implement behavior-preserving fixes after the ledger exists.
+   - Fix all locally safe violations found in the ledger, including repeated patterns, cohesive file moves, owner cleanup, and hidden secondary surface separation.
+   - Prefer owner cleanup when it removes prop drilling, moves state/data to the owner that renders it, separates independent actions or dialogs, or removes misleading structure.
+   - Defer only when the fix needs product decisions, cross-feature API changes, route/URL behavior changes, visual redesign, generated contract changes, or shared primitive changes outside the governed scope.
+
+4. Inspect structure before finishing.
+   - Re-check the governed root folder shape. If it mixes independent sections, actions, dialogs, utilities, and tests in one flat directory, split first-level folders by workflow or visual/action owner when that is locally safe.
+   - Keep route/tab entry files focused on route integration, provider wiring, close behavior, and high-level composition.
+
+5. Use verification as evidence, not completion.
+   - Run the narrow relevant tests, type-check, lint, or other checks that match the risk of the edits.
+   - Passing tests, type-check, lint, successful grep scans, or one improved example are not completion criteria for explicit path-level work.
+
+Before final response, inspect the actual diff, untracked files, and audit ledger. Do not claim completion unless every governed production file has an audit outcome and every known local violation is either fixed or explicitly deferred. If touched code still has a known local violation, keep working. If a violation cannot be fixed in this pass, report the task as incomplete with the exact file, rule area, reason, and follow-up.
 
 ## Core Defaults
 
