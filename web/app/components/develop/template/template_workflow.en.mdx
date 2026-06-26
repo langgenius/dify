@@ -1012,7 +1012,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 
     ### Response
     - `form_content` (string) Rendered form content (markdown/plain text)
-    - `inputs` (array[object]) Form input definitions
+    - `inputs` (array[object]) Form input definitions. Supported `type` values include `paragraph`, `select`, `file`, and `file-list`; see the example for each shape.
     - `resolved_default_values` (object) Default values resolved to strings
     - `user_actions` (array[object]) Action buttons
     - `expiration_time` (timestamp) Form expiration time (Unix seconds)
@@ -1034,18 +1034,43 @@ Workflow applications offers non-session support and is ideal for translation, a
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "form_content": "Please confirm the final answer: {{#$output.answer#}}",
+      "form_content": "Please upload a file list:\n{{#$output.files#}}\n\nPlease upload a single file:\n{{#$output.a_single_file#}}\n\nPlease select an option:\n{{#$output.my_single_choice#}}\n\nPlease enter a paragraph:\n{{#$output.my_paragraph#}}\n",
       "inputs": [
         {
-          "label": "Answer",
-          "type": "text-input",
-          "required": true,
-          "output_variable_name": "answer"
+          "output_variable_name": "files",
+          "allowed_file_types": ["image", "document", "audio", "video"],
+          "allowed_file_extensions": [],
+          "allowed_file_upload_methods": ["local_file", "remote_url"],
+          "type": "file-list",
+          "number_limits": 5
+        },
+        {
+          "output_variable_name": "a_single_file",
+          "allowed_file_types": ["image", "document", "audio", "video"],
+          "allowed_file_extensions": [],
+          "allowed_file_upload_methods": ["local_file", "remote_url"],
+          "type": "file"
+        },
+        {
+          "output_variable_name": "my_single_choice",
+          "type": "select",
+          "option_source": {
+            "type": "constant",
+            "selector": [],
+            "value": ["apple", "orange", "strawberry"]
+          }
+        },
+        {
+          "output_variable_name": "my_paragraph",
+          "type": "paragraph",
+          "default": {
+            "type": "constant",
+            "selector": [],
+            "value": "this is a default value for my paragraph"
+          }
         }
       ],
-      "resolved_default_values": {
-        "answer": "Initial value"
-      },
+      "resolved_default_values": {},
       "user_actions": [
         { "id": "approve", "title": "Approve", "button_style": "primary" },
         { "id": "reject", "title": "Reject", "button_style": "warning" }
@@ -1077,6 +1102,19 @@ Workflow applications offers non-session support and is ideal for translation, a
     - `action` (string) Required, selected action ID from `user_actions`.
     - `user` (string) Required, end-user identifier.
 
+    For file fields, upload local files with [`POST /files/upload`](#file-upload) first, then use the returned file `id` as `upload_file_id`. The `user` must be the same in both requests.
+
+    - `file-list` fields expect an array of file objects.
+    - `file` fields expect one file object.
+    - For each submitted file object, set `type` to one of the field's `allowed_file_types`: `image`, `document`, `audio`, or `video`.
+    When `remote_url` is allowed, you can submit a file URL directly:
+
+    <CodeGroup title="Remote URL file object" targetCode={`{
+  "type": "image",
+  "transfer_method": "remote_url",
+  "url": "https://example.com/image.png"
+}`} />
+
     ### Response
     Returns an empty object on success.
 
@@ -1095,7 +1133,27 @@ Workflow applications offers non-session support and is ideal for translation, a
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
-  "inputs": {"answer": "Approved answer"},
+  "inputs": {
+    "files": [
+      {
+        "type": "image",
+        "transfer_method": "local_file",
+        "upload_file_id": "{file_id_1}"
+      },
+      {
+        "type": "document",
+        "transfer_method": "local_file",
+        "upload_file_id": "{file_id_2}"
+      }
+    ],
+    "a_single_file": {
+      "type": "image",
+      "transfer_method": "local_file",
+      "upload_file_id": "{file_id_3}"
+    },
+    "my_single_choice": "apple",
+    "my_paragraph": "hey welcome to Dify!"
+  },
   "action": "approve",
   "user": "abc-123"
 }'`}
