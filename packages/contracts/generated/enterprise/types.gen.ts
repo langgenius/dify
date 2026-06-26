@@ -1038,6 +1038,7 @@ export type UpdateEnvironmentRequest = {
   environmentId?: string
   displayName: string
   description?: string
+  cpuCount?: number
 }
 
 export type UpdateEnvironmentResponse = {
@@ -1367,6 +1368,7 @@ export type InfoConfigReply = {
   Branding?: BrandingInfo
   WebAppAuth?: WebAppAuthInfo
   PluginInstallationPermission?: PluginInstallationPermissionInfo
+  EnableAppDeploy?: boolean
 }
 
 export type InnerAdmission = {
@@ -1511,11 +1513,6 @@ export type LimitFields = {
   workspaceMembers?: number
   workspaces?: ResourceQuota
   appRunnerEnvCpus?: ResourceQuota
-}
-
-export type ListAccessSubjectsReply = {
-  subjects?: Array<Subject>
-  pagination?: Pagination
 }
 
 export type ListGroupAppsResponse = {
@@ -2137,25 +2134,6 @@ export type Pagination = {
   currentPage?: number
   totalPages?: number
 }
-
-export type AccessSubjectServiceListAccessSubjectsData = {
-  body?: never
-  path?: never
-  query?: {
-    keyword?: string
-    groupId?: string
-    pageNumber?: number
-    resultsPerPage?: number
-  }
-  url: '/enterprise/access-subjects'
-}
-
-export type AccessSubjectServiceListAccessSubjectsResponses = {
-  200: ListAccessSubjectsReply
-}
-
-export type AccessSubjectServiceListAccessSubjectsResponse
-  = AccessSubjectServiceListAccessSubjectsResponses[keyof AccessSubjectServiceListAccessSubjectsResponses]
 
 export type AppInstanceServiceListAppInstanceSummariesData = {
   body?: never

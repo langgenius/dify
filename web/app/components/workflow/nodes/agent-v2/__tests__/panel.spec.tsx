@@ -957,6 +957,7 @@ describe('agent/panel', () => {
     expect(mockPromptEditorProps[0]?.workflowVariableBlock).toMatchObject({
       show: true,
     })
+    expect(mockPromptEditorProps[0]?.isSupportFileVar).toBe(true)
     expect(mockPromptEditorProps[0]?.agentOutputBlock).toMatchObject({
       show: true,
       outputs: expect.arrayContaining([

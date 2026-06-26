@@ -233,6 +233,7 @@ export type SavedMessageItem = {
 }
 
 export type InstalledAppInfoResponse = {
+  description?: string | null
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -247,7 +248,6 @@ export type AgentThought = {
   created_at?: number | null
   files: Array<string>
   id: string
-  message_chain_id?: string | null
   message_id: string
   observation?: string | null
   position: number

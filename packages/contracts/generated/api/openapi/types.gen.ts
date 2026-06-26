@@ -405,6 +405,10 @@ export type SessionRow = {
   prefix: string
 }
 
+export type SimpleResultResponse = {
+  result: string
+}
+
 export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
 
 export type TaskStopResponse = {

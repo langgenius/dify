@@ -14,8 +14,8 @@ import { AgentBuildChat } from './components/preview/build-chat'
 import { AgentChatFeaturesPanel } from './components/preview/chat-features-panel'
 import { AgentPreviewHeader } from './components/preview/header'
 import { AgentPreviewChat } from './components/preview/preview-chat'
+import { useAgentWorkingDirectoryPanel } from './components/preview/use-working-directory-panel'
 import { AgentPreviewVersionsPanel } from './components/preview/versions-panel'
-import { AgentWorkingDirectoryPanel } from './components/preview/working-directory-panel'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from './components/workspace'
 import { useAgentConfigureData, useAgentConfigureModelOptions, useAgentPreviewSoulConfig } from './hooks'
 import { useAgentConfigureBuildDraftActions, useAgentConfigureBuildDraftData } from './use-agent-configure-build-draft'
@@ -83,7 +83,7 @@ function AgentConfigurePageLoadedContent({
   const queryClient = useQueryClient()
   const [showChatFeatures, setShowChatFeatures] = useState(false)
   const [showPreviewVersions, setShowPreviewVersions] = useState(false)
-  const [showWorkingDirectory, setShowWorkingDirectory] = useState(false)
+  const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const [rightPanelMode, setRightPanelMode] = useState<AgentConfigureRightPanelMode>('build')
   const [hideBuildDraftBarUntilRefresh, setHideBuildDraftBarUntilRefresh] = useState(false)
@@ -261,7 +261,7 @@ function AgentConfigurePageLoadedContent({
           onSelectModel={setConfigureModel}
           onPublish={publishDraft}
           onOpenVersions={() => {
-            setShowWorkingDirectory(false)
+            workingDirectoryPanel.closeWorkingDirectory()
             setShowPreviewVersions(true)
           }}
           onExitVersions={() => selectVersion(null)}
@@ -279,7 +279,7 @@ function AgentConfigurePageLoadedContent({
               onToggleChatFeatures={() => setShowChatFeatures(open => !open)}
               onOpenWorkingDirectory={() => {
                 setShowPreviewVersions(false)
-                setShowWorkingDirectory(true)
+                workingDirectoryPanel.openWorkingDirectory()
               }}
               onRefresh={restartCurrentChat}
               refreshDisabled={isRefreshingDebugConversation || buildDraftActions.isDiscardingBuildDraft}
@@ -323,10 +323,7 @@ function AgentConfigurePageLoadedContent({
               onClose={() => setShowPreviewVersions(false)}
             />
           )}
-          <AgentWorkingDirectoryPanel
-            open={showWorkingDirectory}
-            onOpenChange={setShowWorkingDirectory}
-          />
+          {workingDirectoryPanel.panel}
           <AgentChatFeaturesPanel
             show={showChatFeatures}
             appFeatures={agentSoulConfig?.app_features}

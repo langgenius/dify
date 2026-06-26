@@ -23,6 +23,7 @@ import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configur
 import { AgentBuildPanelBackground } from '@/features/agent-v2/agent-detail/configure/components/preview/build-background'
 import { AgentBuildChat } from '@/features/agent-v2/agent-detail/configure/components/preview/build-chat'
 import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
+import { useAgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/use-working-directory-panel'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from '@/features/agent-v2/agent-detail/configure/components/workspace'
 import { useAgentPreviewSoulConfig } from '@/features/agent-v2/agent-detail/configure/hooks'
 import { consoleQuery } from '@/service/client'
@@ -138,6 +139,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const [clearChatList, setClearChatList] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
+  const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
   const composerState = inlineComposerState
   const agentSoulConfig = composerState?.agent_soul
   const activeConfigSnapshot = ('active_config_snapshot' in (composerState ?? {}))
@@ -234,7 +236,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               isChatFeaturesOpen={false}
               onModeChange={() => undefined}
               onToggleChatFeatures={() => undefined}
-              onOpenWorkingDirectory={() => undefined}
+              onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
               onRefresh={() => {
                 setConversationId(null)
                 setClearChatList(true)
@@ -269,6 +271,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           )}
         />
       )}
+      sidePanels={workingDirectoryPanel.panel}
     />
   )
 }
