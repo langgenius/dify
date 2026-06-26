@@ -1,7 +1,7 @@
 import { AccessSubjectType } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { DeploymentAccessControlDialog } from '../deployment-access-control-dialog'
+import { DeploymentAccessControlDialog } from '../access-control-dialog'
 
 const mockUseSearchAccessSubjects = vi.hoisted(() => vi.fn())
 

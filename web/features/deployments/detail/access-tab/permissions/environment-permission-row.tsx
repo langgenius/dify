@@ -15,7 +15,8 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
-import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
+import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
+import { DeploymentAccessControlDialog } from './access-control-dialog'
 import {
   accessModeToPermissionKey,
   normalizeResolvedSubject,
@@ -23,8 +24,7 @@ import {
   policySubjects,
   selectedSubjectsFromPolicy,
 } from './access-policy'
-import { DeploymentAccessControlDialog } from './deployment-access-control-dialog'
-import { PermissionSummaryButton } from './permission-row-components'
+import { PermissionSummaryButton } from './permission-summary-button'
 
 type AccessPermissionDraft = {
   fingerprint: string

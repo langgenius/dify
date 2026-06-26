@@ -1,7 +1,7 @@
 'use client'
 
-import { AccessChannelsSection } from './channels-section'
-import { AccessPermissionsSection } from './permissions-section'
+import { AccessChannelsSection } from './channels/section'
+import { AccessPermissionsSection } from './permissions/section'
 
 export function AccessTab() {
   return (

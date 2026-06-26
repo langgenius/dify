@@ -1,9 +1,9 @@
 import type { AccessChannels, AccessEndpoint } from '@dify/contracts/enterprise/types.gen'
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
-import { AccessChannelsSection } from '../channels-section'
-import { accessSettingsQueryAtom } from '../state'
+import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
+import { accessSettingsQueryAtom } from '../../state'
+import { AccessChannelsSection } from '../section'
 
 const mockToggleAccessChannel = vi.hoisted(() => vi.fn())
 const mockUseAtomValue = vi.hoisted(() => vi.fn())
