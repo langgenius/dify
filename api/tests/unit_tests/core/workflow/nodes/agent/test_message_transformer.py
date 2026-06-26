@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from unittest.mock import patch
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -14,11 +15,19 @@ def text_message(text: str) -> ToolInvokeMessage:
     )
 
 
+def message_stream(*messages: ToolInvokeMessage) -> Generator[ToolInvokeMessage, None, None]:
+    yield from messages
+
+
 def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> None:
-    messages = iter(())
+    messages = message_stream()
     transformer = AgentMessageTransformer()
 
-    with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", return_value=iter(())) as transform:
+    with patch.object(
+        ToolFileMessageTransformer,
+        "transform_tool_invoke_messages",
+        return_value=message_stream(),
+    ) as transform:
         result = list(
             transformer.transform(
                 messages=messages,
@@ -43,13 +52,13 @@ def test_transform_passes_conversation_id_to_tool_file_message_transformer() -> 
 
 
 def test_transform_keeps_think_tags_by_default() -> None:
-    messages = iter((text_message("<think>plan</think>answer"),))
+    messages = message_stream(text_message("<think>plan</think>answer"))
     transformer = AgentMessageTransformer()
 
     with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", return_value=messages):
         result = list(
             transformer.transform(
-                messages=iter(()),
+                messages=message_stream(),
                 tool_info={},
                 parameters_for_log={},
                 user_id="user-id",
@@ -73,18 +82,16 @@ def test_transform_keeps_think_tags_by_default() -> None:
 
 
 def test_transform_separates_reasoning_tags_across_text_chunks() -> None:
-    messages = iter(
-        (
-            text_message("<thi"),
-            text_message("nk>plan</think>answer"),
-        )
+    messages = message_stream(
+        text_message("<thi"),
+        text_message("nk>plan</think>answer"),
     )
     transformer = AgentMessageTransformer()
 
     with patch.object(ToolFileMessageTransformer, "transform_tool_invoke_messages", return_value=messages):
         result = list(
             transformer.transform(
-                messages=iter(()),
+                messages=message_stream(),
                 tool_info={},
                 parameters_for_log={},
                 user_id="user-id",
