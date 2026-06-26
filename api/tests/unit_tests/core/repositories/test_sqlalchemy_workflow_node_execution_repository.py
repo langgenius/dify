@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import psycopg2.errors
 import pytest
@@ -597,6 +597,124 @@ def test_save_execution_data_handles_missing_db_model(monkeypatch: pytest.Monkey
     repo.save_execution_data(execution)
     merged = session.merge.call_args.args[0]
     assert merged.inputs == '{"a": 1}'
+
+
+@patch("core.repositories.sqlalchemy_workflow_node_execution_repository.save_workflow_node_execution_task")
+def test_save_queues_celery_task_when_async_persistence_enabled(mock_task, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=Mock(spec=sessionmaker),
+        user=_mock_account(),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+    repo.set_async_persistence(True)
+    execution = _execution(inputs={"a": 1})
+
+    repo.save(execution)
+
+    mock_task.delay.assert_called_once()
+    call_args = mock_task.delay.call_args.kwargs
+    assert call_args["execution_data"] == execution.model_dump()
+    assert call_args["tenant_id"] == "tenant"
+    assert call_args["app_id"] == "app"
+    assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    assert call_args["creator_user_id"] == "user"
+    assert set(call_args) == {
+        "execution_data",
+        "tenant_id",
+        "app_id",
+        "triggered_from",
+        "creator_user_id",
+        "creator_user_role",
+    }
+
+
+@patch("core.repositories.sqlalchemy_workflow_node_execution_repository.save_workflow_node_execution_data_task")
+def test_save_execution_data_queues_celery_task_when_async_persistence_enabled(
+    mock_task, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=Mock(spec=sessionmaker),
+        user=_mock_account(),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+    repo.set_async_persistence(True)
+    execution = _execution(inputs={"a": 1})
+
+    repo.save_execution_data(execution)
+
+    mock_task.delay.assert_called_once()
+    call_args = mock_task.delay.call_args.kwargs
+    assert call_args["execution_data"] == execution.model_dump()
+    assert call_args["tenant_id"] == "tenant"
+    assert call_args["app_id"] == "app"
+    assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    assert call_args["creator_user_id"] == "user"
+
+
+def test_queue_async_save_requires_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=Mock(spec=sessionmaker),
+        user=_mock_account(),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+    execution = _execution()
+
+    repo._triggered_from = None
+    with pytest.raises(ValueError, match="triggered_from is required"):
+        repo._queue_async_save(execution)
+
+    repo._triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    repo._creator_user_id = None
+    with pytest.raises(ValueError, match="created_by is required"):
+        repo._queue_async_save(execution)
+
+    repo._creator_user_id = "user"
+    repo._creator_user_role = None
+    with pytest.raises(ValueError, match="created_by_role is required"):
+        repo._queue_async_save(execution)
+
+
+def test_queue_async_save_execution_data_requires_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.FileService",
+        lambda *_: SimpleNamespace(upload_file=Mock()),
+    )
+    repo = SQLAlchemyWorkflowNodeExecutionRepository(
+        session_factory=Mock(spec=sessionmaker),
+        user=_mock_account(),
+        app_id="app",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+    execution = _execution()
+
+    repo._triggered_from = None
+    with pytest.raises(ValueError, match="triggered_from is required"):
+        repo._queue_async_save_execution_data(execution)
+
+    repo._triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
+    repo._creator_user_id = None
+    with pytest.raises(ValueError, match="created_by is required"):
+        repo._queue_async_save_execution_data(execution)
+
+    repo._creator_user_id = "user"
+    repo._creator_user_role = None
+    with pytest.raises(ValueError, match="created_by_role is required"):
+        repo._queue_async_save_execution_data(execution)
 
 
 def test_save_retries_duplicate_and_logs_non_duplicate(

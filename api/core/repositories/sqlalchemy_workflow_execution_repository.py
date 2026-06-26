@@ -21,6 +21,7 @@ from models import (
     WorkflowRun,
 )
 from models.enums import WorkflowRunTriggeredFrom
+from tasks.workflow_execution_tasks import save_workflow_execution_task
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,8 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
     This implementation also includes an in-memory cache for workflow executions to improve
     performance by reducing database queries.
     """
+
+    _use_async_persistence: bool
 
     def __init__(
         self,
@@ -83,6 +86,16 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         # Initialize in-memory cache for workflow executions
         # Key: execution_id, Value: WorkflowRun (DB model)
         self._execution_cache: dict[str, WorkflowRun] = {}
+        self._use_async_persistence = False
+
+    def set_async_persistence(self, enabled: bool) -> None:
+        """
+        Configure whether save operations should be queued through Celery.
+
+        Debug executions keep this disabled so the debugger can immediately read persisted
+        workflow state. Non-debug app executions enable it from the persistence layer.
+        """
+        self._use_async_persistence = enabled
 
     def _to_domain_model(self, db_model: WorkflowRun) -> WorkflowExecution:
         """
@@ -193,6 +206,10 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
         Args:
             execution: The WorkflowExecution domain entity to persist
         """
+        if self._use_async_persistence:
+            self._queue_async_save(execution)
+            return
+
         # Convert domain model to database model using tenant context and other attributes
         db_model = self._to_db_model(execution)
 
@@ -212,3 +229,20 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             # Update the in-memory cache for faster subsequent lookups
             self._execution_cache[db_model.id] = db_model
+
+    def _queue_async_save(self, execution: WorkflowExecution) -> None:
+        if not self._triggered_from:
+            raise ValueError("triggered_from is required in repository constructor")
+        if not self._creator_user_id:
+            raise ValueError("created_by is required in repository constructor")
+        if not self._creator_user_role:
+            raise ValueError("created_by_role is required in repository constructor")
+
+        save_workflow_execution_task.delay(
+            execution_data=execution.model_dump(),
+            tenant_id=self._tenant_id,
+            app_id=self._app_id or "",
+            triggered_from=self._triggered_from.value,
+            creator_user_id=self._creator_user_id,
+            creator_user_role=self._creator_user_role.value,
+        )

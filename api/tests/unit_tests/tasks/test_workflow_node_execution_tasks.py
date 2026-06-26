@@ -1,488 +1,327 @@
-# """
-# Unit tests for workflow node execution Celery tasks.
-
-# These tests verify the asynchronous storage functionality for workflow node execution data,
-# including truncation and offloading logic.
-# """
-
-# import json
-# from unittest.mock import MagicMock, Mock, patch
-# from uuid import uuid4
-
-# import pytest
-
-# from graphon.entities.workflow_node_execution import (
-#     WorkflowNodeExecution,
-#     WorkflowNodeExecutionStatus,
-# )
-# from graphon.enums import BuiltinNodeTypes
-# from libs.datetime_utils import naive_utc_now
-# from models import WorkflowNodeExecutionModel
-# from models.enums import ExecutionOffLoadType
-# from models.model import UploadFile
-# from models.workflow import WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
-# from tasks.workflow_node_execution_tasks import (
-#     _create_truncator,
-#     _json_encode,
-#     _replace_or_append_offload,
-#     _truncate_and_upload_async,
-#     save_workflow_node_execution_data_task,
-#     save_workflow_node_execution_task,
-# )
-
-
-# @pytest.fixture
-# def sample_execution_data():
-#     """Sample execution data for testing."""
-#     execution = WorkflowNodeExecution(
-#         id=str(uuid4()),
-#         node_execution_id=str(uuid4()),
-#         workflow_id=str(uuid4()),
-#         workflow_execution_id=str(uuid4()),
-#         index=1,
-#         node_id="test_node",
-#         node_type=BuiltinNodeTypes.LLM,
-#         title="Test Node",
-#         inputs={"input_key": "input_value"},
-#         outputs={"output_key": "output_value"},
-#         process_data={"process_key": "process_value"},
-#         status=WorkflowNodeExecutionStatus.RUNNING,
-#         created_at=naive_utc_now(),
-#     )
-#     return execution.model_dump()
-
-
-# @pytest.fixture
-# def mock_db_model():
-#     """Mock database model for testing."""
-#     db_model = Mock(spec=WorkflowNodeExecutionModel)
-#     db_model.id = "test-execution-id"
-#     db_model.offload_data = []
-#     return db_model
-
-
-# @pytest.fixture
-# def mock_file_service():
-#     """Mock file service for testing."""
-#     file_service = Mock()
-#     mock_upload_file = Mock(spec=UploadFile)
-#     mock_upload_file.id = "mock-file-id"
-#     file_service.upload_file.return_value = mock_upload_file
-#     return file_service
-
-
-# class TestSaveWorkflowNodeExecutionDataTask:
-#     """Test cases for save_workflow_node_execution_data_task."""
-
-#     @patch("tasks.workflow_node_execution_tasks.sessionmaker")
-#     @patch("tasks.workflow_node_execution_tasks.select")
-#     def test_save_execution_data_task_success(
-#         self, mock_select, mock_sessionmaker, sample_execution_data, mock_db_model
-#     ):
-#         """Test successful execution of save_workflow_node_execution_data_task."""
-#         # Setup mocks
-#         mock_session = MagicMock()
-#         mock_sessionmaker.return_value.return_value.__enter__.return_value = mock_session
-#         mock_session.execute.return_value.scalars.return_value.first.return_value = mock_db_model
-
-#         # Execute task
-#         result = save_workflow_node_execution_data_task(
-#             execution_data=sample_execution_data,
-#             tenant_id="test-tenant-id",
-#             app_id="test-app-id",
-#             user_data={"user_id": "test-user-id", "user_type": "account"},
-#         )
-
-#         # Verify success
-#         assert result is True
-#         mock_session.merge.assert_called_once_with(mock_db_model)
-#         mock_session.commit.assert_called_once()
-
-#     @patch("tasks.workflow_node_execution_tasks.sessionmaker")
-#     @patch("tasks.workflow_node_execution_tasks.select")
-#     def test_save_execution_data_task_execution_not_found(self, mock_select, mock_sessionmaker,
-# sample_execution_data):
-#         """Test task when execution is not found in database."""
-#         # Setup mocks
-#         mock_session = MagicMock()
-#         mock_sessionmaker.return_value.return_value.__enter__.return_value = mock_session
-#         mock_session.execute.return_value.scalars.return_value.first.return_value = None
-
-#         # Execute task
-#         result = save_workflow_node_execution_data_task(
-#             execution_data=sample_execution_data,
-#             tenant_id="test-tenant-id",
-#             app_id="test-app-id",
-#             user_data={"user_id": "test-user-id", "user_type": "account"},
-#         )
-
-#         # Verify failure
-#         assert result is False
-#         mock_session.merge.assert_not_called()
-#         mock_session.commit.assert_not_called()
-
-#     @patch("tasks.workflow_node_execution_tasks.sessionmaker")
-#     @patch("tasks.workflow_node_execution_tasks.select")
-#     def test_save_execution_data_task_with_truncation(self, mock_select, mock_sessionmaker, mock_db_model):
-#         """Test task with data that requires truncation."""
-#         # Create execution with large data
-#         large_data = {"large_field": "x" * 10000}
-#         execution = WorkflowNodeExecution(
-#             id=str(uuid4()),
-#             node_execution_id=str(uuid4()),
-#             workflow_id=str(uuid4()),
-#             workflow_execution_id=str(uuid4()),
-#             index=1,
-#             node_id="test_node",
-#             node_type=BuiltinNodeTypes.LLM,
-#             title="Test Node",
-#             inputs=large_data,
-#             outputs=large_data,
-#             process_data=large_data,
-#             status=WorkflowNodeExecutionStatus.RUNNING,
-#             created_at=naive_utc_now(),
-#         )
-#         execution_data = execution.model_dump()
-
-#         # Setup mocks
-#         mock_session = MagicMock()
-#         mock_sessionmaker.return_value.return_value.__enter__.return_value = mock_session
-#         mock_session.execute.return_value.scalars.return_value.first.return_value = mock_db_model
-
-#         # Create mock upload file
-#         mock_upload_file = Mock(spec=UploadFile)
-#         mock_upload_file.id = "mock-file-id"
-
-#         # Execute task
-#         with patch("tasks.workflow_node_execution_tasks._truncate_and_upload_async") as mock_truncate:
-#             # Mock truncation results
-#             mock_truncate.return_value = {
-#                 "truncated_value": {"large_field": "[TRUNCATED]"},
-#                 "file": mock_upload_file,
-#                 "offload": WorkflowNodeExecutionOffload(
-#                     id=str(uuid4()),
-#                     tenant_id="test-tenant-id",
-#                     app_id="test-app-id",
-#                     node_execution_id=execution.id,
-#                     type_=ExecutionOffLoadType.INPUTS,
-#                     file_id=mock_upload_file.id,
-#                 ),
-#             }
-
-#             result = save_workflow_node_execution_data_task(
-#                 execution_data=execution_data,
-#                 tenant_id="test-tenant-id",
-#                 app_id="test-app-id",
-#                 user_data={"user_id": "test-user-id", "user_type": "account"},
-#             )
-
-#             # Verify success and truncation was called
-#             assert result is True
-#             assert mock_truncate.call_count == 3  # inputs, outputs, process_data
-#             mock_session.merge.assert_called_once_with(mock_db_model)
-#             mock_session.commit.assert_called_once()
-
-#     @patch("tasks.workflow_node_execution_tasks.sessionmaker")
-#     def test_save_execution_data_task_retry_on_exception(self, mock_sessionmaker, sample_execution_data):
-#         """Test task retry mechanism on exception."""
-#         # Setup mock to raise exception
-#         mock_sessionmaker.side_effect = Exception("Database error")
-
-#         # Create a mock task instance with proper retry behavior
-#         with patch.object(save_workflow_node_execution_data_task, "retry") as mock_retry:
-#             mock_retry.side_effect = Exception("Retry called")
-
-#             # Execute task and expect retry
-#             with pytest.raises(Exception, match="Retry called"):
-#                 save_workflow_node_execution_data_task(
-#                     execution_data=sample_execution_data,
-#                     tenant_id="test-tenant-id",
-#                     app_id="test-app-id",
-#                     user_data={"user_id": "test-user-id", "user_type": "account"},
-#                 )
-
-#             # Verify retry was called
-#             mock_retry.assert_called_once()
-
-
-# class TestTruncateAndUploadAsync:
-#     """Test cases for _truncate_and_upload_async function."""
-
-#     def test_truncate_and_upload_with_none_values(self, mock_file_service):
-#         """Test _truncate_and_upload_async with None values."""
-#         # The function handles None values internally, so we test with empty dict instead
-#         result = _truncate_and_upload_async(
-#             values={},
-#             execution_id="test-id",
-#             type_=ExecutionOffLoadType.INPUTS,
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             user_data={"user_id": "test-user", "user_type": "account"},
-#             file_service=mock_file_service,
-#         )
-
-#         # Empty dict should not require truncation
-#         assert result is None
-#         mock_file_service.upload_file.assert_not_called()
-
-#     @patch("tasks.workflow_node_execution_tasks._create_truncator")
-#     def test_truncate_and_upload_no_truncation_needed(self, mock_create_truncator, mock_file_service):
-#         """Test _truncate_and_upload_async when no truncation is needed."""
-#         # Mock truncator to return no truncation
-#         mock_truncator = Mock()
-#         mock_truncator.truncate_variable_mapping.return_value = ({"small": "data"}, False)
-#         mock_create_truncator.return_value = mock_truncator
-
-#         small_values = {"small": "data"}
-#         result = _truncate_and_upload_async(
-#             values=small_values,
-#             execution_id="test-id",
-#             type_=ExecutionOffLoadType.INPUTS,
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             user_data={"user_id": "test-user", "user_type": "account"},
-#             file_service=mock_file_service,
-#         )
-
-#         assert result is None
-#         mock_file_service.upload_file.assert_not_called()
-
-#     @patch("tasks.workflow_node_execution_tasks._create_truncator")
-#     @patch("models.Account")
-#     @patch("models.Tenant")
-#     def test_truncate_and_upload_with_account_user(
-#         self, mock_tenant_class, mock_account_class, mock_create_truncator, mock_file_service
-#     ):
-#         """Test _truncate_and_upload_async with account user."""
-#         # Mock truncator to return truncation needed
-#         mock_truncator = Mock()
-#         mock_truncator.truncate_variable_mapping.return_value = ({"truncated": "data"}, True)
-#         mock_create_truncator.return_value = mock_truncator
-
-#         # Mock user and tenant creation
-#         mock_account = Mock()
-#         mock_account.id = "test-user"
-#         mock_account_class.return_value = mock_account
-
-#         mock_tenant = Mock()
-#         mock_tenant.id = "test-tenant"
-#         mock_tenant_class.return_value = mock_tenant
-
-#         large_values = {"large": "x" * 10000}
-#         result = _truncate_and_upload_async(
-#             values=large_values,
-#             execution_id="test-id",
-#             type_=ExecutionOffLoadType.INPUTS,
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             user_data={"user_id": "test-user", "user_type": "account"},
-#             file_service=mock_file_service,
-#         )
-
-#         # Verify result structure
-#         assert result is not None
-#         assert "truncated_value" in result
-#         assert "file" in result
-#         assert "offload" in result
-#         assert result["truncated_value"] == {"truncated": "data"}
-
-#         # Verify file upload was called
-#         mock_file_service.upload_file.assert_called_once()
-#         upload_call = mock_file_service.upload_file.call_args
-#         assert upload_call[1]["filename"] == "node_execution_test-id_inputs.json"
-#         assert upload_call[1]["mimetype"] == "application/json"
-#         assert upload_call[1]["user"] == mock_account
-
-#     @patch("tasks.workflow_node_execution_tasks._create_truncator")
-#     @patch("models.EndUser")
-#     def test_truncate_and_upload_with_end_user(self, mock_end_user_class, mock_create_truncator, mock_file_service):
-#         """Test _truncate_and_upload_async with end user."""
-#         # Mock truncator to return truncation needed
-#         mock_truncator = Mock()
-#         mock_truncator.truncate_variable_mapping.return_value = ({"truncated": "data"}, True)
-#         mock_create_truncator.return_value = mock_truncator
-
-#         # Mock end user creation
-#         mock_end_user = Mock()
-#         mock_end_user.id = "test-user"
-#         mock_end_user.tenant_id = "test-tenant"
-#         mock_end_user_class.return_value = mock_end_user
-
-#         large_values = {"large": "x" * 10000}
-#         result = _truncate_and_upload_async(
-#             values=large_values,
-#             execution_id="test-id",
-#             type_=ExecutionOffLoadType.OUTPUTS,
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             user_data={"user_id": "test-user", "user_type": "end_user"},
-#             file_service=mock_file_service,
-#         )
-
-#         # Verify result structure
-#         assert result is not None
-#         assert result["truncated_value"] == {"truncated": "data"}
-
-#         # Verify file upload was called with end user
-#         mock_file_service.upload_file.assert_called_once()
-#         upload_call = mock_file_service.upload_file.call_args
-#         assert upload_call[1]["filename"] == "node_execution_test-id_outputs.json"
-#         assert upload_call[1]["user"] == mock_end_user
-
-
-# class TestHelperFunctions:
-#     """Test cases for helper functions."""
-
-#     @patch("tasks.workflow_node_execution_tasks.dify_config")
-#     def test_create_truncator(self, mock_config):
-#         """Test _create_truncator function."""
-#         mock_config.WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE = 1000
-#         mock_config.WORKFLOW_VARIABLE_TRUNCATION_ARRAY_LENGTH = 100
-#         mock_config.WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH = 500
-
-#         truncator = _create_truncator()
-
-#         # Verify truncator was created with correct config
-#         assert truncator is not None
-
-#     def test_json_encode(self):
-#         """Test _json_encode function."""
-#         test_data = {"key": "value", "number": 42}
-#         result = _json_encode(test_data)
-
-#         assert isinstance(result, str)
-#         decoded = json.loads(result)
-#         assert decoded == test_data
-
-#     def test_replace_or_append_offload_replace_existing(self):
-#         """Test _replace_or_append_offload replaces existing offload of same type."""
-#         existing_offload = WorkflowNodeExecutionOffload(
-#             id=str(uuid4()),
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             node_execution_id="test-execution",
-#             type_=ExecutionOffLoadType.INPUTS,
-#             file_id="old-file-id",
-#         )
-
-#         new_offload = WorkflowNodeExecutionOffload(
-#             id=str(uuid4()),
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             node_execution_id="test-execution",
-#             type_=ExecutionOffLoadType.INPUTS,
-#             file_id="new-file-id",
-#         )
-
-#         result = _replace_or_append_offload([existing_offload], new_offload)
-
-#         assert len(result) == 1
-#         assert result[0].file_id == "new-file-id"
-
-#     def test_replace_or_append_offload_append_new_type(self):
-#         """Test _replace_or_append_offload appends new offload of different type."""
-#         existing_offload = WorkflowNodeExecutionOffload(
-#             id=str(uuid4()),
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             node_execution_id="test-execution",
-#             type_=ExecutionOffLoadType.INPUTS,
-#             file_id="inputs-file-id",
-#         )
-
-#         new_offload = WorkflowNodeExecutionOffload(
-#             id=str(uuid4()),
-#             tenant_id="test-tenant",
-#             app_id="test-app",
-#             node_execution_id="test-execution",
-#             type_=ExecutionOffLoadType.OUTPUTS,
-#             file_id="outputs-file-id",
-#         )
-
-#         result = _replace_or_append_offload([existing_offload], new_offload)
-
-#         assert len(result) == 2
-#         file_ids = [offload.file_id for offload in result]
-#         assert "inputs-file-id" in file_ids
-#         assert "outputs-file-id" in file_ids
-
-
-# class TestSaveWorkflowNodeExecutionTask:
-#     """Test cases for save_workflow_node_execution_task."""
-
-#     @patch("tasks.workflow_node_execution_tasks.sessionmaker")
-#     @patch("tasks.workflow_node_execution_tasks.select")
-#     def test_save_workflow_node_execution_task_create_new(self, mock_select, mock_sessionmaker,
-# sample_execution_data):
-#         """Test creating a new workflow node execution."""
-#         # Setup mocks
-#         mock_session = MagicMock()
-#         mock_sessionmaker.return_value.return_value.__enter__.return_value = mock_session
-#         mock_session.scalar.return_value = None  # No existing execution
-
-#         # Execute task
-#         result = save_workflow_node_execution_task(
-#             execution_data=sample_execution_data,
-#             tenant_id="test-tenant-id",
-#             app_id="test-app-id",
-#             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-#             creator_user_id="test-user-id",
-#             creator_user_role="account",
-#         )
-
-#         # Verify success
-#         assert result is True
-#         mock_session.add.assert_called_once()
-#         mock_session.commit.assert_called_once()
-
-#     @patch("tasks.workflow_node_execution_tasks.sessionmaker")
-#     @patch("tasks.workflow_node_execution_tasks.select")
-#     def test_save_workflow_node_execution_task_update_existing(
-#         self, mock_select, mock_sessionmaker, sample_execution_data
-#     ):
-#         """Test updating an existing workflow node execution."""
-#         # Setup mocks
-#         mock_session = MagicMock()
-#         mock_sessionmaker.return_value.return_value.__enter__.return_value = mock_session
-
-#         existing_execution = Mock(spec=WorkflowNodeExecutionModel)
-#         mock_session.scalar.return_value = existing_execution
-
-#         # Execute task
-#         result = save_workflow_node_execution_task(
-#             execution_data=sample_execution_data,
-#             tenant_id="test-tenant-id",
-#             app_id="test-app-id",
-#             triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-#             creator_user_id="test-user-id",
-#             creator_user_role="account",
-#         )
-
-#         # Verify success
-#         assert result is True
-#         mock_session.add.assert_not_called()  # Should not add new, just update existing
-#         mock_session.commit.assert_called_once()
-
-#     @patch("tasks.workflow_node_execution_tasks.sessionmaker")
-#     def test_save_workflow_node_execution_task_retry_on_exception(self, mock_sessionmaker, sample_execution_data):
-#         """Test task retry mechanism on exception."""
-#         # Setup mock to raise exception
-#         mock_sessionmaker.side_effect = Exception("Database error")
-
-#         # Create a mock task instance with proper retry behavior
-#         with patch.object(save_workflow_node_execution_task, "retry") as mock_retry:
-#             mock_retry.side_effect = Exception("Retry called")
-
-#             # Execute task and expect retry
-#             with pytest.raises(Exception, match="Retry called"):
-#                 save_workflow_node_execution_task(
-#                     execution_data=sample_execution_data,
-#                     tenant_id="test-tenant-id",
-#                     app_id="test-app-id",
-#                     triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-#                     creator_user_id="test-user-id",
-#                     creator_user_role="account",
-#                 )
-
-#             # Verify retry was called
-#             mock_retry.assert_called_once()
+from collections.abc import Mapping
+from datetime import UTC, datetime
+from unittest.mock import Mock, patch
+
+import pytest
+
+from graphon.entities.workflow_node_execution import WorkflowNodeExecution
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from models import Account, EndUser
+from models.enums import CreatorUserRole
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
+from tasks.workflow_node_execution_tasks import (
+    _create_node_execution_from_domain,
+    _create_sqlalchemy_repository,
+    _update_node_execution_metadata,
+    save_workflow_node_execution_data_task,
+    save_workflow_node_execution_task,
+)
+
+
+def _execution(
+    *,
+    metadata: Mapping[WorkflowNodeExecutionMetadataKey, object] | None = None,
+) -> WorkflowNodeExecution:
+    if metadata is None:
+        metadata = {WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: 10}
+
+    return WorkflowNodeExecution(
+        id="exec-id",
+        node_execution_id="node-exec-id",
+        workflow_id="workflow-id",
+        workflow_execution_id="run-id",
+        index=1,
+        node_id="node-id",
+        node_type=BuiltinNodeTypes.LLM,
+        title="LLM",
+        inputs={"input": "value"},
+        process_data={"process": "value"},
+        outputs={"output": "value"},
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        metadata=metadata,
+        created_at=datetime.now(UTC).replace(tzinfo=None),
+        finished_at=datetime.now(UTC).replace(tzinfo=None),
+    )
+
+
+def test_create_node_execution_persists_metadata_without_data_payloads() -> None:
+    db_model = _create_node_execution_from_domain(
+        execution=_execution(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT,
+    )
+
+    assert db_model.inputs == "{}"
+    assert db_model.process_data == "{}"
+    assert db_model.outputs == "{}"
+    assert db_model.execution_metadata == '{"total_tokens": 10}'
+
+
+def test_create_node_execution_defaults_empty_metadata() -> None:
+    db_model = _create_node_execution_from_domain(
+        execution=_execution(metadata={}),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT,
+    )
+
+    assert db_model.execution_metadata == "{}"
+
+
+def test_update_node_execution_metadata_preserves_data_payloads() -> None:
+    db_model = WorkflowNodeExecutionModel()
+    db_model.inputs = '{"old_input": true}'
+    db_model.process_data = '{"old_process": true}'
+    db_model.outputs = '{"old_output": true}'
+
+    _update_node_execution_metadata(db_model, _execution())
+
+    assert db_model.inputs == '{"old_input": true}'
+    assert db_model.process_data == '{"old_process": true}'
+    assert db_model.outputs == '{"old_output": true}'
+    assert db_model.status == WorkflowNodeExecutionStatus.SUCCEEDED
+
+
+def test_update_node_execution_metadata_defaults_empty_metadata() -> None:
+    db_model = WorkflowNodeExecutionModel()
+
+    _update_node_execution_metadata(db_model, _execution(metadata={}))
+
+    assert db_model.execution_metadata == "{}"
+
+
+@patch("tasks.workflow_node_execution_tasks._create_sqlalchemy_repository")
+def test_save_workflow_node_execution_data_task_uses_sqlalchemy_repository(mock_create_repository: Mock) -> None:
+    repository = Mock()
+    mock_create_repository.return_value = repository
+    execution = _execution()
+
+    result = save_workflow_node_execution_data_task.run(
+        execution_data=execution.model_dump(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+
+    assert result is True
+    mock_create_repository.assert_called_once_with(
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+    saved_execution = repository.save.call_args.args[0]
+    saved_data_execution = repository.save_execution_data.call_args.args[0]
+    assert saved_execution.model_dump() == execution.model_dump()
+    assert saved_data_execution.model_dump() == execution.model_dump()
+
+
+@patch("tasks.workflow_node_execution_tasks._create_sqlalchemy_repository")
+def test_save_workflow_node_execution_data_task_retries_on_failure(mock_create_repository: Mock) -> None:
+    mock_create_repository.side_effect = RuntimeError("db unavailable")
+    execution = _execution()
+
+    with (
+        patch.object(
+            save_workflow_node_execution_data_task,
+            "retry",
+            side_effect=RuntimeError("retry requested"),
+        ) as retry,
+        pytest.raises(RuntimeError, match="retry requested"),
+    ):
+        save_workflow_node_execution_data_task.run(
+            execution_data=execution.model_dump(),
+            tenant_id="tenant-id",
+            app_id="app-id",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            creator_user_id="user-id",
+            creator_user_role=CreatorUserRole.ACCOUNT.value,
+        )
+
+    retry.assert_called_once()
+    assert isinstance(retry.call_args.kwargs["exc"], RuntimeError)
+    assert retry.call_args.kwargs["countdown"] == 60
+
+
+@patch("tasks.workflow_node_execution_tasks.session_factory.create_session")
+def test_save_workflow_node_execution_task_creates_metadata_record(mock_create_session: Mock) -> None:
+    session = _TaskSession(existing_execution=None)
+    mock_create_session.return_value = session
+
+    result = save_workflow_node_execution_task.run(
+        execution_data=_execution().model_dump(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+
+    assert result is True
+    assert session.committed is True
+    assert isinstance(session.added_execution, WorkflowNodeExecutionModel)
+    assert session.added_execution.inputs == "{}"
+    assert session.added_execution.process_data == "{}"
+    assert session.added_execution.outputs == "{}"
+
+
+@patch("tasks.workflow_node_execution_tasks.session_factory.create_session")
+def test_save_workflow_node_execution_task_updates_metadata_without_payloads(mock_create_session: Mock) -> None:
+    existing_execution = WorkflowNodeExecutionModel()
+    existing_execution.inputs = '{"old_input": true}'
+    existing_execution.process_data = '{"old_process": true}'
+    existing_execution.outputs = '{"old_output": true}'
+    session = _TaskSession(existing_execution=existing_execution)
+    mock_create_session.return_value = session
+
+    result = save_workflow_node_execution_task.run(
+        execution_data=_execution().model_dump(),
+        tenant_id="tenant-id",
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+        creator_user_id="user-id",
+        creator_user_role=CreatorUserRole.ACCOUNT.value,
+    )
+
+    assert result is True
+    assert session.committed is True
+    assert session.added_execution is None
+    assert existing_execution.inputs == '{"old_input": true}'
+    assert existing_execution.process_data == '{"old_process": true}'
+    assert existing_execution.outputs == '{"old_output": true}'
+    assert existing_execution.status == WorkflowNodeExecutionStatus.SUCCEEDED
+
+
+def test_create_sqlalchemy_repository_builds_account_context(monkeypatch) -> None:
+    account = Mock()
+    session = _Session({Account: account})
+
+    def session_maker():
+        return session
+
+    monkeypatch.setattr(
+        "tasks.workflow_node_execution_tasks.session_factory.get_session_maker",
+        lambda: session_maker,
+    )
+
+    with patch(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository"
+    ) as repository_class:
+        repository = _create_sqlalchemy_repository(
+            tenant_id="tenant-id",
+            app_id="",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            creator_user_id="user-id",
+            creator_user_role=CreatorUserRole.ACCOUNT.value,
+        )
+
+    assert repository == repository_class.return_value
+    account.set_tenant_id.assert_called_once_with("tenant-id")
+    repository_class.assert_called_once_with(
+        session_factory=session_maker,
+        user=account,
+        app_id=None,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+
+
+def test_create_sqlalchemy_repository_builds_end_user_context(monkeypatch) -> None:
+    end_user = Mock()
+    session = _Session({EndUser: end_user})
+
+    def session_maker():
+        return session
+
+    monkeypatch.setattr(
+        "tasks.workflow_node_execution_tasks.session_factory.get_session_maker",
+        lambda: session_maker,
+    )
+
+    with patch(
+        "core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository"
+    ) as repository_class:
+        repository = _create_sqlalchemy_repository(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            creator_user_id="user-id",
+            creator_user_role=CreatorUserRole.END_USER.value,
+        )
+
+    assert repository == repository_class.return_value
+    repository_class.assert_called_once_with(
+        session_factory=session_maker,
+        user=end_user,
+        app_id="app-id",
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+
+
+def test_create_sqlalchemy_repository_raises_for_missing_creator(monkeypatch) -> None:
+    session = _Session({})
+
+    def session_maker():
+        return session
+
+    monkeypatch.setattr(
+        "tasks.workflow_node_execution_tasks.session_factory.get_session_maker",
+        lambda: session_maker,
+    )
+
+    with (
+        patch(
+            "core.repositories.sqlalchemy_workflow_node_execution_repository.SQLAlchemyWorkflowNodeExecutionRepository"
+        ),
+        pytest.raises(ValueError, match="Creator user missing-user not found"),
+    ):
+        _create_sqlalchemy_repository(
+            tenant_id="tenant-id",
+            app_id="app-id",
+            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            creator_user_id="missing-user",
+            creator_user_role=CreatorUserRole.ACCOUNT.value,
+        )
+
+
+class _Session:
+    def __init__(self, users: dict[type, object]) -> None:
+        self._users = users
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+    def get(self, model, _id: str):
+        return self._users.get(model)
+
+
+class _TaskSession:
+    def __init__(self, existing_execution: WorkflowNodeExecutionModel | None) -> None:
+        self._existing_execution = existing_execution
+        self.added_execution: WorkflowNodeExecutionModel | None = None
+        self.committed = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        return None
+
+    def scalar(self, _stmt):
+        return self._existing_execution
+
+    def add(self, execution: WorkflowNodeExecutionModel) -> None:
+        self.added_execution = execution
+
+    def commit(self) -> None:
+        self.committed = True
