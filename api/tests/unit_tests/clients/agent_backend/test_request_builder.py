@@ -109,7 +109,9 @@ def test_request_builder_separates_agent_soul_and_workflow_job_prompt():
 
     dumped = request.model_dump(mode="json")
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are a careful reviewer."
-    assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Review the previous node output."
+    workflow_job_config = dumped["composition"]["layers"][1]["config"]
+    assert workflow_job_config["user"] == "Review the previous node output."
+    assert not workflow_job_config.get("prefix")
     assert dumped["composition"]["layers"][2]["config"]["user"] == "Summarize the report."
 
 

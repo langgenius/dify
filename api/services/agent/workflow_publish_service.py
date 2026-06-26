@@ -18,9 +18,18 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, DeclaredOutputConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import (
+    AgentSoulConfig,
+    DeclaredOutputConfig,
+    WorkflowNodeJobConfig,
+    WorkflowPreviousNodeOutputRef,
+)
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
+from services.agent.prompt_mentions import (
+    extract_workflow_node_output_selectors,
+    workflow_previous_node_output_refs_from_selectors,
+)
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -425,6 +434,7 @@ class WorkflowAgentPublishService:
         agent_task = node_data.get(cls._AGENT_TASK_KEY)
         if isinstance(agent_task, str):
             node_job.workflow_prompt = agent_task
+            node_job.previous_node_output_refs = cls._previous_node_output_refs_from_prompt(agent_task)
 
         declared_outputs_payload = node_data.get(cls._AGENT_DECLARED_OUTPUTS_KEY)
         if declared_outputs_payload is not None:
@@ -438,6 +448,13 @@ class WorkflowAgentPublishService:
                 raise ValueError("Workflow Agent node has invalid agent_declared_outputs.") from exc
 
         return node_job
+
+    @classmethod
+    def _previous_node_output_refs_from_prompt(cls, prompt: str) -> list[WorkflowPreviousNodeOutputRef]:
+        """Derive persisted refs from the current frontend workflow markers only."""
+        return workflow_previous_node_output_refs_from_selectors(
+            extract_workflow_node_output_selectors(prompt)
+        )
 
     @classmethod
     def copy_agent_node_bindings_to_published(

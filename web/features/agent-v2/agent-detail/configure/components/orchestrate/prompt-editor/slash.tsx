@@ -381,10 +381,8 @@ function AgentPromptToolRows({
                 {expandedProviderIds.has(provider.id) && provider.tools.map(tool => (
                   <AgentPromptProviderToolActionRow
                     key={tool.name}
-                    provider={provider}
                     tool={tool}
                     language={language}
-                    selectedTools={selectedTools}
                     onClick={() => handleSelectTool(provider, tool)}
                   />
                 ))}
@@ -503,27 +501,29 @@ function AgentPromptProviderToolRow({
   const providerLabel = getProviderLabel(provider, language)
 
   return (
-    <div className="flex h-7 w-full items-center gap-px overflow-hidden rounded-md">
+    <div className="group flex h-7 w-full items-center gap-px overflow-hidden rounded-md">
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-l-md py-1 pr-1 pl-2 text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
+        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-l-md py-1 pr-1 pl-2 text-left group-hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
         onClick={onClick}
       >
         <span className="flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md border-[0.5px] border-effects-icon-border bg-background-default-dodge">
           <AgentPromptProviderIcon provider={provider} />
         </span>
-        <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">{providerLabel}</span>
-        {selectedToolsCount > 0 && selectedToolsCount < provider.tools.length && (
-          <span className="shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
-            {selectedToolsCount}
-          </span>
-        )}
+        <span className="flex min-w-0 flex-1 items-center">
+          <span className="min-w-0 truncate system-sm-regular text-text-secondary">{providerLabel}</span>
+          {selectedToolsCount > 0 && selectedToolsCount < provider.tools.length && (
+            <span className="ml-1.5 shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 system-2xs-medium-uppercase text-text-tertiary">
+              {selectedToolsCount}
+            </span>
+          )}
+        </span>
         <span className="shrink-0 system-xs-regular text-text-quaternary">{typeLabel}</span>
       </button>
       <button
         type="button"
         aria-label={providerLabel}
-        className="flex size-7 shrink-0 items-center justify-center rounded-r-md text-text-tertiary hover:bg-state-base-hover-subtle focus-visible:bg-state-base-hover-subtle focus-visible:outline-hidden"
+        className="flex size-7 shrink-0 items-center justify-center rounded-r-md text-text-tertiary group-hover:bg-state-base-hover hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden"
         onClick={onToggle}
       >
         <span aria-hidden className={`${isExpanded ? 'i-ri-arrow-down-s-line' : 'i-ri-arrow-right-s-line'} size-4`} />
@@ -587,20 +587,14 @@ function AgentPromptToolFooter({
 }
 
 function AgentPromptProviderToolActionRow({
-  provider,
   tool,
   language,
-  selectedTools,
   onClick,
 }: {
-  provider: ToolWithProvider
   tool: Tool
   language: string
-  selectedTools: ToolValue[]
   onClick: () => void
 }) {
-  const selected = isToolSelected(selectedTools, provider, tool)
-
   return (
     <button
       type="button"
@@ -612,7 +606,6 @@ function AgentPromptProviderToolActionRow({
         <span className="min-w-0 flex-1 truncate system-sm-regular text-text-secondary">
           {getLocalizedText(tool.label, language) || tool.name}
         </span>
-        {selected && <span aria-hidden className="i-ri-check-line size-3.5 shrink-0 text-text-tertiary" />}
       </span>
     </button>
   )

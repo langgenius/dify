@@ -3121,6 +3121,82 @@ class TestWorkflowAgentDraftBindingSync:
             config_snapshot=agent_soul,
         )
 
+    def _sync_roster_agent_task_refs(
+        self,
+        *,
+        agent_task: str,
+        existing_ref_selectors: list[list[str]] | None = None,
+    ) -> WorkflowNodeJobConfig:
+        workflow = Workflow(
+            id="workflow-1",
+            tenant_id="tenant-1",
+            app_id="app-1",
+            version=Workflow.VERSION_DRAFT,
+            graph=json.dumps(
+                {
+                    "nodes": [
+                        {
+                            "id": "agent-node",
+                            "data": {
+                                "type": "agent",
+                                "version": "2",
+                                "agent_task": agent_task,
+                                "agent_binding": {
+                                    "binding_type": "roster_agent",
+                                    "agent_id": "agent-1",
+                                },
+                            },
+                        }
+                    ]
+                }
+            ),
+        )
+        agent = Agent(
+            id="agent-1",
+            tenant_id="tenant-1",
+            name="Agent",
+            agent_kind=AgentKind.DIFY_AGENT,
+            scope=AgentScope.ROSTER,
+            source=AgentSource.AGENT_APP,
+            status=AgentStatus.ACTIVE,
+            active_config_snapshot_id="snapshot-2",
+        )
+        existing_binding = None
+        if existing_ref_selectors is None:
+            session = FakeSession(scalar=[agent], scalars=[[]])
+        else:
+            existing_binding = WorkflowAgentNodeBinding(
+                id="binding-1",
+                tenant_id="tenant-1",
+                app_id="app-1",
+                workflow_id="workflow-1",
+                workflow_version=Workflow.VERSION_DRAFT,
+                node_id="agent-node",
+                binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                agent_id="agent-1",
+                current_snapshot_id="snapshot-1",
+                node_job_config=WorkflowNodeJobConfig.model_validate(
+                    {
+                        "workflow_prompt": "Old prompt",
+                        "previous_node_output_refs": [
+                            {"selector": selector} for selector in existing_ref_selectors
+                        ],
+                    }
+                ),
+            )
+            session = FakeSession(scalar=[agent], scalars=[[existing_binding]])
+
+        WorkflowAgentPublishService.sync_roster_agent_bindings_for_draft(
+            session=session,
+            draft_workflow=workflow,
+            account_id="account-1",
+        )
+
+        binding = existing_binding or next(
+            item for item in session.added if isinstance(item, WorkflowAgentNodeBinding)
+        )
+        return WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
+
     def test_publish_validation_rejects_agent_soul_publish_only_errors(self):
         binding = self._agent_binding()
         agent_soul = AgentSoulConfig.model_validate(
@@ -3406,6 +3482,32 @@ class TestWorkflowAgentDraftBindingSync:
                 )
             ],
         ).model_dump(mode="json")
+
+    def test_creates_roster_binding_deriving_previous_node_refs_from_agent_task(self):
+        node_job = self._sync_roster_agent_task_refs(
+            agent_task="Review {{#previous-node.report#}} for {{#sys.query#}}.",
+        )
+
+        assert node_job.workflow_prompt == "Review {{#previous-node.report#}} for {{#sys.query#}}."
+        assert [ref.selector for ref in node_job.previous_node_output_refs] == [["previous-node", "report"]]
+
+    def test_updates_existing_roster_binding_clearing_legacy_only_previous_node_refs(self):
+        node_job = self._sync_roster_agent_task_refs(
+            agent_task="Review [§node_output:previous-node.report:PREV/report§].",
+            existing_ref_selectors=[["previous-node", "report"]],
+        )
+
+        assert node_job.workflow_prompt == "Review [§node_output:previous-node.report:PREV/report§]."
+        assert node_job.previous_node_output_refs == []
+
+    def test_updates_existing_roster_binding_clearing_stale_previous_node_refs(self):
+        node_job = self._sync_roster_agent_task_refs(
+            agent_task="Review the current request without upstream context.",
+            existing_ref_selectors=[["previous-node", "report"]],
+        )
+
+        assert node_job.workflow_prompt == "Review the current request without upstream context."
+        assert node_job.previous_node_output_refs == []
 
     def test_creates_inline_binding_from_agent_node_graph(self):
         workflow = Workflow(

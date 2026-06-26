@@ -208,8 +208,10 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "debugger"
     assert dumped["idempotency_key"] == "run-1:node-exec-1"
     assert dumped["composition"]["layers"][0]["config"]["prefix"] == "You are careful."
-    assert dumped["composition"]["layers"][1]["config"]["prefix"] == "Use the previous output."
-    assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
+    assert dumped["composition"]["layers"][1]["config"]["user"] == "Use the previous output."
+    assert "Agent task for this workflow run:" not in dumped["composition"]["layers"][2]["config"]["user"]
+    assert "User query: Summarize the report." in dumped["composition"]["layers"][2]["config"]["user"]
+    assert "Previous node outputs:" not in dumped["composition"]["layers"][2]["config"]["user"]
     assert dumped["composition"]["layers"][-1]["config"]["json_schema"]["properties"]["summary"]["type"] == "string"
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
     redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
@@ -925,9 +927,8 @@ def test_effective_declared_outputs_passthrough_when_user_declared():
 
 
 def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
-    """ENG-616: slash-menu mention tokens expand to canonical names; node_output
-    mentions expand to the reference name only (the value stays in the Workflow
-    context user prompt), and no ``[§…§]`` marker leaks into the request."""
+    """ENG-616: soul/output mentions expand, while frontend workflow markers stay
+    literal in the workflow task layer and resolve under workflow context."""
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={"system_prompt": "Careful. Ask [§human:c-1:EMAIL · DAVE§] when unsure."},
@@ -937,12 +938,9 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
             "workflow_prompt": (
-                "Read [§node_output:previous-node.text:PREV/text§] and produce [§output:summary§]. "
+                "Read {{#previous-node.text#}} and produce [§output:summary§]. "
                 "Unknown [§knowledge:gone:旧手册§] degrades."
             ),
-            "previous_node_output_refs": [
-                {"selector": ["previous-node", "text"], "name": "PREV/text"},
-            ],
             "declared_outputs": [{"name": "summary", "type": "string"}],
         }
     )
@@ -950,13 +948,21 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     layers = _request_layers(result)
-    assert layers["agent_soul_prompt"]["config"]["prefix"] == ("Careful. Ask EMAIL · David Hayes when unsure.")
-    assert layers["workflow_node_job_prompt"]["config"]["prefix"] == (
-        "Read PREV/text and produce summary (string). Unknown 旧手册 degrades."
+    agent_soul_prompt = layers["agent_soul_prompt"]["config"]["prefix"]
+    job_prompt = layers["workflow_node_job_prompt"]["config"]["user"]
+    assert agent_soul_prompt == ("Careful. Ask EMAIL · David Hayes when unsure.")
+    assert (
+        job_prompt
+        == "Read {{#previous-node.text#}} and produce summary (string). Unknown 旧手册 degrades."
     )
-    # the value still rides the Workflow context block, not the job prompt
-    assert "Previous result" in _workflow_user_prompt(result)
-    assert "[§" not in json.dumps(list(layers.values())[:3])
+    user_prompt = _workflow_user_prompt(result)
+    assert "Agent task for this workflow run:" not in user_prompt
+    assert "Previous result" in user_prompt
+    for prompt_text in (agent_soul_prompt, job_prompt, user_prompt):
+        assert "[§" not in prompt_text
+    assert "{{#" in job_prompt
+    assert "{{#" not in agent_soul_prompt
+    assert "{{#" not in user_prompt
 
 
 def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_context():
@@ -982,16 +988,52 @@ def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_
     context = replace(_context(), variable_pool=FileVariablePool())
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
-            "previous_node_output_refs": [{"node_id": "previous-node", "output": "report"}],
+            "workflow_prompt": "Review {{#previous-node.report#}} before responding.",
         }
     )
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
+    assert _request_layers(result)["workflow_node_job_prompt"]["config"]["user"] == (
+        "Review {{#previous-node.report#}} before responding."
+    )
     assert _previous_node_prompt_payload(result, "previous-node.report") == {
         "transfer_method": "tool_file",
         "reference": file_reference,
     }
+
+
+def test_scalar_previous_node_output_appears_in_workflow_context_section():
+    context = _context()
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Review {{#previous-node.text#}} before responding.",
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    user_prompt = _workflow_user_prompt(result)
+
+    assert "- Previous node outputs:" in user_prompt
+    assert "  - previous-node.text: Previous result" in user_prompt
+
+
+def test_stale_previous_node_refs_are_ignored_when_workflow_prompt_has_no_frontend_markers():
+    context = _context()
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "workflow_prompt": "Review the current request without upstream context.",
+            "previous_node_output_refs": [{"node_id": "missing-node", "output": "text"}],
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert _request_layers(result)["workflow_node_job_prompt"]["config"]["user"] == (
+        "Review the current request without upstream context."
+    )
+    assert "Previous node outputs:" not in _workflow_user_prompt(result)
 
 
 def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_context():
@@ -1030,7 +1072,7 @@ def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_
     context = replace(_context(), variable_pool=FileArrayVariablePool())
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
-            "previous_node_output_refs": [{"node_id": "previous-node", "output": "attachments"}],
+            "workflow_prompt": "Inspect {{#previous-node.attachments#}}",
         }
     )
 
@@ -1071,7 +1113,7 @@ def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_cont
     context = replace(_context(), variable_pool=LongRemoteUrlVariablePool())
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {
-            "previous_node_output_refs": [{"node_id": "previous-node", "output": "report"}],
+            "workflow_prompt": "Use {{#previous-node.report#}}",
         }
     )
 

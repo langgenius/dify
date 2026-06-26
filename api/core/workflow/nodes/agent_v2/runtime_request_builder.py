@@ -71,7 +71,10 @@ from services.agent.prompt_mentions import (
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
     expand_prompt_mentions,
+    extract_workflow_node_output_selectors,
+    normalize_previous_node_output_selector,
     parse_prompt_mentions,
+    workflow_previous_node_output_refs_from_selectors,
 )
 from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
 
@@ -139,6 +142,9 @@ class WorkflowAgentRuntimeRequest:
 class WorkflowAgentRuntimeRequestBuilder:
     """Build public Dify Agent run requests from workflow Agent v2 runtime state."""
 
+    _WORKFLOW_USER_PROMPT_FALLBACK = "Use the current workflow context."
+    _WORKFLOW_JOB_PROMPT_FALLBACK = "Use the workflow user prompt for this run."
+
     def __init__(
         self,
         *,
@@ -160,15 +166,13 @@ class WorkflowAgentRuntimeRequestBuilder:
             )
 
         metadata = self._build_metadata(context, agent_soul, node_job)
-        workflow_context_prompt = self._build_workflow_context_prompt(context, node_job)
-        # ENG-616: expand slash-menu mention tokens into model-readable names.
-        # node_output mentions expand to their reference name only — the value
-        # stays in the Workflow context block (user_prompt) below.
-        workflow_job_prompt = (
-            expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
-            or "Run this workflow Agent Node for the current run."
+        effective_node_job = node_job.model_copy(
+            update={"previous_node_output_refs": self._effective_previous_node_output_refs(node_job)}
         )
-        user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
+        workflow_task_prompt = self._build_workflow_task_prompt(context, effective_node_job)
+        workflow_context_prompt = self._build_workflow_context_prompt(context, effective_node_job)
+        workflow_job_prompt = workflow_task_prompt or self._WORKFLOW_JOB_PROMPT_FALLBACK
+        user_prompt = workflow_context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tools_layer = self._plugin_tools_builder.build(
@@ -323,15 +327,19 @@ class WorkflowAgentRuntimeRequestBuilder:
         context: WorkflowAgentRuntimeBuildContext,
         node_job: WorkflowNodeJobConfig,
     ) -> str:
-        lines = ["Workflow context loaded for this run:"]
+        lines: list[str] = []
         query = get_system_text(context.variable_pool, SystemVariableKey.QUERY)
-        if query:
-            lines.append(f"- User query: {query}")
-
         resolved_outputs = self._resolve_previous_node_outputs(
             context.variable_pool,
             node_job.previous_node_output_refs,
         )
+        if not query and not resolved_outputs:
+            return ""
+
+        lines.append("Workflow context loaded for this run:")
+        if query:
+            lines.append(f"- User query: {query}")
+
         if resolved_outputs:
             lines.append("- Previous node outputs:")
             for item in resolved_outputs:
@@ -340,6 +348,31 @@ class WorkflowAgentRuntimeRequestBuilder:
         lines.append("The above workflow context is run-specific. Do not treat it as Agent Soul or persistent memory.")
         return "\n".join(lines)
 
+    def _build_workflow_task_prompt(
+        self,
+        context: WorkflowAgentRuntimeBuildContext,
+        node_job: WorkflowNodeJobConfig,
+    ) -> str:
+        del context
+        return expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
+
+    def _effective_previous_node_output_refs(
+        self,
+        node_job: WorkflowNodeJobConfig,
+    ) -> list[WorkflowPreviousNodeOutputRef]:
+        """Derive effective refs from the current frontend task markers.
+
+        The task text is the source of truth for previous-node context. When
+        the prompt has no frontend markers, stale persisted refs are discarded
+        instead of being carried forward into workflow context.
+        """
+        if not node_job.workflow_prompt:
+            return list(node_job.previous_node_output_refs)
+
+        return workflow_previous_node_output_refs_from_selectors(
+            extract_workflow_node_output_selectors(node_job.workflow_prompt)
+        )
+
     def _resolve_previous_node_outputs(
         self,
         variable_pool: VariablePoolReader,
@@ -347,7 +380,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
-            selector = self._selector_from_ref(ref)
+            selector = normalize_previous_node_output_selector(ref)
             if not selector:
                 raise WorkflowAgentRuntimeRequestBuildError(
                     "invalid_previous_node_output_ref",
@@ -367,18 +400,6 @@ class WorkflowAgentRuntimeRequestBuilder:
                 }
             )
         return resolved
-
-    @staticmethod
-    def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> list[str] | None:
-        for key in ("selector", "variable_selector", "value_selector"):
-            value = ref.get(key)
-            if isinstance(value, list) and all(isinstance(item, str) for item in value):
-                return value
-        node_id = ref.get("node_id")
-        output_name = ref.get("output") or ref.get("name") or ref.get("variable") or ref.get("key")
-        if isinstance(node_id, str) and isinstance(output_name, str):
-            return [node_id, output_name]
-        return None
 
     @staticmethod
     def _summarize_value(value: Any) -> str:
