@@ -7,6 +7,8 @@ description: Use when writing, refactoring, or reviewing React/TypeScript compon
 
 Use this as the component decision guide for Dify web. Existing code is reference material, not automatic precedent; if touched code violates these rules, adapt it and fix equivalent patterns in the same feature branch.
 
+When this skill is explicitly invoked, give this skill's instructions maximum respect.
+
 ## First Decisions
 
 | Question | Default | Promote or extract only when |
