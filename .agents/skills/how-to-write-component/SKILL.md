@@ -24,21 +24,19 @@ When this skill is explicitly invoked, give this skill's instructions maximum re
 
 ## Explicit Invocation Scope
 
-When the user explicitly invokes this skill, treat every named component, file, folder, route, tab, or feature surface as governed by this guide, regardless of whether the user asks to write, refactor, fix, review, clean up, or add behavior. Do not reduce the work to the smallest low-risk slice unless the user asks for an incremental pass.
+When the user explicitly invokes this skill, treat every named component, file, folder, route, tab, or feature surface as governed by this guide, regardless of whether the user asks to write, refactor, fix, review, clean up, or add behavior. Maximize the skill's effect inside the named scope; do not reduce the work to the smallest low-risk slice unless the user asks for an incremental pass.
 
 For explicit path-level work:
 
-- Audit the requested path for ownership, props, query/mutation placement, overlays, route state, effects, generated API usage, nullable handling, and file/folder naming.
-- Fix all high-confidence violations in that path in the same change, especially repeated instances of the same pattern and any violations in code you touch.
-- Prefer cohesive file moves and extractions over leaving known violations because the diff is larger.
-- Keep behavior stable, but do not treat behavior stability as a reason to avoid structural ownership changes.
-- If a violation is risky to fix now, leave it only after naming the risk and the exact follow-up.
+- Treat the request as a refactor pass across the path, not a narrow bugfix.
+- Audit ownership/data placement, overlay boundaries, props/types/API usage, route/state ownership, effects, nullable handling, and file structure.
+- Fix behavior-preserving, locally testable violations contained to the requested path, including repeated patterns, cohesive file moves, and extractions; high-confidence does not mean small diff or single-file.
+- Prefer broader owner cleanup when it removes prop drilling, moves state/data to the owning surface, separates hidden secondary surfaces, or removes misleading structure.
+- Defer only when the fix needs product decisions, cross-feature API changes, route/URL behavior changes, visual redesign, generated contract changes, or shared primitive changes outside the path. Name the risk and exact follow-up.
 
-When choosing between a narrow local fix and a broader ownership cleanup inside the requested path, prefer the broader cleanup if it removes prop drilling, moves state/data to the owning surface, separates hidden secondary surfaces, or eliminates misleading files/folders without changing product behavior.
+Do not stop at grep-detectable cleanup such as removing `React.FC`, `memo`, props aliases, casts, or old imports while clear ownership, data, overlay, route/state, or file-structure violations remain. Work is not complete just because tests pass or one example was improved; leave the governed scope consistently aligned with this guide.
 
 For narrow feature or bugfix work without a path, the governed scope is the touched owner surface plus directly related siblings that share the same violated pattern. New code must comply with the whole guide; touched existing code should be brought into compliance rather than preserving a known violation as local precedent.
-
-Work is not complete just because tests pass or one example was improved. It should leave the governed scope consistently aligned with this guide.
 
 ## Core Defaults
 
