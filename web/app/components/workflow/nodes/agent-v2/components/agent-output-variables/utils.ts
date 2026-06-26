@@ -165,7 +165,7 @@ export function canOutputHaveChildren(output: EditableOutputConfig) {
   return type === 'object' || type === 'array[object]'
 }
 
-export function updateOutputChildren(
+function updateOutputChildren(
   output: DeclaredOutputConfig,
   children: DeclaredOutputChildConfig[],
 ): DeclaredOutputConfig {
@@ -198,7 +198,7 @@ export function getOutputChildrenAtPath(
   return target ? getOutputChildren(target) : getOutputChildren(output)
 }
 
-export function getOutputChildAtPath(
+function getOutputChildAtPath(
   output: DeclaredOutputConfig,
   path: number[],
 ): DeclaredOutputChildConfig | undefined {

@@ -15,4 +15,15 @@ describe('AgentOrchestrateHeader', () => {
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.modeBadge')).toBeInTheDocument()
     expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.modeDescription')).toBeInTheDocument()
   })
+
+  it('should render trailing action on the configure title row', () => {
+    render(
+      <AgentOrchestrateHeader
+        headingId="configure-heading"
+        trailingAction={<button type="button">More actions</button>}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'More actions' })).toBeInTheDocument()
+  })
 })

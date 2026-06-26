@@ -15,7 +15,7 @@ import { useStore } from '@/app/components/workflow/store'
 import { consoleQuery } from '@/service/client'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
-import { AgentOrchestrateDrawerPanel, WorkflowInlineAgentConfigureWorkspace } from './components/agent-orchestrate-drawer-panel'
+import { WorkflowInlineAgentConfigureWorkspace, WorkflowRosterAgentOrchestratePanelContent } from './components/agent-orchestrate-panel-content'
 import { AgentOutputVariables } from './components/agent-output-variables'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
@@ -375,7 +375,6 @@ export function AgentV2Panel({
                         agentId={inlineAgentId ?? undefined}
                         appId={appId}
                         inlineComposerState={inlineComposerStateForPanel}
-                        isInline
                         nodeId={id}
                         onClose={() => handleAgentPanelOpenChange(false)}
                         onSaved={handleInlineAgentSaved}
@@ -384,11 +383,8 @@ export function AgentV2Panel({
                       />
                     )
                   : (
-                      <AgentOrchestrateDrawerPanel
+                      <WorkflowRosterAgentOrchestratePanelContent
                         agentId={rosterAgentId}
-                        appId={appId}
-                        inlineComposerState={inlineAgentQuery.data}
-                        isInline={false}
                         nodeId={id}
                         open={isAgentPanelOpen}
                       />

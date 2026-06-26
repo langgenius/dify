@@ -2,14 +2,16 @@
 
 import type { ReactNode } from 'react'
 import type { InstanceDetailTabKey } from './tabs'
+import { useAtomValue } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../create-release'
+import { deploymentRouteAppInstanceIdAtom } from '../route-state'
+import { DeveloperApiHeaderSwitch } from './access-tab/developer-api/section'
 import { NewDeploymentHeaderAction } from './deploy-tab/new-deployment-button'
-import { DeveloperApiHeaderSwitch } from './settings-tab/access/developer-api-section'
 import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
 import { versionsTabLocalAtoms } from './versions-tab/state'
 
@@ -43,16 +45,19 @@ function MobileDetailTabs({ appInstanceId, activeTab }: {
   )
 }
 
-export function InstanceDetail({ appInstanceId, children }: {
-  appInstanceId: string
+export function InstanceDetail({ children }: {
   children: ReactNode
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const selectedSegment = useSelectedLayoutSegment()
   const selectedTab = selectedSegment ?? undefined
   const activeTab: InstanceDetailTabKey = isInstanceDetailTabKey(selectedTab) ? selectedTab : 'overview'
 
   useDocumentTitle(t('documentTitle.detail'))
+
+  if (!appInstanceId)
+    return null
 
   return (
     <ScopeProvider
@@ -73,7 +78,7 @@ export function InstanceDetail({ appInstanceId, children }: {
                       <div className="system-xl-semibold text-text-primary">{t(`tabs.${activeTab}.name`)}</div>
                       {activeTab === 'api-tokens' && (
                         <div className="shrink-0">
-                          <DeveloperApiHeaderSwitch appInstanceId={appInstanceId} />
+                          <DeveloperApiHeaderSwitch />
                         </div>
                       )}
                     </div>
@@ -82,7 +87,7 @@ export function InstanceDetail({ appInstanceId, children }: {
                   {(activeTab === 'instances' || activeTab === 'releases') && (
                     <div className="w-full shrink-0 pt-1 sm:w-auto sm:pt-1.5 [&_button]:w-full sm:[&_button]:w-auto">
                       {activeTab === 'instances'
-                        ? <NewDeploymentHeaderAction appInstanceId={appInstanceId} />
+                        ? <NewDeploymentHeaderAction />
                         : <CreateReleaseControl appInstanceId={appInstanceId} size="medium" />}
                     </div>
                   )}

@@ -16,8 +16,9 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
-import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../table-styles'
+import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../components/detail-table-styles'
 import { DeleteReleaseDialog } from './delete-release-dialog'
 import {
   buildDeployMenuSections,
@@ -38,13 +39,13 @@ type ExportReleaseDslInput = {
   appInstanceName?: string
 }
 
-export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDeleted }: {
-  appInstanceId: string
+export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
   releaseId: string
   releaseRows: Release[]
   onDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const openReleaseMenuId = useAtomValue(deployReleaseMenuOpenReleaseIdAtom)
   const setDeployReleaseMenuOpen = useSetAtom(setDeployReleaseMenuOpenAtom)
@@ -194,7 +195,7 @@ export function DeployReleaseMenu({ appInstanceId, releaseId, releaseRows, onDel
                           isDisabled && 'cursor-not-allowed opacity-60',
                         )}
                         onClick={() => {
-                          if (isDisabled)
+                          if (isDisabled || !appInstanceId)
                             return
                           handleOpenChange(false)
                           openDeployDrawer({ appInstanceId, environmentId: row.environmentId, releaseId })

@@ -35,7 +35,7 @@ export function SaveInlineAgentToRosterDialog({
 }: SaveInlineAgentToRosterDialogProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const [name, setName] = useState(initialAgent?.name ?? '')
+  const [name, setName] = useState('')
   const [description, setDescription] = useState(initialAgent?.description ?? '')
   const [role, setRole] = useState(initialAgent?.role ?? '')
   const [iconPickerOpen, setIconPickerOpen] = useState(false)
@@ -48,7 +48,7 @@ export function SaveInlineAgentToRosterDialog({
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
-      setName(initialAgent?.name ?? '')
+      setName('')
       setDescription(initialAgent?.description ?? '')
       setRole(initialAgent?.role ?? '')
       setAgentIcon(initialAgent

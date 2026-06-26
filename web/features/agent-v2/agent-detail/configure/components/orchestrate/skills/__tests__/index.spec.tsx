@@ -687,6 +687,56 @@ describe('AgentSkills', () => {
     expect(vi.mocked(toast.success)).toHaveBeenCalledWith('agentV2.agentDetail.configure.skills.upload.success')
   })
 
+  it('should upload a dropped skill package through the drive-backed endpoint', async () => {
+    const user = userEvent.setup()
+    const uploadSkill = vi.fn().mockResolvedValue({
+      manifest: {
+        files: ['SKILL.md'],
+        name: 'Invoice Helper',
+      },
+      skill: {
+        name: 'Invoice Helper',
+        path: 'invoice-helper',
+        skill_md_key: 'invoice-helper/SKILL.md',
+      },
+    })
+    mocks.uploadSkillMutationOptions.mockReturnValue({
+      mutationFn: uploadSkill,
+      mutationKey: ['upload-skill'],
+    })
+
+    renderAgentSkills()
+
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.add' }))
+
+    const uploadArea = screen.getByRole('group', { name: 'agentV2.agentDetail.configure.skills.upload.title' })
+    const file = new File(['skill'], 'invoice-helper.skill', { type: 'application/zip' })
+    fireEvent.dragEnter(uploadArea, {
+      dataTransfer: {
+        files: [file],
+        types: ['Files'],
+      },
+    })
+    fireEvent.drop(uploadArea, {
+      dataTransfer: {
+        files: [file],
+        types: ['Files'],
+      },
+    })
+    await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.skills.upload.action' }))
+
+    await waitFor(() => {
+      expect(uploadSkill.mock.calls[0]?.[0]).toEqual({
+        body: {
+          file,
+        },
+        params: {
+          agent_id: 'agent-1',
+        },
+      })
+    })
+  })
+
   it('should refresh the rendered skill list after delete succeeds', async () => {
     const driveSkills = [
       {

@@ -12,9 +12,9 @@ export type KnowledgeValidationIssueCode
     | 'metadata_model_required'
     | 'metadata_conditions_required'
 
-export type KnowledgeValidationField = 'name' | 'datasets' | 'query' | 'retrieval' | 'metadata'
+type KnowledgeValidationField = 'name' | 'datasets' | 'query' | 'retrieval' | 'metadata'
 
-export type KnowledgeValidationIssue = {
+type KnowledgeValidationIssue = {
   itemId: string
   code: KnowledgeValidationIssueCode
   field: KnowledgeValidationField

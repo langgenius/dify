@@ -103,7 +103,6 @@ describe('DeployReleaseMenu', () => {
 
     render(
       <DeployReleaseMenu
-        appInstanceId="app-instance-1"
         releaseId={release.id}
         releaseRows={[release]}
       />,

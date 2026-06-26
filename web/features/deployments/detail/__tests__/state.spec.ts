@@ -24,16 +24,6 @@ vi.mock('jotai-tanstack-query', () => ({
 
 vi.mock('@/service/client', () => ({
   consoleQuery: {
-    apps: {
-      byAppId: {
-        get: {
-          queryOptions: (options: QueryOptions) => ({
-            ...options,
-            queryKey: ['appById', options.input],
-          }),
-        },
-      },
-    },
     enterprise: {
       appInstanceService: {
         getAppInstance: {
@@ -89,18 +79,13 @@ describe('deployment detail state', () => {
       enabled: false,
       input: skipToken,
     })
-    expect(store.get(state.deploymentSourceAppQueryAtom)).toMatchObject({
-      enabled: false,
-      input: skipToken,
-    })
   })
 
-  it('should build detail query inputs from route and source identities', async () => {
+  it('should build detail query inputs from route identity', async () => {
     const state = await loadState()
     const store = createStore()
 
     setDeploymentRoute(store)
-    store.set(state.deploymentSourceAppIdAtom, 'source-app-1')
 
     expect(store.get(state.deploymentDetailAppInstanceQueryAtom)).toMatchObject({
       enabled: true,
@@ -117,10 +102,5 @@ describe('deployment detail state', () => {
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
     expect(environmentDeploymentsQuery.refetchInterval).toEqual(expect.any(Function))
-
-    expect(store.get(state.deploymentSourceAppQueryAtom)).toMatchObject({
-      enabled: true,
-      input: { params: { app_id: 'source-app-1' } },
-    })
   })
 })

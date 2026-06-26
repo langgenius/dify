@@ -38,6 +38,7 @@ type AgentOrchestratePanelProps = {
   isBuildDraftActive?: boolean
   showHeader?: boolean
   showPublishBar?: boolean
+  headerAction?: ReactNode
   bottomBar?: ReactNode
   onSelectModel: (model: DefaultModel) => void
   onPublish: () => void | Promise<void>
@@ -63,6 +64,7 @@ export function AgentOrchestratePanel({
   isBuildDraftActive = false,
   showHeader = true,
   showPublishBar = true,
+  headerAction,
   bottomBar,
   onSelectModel,
   onPublish,
@@ -85,7 +87,7 @@ export function AgentOrchestratePanel({
 
   return (
     <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
-      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} isBuildDraftActive={isBuildDraftActive} />}
+      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} trailingAction={headerAction} isBuildDraftActive={isBuildDraftActive} />}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
         <div
