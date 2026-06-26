@@ -110,15 +110,17 @@ describe('SaveInlineAgentToRosterDialog', () => {
     mutationMock.isPending = false
   })
 
-  it('initializes form fields from the inline agent metadata', async () => {
+  it('initializes the roster name empty while keeping the other inline agent metadata', async () => {
     const user = userEvent.setup()
     renderDialog()
 
     const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
-    expect(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' })).toHaveValue('Inline Tender Agent')
+    const nameInput = within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' })
+    expect(nameInput).toHaveValue('')
     expect(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.roleLabel' })).toHaveValue('Tender Analyst')
     expect(within(dialog).getByPlaceholderText('agentV2.roster.createForm.descriptionPlaceholder')).toHaveValue('Drafts tender clarifications.')
 
+    await user.type(nameInput, 'Roster Tender Agent')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledWith({
@@ -129,7 +131,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
       body: {
         variant: 'workflow',
         save_strategy: 'save_to_roster',
-        new_agent_name: 'Inline Tender Agent',
+        new_agent_name: 'Roster Tender Agent',
         description: 'Drafts tender clarifications.',
         role: 'Tender Analyst',
         icon_type: 'emoji',
@@ -153,6 +155,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     })
 
     const dialog = screen.getByRole('dialog', { name: 'agentV2.roster.saveToRosterDialog.title' })
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), 'Roster Tender Agent')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledWith({
@@ -163,7 +166,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
       body: {
         variant: 'workflow',
         save_strategy: 'save_to_roster',
-        new_agent_name: 'Inline Tender Agent',
+        new_agent_name: 'Roster Tender Agent',
         description: 'Drafts tender clarifications.',
         role: 'Tender Analyst',
         icon_type: 'emoji',
@@ -185,6 +188,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
     expect(screen.getByText('🤖:#F5F3FF')).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { hidden: true, name: 'Select brain icon' }))
+    await user.type(within(dialog).getByRole('textbox', { name: 'agentV2.roster.createForm.nameLabel' }), 'Roster Tender Agent')
     await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
 
     expect(mutationMock.mutate).toHaveBeenCalledWith({
@@ -195,7 +199,7 @@ describe('SaveInlineAgentToRosterDialog', () => {
       body: {
         variant: 'workflow',
         save_strategy: 'save_to_roster',
-        new_agent_name: 'Inline Tender Agent',
+        new_agent_name: 'Roster Tender Agent',
         description: 'Drafts tender clarifications.',
         role: 'Tender Analyst',
         icon_type: 'emoji',
