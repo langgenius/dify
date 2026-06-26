@@ -164,7 +164,7 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
                       )}
                     </div>
                     <DeploymentActionsMenu
-                      appInstanceId={appInstanceId}
+                      appInstance={app}
                       placement="bottom-end"
                       sideOffset={4}
                       className="shrink-0"

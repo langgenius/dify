@@ -1,6 +1,7 @@
 'use client'
 
 import type { ComponentProps } from 'react'
+import type { DeploymentActionAppInstance } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -9,15 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useQueryClient } from '@tanstack/react-query'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
 import { DeleteDeploymentDialog } from './delete-dialog'
 import { EditDeploymentDialog } from './edit-dialog'
 import {
-  deploymentActionAppInstanceIdAtom,
-  deploymentActionAppInstanceQueryOptionsAtom,
+  deploymentActionAppInstanceAtom,
   deploymentActionsLocalAtoms,
   openDeleteDeploymentDialogAtom,
   openEditDeploymentDialogAtom,
@@ -30,7 +29,7 @@ const ACTION_TRIGGER_CLASS_NAME = cn(
 )
 
 type DeploymentActionsMenuProps = {
-  appInstanceId: string
+  appInstance: DeploymentActionAppInstance
   className?: string
   triggerClassName?: string
   placement: ComponentProps<typeof DropdownMenuContent>['placement']
@@ -42,17 +41,10 @@ function DeploymentActionsMenuContent({
   triggerClassName,
   placement,
   sideOffset,
-}: Omit<DeploymentActionsMenuProps, 'appInstanceId'>) {
+}: Omit<DeploymentActionsMenuProps, 'appInstance'>) {
   const { t } = useTranslation('deployments')
-  const queryClient = useQueryClient()
-  const appInstanceQueryOptions = useAtomValue(deploymentActionAppInstanceQueryOptionsAtom)
   const openEditDialog = useSetAtom(openEditDeploymentDialogAtom)
   const openDeleteDialog = useSetAtom(openDeleteDeploymentDialogAtom)
-
-  function handleMenuOpenChange(open: boolean) {
-    if (open)
-      void queryClient.prefetchQuery(appInstanceQueryOptions)
-  }
 
   return (
     <div
@@ -64,7 +56,7 @@ function DeploymentActionsMenuContent({
       onClick={event => event.stopPropagation()}
       onKeyDown={event => event.stopPropagation()}
     >
-      <DropdownMenu modal={false} onOpenChange={handleMenuOpenChange}>
+      <DropdownMenu modal={false}>
         <DropdownMenuTrigger
           aria-label={t('card.moreActions')}
           className={cn(ACTION_TRIGGER_CLASS_NAME, triggerClassName)}
@@ -94,14 +86,14 @@ function DeploymentActionsMenuContent({
 }
 
 export function DeploymentActionsMenu({
-  appInstanceId,
+  appInstance,
   ...props
 }: DeploymentActionsMenuProps) {
   return (
     <ScopeProvider
-      key={appInstanceId}
+      key={appInstance.id}
       atoms={[
-        [deploymentActionAppInstanceIdAtom, appInstanceId],
+        [deploymentActionAppInstanceAtom, appInstance],
         ...deploymentActionsLocalAtoms,
       ]}
       name="DeploymentActionsMenu"

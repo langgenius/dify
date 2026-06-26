@@ -1,43 +1,12 @@
-import type { Getter } from 'jotai/vanilla'
+import type { DeploymentActionAppInstance } from '../types'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ScopeProvider } from 'jotai-scope'
 import { EditDeploymentDialog } from '../edit-dialog'
 import {
-  deploymentActionAppInstanceIdAtom,
+  deploymentActionAppInstanceAtom,
   editDeploymentDialogOpenAtom,
 } from '../state'
-
-type QueryOptions = {
-  input?: unknown
-  queryKey?: readonly unknown[]
-}
-
-type QueryResult = {
-  data?: unknown
-  isError?: boolean
-  isLoading?: boolean
-}
-
-const mockQueryResults = vi.hoisted(() => ({
-  current: new Map<string, QueryResult>(),
-}))
-
-const useQueryMock = vi.hoisted(() =>
-  vi.fn((options: QueryOptions) => {
-    const queryName = String(options.queryKey?.[0] ?? 'unknown')
-    const queryResult = mockQueryResults.current.get(queryName)
-
-    return {
-      ...options,
-      data: queryResult?.data,
-      isError: queryResult?.isError ?? false,
-      isFetching: false,
-      isLoading: queryResult?.isLoading ?? false,
-      isSuccess: Boolean(queryResult?.data),
-    }
-  }),
-)
 
 const updateMutationMock = vi.hoisted(() => ({
   isPending: false,
@@ -56,16 +25,6 @@ const toastMock = vi.hoisted(() => ({
   success: vi.fn(),
 }))
 
-vi.mock('jotai-tanstack-query', async () => {
-  const { atom } = await import('jotai')
-
-  return {
-    atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
-      return useQueryMock(createOptions(get))
-    }),
-  }
-})
-
 vi.mock('@tanstack/react-query', () => ({
   useMutation: useMutationMock,
 }))
@@ -78,51 +37,34 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       appInstanceService: {
-        getAppInstance: {
-          queryOptions: (options: QueryOptions) => ({
-            ...options,
-            queryKey: ['getAppInstance', options.input],
-          }),
-        },
         updateAppInstance: {
           mutationOptions: () => ({ mutationKey: ['updateAppInstance'] }),
-        },
-        deleteAppInstance: {
-          mutationOptions: () => ({ mutationKey: ['deleteAppInstance'] }),
         },
       },
     },
   },
 }))
 
-function setAppInstance(overrides: Record<string, unknown> = {}) {
-  mockQueryResults.current.set('getAppInstance', {
-    data: {
-      appInstance: {
-        id: 'app-instance-1',
-        displayName: 'Deployment 1',
-        description: 'Initial description',
-        ...overrides,
-      },
-    },
-  })
-}
-
-function setAppInstanceLoading() {
-  mockQueryResults.current.set('getAppInstance', {
-    isLoading: true,
-  })
+function createAppInstance(overrides: Partial<DeploymentActionAppInstance> = {}): DeploymentActionAppInstance {
+  return {
+    id: 'app-instance-1',
+    displayName: 'Deployment 1',
+    description: 'Initial description',
+    ...overrides,
+  }
 }
 
 function renderDialog({
+  appInstance = createAppInstance(),
   open = true,
 }: {
+  appInstance?: DeploymentActionAppInstance
   open?: boolean
 } = {}) {
   render(
     <ScopeProvider
       atoms={[
-        [deploymentActionAppInstanceIdAtom, 'app-instance-1'],
+        [deploymentActionAppInstanceAtom, appInstance],
         [editDeploymentDialogOpenAtom, open],
       ]}
       name="EditDeploymentDialogTest"
@@ -135,25 +77,22 @@ function renderDialog({
 describe('EditDeploymentDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockQueryResults.current.clear()
     updateMutationMock.isPending = false
-    setAppInstance()
   })
 
   describe('Form submission', () => {
-    it('should not mount the query or update mutation before the dialog is opened', () => {
+    it('should not mount the update mutation before the dialog is opened', () => {
       renderDialog({ open: false })
 
-      expect(useQueryMock).not.toHaveBeenCalled()
       expect(useMutationMock).not.toHaveBeenCalled()
     })
 
-    it('should create the update mutation only after the edit form is ready', () => {
-      setAppInstanceLoading()
-
+    it('should render form values from the passed app instance', () => {
       renderDialog()
 
-      expect(useMutationMock).not.toHaveBeenCalled()
+      const dialog = screen.getByRole('dialog', { name: 'deployments.card.menu.editInfo' })
+      expect(within(dialog).getByRole('textbox', { name: 'deployments.settings.name' })).toHaveValue('Deployment 1')
+      expect(within(dialog).getByRole('textbox', { name: 'deployments.settings.description' })).toHaveValue('Initial description')
     })
 
     it('should submit trimmed deployment metadata through the component mutation', async () => {

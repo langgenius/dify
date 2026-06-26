@@ -17,24 +17,22 @@ import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import {
   deleteDeploymentDialogOpenAtom,
-  deploymentActionAppInstanceIdAtom,
-  deploymentActionAppInstanceQueryAtom,
+  deploymentActionAppInstanceAtom,
 } from './state'
 
 function DeleteDeploymentDialogContent() {
   const { t } = useTranslation('deployments')
   const router = useRouter()
-  const appInstanceId = useAtomValue(deploymentActionAppInstanceIdAtom)
+  const appInstance = useAtomValue(deploymentActionAppInstanceAtom)
   const setOpen = useSetAtom(deleteDeploymentDialogOpenAtom)
-  const instanceQuery = useAtomValue(deploymentActionAppInstanceQueryAtom)
   const deleteInstance = useMutation(consoleQuery.enterprise.appInstanceService.deleteAppInstance.mutationOptions())
-  const displayName = instanceQuery.data?.appInstance.displayName || appInstanceId
+  const displayName = appInstance.displayName || appInstance.id
 
   function handleDelete() {
     deleteInstance.mutate(
       {
         params: {
-          appInstanceId,
+          appInstanceId: appInstance.id,
         },
       },
       {

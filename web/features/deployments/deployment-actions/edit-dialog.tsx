@@ -14,11 +14,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
-import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { consoleQuery } from '@/service/client'
 import {
-  deploymentActionAppInstanceIdAtom,
-  deploymentActionAppInstanceQueryAtom,
+  deploymentActionAppInstanceAtom,
   editDeploymentDialogOpenAtom,
 } from './state'
 
@@ -46,33 +44,15 @@ function canSubmitEditDeploymentForm(initialValues: EditDeploymentFormValues, va
   )
 }
 
-function EditDeploymentFormSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <SkeletonRectangle className="my-0 h-3 w-24 animate-pulse" />
-        <SkeletonRectangle className="my-0 h-8 w-full animate-pulse rounded-lg" />
-      </div>
-      <div className="flex flex-col gap-2">
-        <SkeletonRectangle className="my-0 h-3 w-28 animate-pulse" />
-        <SkeletonRectangle className="my-0 h-24 w-full animate-pulse rounded-lg" />
-      </div>
-      <SkeletonRow className="justify-end gap-2">
-        <SkeletonRectangle className="my-0 h-8 w-16 animate-pulse rounded-lg" />
-        <SkeletonRectangle className="my-0 h-8 w-24 animate-pulse rounded-lg" />
-      </SkeletonRow>
-    </div>
-  )
-}
-
-function EditDeploymentForm({
-  initialValues,
-}: {
-  initialValues: EditDeploymentFormValues
-}) {
+function EditDeploymentForm() {
   const { t } = useTranslation('deployments')
   const nameLabel = t('settings.name')
-  const appInstanceId = useAtomValue(deploymentActionAppInstanceIdAtom)
+  const appInstance = useAtomValue(deploymentActionAppInstanceAtom)
+  const appInstanceId = appInstance.id
+  const initialValues = {
+    name: appInstance.displayName,
+    description: appInstance.description,
+  }
   const setOpen = useSetAtom(editDeploymentDialogOpenAtom)
   const updateInstance = useMutation(consoleQuery.enterprise.appInstanceService.updateAppInstance.mutationOptions())
 
@@ -162,33 +142,19 @@ function EditDeploymentForm({
 
 function EditDeploymentDialogContent() {
   const { t } = useTranslation('deployments')
-  const instanceQuery = useAtomValue(deploymentActionAppInstanceQueryAtom)
-  const app = instanceQuery.data?.appInstance
+  const appInstance = useAtomValue(deploymentActionAppInstanceAtom)
 
   return (
     <>
-      {!app && <DialogCloseButton />}
       <div className="border-b border-divider-subtle px-6 py-5">
         <DialogTitle className="title-xl-semi-bold text-text-primary">
           {t('card.menu.editInfo')}
         </DialogTitle>
       </div>
       <div className="px-6 py-5">
-        {instanceQuery.isLoading
-          ? <EditDeploymentFormSkeleton />
-          : instanceQuery.isError
-            ? <div className="system-sm-regular text-text-tertiary">{t('common.loadFailed')}</div>
-            : app
-              ? (
-                  <EditDeploymentForm
-                    key={`${app.id}-${app.displayName}-${app.description}`}
-                    initialValues={{
-                      name: app.displayName,
-                      description: app.description,
-                    }}
-                  />
-                )
-              : <div className="system-sm-regular text-text-tertiary">{t('detail.notFound')}</div>}
+        <EditDeploymentForm
+          key={`${appInstance.id}-${appInstance.displayName}-${appInstance.description}`}
+        />
       </div>
     </>
   )
