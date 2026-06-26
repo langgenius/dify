@@ -33,7 +33,7 @@ const RoleBadges = ({ roleNames, max = 2, className }: RoleBadgesProps) => {
   const overflow = roleNames.slice(max)
 
   return (
-    <div className={cn('flex min-w-0 items-center gap-1', className)}>
+    <span className={cn('flex min-w-0 items-center gap-1', className)}>
       {visible.map(role => (
         <RoleBadge key={role} label={role} />
       ))}
@@ -44,7 +44,7 @@ const RoleBadges = ({ roleNames, max = 2, className }: RoleBadgesProps) => {
           {`+${overflow.length}`}
         </span>
       )}
-    </div>
+    </span>
   )
 }
 
