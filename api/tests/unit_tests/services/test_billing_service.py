@@ -683,6 +683,16 @@ class TestBillingServiceQuotaOperations:
         call_json = mock_send_request.call_args[1]["json"]
         assert call_json["meta"] == {"source": "webhook"}
 
+    def test_quota_reserve_with_bucket(self, mock_send_request):
+        mock_send_request.return_value = {"reservation_id": "rid-2", "available": 98, "reserved": 1}
+
+        BillingService.quota_reserve(
+            tenant_id="t1", feature_key="credit_pool", request_id="req-2", amount=1, bucket="trial"
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["bucket"] == "trial"
+
     def test_quota_commit_success(self, mock_send_request):
         expected = {"available": 98, "reserved": 0, "refunded": 0}
         mock_send_request.return_value = expected
@@ -727,6 +737,20 @@ class TestBillingServiceQuotaOperations:
         call_json = mock_send_request.call_args[1]["json"]
         assert call_json["meta"] == {"reason": "partial"}
 
+    def test_quota_commit_with_bucket(self, mock_send_request):
+        mock_send_request.return_value = {"available": 97, "reserved": 0, "refunded": 0}
+
+        BillingService.quota_commit(
+            tenant_id="t1",
+            feature_key="credit_pool",
+            reservation_id="rid-1",
+            actual_amount=1,
+            bucket="paid",
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["bucket"] == "paid"
+
     def test_quota_release_success(self, mock_send_request):
         expected = {"available": 100, "reserved": 0, "released": 1}
         mock_send_request.return_value = expected
@@ -750,6 +774,66 @@ class TestBillingServiceQuotaOperations:
         assert isinstance(result["available"], int)
         assert result["released"] == 1
         assert isinstance(result["released"], int)
+
+    def test_quota_release_with_bucket(self, mock_send_request):
+        mock_send_request.return_value = {"available": 100, "reserved": 0, "released": 1}
+
+        BillingService.quota_release(
+            tenant_id="t1", feature_key="credit_pool", reservation_id="rid-1", bucket="trial"
+        )
+
+        call_json = mock_send_request.call_args[1]["json"]
+        assert call_json["bucket"] == "trial"
+
+    def test_quota_consume_capped_success(self, mock_send_request):
+        mock_send_request.return_value = {
+            "deducted": "2",
+            "available": "8",
+            "reserved": "0",
+            "quota": "10",
+            "usage": "2",
+        }
+
+        result = BillingService.quota_consume_capped(
+            tenant_id="t1",
+            feature_key="credit_pool",
+            request_id="req-1",
+            amount=5,
+            bucket="paid",
+            meta={"source": "test"},
+        )
+
+        assert result == {"deducted": 2, "available": 8, "reserved": 0, "quota": 10, "usage": 2}
+        mock_send_request.assert_called_once_with(
+            "POST",
+            "/quota/consume-capped",
+            json={
+                "tenant_id": "t1",
+                "feature_key": "credit_pool",
+                "request_id": "req-1",
+                "amount": 5,
+                "bucket": "paid",
+                "meta": {"source": "test"},
+            },
+        )
+
+    def test_send_quota_request_uses_quota_base_url(self):
+        with (
+            patch.object(BillingService, "quota_base_url", "https://quota.example.com/v1"),
+            patch.object(BillingService, "_send_request") as mock_send_request,
+        ):
+            mock_send_request.return_value = {"ok": True}
+
+            result = BillingService._send_quota_request("GET", "/quota/info", params={"tenant_id": "t1"})
+
+        assert result == {"ok": True}
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/quota/info",
+            json=None,
+            params={"tenant_id": "t1"},
+            base_url="https://quota.example.com/v1",
+        )
 
     def test_get_quota_info_coerces_string_to_int(self, mock_send_request):
         """Test that TypeAdapter coerces string values to int for get_quota_info."""
