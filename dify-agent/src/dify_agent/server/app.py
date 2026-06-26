@@ -10,7 +10,9 @@ stay state-only: they borrow the lifespan-owned clients through the runner and
 receive shell-layer server settings through provider construction rather than
 reading environment variables themselves. The standard server always mounts the
 HTTP Agent Stub router and additionally starts the optional grpclib Agent Stub
-server when ``DIFY_AGENT_STUB_API_BASE_URL`` uses ``grpc://``.
+server when ``DIFY_AGENT_STUB_API_BASE_URL`` uses ``grpc://``. Process-level
+Logfire instrumentation is configured at app construction time and only exports
+remotely when Logfire's default environment configuration provides a token.
 """
 
 from collections.abc import AsyncGenerator
@@ -25,6 +27,7 @@ from dify_agent.agent_stub.server.grpc_runtime import start_agent_stub_grpc_serv
 from dify_agent.agent_stub.server.router import create_agent_stub_router
 from dify_agent.runtime.compositor_factory import create_default_layer_providers
 from dify_agent.runtime.run_scheduler import RunScheduler
+from dify_agent.server.observability import configure_server_observability
 from dify_agent.server.routes.runs import create_runs_router
 from dify_agent.server.routes.sandbox_files import create_sandbox_files_router
 from dify_agent.server.sandbox_files import SandboxFileService
@@ -94,6 +97,7 @@ def create_app(settings: ServerSettings | None = None) -> FastAPI:
             await redis.aclose()
 
     app = FastAPI(title="Dify Agent Run Server", version="0.1.0", lifespan=lifespan)
+    configure_server_observability(app)
 
     def get_store() -> RedisRunStore:
         return state["store"]  # pyright: ignore[reportReturnType]

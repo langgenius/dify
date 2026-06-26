@@ -13,7 +13,7 @@ from controllers.common.controller_schemas import MessageFeedbackPayload as _Mes
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -210,7 +210,7 @@ class AgentChatMessageListApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _list_chat_messages(app_model=app_model, current_user=current_user)
 
 
@@ -246,7 +246,7 @@ class AgentMessageFeedbackApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _update_message_feedback(current_user=current_user, app_model=app_model)
 
 
@@ -311,7 +311,7 @@ class AgentMessageSuggestedQuestionApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
 
 
@@ -389,7 +389,7 @@ class AgentMessageApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _get_message_detail(app_model=app_model, message_id=message_id)
 
 

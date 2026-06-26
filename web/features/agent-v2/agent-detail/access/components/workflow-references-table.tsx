@@ -145,6 +145,8 @@ function WorkflowAccessRow({
       <td className="px-3">
         <Link
           href={getWorkflowReferenceHref(reference)}
+          target="_blank"
+          rel="noopener noreferrer"
           aria-label={t('agentDetail.access.workflow.openInStudioFor', { name: reference.app_name })}
           className="inline-flex items-center gap-0.5 rounded-sm text-text-secondary hover:text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
         >

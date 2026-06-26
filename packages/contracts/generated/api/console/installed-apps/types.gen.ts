@@ -31,6 +31,7 @@ export type AudioTranscriptResponse = {
 
 export type ChatMessagePayload = {
   conversation_id?: string | null
+  draft_type?: 'debug_build' | 'draft'
   files?: Array<unknown> | null
   inputs: {
     [key: string]: unknown
