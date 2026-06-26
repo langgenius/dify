@@ -697,9 +697,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         del graph_config
 
         agent_task = (
-            node_data.get("agent_task")
-            if isinstance(node_data, Mapping)
-            else getattr(node_data, "agent_task", None)
+            node_data.get("agent_task") if isinstance(node_data, Mapping) else getattr(node_data, "agent_task", None)
         )
         if not isinstance(agent_task, str):
             return {}

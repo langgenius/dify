@@ -951,10 +951,7 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     agent_soul_prompt = layers["agent_soul_prompt"]["config"]["prefix"]
     job_prompt = layers["workflow_node_job_prompt"]["config"]["user"]
     assert agent_soul_prompt == ("Careful. Ask EMAIL · David Hayes when unsure.")
-    assert (
-        job_prompt
-        == "Read {{#previous-node.text#}} and produce summary (string). Unknown 旧手册 degrades."
-    )
+    assert job_prompt == "Read {{#previous-node.text#}} and produce summary (string). Unknown 旧手册 degrades."
     user_prompt = _workflow_user_prompt(result)
     assert "Agent task for this workflow run:" not in user_prompt
     assert "Previous result" in user_prompt
