@@ -46,12 +46,14 @@ type AddBlockProps = {
   renderTriggerAsButtonRoot?: boolean
   offset?: OffsetOptions
   onClose?: () => void
+  isolateKeyboardEvents?: boolean
 }
 const AddBlock = ({
   renderTrigger,
   renderTriggerAsButtonRoot,
   offset,
   onClose,
+  isolateKeyboardEvents,
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -183,6 +185,7 @@ const AddBlock = ({
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
+      isolateKeyboardEvents={isolateKeyboardEvents}
     />
   )
 }
