@@ -27,7 +27,7 @@ type AudioRecorderWithPermission = typeof Recorder & {
 type ChatInputAreaProps = {
   readonly?: boolean
   botName?: string
-  placeholder?: string
+  customPlaceholder?: string
   showFeatureBar?: boolean
   showFileUpload?: boolean
   featureBarReadonly?: boolean
@@ -50,7 +50,7 @@ type ChatInputAreaProps = {
    */
   sendOnEnter?: boolean
 }
-const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendOnEnter = true }: ChatInputAreaProps) => {
+const ChatInputArea = ({ readonly, botName, customPlaceholder, showFeatureBar, showFileUpload, featureBarReadonly = readonly, featureBarDisabled, onFeatureBarClick, visionConfig, speechToTextConfig = { enabled: true }, onSend, inputs = {}, inputsForm = [], theme, isResponding, disabled, sendButtonLabel, sendOnEnter = true }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { wrapperRef, textareaRef, textValueRef, holdSpaceRef, handleTextareaResize, isMultipleLine } = useTextAreaHeight()
   const [query, setQuery] = useState('')
@@ -158,7 +158,7 @@ const ChatInputArea = ({ readonly, botName, placeholder, showFeatureBar, showFil
                   textareaRef.current = ref ?? undefined
                 }}
                 className={cn('w-full resize-none bg-transparent p-1 body-lg-regular leading-6 text-text-primary outline-hidden')}
-                placeholder={placeholder ?? decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
+                placeholder={!readonly && customPlaceholder?.trim() ? customPlaceholder : decode(t(readonly ? 'chat.inputDisabledPlaceholder' : 'chat.inputPlaceholder', { ns: 'common', botName }) || '')}
                 // Existing chat behavior focuses the composer as soon as it opens.
                 // eslint-disable-next-line jsx-a11y/no-autofocus
                 autoFocus

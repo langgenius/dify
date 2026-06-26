@@ -302,6 +302,8 @@ export type SiteConfig = {
   privacy_policy: string
   /** Custom Disclaimer */
   custom_disclaimer: string
+  /** Custom placeholder text for the chat input box. Empty means fall back to the default. */
+  input_placeholder: string
 
   icon_type: AppIconType | null
   icon: string

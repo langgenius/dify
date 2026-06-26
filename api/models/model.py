@@ -2189,6 +2189,7 @@ class Site(Base):
     chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     copyright = mapped_column(String(255))
     privacy_policy = mapped_column(String(255))
+    input_placeholder = mapped_column(String(255))
     show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")

@@ -580,6 +580,7 @@ export type AppSiteUpdatePayload = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null
@@ -598,6 +599,7 @@ export type AppSiteResponse = {
   description?: string | null
   icon?: string | null
   icon_background?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public: boolean
   show_workflow_steps: boolean
@@ -1252,6 +1254,7 @@ export type AppDetailSiteResponse = {
   icon_background?: string | null
   icon_type?: string | IconType | null
   readonly icon_url: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null
@@ -2831,6 +2834,7 @@ export type AppDetailSiteResponseWritable = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | IconType | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null

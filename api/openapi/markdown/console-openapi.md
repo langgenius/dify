@@ -14283,6 +14283,7 @@ AppMCPServer Status Enum
 | description | string |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
+| input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | Yes |
 | show_workflow_steps | boolean |  | Yes |
@@ -14310,6 +14311,7 @@ AppMCPServer Status Enum
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
+| input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | prompt_public | boolean |  | No |
 | show_workflow_steps | boolean |  | No |
@@ -19624,6 +19626,7 @@ Simple provider entity response.
 | icon_background | string |  | No |
 | icon_type | string |  | No |
 | icon_url | string |  | Yes |
+| input_placeholder | string |  | No |
 | privacy_policy | string |  | No |
 | show_workflow_steps | boolean |  | Yes |
 | title | string |  | Yes |

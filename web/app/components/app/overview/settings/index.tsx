@@ -22,8 +22,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import Divider from '@/app/components/base/divider'
 import { PremiumBadgeButton } from '@/app/components/base/premium-badge'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { IS_CLOUD_EDITION } from '@/config'
+import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { languages } from '@/i18n-config/language'
@@ -49,6 +48,7 @@ type SettingsSiteInfo = Pick<
   | 'copyright'
   | 'privacy_policy'
   | 'custom_disclaimer'
+  | 'input_placeholder'
   | 'icon_type'
   | 'icon'
   | 'icon_background'
@@ -74,6 +74,7 @@ export type ConfigParams = {
   copyright: string
   privacy_policy: string
   custom_disclaimer: string
+  input_placeholder: string
   icon_type: AppIconType
   icon: string
   icon_background?: string
@@ -81,6 +82,13 @@ export type ConfigParams = {
   use_icon_as_answer_icon: boolean
   enable_sso?: boolean
 }
+
+const INPUT_PLACEHOLDER_MAX_LENGTH = 64
+const INPUT_PLACEHOLDER_SUPPORTED_MODES: ReadonlyArray<AppModeEnum> = [
+  AppModeEnum.CHAT,
+  AppModeEnum.AGENT_CHAT,
+  AppModeEnum.ADVANCED_CHAT,
+]
 
 const prefixSettings = 'overview.appInfo.settings'
 type SelectOption = {
@@ -99,6 +107,7 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     copyright,
     privacy_policy,
     custom_disclaimer,
+    input_placeholder,
     show_workflow_steps,
     use_icon_as_answer_icon,
   } = appInfo.site
@@ -112,6 +121,7 @@ const createInputInfo = (appInfo: ISettingsModalProps['appInfo']) => {
     copyrightSwitchValue: !!copyright,
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
+    inputPlaceholder: input_placeholder ?? '',
     show_workflow_steps,
     use_icon_as_answer_icon,
     enable_sso: appInfo.enable_sso,
@@ -136,6 +146,7 @@ const getSettingsResetKey = (appInfo: ISettingsModalProps['appInfo']) => JSON.st
   appInfo.site.copyright,
   appInfo.site.privacy_policy,
   appInfo.site.custom_disclaimer,
+  appInfo.site.input_placeholder,
   appInfo.site.default_language,
   appInfo.site.icon_type,
   appInfo.site.icon,
@@ -152,6 +163,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const [isShowMore, setIsShowMore] = useState(false)
+  const [inputPlaceholderFocused, setInputPlaceholderFocused] = useState(false)
   const { default_language } = appInfo.site
   const nextInputInfo = createInputInfo(appInfo)
   const nextAppIcon = createAppIcon(appInfo)
@@ -167,10 +180,49 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [previousSettingsResetKey, setPreviousSettingsResetKey] = useState(settingsResetKey)
 
   const { enableBilling, plan, webappCopyrightEnabled } = useProviderContext()
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const isFreePlan = plan.type === 'sandbox'
-  const showUpgradeAction = IS_CLOUD_EDITION && enableBilling && isFreePlan
+  const { setShowPricingModal } = useModalContext()
+  const isCloudSandboxPlan = enableBilling && plan.type === Plan.sandbox
   const selectedLanguage = LANGUAGE_OPTIONS.find(item => item.value === language)
+  const inputPlaceholderLabelId = React.useId()
+  const inputPlaceholderDescriptionId = React.useId()
+  const inputPlaceholderValue = isCloudSandboxPlan ? '' : (inputInfo.inputPlaceholder ?? '')
+  const copyrightSwitchValue = isCloudSandboxPlan ? false : inputInfo.copyrightSwitchValue
+  const showInputPlaceholderPreview = !isCloudSandboxPlan && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
+  const inputPlaceholderField = (
+    <div
+      className={cn(
+        'mt-2 flex h-10 items-center gap-2 rounded-lg border border-components-input-border-hover bg-components-input-bg-normal pr-1 pl-3 transition-colors',
+        !isCloudSandboxPlan && inputPlaceholderFocused && 'border-components-input-border-active bg-components-input-bg-active',
+        isCloudSandboxPlan && 'cursor-not-allowed opacity-60',
+      )}
+    >
+      <input
+        type="text"
+        name="input_placeholder"
+        value={inputPlaceholderValue}
+        onChange={e => setInputInfo(item => ({ ...item, inputPlaceholder: e.target.value }))}
+        onFocus={() => setInputPlaceholderFocused(true)}
+        onBlur={() => setInputPlaceholderFocused(false)}
+        disabled={isCloudSandboxPlan}
+        maxLength={INPUT_PLACEHOLDER_MAX_LENGTH}
+        autoComplete="off"
+        aria-labelledby={inputPlaceholderLabelId}
+        aria-describedby={inputPlaceholderDescriptionId}
+        placeholder={t(`${prefixSettings}.more.inputPlaceholderPlaceholder`, { ns: 'appOverview' }) as string}
+        className={cn(
+          'flex-1 bg-transparent body-md-regular outline-hidden',
+          showInputPlaceholderPreview ? 'text-text-placeholder' : 'text-text-primary',
+          isCloudSandboxPlan && 'cursor-not-allowed',
+        )}
+      />
+      <span
+        aria-hidden="true"
+        className="grid h-7 w-7 shrink-0 cursor-not-allowed place-items-center rounded-md bg-components-button-primary-bg opacity-50"
+      >
+        <span className="i-custom-vender-solid-communication-send-03 h-4 w-4 text-components-button-primary-text" />
+      </span>
+    </div>
+  )
 
   const handleLanguageChange = (nextValue: string | null) => {
     const nextLanguage = LANGUAGE_OPTIONS.find(item => item.value === nextValue)
@@ -178,11 +230,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       setLanguage(nextLanguage.value)
   }
   const handlePlanClick = useCallback(() => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
-  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
+    setShowPricingModal()
+  }, [setShowPricingModal])
 
   const shouldResetForm = isShow && (!previousIsShow || settingsResetKey !== previousSettingsResetKey)
   if (isShow !== previousIsShow || shouldResetForm) {
@@ -191,8 +240,14 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       setInputInfo(nextInputInfo)
       setLanguage(default_language)
       setAppIcon(nextAppIcon)
+      setIsShowMore(false)
       setPreviousSettingsResetKey(settingsResetKey)
     }
+  }
+
+  const handleClose = () => {
+    setIsShowMore(false)
+    onClose()
   }
 
   const handleFormSubmit = async () => {
@@ -236,13 +291,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright: !webappCopyrightEnabled
+      copyright: (!webappCopyrightEnabled || isCloudSandboxPlan)
         ? ''
-        : inputInfo.copyrightSwitchValue
+        : copyrightSwitchValue
           ? inputInfo.copyright
           : '',
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
+      input_placeholder: (isCloudSandboxPlan || !INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode))
+        ? ''
+        : (inputInfo.inputPlaceholder ?? '').slice(0, INPUT_PLACEHOLDER_MAX_LENGTH),
       icon_type: appIcon.type,
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
@@ -252,7 +310,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     }
     await onSave?.(params)
     setSaveLoading(false)
-    onClose()
+    handleClose()
   }
 
   const onChange = (field: string) => {
@@ -273,7 +331,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   return (
     <>
-      <Dialog open={isShow} onOpenChange={open => !open && onClose()} disablePointerDismissal>
+      <Dialog open={isShow} onOpenChange={open => !open && handleClose()} disablePointerDismissal>
         <DialogContent className="grid max-h-[calc(100dvh-2rem)] w-[520px] grid-rows-[auto_minmax(0,1fr)] overflow-hidden p-0">
           {/* header */}
           <div className="shrink-0 pt-5 pr-5 pb-3 pl-6">
@@ -395,7 +453,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 </div>
                 <FieldDescription>{t(`${prefixSettings}.workflow.showDesc`, { ns: 'appOverview' })}</FieldDescription>
               </FieldRoot>
-              <CollapsibleRoot>
+              <CollapsibleRoot open={isShowMore} onOpenChange={setIsShowMore}>
                 <Divider className="my-0 h-px" />
                 <CollapsibleTrigger className="-mx-2 mt-2 min-h-11 px-2 py-1.5 hover:not-data-disabled:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-inset data-panel-open:text-text-secondary">
                   <div className="min-w-0 grow">
@@ -412,13 +470,50 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 </CollapsibleTrigger>
                 <CollapsiblePanel>
                   <div className="space-y-5 pt-5">
+                    {INPUT_PLACEHOLDER_SUPPORTED_MODES.includes(appInfo.mode) && (
+                      <div className="w-full">
+                        <div className="flex items-center">
+                          <div className="flex grow items-center">
+                            <div id={inputPlaceholderLabelId} className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.inputPlaceholder`, { ns: 'appOverview' })}</div>
+                            {isCloudSandboxPlan && (
+                              <div className="h-[18px] select-none">
+                                <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
+                                  <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+                                  <div className="system-xs-medium">
+                                    <span className="p-1">
+                                      {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+                                    </span>
+                                  </div>
+                                </PremiumBadgeButton>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <p id={inputPlaceholderDescriptionId} className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.inputPlaceholderTip`, { ns: 'appOverview' })}</p>
+                        {isCloudSandboxPlan
+                          ? (
+                              <Tooltip>
+                                <TooltipTrigger render={inputPlaceholderField} />
+                                <TooltipContent className="w-[180px]">
+                                  {t(`${prefixSettings}.more.inputPlaceholderTooltip`, { ns: 'appOverview' })}
+                                </TooltipContent>
+                              </Tooltip>
+                            )
+                          : inputPlaceholderField}
+                        {!isCloudSandboxPlan && (
+                          <div className="mt-1 text-right body-xs-regular text-text-tertiary">
+                            {`${inputInfo.inputPlaceholder?.length ?? 0} / ${INPUT_PLACEHOLDER_MAX_LENGTH}`}
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {/* copyright */}
                     <div className="w-full">
                       <div className="flex items-center">
                         <div className="flex grow items-center">
                           <div className={cn('mr-1 py-1 system-sm-semibold text-text-secondary')}>{t(`${prefixSettings}.more.copyright`, { ns: 'appOverview' })}</div>
                           {/* upgrade button */}
-                          {showUpgradeAction && (
+                          {isCloudSandboxPlan && (
                             <div className="h-[18px] select-none">
                               <PremiumBadgeButton size="s" color="blue" onClick={handlePlanClick}>
                                 <span aria-hidden="true" className="i-custom-public-common-sparkles-soft flex h-3.5 w-3.5 items-center py-px pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
@@ -434,7 +529,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         {webappCopyrightEnabled
                           ? (
                               <Switch
-                                checked={inputInfo.copyrightSwitchValue}
+                                checked={copyrightSwitchValue}
                                 onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                               />
                             )
@@ -445,7 +540,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                     <div>
                                       <Switch
                                         disabled
-                                        checked={inputInfo.copyrightSwitchValue}
+                                        checked={copyrightSwitchValue}
                                         onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                                       />
                                     </div>
@@ -458,7 +553,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                             )}
                       </div>
                       <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
-                      {inputInfo.copyrightSwitchValue && (
+                      {copyrightSwitchValue && (
                         <Input
                           className="mt-2 h-10"
                           value={inputInfo.copyright}
@@ -502,7 +597,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             </ScrollArea>
             {/* footer */}
             <div className="flex shrink-0 justify-end p-6 pt-5">
-              <Button type="button" className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button type="button" className="mr-2" onClick={handleClose}>{t('operation.cancel', { ns: 'common' })}</Button>
               <Button type="submit" variant="primary" loading={saveLoading}>{t('operation.save', { ns: 'common' })}</Button>
             </div>
           </Form>

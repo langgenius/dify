@@ -379,6 +379,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
         title="Public Site",
         icon_type="image",
         icon="site-icon",
+        input_placeholder="Ask anything",
         created_at=timestamp,
         updated_at=timestamp,
     )
@@ -421,6 +422,7 @@ def test_app_detail_with_site_includes_nested_serialization(app_models):
     assert serialized["model_config"]["retriever_resource"] == {"enabled": True}
     assert serialized["deleted_tools"][0]["tool_name"] == "search"
     assert serialized["site"]["icon_url"] == "signed:site-icon"
+    assert serialized["site"]["input_placeholder"] == "Ask anything"
     assert serialized["site"]["created_at"] == int(timestamp.timestamp())
     assert serialized["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
     assert serialized["bound_agent_id"] == "agent-1"
