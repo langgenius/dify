@@ -2,7 +2,7 @@
 
 import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { FormEvent, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -12,7 +12,8 @@ import {
   DialogDescription,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { Input } from '@langgenius/dify-ui/input'
+import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
+import { Form } from '@langgenius/dify-ui/form'
 import {
   Select,
   SelectContent,
@@ -21,19 +22,21 @@ import {
   SelectItemText,
   SelectLabel,
   SelectTrigger,
+  SelectValue,
 } from '@langgenius/dify-ui/select'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { generateApiTokenName } from './api-token-name'
 
-type CreateApiKeyMutationInput = Parameters<
-  NonNullable<ReturnType<typeof consoleQuery.enterprise.accessService.createApiKey.mutationOptions>['mutationFn']>
->[0]
+type CreateApiKeyFormValues = {
+  displayName: string
+  environmentId: string
+}
 
 function CreateApiKeyDialog({
   appInstanceId,
@@ -50,104 +53,101 @@ function CreateApiKeyDialog({
   onCreatedToken: (token: string) => void
   onOpenChange: (open: boolean) => void
 }) {
-  const { t } = useTranslation('deployments')
-  const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
-  const isCreating = generateApiKey.isPending
+  const closeBlockedRef = useRef(false)
+  const [closeBlocked, setCloseBlocked] = useState(false)
+
+  function handleCloseBlockedChange(blocked: boolean) {
+    closeBlockedRef.current = blocked
+    setCloseBlocked(blocked)
+  }
 
   function handleOpenChange(nextOpen: boolean) {
-    if (nextOpen || isCreating)
+    if (!nextOpen && closeBlockedRef.current)
       return
 
-    onOpenChange(false)
+    onOpenChange(nextOpen)
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} disablePointerDismissal={closeBlocked} onOpenChange={handleOpenChange}>
       <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
-        <DialogCloseButton disabled={isCreating} />
-        <CreateApiKeyForm
+        <CreateApiKeyDialogContent
           key={sessionKey}
           appInstanceId={appInstanceId}
           environments={environments}
-          isCreating={isCreating}
-          onClose={() => handleOpenChange(false)}
-          onCreate={(input) => {
-            generateApiKey.mutate(input, {
-              onSuccess: (response) => {
-                if (response.token)
-                  onCreatedToken(response.token)
-                onOpenChange(false)
-              },
-              onError: () => {
-                toast.error(t('access.api.createFailed'))
-              },
-            })
-          }}
+          onClose={() => onOpenChange(false)}
+          onCloseBlockedChange={handleCloseBlockedChange}
+          onCreatedToken={onCreatedToken}
         />
       </DialogContent>
     </Dialog>
   )
 }
 
-function CreateApiKeyForm({
+function CreateApiKeyDialogContent({
   appInstanceId,
   environments,
-  isCreating,
   onClose,
-  onCreate,
+  onCloseBlockedChange,
+  onCreatedToken,
 }: {
   appInstanceId?: string
   environments: Environment[]
-  isCreating: boolean
   onClose: () => void
-  onCreate: (input: CreateApiKeyMutationInput) => void
+  onCloseBlockedChange: (blocked: boolean) => void
+  onCreatedToken: (token: string) => void
 }) {
   const { t } = useTranslation('deployments')
-  const nameInputId = useId()
+  const generateApiKey = useMutation(consoleQuery.enterprise.accessService.createApiKey.mutationOptions())
+  const isCreating = generateApiKey.isPending
   const firstEnvironment = environments[0]
-  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState(firstEnvironment?.id)
-  const [draftName, setDraftName] = useState(() => generateApiTokenName())
-  const [nameError, setNameError] = useState(false)
-  const selectedEnvironment = selectedEnvironmentId
-    ? environments.find(env => env.id === selectedEnvironmentId)
-    : undefined
+  const nameRequiredMessage = t('access.api.nameRequired')
 
-  function handleEnvironmentChange(environmentId: string) {
-    setSelectedEnvironmentId(environmentId)
-    setNameError(false)
-  }
-
-  function handleDraftNameChange(nextDraftName: string) {
-    setDraftName(nextDraftName)
-    if (nameError && nextDraftName.trim())
-      setNameError(false)
-  }
-
-  function handleGenerateApiKey(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-
-    const name = draftName.trim()
-
-    if (!appInstanceId || !selectedEnvironmentId || !name) {
-      setNameError(true)
+  function handleClose() {
+    if (isCreating)
       return
-    }
+    onClose()
+  }
 
-    onCreate({
-      params: {
-        appInstanceId,
-        environmentId: selectedEnvironmentId,
+  function handleGenerateApiKey(values: CreateApiKeyFormValues) {
+    const displayName = values.displayName.trim()
+    const environmentId = values.environmentId
+
+    if (!appInstanceId || !environmentId || !displayName)
+      return
+
+    onCloseBlockedChange(true)
+    generateApiKey.mutate(
+      {
+        params: {
+          appInstanceId,
+          environmentId,
+        },
+        body: {
+          appInstanceId,
+          environmentId,
+          displayName,
+        },
       },
-      body: {
-        appInstanceId,
-        environmentId: selectedEnvironmentId,
-        displayName: name,
+      {
+        onSuccess: (response) => {
+          if (response.token)
+            onCreatedToken(response.token)
+          onClose()
+        },
+        onError: () => {
+          toast.error(t('access.api.createFailed'))
+        },
+        onSettled: () => {
+          onCloseBlockedChange(false)
+        },
       },
-    })
+    )
   }
 
   return (
-    <form onSubmit={handleGenerateApiKey}>
+    <>
+      <DialogCloseButton disabled={isCreating} />
       <div className="border-b border-divider-subtle px-6 py-5 pr-14">
         <DialogTitle className="title-xl-semi-bold text-text-primary">
           {t('access.api.createKeyTitle')}
@@ -157,75 +157,75 @@ function CreateApiKeyForm({
         </DialogDescription>
       </div>
 
-      <div className="flex flex-col gap-4 px-6 py-5">
-        <div>
-          <label
-            htmlFor={nameInputId}
-            className="mb-1 block system-sm-medium text-text-secondary"
-          >
-            {t('access.api.nameLabel')}
-          </label>
-          <Input
-            id={nameInputId}
-            value={draftName}
-            disabled={isCreating}
-            aria-invalid={nameError || undefined}
-            aria-describedby={nameError ? `${nameInputId}-error` : undefined}
-            placeholder={t('access.api.namePlaceholder')}
-            onChange={(event) => {
-              handleDraftNameChange(event.target.value)
+      <Form<CreateApiKeyFormValues> onFormSubmit={handleGenerateApiKey}>
+        <div className="flex flex-col gap-4 px-6 py-5">
+          <FieldRoot
+            name="displayName"
+            validate={(value) => {
+              if (typeof value === 'string' && value.length > 0 && !value.trim())
+                return nameRequiredMessage
+
+              return null
             }}
-          />
-          {nameError && (
-            <div id={`${nameInputId}-error`} className="mt-1 system-xs-regular text-text-destructive">
-              {t('access.api.nameRequired')}
-            </div>
-          )}
-        </div>
-
-        <div>
-          <Select
-            value={selectedEnvironmentId ?? null}
-            disabled={isCreating}
-            onValueChange={value => value && handleEnvironmentChange(value)}
           >
-            <SelectLabel className="mb-1 block system-sm-medium text-text-secondary">
-              {t('access.api.table.environment')}
-            </SelectLabel>
-            <SelectTrigger>
-              {selectedEnvironment?.displayName ?? '—'}
-            </SelectTrigger>
-            <SelectContent>
-              {environments.map(env => (
-                <SelectItem key={env.id} value={env.id}>
-                  <SelectItemText>{env.displayName}</SelectItemText>
-                  <SelectItemIndicator />
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+            <FieldLabel className="system-sm-medium text-text-secondary">
+              {t('access.api.nameLabel')}
+            </FieldLabel>
+            <FieldControl
+              defaultValue={generateApiTokenName()}
+              disabled={isCreating}
+              autoComplete="off"
+              placeholder={t('access.api.namePlaceholder')}
+              required
+            />
+            <FieldError match="valueMissing" className="system-xs-regular">{nameRequiredMessage}</FieldError>
+            <FieldError match="customError" className="system-xs-regular" />
+          </FieldRoot>
 
-      <div className="flex justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={isCreating}
-          onClick={onClose}
-        >
-          {t('operation.cancel', { ns: 'common' })}
-        </Button>
-        <Button
-          type="submit"
-          variant="primary"
-          loading={isCreating}
-          disabled={isCreating || !selectedEnvironmentId}
-        >
-          {t('access.api.createKey')}
-        </Button>
-      </div>
-    </form>
+          <FieldRoot name="environmentId">
+            <Select
+              name="environmentId"
+              defaultValue={firstEnvironment?.id}
+              disabled={isCreating}
+            >
+              <SelectLabel className="system-sm-medium text-text-secondary">
+                {t('access.api.table.environment')}
+              </SelectLabel>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {environments.map(env => (
+                  <SelectItem key={env.id} value={env.id}>
+                    <SelectItemText>{env.displayName}</SelectItemText>
+                    <SelectItemIndicator />
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FieldRoot>
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-divider-subtle bg-background-default-subtle px-6 py-4">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isCreating}
+            onClick={handleClose}
+          >
+            {t('operation.cancel', { ns: 'common' })}
+          </Button>
+          <Button
+            type="submit"
+            variant="primary"
+            loading={isCreating}
+            disabled={isCreating || !firstEnvironment}
+          >
+            {t('access.api.createKey')}
+          </Button>
+        </div>
+      </Form>
+    </>
   )
 }
 

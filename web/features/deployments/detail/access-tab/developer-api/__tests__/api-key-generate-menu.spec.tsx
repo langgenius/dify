@@ -93,6 +93,36 @@ describe('ApiKeyGenerateMenu', () => {
     expect(screen.queryByText('deployments.access.api.nameRequired')).not.toBeInTheDocument()
   })
 
+  it('should create an api key with the entered name and default environment', () => {
+    render(
+      <ApiKeyGenerateMenu
+        environments={[createEnvironment()]}
+        onCreatedToken={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.newKey' }))
+    fireEvent.change(screen.getByLabelText('deployments.access.api.nameLabel'), {
+      target: { value: ' Production key ' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'deployments.access.api.createKey' }))
+
+    expect(mockMutate).toHaveBeenCalledWith(
+      {
+        params: {
+          appInstanceId: 'app-instance-1',
+          environmentId: 'environment-1',
+        },
+        body: {
+          appInstanceId: 'app-instance-1',
+          environmentId: 'environment-1',
+          displayName: 'Production key',
+        },
+      },
+      expect.any(Object),
+    )
+  })
+
   it('should disable the trigger when route app instance is missing', () => {
     mockUseAtomValue.mockReturnValue(undefined)
 

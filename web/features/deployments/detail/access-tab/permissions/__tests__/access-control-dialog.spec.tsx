@@ -62,4 +62,20 @@ describe('DeploymentAccessControlDialog', () => {
       },
     ])
   })
+
+  it('should disable the close button while saving', () => {
+    render(
+      <DeploymentAccessControlDialog
+        open
+        resetKey={1}
+        initialKind="organization"
+        initialSubjects={[]}
+        saving
+        onClose={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Close' })).toBeDisabled()
+  })
 })

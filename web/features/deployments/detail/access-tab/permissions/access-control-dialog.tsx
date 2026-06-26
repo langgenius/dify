@@ -48,14 +48,21 @@ export function DeploymentAccessControlDialog({
     initialSubjects.map(subject => `${subject.subjectType}:${subject.id}`).join(','),
   ].join(':')
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (nextOpen || saving)
+      return
+
+    onClose()
+  }
+
   return (
-    <Dialog open={open} disablePointerDismissal onOpenChange={open => !open && onClose()}>
+    <Dialog open={open} disablePointerDismissal onOpenChange={handleOpenChange}>
       <DialogContent
         className={cn(
           'h-auto max-h-[calc(100dvh-2rem)] min-h-[323px] w-[600px] max-w-none overflow-y-auto rounded-2xl border-none bg-components-panel-bg p-0 shadow-xl transition-shadow',
         )}
       >
-        <DialogCloseButton className="top-5 right-5 size-8" />
+        <DialogCloseButton disabled={saving} className="top-5 right-5 size-8" />
         <DeploymentAccessControlDialogBody
           key={`${resetKey}:${draftKey}`}
           initialKind={initialKind}
