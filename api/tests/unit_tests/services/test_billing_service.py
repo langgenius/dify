@@ -549,19 +549,20 @@ class TestBillingServiceUsageCalculation:
         assert result == expected_response
         mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
 
-    def test_get_quota_info(self, mock_send_request):
+    def test_get_quota_info(self):
         """Test retrieval of quota info from new endpoint."""
         # Arrange
         tenant_id = "tenant-123"
         expected_response = {"trigger_event": {"limit": 100, "usage": 30}, "api_rate_limit": {"limit": -1, "usage": 0}}
-        mock_send_request.return_value = expected_response
+        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
+            mock_send_quota_request.return_value = expected_response
 
-        # Act
-        result = BillingService.get_quota_info(tenant_id)
+            # Act
+            result = BillingService.get_quota_info(tenant_id)
 
         # Assert
         assert result == expected_response
-        mock_send_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
+        mock_send_quota_request.assert_called_once_with("GET", "/quota/info", params={"tenant_id": tenant_id})
 
     def test_update_tenant_feature_plan_usage_positive_delta(self, mock_send_request):
         """Test updating tenant feature usage with positive delta (adding credits)."""
@@ -645,7 +646,7 @@ class TestBillingServiceQuotaOperations:
 
     @pytest.fixture
     def mock_send_request(self):
-        with patch.object(BillingService, "_send_request") as mock:
+        with patch.object(BillingService, "_send_quota_request") as mock:
             yield mock
 
     def test_quota_reserve_success(self, mock_send_request):
