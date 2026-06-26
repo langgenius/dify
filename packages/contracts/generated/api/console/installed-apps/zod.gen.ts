@@ -230,6 +230,7 @@ export const zParameters = z.object({
  * InstalledAppInfoResponse
  */
 export const zInstalledAppInfoResponse = z.object({
+  description: z.string().nullish(),
   icon: z.string().nullish(),
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
@@ -267,7 +268,6 @@ export const zAgentThought = z.object({
   created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
-  message_chain_id: z.string().nullish(),
   message_id: z.string(),
   observation: z.string().nullish(),
   position: z.int(),

@@ -1,4 +1,5 @@
 import inspect
+import logging
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -151,7 +152,9 @@ class TestTenantListApi:
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
         get_features_mock.assert_called_once_with("t2", exclude_vector_space=True)
 
-    def test_get_saas_path_falls_back_to_legacy_feature_path_on_bulk_error(self, app: Flask):
+    def test_get_saas_path_falls_back_to_legacy_feature_path_on_bulk_error(
+        self, app: Flask, caplog: pytest.LogCaptureFixture
+    ):
         """Test fallback to FeatureService when bulk billing returns empty result.
 
         BillingService.get_plan_bulk catches exceptions internally and returns empty dict,
@@ -170,6 +173,7 @@ class TestTenantListApi:
 
         with (
             app.test_request_context("/workspaces"),
+            caplog.at_level(logging.WARNING, logger="controllers.console.workspace.workspace"),
             patch(
                 "controllers.console.workspace.workspace.TenantService.get_workspaces_for_account",
                 return_value=[(tenant1, make_membership()), (tenant2, make_membership())],
@@ -185,7 +189,6 @@ class TestTenantListApi:
                 "controllers.console.workspace.workspace.FeatureService.get_features",
                 return_value=features,
             ) as get_features_mock,
-            patch("controllers.console.workspace.workspace.logger.warning") as logger_warning_mock,
         ):
             result, status = method(api, "t2", user)
 
@@ -194,7 +197,7 @@ class TestTenantListApi:
         assert result["workspaces"][1]["plan"] == CloudPlan.TEAM
         get_plan_bulk_mock.assert_called_once_with(["t1", "t2"])
         assert get_features_mock.call_count == 2
-        logger_warning_mock.assert_called_once()
+        assert "get_plan_bulk returned empty result, falling back to legacy feature path" in caplog.messages
 
     def test_get_billing_disabled_community_path(self, app: Flask):
         api = TenantListApi()
@@ -365,7 +368,7 @@ class TestTenantApi:
             with pytest.raises(Unauthorized):
                 method(api, user)
 
-    def test_post_info_path(self, app: Flask):
+    def test_post_info_path(self, app: Flask, caplog: pytest.LogCaptureFixture):
         api = TenantApi()
         method = inspect.unwrap(api.post)
 
@@ -374,15 +377,15 @@ class TestTenantApi:
 
         with (
             app.test_request_context("/info"),
+            caplog.at_level(logging.WARNING, logger="controllers.console.workspace.workspace"),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
                 return_value={"id": "t1"},
             ),
-            patch("controllers.console.workspace.workspace.logger.warning") as warn_mock,
         ):
             result, status = method(api, user)
 
-        warn_mock.assert_called_once()
+        assert "Deprecated URL /info was used." in caplog.messages
         assert status == 200
 
 

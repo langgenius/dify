@@ -1160,7 +1160,6 @@ export const zAgentThought = z.object({
   created_at: z.int().nullish(),
   files: z.array(z.string()),
   id: z.string(),
-  message_chain_id: z.string().nullish(),
   message_id: z.string(),
   observation: z.string().nullish(),
   position: z.int(),
@@ -1381,8 +1380,8 @@ export const zConversationAnnotation = z.object({
  */
 export const zConversationAnnotationHitHistory = z.object({
   annotation_create_account: zSimpleAccount.nullish(),
+  annotation_id: z.string(),
   created_at: z.int().nullish(),
-  id: z.string(),
 })
 
 /**
@@ -3509,6 +3508,7 @@ export const zMessageDetailResponse = z.object({
   agent_thoughts: z.array(zAgentThought).optional(),
   annotation: zConversationAnnotation.nullish(),
   annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
+  answer: z.string(),
   answer_tokens: z.int().nullish(),
   conversation_id: z.string(),
   created_at: z.int().nullish(),
@@ -3522,12 +3522,11 @@ export const zMessageDetailResponse = z.object({
   inputs: z.record(z.string(), zJsonValue),
   message: zJsonValue.nullish(),
   message_files: z.array(zMessageFile).optional(),
-  message_metadata_dict: zJsonValue.nullish(),
   message_tokens: z.int().nullish(),
+  metadata: zJsonValue.nullish(),
   parent_message_id: z.string().nullish(),
   provider_response_latency: z.number().nullish(),
   query: z.string(),
-  re_sign_file_url_answer: z.string(),
   status: z.string(),
   workflow_run_id: z.string().nullish(),
 })

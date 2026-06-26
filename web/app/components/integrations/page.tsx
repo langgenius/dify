@@ -107,9 +107,8 @@ export default function IntegrationsPage({
   const {
     canDebugger,
     canInstallPlugin,
-    canManagePlugin,
+    canDeletePlugin,
     canUpdatePlugin,
-    canViewInstalledPlugins,
     handlePermissionChange,
     isPluginCategory,
     permission,
@@ -285,9 +284,8 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -311,9 +309,8 @@ export default function IntegrationsPage({
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
                   canInstallPlugin={canInstallPlugin}
-                  canManagePlugin={canManagePlugin}
+                  canDeletePlugin={canDeletePlugin}
                   canUpdatePlugin={canUpdatePlugin}
-                  canViewInstalledPlugins={canViewInstalledPlugins}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

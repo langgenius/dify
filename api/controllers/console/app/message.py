@@ -167,12 +167,16 @@ register_schema_models(
     ChatMessagesQuery,
     MessageFeedbackPayload,
     FeedbackExportQuery,
+)
+register_response_schema_models(
+    console_ns,
     AnnotationCountResponse,
     SuggestedQuestionsResponse,
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
+    SimpleResultResponse,
+    TextFileResponse,
 )
-register_response_schema_models(console_ns, SimpleResultResponse, TextFileResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")

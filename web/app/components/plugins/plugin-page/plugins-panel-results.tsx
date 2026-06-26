@@ -58,7 +58,7 @@ const BuiltinMarketplacePanel = ({
 }
 
 type PluginsPanelResultsProps = {
-  canManagePlugin: boolean
+  canDeletePlugin: boolean
   canUpdatePlugin: boolean
   containerRef: RefObject<HTMLDivElement | null>
   contentFrameClassName: string
@@ -80,7 +80,7 @@ type PluginsPanelResultsProps = {
 }
 
 const PluginsPanelResults = ({
-  canManagePlugin,
+  canDeletePlugin,
   canUpdatePlugin,
   containerRef,
   contentFrameClassName,
@@ -123,7 +123,7 @@ const PluginsPanelResults = ({
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
             <List
               pluginList={filteredList}
-              canManagePlugin={canManagePlugin}
+              canDeletePlugin={canDeletePlugin}
               canUpdatePlugin={canUpdatePlugin}
             >
               {filteredBuiltinTools.map(collection => (

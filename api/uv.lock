@@ -1332,7 +1332,7 @@ docs = [
 
 [[package]]
 name = "dify-api"
-version = "1.14.2"
+version = "1.15.0"
 source = { virtual = "." }
 dependencies = [
     { name = "aliyun-log-python-sdk" },
