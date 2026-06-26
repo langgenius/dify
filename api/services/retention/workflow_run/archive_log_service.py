@@ -6,6 +6,9 @@ temporary Redis download-task state, so console requests never list R2 online.
 """
 
 import datetime
+import logging
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from sqlalchemy import func, select
@@ -13,11 +16,19 @@ from sqlalchemy.orm import Session
 
 from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_download_task_cache import (
+    WorkflowRunArchiveDownloadStatus,
     WorkflowRunArchiveDownloadTask,
     WorkflowRunArchiveDownloadTaskCache,
     build_archive_download_id,
     build_pending_archive_download_task,
 )
+
+logger = logging.getLogger(__name__)
+
+ArchiveDownloadTaskDispatcher = Callable[
+    [WorkflowRunArchiveDownloadTask, WorkflowRunArchiveDownloadTaskCache],
+    WorkflowRunArchiveDownloadTask,
+]
 
 
 @dataclass(frozen=True)
@@ -57,6 +68,10 @@ class WorkflowRunArchiveNotFoundError(Exception):
 
 class WorkflowRunArchiveDownloadTaskNotFoundError(Exception):
     """Raised when the temporary Redis task has expired or never existed."""
+
+
+class WorkflowRunArchiveDownloadNotReadyError(Exception):
+    """Raised when a cached download task has not produced a file yet."""
 
 
 def list_workflow_run_archives(session: Session, tenant_id: str) -> WorkflowRunArchiveList:
@@ -108,6 +123,7 @@ def create_workflow_run_archive_download_task(
     year: int,
     month: int,
     cache: WorkflowRunArchiveDownloadTaskCache | None = None,
+    dispatcher: ArchiveDownloadTaskDispatcher | None = None,
 ) -> WorkflowRunArchiveDownloadTask:
     """
     Create or return the idempotent Redis task for downloading one tenant/month archive.
@@ -132,19 +148,26 @@ def create_workflow_run_archive_download_task(
         year=year,
         month=month,
         bundle_ids=[bundle.bundle_id for bundle in bundles],
+        bundle_refs=bundle_refs,
         archive_bytes=sum(bundle.archive_bytes for bundle in bundles),
         download_id=download_id,
     )
     task_cache = cache or WorkflowRunArchiveDownloadTaskCache()
+    dispatch = dispatcher or _dispatch_workflow_run_archive_download_task
     if task_cache.create_if_absent(task):
-        return task
+        return dispatch(task, task_cache)
 
     existing = task_cache.get(tenant_id=tenant_id, download_id=download_id)
     if existing is not None:
+        if existing.status == WorkflowRunArchiveDownloadStatus.FAILED:
+            task_cache.save(task)
+            return dispatch(task, task_cache)
+        if existing.status == WorkflowRunArchiveDownloadStatus.PENDING and not existing.celery_task_id:
+            return dispatch(existing, task_cache)
         return existing
 
     task_cache.save(task)
-    return task
+    return dispatch(task, task_cache)
 
 
 def get_workflow_run_archive_download_task(
@@ -158,6 +181,19 @@ def get_workflow_run_archive_download_task(
     task = task_cache.get(tenant_id=tenant_id, download_id=download_id)
     if task is None:
         raise WorkflowRunArchiveDownloadTaskNotFoundError(f"Workflow run archive download not found: {download_id}")
+    return task
+
+
+def get_ready_workflow_run_archive_download_task(
+    *,
+    tenant_id: str,
+    download_id: str,
+    cache: WorkflowRunArchiveDownloadTaskCache | None = None,
+) -> WorkflowRunArchiveDownloadTask:
+    """Return a ready cached archive download task or raise when the file is not available."""
+    task = get_workflow_run_archive_download_task(tenant_id=tenant_id, download_id=download_id, cache=cache)
+    if task.status != WorkflowRunArchiveDownloadStatus.READY or not task.storage_key or not task.file_name:
+        raise WorkflowRunArchiveDownloadNotReadyError(f"Workflow run archive download is not ready: {download_id}")
     return task
 
 
@@ -178,3 +214,42 @@ def _list_archive_bundles(
         .order_by(WorkflowRunArchiveBundle.shard, WorkflowRunArchiveBundle.bundle_id)
     )
     return list(session.scalars(stmt))
+
+
+def _dispatch_workflow_run_archive_download_task(
+    task: WorkflowRunArchiveDownloadTask,
+    cache: WorkflowRunArchiveDownloadTaskCache,
+) -> WorkflowRunArchiveDownloadTask:
+    """
+    Enqueue background ZIP preparation and persist the Celery id before the worker can start.
+
+    The Redis task key is the idempotency boundary. We generate the Celery id in the API process, save it on the task,
+    then submit with that exact id so duplicate console requests keep seeing one logical download request.
+    """
+    from tasks.workflow_run_archive_download_tasks import prepare_workflow_run_archive_download_task
+
+    now = datetime.datetime.now(datetime.UTC)
+    celery_task_id = uuid.uuid4().hex
+    queued_task = task.model_copy(update={"celery_task_id": celery_task_id, "updated_at": now})
+    cache.save(queued_task)
+
+    try:
+        prepare_workflow_run_archive_download_task.apply_async(
+            args=[queued_task.tenant_id, queued_task.download_id],
+            task_id=celery_task_id,
+        )
+    except Exception:
+        failure_time = datetime.datetime.now(datetime.UTC)
+        failed_task = queued_task.model_copy(
+            update={
+                "status": WorkflowRunArchiveDownloadStatus.FAILED,
+                "error": "Failed to enqueue archive download task.",
+                "updated_at": failure_time,
+                "finished_at": failure_time,
+            }
+        )
+        cache.save(failed_task)
+        logger.exception("Failed to enqueue workflow run archive download task %s", queued_task.download_id)
+        return failed_task
+
+    return queued_task

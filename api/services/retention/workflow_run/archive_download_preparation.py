@@ -1,0 +1,291 @@
+"""
+Prepare monthly workflow-run archive downloads.
+
+Console requests create a short-lived Redis task and Celery runs this module in the background. The DB bundle index is
+the online lookup source: this preparer never lists archive storage, and it validates the indexed bundle set against the
+stable download id before packaging objects into a single ZIP file.
+"""
+
+import datetime
+import hashlib
+import io
+import logging
+import zipfile
+from collections.abc import Sequence
+from typing import cast
+
+from sqlalchemy import select
+from sqlalchemy.orm import Session, sessionmaker
+
+from extensions.ext_database import db
+from libs.archive_storage import ArchiveStorage, get_archive_storage
+from models.workflow import WorkflowRunArchiveBundle
+from services.retention.workflow_run.archive_bundle_index import (
+    ARCHIVE_BUNDLE_ROOT_PREFIX,
+    ArchiveBundleManifest,
+    ArchiveBundleTableManifestEntry,
+    decode_archive_bundle_manifest,
+)
+from services.retention.workflow_run.archive_download_task_cache import (
+    WorkflowRunArchiveDownloadStatus,
+    WorkflowRunArchiveDownloadTask,
+    WorkflowRunArchiveDownloadTaskCache,
+    build_archive_download_id,
+)
+from services.retention.workflow_run.constants import (
+    ARCHIVE_BUNDLE_FORMAT,
+    ARCHIVE_BUNDLE_MANIFEST_NAME,
+    ARCHIVE_BUNDLE_SCHEMA_VERSION,
+)
+
+logger = logging.getLogger(__name__)
+
+ARCHIVE_DOWNLOAD_ROOT_PREFIX = "workflow-runs/downloads/v1/"
+ARCHIVE_DOWNLOAD_MIME_TYPE = "application/zip"
+
+
+class WorkflowRunArchiveDownloadPreparer:
+    """
+    Build one ready-to-download ZIP for a Redis archive download task.
+
+    The output object is deterministic for a given `download_id`, so retrying a failed task overwrites the same
+    temporary object instead of creating unbounded duplicate files.
+    """
+
+    storage: ArchiveStorage | None
+    cache: WorkflowRunArchiveDownloadTaskCache
+    session_factory: sessionmaker[Session]
+
+    def __init__(
+        self,
+        *,
+        storage: ArchiveStorage | None = None,
+        cache: WorkflowRunArchiveDownloadTaskCache | None = None,
+        session_factory: sessionmaker[Session] | None = None,
+    ) -> None:
+        self.storage = storage
+        self.cache = cache or WorkflowRunArchiveDownloadTaskCache()
+        self.session_factory = session_factory or sessionmaker(bind=db.engine, expire_on_commit=False)
+
+    def prepare(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
+        """Prepare a ZIP for an existing Redis task and persist terminal task state."""
+        task = self.cache.get(tenant_id=tenant_id, download_id=download_id)
+        if task is None:
+            logger.info("Workflow run archive download task expired before preparation: %s", download_id)
+            return None
+        if task.status == WorkflowRunArchiveDownloadStatus.READY:
+            return task
+        if task.status == WorkflowRunArchiveDownloadStatus.FAILED:
+            logger.info("Skipping failed workflow run archive download task: %s", download_id)
+            return task
+
+        processing_task = self._mark_processing(task)
+        try:
+            storage = self.storage or get_archive_storage()
+            bundles = self._get_task_bundles(processing_task)
+            payload = self._build_zip_payload(storage, processing_task, bundles)
+            storage_key = build_archive_download_storage_key(processing_task)
+            storage.put_object(storage_key, payload)
+            return self._mark_ready(processing_task, storage_key=storage_key, file_size_bytes=len(payload))
+        except Exception as exc:
+            logger.exception("Failed to prepare workflow run archive download %s", download_id)
+            return self._mark_failed(processing_task, error=str(exc))
+
+    def _get_task_bundles(self, task: WorkflowRunArchiveDownloadTask) -> list[WorkflowRunArchiveBundle]:
+        with self.session_factory() as session:
+            return _list_task_bundles(session, task)
+
+    def _build_zip_payload(
+        self,
+        storage: ArchiveStorage,
+        task: WorkflowRunArchiveDownloadTask,
+        bundles: Sequence[WorkflowRunArchiveBundle],
+    ) -> bytes:
+        zip_root = f"workflow-run-logs-{task.year:04d}-{task.month:02d}"
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_STORED) as archive:
+            for bundle in bundles:
+                object_prefix = _build_archive_bundle_object_prefix(task, bundle)
+                manifest_data, manifest = _load_and_validate_manifest(storage, task, bundle, object_prefix)
+                bundle_file_stem = f"{bundle.shard}-{bundle.bundle_id}"
+                archive.writestr(f"{zip_root}/manifests/{bundle_file_stem}.json", manifest_data)
+                for table_name in sorted(manifest["tables"]):
+                    entry = manifest["tables"][table_name]
+                    object_key = entry["object_key"]
+                    table_payload = storage.get_object(object_key)
+                    _validate_table_payload(object_key=object_key, entry=entry, payload=table_payload)
+                    archive.writestr(f"{zip_root}/{table_name}/{bundle_file_stem}.parquet", table_payload)
+        return buffer.getvalue()
+
+    def _mark_processing(self, task: WorkflowRunArchiveDownloadTask) -> WorkflowRunArchiveDownloadTask:
+        now = datetime.datetime.now(datetime.UTC)
+        processing_task = task.model_copy(
+            update={
+                "status": WorkflowRunArchiveDownloadStatus.PROCESSING,
+                "error": None,
+                "updated_at": now,
+                "started_at": task.started_at or now,
+            }
+        )
+        self.cache.save(processing_task)
+        return processing_task
+
+    def _mark_ready(
+        self,
+        task: WorkflowRunArchiveDownloadTask,
+        *,
+        storage_key: str,
+        file_size_bytes: int,
+    ) -> WorkflowRunArchiveDownloadTask:
+        now = datetime.datetime.now(datetime.UTC)
+        ready_task = task.model_copy(
+            update={
+                "status": WorkflowRunArchiveDownloadStatus.READY,
+                "file_name": build_archive_download_file_name(task),
+                "storage_key": storage_key,
+                "file_size_bytes": file_size_bytes,
+                "error": None,
+                "updated_at": now,
+                "finished_at": now,
+            }
+        )
+        self.cache.save(ready_task)
+        return ready_task
+
+    def _mark_failed(self, task: WorkflowRunArchiveDownloadTask, *, error: str) -> WorkflowRunArchiveDownloadTask:
+        now = datetime.datetime.now(datetime.UTC)
+        failed_task = task.model_copy(
+            update={
+                "status": WorkflowRunArchiveDownloadStatus.FAILED,
+                "error": error,
+                "updated_at": now,
+                "finished_at": now,
+            }
+        )
+        self.cache.save(failed_task)
+        return failed_task
+
+
+def build_archive_download_file_name(task: WorkflowRunArchiveDownloadTask) -> str:
+    """Return the browser download filename for one monthly archive."""
+    return f"workflow-run-logs-{task.year:04d}-{task.month:02d}.zip"
+
+
+def build_archive_download_storage_key(task: WorkflowRunArchiveDownloadTask) -> str:
+    """Return the deterministic object-store key for a prepared download ZIP."""
+    return (
+        f"{ARCHIVE_DOWNLOAD_ROOT_PREFIX}tenant_prefix={task.tenant_id[0].lower()}/tenant_id={task.tenant_id}/"
+        f"year={task.year:04d}/month={task.month:02d}/{task.download_id}.zip"
+    )
+
+
+def _list_task_bundles(session: Session, task: WorkflowRunArchiveDownloadTask) -> list[WorkflowRunArchiveBundle]:
+    stmt = (
+        select(WorkflowRunArchiveBundle)
+        .where(
+            WorkflowRunArchiveBundle.tenant_id == task.tenant_id,
+            WorkflowRunArchiveBundle.year == task.year,
+            WorkflowRunArchiveBundle.month == task.month,
+        )
+        .order_by(WorkflowRunArchiveBundle.shard, WorkflowRunArchiveBundle.bundle_id)
+    )
+    indexed_bundles = list(session.scalars(stmt))
+    if task.bundle_refs:
+        requested_refs = [(ref.shard, ref.bundle_id) for ref in task.bundle_refs]
+    else:
+        requested_bundle_ids = set(task.bundle_ids)
+        requested_refs = [
+            (bundle.shard, bundle.bundle_id)
+            for bundle in indexed_bundles
+            if bundle.bundle_id in requested_bundle_ids
+        ]
+
+    bundle_by_ref = {(bundle.shard, bundle.bundle_id): bundle for bundle in indexed_bundles}
+    missing_refs = [ref for ref in requested_refs if ref not in bundle_by_ref]
+    if missing_refs:
+        raise ValueError(f"archive bundle index is missing requested bundles: {missing_refs}")
+
+    bundles = [bundle_by_ref[ref] for ref in requested_refs]
+    if len(bundles) != task.bundle_count:
+        raise ValueError(f"archive bundle count changed: expected={task.bundle_count}, actual={len(bundles)}")
+
+    download_id = build_archive_download_id(
+        tenant_id=task.tenant_id,
+        year=task.year,
+        month=task.month,
+        bundle_refs=requested_refs,
+    )
+    if download_id != task.download_id:
+        raise ValueError("archive download id no longer matches indexed bundle set")
+
+    return bundles
+
+
+def _build_archive_bundle_object_prefix(
+    task: WorkflowRunArchiveDownloadTask,
+    bundle: WorkflowRunArchiveBundle,
+) -> str:
+    return (
+        f"{ARCHIVE_BUNDLE_ROOT_PREFIX}tenant_prefix={task.tenant_id[0].lower()}/tenant_id={task.tenant_id}/"
+        f"year={task.year:04d}/month={task.month:02d}/shard={bundle.shard}/bundle={bundle.bundle_id}"
+    )
+
+
+def _load_and_validate_manifest(
+    storage: ArchiveStorage,
+    task: WorkflowRunArchiveDownloadTask,
+    bundle: WorkflowRunArchiveBundle,
+    object_prefix: str,
+) -> tuple[bytes, ArchiveBundleManifest]:
+    manifest_key = f"{object_prefix}/{ARCHIVE_BUNDLE_MANIFEST_NAME}"
+    manifest_data = storage.get_object(manifest_key)
+    manifest = decode_archive_bundle_manifest(manifest_data)
+    _validate_manifest(task=task, bundle=bundle, manifest=manifest, object_prefix=object_prefix)
+    return manifest_data, manifest
+
+
+def _validate_manifest(
+    *,
+    task: WorkflowRunArchiveDownloadTask,
+    bundle: WorkflowRunArchiveBundle,
+    manifest: ArchiveBundleManifest,
+    object_prefix: str,
+) -> None:
+    if manifest["schema_version"] != ARCHIVE_BUNDLE_SCHEMA_VERSION:
+        raise ValueError(f"unsupported archive bundle schema version: {manifest['schema_version']}")
+    if manifest["archive_format"] != ARCHIVE_BUNDLE_FORMAT:
+        raise ValueError(f"unsupported archive bundle format: {manifest['archive_format']}")
+    expected_values = {
+        "tenant_id": task.tenant_id,
+        "year": task.year,
+        "month": task.month,
+        "shard": bundle.shard,
+        "bundle_id": bundle.bundle_id,
+        "object_prefix": object_prefix,
+    }
+    for key, expected_value in expected_values.items():
+        if manifest[key] != expected_value:
+            raise ValueError(f"manifest {key} mismatch: expected={expected_value}, actual={manifest[key]}")
+    if not manifest["tables"]:
+        raise ValueError("manifest tables must not be empty")
+    for table_name, raw_entry in manifest["tables"].items():
+        entry = cast(ArchiveBundleTableManifestEntry, raw_entry)
+        expected_object_key = f"{object_prefix}/{table_name}.parquet"
+        if entry["object_key"] != expected_object_key:
+            raise ValueError(
+                f"manifest object_key mismatch for {table_name}: "
+                f"expected={expected_object_key}, actual={entry['object_key']}"
+            )
+
+
+def _validate_table_payload(
+    *,
+    object_key: str,
+    entry: ArchiveBundleTableManifestEntry,
+    payload: bytes,
+) -> None:
+    if len(payload) != entry["size_bytes"]:
+        raise ValueError(f"archive object size mismatch for {object_key}")
+    checksum = hashlib.md5(payload).hexdigest()
+    if checksum != entry["checksum"]:
+        raise ValueError(f"archive object checksum mismatch for {object_key}")

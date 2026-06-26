@@ -1,0 +1,217 @@
+import datetime
+import hashlib
+import io
+import json
+import zipfile
+from types import SimpleNamespace
+from typing import cast
+
+from sqlalchemy.orm import Session, sessionmaker
+
+from libs.archive_storage import ArchiveStorage
+from models.workflow import WorkflowRunArchiveBundle
+from services.retention.workflow_run.archive_bundle_index import ARCHIVE_BUNDLE_ROOT_PREFIX, ArchiveBundleManifest
+from services.retention.workflow_run.archive_download_preparation import (
+    WorkflowRunArchiveDownloadPreparer,
+    build_archive_download_storage_key,
+)
+from services.retention.workflow_run.archive_download_task_cache import (
+    WorkflowRunArchiveDownloadStatus,
+    WorkflowRunArchiveDownloadTask,
+    WorkflowRunArchiveDownloadTaskCache,
+    build_archive_download_id,
+    build_pending_archive_download_task,
+)
+from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
+
+TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
+BUNDLE_ID = "bundle-a"
+SHARD = "00-of-01"
+OBJECT_PREFIX = (
+    f"{ARCHIVE_BUNDLE_ROOT_PREFIX}tenant_prefix=1/tenant_id={TENANT_ID}/"
+    f"year=2025/month=03/shard={SHARD}/bundle={BUNDLE_ID}"
+)
+MANIFEST_KEY = f"{OBJECT_PREFIX}/manifest.json"
+
+
+class FakeArchiveStorage:
+    objects: dict[str, bytes]
+    put_objects: dict[str, bytes]
+
+    def __init__(self, objects: dict[str, bytes]) -> None:
+        self.objects = dict(objects)
+        self.put_objects = {}
+
+    def get_object(self, key: str) -> bytes:
+        return self.objects[key]
+
+    def put_object(self, key: str, data: bytes) -> str:
+        self.put_objects[key] = data
+        return hashlib.md5(data).hexdigest()
+
+
+class FakeTaskCache:
+    task: WorkflowRunArchiveDownloadTask | None
+    saved_tasks: list[WorkflowRunArchiveDownloadTask]
+
+    def __init__(self, task: WorkflowRunArchiveDownloadTask | None) -> None:
+        self.task = task
+        self.saved_tasks = []
+
+    def get(self, *, tenant_id: str, download_id: str) -> WorkflowRunArchiveDownloadTask | None:
+        if self.task and self.task.tenant_id == tenant_id and self.task.download_id == download_id:
+            return self.task
+        return None
+
+    def save(self, task: WorkflowRunArchiveDownloadTask) -> None:
+        self.task = task
+        self.saved_tasks.append(task)
+
+
+class FakeSessionContext:
+    bundles: list[WorkflowRunArchiveBundle]
+
+    def __init__(self, bundles: list[WorkflowRunArchiveBundle]) -> None:
+        self.bundles = bundles
+
+    def __enter__(self) -> "FakeSessionContext":
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+        return None
+
+    def scalars(self, stmt: object) -> list[WorkflowRunArchiveBundle]:
+        return self.bundles
+
+
+class FakeSessionFactory:
+    bundles: list[WorkflowRunArchiveBundle]
+
+    def __init__(self, bundles: list[WorkflowRunArchiveBundle]) -> None:
+        self.bundles = bundles
+
+    def __call__(self) -> FakeSessionContext:
+        return FakeSessionContext(self.bundles)
+
+
+def _bundle() -> WorkflowRunArchiveBundle:
+    return cast(WorkflowRunArchiveBundle, SimpleNamespace(shard=SHARD, bundle_id=BUNDLE_ID))
+
+
+def _task() -> WorkflowRunArchiveDownloadTask:
+    return build_pending_archive_download_task(
+        tenant_id=TENANT_ID,
+        requested_by="account-1",
+        year=2025,
+        month=3,
+        bundle_ids=[BUNDLE_ID],
+        bundle_refs=[(SHARD, BUNDLE_ID)],
+        archive_bytes=1024,
+        download_id=build_archive_download_id(
+            tenant_id=TENANT_ID,
+            year=2025,
+            month=3,
+            bundle_refs=[(SHARD, BUNDLE_ID)],
+        ),
+        now=datetime.datetime(2026, 6, 25, 8, 0, tzinfo=datetime.UTC),
+    )
+
+
+def _manifest_bytes(table_payloads: dict[str, bytes]) -> bytes:
+    manifest = ArchiveBundleManifest(
+        schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
+        archive_format=ARCHIVE_BUNDLE_FORMAT,
+        tenant_id=TENANT_ID,
+        tenant_prefix="1",
+        year=2025,
+        month=3,
+        shard=SHARD,
+        bundle_id=BUNDLE_ID,
+        object_prefix=OBJECT_PREFIX,
+        workflow_run_count=2,
+        workflow_node_execution_count=0,
+        min_created_at="2025-03-01T00:00:00+00:00",
+        max_created_at="2025-03-02T00:00:00+00:00",
+        min_run_id="run-a",
+        max_run_id="run-b",
+        archived_at="2026-06-25T08:00:00+00:00",
+        tables={
+            table_name: {
+                "row_count": 1,
+                "checksum": hashlib.md5(payload).hexdigest(),
+                "size_bytes": len(payload),
+                "object_key": f"{OBJECT_PREFIX}/{table_name}.parquet",
+            }
+            for table_name, payload in table_payloads.items()
+        },
+        run_ids=["run-a", "run-b"],
+    )
+    return json.dumps(manifest).encode("utf-8")
+
+
+def _preparer(
+    *,
+    task: WorkflowRunArchiveDownloadTask,
+    storage: FakeArchiveStorage,
+    cache: FakeTaskCache,
+) -> WorkflowRunArchiveDownloadPreparer:
+    return WorkflowRunArchiveDownloadPreparer(
+        storage=cast(ArchiveStorage, storage),
+        cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
+        session_factory=cast(sessionmaker[Session], FakeSessionFactory([_bundle()])),
+    )
+
+
+def test_prepare_workflow_run_archive_download_builds_zip_and_marks_ready() -> None:
+    task = _task()
+    table_payloads = {
+        "workflow_app_logs": b"app logs parquet",
+        "workflow_runs": b"runs parquet",
+    }
+    storage = FakeArchiveStorage(
+        {
+            MANIFEST_KEY: _manifest_bytes(table_payloads),
+            **{f"{OBJECT_PREFIX}/{table}.parquet": payload for table, payload in table_payloads.items()},
+        }
+    )
+    cache = FakeTaskCache(task)
+    preparer = _preparer(task=task, storage=storage, cache=cache)
+
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.READY
+    assert result.storage_key == build_archive_download_storage_key(task)
+    assert result.file_name == "workflow-run-logs-2025-03.zip"
+    assert cache.saved_tasks[0].status == WorkflowRunArchiveDownloadStatus.PROCESSING
+    assert cache.saved_tasks[-1].status == WorkflowRunArchiveDownloadStatus.READY
+
+    archive_payload = storage.put_objects[result.storage_key]
+    with zipfile.ZipFile(io.BytesIO(archive_payload)) as archive:
+        names = set(archive.namelist())
+        assert f"workflow-run-logs-2025-03/manifests/{SHARD}-{BUNDLE_ID}.json" in names
+        assert f"workflow-run-logs-2025-03/workflow_runs/{SHARD}-{BUNDLE_ID}.parquet" in names
+        assert f"workflow-run-logs-2025-03/workflow_app_logs/{SHARD}-{BUNDLE_ID}.parquet" in names
+        assert archive.read(f"workflow-run-logs-2025-03/workflow_runs/{SHARD}-{BUNDLE_ID}.parquet") == b"runs parquet"
+
+
+def test_prepare_workflow_run_archive_download_marks_failed_on_checksum_mismatch() -> None:
+    task = _task()
+    table_payloads = {"workflow_runs": b"runs parquet"}
+    manifest_data = json.loads(_manifest_bytes(table_payloads).decode("utf-8"))
+    manifest_data["tables"]["workflow_runs"]["checksum"] = "bad-checksum"
+    storage = FakeArchiveStorage(
+        {
+            MANIFEST_KEY: json.dumps(manifest_data).encode("utf-8"),
+            f"{OBJECT_PREFIX}/workflow_runs.parquet": table_payloads["workflow_runs"],
+        }
+    )
+    cache = FakeTaskCache(task)
+    preparer = _preparer(task=task, storage=storage, cache=cache)
+
+    result = preparer.prepare(tenant_id=TENANT_ID, download_id=task.download_id)
+
+    assert result is not None
+    assert result.status == WorkflowRunArchiveDownloadStatus.FAILED
+    assert "checksum mismatch" in (result.error or "")
+    assert storage.put_objects == {}

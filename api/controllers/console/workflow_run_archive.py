@@ -1,10 +1,12 @@
 import datetime
 from http import HTTPStatus
 
+from flask import redirect
 from flask_restx import Resource
 from pydantic import BaseModel, Field
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Conflict, NotFound
 
+from controllers.common.fields import RedirectResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
@@ -17,15 +19,19 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
+from libs.archive_storage import get_archive_storage
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
+from services.retention.workflow_run.archive_download_preparation import ARCHIVE_DOWNLOAD_MIME_TYPE
 from services.retention.workflow_run.archive_download_task_cache import (
     WorkflowRunArchiveDownloadStatus,
 )
 from services.retention.workflow_run.archive_log_service import (
+    WorkflowRunArchiveDownloadNotReadyError,
     WorkflowRunArchiveDownloadTaskNotFoundError,
     WorkflowRunArchiveNotFoundError,
     create_workflow_run_archive_download_task,
+    get_ready_workflow_run_archive_download_task,
     get_workflow_run_archive_download_task,
     list_workflow_run_archives,
 )
@@ -84,6 +90,7 @@ register_response_schema_models(
     WorkflowRunArchiveMonthResponse,
     WorkflowRunArchiveListResponse,
     WorkflowRunArchiveDownloadTaskResponse,
+    RedirectResponse,
 )
 
 
@@ -93,6 +100,13 @@ def _current_ids() -> tuple[str, str]:
     if not current_tenant_id:
         raise NotFound("Current workspace not found")
     return current_tenant_id, current_user.id
+
+
+def _presigned_url_expires_in(expires_at: datetime.datetime) -> int:
+    """Keep the storage URL no longer-lived than the Redis task and cap it for browser downloads."""
+    expires_at_utc = expires_at if expires_at.tzinfo else expires_at.replace(tzinfo=datetime.UTC)
+    remaining_seconds = int((expires_at_utc - datetime.datetime.now(datetime.UTC)).total_seconds())
+    return max(1, min(3600, remaining_seconds))
 
 
 @console_ns.route("/workflow-run-archives")
@@ -164,3 +178,39 @@ class WorkflowRunArchiveDownloadApi(Resource):
         except WorkflowRunArchiveDownloadTaskNotFoundError as exc:
             raise NotFound(str(exc)) from exc
         return dump_response(WorkflowRunArchiveDownloadTaskResponse, task)
+
+
+@console_ns.route("/workflow-run-archives/downloads/<string:download_id>/file")
+class WorkflowRunArchiveDownloadFileApi(Resource):
+    @console_ns.doc("download_workflow_run_archive_file")
+    @console_ns.doc(description="Redirect to a prepared workflow-run archive ZIP file")
+    @console_ns.response(
+        302,
+        "Redirect to pre-signed archive storage URL",
+        console_ns.models[RedirectResponse.__name__],
+    )
+    @console_ns.response(409, "Download task is not ready")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @is_admin_or_owner_required
+    @rbac_permission_required(
+        RBACResourceScope.WORKSPACE, RBACPermission.WORKSPACE_ROLE_MANAGE, resource_required=False
+    )
+    def get(self, download_id: str):
+        tenant_id, _ = _current_ids()
+        try:
+            task = get_ready_workflow_run_archive_download_task(tenant_id=tenant_id, download_id=download_id)
+        except WorkflowRunArchiveDownloadTaskNotFoundError as exc:
+            raise NotFound(str(exc)) from exc
+        except WorkflowRunArchiveDownloadNotReadyError as exc:
+            raise Conflict(str(exc)) from exc
+
+        storage = get_archive_storage()
+        presigned_url = storage.generate_presigned_url(
+            task.storage_key,
+            expires_in=_presigned_url_expires_in(task.expires_at),
+            filename=task.file_name,
+            content_type=ARCHIVE_DOWNLOAD_MIME_TYPE,
+        )
+        return redirect(presigned_url, code=HTTPStatus.FOUND)

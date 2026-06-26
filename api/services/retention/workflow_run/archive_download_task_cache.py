@@ -27,6 +27,15 @@ class WorkflowRunArchiveDownloadStatus(StrEnum):
     FAILED = "failed"
 
 
+class WorkflowRunArchiveBundleRef(BaseModel):
+    """Immutable object-store identity for one bundle included in a download task."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    shard: str
+    bundle_id: str
+
+
 class WorkflowRunArchiveDownloadTask(BaseModel):
     """Temporary Redis payload for a monthly archive download request."""
 
@@ -38,6 +47,7 @@ class WorkflowRunArchiveDownloadTask(BaseModel):
     year: int = Field(ge=1)
     month: int = Field(ge=1, le=12)
     bundle_ids: list[str]
+    bundle_refs: list[WorkflowRunArchiveBundleRef] = Field(default_factory=list)
     bundle_count: int = Field(ge=0)
     archive_bytes: int = Field(ge=0)
     status: WorkflowRunArchiveDownloadStatus
@@ -111,6 +121,7 @@ def build_pending_archive_download_task(
     year: int,
     month: int,
     bundle_ids: Sequence[str],
+    bundle_refs: Sequence[tuple[str, str]] = (),
     archive_bytes: int,
     download_id: str,
     ttl_seconds: int = DEFAULT_ARCHIVE_DOWNLOAD_TASK_TTL_SECONDS,
@@ -121,6 +132,9 @@ def build_pending_archive_download_task(
     if created_at.tzinfo is None:
         created_at = created_at.replace(tzinfo=datetime.UTC)
     normalized_bundle_ids = list(bundle_ids)
+    normalized_bundle_refs = [
+        WorkflowRunArchiveBundleRef(shard=shard, bundle_id=bundle_id) for shard, bundle_id in bundle_refs
+    ]
     return WorkflowRunArchiveDownloadTask(
         download_id=download_id,
         tenant_id=tenant_id,
@@ -128,6 +142,7 @@ def build_pending_archive_download_task(
         year=year,
         month=month,
         bundle_ids=normalized_bundle_ids,
+        bundle_refs=normalized_bundle_refs,
         bundle_count=len(normalized_bundle_ids),
         archive_bytes=archive_bytes,
         status=WorkflowRunArchiveDownloadStatus.PENDING,
