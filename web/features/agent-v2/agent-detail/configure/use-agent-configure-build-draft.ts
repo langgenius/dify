@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { consoleQuery } from '@/service/client'
 import { agentConfigureConsoleQuery } from './build-draft-query'
+import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
 export type AgentConfigureSoulSource = 'draft' | 'build-draft' | 'view-version'
 
@@ -134,28 +135,16 @@ export function useAgentConfigureBuildDraftActions({
       },
     },
   })
-  const checkoutBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.checkout.post.mutationOptions())
   const applyBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions())
   const discardBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions())
-  const { mutateAsync: checkoutBuildDraft } = checkoutBuildDraftMutation
   const { mutateAsync: applyBuildDraftRequest, isPending: isApplyingBuildDraft } = applyBuildDraftMutation
   const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } = discardBuildDraftMutation
-
-  const prepareBuildDraftBeforeRun = useCallback(async () => {
-    if (!isActive)
-      await saveDraft()
-
-    const buildDraft = await checkoutBuildDraft({
-      params: {
-        agent_id: agentId,
-      },
-      body: {
-        force: false,
-      },
-    })
-    queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraft)
-    setSoulSourceOverride('build-draft')
-  }, [agentId, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isActive, queryClient, saveDraft, setSoulSourceOverride])
+  const { prepareBuildDraftBeforeRun } = usePrepareAgentBuildDraftBeforeRun({
+    agentId,
+    isBuildDraftActive: isActive,
+    saveDraft,
+    setSoulSourceOverride,
+  })
 
   const refreshBuildDraftAfterBuildChat = useCallback((onRefreshed?: () => void) => {
     if (buildDraftRefreshTimerRef.current)

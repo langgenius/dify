@@ -97,6 +97,11 @@ vi.mock('@/service/client', () => ({
             },
           },
         },
+        publish: {
+          post: {
+            mutationOptions: () => ({ mutationFn: vi.fn() }),
+          },
+        },
         composer: {
           get: {
             queryOptions: () => ({ queryKey: ['composer'] }),

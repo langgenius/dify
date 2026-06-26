@@ -26,6 +26,7 @@ import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/c
 import { useAgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/use-working-directory-panel'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from '@/features/agent-v2/agent-detail/configure/components/workspace'
 import { useAgentPreviewSoulConfig } from '@/features/agent-v2/agent-detail/configure/hooks'
+import { usePrepareAgentBuildDraftBeforeRun } from '@/features/agent-v2/agent-detail/configure/use-agent-build-draft-run'
 import { consoleQuery } from '@/service/client'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
@@ -153,6 +154,11 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     autoSaveEnabled: false,
     enabled: open && !!agentSoulConfig,
   })
+  const buildDraftRun = usePrepareAgentBuildDraftBeforeRun({
+    agentId,
+    isBuildDraftActive: false,
+    saveDraft,
+  })
   const previewAgentSoulConfig = useAgentPreviewSoulConfig(agentSoulConfig as AgentSoulConfig | undefined)
 
   useHydrateAgentSoulConfigDraft({
@@ -267,6 +273,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               draftType="debug_build"
               onClearChatListChange={setClearChatList}
               onConversationIdChange={setConversationId}
+              onSaveDraftBeforeRun={buildDraftRun.prepareBuildDraftBeforeRun}
             />
           )}
         />
