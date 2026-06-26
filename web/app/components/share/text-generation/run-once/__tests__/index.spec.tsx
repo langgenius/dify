@@ -296,6 +296,36 @@ describe('RunOnce', () => {
       expect(screen.getByText('File Input'))!.toBeInTheDocument()
     })
 
+    it('should initialize hidden single file input with its default file', async () => {
+      const defaultFile = {
+        type: 'document',
+        transfer_method: TransferMethod.local_file,
+        upload_file_id: 'upload-1',
+        url: '',
+      }
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'fileInput',
+            name: 'File Input',
+            type: 'file',
+            hide: true,
+            default: defaultFile,
+          }),
+        ],
+      }
+
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          fileInput: defaultFile,
+        })
+      })
+      expect(screen.queryByText('File Input'))!.not.toBeInTheDocument()
+    })
+
     it('should render file uploader for file-list input', async () => {
       const promptConfig: PromptConfig = {
         prompt_template: 'template',
@@ -314,6 +344,38 @@ describe('RunOnce', () => {
         })
       })
       expect(screen.getByText('File List Input'))!.toBeInTheDocument()
+    })
+
+    it('should initialize hidden file-list input with its default files', async () => {
+      const defaultFiles = [
+        {
+          type: 'document',
+          transfer_method: TransferMethod.local_file,
+          upload_file_id: 'upload-1',
+          url: '',
+        },
+      ]
+      const promptConfig: PromptConfig = {
+        prompt_template: 'template',
+        prompt_variables: [
+          createPromptVariable({
+            key: 'fileListInput',
+            name: 'File List Input',
+            type: 'file-list',
+            hide: true,
+            default: defaultFiles,
+          }),
+        ],
+      }
+
+      const { onInputsChange } = setup({ promptConfig, visionConfig: { ...baseVisionConfig, enabled: false } })
+
+      await waitFor(() => {
+        expect(onInputsChange).toHaveBeenCalledWith({
+          fileListInput: defaultFiles,
+        })
+      })
+      expect(screen.queryByText('File List Input'))!.not.toBeInTheDocument()
     })
   })
 
