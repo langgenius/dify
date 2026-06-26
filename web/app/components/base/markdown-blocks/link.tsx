@@ -36,6 +36,10 @@ const Link = ({ node, children, ...props }: any) => {
     if (!href || !isValidUrl(href))
       return <span>{children}</span>
 
+    // Handle mailto: links without target="_blank" to allow email client to open directly
+    if (href.toString().startsWith('mailto:'))
+      return <a href={href} className={commonClassName}>{children}</a>
+
     return <a href={href} target="_blank" rel="noopener noreferrer" className={commonClassName}>{children || 'Download'}</a>
   }
 }
