@@ -387,6 +387,7 @@ def test_save_agent_app_composer_creates_agent_when_missing(monkeypatch: pytest.
     assert result == {"loaded": True}
     assert fake_session.added[0].name == "Analyst"
     assert fake_session.added[0].active_config_snapshot_id is None
+    assert fake_session.added[0].active_config_is_published is False
     assert fake_session.commits == 1
 
 
@@ -434,7 +435,12 @@ def test_save_agent_app_composer_rejects_version_save_strategy():
 
 
 def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.MonkeyPatch):
-    agent = SimpleNamespace(id="agent-1", active_config_snapshot_id="version-1", updated_by=None)
+    agent = SimpleNamespace(
+        id="agent-1",
+        active_config_snapshot_id="version-1",
+        active_config_is_published=True,
+        updated_by=None,
+    )
     fake_session = FakeSession(scalar=[agent])
     saved = {}
 
@@ -462,6 +468,7 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
     assert result == {"loaded": True}
     assert saved["draft_type"] == AgentConfigDraftType.DRAFT
     assert saved["agent_soul"].model_dump(mode="json") == _agent_soul_with_model().model_dump(mode="json")
+    assert agent.active_config_is_published is False
     assert fake_session._scalar == []
     assert fake_session.commits == 1
 
@@ -514,6 +521,7 @@ def test_publish_agent_app_draft_creates_published_snapshot(monkeypatch: pytest.
     assert created["previous_snapshot_id"] == "version-1"
     assert agent.active_config_snapshot_id == "version-2"
     assert agent.active_config_has_model is True
+    assert agent.active_config_is_published is True
     assert fake_session.commits == 1
 
 
@@ -528,6 +536,7 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id="version-1",
+        active_config_is_published=True,
     )
     normal_draft = AgentConfigDraft(
         tenant_id="tenant-1",
@@ -568,6 +577,7 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
     assert applied["result"] == "success"
     assert applied["draft"]["id"] == normal_draft.id
     assert normal_draft.config_snapshot_dict == build_draft.config_snapshot_dict
+    assert agent.active_config_is_published is False
     assert fake_session.deleted == [build_draft]
     assert fake_session.commits == 1
 
@@ -1680,7 +1690,11 @@ def test_composer_current_version_and_error_paths(monkeypatch: pytest.MonkeyPatc
         config_snapshot='{"prompt":{"system_prompt":"old"}}',
     )
     monkeypatch.setattr(AgentComposerService, "_require_version", lambda **kwargs: version)
-    monkeypatch.setattr(AgentComposerService, "_require_agent", lambda **kwargs: SimpleNamespace(updated_by=None))
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_require_agent",
+        lambda **kwargs: SimpleNamespace(updated_by=None, active_config_is_published=False),
+    )
 
     result = AgentComposerService._save_to_current_version(
         tenant_id="tenant-1", account_id="account-1", binding=binding, payload=payload
@@ -1730,6 +1744,7 @@ def test_roster_list_and_invite_options(monkeypatch: pytest.MonkeyPatch):
     version.created_at = version_created_at
     agent.active_config_snapshot_id = "version-1"
     agent.active_config_has_model = True
+    agent.active_config_is_published = True
     unconfigured_agent = Agent(
         id="agent-2",
         tenant_id="tenant-1",
@@ -1816,7 +1831,7 @@ def test_invite_options_uses_db_filtered_pagination(monkeypatch: pytest.MonkeyPa
     assert [item["id"] for item in result["data"]] == ["agent-2"]
 
 
-def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
+def test_active_config_is_published_flags_use_stored_agent_state():
     agent = Agent(
         id="agent-1",
         tenant_id="tenant-1",
@@ -1827,6 +1842,7 @@ def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id="version-1",
+        active_config_is_published=True,
     )
     draft_agent = Agent(
         id="agent-2",
@@ -1838,20 +1854,27 @@ def test_active_config_is_published_flags_handle_matching_and_empty_snapshots():
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id=None,
+        active_config_is_published=True,
     )
-    published_draft = AgentConfigDraft(
+    dirty_agent = Agent(
+        id="agent-3",
         tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=AgentConfigDraftType.DRAFT,
-        draft_owner_key="",
-        base_snapshot_id="version-1",
-        config_snapshot=AgentSoulConfig(),
+        name="Dirty",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-3",
+        active_config_is_published=False,
     )
-    service = AgentRosterService(FakeSession(scalars=[["agent-1"], [published_draft], ["agent-1"], [published_draft]]))
+    service = AgentRosterService(FakeSession())
 
-    flags = service.load_active_config_is_published_by_agent_id(tenant_id="tenant-1", agents=[agent, draft_agent])
+    flags = service.load_active_config_is_published_by_agent_id(
+        tenant_id="tenant-1", agents=[agent, draft_agent, dirty_agent]
+    )
 
-    assert flags == {"agent-1": True, "agent-2": False}
+    assert flags == {"agent-1": True, "agent-2": False, "agent-3": False}
     assert service.active_config_is_published(tenant_id="tenant-1", agent=agent) is True
     assert AgentRosterService(FakeSession()).load_active_config_is_published_by_agent_id(
         tenant_id="tenant-1",
@@ -2298,6 +2321,7 @@ def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pyte
         source=AgentSource.AGENT_APP,
         status=AgentStatus.ACTIVE,
         active_config_snapshot_id="version-4",
+        active_config_is_published=True,
     )
     version = AgentConfigSnapshot(
         id="version-2",
@@ -2324,6 +2348,7 @@ def test_restore_roster_agent_version_switches_active_snapshot(monkeypatch: pyte
         "restored_version_id": "version-2",
     }
     assert agent.active_config_snapshot_id == "version-4"
+    assert agent.active_config_is_published is False
     assert agent.updated_by == "account-1"
     assert fake_session.commits == 1
     draft = fake_session.added[0]

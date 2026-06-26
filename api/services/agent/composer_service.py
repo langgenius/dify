@@ -419,6 +419,7 @@ class AgentComposerService:
             account_id_for_audit=account_id,
         )
         agent.updated_by = account_id
+        agent.active_config_is_published = False
 
         db.session.commit()
         state = cls.load_agent_composer(tenant_id=tenant_id, agent_id=agent.id)
@@ -464,6 +465,7 @@ class AgentComposerService:
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.active_config_is_published = True
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
@@ -564,6 +566,8 @@ class AgentComposerService:
             account_id_for_audit=account_id,
             base_snapshot_id=build_draft.base_snapshot_id,
         )
+        agent.active_config_is_published = False
+        agent.updated_by = account_id
         db.session.delete(build_draft)
         db.session.commit()
         return {"result": "success", "draft": cls._serialize_draft(normal_draft)}
@@ -982,6 +986,7 @@ class AgentComposerService:
                     raise ValueError("Inline workflow agent binding must point to a workflow-only agent")
                 agent.active_config_snapshot_id = version.id
                 agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
+                agent.active_config_is_published = True
                 agent.updated_by = account_id
                 binding.current_snapshot_id = version.id
             binding.updated_by = account_id
@@ -1080,6 +1085,7 @@ class AgentComposerService:
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
+        agent.active_config_is_published = True
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         if payload.node_job is not None:
@@ -1110,6 +1116,7 @@ class AgentComposerService:
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=binding.agent_id)
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(payload.agent_soul)
+        agent.active_config_is_published = True
         agent.updated_by = account_id
         binding.current_snapshot_id = version.id
         binding.updated_by = account_id
@@ -1270,6 +1277,7 @@ class AgentComposerService:
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.active_config_is_published = True
         return agent
 
     @classmethod
@@ -1417,6 +1425,7 @@ class AgentComposerService:
         )
         agent.active_config_snapshot_id = version.id
         agent.active_config_has_model = agent_soul_has_model(agent_soul)
+        agent.active_config_is_published = True
         agent.updated_by = account_id
         return agent
 
@@ -1607,6 +1616,8 @@ class AgentComposerService:
         elif draft.base_snapshot_id is None:
             draft.base_snapshot_id = agent.active_config_snapshot_id
         draft.updated_by = account_id_for_audit
+        if draft_type == AgentConfigDraftType.DRAFT and account_id is None:
+            agent.active_config_is_published = False
         db.session.flush()
         return draft
 
