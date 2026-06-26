@@ -25,12 +25,13 @@ from controllers.openapi._models import (
     AppListRow,
 )
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from controllers.service_api.app.error import AppUnavailableError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from models import App
+from models.enums import AppStatus
 from models.model import AppMode
 from services.account_service import TenantService
 from services.app_service import AppListParams, AppService
@@ -166,7 +167,9 @@ class AppListApi(Resource):
         # an empty set or list means the caller has no accessible apps.
         # End-users bypass RBAC here — their access is controlled by scope upstream.
         apply_rbac_filter = (
-            dify_config.RBAC_ENABLED and auth_data.caller_kind != "end_user" and auth_data.account_id is not None
+            dify_config.RBAC_ENABLED
+            and auth_data.caller_kind != CallerKind.END_USER
+            and auth_data.account_id is not None
         )
         access_filter = AppAccessFilter.unrestricted()
         if apply_rbac_filter:
@@ -203,7 +206,7 @@ class AppListApi(Resource):
             limit=query.limit,
             mode=query.mode.value if query.mode else "all",  # type:ignore
             name=query.name,
-            status="normal",
+            status=AppStatus.NORMAL,
             # Visibility gate pushed into the query — pagination.total stays
             # consistent across pages because invisible rows never count.
             openapi_visible=True,
