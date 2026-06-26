@@ -16,9 +16,9 @@ import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/client'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
+import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../../shared/components/detail-table-styles'
 import { TitleTooltip } from '../../shared/components/title-tooltip'
 import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
-import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../components/detail-table-styles'
 import { DeleteReleaseDialog } from './delete-release-dialog'
 import {
   buildDeployMenuSections,

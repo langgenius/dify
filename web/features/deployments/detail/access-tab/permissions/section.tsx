@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../shared/components/empty-state'
-import { Section } from '../../components/section'
+import { Section } from '../../../shared/components/section'
 import { accessSettingsQueryAtom } from '../state'
 import { EnvironmentPermissionRow } from './environment-permission-row'
 

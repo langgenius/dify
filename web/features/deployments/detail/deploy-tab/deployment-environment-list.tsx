@@ -2,8 +2,6 @@
 
 import type { EnvironmentDeployment } from '@dify/contracts/enterprise/types.gen'
 import { useTranslation } from 'react-i18next'
-import { releaseCommit } from '../../shared/domain/release'
-import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 import {
   DetailTable,
   DetailTableBody,
@@ -13,10 +11,12 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../components/detail-table'
+} from '../../shared/components/detail-table'
 import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../components/detail-table-styles'
+} from '../../shared/components/detail-table-styles'
+import { releaseCommit } from '../../shared/domain/release'
+import { isUndeployedDeploymentRow } from '../../shared/domain/runtime-status'
 import { DeploymentRowActions } from './deployment-row-actions'
 import { DeploymentStatusSummary } from './deployment-status-summary'
 

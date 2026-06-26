@@ -6,7 +6,7 @@ import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitl
 import { toast } from '@langgenius/dify-ui/toast'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useTranslation } from 'react-i18next'
-import { CopyPill } from '../components/endpoint'
+import { CopyPill } from '../../../shared/components/endpoint'
 
 function buildCurlExample(apiUrl: string, token: string) {
   return `curl -X POST '${apiUrl}' \\

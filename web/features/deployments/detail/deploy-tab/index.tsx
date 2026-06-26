@@ -2,8 +2,6 @@
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
-import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import {
   DetailTable,
   DetailTableBody,
@@ -13,10 +11,12 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../components/detail-table'
+} from '../../shared/components/detail-table'
 import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../components/detail-table-styles'
+} from '../../shared/components/detail-table-styles'
+import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
+import { hasRuntimeInstanceDeployment } from '../../shared/domain/runtime-status'
 import { deploymentEnvironmentDeploymentsQueryAtom } from '../state'
 import { DeploymentEnvironmentList } from './deployment-environment-list'
 import { NewDeploymentButton } from './new-deployment-button'

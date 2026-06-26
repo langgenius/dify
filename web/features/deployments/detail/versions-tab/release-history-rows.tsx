@@ -9,11 +9,6 @@ import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/client'
-import { TitleTooltip } from '../../shared/components/title-tooltip'
-import {
-  formatDate,
-  releaseCommit,
-} from '../../shared/domain/release'
 import {
   DetailTable,
   DetailTableBody,
@@ -23,8 +18,13 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../components/detail-table'
-import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../components/detail-table-styles'
+} from '../../shared/components/detail-table'
+import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../shared/components/detail-table-styles'
+import { TitleTooltip } from '../../shared/components/title-tooltip'
+import {
+  formatDate,
+  releaseCommit,
+} from '../../shared/domain/release'
 import { DeployReleaseMenu } from './deploy-release-menu'
 import {
   ReleaseDeploymentsContent,
