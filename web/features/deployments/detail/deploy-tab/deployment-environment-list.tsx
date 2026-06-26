@@ -75,7 +75,6 @@ function CurrentReleaseMobileSummary({ release }: {
 function DeploymentEnvironmentMobileRow({ row }: {
   row: EnvironmentDeployment
 }) {
-  const envId = row.environment.id
   const release = row.currentRelease
 
   return (
@@ -87,7 +86,7 @@ function DeploymentEnvironmentMobileRow({ row }: {
         </div>
         {!isUndeployedDeploymentRow(row) && <CurrentReleaseMobileSummary release={release} />}
         <div className="flex min-w-0 items-center justify-start gap-2">
-          <DeploymentRowActions envId={envId} row={row} />
+          <DeploymentRowActions row={row} />
         </div>
       </div>
     </DetailTableCard>
@@ -114,7 +113,7 @@ function DeploymentEnvironmentDesktopRows({ rows }: {
             </DetailTableCell>
             <DetailTableCell className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions}>
               <div className="flex min-h-8 justify-end">
-                <DeploymentRowActions envId={envId} row={row} />
+                <DeploymentRowActions row={row} />
               </div>
             </DetailTableCell>
           </DetailTableRow>

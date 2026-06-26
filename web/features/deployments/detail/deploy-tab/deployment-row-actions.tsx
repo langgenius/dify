@@ -15,8 +15,7 @@ import { DeploymentErrorDialog } from './deployment-error-dialog'
 import { DeploymentActionsDropdown } from './deployment-row-actions-menu'
 import { UndeployDeploymentDialog } from './undeploy-deployment-dialog'
 
-export function DeploymentRowActions({ envId, row }: {
-  envId: string
+export function DeploymentRowActions({ row }: {
   row: EnvironmentDeployment
 }) {
   const { t } = useTranslation('deployments')
@@ -25,6 +24,7 @@ export function DeploymentRowActions({ envId, row }: {
   const undeployDeployment = useMutation(consoleQuery.enterprise.deploymentService.undeploy.mutationOptions())
   const [showUndeployConfirm, setShowUndeployConfirm] = useState(false)
   const [showErrorDetail, setShowErrorDetail] = useState(false)
+  const envId = row.environment.id
   const isUndeployed = isUndeployedDeploymentRow(row)
   const status = row.status
   const isUndeployRequesting = undeployDeployment.isPending

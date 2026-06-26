@@ -2,7 +2,7 @@ import type { Environment } from '@dify/contracts/enterprise/types.gen'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { deploymentRouteAppInstanceIdAtom } from '../../../../route-state'
-import { ApiKeyGenerateMenu } from '../api-key-generate-menu'
+import { CreateApiKeyAction } from '../create-api-key-action'
 
 const mockMutate = vi.hoisted(() => vi.fn())
 const mockUseAtomValue = vi.hoisted(() => vi.fn())
@@ -41,7 +41,7 @@ function createEnvironment(): Environment {
   } as Environment
 }
 
-describe('ApiKeyGenerateMenu', () => {
+describe('CreateApiKeyAction', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseAtomValue.mockImplementation((atom) => {
@@ -53,7 +53,7 @@ describe('ApiKeyGenerateMenu', () => {
 
   it('should show the required name error when submitting an empty name', () => {
     render(
-      <ApiKeyGenerateMenu
+      <CreateApiKeyAction
         environments={[createEnvironment()]}
         onCreatedToken={vi.fn()}
       />,
@@ -71,7 +71,7 @@ describe('ApiKeyGenerateMenu', () => {
 
   it('should clear the required name error when typing a valid name', () => {
     render(
-      <ApiKeyGenerateMenu
+      <CreateApiKeyAction
         environments={[createEnvironment()]}
         onCreatedToken={vi.fn()}
       />,
@@ -95,7 +95,7 @@ describe('ApiKeyGenerateMenu', () => {
 
   it('should create an api key with the entered name and default environment', () => {
     render(
-      <ApiKeyGenerateMenu
+      <CreateApiKeyAction
         environments={[createEnvironment()]}
         onCreatedToken={vi.fn()}
       />,
@@ -127,7 +127,7 @@ describe('ApiKeyGenerateMenu', () => {
     mockUseAtomValue.mockReturnValue(undefined)
 
     render(
-      <ApiKeyGenerateMenu
+      <CreateApiKeyAction
         environments={[createEnvironment()]}
         onCreatedToken={vi.fn()}
       />,

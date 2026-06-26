@@ -54,11 +54,14 @@ function CurlExample({ apiUrl, token }: {
 }
 
 function CreatedApiTokenDialogContent({ token, apiUrl, onDismiss }: {
-  token: string
+  token?: string
   apiUrl?: string
   onDismiss: () => void
 }) {
   const { t } = useTranslation('deployments')
+
+  if (!token)
+    return null
 
   return (
     <>
@@ -102,13 +105,11 @@ export function CreatedApiTokenDialog({ token, apiUrl, onDismiss }: {
   return (
     <Dialog open={Boolean(token)} onOpenChange={open => !open && onDismiss()} disablePointerDismissal>
       <DialogContent className="w-120 max-w-[calc(100vw-32px)] overflow-hidden p-0">
-        {token && (
-          <CreatedApiTokenDialogContent
-            token={token}
-            apiUrl={apiUrl}
-            onDismiss={onDismiss}
-          />
-        )}
+        <CreatedApiTokenDialogContent
+          token={token}
+          apiUrl={apiUrl}
+          onDismiss={onDismiss}
+        />
       </DialogContent>
     </Dialog>
   )

@@ -103,7 +103,7 @@ describe('DeployReleaseMenu', () => {
 
     render(
       <DeployReleaseMenu
-        releaseId={release.id}
+        release={release}
         releaseRows={[release]}
       />,
     )

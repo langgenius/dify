@@ -39,12 +39,13 @@ type ExportReleaseDslInput = {
   appInstanceName?: string
 }
 
-export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
-  releaseId: string
+export function DeployReleaseMenu({ release, releaseRows, onDeleted }: {
+  release: Release
   releaseRows: Release[]
   onDeleted?: () => void
 }) {
   const { t } = useTranslation('deployments')
+  const releaseId = release.id
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
   const openReleaseMenuId = useAtomValue(deployReleaseMenuOpenReleaseIdAtom)
@@ -64,13 +65,8 @@ export function DeployReleaseMenu({ releaseId, releaseRows, onDeleted }: {
   const environments = (environmentDeploymentsQuery.data?.environmentDeployments ?? [])
     .map(row => row.environment)
   const deploymentRows = environmentDeploymentsQuery.data?.environmentDeployments.filter(row => !isUndeployedDeploymentRow(row)) ?? []
-  const targetRelease = releaseRows.find(release => release.id === releaseId)
   const appInstanceName = appInstanceQuery.data?.appInstance.displayName
 
-  if (!targetRelease)
-    return null
-
-  const release = targetRelease
   const targetReleaseName = release.displayName
   const deleteUsageCount = releaseUsageCount(releaseId, deploymentRows)
   const isCheckingDeleteUsage = open && environmentDeploymentsQuery.isLoading

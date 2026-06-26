@@ -32,19 +32,17 @@ type AccessPermissionDraft = {
   subjects: SelectableAccessSubject[]
 }
 
-type EnvironmentPermissionRowProps = {
-  disabled?: boolean
-  environment: Environment
-  summaryPolicy?: AccessPolicy
-  resolvedSubjects?: Subject[]
-}
-
 export function EnvironmentPermissionRow({
   disabled,
   environment,
   summaryPolicy,
   resolvedSubjects = [],
-}: EnvironmentPermissionRowProps) {
+}: {
+  disabled?: boolean
+  environment: Environment
+  summaryPolicy?: AccessPolicy
+  resolvedSubjects?: Subject[]
+}) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const environmentId = environment.id

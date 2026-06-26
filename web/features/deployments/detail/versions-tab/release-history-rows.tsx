@@ -152,7 +152,7 @@ function ReleaseHistoryMobileRows({ releaseRows, onReleaseDeleted }: {
                 </div>
                 <div className="flex shrink-0 justify-end gap-1">
                   <DeployReleaseMenu
-                    releaseId={releaseId}
+                    release={release}
                     releaseRows={releaseRows}
                     onDeleted={onReleaseDeleted}
                   />
@@ -226,7 +226,7 @@ export function ReleaseHistoryRows({ releaseRows, onReleaseDeleted }: {
                   <DetailTableCell className={RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES.action}>
                     <div className="flex justify-end">
                       <DeployReleaseMenu
-                        releaseId={releaseId}
+                        release={release}
                         releaseRows={releaseRows}
                         onDeleted={onReleaseDeleted}
                       />
