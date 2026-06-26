@@ -22,6 +22,7 @@ from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from extensions.ext_database import db
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
@@ -352,7 +353,7 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     def get(self, current_tenant_id: str, current_user: Account, provider: str):
         if provider != "anthropic":
             raise ValueError(f"provider name {provider} is invalid")
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(db.session, current_user)
         data = BillingService.get_model_provider_payment_link(
             provider_name=provider,
             tenant_id=current_tenant_id,

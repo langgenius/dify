@@ -1116,7 +1116,8 @@ class TestBillingServiceAccountManagement:
         mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
+        mock_db_session.scalar.assert_called_once()
 
     def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
         """Test tenant owner/admin check for admin role."""
@@ -1131,7 +1132,8 @@ class TestBillingServiceAccountManagement:
         mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
+        mock_db_session.scalar.assert_called_once()
 
     def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error for normal user."""
@@ -1147,8 +1149,9 @@ class TestBillingServiceAccountManagement:
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
         assert "Only team owner or team admin can perform this action" in str(exc_info.value)
+        mock_db_session.scalar.assert_called_once()
 
     def test_is_tenant_owner_or_admin_no_join_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error when join not found."""
@@ -1161,8 +1164,9 @@ class TestBillingServiceAccountManagement:
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
         assert "Tenant account join not found" in str(exc_info.value)
+        mock_db_session.scalar.assert_called_once()
 
 
 class TestBillingServiceCacheManagement:

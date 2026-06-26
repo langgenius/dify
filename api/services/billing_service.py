@@ -7,6 +7,7 @@ from typing import Any, Literal, NotRequired, TypedDict
 import httpx
 from pydantic import TypeAdapter
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
@@ -363,10 +364,10 @@ class BillingService:
         return response.json()
 
     @staticmethod
-    def is_tenant_owner_or_admin(current_user: Account):
+    def is_tenant_owner_or_admin(session: Session, current_user: Account):
         tenant_id = current_user.current_tenant_id
 
-        join: TenantAccountJoin | None = db.session.scalar(
+        join: TenantAccountJoin | None = session.scalar(
             select(TenantAccountJoin)
             .where(TenantAccountJoin.tenant_id == tenant_id, TenantAccountJoin.account_id == current_user.id)
             .limit(1)
