@@ -456,7 +456,7 @@ class AgentBackendRunRequestBuilder:
                     name=WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
                     type=PLAIN_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "workflow_node_job"},
-                    config=PromptLayerConfig(prefix=run_input.workflow_node_job_prompt),
+                    config=PromptLayerConfig(user=run_input.workflow_node_job_prompt),
                 ),
                 RunLayerSpec(
                     name=WORKFLOW_USER_PROMPT_LAYER_ID,

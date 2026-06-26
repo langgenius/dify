@@ -70,10 +70,11 @@ from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
-    expand_workflow_variable_markers,
     expand_prompt_mentions,
-    extract_workflow_variable_selectors,
+    extract_workflow_node_output_selectors,
+    normalize_previous_node_output_selector,
     parse_prompt_mentions,
+    workflow_previous_node_output_refs_from_selectors,
 )
 from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
 
@@ -143,9 +144,6 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     _WORKFLOW_USER_PROMPT_FALLBACK = "Use the current workflow context."
     _WORKFLOW_JOB_PROMPT_FALLBACK = "Use the workflow user prompt for this run."
-    _NON_NODE_WORKFLOW_VARIABLE_PREFIXES = frozenset(
-        {"sys", "env", "conversation", "rag", "current", "last_run", "error_message", "$output"}
-    )
 
     def __init__(
         self,
@@ -173,11 +171,8 @@ class WorkflowAgentRuntimeRequestBuilder:
         )
         workflow_task_prompt = self._build_workflow_task_prompt(context, effective_node_job)
         workflow_context_prompt = self._build_workflow_context_prompt(context, effective_node_job)
-        workflow_job_prompt = self._WORKFLOW_JOB_PROMPT_FALLBACK
-        user_prompt = self._build_workflow_user_prompt(
-            workflow_task_prompt=workflow_task_prompt,
-            workflow_context_prompt=workflow_context_prompt,
-        )
+        workflow_job_prompt = workflow_task_prompt or self._WORKFLOW_JOB_PROMPT_FALLBACK
+        user_prompt = workflow_context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tools_layer = self._plugin_tools_builder.build(
@@ -358,46 +353,25 @@ class WorkflowAgentRuntimeRequestBuilder:
         context: WorkflowAgentRuntimeBuildContext,
         node_job: WorkflowNodeJobConfig,
     ) -> str:
-        prompt = expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job))
-        return expand_workflow_variable_markers(
-            prompt,
-            lambda selector: self._resolve_workflow_variable_marker(context.variable_pool, selector),
-        ).strip()
+        del context
+        return expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
 
-    def _build_workflow_user_prompt(
+    def _effective_previous_node_output_refs(
         self,
-        *,
-        workflow_task_prompt: str,
-        workflow_context_prompt: str,
-    ) -> str:
-        sections: list[str] = []
-        if workflow_task_prompt:
-            sections.append("Agent task for this workflow run:\n" + workflow_task_prompt)
-        if workflow_context_prompt:
-            sections.append(workflow_context_prompt)
-        return "\n\n".join(sections) or self._WORKFLOW_USER_PROMPT_FALLBACK
+        node_job: WorkflowNodeJobConfig,
+    ) -> list[WorkflowPreviousNodeOutputRef]:
+        """Derive effective refs from the current frontend task markers.
 
-    def _effective_previous_node_output_refs(self, node_job: WorkflowNodeJobConfig) -> list[WorkflowPreviousNodeOutputRef]:
-        refs = list(node_job.previous_node_output_refs)
-        seen = {
-            tuple(selector)
-            for ref in refs
-            if (selector := self._selector_from_ref(ref)) is not None
-        }
-        for selector in extract_workflow_variable_selectors(node_job.workflow_prompt):
-            if selector[0] in self._NON_NODE_WORKFLOW_VARIABLE_PREFIXES:
-                continue
-            if selector in seen:
-                continue
-            refs.append(
-                WorkflowPreviousNodeOutputRef(
-                    selector=list(selector),
-                    node_id=selector[0],
-                    output=selector[1],
-                )
-            )
-            seen.add(selector)
-        return refs
+        The task text is the source of truth for previous-node context. When
+        the prompt has no frontend markers, stale persisted refs are discarded
+        instead of being carried forward into workflow context.
+        """
+        if not node_job.workflow_prompt:
+            return list(node_job.previous_node_output_refs)
+
+        return workflow_previous_node_output_refs_from_selectors(
+            extract_workflow_node_output_selectors(node_job.workflow_prompt)
+        )
 
     def _resolve_previous_node_outputs(
         self,
@@ -406,7 +380,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
-            selector = self._selector_from_ref(ref)
+            selector = normalize_previous_node_output_selector(ref)
             if not selector:
                 raise WorkflowAgentRuntimeRequestBuildError(
                     "invalid_previous_node_output_ref",
@@ -426,18 +400,6 @@ class WorkflowAgentRuntimeRequestBuilder:
                 }
             )
         return resolved
-
-    @staticmethod
-    def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> list[str] | None:
-        for key in ("selector", "variable_selector", "value_selector"):
-            value = ref.get(key)
-            if isinstance(value, list) and all(isinstance(item, str) for item in value):
-                return value
-        node_id = ref.get("node_id")
-        output_name = ref.get("output") or ref.get("name") or ref.get("variable") or ref.get("key")
-        if isinstance(node_id, str) and isinstance(output_name, str):
-            return [node_id, output_name]
-        return None
 
     @staticmethod
     def _summarize_value(value: Any) -> str:
@@ -478,17 +440,6 @@ class WorkflowAgentRuntimeRequestBuilder:
             return items, changed
 
         return value, False
-
-    @classmethod
-    def _resolve_workflow_variable_marker(
-        cls,
-        variable_pool: VariablePoolReader,
-        selector: tuple[str, ...],
-    ) -> str | None:
-        segment = variable_pool.get(list(selector))
-        if segment is None:
-            return None
-        return cls._summarize_value(getattr(segment, "value", None))
 
     @staticmethod
     def _agent_stub_download_mapping(value: Any) -> dict[str, Any] | None:

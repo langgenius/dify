@@ -11,7 +11,7 @@ from urllib.parse import quote
 
 import pytest
 
-from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
+from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig, WorkflowPreviousNodeOutputRef
 from services.agent.prompt_mentions import (
     MAX_MENTION_REF_ID_LENGTH,
     NODE_JOB_PROMPT_ALLOWED_KINDS,
@@ -19,11 +19,13 @@ from services.agent.prompt_mentions import (
     MentionKind,
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
-    expand_workflow_variable_markers,
     expand_prompt_mentions,
+    extract_workflow_node_output_selectors,
     extract_workflow_variable_selectors,
+    normalize_previous_node_output_selector,
     parse_prompt_mentions,
     scrub_mention_markers,
+    workflow_previous_node_output_refs_from_selectors,
 )
 
 # ── parse ─────────────────────────────────────────────────────────────────────
@@ -105,12 +107,27 @@ def test_extract_workflow_variable_selectors_supports_frontend_agent_task_format
     assert selectors == [("node-1", "output"), ("start", "question")]
 
 
-def test_expand_workflow_variable_markers_replaces_frontend_agent_task_markers():
-    expanded = expand_workflow_variable_markers(
-        "Read {{#node-1.output#}} and {{#start.question#}}",
-        lambda selector: {"node-1.output": "Report body", "start.question": "Tender question"}.get(".".join(selector)),
+def test_extract_workflow_node_output_selectors_supports_current_frontend_markers_only():
+    selectors = extract_workflow_node_output_selectors(
+        "Read {{#node-1.output#}}, {{#sys.query#}}, [§node_output:legacy-node.report:PREV/report§], "
+        "and {{#node-1.output#}} again."
     )
-    assert expanded == "Read Report body and Tender question"
+    assert selectors == [("node-1", "output")]
+
+
+def test_workflow_previous_node_output_refs_from_selectors_materializes_refs():
+    refs = workflow_previous_node_output_refs_from_selectors(
+        [("node-1", "output"), ("node-2", "report", "url")]
+    )
+
+    assert refs == [
+        WorkflowPreviousNodeOutputRef(selector=["node-1", "output"], node_id="node-1", output="output"),
+        WorkflowPreviousNodeOutputRef(
+            selector=["node-2", "report", "url"],
+            node_id="node-2",
+            output="report",
+        ),
+    ]
 
 
 # ── soul resolver ─────────────────────────────────────────────────────────────
@@ -236,6 +253,18 @@ def test_node_job_resolver_matches_ref_by_node_id_and_output_fields():
     expanded = expand_prompt_mentions("[§node_output:n-2.text:LLM/text§]", build_node_job_mention_resolver(node_job))
     # ref has no display name -> degrade to the mention label
     assert expanded == "LLM/text"
+
+
+def test_normalize_previous_node_output_selector_returns_canonical_selector():
+    assert normalize_previous_node_output_selector(
+        WorkflowPreviousNodeOutputRef(selector=["node-1", "report", "url"])
+    ) == ("node-1", "report", "url")
+    assert normalize_previous_node_output_selector(
+        WorkflowPreviousNodeOutputRef(node_id="node-2", output="text")
+    ) == ("node-2", "text")
+    assert normalize_previous_node_output_selector(
+        WorkflowPreviousNodeOutputRef(selector=["node-3", 1])
+    ) is None
 
 
 # ── allowlists ────────────────────────────────────────────────────────────────

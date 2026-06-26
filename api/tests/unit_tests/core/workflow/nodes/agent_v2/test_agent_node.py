@@ -253,6 +253,23 @@ def _node(
     )
 
 
+def test_extract_variable_selector_to_variable_mapping_uses_frontend_agent_task_markers():
+    mapping = DifyAgentNode._extract_variable_selector_to_variable_mapping(
+        graph_config={},
+        node_id="agent-node",
+        node_data={
+            "agent_task": (
+                "Review {{#previous-node.report#}}, ignore {{#sys.query#}}, "
+                "ignore [§node_output:legacy-node.output:LEGACY§], then use {{#previous-node.report#}} again."
+            )
+        },
+    )
+
+    assert mapping == {
+        "agent-node.previous-node.report": ["previous-node", "report"],
+    }
+
+
 def test_agent_node_run_maps_successful_agent_backend_run_to_node_result():
     events = list(_node()._run())
 

@@ -1,30 +1,26 @@
-"""Prompt mention (slash-reference) serialization contract — ENG-616.
+"""Prompt mention and workflow-marker parsing helpers for Agent surfaces.
 
-Slash-menu insertions are stored inline in the plain-string prompt as tokens:
+Slash-menu insertions are stored inline as mention tokens:
 
     [§<kind>:<id>[:<label>]§]
 
-Workflow-node prompts also carry prompt-editor workflow variables as plain Dify
-template markers:
+Those tokens point at Agent-owned config such as Soul tools/knowledge/humans or
+workflow task config such as ``previous_node_output_refs`` / ``declared_outputs``.
+Runtime mention expansion is owned by the run-request builders.
+
+Workflow Agent tasks also carry frontend workflow variable markers:
 
     {{#<node-id>.<output>[.<child>...]#}}
 
-``kind`` is a fixed lowercase word; ``id`` points at an item in the Agent
-runtime context. For prompt-owned entities that means Agent Soul lists such as
-``tools`` / ``knowledge.sets`` / ``human.contacts`` and workflow job lists
-such as ``previous_node_output_refs`` / ``declared_outputs``. For drive-backed
-``skill`` / ``file`` mentions the field stores a URL-encoded drive key and is
-resolved against ``agent_drive_files`` at runtime. ``label`` is an optional
-plain-text fallback only. A single ``:`` separates all three fields; ``label``
-is the trailing remainder and may itself contain ``:``.
+Those frontend markers are a separate path from slash-reference expansion. They
+are parsed here only to derive ``previous_node_output_refs`` from the current
+task text. The markers remain literal in the workflow task prompt, while their
+resolved values appear under the workflow context prompt's ``Previous node
+outputs:`` section. Legacy ``[§node_output:...§]`` mention syntax is not part
+of that derivation path.
 
-The ``[§…§]`` wrapper uses the section sign ``§`` (U+00A7), which never appears
-in Dify template syntax (``{{var}}`` / ``{{#a.b#}}``) nor in normal prompt text,
-so these tokens can never collide with the existing template parsers. Runtime
-expansion (and the final scrub that guarantees no internal marker ever reaches
-the model) is owned by the run-request builders. Frontend output blocks still
-accept a legacy bare ``§output:...§`` form during migrations, so the runtime
-parser accepts that alias too.
+Frontend output blocks still accept a legacy bare ``§output:...§`` form during
+migrations, so the mention parser keeps that alias for output mentions only.
 """
 
 from __future__ import annotations
@@ -81,7 +77,8 @@ MAX_MENTION_LABEL_LENGTH = 255
 ALL_PROVIDER_TOOLS_SUFFIX = "*"
 
 # Per-surface allowlists (design §2.4): the soul prompt may only reference
-# soul-owned entities; the workflow job prompt may only reference run-scoped ones.
+# soul-owned entities; the persisted workflow task prompt may only reference
+# run-scoped ones.
 SOUL_PROMPT_ALLOWED_KINDS = frozenset(
     {
         MentionKind.SKILL,
@@ -93,6 +90,9 @@ SOUL_PROMPT_ALLOWED_KINDS = frozenset(
     }
 )
 NODE_JOB_PROMPT_ALLOWED_KINDS = frozenset({MentionKind.NODE_OUTPUT, MentionKind.OUTPUT, MentionKind.HUMAN})
+WORKFLOW_NODE_OUTPUT_RESERVED_PREFIXES = frozenset(
+    {"sys", "env", "conversation", "rag", "current", "last_run", "error_message", "$output"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +108,6 @@ class PromptMention:
 # Returns the model-readable replacement for a mention, or None when the id does
 # not resolve (the expander then degrades to label/id).
 MentionResolver = Callable[[PromptMention], str | None]
-WorkflowVariableResolver = Callable[[tuple[str, ...]], str | None]
 
 
 def _mention_groups(match: re.Match[str]) -> tuple[str, str, str | None]:
@@ -188,21 +187,36 @@ def extract_workflow_variable_selectors(prompt: str) -> list[tuple[str, ...]]:
     return selectors
 
 
-def expand_workflow_variable_markers(prompt: str, resolver: WorkflowVariableResolver) -> str:
-    """Replace ``{{#node.output#}}`` markers with resolved plain text."""
-    if not prompt:
-        return prompt
+def extract_workflow_node_output_selectors(prompt: str) -> list[tuple[str, ...]]:
+    """Extract previous-node selectors from frontend workflow variable markers.
 
-    def _replace(match: re.Match[str]) -> str:
-        parts = tuple(part.strip() for part in match.group(1).split(".") if part.strip())
-        if len(parts) < 2:
-            return match.group(0)
-        resolved = resolver(parts)
-        if resolved is None or not resolved.strip():
-            return ".".join(parts)
-        return resolved
+    Reserved Dify namespaces such as ``sys`` are excluded because they are not
+    previous nodes.
+    """
+    selectors: list[tuple[str, ...]] = []
+    seen: set[tuple[str, ...]] = set()
+    for selector in extract_workflow_variable_selectors(prompt):
+        if selector[0] in WORKFLOW_NODE_OUTPUT_RESERVED_PREFIXES:
+            continue
+        if selector in seen:
+            continue
+        selectors.append(selector)
+        seen.add(selector)
+    return selectors
 
-    return WORKFLOW_VARIABLE_PATTERN.sub(_replace, prompt)
+
+def workflow_previous_node_output_refs_from_selectors(
+    selectors: list[tuple[str, ...]],
+) -> list[WorkflowPreviousNodeOutputRef]:
+    """Materialize persisted previous-node refs from parsed frontend selectors."""
+    return [
+        WorkflowPreviousNodeOutputRef(
+            selector=list(selector),
+            node_id=selector[0],
+            output=selector[1],
+        )
+        for selector in selectors
+    ]
 
 
 def scrub_mention_markers(text: str) -> str:
@@ -268,14 +282,17 @@ def build_soul_mention_resolver(agent_soul: AgentSoulConfig) -> MentionResolver:
 
 
 def build_node_job_mention_resolver(node_job: WorkflowNodeJobConfig) -> MentionResolver:
-    """Resolve job-surface mentions. ``node_output`` expands to the stored
-    reference name only — values stay in the Workflow context block (design §4.2)."""
+    """Resolve persisted workflow task prompt mentions.
+
+    ``node_output`` expands to the stored reference name only; values stay in
+    the workflow context block for the run-scoped ``user_prompt``.
+    """
 
     def _resolve(mention: PromptMention) -> str | None:
         match mention.kind:
             case MentionKind.NODE_OUTPUT:
                 for ref in node_job.previous_node_output_refs:
-                    selector = _selector_from_ref(ref)
+                    selector = normalize_previous_node_output_selector(ref)
                     if selector and f"{selector[0]}.{selector[1]}" == mention.ref_id:
                         return ref.name or mention.label or mention.ref_id
             case MentionKind.OUTPUT:
@@ -300,14 +317,21 @@ def _resolve_human_contact(contacts: list[AgentHumanContactConfig], ref_id: str)
     return None
 
 
-def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> tuple[str, str] | None:
+def normalize_previous_node_output_selector(ref: WorkflowPreviousNodeOutputRef) -> tuple[str, ...] | None:
+    """Return the canonical previous-node selector for a persisted ref.
+
+    Explicit selector arrays win and must contain at least two string parts. The
+    legacy field form falls back to ``node_id`` plus the first available output
+    field. Callers that only need node/output identity should compare the first
+    two returned items.
+    """
     for candidate in (ref.selector, ref.variable_selector, ref.value_selector):
-        if isinstance(candidate, list) and len(candidate) >= 2:
-            return str(candidate[0]), str(candidate[1])
-    if ref.node_id:
-        output = ref.output or ref.variable or ref.key
-        if output:
-            return ref.node_id, output
+        if isinstance(candidate, list) and len(candidate) >= 2 and all(isinstance(item, str) for item in candidate):
+            return tuple(candidate)
+    node_id = ref.get("node_id")
+    output_name = ref.get("output") or ref.get("name") or ref.get("variable") or ref.get("key")
+    if isinstance(node_id, str) and isinstance(output_name, str):
+        return node_id, output_name
     return None
 
 
@@ -319,15 +343,18 @@ __all__ = [
     "MENTION_PATTERN",
     "NODE_JOB_PROMPT_ALLOWED_KINDS",
     "SOUL_PROMPT_ALLOWED_KINDS",
+    "WORKFLOW_NODE_OUTPUT_RESERVED_PREFIXES",
     "MentionKind",
     "MentionResolver",
     "PromptMention",
     "build_node_job_mention_resolver",
     "build_soul_mention_resolver",
-    "expand_workflow_variable_markers",
     "expand_prompt_mentions",
+    "extract_workflow_node_output_selectors",
     "extract_workflow_variable_selectors",
     "find_malformed_mention_markers",
+    "normalize_previous_node_output_selector",
     "parse_prompt_mentions",
     "scrub_mention_markers",
+    "workflow_previous_node_output_refs_from_selectors",
 ]

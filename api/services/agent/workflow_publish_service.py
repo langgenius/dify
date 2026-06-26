@@ -26,7 +26,10 @@ from models.agent_config_entities import (
 )
 from models.workflow import Workflow
 from services.agent.composer_validator import ComposerConfigValidator
-from services.agent.prompt_mentions import extract_workflow_variable_selectors
+from services.agent.prompt_mentions import (
+    extract_workflow_node_output_selectors,
+    workflow_previous_node_output_refs_from_selectors,
+)
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -42,9 +45,6 @@ class WorkflowAgentPublishService:
     _AGENT_BINDING_KEY = "agent_binding"
     _AGENT_TASK_KEY = "agent_task"
     _AGENT_DECLARED_OUTPUTS_KEY = "agent_declared_outputs"
-    _NON_NODE_WORKFLOW_VARIABLE_PREFIXES = frozenset(
-        {"sys", "env", "conversation", "rag", "current", "last_run", "error_message", "$output"}
-    )
 
     @classmethod
     def project_draft_bindings_to_graph(cls, *, session: Session, draft_workflow: Workflow) -> dict[str, Any]:
@@ -451,22 +451,10 @@ class WorkflowAgentPublishService:
 
     @classmethod
     def _previous_node_output_refs_from_prompt(cls, prompt: str) -> list[WorkflowPreviousNodeOutputRef]:
-        refs: list[WorkflowPreviousNodeOutputRef] = []
-        seen: set[tuple[str, ...]] = set()
-        for selector in extract_workflow_variable_selectors(prompt):
-            if selector[0] in cls._NON_NODE_WORKFLOW_VARIABLE_PREFIXES:
-                continue
-            if selector in seen:
-                continue
-            refs.append(
-                WorkflowPreviousNodeOutputRef(
-                    selector=list(selector),
-                    node_id=selector[0],
-                    output=selector[1],
-                )
-            )
-            seen.add(selector)
-        return refs
+        """Derive persisted refs from the current frontend workflow markers only."""
+        return workflow_previous_node_output_refs_from_selectors(
+            extract_workflow_node_output_selectors(prompt)
+        )
 
     @classmethod
     def copy_agent_node_bindings_to_published(
