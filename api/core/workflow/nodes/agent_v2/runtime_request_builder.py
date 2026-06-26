@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.agent_stub.protocol import AgentStubFileMapping
 from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.drive import (
     DifyDriveLayerConfig,
@@ -33,7 +35,7 @@ from dify_agent.layers.shell import (
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -45,7 +47,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.file import FileTransferMethod
+from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
@@ -380,10 +382,68 @@ class WorkflowAgentRuntimeRequestBuilder:
 
     @staticmethod
     def _summarize_value(value: Any) -> str:
+        prompt_payload, used_download_mapping = WorkflowAgentRuntimeRequestBuilder._resolve_prompt_payload_value(value)
+        if used_download_mapping:
+            return json.dumps(prompt_payload, ensure_ascii=False, separators=(",", ":"))
+
         text = str(value)
         if len(text) > 2000:
             return text[:2000] + "...[truncated]"
         return text
+
+    @classmethod
+    def _resolve_prompt_payload_value(cls, value: Any) -> tuple[Any, bool]:
+        # File-valued workflow context must surface as Agent Stub download
+        # mappings so the model can materialize those inputs with
+        # `dify-agent file download --mapping ...` inside the sandbox.
+        download_mapping = cls._agent_stub_download_mapping(value)
+        if download_mapping is not None:
+            return download_mapping, True
+
+        if isinstance(value, list | tuple):
+            changed = False
+            items: list[Any] = []
+            for item in value:
+                resolved_item, item_changed = cls._resolve_prompt_payload_value(item)
+                items.append(resolved_item)
+                changed = changed or item_changed
+            return items, changed
+
+        if isinstance(value, Mapping):
+            changed = False
+            items: dict[str, Any] = {}
+            for key, item in value.items():
+                resolved_item, item_changed = cls._resolve_prompt_payload_value(item)
+                items[str(key)] = resolved_item
+                changed = changed or item_changed
+            return items, changed
+
+        return value, False
+
+    @staticmethod
+    def _agent_stub_download_mapping(value: Any) -> dict[str, Any] | None:
+        try:
+            if isinstance(value, File):
+                transfer_method = value.transfer_method.value
+                if value.transfer_method == FileTransferMethod.REMOTE_URL:
+                    url = value.remote_url
+                    if not isinstance(url, str) or not url:
+                        return None
+                    mapping = AgentStubFileMapping(transfer_method=transfer_method, url=url)
+                else:
+                    reference = value.reference
+                    if not isinstance(reference, str) or not reference:
+                        return None
+                    mapping = AgentStubFileMapping(transfer_method=transfer_method, reference=reference)
+                return mapping.model_dump(mode="json", exclude_none=True)
+
+            if isinstance(value, Mapping):
+                mapping = AgentStubFileMapping.model_validate(value)
+                return mapping.model_dump(mode="json", exclude_none=True)
+        except ValidationError:
+            return None
+
+        return None
 
     @staticmethod
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:

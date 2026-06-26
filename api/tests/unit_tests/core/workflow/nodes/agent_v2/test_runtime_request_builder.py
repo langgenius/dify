@@ -1,3 +1,4 @@
+import json
 from dataclasses import replace
 from typing import cast
 
@@ -9,6 +10,7 @@ from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LA
 from clients.agent_backend import DIFY_EXECUTION_CONTEXT_LAYER_ID, DIFY_PLUGIN_TOOLS_LAYER_ID
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2.plugin_tools_builder import WorkflowAgentPluginToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
@@ -16,7 +18,8 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeRequestBuildError,
     build_shell_layer_config,
 )
-from graphon.variables.segments import StringSegment
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
@@ -170,6 +173,27 @@ def _context() -> WorkflowAgentRuntimeBuildContext:
         agent=agent,
         snapshot=snapshot,
     )
+
+
+def _request_layers(result) -> dict[str, dict[str, object]]:
+    dumped = result.request.model_dump(mode="json")
+    return {layer["name"]: layer for layer in dumped["composition"]["layers"]}
+
+
+def _workflow_user_prompt(result) -> str:
+    from clients.agent_backend import WORKFLOW_USER_PROMPT_LAYER_ID
+
+    layer = _request_layers(result)[WORKFLOW_USER_PROMPT_LAYER_ID]
+    return cast(str, layer["config"]["user"])
+
+
+def _previous_node_prompt_payload(result, selector: str) -> object:
+    prefix = f"  - {selector}: "
+    user_prompt = _workflow_user_prompt(result)
+    for line in user_prompt.splitlines():
+        if line.startswith(prefix):
+            return json.loads(line.removeprefix(prefix))
+    raise AssertionError(f"missing prompt payload for {selector}")
 
 
 def test_builds_create_run_request_from_agent_soul_and_node_job():
@@ -904,8 +928,6 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
     """ENG-616: slash-menu mention tokens expand to canonical names; node_output
     mentions expand to the reference name only (the value stays in the Workflow
     context user prompt), and no ``[§…§]`` marker leaks into the request."""
-    import json
-
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={"system_prompt": "Careful. Ask [§human:c-1:EMAIL · DAVE§] when unsure."},
@@ -927,14 +949,139 @@ def test_mentions_expand_in_soul_and_job_prompts_without_token_leak():
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
-    dumped = result.request.model_dump(mode="json")
-    assert dumped["composition"]["layers"][0]["config"]["prefix"] == ("Careful. Ask EMAIL · David Hayes when unsure.")
-    assert dumped["composition"]["layers"][1]["config"]["prefix"] == (
+    layers = _request_layers(result)
+    assert layers["agent_soul_prompt"]["config"]["prefix"] == ("Careful. Ask EMAIL · David Hayes when unsure.")
+    assert layers["workflow_node_job_prompt"]["config"]["prefix"] == (
         "Read PREV/text and produce summary (string). Unknown 旧手册 degrades."
     )
     # the value still rides the Workflow context block, not the job prompt
-    assert "Previous result" in dumped["composition"]["layers"][2]["config"]["user"]
-    assert "[§" not in json.dumps(dumped["composition"]["layers"][:3])
+    assert "Previous result" in _workflow_user_prompt(result)
+    assert "[§" not in json.dumps(list(layers.values())[:3])
+
+
+def test_previous_node_file_output_uses_agent_stub_download_mapping_in_workflow_context():
+    file_reference = build_file_reference(record_id="tool-file-1")
+
+    class FileVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "report"]:
+                return FileSegment(
+                    value=File(
+                        type=FileType.DOCUMENT,
+                        transfer_method=FileTransferMethod.TOOL_FILE,
+                        reference=file_reference,
+                        remote_url=None,
+                        filename="report.pdf",
+                        extension=".pdf",
+                        mime_type="application/pdf",
+                        size=12,
+                    )
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=FileVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "previous_node_output_refs": [{"node_id": "previous-node", "output": "report"}],
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert _previous_node_prompt_payload(result, "previous-node.report") == {
+        "transfer_method": "tool_file",
+        "reference": file_reference,
+    }
+
+
+def test_previous_node_file_array_uses_agent_stub_download_mappings_in_workflow_context():
+    first_reference = build_file_reference(record_id="tool-file-1")
+    second_reference = build_file_reference(record_id="tool-file-2")
+
+    class FileArrayVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "attachments"]:
+                return ArrayFileSegment(
+                    value=[
+                        File(
+                            type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.TOOL_FILE,
+                            reference=first_reference,
+                            remote_url=None,
+                            filename="first.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=12,
+                        ),
+                        File(
+                            type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.REMOTE_URL,
+                            reference=None,
+                            remote_url="https://example.com/second.pdf",
+                            filename="second.pdf",
+                            extension=".pdf",
+                            mime_type="application/pdf",
+                            size=12,
+                        ),
+                    ]
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=FileArrayVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "previous_node_output_refs": [{"node_id": "previous-node", "output": "attachments"}],
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert _previous_node_prompt_payload(result, "previous-node.attachments") == [
+        {
+            "transfer_method": "tool_file",
+            "reference": first_reference,
+        },
+        {
+            "transfer_method": "remote_url",
+            "url": "https://example.com/second.pdf",
+        },
+    ]
+
+
+def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_context():
+    remote_url = "https://example.com/" + ("a" * 2100) + ".pdf"
+
+    class LongRemoteUrlVariablePool(FakeVariablePool):
+        def get(self, selector):
+            if list(selector) == ["previous-node", "report"]:
+                return FileSegment(
+                    value=File(
+                        type=FileType.DOCUMENT,
+                        transfer_method=FileTransferMethod.REMOTE_URL,
+                        reference=None,
+                        remote_url=remote_url,
+                        filename="report.pdf",
+                        extension=".pdf",
+                        mime_type="application/pdf",
+                        size=12,
+                    )
+                )
+            return super().get(selector)
+
+    context = replace(_context(), variable_pool=LongRemoteUrlVariablePool())
+    context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
+        {
+            "previous_node_output_refs": [{"node_id": "previous-node", "output": "report"}],
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
+
+    assert _previous_node_prompt_payload(result, "previous-node.report") == {
+        "transfer_method": "remote_url",
+        "url": remote_url,
+    }
+    assert "...[truncated]" not in _workflow_user_prompt(result)
 
 
 # ── ENG-623: dify.drive declaration layer ─────────────────────────────────────
