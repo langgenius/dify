@@ -135,6 +135,7 @@ export function AgentTaskField({
               getVarType,
               workflowNodesMap,
             }}
+            isSupportFileVar
             agentOutputBlock={{
               show: true,
               outputs,
