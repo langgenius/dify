@@ -50,9 +50,26 @@ class QuotaReleaseResult(TypedDict):
     released: int
 
 
+class QuotaBalanceResult(TypedDict):
+    available: int
+    reserved: int
+    quota: int
+    usage: int
+
+
+class QuotaConsumeCappedResult(TypedDict):
+    deducted: int
+    available: int
+    reserved: int
+    quota: int
+    usage: int
+
+
 _quota_reserve_adapter = TypeAdapter(QuotaReserveResult)
 _quota_commit_adapter = TypeAdapter(QuotaCommitResult)
 _quota_release_adapter = TypeAdapter(QuotaReleaseResult)
+_quota_balance_adapter = TypeAdapter(QuotaBalanceResult)
+_quota_consume_capped_adapter = TypeAdapter(QuotaConsumeCappedResult)
 
 
 class _TenantFeatureQuota(TypedDict):
@@ -207,7 +224,13 @@ class BillingService:
 
     @classmethod
     def quota_reserve(
-        cls, tenant_id: str, feature_key: str, request_id: str, amount: int = 1, meta: dict | None = None
+        cls,
+        tenant_id: str,
+        feature_key: str,
+        request_id: str,
+        amount: int = 1,
+        meta: dict | None = None,
+        bucket: str = "",
     ) -> QuotaReserveResult:
         """Reserve quota before task execution."""
         payload: dict = {
@@ -216,13 +239,21 @@ class BillingService:
             "request_id": request_id,
             "amount": amount,
         }
+        if bucket:
+            payload["bucket"] = bucket
         if meta:
             payload["meta"] = meta
         return _quota_reserve_adapter.validate_python(cls._send_request("POST", "/quota/reserve", json=payload))
 
     @classmethod
     def quota_commit(
-        cls, tenant_id: str, feature_key: str, reservation_id: str, actual_amount: int, meta: dict | None = None
+        cls,
+        tenant_id: str,
+        feature_key: str,
+        reservation_id: str,
+        actual_amount: int,
+        meta: dict | None = None,
+        bucket: str = "",
     ) -> QuotaCommitResult:
         """Commit a reservation with actual consumption."""
         payload: dict = {
@@ -231,23 +262,57 @@ class BillingService:
             "reservation_id": reservation_id,
             "actual_amount": actual_amount,
         }
+        if bucket:
+            payload["bucket"] = bucket
         if meta:
             payload["meta"] = meta
         return _quota_commit_adapter.validate_python(cls._send_request("POST", "/quota/commit", json=payload))
 
     @classmethod
-    def quota_release(cls, tenant_id: str, feature_key: str, reservation_id: str) -> QuotaReleaseResult:
+    def quota_release(
+        cls, tenant_id: str, feature_key: str, reservation_id: str, bucket: str = ""
+    ) -> QuotaReleaseResult:
         """Release a reservation (cancel, return frozen quota)."""
-        return _quota_release_adapter.validate_python(
-            cls._send_request(
-                "POST",
-                "/quota/release",
-                json={
-                    "tenant_id": tenant_id,
-                    "feature_key": feature_key,
-                    "reservation_id": reservation_id,
-                },
-            )
+        payload = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "reservation_id": reservation_id,
+        }
+        if bucket:
+            payload["bucket"] = bucket
+        return _quota_release_adapter.validate_python(cls._send_request("POST", "/quota/release", json=payload))
+
+    @classmethod
+    def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> QuotaBalanceResult:
+        """Get quota balance for a feature bucket."""
+        params = {"tenant_id": tenant_id, "feature_key": feature_key}
+        if bucket:
+            params["bucket"] = bucket
+        return _quota_balance_adapter.validate_python(cls._send_request("GET", "/quota/balance", params=params))
+
+    @classmethod
+    def quota_consume_capped(
+        cls,
+        tenant_id: str,
+        feature_key: str,
+        request_id: str,
+        amount: int,
+        meta: dict | None = None,
+        bucket: str = "",
+    ) -> QuotaConsumeCappedResult:
+        """Consume up to the available quota and return the actual deducted amount."""
+        payload: dict = {
+            "tenant_id": tenant_id,
+            "feature_key": feature_key,
+            "request_id": request_id,
+            "amount": amount,
+        }
+        if bucket:
+            payload["bucket"] = bucket
+        if meta:
+            payload["meta"] = meta
+        return _quota_consume_capped_adapter.validate_python(
+            cls._send_request("POST", "/quota/consume-capped", json=payload)
         )
 
     @classmethod
