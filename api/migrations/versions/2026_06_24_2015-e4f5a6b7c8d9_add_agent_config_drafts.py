@@ -1,7 +1,7 @@
 """add agent config drafts
 
 Revision ID: e4f5a6b7c8d9
-Revises: d9e8f7a6b5c4
+Revises: a6f1c9d2e8b4
 Create Date: 2026-06-24 20:15:00.000000
 
 """
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "e4f5a6b7c8d9"
-down_revision = "d9e8f7a6b5c4"
+down_revision = "a6f1c9d2e8b4"
 branch_labels = None
 depends_on = None
 
