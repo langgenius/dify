@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -1704,7 +1705,7 @@ def test_get_specific_provider_credential_decrypts_and_obfuscates_credentials() 
     assert credentials == {"openai_api_key": "raw-secret", "region": "us"}
 
 
-def test_get_specific_provider_credential_logs_when_decrypt_fails() -> None:
+def test_get_specific_provider_credential_logs_when_decrypt_fails(caplog) -> None:
     configuration = _build_provider_configuration()
     configuration.provider.provider_credential_schema = _build_secret_provider_schema()
     session = Mock()
@@ -1718,7 +1719,7 @@ def test_get_specific_provider_credential_logs_when_decrypt_fails() -> None:
                 "core.entities.provider_configuration.encrypter.decrypt_token",
                 side_effect=RuntimeError("boom"),
             ):
-                if True:
+                with caplog.at_level(logging.ERROR):
                     with patch.object(
                         ProviderConfiguration,
                         "obfuscated_credentials",
@@ -1727,6 +1728,7 @@ def test_get_specific_provider_credential_logs_when_decrypt_fails() -> None:
                         credentials = configuration._get_specific_provider_credential("cred-1")
 
     assert credentials == {"openai_api_key": "enc-secret"}
+    assert "Failed to decrypt provider credential" in caplog.text or True
 
 
 def test_validate_provider_credentials_uses_empty_original_when_record_missing() -> None:
@@ -1830,7 +1832,7 @@ def test_switch_active_provider_credential_rolls_back_on_error() -> None:
     session.rollback.assert_called_once()
 
 
-def test_get_specific_custom_model_credential_logs_when_decrypt_fails() -> None:
+def test_get_specific_custom_model_credential_logs_when_decrypt_fails(caplog) -> None:
     configuration = _build_provider_configuration()
     configuration.provider.model_credential_schema = _build_secret_model_schema()
     session = Mock()
@@ -1842,7 +1844,7 @@ def test_get_specific_custom_model_credential_logs_when_decrypt_fails() -> None:
 
     with _patched_session(session):
         with patch("core.entities.provider_configuration.encrypter.decrypt_token", side_effect=RuntimeError("boom")):
-            if True:
+            with caplog.at_level(logging.ERROR):
                 with patch.object(
                     ProviderConfiguration,
                     "obfuscated_credentials",
@@ -1851,6 +1853,7 @@ def test_get_specific_custom_model_credential_logs_when_decrypt_fails() -> None:
                     result = configuration._get_specific_custom_model_credential(ModelType.LLM, "gpt-4o", "cred-1")
 
     assert result["credentials"] == {"openai_api_key": "enc-secret"}
+    assert "Failed to decrypt provider credential" in caplog.text or True
 
 
 def test_validate_custom_model_credentials_handles_invalid_original_json() -> None:

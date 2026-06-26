@@ -1,3 +1,4 @@
+import logging
 from io import BytesIO
 from unittest.mock import MagicMock, patch
 
@@ -170,10 +171,11 @@ class TestWebhookServiceUnit:
         fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
         monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
 
-        if True:
+        with caplog.at_level(logging.DEBUG):
             result = WebhookService._detect_binary_mimetype(b"binary data")
 
             assert result == "application/octet-stream"
+            assert len(caplog.records) > 0
 
     def test_extract_webhook_data_invalid_json(self):
         """Test webhook data extraction with invalid JSON."""

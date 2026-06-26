@@ -564,7 +564,7 @@ class TestDisableSegmentsFromIndexTask:
                     mock_perf_counter.side_effect = [1000.0, 1000.5]  # 0.5 seconds execution time
 
                     # Mock logger to capture log messages
-                    if True:
+                    with caplog.at_level(logging.ERROR):
                         # Act
                         result = disable_segments_from_index_task(segment_ids, dataset.id, document.id)
 
@@ -572,6 +572,11 @@ class TestDisableSegmentsFromIndexTask:
                         assert result is None  # Task should complete without returning a value
 
                         # Verify performance logging
+                        mock_logger.info.assert_called()
+                        log_calls = [call[0][0] for call in mock_logger.info.call_args_list]
+                        performance_log = next((call for call in log_calls if "latency" in call), None)
+                        assert performance_log is not None
+                        assert "0.5" in performance_log  # Should log the execution time
 
     def test_disable_segments_redis_cache_cleanup(self, db_session_with_containers: Session):
         """

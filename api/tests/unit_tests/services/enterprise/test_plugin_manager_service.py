@@ -43,17 +43,16 @@ class TestTryPreUninstallPlugin:
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
 
-    def test_try_pre_uninstall_plugin_http_error_soft_fails(self):
+    def test_try_pre_uninstall_plugin_http_error_soft_fails(self, caplog):
         body = PreUninstallPluginRequest(
             tenant_id="tenant-456",
             plugin_unique_identifier="com.example.other_plugin",
         )
 
-        with (
-            patch(
+        with patch(
                 "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
-            ) as mock_send_request,
-        ):
+            ) as mock_send_request:
+
             mock_send_request.side_effect = HTTPStatusError(
                 "502 Bad Gateway",
                 request=None,
@@ -68,18 +67,18 @@ class TestTryPreUninstallPlugin:
                 json={"tenant_id": "tenant-456", "plugin_unique_identifier": "com.example.other_plugin"},
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
+            assert len(caplog.records) > 0
 
-    def test_try_pre_uninstall_plugin_generic_exception_soft_fails(self):
+    def test_try_pre_uninstall_plugin_generic_exception_soft_fails(self, caplog):
         body = PreUninstallPluginRequest(
             tenant_id="tenant-789",
             plugin_unique_identifier="com.example.failing_plugin",
         )
 
-        with (
-            patch(
+        with patch(
                 "services.enterprise.plugin_manager_service.EnterprisePluginManagerRequest.send_request"
-            ) as mock_send_request,
-        ):
+            ) as mock_send_request:
+
             mock_send_request.side_effect = ConnectionError("network unreachable")
 
             PluginManagerService.try_pre_uninstall_plugin(body)
@@ -90,6 +89,7 @@ class TestTryPreUninstallPlugin:
                 json={"tenant_id": "tenant-789", "plugin_unique_identifier": "com.example.failing_plugin"},
                 timeout=dify_config.ENTERPRISE_REQUEST_TIMEOUT,
             )
+            assert len(caplog.records) > 0
 
 
 class TestCheckCredentialPolicyCompliance:

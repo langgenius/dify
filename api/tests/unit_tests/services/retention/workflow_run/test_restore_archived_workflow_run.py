@@ -317,10 +317,11 @@ class TestGetSchemaVersion:
         restore = WorkflowRunRestore()
         manifest = {"tables": {}}
 
-        if True:
+        with caplog.at_level(logging.WARNING):
             result = restore._get_schema_version(manifest)
 
         assert result == "1.0"
+        assert "Manifest missing schema_version; defaulting to 1.0" in caplog.text
 
     def test_unsupported_schema_version_raises_error(self):
         """Should raise ValueError for unsupported schema version."""
@@ -499,10 +500,11 @@ class TestRestoreTableRecords:
         mock_session = Mock()
         records = [{"id": "test"}]
 
-        if True:
+        with caplog.at_level(logging.WARNING):
             result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
 
         assert result == 0
+        assert "Unknown table" in caplog.text
 
     def test_empty_records_returns_zero(self):
         """Should return 0 for empty records list."""

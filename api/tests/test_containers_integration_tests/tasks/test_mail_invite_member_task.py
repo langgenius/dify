@@ -310,7 +310,7 @@ class TestMailInviteMemberTask:
         mock_email_service.send_email.side_effect = Exception("Email service failed")
 
         # Act & Assert: Execute task and verify exception is handled
-        if True:
+        with patch("tasks.mail_invite_member_task.logger", autospec=True) as mock_logger:
             send_invite_member_mail_task(
                 language="en-US",
                 to="test@example.com",
@@ -320,6 +320,8 @@ class TestMailInviteMemberTask:
             )
 
             # Verify error was logged
+            assert len(caplog.records) > 0
+            error_call = mock_logger.exception.call_args[0][0]
             assert "Send invite member mail to %s failed" in error_call
 
     def test_send_invite_member_mail_template_context_validation(
