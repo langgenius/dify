@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -15,6 +15,8 @@ from models.enums import ProviderQuotaType
 from services.credit_pool_service import (
     CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS,
     CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS,
+    FEATURE_KEY_CREDIT_POOL,
+    CreditPoolBalance,
     CreditPoolService,
 )
 
@@ -62,6 +64,12 @@ def _make_redis_lock() -> MagicMock:
     lock = MagicMock()
     lock.acquire.return_value = True
     return lock
+
+
+@pytest.fixture(autouse=True)
+def _disable_billing_quota_by_default() -> Generator[None, None, None]:
+    with patch("services.credit_pool_service.dify_config.BILLING_ENABLED", False):
+        yield
 
 
 def test_get_pool_uses_configured_session_factory_without_flask_app_context() -> None:
@@ -224,7 +232,7 @@ def test_check_and_deduct_credits_uses_tenant_redis_lock_before_db_deduction() -
     )
     redis_lock.acquire.assert_called_once_with(blocking=True)
     redis_lock.release.assert_called_once_with()
-    get_locked_pool.assert_called_once_with(session=session, tenant_id=tenant_id, pool_type=ProviderQuotaType.TRIAL)
+    get_locked_pool.assert_called_once_with(session=session, tenant_id=tenant_id, pool_type="trial")
 
 
 def test_deduct_credits_capped_uses_tenant_redis_lock_before_db_deduction() -> None:
@@ -254,7 +262,126 @@ def test_deduct_credits_capped_uses_tenant_redis_lock_before_db_deduction() -> N
     )
     redis_lock.acquire.assert_called_once_with(blocking=True)
     redis_lock.release.assert_called_once_with()
-    get_locked_pool.assert_called_once_with(session=session, tenant_id=tenant_id, pool_type=ProviderQuotaType.PAID)
+    get_locked_pool.assert_called_once_with(session=session, tenant_id=tenant_id, pool_type="paid")
+
+
+def test_get_pool_uses_billing_quota_balance_when_enabled() -> None:
+    tenant_id = "tenant-1"
+    with (
+        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.billing_service.BillingService.quota_get_balance") as quota_get_balance,
+    ):
+        quota_get_balance.return_value = {"quota": 1000, "usage": 250, "available": 750, "reserved": 0}
+
+        pool = CreditPoolService.get_pool(tenant_id=tenant_id, pool_type=ProviderQuotaType.PAID)
+
+    assert isinstance(pool, CreditPoolBalance)
+    assert pool.quota_limit == 1000
+    assert pool.quota_used == 250
+    assert pool.remaining_credits == 750
+    quota_get_balance.assert_called_once_with(
+        tenant_id=tenant_id,
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="paid",
+    )
+
+
+def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled() -> None:
+    tenant_id = "tenant-1"
+    with (
+        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_commit") as quota_commit,
+        patch("services.billing_service.BillingService.quota_release") as quota_release,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        result = CreditPoolService.check_and_deduct_credits(
+            tenant_id=tenant_id,
+            credits_required=3,
+            pool_type=ProviderQuotaType.TRIAL,
+        )
+
+    assert result == 3
+    quota_reserve.assert_called_once_with(
+        tenant_id=tenant_id,
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        request_id=ANY,
+        amount=3,
+        meta={"source": "credit_pool.check_and_deduct"},
+    )
+    quota_commit.assert_called_once_with(
+        tenant_id=tenant_id,
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+        actual_amount=3,
+        meta={"source": "credit_pool.check_and_deduct"},
+    )
+    quota_release.assert_not_called()
+
+
+def test_check_and_deduct_credits_raises_when_billing_reserve_is_insufficient() -> None:
+    with (
+        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+    ):
+        quota_reserve.return_value = {"reservation_id": "", "available": 1, "reserved": 0}
+
+        with pytest.raises(QuotaExceededError, match="Insufficient credits remaining"):
+            CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
+
+
+def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails() -> None:
+    with (
+        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
+        patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
+        patch("services.billing_service.BillingService.quota_release") as quota_release,
+    ):
+        quota_reserve.return_value = {"reservation_id": "reservation-1", "available": 7, "reserved": 3}
+
+        with pytest.raises(RuntimeError, match="commit failed"):
+            CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
+
+    quota_release.assert_called_once_with(
+        tenant_id="tenant-1",
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="trial",
+        reservation_id="reservation-1",
+    )
+
+
+def test_deduct_credits_capped_uses_billing_consume_capped_when_enabled() -> None:
+    tenant_id = "tenant-1"
+    with (
+        patch("services.credit_pool_service.dify_config.BILLING_ENABLED", True),
+        patch("services.billing_service.BillingService.quota_consume_capped") as quota_consume_capped,
+    ):
+        quota_consume_capped.return_value = {
+            "deducted": 2,
+            "available": 0,
+            "reserved": 0,
+            "quota": 10,
+            "usage": 10,
+        }
+
+        result = CreditPoolService.deduct_credits_capped(
+            tenant_id=tenant_id,
+            credits_required=5,
+            pool_type=ProviderQuotaType.PAID,
+        )
+
+    assert result == 2
+    quota_consume_capped.assert_called_once_with(
+        tenant_id=tenant_id,
+        feature_key=FEATURE_KEY_CREDIT_POOL,
+        bucket="paid",
+        request_id=ANY,
+        amount=5,
+        meta={"source": "credit_pool.deduct_capped"},
+    )
 
 
 @pytest.mark.parametrize(

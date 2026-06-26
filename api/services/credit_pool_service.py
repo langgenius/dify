@@ -7,6 +7,8 @@ from piling up database transactions while preserving cross-tenant concurrency.
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
+from uuid import uuid4
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,11 +23,37 @@ from models.enums import ProviderQuotaType
 
 logger = logging.getLogger(__name__)
 
+FEATURE_KEY_CREDIT_POOL = "credit_pool"
 CREDIT_POOL_TENANT_LOCK_TIMEOUT_SECONDS = 10
 CREDIT_POOL_TENANT_LOCK_BLOCKING_TIMEOUT_SECONDS = 5
 
 
+@dataclass(frozen=True)
+class CreditPoolBalance:
+    tenant_id: str
+    pool_type: str
+    quota_limit: int
+    quota_used: int
+
+    @property
+    def remaining_credits(self) -> int:
+        if self.quota_limit == -1:
+            return -1
+        return max(0, self.quota_limit - self.quota_used)
+
+    def has_sufficient_credits(self, required_credits: int) -> bool:
+        return self.quota_limit == -1 or self.remaining_credits >= required_credits
+
+
 class CreditPoolService:
+    @staticmethod
+    def _normalize_pool_type(pool_type: str | ProviderQuotaType) -> str:
+        return pool_type.value if isinstance(pool_type, ProviderQuotaType) else str(pool_type)
+
+    @staticmethod
+    def _use_billing_quota() -> bool:
+        return bool(dify_config.BILLING_ENABLED)
+
     @staticmethod
     def _get_tenant_lock_key(tenant_id: str) -> str:
         return f"credit_pool:tenant:{tenant_id}:deduct_lock"
@@ -79,14 +107,32 @@ class CreditPoolService:
         return credit_pool
 
     @classmethod
-    def get_pool(cls, tenant_id: str, pool_type: str = "trial") -> TenantCreditPool | None:
+    def get_pool(
+        cls, tenant_id: str, pool_type: str | ProviderQuotaType = "trial"
+    ) -> TenantCreditPool | CreditPoolBalance | None:
         """get tenant credit pool"""
+        normalized_pool_type = cls._normalize_pool_type(pool_type)
+        if cls._use_billing_quota():
+            from services.billing_service import BillingService
+
+            balance = BillingService.quota_get_balance(
+                tenant_id=tenant_id,
+                feature_key=FEATURE_KEY_CREDIT_POOL,
+                bucket=normalized_pool_type,
+            )
+            return CreditPoolBalance(
+                tenant_id=tenant_id,
+                pool_type=normalized_pool_type,
+                quota_limit=balance["quota"],
+                quota_used=balance["usage"],
+            )
+
         with session_factory.get_session_maker().begin() as session:
             return session.scalar(
                 select(TenantCreditPool)
                 .where(
                     TenantCreditPool.tenant_id == tenant_id,
-                    TenantCreditPool.pool_type == pool_type,
+                    TenantCreditPool.pool_type == normalized_pool_type,
                 )
                 .limit(1)
             )
@@ -102,7 +148,7 @@ class CreditPoolService:
         pool = cls.get_pool(tenant_id, pool_type)
         if not pool:
             return False
-        return pool.remaining_credits >= credits_required
+        return pool.has_sufficient_credits(credits_required)
 
     @classmethod
     def check_and_deduct_credits(
@@ -114,10 +160,54 @@ class CreditPoolService:
         """Deduct exactly the requested credits or raise without mutating the pool."""
         if credits_required <= 0:
             return 0
+        normalized_pool_type = cls._normalize_pool_type(pool_type)
+
+        if cls._use_billing_quota():
+            from services.billing_service import BillingService
+
+            request_id = str(uuid4())
+            result = BillingService.quota_reserve(
+                tenant_id=tenant_id,
+                feature_key=FEATURE_KEY_CREDIT_POOL,
+                bucket=normalized_pool_type,
+                request_id=request_id,
+                amount=credits_required,
+                meta={"source": "credit_pool.check_and_deduct"},
+            )
+            reservation_id = result.get("reservation_id", "")
+            if not reservation_id:
+                raise QuotaExceededError("Insufficient credits remaining")
+            try:
+                BillingService.quota_commit(
+                    tenant_id=tenant_id,
+                    feature_key=FEATURE_KEY_CREDIT_POOL,
+                    bucket=normalized_pool_type,
+                    reservation_id=reservation_id,
+                    actual_amount=credits_required,
+                    meta={"source": "credit_pool.check_and_deduct"},
+                )
+            except Exception:
+                try:
+                    BillingService.quota_release(
+                        tenant_id=tenant_id,
+                        feature_key=FEATURE_KEY_CREDIT_POOL,
+                        bucket=normalized_pool_type,
+                        reservation_id=reservation_id,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to release reserved credit pool quota, tenant_id=%s, pool_type=%s, reservation_id=%s",
+                        tenant_id,
+                        normalized_pool_type,
+                        reservation_id,
+                        exc_info=True,
+                    )
+                raise
+            return credits_required
 
         def deduct() -> int:
             with session_factory.get_session_maker().begin() as session:
-                pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=pool_type)
+                pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
                 if not pool:
                     raise QuotaExceededError("Credit pool not found")
 
@@ -148,12 +238,26 @@ class CreditPoolService:
         """Deduct up to the available balance and return the actual deducted credits."""
         if credits_required <= 0:
             return 0
+        normalized_pool_type = cls._normalize_pool_type(pool_type)
+
+        if cls._use_billing_quota():
+            from services.billing_service import BillingService
+
+            result = BillingService.quota_consume_capped(
+                tenant_id=tenant_id,
+                feature_key=FEATURE_KEY_CREDIT_POOL,
+                bucket=normalized_pool_type,
+                request_id=str(uuid4()),
+                amount=credits_required,
+                meta={"source": "credit_pool.deduct_capped"},
+            )
+            return result["deducted"]
 
         def deduct() -> int:
             with session_factory.get_session_maker().begin() as session:
-                pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=pool_type)
+                pool = cls._get_locked_pool(session=session, tenant_id=tenant_id, pool_type=normalized_pool_type)
                 if not pool:
-                    logger.warning("Credit pool not found, tenant_id=%s, pool_type=%s", tenant_id, pool_type)
+                    logger.warning("Credit pool not found, tenant_id=%s, pool_type=%s", tenant_id, normalized_pool_type)
                     return 0
 
                 deducted_credits = min(credits_required, pool.remaining_credits)
