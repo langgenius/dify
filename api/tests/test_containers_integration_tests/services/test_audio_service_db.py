@@ -158,6 +158,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
         with patch("services.audio_service.ModelManager.for_tenant", return_value=mock_model_manager):
             result = AudioService.transcript_tts(
                 app_model=app,
+                session=db_session_with_containers,
                 message_id=message.id,
                 voice="en-US-Neural",
             )
@@ -174,6 +175,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         result = AudioService.transcript_tts(
             app_model=app,
+            session=db_session_with_containers,
             message_id="invalid-uuid",
         )
 
@@ -185,6 +187,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         result = AudioService.transcript_tts(
             app_model=app,
+            session=db_session_with_containers,
             message_id=str(uuid4()),
         )
 
@@ -205,6 +208,7 @@ class TestAudioServiceTranscriptTTSMessageLookup:
 
         result = AudioService.transcript_tts(
             app_model=app,
+            session=db_session_with_containers,
             message_id=message.id,
         )
 

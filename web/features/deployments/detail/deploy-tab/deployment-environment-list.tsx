@@ -13,10 +13,10 @@ import {
   DetailTableHead,
   DetailTableHeader,
   DetailTableRow,
-} from '../table'
+} from '../components/detail-table'
 import {
   DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../table-styles'
+} from '../components/detail-table-styles'
 import { DeploymentRowActions } from './deployment-row-actions'
 import { DeploymentStatusSummary } from './deployment-status-summary'
 
@@ -72,8 +72,7 @@ function CurrentReleaseMobileSummary({ release }: {
   )
 }
 
-function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
-  appInstanceId: string
+function DeploymentEnvironmentMobileRow({ row }: {
   row: EnvironmentDeployment
 }) {
   const envId = row.environment.id
@@ -88,15 +87,14 @@ function DeploymentEnvironmentMobileRow({ appInstanceId, row }: {
         </div>
         {!isUndeployedDeploymentRow(row) && <CurrentReleaseMobileSummary release={release} />}
         <div className="flex min-w-0 items-center justify-start gap-2">
-          <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
+          <DeploymentRowActions envId={envId} row={row} />
         </div>
       </div>
     </DetailTableCard>
   )
 }
 
-function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
-  appInstanceId: string
+function DeploymentEnvironmentDesktopRows({ rows }: {
   rows: EnvironmentDeployment[]
 }) {
   return (
@@ -116,7 +114,7 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
             </DetailTableCell>
             <DetailTableCell className={DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES.actions}>
               <div className="flex min-h-8 justify-end">
-                <DeploymentRowActions appInstanceId={appInstanceId} envId={envId} row={row} />
+                <DeploymentRowActions envId={envId} row={row} />
               </div>
             </DetailTableCell>
           </DetailTableRow>
@@ -126,8 +124,7 @@ function DeploymentEnvironmentDesktopRows({ appInstanceId, rows }: {
   )
 }
 
-export function DeploymentEnvironmentList({ appInstanceId, rows }: {
-  appInstanceId: string
+export function DeploymentEnvironmentList({ rows }: {
   rows: EnvironmentDeployment[]
 }) {
   const { t } = useTranslation('deployments')
@@ -138,7 +135,6 @@ export function DeploymentEnvironmentList({ appInstanceId, rows }: {
         {rows.map(row => (
           <DeploymentEnvironmentMobileRow
             key={row.environment.id}
-            appInstanceId={appInstanceId}
             row={row}
           />
         ))}
@@ -154,7 +150,7 @@ export function DeploymentEnvironmentList({ appInstanceId, rows }: {
             </DetailTableRow>
           </DetailTableHeader>
           <DetailTableBody>
-            <DeploymentEnvironmentDesktopRows appInstanceId={appInstanceId} rows={rows} />
+            <DeploymentEnvironmentDesktopRows rows={rows} />
           </DetailTableBody>
         </DetailTable>
       </div>

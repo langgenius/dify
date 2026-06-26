@@ -285,6 +285,18 @@ describe('app-card-utils', () => {
     expect(snippet).not.toContain('isDev: true')
   })
 
+  it('should generate an agent embedded script route when requested', () => {
+    const snippet = getEmbeddedScriptSnippet({
+      url: 'https://example.com',
+      token: 'agent-token',
+      webAppRoute: 'agent',
+      primaryColor: '#1C64F2',
+      inputValues: {},
+    })
+
+    expect(snippet).toContain('routeSegment: \'agent\'')
+  })
+
   it('should compress and encode base64 using CompressionStream when available', async () => {
     const result = await compressAndEncodeBase64('hello')
     expect(typeof result).toBe('string')

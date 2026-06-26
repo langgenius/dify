@@ -106,7 +106,6 @@ export const createReleaseFormAtom = atomWithForm({
 
 const createReleaseFormAtoms = createFormAtoms(createReleaseFormAtom)
 
-export const createReleaseFormValuesAtom = createReleaseFormAtoms.valuesAtom
 export const createReleaseFormIsSubmittingAtom = createReleaseFormAtoms.isSubmittingAtom
 export const createReleaseSourceModeFieldAtom = createReleaseFormAtoms.fieldAtom('releaseSourceMode')
 export const createReleaseSourceAppFieldAtom = createReleaseFormAtoms.fieldAtom('sourceApp')

@@ -351,7 +351,9 @@ class TestQAIndexProcessor:
         assert all_qa_documents[0].metadata["answer"] == "A test."
         assert all_qa_documents[1].metadata["answer"] == "Coverage."
 
-    def test_format_qa_document_logs_errors(self, processor: QAIndexProcessor, fake_flask_app, caplog) -> None:
+    def test_format_qa_document_logs_errors(
+        self, processor: QAIndexProcessor, fake_flask_app, caplog: pytest.LogCaptureFixture
+    ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
 

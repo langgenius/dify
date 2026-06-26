@@ -93,13 +93,6 @@ export type CreateApiKeyResponse = {
   created_at: string
 }
 
-export type ValidateOpenAIKeyResponse = {
-  result: string
-  error?: string
-}
-
-export type UpdateOpenAIKeyResponse = ValidateOpenAIKeyResponse
-
 export type AppVoicesListResponse = [{
   name: string
   value: string

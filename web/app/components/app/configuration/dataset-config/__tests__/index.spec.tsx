@@ -8,7 +8,7 @@ import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/n
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { DatasetPermission, DataSourceType } from '@/models/datasets'
 import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
-import { DatasetACLPermission, getDatasetACLCapabilities, hasEditPermissionForDataset } from '@/utils/permission'
+import { DatasetACLPermission, getDatasetACLCapabilities } from '@/utils/permission'
 import DatasetConfig from '../index'
 
 // Mock external dependencies
@@ -65,7 +65,6 @@ vi.mock('@/utils/permission', () => ({
     canDelete: false,
     canAccessConfig: false,
   })),
-  hasEditPermissionForDataset: vi.fn(() => true),
 }))
 
 vi.mock('../../debug/hooks', () => ({
@@ -477,7 +476,6 @@ describe('DatasetConfig', () => {
         permission: DatasetPermission.allTeamMembers,
         permission_keys: [DatasetACLPermission.Use],
       })
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(true)
       vi.mocked(getDatasetACLCapabilities).mockReturnValue({
         canReadonly: false,
         canEdit: false,
@@ -991,56 +989,6 @@ describe('DatasetConfig', () => {
           completion_params: { temperature: 0.3 },
         },
       }))
-    })
-  })
-
-  describe('Permission Handling', () => {
-    it('should hide edit options when user lacks permission', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
-
-      const dataset = createMockDataset({
-        created_by: 'other-user',
-        permission: DatasetPermission.onlyMe,
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      // The editable property should be false when no permission
-      // The editable property should be false when no permission
-      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
-    })
-
-    it('should show readonly state for non-editable datasets', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
-
-      const dataset = createMockDataset({
-        created_by: 'admin',
-        permission: DatasetPermission.allTeamMembers,
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
-    })
-
-    it('should allow editing when user has partial member permission', () => {
-      vi.mocked(hasEditPermissionForDataset).mockReturnValue(true)
-
-      const dataset = createMockDataset({
-        created_by: 'admin',
-        permission: DatasetPermission.partialMembers,
-        partial_member_list: ['user-123'],
-      })
-
-      renderDatasetConfig({
-        dataSets: [dataset],
-      })
-
-      expect(screen.getByTestId(`card-item-${dataset.id}`))!.toBeInTheDocument()
     })
   })
 

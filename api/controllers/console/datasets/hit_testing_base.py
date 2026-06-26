@@ -90,7 +90,7 @@ class DatasetsHitTestingBase:
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 

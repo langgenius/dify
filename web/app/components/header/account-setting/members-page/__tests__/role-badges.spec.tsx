@@ -19,4 +19,14 @@ describe('RoleBadges', () => {
       expect(screen.queryByTitle('Editor')).not.toBeInTheDocument()
     })
   })
+
+  describe('Edge Cases', () => {
+    it('should keep the wrapper rendered when role names are empty', () => {
+      const { container } = render(<RoleBadges roleNames={[]} className="role-badges-empty" />)
+
+      const wrapper = container.querySelector('.role-badges-empty')
+      expect(wrapper).toBeInTheDocument()
+      expect(wrapper).toBeEmptyDOMElement()
+    })
+  })
 })

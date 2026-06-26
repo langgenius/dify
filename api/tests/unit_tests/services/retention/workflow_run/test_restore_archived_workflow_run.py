@@ -8,6 +8,7 @@ and both positive and negative test scenarios.
 
 import io
 import json
+import logging
 import zipfile
 from datetime import datetime
 from unittest.mock import Mock, create_autospec, patch
@@ -312,16 +313,16 @@ class TestGetSchemaVersion:
         result = restore._get_schema_version(manifest)
         assert result == "1.0"
 
-    def test_missing_schema_version_defaults_to_1_0(self):
+    def test_missing_schema_version_defaults_to_1_0(self, caplog: pytest.LogCaptureFixture):
         """Should default to 1.0 when schema_version is missing."""
         restore = WorkflowRunRestore()
         manifest = {"tables": {}}
+        caplog.set_level(logging.WARNING, logger="services.retention.workflow_run.restore_archived_workflow_run")
 
-        with caplog.at_level(logging.WARNING):
-            result = restore._get_schema_version(manifest)
+        result = restore._get_schema_version(manifest)
 
         assert result == "1.0"
-        assert "Manifest missing schema_version; defaulting to 1.0" in caplog.text
+        assert "Manifest missing schema_version; defaulting to 1.0" in caplog.messages
 
     def test_unsupported_schema_version_raises_error(self):
         """Should raise ValueError for unsupported schema version."""
@@ -492,19 +493,19 @@ class TestRestoreTableRecords:
     """Tests for WorkflowRunRestore._restore_table_records method."""
 
     @patch("services.retention.workflow_run.restore_archived_workflow_run.TABLE_MODELS")
-    def test_unknown_table_returns_zero(self, mock_table_models):
+    def test_unknown_table_returns_zero(self, mock_table_models, caplog: pytest.LogCaptureFixture):
         """Should return 0 for unknown table."""
         restore = WorkflowRunRestore()
         mock_table_models.get.return_value = None
 
         mock_session = Mock()
         records = [{"id": "test"}]
+        caplog.set_level(logging.WARNING, logger="services.retention.workflow_run.restore_archived_workflow_run")
 
-        with caplog.at_level(logging.WARNING):
-            result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
+        result = restore._restore_table_records(mock_session, "unknown_table", records, schema_version="1.0")
 
         assert result == 0
-        assert "Unknown table" in caplog.text
+        assert "Unknown table: unknown_table" in caplog.messages
 
     def test_empty_records_returns_zero(self):
         """Should return 0 for empty records list."""

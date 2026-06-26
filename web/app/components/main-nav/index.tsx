@@ -12,6 +12,7 @@ import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
 import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-section'
 import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { useAppContext } from '@/context/app-context'
@@ -297,9 +298,18 @@ const MainNav = ({
               ? null
               : (
                   <>
-                    <nav className="flex flex-col gap-px p-2">
+                    <nav className="isolate flex flex-col gap-px p-2">
                       {navItems.map(item => (
-                        <MainNavLink key={item.href} item={item} pathname={pathname} />
+                        <MainNavLink key={item.href} item={item} pathname={pathname}>
+                          {item.href === '/roster' && (
+                            <Badge
+                              size="xs"
+                              variant="dimm"
+                              text={t('menus.status', { ns: 'common' })}
+                              className="ml-auto shrink-0"
+                            />
+                          )}
+                        </MainNavLink>
                       ))}
                     </nav>
                     {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}

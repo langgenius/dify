@@ -24,7 +24,7 @@ import { SubscriptionList } from './subscription-list'
 import { TriggerEventsList } from './trigger/event-list'
 
 type Props = Readonly<{
-  canManagePlugin?: boolean
+  canDeletePlugin?: boolean
   canUpdatePlugin?: boolean
   detail?: PluginDetail
   onUpdate: () => void
@@ -32,7 +32,7 @@ type Props = Readonly<{
 }>
 
 const PluginDetailPanel: FC<Props> = ({
-  canManagePlugin = true,
+  canDeletePlugin = true,
   canUpdatePlugin = true,
   detail,
   onUpdate,
@@ -83,7 +83,7 @@ const PluginDetailPanel: FC<Props> = ({
                     detail={detail}
                     onUpdate={handleUpdate}
                     onHide={onHide}
-                    canManagePlugin={canManagePlugin}
+                    canDeletePlugin={canDeletePlugin}
                     canUpdatePlugin={canUpdatePlugin}
                   />
                   <div className="grow overflow-y-auto">

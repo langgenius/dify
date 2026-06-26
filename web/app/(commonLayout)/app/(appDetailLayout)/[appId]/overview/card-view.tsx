@@ -20,6 +20,7 @@ import { webSocketClient } from '@/app/components/workflow/collaboration/core/we
 import { isTriggerNode } from '@/app/components/workflow/types'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import {
+  fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
@@ -40,6 +41,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const appDetail = useAppStore(state => state.appDetail)
+  const setAppDetail = useAppStore(state => state.setAppDetail)
   const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const canEditApp = useMemo(() => getAppACLCapabilities(appDetail?.permission_keys, {
@@ -88,12 +90,14 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
   const updateAppDetail = useCallback(async () => {
     try {
-      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appId] })
+      const res = await fetchAppDetail({ url: '/apps', id: appId })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appId], res)
+      setAppDetail({ ...res })
     }
     catch (error) {
       console.error(error)
     }
-  }, [appId, queryClient])
+  }, [appId, queryClient, setAppDetail])
 
   const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'

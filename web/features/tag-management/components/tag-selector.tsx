@@ -98,7 +98,10 @@ export const TagSelector = ({
       return tagName ? [tagName] : []
     })
   }, [tagList, value])
-  const triggerLabel = tagNames.length ? tagNames.join(', ') : t('tag.addTag', { ns: 'common' })
+  const emptyTriggerLabel = canBindOrUnbindTags
+    ? t('tag.addTag', { ns: 'common' })
+    : t('tag.noTag', { ns: 'common' })
+  const triggerLabel = tagNames.length ? tagNames.join(', ') : emptyTriggerLabel
 
   const items = useMemo<TagComboboxItem[]>(() => {
     const tagIds = new Set<string>()
@@ -227,7 +230,10 @@ export const TagSelector = ({
         )}
         icon={false}
       >
-        <TagTrigger tags={tagNames} />
+        <TagTrigger
+          tags={tagNames}
+          canBindOrUnbindTags={canBindOrUnbindTags}
+        />
       </ComboboxTrigger>
       <ComboboxContent
         placement={placement}
@@ -242,6 +248,7 @@ export const TagSelector = ({
           type={type}
           inputValue={inputValue}
           onInputValueChange={setInputValue}
+          canBindOrUnbindTags={canBindOrUnbindTags}
           onOpenTagManagement={onOpenTagManagement}
           onClose={() => handleOpenChange(false)}
         />

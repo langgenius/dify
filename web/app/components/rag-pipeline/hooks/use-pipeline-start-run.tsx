@@ -1,3 +1,6 @@
+import type {
+  useNodesSyncDraft,
+} from '.'
 import { useCallback } from 'react'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
 import { useWorkflowStore } from '@/app/components/workflow/store'
@@ -6,7 +9,6 @@ import {
 } from '@/app/components/workflow/types'
 import {
   useInputFieldPanel,
-  useNodesSyncDraft,
   useNodesSyncDraftByCanEdit,
 } from '.'
 
@@ -67,12 +69,6 @@ const usePipelineStartRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
 
 export const usePipelineStartRunByCanEdit = (canEdit: boolean) => {
   const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
-
-  return usePipelineStartRunBase(doSyncWorkflowDraft)
-}
-
-export const usePipelineStartRun = () => {
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   return usePipelineStartRunBase(doSyncWorkflowDraft)
 }

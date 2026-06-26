@@ -24,6 +24,14 @@ type WorkspaceRoleCheckboxListProps = {
 
 const PAGE_SIZE = 20
 const EMPTY_DISABLED_ROLE_IDS: string[] = []
+const LEGACY_ROLE_DESCRIPTION_KEY_MAP = {
+  admin: 'members.adminTip',
+  editor: 'members.editorTip',
+  normal: 'members.normalTip',
+  dataset_operator: 'members.datasetOperatorTip',
+} as const
+
+type LegacyRoleKey = keyof typeof LEGACY_ROLE_DESCRIPTION_KEY_MAP
 
 const createSelectedRolePlaceholder = (id: string): Role => ({
   id,
@@ -36,6 +44,20 @@ const createSelectedRolePlaceholder = (id: string): Role => ({
   permission_keys: [],
   role_tag: '',
 })
+
+const normalizeLegacyRoleKey = (value: string) => value.trim().toLowerCase()
+
+const isLegacyRoleKey = (value: string): value is LegacyRoleKey =>
+  Object.prototype.hasOwnProperty.call(LEGACY_ROLE_DESCRIPTION_KEY_MAP, value)
+
+const getLegacyRoleDescriptionKey = (role: Role) => {
+  const candidateKeys = [
+    normalizeLegacyRoleKey(role.name),
+    normalizeLegacyRoleKey(role.id),
+  ]
+
+  return candidateKeys.find(isLegacyRoleKey)
+}
 
 const WorkspaceRoleCheckboxList = ({
   selectedRoleIds,
@@ -138,16 +160,34 @@ const WorkspaceRoleCheckboxList = ({
     onSelectedRolesChange([role])
   }, [disabledRoleIdSet, onSelectedRolesChange, roleById])
 
-  const renderRoleText = (role: Role) => (
-    <div className="min-w-0 flex-1">
-      <div className="system-sm-semibold text-text-secondary">
-        {role.name}
+  const getRoleDescription = (role: Role) => {
+    if (role.description)
+      return role.description
+
+    const legacyRoleDescriptionKey = allowMultipleRoles
+      ? undefined
+      : getLegacyRoleDescriptionKey(role)
+
+    if (legacyRoleDescriptionKey)
+      return t(LEGACY_ROLE_DESCRIPTION_KEY_MAP[legacyRoleDescriptionKey], { ns: 'common' })
+
+    return t('role.noDescription', { ns: 'permission' })
+  }
+
+  const renderRoleText = (role: Role) => {
+    const description = getRoleDescription(role)
+
+    return (
+      <div className="min-w-0 flex-1">
+        <div className="system-sm-semibold text-text-secondary">
+          {role.name}
+        </div>
+        <div className="mt-0.5 system-xs-regular text-text-tertiary">
+          {description}
+        </div>
       </div>
-      <div className="mt-0.5 system-xs-regular text-text-tertiary">
-        {role.description || t('role.noDescription', { ns: 'permission' })}
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <>

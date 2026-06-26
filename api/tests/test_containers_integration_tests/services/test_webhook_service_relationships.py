@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 
 import json
+import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -356,7 +357,10 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         mock_mark_rate_limited.assert_called_once_with(tenant.id)
 
     def test_trigger_workflow_execution_logs_and_reraises_unexpected_errors(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self,
+        db_session_with_containers: Session,
+        flask_app_with_containers: Flask,
+        caplog: pytest.LogCaptureFixture,
     ):
         del flask_app_with_containers
         factory = WebhookServiceRelationshipFactory
@@ -368,13 +372,11 @@ class TestWebhookServiceTriggerExecutionWithContainers:
         webhook_trigger = factory.create_webhook_trigger(
             db_session_with_containers, app=app, account=account, node_id="node-1"
         )
+        caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
 
-        with (
-            patch(
-                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
-                side_effect=RuntimeError("boom"),
-            ),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
+        with patch(
+            "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type",
+            side_effect=RuntimeError("boom"),
         ):
             with pytest.raises(RuntimeError, match="boom"):
                 WebhookService.trigger_workflow_execution(
@@ -383,7 +385,7 @@ class TestWebhookServiceTriggerExecutionWithContainers:
                     workflow,
                 )
 
-        mock_logger_exception.assert_called_once()
+        assert caplog.messages.count(f"Failed to trigger workflow for webhook {webhook_trigger.webhook_id}") == 1
 
 
 class TestWebhookServiceRelationshipSyncWithContainers:
@@ -483,7 +485,10 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         assert cached_payload["webhook_id"] == "cache-webhook-id-00001"
 
     def test_sync_webhook_relationships_logs_when_lock_release_fails(
-        self, db_session_with_containers: Session, flask_app_with_containers: Flask
+        self,
+        db_session_with_containers: Session,
+        flask_app_with_containers: Flask,
+        caplog: pytest.LogCaptureFixture,
     ):
         del flask_app_with_containers
         factory = WebhookServiceRelationshipFactory
@@ -495,14 +500,12 @@ class TestWebhookServiceRelationshipSyncWithContainers:
         lock = MagicMock()
         lock.acquire.return_value = True
         lock.release.side_effect = RuntimeError("release failed")
+        caplog.set_level(logging.ERROR, logger="services.trigger.webhook_service")
 
-        with (
-            patch("services.trigger.webhook_service.redis_client.lock", return_value=lock),
-            patch("services.trigger.webhook_service.logger.exception") as mock_logger_exception,
-        ):
+        with patch("services.trigger.webhook_service.redis_client.lock", return_value=lock):
             WebhookService.sync_webhook_relationships(app, workflow)
 
-        mock_logger_exception.assert_called_once()
+        assert caplog.messages.count(f"Failed to release lock for webhook sync, app {app.id}") == 1
 
 
 def _read_cache(cache_key: str) -> dict[str, str] | None:

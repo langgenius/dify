@@ -7,11 +7,12 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type { TileConfig } from './environment-tile-utils'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import Link from '@/next/link'
 import { TitleTooltip } from '../../components/title-tooltip'
 import { openDeployDrawerAtom } from '../../deploy-drawer/state'
+import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
 import { releaseCommit } from '../../shared/domain/release'
 import { DeploymentStatusBadge } from '../../shared/ui/deployment-status-badge'
 import {
@@ -27,13 +28,13 @@ import {
 import { computeDrift, latestReleaseId } from './overview-drift'
 
 type EnvironmentTileProps = {
-  appInstanceId: string
   row: EnvironmentDeployment
   releaseRows: Release[]
 }
 
-export function EnvironmentTile({ appInstanceId, row, releaseRows }: EnvironmentTileProps) {
+export function EnvironmentTile({ row, releaseRows }: EnvironmentTileProps) {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
   const openDeployDrawer = useSetAtom(openDeployDrawerAtom)
 
   const envId = row.environment.id
@@ -55,7 +56,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
       : undefined
 
   function handleDrawerAction() {
-    if (config.intent === 'disabled')
+    if (config.intent === 'disabled' || !appInstanceId)
       return
     openDeployDrawer({ appInstanceId, environmentId: envId, releaseId: config.releaseId })
   }
@@ -66,7 +67,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
     isDisabled && 'cursor-not-allowed opacity-60',
   )
   const actionLabel = renderActionLabel(config.kind, Boolean(currentReleaseId), t)
-  const actionControl = config.intent === 'navigate'
+  const actionControl = config.intent === 'navigate' && appInstanceId
     ? (
         <Link
           href={`/deployments/${appInstanceId}/instances`}
@@ -78,7 +79,7 @@ export function EnvironmentTile({ appInstanceId, row, releaseRows }: Environment
     : (
         <button
           type="button"
-          disabled={isDisabled}
+          disabled={isDisabled || !appInstanceId}
           onClick={handleDrawerAction}
           className={actionClassName}
         >
