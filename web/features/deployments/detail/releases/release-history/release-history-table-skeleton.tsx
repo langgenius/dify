@@ -12,7 +12,7 @@ import {
   DetailTableHeader,
   DetailTableRow,
 } from '../../../shared/components/detail-table'
-import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../../shared/components/detail-table-styles'
+import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from './table-styles'
 
 const RELEASE_TABLE_ROW_SKELETON_KEYS = ['latest', 'previous', 'older', 'archived', 'initial']
 

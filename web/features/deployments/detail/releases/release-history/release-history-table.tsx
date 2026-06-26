@@ -4,9 +4,9 @@ import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../shared/components/empty-state'
-import { RELEASE_HISTORY_PAGE_SIZE } from '../../../shared/domain/pagination'
 import {
   adjustReleaseHistoryPageAfterDeleteAtom,
+  RELEASE_HISTORY_PAGE_SIZE,
   releaseHistoryCurrentPageAtom,
   releaseHistoryQueryAtom,
   setReleaseHistoryCurrentPageAtom,

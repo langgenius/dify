@@ -12,12 +12,10 @@ import {
   DetailTableHeader,
   DetailTableRow,
 } from '../../../shared/components/detail-table'
-import {
-  DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../../../shared/components/detail-table-styles'
 import { releaseCommit } from '../../../shared/domain/release'
 import { isUndeployedDeploymentRow } from '../../../shared/domain/runtime-status'
 import { DeploymentRowActions } from '../row-actions/deployment-row-actions'
+import { DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
 import { DeploymentStatusSummary } from './deployment-status-summary'
 
 function EnvironmentSummary({ environment }: {

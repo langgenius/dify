@@ -12,9 +12,6 @@ import {
   DetailTableHeader,
   DetailTableRow,
 } from '../../shared/components/detail-table'
-import {
-  DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES,
-} from '../../shared/components/detail-table-styles'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../shared/components/empty-state'
 import {
   deploymentEnvironmentDeploymentsQueryAtom,
@@ -22,6 +19,7 @@ import {
 } from '../state'
 import { DeploymentEnvironmentList } from './environment-list/deployment-environment-list'
 import { NewDeploymentButton } from './header-actions/new-deployment-button'
+import { DEPLOYMENT_DETAIL_TABLE_COLUMN_CLASS_NAMES } from './table-styles'
 
 const DEPLOYMENT_TABLE_ROW_SKELETON_KEYS = ['production', 'staging']
 

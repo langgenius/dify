@@ -19,7 +19,6 @@ import {
   DetailTableHeader,
   DetailTableRow,
 } from '../../../shared/components/detail-table'
-import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../../shared/components/detail-table-styles'
 import { TitleTooltip } from '../../../shared/components/title-tooltip'
 import {
   formatDate,
@@ -29,6 +28,7 @@ import { DeployReleaseMenu } from '../release-actions/deploy-release-menu'
 import {
   ReleaseDeploymentsContent,
 } from './release-history-deployments'
+import { RELEASE_DETAIL_TABLE_COLUMN_CLASS_NAMES } from './table-styles'
 
 function ReleaseTitleTooltip({ release }: {
   release: Release

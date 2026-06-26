@@ -16,9 +16,7 @@ const mocks = vi.hoisted(() => {
   return {
     sourceAppsQuery,
     useInfiniteScroll: vi.fn(() => ({
-      rootEl: null,
       rootRef: vi.fn(),
-      sentinelEl: null,
       sentinelRef: vi.fn(),
     })),
   }

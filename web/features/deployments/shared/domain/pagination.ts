@@ -1,1 +1,0 @@
-export const RELEASE_HISTORY_PAGE_SIZE = 20

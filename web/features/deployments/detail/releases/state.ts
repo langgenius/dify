@@ -5,7 +5,8 @@ import { atom } from 'jotai'
 import { atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
 import { deploymentRouteAppInstanceIdAtom } from '../../route-state'
-import { RELEASE_HISTORY_PAGE_SIZE } from '../../shared/domain/pagination'
+
+export const RELEASE_HISTORY_PAGE_SIZE = 20
 
 export const releaseHistoryCurrentPageAtom = atom(0)
 

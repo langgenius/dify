@@ -12,7 +12,7 @@ import {
   DetailTableHeader,
   DetailTableRow,
 } from '../../../shared/components/detail-table'
-import { API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../../../shared/components/detail-table-styles'
+import { API_KEY_DETAIL_TABLE_COLUMN_CLASS_NAMES } from '../table-styles'
 
 const DEVELOPER_API_KEY_SKELETON_KEYS = ['primary-key', 'secondary-key']
 

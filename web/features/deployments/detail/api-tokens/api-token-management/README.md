@@ -14,3 +14,4 @@ API token management section for API endpoint display, token creation, and token
 | `../api-keys/created-token-dialog`       | Displays newly created API tokens.                               |
 | `../docs/docs-drawer`                    | Opens API documentation for the current endpoint.                |
 | `../state`                               | Reads API tokens route query data.                               |
+| `../table-styles`                        | Uses API-token-owned column class names for skeleton rows.       |
