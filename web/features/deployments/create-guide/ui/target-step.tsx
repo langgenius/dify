@@ -10,26 +10,32 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import {
-  canDeployAtom,
-  canSkipDeploymentAtom,
-  createDeploymentGuideSubmissionAtom,
-  CreateDeploymentGuideSubmissionBlockedError,
-  deployableEnvironmentsAtom,
+  envVarValuesAtom,
+  isCreatingReleaseOnlyAtom,
+  isSubmittingDeploymentGuideAtom,
+  selectedEnvironmentIdAtom,
+  stepAtom,
+} from '@/features/deployments/create-guide/state/primitives'
+import {
   deployableEnvironmentsQueryAtom,
   deploymentOptionsQueryAtom,
+  unsupportedDslNodesAtom,
+} from '@/features/deployments/create-guide/state/queries'
+import {
+  createDeploymentGuideSubmissionAtom,
+  CreateDeploymentGuideSubmissionBlockedError,
+} from '@/features/deployments/create-guide/state/submission'
+import {
+  canDeployAtom,
+  canSkipDeploymentAtom,
+  deployableEnvironmentsAtom,
   deploymentTargetBindingSelectionsAtom,
   deploymentTargetBindingSlotsAtom,
   deploymentTargetEnvVarSlotsAtom,
   effectiveSelectedEnvironmentIdAtom,
-  envVarValuesAtom,
-  isCreatingReleaseOnlyAtom,
-  isSubmittingDeploymentGuideAtom,
   selectBindingAtom,
-  selectedEnvironmentIdAtom,
   setEnvVarAtom,
-  stepAtom,
-  unsupportedDslNodesAtom,
-} from '@/features/deployments/create-guide/state'
+} from '@/features/deployments/create-guide/state/target'
 import {
   EnvVarBindingsPanel,
 } from '@/features/deployments/shared/components/env-var-bindings'

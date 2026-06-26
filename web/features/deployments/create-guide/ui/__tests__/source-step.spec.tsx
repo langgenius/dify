@@ -26,29 +26,51 @@ vi.mock('@/features/deployments/shared/hooks/use-infinite-scroll', () => ({
   useInfiniteScroll: mocks.useInfiniteScroll,
 }))
 
-vi.mock('@/features/deployments/create-guide/state', async () => {
+vi.mock('@/features/deployments/create-guide/state/primitives', async () => {
   const { atom } = await import('jotai')
   const methodAtom = atom<'bindApp' | 'importDsl'>('bindApp')
+
+  return {
+    dslFileAtom: atom<File | undefined>(undefined),
+    effectiveMethodAtom: atom(get => get(methodAtom)),
+    methodAtom,
+    sourceSearchTextAtom: atom(''),
+  }
+})
+
+vi.mock('@/features/deployments/create-guide/state/source', async () => {
+  const { atom } = await import('jotai')
+
+  return {
+    dslReadErrorAtom: atom(false),
+    dslUnsupportedModeAtom: atom(false),
+    effectiveSelectedAppAtom: atom(undefined),
+    isReadingDslAtom: atom(false),
+    sourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
+  }
+})
+
+vi.mock('@/features/deployments/create-guide/state/workflow', async () => {
+  const { atom } = await import('jotai')
+  const { methodAtom } = await import('@/features/deployments/create-guide/state/primitives')
   const emptyActionAtom = atom(null, () => undefined)
 
   return {
     continueFromSourceAtom: emptyActionAtom,
-    dslFileAtom: atom<File | undefined>(undefined),
-    dslReadErrorAtom: atom(false),
-    dslUnsupportedModeAtom: atom(false),
-    effectiveMethodAtom: atom(get => get(methodAtom)),
-    effectiveSelectedAppAtom: atom(undefined),
-    isReadingDslAtom: atom(false),
-    methodAtom,
     selectDslFileAtom: emptyActionAtom,
     selectMethodAtom: atom(null, (_get, set, value: 'bindApp' | 'importDsl') => {
       set(methodAtom, value)
     }),
     selectSourceAppAtom: emptyActionAtom,
     setSourceSearchTextAtom: emptyActionAtom,
-    sourceAppsQueryAtom: atom(mocks.sourceAppsQuery),
     sourceCanGoNextAtom: atom(false),
-    sourceSearchTextAtom: atom(''),
+  }
+})
+
+vi.mock('@/features/deployments/create-guide/state/queries', async () => {
+  const { atom } = await import('jotai')
+
+  return {
     unsupportedDslNodesAtom: atom([]),
   }
 })
