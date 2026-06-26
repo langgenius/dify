@@ -7128,6 +7128,11 @@
       "count": 1
     }
   },
+  "web/service/access-control/__tests__/index.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/service/access-control/__tests__/use-app-access-control.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7149,6 +7154,11 @@
     }
   },
   "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/index.ts": {
     "no-restricted-imports": {
       "count": 1
     }
