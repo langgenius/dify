@@ -4,11 +4,11 @@ import type { EnterpriseMarketplaceAsset, EnterpriseMarketplaceAssetStatus } fro
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useDeferredValue, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SearchInput from '@/app/components/base/search-input'
-import Textarea from '@/app/components/base/textarea'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useAdminEnterpriseMarketplaceAssets, useReviewEnterpriseMarketplaceAsset, useUnlistEnterpriseMarketplaceAsset } from '@/service/use-enterprise-marketplace'
 import { formatTime } from '@/utils/time'
 
@@ -58,7 +58,7 @@ const ReviewDialog = ({
             </div>
             <Textarea
               value={reviewNote}
-              onChange={e => setReviewNote(e.target.value)}
+              onValueChange={setReviewNote}
               placeholder={t('enterpriseMarketplace.reviewNotePlaceholder', { ns: 'common' })}
               maxLength={5000}
             />
@@ -140,7 +140,7 @@ const EnterpriseMarketplaceAdmin = () => {
               {t('enterpriseMarketplace.adminSectionTip', { ns: 'common' })}
             </div>
           </div>
-          <SearchInput className="lg:w-[240px]" value={keyword} onChange={setKeyword} />
+          <SearchInput className="lg:w-[240px]" value={keyword} onValueChange={setKeyword} />
         </div>
 
         <div className="mb-4 flex flex-wrap gap-2">

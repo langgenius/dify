@@ -1,6 +1,5 @@
 'use client'
 import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
-import type { UserProfileResponse } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -25,14 +24,14 @@ import MembersPage from './members-page'
 import ModelProviderPage from './model-provider-page'
 import { useResetModelProviderListExpanded } from './model-provider-page/atoms'
 import PermissionsPage from './permissions-page'
-import PreferencePage from './preference-page'
 import PlatformAdminPage from './platform-admin-page'
+import PreferencePage from './preference-page'
 
 const iconClassName = `
   w-4 h-4 mr-2
 `
 
-type EnterpriseUserProfile = UserProfileResponse & {
+type EnterpriseUserProfile = {
   is_platform_admin?: boolean
 }
 

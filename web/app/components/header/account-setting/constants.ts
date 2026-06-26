@@ -34,6 +34,7 @@ export type WorkspaceSettingTab = typeof WORKSPACE_SETTING_TAB_VALUES[number]
 const USER_SETTING_TAB_VALUES = [
   ACCOUNT_SETTING_TAB.PREFERENCES,
   ACCOUNT_SETTING_TAB.LANGUAGE,
+  ACCOUNT_SETTING_TAB.PLATFORM_ADMIN,
 ] as const
 
 export type UserSettingTab = typeof USER_SETTING_TAB_VALUES[number]

@@ -976,7 +976,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
     setShowAccessControl(false)
   }
 
-  const handleToggleStar = useCallback(async (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleToggleStar = useCallback(async (e: MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.preventDefault()
 

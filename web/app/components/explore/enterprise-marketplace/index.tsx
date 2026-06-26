@@ -9,9 +9,9 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useDeferredValue, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
+import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import AppIcon from '@/app/components/base/app-icon'
-import Input from '@/app/components/base/input'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { SearchInput } from '@/app/components/base/search-input'
 import { useAppContext } from '@/context/app-context'
 import { DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'
@@ -183,6 +183,7 @@ const EnterpriseMarketplace = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { push } = useRouter()
+  const setNeedRefresh = useSetNeedRefreshAppList()
   const [keyword, setKeyword] = useState('')
   const deferredKeyword = useDeferredValue(keyword)
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
@@ -227,13 +228,10 @@ const EnterpriseMarketplace = () => {
                   {t('enterpriseMarketplace.pageSubtitle', { ns: 'common' })}
                 </div>
               </div>
-              <Input
-                showLeftIcon
-                showClearIcon
-                wrapperClassName="w-full lg:w-[240px]"
+              <SearchInput
+                className="w-full lg:w-[240px]"
                 value={keyword}
-                onChange={e => setKeyword(e.target.value)}
-                onClear={() => setKeyword('')}
+                onValueChange={setKeyword}
               />
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -425,8 +423,8 @@ const EnterpriseMarketplace = () => {
                 if (leakedDependencies.length) {
                   toast.warning(t('enterpriseMarketplace.dependencyWarning', { ns: 'common', count: leakedDependencies.length }))
                 }
-                localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
-                getRedirection(isCurrentWorkspaceEditor, {
+                setNeedRefresh('1')
+                getRedirection({
                   id: response.import_result.app_id,
                   mode: response.import_result.app_mode as AppModeEnum,
                 }, push)
@@ -488,11 +486,11 @@ const EnterpriseMarketplace = () => {
                     }
                   : current)
                 toast.success(t('enterpriseMarketplace.useSuccess', { ns: 'common' }))
-                localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
+                setNeedRefresh('1')
                 pendingImportIdRef.current = ''
                 pendingAssetIdRef.current = ''
                 setShowDSLConfirmModal(false)
-                getRedirection(isCurrentWorkspaceEditor, {
+                getRedirection({
                   id: response.app_id,
                   mode: response.app_mode as AppModeEnum,
                 }, push)

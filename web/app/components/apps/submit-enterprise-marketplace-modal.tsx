@@ -3,11 +3,11 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
 import { useSubmitEnterpriseMarketplaceAsset } from '@/service/use-enterprise-marketplace'
 
 export type SubmitEnterpriseMarketplaceModalProps = {
@@ -78,13 +78,13 @@ const SubmitEnterpriseMarketplaceModal = ({
             <div className="mb-2 text-sm text-text-secondary">
               {t('enterpriseMarketplace.titleLabel', { ns: 'common' })}
             </div>
-            <Input value={title} onChange={e => setTitle(e.target.value)} maxLength={255} />
+            <Input value={title} onValueChange={setTitle} maxLength={255} />
           </div>
           <div>
             <div className="mb-2 text-sm text-text-secondary">
               {t('enterpriseMarketplace.descriptionLabel', { ns: 'common' })}
             </div>
-            <Textarea value={description} onChange={e => setDescription(e.target.value)} maxLength={5000} />
+            <Textarea value={description} onValueChange={setDescription} maxLength={5000} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>
@@ -93,7 +93,7 @@ const SubmitEnterpriseMarketplaceModal = ({
               </div>
               <Input
                 value={category}
-                onChange={e => setCategory(e.target.value)}
+                onValueChange={setCategory}
                 placeholder={t('enterpriseMarketplace.categoryPlaceholder', { ns: 'common' })}
                 maxLength={255}
               />
@@ -104,7 +104,7 @@ const SubmitEnterpriseMarketplaceModal = ({
               </div>
               <Input
                 value={tags}
-                onChange={e => setTags(e.target.value)}
+                onValueChange={setTags}
                 placeholder={t('enterpriseMarketplace.tagsPlaceholder', { ns: 'common' })}
               />
             </div>
@@ -115,12 +115,12 @@ const SubmitEnterpriseMarketplaceModal = ({
             </div>
             <Textarea
               value={scenario}
-              onChange={e => setScenario(e.target.value)}
+              onValueChange={setScenario}
               placeholder={t('enterpriseMarketplace.scenarioPlaceholder', { ns: 'common' })}
               maxLength={5000}
             />
           </div>
-          <label className="flex items-start gap-3 rounded-xl border border-divider-subtle bg-background-body px-4 py-3">
+          <div className="flex items-start gap-3 rounded-xl border border-divider-subtle bg-background-body px-4 py-3">
             <Checkbox checked={allowShowWorkspaceName} onCheckedChange={setAllowShowWorkspaceName} />
             <div>
               <div className="system-sm-medium text-text-primary">
@@ -130,7 +130,7 @@ const SubmitEnterpriseMarketplaceModal = ({
                 {t('enterpriseMarketplace.showWorkspaceNameTip', { ns: 'common' })}
               </div>
             </div>
-          </label>
+          </div>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-divider-subtle px-6 py-4">
           <Button onClick={onClose}>

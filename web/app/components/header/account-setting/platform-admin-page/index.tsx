@@ -1,18 +1,17 @@
 'use client'
 
-import type { RoleKey } from '../members-page/invite-modal/role-selector'
 import type { InvitationResult, Member } from '@/models/common'
 import type { PlatformAdminWorkspace } from '@/models/platform-admin'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useDeferredValue, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import SearchInput from '@/app/components/base/search-input'
-import Textarea from '@/app/components/base/textarea'
+import { SearchInput } from '@/app/components/base/search-input'
 import { emailRegex, validPassword } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useLocale } from '@/context/i18n'
@@ -31,15 +30,17 @@ import {
 import InvitedModal from '../members-page/invited-modal'
 import EnterpriseMarketplaceAdmin from './enterprise-marketplace-admin'
 
+type PlatformAdminRoleKey = Exclude<Member['role'], 'owner'>
+
 const roleLabels = {
   owner: 'members.owner',
   admin: 'members.admin',
   editor: 'members.editor',
   dataset_operator: 'members.datasetOperator',
   normal: 'members.normal',
-} as const
+} as const satisfies Record<Member['role'], string>
 
-const nonOwnerRoles: RoleKey[] = ['admin', 'editor', 'normal', 'dataset_operator']
+const nonOwnerRoles: PlatformAdminRoleKey[] = ['admin', 'editor', 'normal', 'dataset_operator']
 
 type PlatformAdminSection = 'workspaces' | 'marketplace'
 
@@ -112,13 +113,13 @@ const CreateWorkspaceDialog = ({
       <div className="space-y-4 px-6 py-5">
         <label className="block">
           <div className="mb-1 system-sm-medium text-text-secondary">{t('platformAdmin.workspaceName', { ns: 'common' })}</div>
-          <Input value={name} onChange={e => setName(e.target.value)} maxLength={255} />
+          <Input value={name} onValueChange={setName} maxLength={255} />
         </label>
         <label className="block">
           <div className="mb-1 system-sm-medium text-text-secondary">{t('platformAdmin.ownerEmail', { ns: 'common' })}</div>
           <Input
             value={ownerEmail}
-            onChange={e => setOwnerEmail(e.target.value)}
+            onValueChange={setOwnerEmail}
             placeholder={t('platformAdmin.ownerEmailPlaceholder', { ns: 'common' })}
           />
         </label>
@@ -126,7 +127,7 @@ const CreateWorkspaceDialog = ({
           <div className="mb-1 system-sm-medium text-text-secondary">{t('platformAdmin.ownerName', { ns: 'common' })}</div>
           <Input
             value={ownerName}
-            onChange={e => setOwnerName(e.target.value)}
+            onValueChange={setOwnerName}
             placeholder={t('platformAdmin.ownerNamePlaceholder', { ns: 'common' })}
           />
         </label>
@@ -162,7 +163,7 @@ const RenameWorkspaceDialog = ({
     <PlatformAdminDialog open={!!workspace} title={t('platformAdmin.renameWorkspace', { ns: 'common' })} onClose={onClose}>
       <div className="px-6 py-5">
         <div className="mb-1 system-sm-medium text-text-secondary">{t('platformAdmin.workspaceName', { ns: 'common' })}</div>
-        <Input value={name} onChange={e => setName(e.target.value)} maxLength={255} />
+        <Input value={name} onValueChange={setName} maxLength={255} />
       </div>
       <div className="flex justify-end gap-2 border-t border-divider-subtle px-6 py-4">
         <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
@@ -183,14 +184,14 @@ const InviteMembersDialog = ({
 }: {
   workspace: PlatformAdminWorkspace | null
   loading: boolean
-  roleOptions: RoleKey[]
+  roleOptions: PlatformAdminRoleKey[]
   onClose: () => void
-  onSubmit: (payload: { emails: string[], role: RoleKey, language: string }) => void
+  onSubmit: (payload: { emails: string[], role: PlatformAdminRoleKey, language: string }) => void
 }) => {
   const { t } = useTranslation()
   const locale = useLocale()
   const [emailsText, setEmailsText] = useState('')
-  const [role, setRole] = useState<RoleKey>('normal')
+  const [role, setRole] = useState<PlatformAdminRoleKey>('normal')
 
   const emails = useMemo(
     () => emailsText.split(/[,\n;]/).map(email => email.trim().toLowerCase()).filter(Boolean),
@@ -219,7 +220,7 @@ const InviteMembersDialog = ({
           <div className="mb-1 system-sm-medium text-text-secondary">{t('members.email', { ns: 'common' })}</div>
           <Textarea
             value={emailsText}
-            onChange={e => setEmailsText(e.target.value)}
+            onValueChange={setEmailsText}
             placeholder={t('members.emailPlaceholder', { ns: 'common' })}
           />
         </label>
@@ -228,10 +229,10 @@ const InviteMembersDialog = ({
           <select
             className="h-9 w-full rounded-lg border border-divider-subtle bg-components-input-bg-normal px-3 text-sm text-text-secondary outline-none"
             value={role}
-            onChange={e => setRole(e.target.value as RoleKey)}
+            onChange={e => setRole(e.target.value as PlatformAdminRoleKey)}
           >
             {roleOptions.map(option => (
-              <option key={option} value={option}>{t(roleLabels[option], { ns: 'common' })}</option>
+              <option key={option} value={option}>{t(roleLabels[option], { ns: 'common', defaultValue: option })}</option>
             ))}
           </select>
         </label>
@@ -308,7 +309,7 @@ const ResetMemberPasswordDialog = ({
           <div className="mb-1 system-sm-medium text-text-secondary">{t('platformAdmin.temporaryPassword', { ns: 'common' })}</div>
           <Input
             value={password}
-            onChange={e => setPassword(e.target.value)}
+            onValueChange={setPassword}
             placeholder={t('platformAdmin.temporaryPasswordPlaceholder', { ns: 'common' })}
           />
         </label>
@@ -316,7 +317,7 @@ const ResetMemberPasswordDialog = ({
           <div className="mb-1 system-sm-medium text-text-secondary">{t('platformAdmin.confirmTemporaryPassword', { ns: 'common' })}</div>
           <Input
             value={confirmPassword}
-            onChange={e => setConfirmPassword(e.target.value)}
+            onValueChange={setConfirmPassword}
             placeholder={t('platformAdmin.confirmTemporaryPasswordPlaceholder', { ns: 'common' })}
           />
         </label>
@@ -367,7 +368,7 @@ const PlatformAdminPage = () => {
   const removeMemberMutation = useDeletePlatformAdminWorkspaceMember(activeWorkspaceId)
   const resetPasswordMutation = useResetPlatformAdminWorkspaceMemberPassword(activeWorkspaceId)
 
-  const roleOptions = useMemo<RoleKey[]>(() => {
+  const roleOptions = useMemo<PlatformAdminRoleKey[]>(() => {
     return datasetOperatorEnabled ? nonOwnerRoles : nonOwnerRoles.filter(role => role !== 'dataset_operator')
   }, [datasetOperatorEnabled])
 
@@ -411,7 +412,7 @@ const PlatformAdminPage = () => {
     })
   }
 
-  const handleInviteMembers = (payload: { emails: string[], role: RoleKey, language: string }) => {
+  const handleInviteMembers = (payload: { emails: string[], role: PlatformAdminRoleKey, language: string }) => {
     inviteMembersMutation.mutate(payload, {
       onSuccess: (response) => {
         setDialog(null)
@@ -478,7 +479,7 @@ const PlatformAdminPage = () => {
                   {t('operation.create', { ns: 'common' })}
                 </Button>
               </div>
-              <SearchInput className="mb-4" value={keyword} onChange={setKeyword} />
+              <SearchInput className="mb-4" value={keyword} onValueChange={setKeyword} />
               <div className="space-y-2">
                 {workspaces.map(workspace => (
                   <button
@@ -576,7 +577,7 @@ const PlatformAdminPage = () => {
                           {member.role === 'owner'
                             ? (
                                 <div className="system-sm-medium text-text-secondary">
-                                  {t(roleLabels.owner, { ns: 'common' })}
+                                  {t(roleLabels.owner, { ns: 'common', defaultValue: 'owner' })}
                                 </div>
                               )
                             : (
@@ -586,11 +587,11 @@ const PlatformAdminPage = () => {
                                   disabled={updateRoleMutation.isPending}
                                   onChange={e => updateRoleMutation.mutate({
                                     memberId: member.id,
-                                    role: e.target.value as RoleKey,
+                                    role: e.target.value as PlatformAdminRoleKey,
                                   })}
                                 >
                                   {roleOptions.map(option => (
-                                    <option key={option} value={option}>{t(roleLabels[option], { ns: 'common' })}</option>
+                                    <option key={option} value={option}>{t(roleLabels[option], { ns: 'common', defaultValue: option })}</option>
                                   ))}
                                 </select>
                               )}
