@@ -35,13 +35,13 @@ Do not use old chat summaries, local memory, the previous dirty `enterprise/main
 
 ## Enterprise Branch Strategy
 
-- Official stable tag/tree `1.14.2` is the current enterprise release baseline.
+- Official stable tag/tree `1.15.0` is the current enterprise release baseline.
 - `main` may mirror or observe official development state, but it is not the enterprise release base.
-- `codex/enterprise-candidate-1.14.2-20260519` is the current clean enterprise candidate rebuilt from official tag `1.14.2`.
-- The enterprise version for this candidate is `1.14.2-enterprise`.
-- Enterprise images: `dify-api-enterprise:1.14.2-enterprise`, `dify-web-enterprise:1.14.2-enterprise`.
+- `codex/enterprise-candidate-1.15.0-20260626` is the current clean enterprise candidate rebuilt from official tag `1.15.0`.
+- The enterprise version for this candidate is `1.15.0-enterprise`.
+- Enterprise images: `dify-api-enterprise:1.15.0-enterprise`, `dify-web-enterprise:1.15.0-enterprise`.
 - `worker` and `worker_beat` reuse the enterprise API image.
-- Future official releases, such as `1.15.0`, should start from the new official stable tag/tree and replay required enterprise patch groups, instead of mechanically merging official changes into an old enterprise tree.
+- Future official releases should start from the new official stable tag/tree and replay required enterprise patch groups, instead of mechanically merging official changes into an old enterprise tree.
 - The previous `enterprise/main`, `codex/enterprise-candidate-20260424`, and `D:\CodexSpace\dify-enterprise-candidate-20260424` are historical references only unless a specific patch is re-selected and validated.
 
 ## Enterprise PR Safety

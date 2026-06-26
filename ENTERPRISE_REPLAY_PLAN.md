@@ -170,7 +170,7 @@ Reference sources from the old `1.13.3` candidate:
 - `web/app/components/datasets/`
 - `web/app/components/tools/`
 
-Additional patches replayed in this group for `1.14.2-enterprise`:
+Additional patches replayed in this group for `1.15.0-enterprise`:
 
 - `api/core/tools/utils/system_oauth_encryption.py`: dedicated OAuth parameter encryption module using AES-CBC with SHA-256 key derivation from `SECRET_KEY`. Replaces `core.tools.utils.system_encryption.decrypt_system_params` with `decrypt_system_oauth_params` in `builtin_tools_manage_service.py` and `trigger_provider_service.py` for OAuth flows. This separation allows the OAuth encryption to evolve independently from the general system parameter encryption used elsewhere.
 - `web/app/components/app/configuration/config/normalize-generator-model.ts`: normalizes the model mode field for agent prompt generation (automatic and code-generator). Fixes a runtime type mismatch where `AppModeEnum.COMPLETION` was cast to `ModelModeType.chat`, causing incorrect model configuration when localStorage cached an incompatible mode.

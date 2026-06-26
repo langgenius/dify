@@ -109,7 +109,7 @@ git switch -c codex/enterprise-candidate-1.15.0-20260626 1.15.0
 硬规则：
 
 - 新版本必须使用新的工作目录、新候选分支和当前目录下的 compose 文件启动，不得复用旧工作目录里的 compose 运行面。
-- 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/.env`，再按官方新版 `docker/envs/**` 与 `.env.example` 补齐新增配置。平移后必须检查并更新版本型配置，尤其是 `DIFY_ENTERPRISE_VERSION`，不得保留上一版本如 `1.14.1-enterprise`。
+- 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/.env`，再按官方新版 `docker/envs/**` 与 `.env.example` 补齐新增配置。平移后必须检查并更新版本型配置，尤其是 `DIFY_ENTERPRISE_VERSION`，不得保留上一版本企业 tag。
 - 新工作区启动 compose 前，应优先从上一稳定企业工作区平移 `docker/volumes/**`，用于保留本机开发验证所需的数据库、上传文件、Redis、插件、向量库和 sandbox 依赖。
 - 平移运行数据前，先停止相关 compose 服务；如果新目录已经误初始化过，先把新目录的临时 `docker/volumes` 和 `docker/.env` 备份到本机备份目录，再用旧稳定数据覆盖新目录。
 - PostgreSQL `pgdata` 可能因权限无法由普通用户复制。可使用临时 `busybox`/`alpine` 容器以 root 身份同时挂载旧、新 `docker/volumes` 目录完成复制；复制命令不得写入旧目录。
