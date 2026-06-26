@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from models.model import MessageFile
 
 
@@ -61,10 +59,10 @@ class TestBatchMessageFileLoading:
         assert mock_db.session.scalars.call_count == 2
 
         # The second call should be an IN query (batch)
-        from sqlalchemy import select
+
         second_call_stmt = mock_db.session.scalars.call_args_list[1][0][0]
         # Verify it's a select on MessageFile
-        assert hasattr(second_call_stmt, 'columns_clause_froms')
+        assert hasattr(second_call_stmt, "columns_clause_froms")
 
     @patch("core.memory.token_buffer_memory.db")
     @patch("core.memory.token_buffer_memory.extract_thread_messages")

@@ -156,9 +156,7 @@ class TokenBufferMemory:
         # Batch-fetch all MessageFile records to avoid N+1 queries
         message_ids = [m.id for m in messages]
         if message_ids:
-            all_files = db.session.scalars(
-                select(MessageFile).where(MessageFile.message_id.in_(message_ids))
-            ).all()
+            all_files = db.session.scalars(select(MessageFile).where(MessageFile.message_id.in_(message_ids))).all()
         else:
             all_files = []
 
