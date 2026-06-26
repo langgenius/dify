@@ -5,7 +5,7 @@ import type {
   AccessSubjectType as AccessSubjectTypeValue,
   Subject,
 } from '@dify/contracts/enterprise/types.gen'
-import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
+import type { AccessSubjectSelectionValue } from './access-subject-selector/types'
 import type {
   AccessControlAccount,
   AccessControlGroup,
@@ -14,7 +14,7 @@ import {
   AccessMode,
   AccessSubjectType,
 } from '@dify/contracts/enterprise/types.gen'
-import { AccessMode as AppAccessMode } from '@/models/access-control'
+import { AccessMode as AppAccessMode, SubjectType as AppSubjectType } from '@/models/access-control'
 
 export type AccessPermissionKind = 'organization' | 'specific' | 'anyone'
 
@@ -64,7 +64,10 @@ export function appAccessModeToPermissionKey(mode: AppAccessMode): AccessPermiss
 }
 
 export function normalizeResolvedSubject(subject: Subject): SelectableAccessSubject | undefined {
-  if (subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP) {
+  const isGroupSubject = subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_GROUP || subject.subjectType === AppSubjectType.GROUP
+  const isAccountSubject = subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT || subject.subjectType === AppSubjectType.ACCOUNT
+
+  if (isGroupSubject) {
     const id = subject.subjectId || subject.groupData?.id
     if (!id)
       return undefined
@@ -77,7 +80,7 @@ export function normalizeResolvedSubject(subject: Subject): SelectableAccessSubj
     }
   }
 
-  if (subject.subjectType === AccessSubjectType.ACCESS_SUBJECT_TYPE_ACCOUNT) {
+  if (isAccountSubject) {
     const id = subject.subjectId || subject.accountData?.id
     if (!id)
       return undefined

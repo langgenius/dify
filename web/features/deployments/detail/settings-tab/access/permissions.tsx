@@ -9,7 +9,7 @@ import type {
   AccessPermissionKind,
   SelectableAccessSubject,
 } from './access-policy'
-import type { AccessSubjectSelectionValue } from '@/app/components/app/app-access-control/access-subject-selector/types'
+import type { AccessSubjectSelectionValue } from './access-subject-selector/types'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -25,10 +25,8 @@ import {
   selectedSubjectsFromPolicy,
   subjectsFromAccessControlSelection,
 } from './access-policy'
-import {
-  DeploymentAccessControlDialog,
-  PermissionSummaryButton,
-} from './permission-row-components'
+import { DeploymentAccessControlDialog } from './deployment-access-control-dialog'
+import { PermissionSummaryButton } from './permission-row-components'
 
 type AccessPermissionDraft = {
   fingerprint: string

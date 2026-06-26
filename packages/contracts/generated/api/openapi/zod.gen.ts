@@ -502,6 +502,13 @@ export const zSessionListResponse = z.object({
 })
 
 /**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
  * SupportedAppType
  *
  * App types the ``app`` usage face (``get app``) lists and filters.

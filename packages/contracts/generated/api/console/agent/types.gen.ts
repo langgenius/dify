@@ -269,6 +269,7 @@ export type MessageDetailResponse = {
   agent_thoughts?: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
+  answer: string
   answer_tokens?: number | null
   conversation_id: string
   created_at?: number | null
@@ -284,12 +285,11 @@ export type MessageDetailResponse = {
   }
   message?: JsonValue | null
   message_files?: Array<MessageFile>
-  message_metadata_dict?: JsonValue | null
   message_tokens?: number | null
+  metadata?: JsonValue | null
   parent_message_id?: string | null
   provider_response_latency?: number | null
   query: string
-  re_sign_file_url_answer: string
   status: string
   workflow_run_id?: string | null
 }
@@ -723,7 +723,6 @@ export type AgentThought = {
   created_at?: number | null
   files: Array<string>
   id: string
-  message_chain_id?: string | null
   message_id: string
   observation?: string | null
   position: number
@@ -743,8 +742,8 @@ export type ConversationAnnotation = {
 
 export type ConversationAnnotationHitHistory = {
   annotation_create_account?: SimpleAccount | null
+  annotation_id: string
   created_at?: number | null
-  id: string
 }
 
 export type HumanInputContent = {
