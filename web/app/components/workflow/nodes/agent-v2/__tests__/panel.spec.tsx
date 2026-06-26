@@ -636,6 +636,68 @@ describe('agent/panel', () => {
     expect(screen.getByRole('region', { name: 'inline-orchestrate-panel' })).toBeInTheDocument()
   })
 
+  it('keeps the inline roster trigger stable while opening refetches composer state', () => {
+    mockUseWorkflowInlineAgentDetail.mockReturnValue({
+      data: {
+        agent: {
+          id: 'inline-agent-1',
+          name: 'Workflow Agent 1',
+          description: '',
+          scope: 'workflow_only',
+          status: 'active',
+        },
+      },
+      isFetching: true,
+      refetch: mockWorkflowInlineAgentDetailRefetch,
+    })
+    const { rerender } = render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/ }))
+    expect(mockWorkflowInlineAgentDetailRefetch).toHaveBeenCalled()
+
+    mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
+    rerender(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_binding: {
+            binding_type: 'inline_agent',
+            agent_id: 'inline-agent-1',
+            current_snapshot_id: 'snapshot-1',
+          },
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    const trigger = screen.getByRole('button', { name: /^workflow\.nodes\.agent\.roster\.openPanel/, hidden: true })
+    expect(trigger).not.toHaveAttribute('aria-busy')
+    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.name')).toBeInTheDocument()
+    expect(within(trigger).getByText('workflow.nodes.agent.roster.inlineSetup.type')).toBeInTheDocument()
+    expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({
+      agentId: 'inline-agent-1',
+      inlineComposerState: expect.objectContaining({
+        agent: expect.objectContaining({
+          id: 'inline-agent-1',
+        }),
+      }),
+      nodeId: 'agent-node',
+      open: true,
+    })
+  })
+
   it('opens save-to-roster action from the inline workspace menu and rebinds to the saved roster agent', () => {
     mockStoreState.openInlineAgentPanelNodeId = 'agent-node'
     render(

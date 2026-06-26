@@ -58,12 +58,11 @@ export function AgentV2Panel({
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.copyFromRoster.post.mutationOptions(),
   )
   const isAgentPanelOpen = isInlineAgentReady || isInlineAgentPending ? isInlineAgentPanelOpen : isRosterAgentPanelOpen
-  const isInlineAgentDetailFetchingForPanel = isInlineAgentPanelOpen && inlineAgentQuery.isFetching
-  const isInlineAgentLoading = isInlineAgentPending || (isInlineAgentReady && (!inlineAgent || isInlineAgentDetailFetchingForPanel))
+  const isInlineAgentLoading = isInlineAgentPending || (isInlineAgentReady && !inlineAgent)
   const isAgentBindingPending = isInlineAgentPending || isCreatingInlineAgent
   const canStartFromScratch = inputs.agent_binding?.binding_type !== 'inline_agent'
   const canSaveInlineToRoster = isInlineAgentReady && !!inlineAgent
-  const inlineComposerStateForPanel = isInlineAgentDetailFetchingForPanel ? undefined : inlineAgentQuery.data
+  const inlineComposerStateForPanel = inlineAgentQuery.data
   const displayedAgent = rosterAgentQuery.data ?? (isInlineAgentPending || isInlineAgentReady
     ? {
         id: inlineAgentId ?? id,
