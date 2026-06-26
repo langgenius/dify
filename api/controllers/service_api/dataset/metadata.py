@@ -84,7 +84,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata = MetadataService.create_metadata(db.session(), dataset_id_str, metadata_args)
         return dump_response(DatasetMetadataResponse, metadata), 201
@@ -157,7 +157,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata = MetadataService.update_metadata_name(db.session(), dataset_id_str, metadata_id_str, payload.name)
         return dump_response(DatasetMetadataResponse, metadata), 200
@@ -192,7 +192,7 @@ class DatasetMetadataServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         MetadataService.delete_metadata(db.session(), dataset_id_str, metadata_id_str)
         return "", 204
@@ -260,7 +260,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         match action:
             case "enable":
@@ -306,7 +306,7 @@ class DocumentMetadataEditServiceApi(DatasetApiResource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata_args = MetadataOperationData.model_validate(service_api_ns.payload or {})
 

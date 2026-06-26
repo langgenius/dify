@@ -173,7 +173,8 @@ class TestDatasetServiceRetrievalPermissions:
 
     def test_get_datasets_filters_by_maintainer_and_rbac_overrides(self):
         mock_db = MagicMock()
-        mock_db.session.scalars.return_value.all.return_value = []
+        explicit_session = MagicMock()
+        explicit_session.scalars.return_value.all.return_value = []
         mock_db.paginate.return_value.items = []
         mock_db.paginate.return_value.total = 0
         user = DatasetServiceUnitDataFactory.create_user_mock(role=TenantAccountRole.NORMAL)
@@ -189,12 +190,15 @@ class TestDatasetServiceRetrievalPermissions:
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
+                session=explicit_session,
                 tenant_id="tenant-1",
                 user=user,
                 accessible_dataset_ids=["dataset-shared"],
                 include_own_datasets=True,
             )
 
+        explicit_session.scalars.assert_called_once()
+        mock_db.session.scalars.assert_not_called()
         select_stmt = mock_db.paginate.call_args.kwargs["select"]
         visibility_clause = str(select_stmt._where_criteria[1])
         assert "maintainer" in visibility_clause
@@ -218,6 +222,7 @@ class TestDatasetServiceRetrievalPermissions:
             DatasetService.get_datasets(
                 page=1,
                 per_page=20,
+                session=mock_db.session,
                 tenant_id="tenant-1",
                 user=user,
                 accessible_dataset_ids=["dataset-shared"],
@@ -272,7 +277,14 @@ class TestDatasetServiceRetrievalPermissions:
                 return_value=mock_permissions,
             ),
         ):
-            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user, include_all=True)
+            DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=mock_db.session,
+                tenant_id="tenant-1",
+                user=user,
+                include_all=True,
+            )
 
         mock_db.session.scalars.assert_called_once()
         mock_db.paginate.assert_called_once()
@@ -289,7 +301,7 @@ class TestDatasetServiceRetrievalPermissions:
             patch("services.dataset_service.db", mock_db),
             patch("services.dataset_service.dify_config.RBAC_ENABLED", True),
         ):
-            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=None)
+            DatasetService.get_datasets(page=1, per_page=20, session=mock_db.session, tenant_id="tenant-1", user=None)
 
         mock_db.session.scalars.assert_not_called()
         mock_db.paginate.assert_called_once()
@@ -308,7 +320,14 @@ class TestDatasetServiceRetrievalPermissions:
             patch("services.dataset_service.db", mock_db),
             patch("services.dataset_service.dify_config.RBAC_ENABLED", False),
         ):
-            DatasetService.get_datasets(page=1, per_page=20, tenant_id="tenant-1", user=user, include_all=True)
+            DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=mock_db.session,
+                tenant_id="tenant-1",
+                user=user,
+                include_all=True,
+            )
 
         mock_db.session.scalars.assert_called_once()
         mock_db.paginate.assert_called_once()
@@ -517,7 +536,9 @@ class TestDatasetServiceCreationAndUpdate:
             result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user)
 
         assert result == "updated"
-        check_permission.assert_called_once_with(dataset, user)
+        check_permission.assert_called_once()
+        assert check_permission.call_args.args[:2] == (dataset, user)
+        assert len(check_permission.call_args.args) == 3
         update_external.assert_called_once_with(dataset, {"name": dataset.name}, user)
 
     def test_update_dataset_routes_internal_datasets_to_internal_helper(self):
@@ -533,7 +554,9 @@ class TestDatasetServiceCreationAndUpdate:
             result = DatasetService.update_dataset("dataset-1", {"name": dataset.name}, user)
 
         assert result == "updated"
-        check_permission.assert_called_once_with(dataset, user)
+        check_permission.assert_called_once()
+        assert check_permission.call_args.args[:2] == (dataset, user)
+        assert len(check_permission.call_args.args) == 3
         update_internal.assert_called_once_with(dataset, {"name": dataset.name}, user)
 
     def test_has_dataset_same_name_returns_true_when_query_matches(self):

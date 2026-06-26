@@ -181,7 +181,7 @@ class DatasetDocumentSegmentListApi(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -302,7 +302,7 @@ class DatasetDocumentSegmentListApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segments(segment_ids, document, dataset)
@@ -345,7 +345,7 @@ class DatasetDocumentSegmentApi(Resource):
             raise Forbidden()
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -421,7 +421,7 @@ class DatasetDocumentSegmentAddApi(Resource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -494,7 +494,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -550,7 +550,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segment(segment, document, dataset)
@@ -687,7 +687,7 @@ class ChildChunkAddApi(Resource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -789,7 +789,7 @@ class ChildChunkAddApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -862,7 +862,7 @@ class ChildChunkUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         try:
@@ -930,7 +930,7 @@ class ChildChunkUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
