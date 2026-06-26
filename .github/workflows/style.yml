@@ -53,6 +53,8 @@ jobs:
 
       - name: Run Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          PYREFLY_OUTPUT_FORMAT: github
         run: make type-check-core
 
       - name: Dotenv check

@@ -108,8 +108,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const isAccessConfigPath = pathname.endsWith('access-config')
     if (
       (isLayoutPath && !appACLCapabilities.canAccessLayout)
-      || (isLogsPath && !appACLCapabilities.canMonitor)
-      || (isAnnotationsPath && !appACLCapabilities.canEdit)
+      || (isLogsPath && !appACLCapabilities.canAccessLogAndAnnotation)
+      || (isAnnotationsPath && !appACLCapabilities.canAccessLogAndAnnotation)
       || (isOverviewPath && !appACLCapabilities.canMonitor)
       || (isAccessConfigPath && !appACLCapabilities.canAccessConfig)
     ) {

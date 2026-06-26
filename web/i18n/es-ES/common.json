@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Eliminar del espacio de trabajo",
   "members.removeFromTeamConfirmDescription": "Confirma que quieres eliminar a este miembro. Esta acción no se puede deshacer.",
   "members.removeFromTeamConfirmTitle": "Eliminar a {{memberName}} del equipo",
-  "members.role": "ROLES",
+  "members.role": "ROL",
   "members.roles": "ROLES",
   "members.selectRole": "Selecciona un rol",
   "members.sendInvite": "Enviar invitación",

@@ -256,7 +256,7 @@
   "members.removeFromTeam": "Odstrani iz ekipe",
   "members.removeFromTeamConfirmDescription": "Potrdite odstranitev tega člana. Tega dejanja ni mogoče razveljaviti.",
   "members.removeFromTeamConfirmTitle": "Odstrani {{memberName}} iz ekipe",
-  "members.role": "VLOGE",
+  "members.role": "VLOGA",
   "members.roles": "VLOGE",
   "members.selectRole": "Izberite vlogo",
   "members.sendInvite": "Pošlji povabilo",

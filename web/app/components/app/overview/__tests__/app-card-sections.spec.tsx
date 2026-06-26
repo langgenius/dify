@@ -25,14 +25,19 @@ vi.mock('../customize', () => ({
   default: () => <div data-testid="customize-modal" />,
 }))
 
-vi.mock('../../app-access-control', () => ({
-  AccessControl: ({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) => (
+vi.mock('../../app-access-control', () => {
+  const MockAccessControl = ({ onClose, onConfirm }: { onClose: () => void, onConfirm: () => void }) => (
     <div data-testid="access-control">
       <button type="button" onClick={onClose}>close-access</button>
       <button type="button" onClick={onConfirm}>confirm-access</button>
     </div>
-  ),
-}))
+  )
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 describe('app-card-sections', () => {
   const t = (key: string) => key
