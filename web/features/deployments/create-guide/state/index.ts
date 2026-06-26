@@ -3,6 +3,7 @@
 import type {
   DeployRequest,
   EnvVarInput,
+  Pagination,
 } from '@dify/contracts/enterprise/types.gen'
 import type { Getter } from 'jotai/vanilla'
 import type { EnvVarBindingSlot, EnvVarValues, EnvVarValueSelection } from '@/features/deployments/components/env-var-bindings'
@@ -29,11 +30,6 @@ import {
 import { unsupportedDslNodeError } from '@/features/deployments/shared/domain/error'
 import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
 import { createDeploymentIdempotencyKey } from '@/features/deployments/shared/domain/idempotency'
-import {
-  DEPLOYMENT_PAGE_SIZE,
-  getNextPageParamFromPagination,
-  SOURCE_APPS_PAGE_SIZE,
-} from '@/features/deployments/shared/domain/pagination'
 import { consoleQuery } from '@/service/client'
 import { AppModeEnum } from '@/types/app'
 import { environmentMatchesIdentifier } from './environment'
@@ -41,6 +37,16 @@ import { environmentMatchesIdentifier } from './environment'
 export type GuideMethod = 'bindApp' | 'importDsl'
 export type GuideStep = 'source' | 'release' | 'target'
 export type WorkflowSourceApp = App & { mode: Extract<AppModeEnum, 'workflow'> }
+
+const DEPLOYMENT_PAGE_SIZE = 100
+const SOURCE_APPS_PAGE_SIZE = 100
+
+function getNextPageParamFromPagination(pagination?: Pagination) {
+  const currentPage = pagination?.currentPage ?? 1
+  const totalPages = pagination?.totalPages ?? 1
+
+  return currentPage < totalPages ? currentPage + 1 : undefined
+}
 
 function deploymentGuideMethod(method: GuideMethod): GuideMethod {
   return method === 'importDsl' && !isDeploymentDslImportEnabled
