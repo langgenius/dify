@@ -693,6 +693,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
     generate_entity = _build_advanced_chat_generate_entity(conversation_id="conversation-id")
     generate_entity.stream = False
     workflow = SimpleNamespace(id="workflow-id", created_by="workflow-owner")
+    trace_manager = object()
 
     generator_instance = MagicMock()
     response_stream = _single_event_generator({"event": "message"})
@@ -714,6 +715,10 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.TraceQueueManager",
+        lambda app_id, user_id: trace_manager,
+    )
 
     _resume_advanced_chat(
         app_model=SimpleNamespace(id="app-id"),
@@ -731,6 +736,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
+    assert resumed_entity.trace_manager is trace_manager
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",
@@ -744,6 +750,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(monk
 def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypatch: pytest.MonkeyPatch):
     generate_entity = _build_workflow_generate_entity(stream=False)
     workflow = SimpleNamespace(id="workflow-id", created_by="workflow-owner")
+    trace_manager = object()
 
     generator_instance = MagicMock()
     response_stream = _single_event_generator({"event": "workflow_finished"})
@@ -765,6 +772,10 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypat
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.TraceQueueManager",
+        lambda app_id, user_id: trace_manager,
+    )
     workflow_run_repo = MagicMock()
     pause_entity = MagicMock()
 
@@ -784,6 +795,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypat
 
     resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
     assert resumed_entity.stream is True
+    assert resumed_entity.trace_manager is trace_manager
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",
@@ -798,6 +810,7 @@ def test_resume_workflow_publishes_events_for_originally_blocking_runs(monkeypat
 def test_resume_workflow_ignores_missing_old_pause_after_repause(monkeypatch: pytest.MonkeyPatch):
     generate_entity = _build_workflow_generate_entity(stream=False)
     workflow = SimpleNamespace(id="workflow-id", created_by="workflow-owner")
+    trace_manager = object()
 
     generator_instance = MagicMock()
     response_stream = _single_event_generator({"event": "workflow_paused"})
@@ -819,6 +832,10 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(monkeypatch: py
         "tasks.app_generate.workflow_execute_task.DifyCoreRepositoryFactory.create_workflow_node_execution_repository",
         lambda **kwargs: MagicMock(),
     )
+    monkeypatch.setattr(
+        "tasks.app_generate.workflow_execute_task.TraceQueueManager",
+        lambda app_id, user_id: trace_manager,
+    )
     workflow_run_repo = MagicMock()
     workflow_run_repo.delete_workflow_pause.side_effect = _WorkflowRunError("WorkflowPause not found: old-pause")
     pause_entity = MagicMock()
@@ -837,6 +854,9 @@ def test_resume_workflow_ignores_missing_old_pause_after_repause(monkeypatch: py
         pause_entity=pause_entity,
     )
 
+    resumed_entity = generator_instance.resume.call_args.kwargs["application_generate_entity"]
+    assert resumed_entity.stream is True
+    assert resumed_entity.trace_manager is trace_manager
     publish_streaming_response.assert_called_once_with(
         response_stream,
         "workflow-run-id",
