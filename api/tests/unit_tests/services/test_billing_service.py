@@ -72,6 +72,23 @@ class TestBillingServiceSendRequest:
         assert call_args[1]["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
         assert call_args[1]["headers"]["Content-Type"] == "application/json"
 
+    def test_send_request_with_base_url_override(self, mock_httpx_request, mock_billing_config):
+        """Quota APIs can use the new billing service without changing legacy billing calls."""
+        # Arrange
+        expected_response = {"result": "success"}
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.OK
+        mock_response.json.return_value = expected_response
+        mock_httpx_request.return_value = mock_response
+
+        # Act
+        result = BillingService._send_request("GET", "/quota/balance", base_url="https://quota.example.com")
+
+        # Assert
+        assert result == expected_response
+        call_args = mock_httpx_request.call_args
+        assert call_args[0][1] == "https://quota.example.com/quota/balance"
+
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.NOT_FOUND, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.BAD_REQUEST]
     )
@@ -312,6 +329,99 @@ class TestBillingServiceSubscriptionInfo:
         # Assert
         assert result == expected_response
         mock_send_request.assert_called_once_with("GET", "/subscription/info", params={"tenant_id": tenant_id})
+
+    def test_get_info_exclude_vector_space(self, mock_send_request):
+        """When requested, get_info asks billing to skip vector_space."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {
+            "enabled": True,
+            "subscription": {"plan": "professional", "interval": "month", "education": False},
+            "members": {"size": 1, "limit": 50},
+            "apps": {"size": 1, "limit": 200},
+            "knowledge_rate_limit": {"limit": 1000},
+            "documents_upload_quota": {"size": 0, "limit": 1000},
+            "annotation_quota_limit": {"size": 0, "limit": 5000},
+            "docs_processing": "top-priority",
+            "can_replace_logo": True,
+            "model_load_balancing_enabled": True,
+            "knowledge_pipeline_publish_enabled": True,
+        }
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
+
+        # Assert
+        assert "vector_space" not in result
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/subscription/info",
+            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
+        )
+
+    def test_get_info_exclude_vector_space_normalizes_null_field(self, mock_send_request):
+        """When billing serializes skipped vector_space as null, get_info treats it as absent."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {
+            "enabled": True,
+            "subscription": {"plan": "professional", "interval": "month", "education": False},
+            "members": {"size": 1, "limit": 50},
+            "apps": {"size": 1, "limit": 200},
+            "vector_space": None,
+            "knowledge_rate_limit": {"limit": 1000},
+            "documents_upload_quota": {"size": 0, "limit": 1000},
+            "annotation_quota_limit": {"size": 0, "limit": 5000},
+            "docs_processing": "top-priority",
+            "can_replace_logo": True,
+            "model_load_balancing_enabled": True,
+            "knowledge_pipeline_publish_enabled": True,
+        }
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_info(tenant_id, exclude_vector_space=True)
+
+        # Assert
+        assert "vector_space" not in result
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/subscription/info",
+            params={"tenant_id": tenant_id, "exclude_vector_space": "true"},
+        )
+
+    def test_get_vector_space_success(self, mock_send_request):
+        """Test successful retrieval of vector-space usage and limit."""
+        # Arrange
+        tenant_id = "tenant-123"
+        expected_response = {"size": 5120.75, "limit": 20480}
+        mock_send_request.return_value = expected_response
+
+        # Act
+        result = BillingService.get_vector_space(tenant_id)
+
+        # Assert
+        assert result == expected_response
+        mock_send_request.assert_called_once_with(
+            "GET",
+            "/subscription/vector-space",
+            params={"tenant_id": tenant_id},
+        )
+
+    def test_quota_get_balance_uses_quota_request(self):
+        tenant_id = "tenant-123"
+        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
+            mock_send_quota_request.return_value = {"quota": "200", "usage": "6", "available": "194", "reserved": "0"}
+
+            result = BillingService.quota_get_balance(tenant_id, "credit_pool", bucket="trial")
+
+        assert result == {"quota": 200, "usage": 6, "available": 194, "reserved": 0}
+        mock_send_quota_request.assert_called_once_with(
+            "GET",
+            "/quota/balance",
+            params={"tenant_id": tenant_id, "feature_key": "credit_pool", "bucket": "trial"},
+        )
 
     def test_get_knowledge_rate_limit_with_defaults(self, mock_send_request):
         """Test knowledge rate limit retrieval with default values."""
