@@ -344,23 +344,24 @@ class _ProviderConfigurationSourceCache:
         tenant_id: str,
         source: ProviderConfigurationCacheSource,
         entry_cls: type[T],
-    ) -> list[T] | None:
+    ) -> tuple[list[T] | None, str | None]:
+        version: str | None = None
         try:
             version = cls._get_version(tenant_id=tenant_id, source=source)
             cache_key = cls._source_key(tenant_id=tenant_id, source=source, version=version)
             cached_records = redis_client.get(cache_key)
             if cached_records is None:
-                return None
+                return None, version
 
             cached_text = cached_records.decode("utf-8") if isinstance(cached_records, bytes) else cached_records
             rows = json.loads(cached_text)
             if not isinstance(rows, list):
-                return None
+                return None, version
 
-            return [entry_cls.from_cache_row(row) for row in rows if isinstance(row, dict)]
+            return [entry_cls.from_cache_row(row) for row in rows if isinstance(row, dict)], version
         except Exception:
             logger.warning("Failed to read provider configuration source cache", exc_info=True)
-            return None
+            return None, version
 
     @classmethod
     def set_records(
@@ -369,9 +370,12 @@ class _ProviderConfigurationSourceCache:
         tenant_id: str,
         source: ProviderConfigurationCacheSource,
         records: Sequence[_CacheEntry],
+        expected_version: str | None = None,
     ) -> None:
         try:
             version = cls._get_version(tenant_id=tenant_id, source=source)
+            if expected_version is not None and version != expected_version:
+                return
             cache_key = cls._source_key(tenant_id=tenant_id, source=source, version=version)
             rows = [record.to_cache_row() for record in records]
             redis_client.setex(cache_key, _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS, json.dumps(rows))
@@ -418,7 +422,7 @@ def _get_cached_or_load_records[T: _CacheEntry](
     tenant_id: str,
     cache_source: _ProviderConfigurationCacheSourceSpec[T],
 ) -> list[T]:
-    cached_records = _ProviderConfigurationSourceCache.get_records(
+    cached_records, cache_version = _ProviderConfigurationSourceCache.get_records(
         tenant_id=tenant_id,
         source=cache_source.name,
         entry_cls=cache_source.entry_cls,
@@ -427,7 +431,12 @@ def _get_cached_or_load_records[T: _CacheEntry](
         return cached_records
 
     records = cache_source.load_records(tenant_id)
-    _ProviderConfigurationSourceCache.set_records(tenant_id=tenant_id, source=cache_source.name, records=records)
+    _ProviderConfigurationSourceCache.set_records(
+        tenant_id=tenant_id,
+        source=cache_source.name,
+        records=records,
+        expected_version=cache_version,
+    )
     return records
 
 

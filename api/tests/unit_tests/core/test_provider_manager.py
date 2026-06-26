@@ -703,6 +703,36 @@ def test_provider_model_credentials_cache_returns_cache_entries() -> None:
     assert second["openai"][0].model_type == ModelType.LLM
 
 
+def test_provider_configuration_cache_skips_write_when_version_changes_during_load() -> None:
+    fake_redis = _FakeRedis()
+    version_key = "provider_configurations:tenant:tenant-id:source:provider_model_credentials:version"
+    credential_record = SimpleNamespace(
+        id="credential-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name="primary",
+    )
+    session = Mock()
+
+    def load_records(_stmt):
+        fake_redis.incr(version_key)
+        return [credential_record]
+
+    session.scalars.side_effect = load_records
+
+    with (
+        patch("core.provider_manager.redis_client", fake_redis),
+        patch("core.provider_manager.session_factory.create_session", return_value=_build_session_context(session)),
+    ):
+        result = ProviderManager._get_all_provider_model_credentials("tenant-id")
+
+    assert fake_redis.store[version_key] == "1"
+    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:0" not in fake_redis.store
+    assert "provider_configurations:tenant:tenant-id:source:provider_model_credentials:v:1" not in fake_redis.store
+    assert result["openai"][0].credential_name == "primary"
+
+
 @pytest.mark.parametrize(
     "method_name",
     [
