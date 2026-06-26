@@ -441,9 +441,10 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+    const publishedDraft = store.get(agentComposerPublishedDraftAtom)
     expect(store.get(agentComposerDraftAtom).model).toBeUndefined()
-    expect(store.get(agentComposerPublishedDraftAtom).model).toBeUndefined()
-    expect(store.get(agentComposerPublishedDraftAtom)).toEqual(store.get(agentComposerDraftAtom))
+    expect(publishedDraft?.model).toBeUndefined()
+    expect(publishedDraft).toEqual(store.get(agentComposerDraftAtom))
   })
 
   it('should keep base config fallback fields from creating unpublished changes after publish', async () => {
@@ -468,9 +469,10 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+    const publishedDraft = store.get(agentComposerPublishedDraftAtom)
     expect(store.get(agentComposerDraftAtom).appFeatures).toBeUndefined()
-    expect(store.get(agentComposerPublishedDraftAtom).appFeatures).toBeUndefined()
-    expect(store.get(agentComposerPublishedDraftAtom)).toEqual(store.get(agentComposerDraftAtom))
+    expect(publishedDraft?.appFeatures).toBeUndefined()
+    expect(publishedDraft).toEqual(store.get(agentComposerDraftAtom))
   })
 
   it('should publish the current draft snapshot instead of a stale caller payload', async () => {

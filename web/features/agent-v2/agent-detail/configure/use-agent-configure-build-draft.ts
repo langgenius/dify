@@ -115,6 +115,7 @@ export function useAgentConfigureBuildDraftActions({
   refetchComposer,
   resetBuildChatSession,
   saveDraft,
+  onComposerRebased,
   setSoulSourceOverride,
 }: {
   agentId: string
@@ -123,6 +124,7 @@ export function useAgentConfigureBuildDraftActions({
   refetchComposer: () => Promise<unknown>
   resetBuildChatSession: () => Promise<void>
   saveDraft: () => Promise<void>
+  onComposerRebased?: () => void
   setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
 }) {
   const { t: tCommon } = useTranslation('common')
@@ -163,9 +165,11 @@ export function useAgentConfigureBuildDraftActions({
     queryClient.removeQueries({
       queryKey: buildDraftQueryOptions.queryKey,
     })
-    if (shouldRefetchComposer)
+    if (shouldRefetchComposer) {
       await refetchComposer()
-  }, [buildDraftQueryOptions.queryKey, queryClient, refetchComposer, resetBuildChatSession, setSoulSourceOverride])
+      onComposerRebased?.()
+    }
+  }, [buildDraftQueryOptions.queryKey, onComposerRebased, queryClient, refetchComposer, resetBuildChatSession, setSoulSourceOverride])
 
   const applyBuildDraft = async () => {
     try {

@@ -168,23 +168,33 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('../components/orchestrate', () => ({
-  AgentOrchestratePanel: (props: {
-    bottomAction?: ReactNode
-    isBuildDraftActive?: boolean
-    onOpenVersions?: () => void
-    readOnly?: boolean
-    showPublishBar?: boolean
-  }) => (
-    <div role="region" aria-label="orchestrate-panel">
-      <span>{`buildDraft:${props.isBuildDraftActive ? 'yes' : 'no'}`}</span>
-      <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
-      <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
-      <button type="button" onClick={props.onOpenVersions}>open versions</button>
-      {props.bottomAction}
-    </div>
-  ),
-}))
+vi.mock('../components/orchestrate', async () => {
+  const { useAtomValue } = await import('jotai')
+  const { agentComposerPromptAtom } = await import('@/features/agent-v2/agent-composer/store-modules/prompt')
+
+  return {
+    AgentOrchestratePanel: (props: {
+      bottomAction?: ReactNode
+      isBuildDraftActive?: boolean
+      onOpenVersions?: () => void
+      readOnly?: boolean
+      showPublishBar?: boolean
+    }) => {
+      const prompt = useAtomValue(agentComposerPromptAtom)
+
+      return (
+        <div role="region" aria-label="orchestrate-panel">
+          <span>{`buildDraft:${props.isBuildDraftActive ? 'yes' : 'no'}`}</span>
+          <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
+          <span>{`publish:${props.showPublishBar ? 'yes' : 'no'}`}</span>
+          <span>{`prompt:${prompt}`}</span>
+          <button type="button" onClick={props.onOpenVersions}>open versions</button>
+          {props.bottomAction}
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('../components/orchestrate/build-draft-bar', () => ({
   AgentBuildDraftBar: (props: {
@@ -680,12 +690,31 @@ describe('AgentConfigurePage', () => {
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
     })
 
-    it('should apply the build draft and start a new build session', async () => {
+    it('should apply the build draft and rebase the composer store from the refetched normal draft', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
-      const refetchComposer = vi.fn().mockResolvedValue({})
+      const refetchComposer = vi.fn(async () => {
+        mocks.queryState.composer = {
+          ...mocks.queryState.composer,
+          data: {
+            agent_soul: {
+              prompt: {
+                system_prompt: 'applied prompt',
+              },
+            },
+          },
+        }
+
+        return {}
+      })
       mocks.queryState.composer = {
-        data: {},
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'old draft prompt',
+            },
+          },
+        },
         isFetching: false,
         isError: false,
         isPending: false,
@@ -694,7 +723,11 @@ describe('AgentConfigurePage', () => {
       }
       mocks.queryState.buildDraft = {
         data: {
-          agent_soul: {},
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
           draft: {},
           variant: 'agent_app',
         },
@@ -733,6 +766,9 @@ describe('AgentConfigurePage', () => {
       }, expect.any(Object))
       expect(refetchComposer).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('prompt:applied prompt')
+      })
     })
 
     it('should discard the build draft and start a new build session', async () => {

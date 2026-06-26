@@ -15,8 +15,8 @@ import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { useHydrateAgentSoulConfigDraft } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configure/components/orchestrate'
 import { AgentBuildPanelBackground } from '@/features/agent-v2/agent-detail/configure/components/preview/build-background'
@@ -47,26 +47,11 @@ type WorkflowInlineAgentConfigureWorkspaceProps = {
 }
 
 export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRosterAgentOrchestratePanelContentProps) {
-  return (
-    <AgentComposerProvider>
-      <WorkflowRosterAgentOrchestratePanelContentInner {...props} />
-    </AgentComposerProvider>
-  )
-}
-
-export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgentConfigureWorkspaceProps) {
-  return (
-    <AgentComposerProvider>
-      <WorkflowInlineAgentConfigureWorkspaceContent {...props} />
-    </AgentComposerProvider>
-  )
-}
-
-function WorkflowRosterAgentOrchestratePanelContentInner({
-  agentId,
-  nodeId,
-  open,
-}: WorkflowRosterAgentOrchestratePanelContentProps) {
+  const {
+    agentId,
+    nodeId,
+    open,
+  } = props
   const rosterComposerQuery = useQuery(consoleQuery.agent.byAgentId.composer.get.queryOptions({
     input: open && agentId
       ? {
@@ -81,13 +66,6 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
   const activeConfigSnapshot = ('active_config_snapshot' in (composerState ?? {}))
     ? composerState?.active_config_snapshot as AgentConfigSnapshotSummaryResponse | null | undefined
     : undefined
-  const { currentModel, setConfigureModel, textGenerationModelList } = useAgentOrchestrateModelOptions()
-
-  useHydrateAgentSoulConfigDraft({
-    agentId: agentId ?? nodeId,
-    activeVersionId: activeConfigSnapshot?.id,
-    config: agentSoulConfig as AgentSoulConfig | undefined,
-  })
 
   if (!agentId || !agentSoulConfig) {
     return (
@@ -97,11 +75,47 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
     )
   }
 
+  const initialAgentSoulConfig = agentSoulConfig as AgentSoulConfig
+  const composerSessionKey = `${agentId ?? nodeId}:${activeConfigSnapshot?.id ?? 'draft'}`
+
+  return (
+    <AgentComposerProvider
+      key={composerSessionKey}
+      initialDraft={agentSoulConfigToFormState(initialAgentSoulConfig)}
+      initialOriginalConfig={initialAgentSoulConfig}
+    >
+      <WorkflowRosterAgentOrchestratePanelContentInner
+        activeConfigSnapshot={activeConfigSnapshot}
+        agentId={agentId}
+        agentSoulConfig={initialAgentSoulConfig}
+        composerState={composerState}
+      />
+    </AgentComposerProvider>
+  )
+}
+
+function WorkflowRosterAgentOrchestratePanelContentInner({
+  activeConfigSnapshot,
+  agentId,
+  agentSoulConfig,
+  composerState,
+}: {
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  agentId: string
+  agentSoulConfig: AgentSoulConfig
+  composerState?: {
+    agent?: {
+      name?: string | null
+    } | null
+  }
+}) {
+  const { currentModel, setConfigureModel, textGenerationModelList } = useAgentOrchestrateModelOptions()
+
   return (
     <AgentOrchestratePanel
       agentId={agentId}
       activeConfigSnapshot={activeConfigSnapshot}
-      agentSoulConfig={agentSoulConfig as AgentSoulConfig}
+      agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
       textGenerationModelList={textGenerationModelList}
@@ -116,8 +130,48 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
   )
 }
 
+export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgentConfigureWorkspaceProps) {
+  const {
+    agentId,
+    inlineComposerState,
+    nodeId,
+  } = props
+  const composerState = inlineComposerState
+  const agentSoulConfig = composerState?.agent_soul as AgentSoulConfig | undefined
+  const activeConfigSnapshot = ('active_config_snapshot' in (composerState ?? {}))
+    ? composerState?.active_config_snapshot as AgentConfigSnapshotSummaryResponse | null | undefined
+    : undefined
+
+  if (!agentId || !agentSoulConfig) {
+    return (
+      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
+        <Loading type="app" />
+      </div>
+    )
+  }
+
+  const composerSessionKey = `${nodeId}:${agentId}:${activeConfigSnapshot?.id ?? 'draft'}`
+
+  return (
+    <AgentComposerProvider
+      key={composerSessionKey}
+      initialDraft={agentSoulConfigToFormState(agentSoulConfig)}
+      initialOriginalConfig={agentSoulConfig}
+    >
+      <WorkflowInlineAgentConfigureWorkspaceContent
+        {...props}
+        activeConfigSnapshot={activeConfigSnapshot}
+        agentId={agentId}
+        agentSoulConfig={agentSoulConfig}
+      />
+    </AgentComposerProvider>
+  )
+}
+
 function WorkflowInlineAgentConfigureWorkspaceContent({
+  activeConfigSnapshot,
   agentId,
+  agentSoulConfig,
   appId,
   inlineComposerState,
   nodeId,
@@ -125,16 +179,16 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   onSaved,
   onSaveInlineToRoster,
   open,
-}: WorkflowInlineAgentConfigureWorkspaceProps) {
+}: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  agentId: string
+  agentSoulConfig: AgentSoulConfig
+}) {
   const { t } = useTranslation()
   const [clearChatList, setClearChatList] = useState(false)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
   const composerState = inlineComposerState
-  const agentSoulConfig = composerState?.agent_soul
-  const activeConfigSnapshot = ('active_config_snapshot' in (composerState ?? {}))
-    ? composerState?.active_config_snapshot as AgentConfigSnapshotSummaryResponse | null | undefined
-    : undefined
   const { currentModel, setConfigureModel, textGenerationModelList } = useAgentOrchestrateModelOptions()
   const { draftSavedAt, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
@@ -161,20 +215,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   })
   const previewAgentSoulConfig = useAgentPreviewSoulConfig(agentSoulConfig as AgentSoulConfig | undefined)
 
-  useHydrateAgentSoulConfigDraft({
-    agentId: `${nodeId}:${agentId ?? 'pending'}`,
-    activeVersionId: activeConfigSnapshot?.id,
-    config: agentSoulConfig as AgentSoulConfig | undefined,
-  })
-
-  if (!agentId || !agentSoulConfig) {
-    return (
-      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
-        <Loading type="app" />
-      </div>
-    )
-  }
-
   return (
     <AgentConfigureWorkspace
       className="rounded-[inherit]"
@@ -184,7 +224,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           appId={appId}
           nodeId={nodeId}
           activeConfigSnapshot={activeConfigSnapshot}
-          agentSoulConfig={agentSoulConfig as AgentSoulConfig}
+          agentSoulConfig={agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
           textGenerationModelList={textGenerationModelList}
