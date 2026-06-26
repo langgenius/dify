@@ -73,6 +73,23 @@ class TestBillingServiceSendRequest:
         assert call_args[1]["headers"]["Billing-Api-Secret-Key"] == "test-secret-key"
         assert call_args[1]["headers"]["Content-Type"] == "application/json"
 
+    def test_send_request_with_base_url_override(self, mock_httpx_request, mock_billing_config):
+        """Quota APIs can use the new billing service without changing legacy billing calls."""
+        # Arrange
+        expected_response = {"result": "success"}
+        mock_response = MagicMock()
+        mock_response.status_code = httpx.codes.OK
+        mock_response.json.return_value = expected_response
+        mock_httpx_request.return_value = mock_response
+
+        # Act
+        result = BillingService._send_request("GET", "/quota/balance", base_url="https://quota.example.com")
+
+        # Assert
+        assert result == expected_response
+        call_args = mock_httpx_request.call_args
+        assert call_args[0][1] == "https://quota.example.com/quota/balance"
+
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.NOT_FOUND, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.BAD_REQUEST]
     )
@@ -391,6 +408,20 @@ class TestBillingServiceSubscriptionInfo:
             "GET",
             "/subscription/vector-space",
             params={"tenant_id": tenant_id},
+        )
+
+    def test_quota_get_balance_uses_quota_request(self):
+        tenant_id = "tenant-123"
+        with patch.object(BillingService, "_send_quota_request") as mock_send_quota_request:
+            mock_send_quota_request.return_value = {"quota": "200", "usage": "6", "available": "194", "reserved": "0"}
+
+            result = BillingService.quota_get_balance(tenant_id, "credit_pool", bucket="trial")
+
+        assert result == {"quota": 200, "usage": 6, "available": 194, "reserved": 0}
+        mock_send_quota_request.assert_called_once_with(
+            "GET",
+            "/quota/balance",
+            params={"tenant_id": tenant_id, "feature_key": "credit_pool", "bucket": "trial"},
         )
 
     def test_get_knowledge_rate_limit_with_defaults(self, mock_send_request):
