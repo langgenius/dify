@@ -309,7 +309,8 @@ describe('SettingsModal', () => {
     expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toHaveValue('Updated prompt')
   })
 
-  it('should disable the input placeholder for Cloud sandbox plans', () => {
+  it('should display paid webapp settings as defaults for Cloud sandbox plans', async () => {
+    mockOnSave.mockResolvedValueOnce(undefined)
     mockUseProviderContext.mockReturnValue({
       ...baseProviderContextValue,
       enableBilling: true,
@@ -317,14 +318,26 @@ describe('SettingsModal', () => {
         ...baseProviderContextValue.plan,
         type: Plan.sandbox,
       },
-      webappCopyrightEnabled: false,
+      webappCopyrightEnabled: true,
     })
 
     renderSettingsModal()
 
     fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
 
-    expect(screen.getByRole('textbox', { name: inputPlaceholderName })).toBeDisabled()
+    const inputPlaceholder = screen.getByRole('textbox', { name: inputPlaceholderName })
+    expect(inputPlaceholder).toBeDisabled()
+    expect(inputPlaceholder).toHaveValue('')
+    expect(screen.queryByPlaceholderText('appOverview.overview.appInfo.settings.more.copyRightPlaceholder')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('common.operation.save'))
+
+    await waitFor(() => {
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
+        copyright: '',
+        input_placeholder: '',
+      }))
+    })
   })
 
   it('should keep the input placeholder editable when billing is disabled', async () => {

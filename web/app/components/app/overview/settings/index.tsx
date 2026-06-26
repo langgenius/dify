@@ -157,7 +157,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const inputPlaceholderLabelId = React.useId()
   const inputPlaceholderDescriptionId = React.useId()
 
-  const inputPlaceholderValue = inputInfo.inputPlaceholder ?? ''
+  const inputPlaceholderValue = isCloudSandboxPlan ? '' : (inputInfo.inputPlaceholder ?? '')
+  const copyrightSwitchValue = isCloudSandboxPlan ? false : inputInfo.copyrightSwitchValue
   // Editable + has value + blurred -> preview as gray placeholder text (matches how it'll render in chat).
   const showInputPlaceholderPreview = !isCloudSandboxPlan && inputPlaceholderValue.trim().length > 0 && !inputPlaceholderFocused
   const inputPlaceholderField = (
@@ -263,9 +264,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       chat_color_theme: inputInfo.chatColorTheme,
       chat_color_theme_inverted: inputInfo.chatColorThemeInverted,
       prompt_public: false,
-      copyright: !webappCopyrightEnabled
+      copyright: (!webappCopyrightEnabled || isCloudSandboxPlan)
         ? ''
-        : inputInfo.copyrightSwitchValue
+        : copyrightSwitchValue
           ? inputInfo.copyright
           : '',
       privacy_policy: inputInfo.privacyPolicy,
@@ -501,7 +502,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                     {webappCopyrightEnabled
                       ? (
                           <Switch
-                            checked={inputInfo.copyrightSwitchValue}
+                            checked={copyrightSwitchValue}
                             onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                           />
                         )
@@ -512,7 +513,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                                 <div>
                                   <Switch
                                     disabled
-                                    checked={inputInfo.copyrightSwitchValue}
+                                    checked={copyrightSwitchValue}
                                     onCheckedChange={v => setInputInfo({ ...inputInfo, copyrightSwitchValue: v })}
                                   />
                                 </div>
@@ -525,7 +526,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                         )}
                   </div>
                   <p className="pb-0.5 body-xs-regular text-text-tertiary">{t(`${prefixSettings}.more.copyrightTip`, { ns: 'appOverview' })}</p>
-                  {inputInfo.copyrightSwitchValue && (
+                  {copyrightSwitchValue && (
                     <Input
                       className="mt-2 h-10"
                       value={inputInfo.copyright}
