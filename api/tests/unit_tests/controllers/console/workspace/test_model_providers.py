@@ -18,6 +18,7 @@ from controllers.console.workspace.model_providers import (
     ModelProviderValidateApi,
     PreferredProviderTypeUpdateApi,
 )
+from extensions.ext_database import db
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
@@ -446,7 +447,7 @@ class TestModelProviderPaymentCheckoutUrlApi:
         ):
             result = method(api, "tenant1", user, provider="anthropic")
 
-        is_tenant_owner_or_admin.assert_called_once_with(user)
+        is_tenant_owner_or_admin.assert_called_once_with(db.session, user)
         get_model_provider_payment_link.assert_called_once_with(
             provider_name="anthropic",
             tenant_id="tenant1",
