@@ -5,8 +5,13 @@ Owns the Agent V2 configure runtime used by the Agent App configure page and wor
 ## Internal Modules
 
 - agent-composer
+- agent-detail/configure/state
+- agent-detail/configure/use-agent-build-draft-run
+- agent-detail/configure/use-agent-configure-build-draft
+- agent-detail/configure/use-agent-configure-sync
 - agent-detail/configure/components/orchestrate
 - agent-detail/configure/components/preview
+- agent-detail/configure/components/workspace
 
 ## External Modules
 

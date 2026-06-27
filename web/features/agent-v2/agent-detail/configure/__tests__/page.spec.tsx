@@ -817,6 +817,64 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
     })
 
+    it('should settle build draft actions when the build completion refresh fails', async () => {
+      vi.useFakeTimers()
+      const queryClient = new QueryClient()
+      const refetchBuildDraft = vi.fn().mockRejectedValue(new Error('refresh failed'))
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchBuildDraft,
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await act(async () => {
+        await Promise.resolve()
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(refetchBuildDraft).toHaveBeenCalledTimes(1)
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
+    })
+
     it('should not let a previous build completion refresh unlock a new build run', async () => {
       vi.useFakeTimers()
       const queryClient = new QueryClient()

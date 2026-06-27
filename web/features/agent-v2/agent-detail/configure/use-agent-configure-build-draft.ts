@@ -191,6 +191,7 @@ export function useAgentConfigureBuildDraftActions({
         if (agentSoulConfig)
           rebaseComposerDraft(agentSoulConfig)
       }
+      catch {}
       finally {
         if (refreshGeneration === buildDraftRefreshGenerationRef.current)
           onRefreshed?.()

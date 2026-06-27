@@ -668,7 +668,9 @@ function AgentPreviewChatSession({
         },
       )
     }
-    catch {}
+    catch {
+      return false
+    }
   }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, notifySendInterrupted, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
 
   const doStopResponding = useCallback(() => {

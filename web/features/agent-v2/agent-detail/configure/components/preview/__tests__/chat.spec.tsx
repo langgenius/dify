@@ -14,6 +14,9 @@ const handleSendMock = vi.hoisted(() => vi.fn())
 const stopCallbackRef = vi.hoisted(() => ({
   current: undefined as undefined | ((taskId: string) => void),
 }))
+const sendResultRef = vi.hoisted(() => ({
+  current: undefined as unknown,
+}))
 const chatMessagesGetMock = vi.hoisted(() => vi.fn())
 const suggestedQuestionsGetMock = vi.hoisted(() => vi.fn())
 const stopPostMock = vi.hoisted(() => vi.fn())
@@ -23,7 +26,7 @@ vi.mock('@/next/dynamic', async () => {
 
   return {
     default: () => function MockChat(props: {
-      onSend: (message: string) => void
+      onSend: (message: string) => unknown
       onStopResponding: () => void
     }) {
       const [sent, setSent] = useState(false)
@@ -35,7 +38,7 @@ vi.mock('@/next/dynamic', async () => {
             type="button"
             onClick={() => {
               setSent(true)
-              props.onSend('hello')
+              sendResultRef.current = props.onSend('hello')
             }}
           >
             send
@@ -245,6 +248,7 @@ describe('AgentPreviewChat', () => {
     suggestedQuestionsGetMock.mockResolvedValue({ data: [] })
     stopPostMock.mockResolvedValue({ result: 'success' })
     stopCallbackRef.current = undefined
+    sendResultRef.current = undefined
   })
 
   it('should initialize preview chat with the stable debug conversation history', async () => {
@@ -422,6 +426,7 @@ describe('AgentPreviewChat', () => {
     fireEvent.click(screen.getByRole('button', { name: 'send' }))
 
     await waitFor(() => expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1))
+    await expect(sendResultRef.current).resolves.toBe(false)
     expect(handleSendMock).not.toHaveBeenCalled()
   })
 
