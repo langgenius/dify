@@ -102,6 +102,7 @@ export default class AudioPlayer {
         this.isLoadData = false
         if (this.callback)
           this.callback('error')
+        return
       }
       const reader = audioResponse.body.getReader()
       while (true) {

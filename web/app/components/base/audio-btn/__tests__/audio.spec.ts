@@ -37,7 +37,7 @@ type AudioResponse = {
   status: number
   body: {
     getReader: () => Reader
-  }
+  } | null
 }
 
 class MockSourceBuffer {
@@ -346,9 +346,10 @@ describe('AudioPlayer', () => {
 
     it('should emit error callback and reset load flag when stream response status is not 200', async () => {
       const callback = vi.fn()
-      mockTextToAudioStream.mockResolvedValue(
-        makeAudioResponse(500, [{ value: new Uint8Array([1]), done: true }]),
-      )
+      mockTextToAudioStream.mockResolvedValue({
+        status: 500,
+        body: null,
+      } satisfies AudioResponse)
 
       const player = new AudioPlayer('/text-to-audio', false, 'msg-2', 'world', undefined, callback)
       player.playAudio()
@@ -357,6 +358,7 @@ describe('AudioPlayer', () => {
         expect(callback).toHaveBeenCalledWith('error')
       })
       expect(player.isLoadData).toBe(false)
+      expect(callback.mock.calls.filter(([event]) => event === 'error')).toHaveLength(1)
     })
 
     it('should resume and play immediately when playAudio is called in suspended loaded state', async () => {
