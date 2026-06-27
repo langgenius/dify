@@ -221,10 +221,13 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
   const isPreparing = createDownloadMutation.isPending || isPreparingStatus(currentTask?.status)
   const isReady = currentTask?.status === 'ready'
   const isFailed = currentTask?.status === 'failed'
+  const failureReason = isFailed ? currentTask?.error?.trim() : undefined
   const downloadHint = isReady
     ? t('archives.downloadHint.ready', { ns: 'appLog' })
     : isFailed
-      ? t('archives.downloadHint.failed', { ns: 'appLog' })
+      ? failureReason
+        ? t('archives.downloadHint.failedWithReason', { ns: 'appLog', reason: failureReason })
+        : t('archives.downloadHint.failed', { ns: 'appLog' })
       : isPreparing
         ? t('archives.downloadHint.preparing', { ns: 'appLog' })
         : t('archives.downloadHint.prepare', { ns: 'appLog' })
@@ -302,7 +305,10 @@ function WorkflowArchiveMonthRow({ archive }: { archive: WorkflowRunArchiveMonth
           />
           <TooltipContent
             placement="top"
-            className="max-w-[260px] text-center text-text-tertiary"
+            className={cn(
+              'max-w-[260px] text-center text-text-tertiary',
+              isFailed && 'max-w-[300px] text-start [overflow-wrap:anywhere] whitespace-pre-wrap',
+            )}
           >
             {downloadHint}
           </TooltipContent>

@@ -13,6 +13,7 @@
   "archives.action.preparing": "Preparing",
   "archives.description": "Download monthly CSV exports of archived workflow run logs across this workspace.",
   "archives.downloadHint.failed": "Preparing this archive failed. Retry to start a new download task.",
+  "archives.downloadHint.failedWithReason": "Preparing this archive failed: {{reason}}",
   "archives.downloadHint.prepare": "Starts a background task to prepare this CSV export. You can leave this page after it starts.",
   "archives.downloadHint.preparing": "The CSV export is being prepared in the background. You can leave this page and come back later.",
   "archives.downloadHint.ready": "This CSV export is ready to download.",
