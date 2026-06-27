@@ -13,8 +13,20 @@ import {
   PluginCategory,
   RuntimeInstanceStatus,
 } from '@dify/contracts/enterprise/types.gen'
+import { skipToken } from '@tanstack/react-query'
 import { atom, createStore } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+type QueryOptions = {
+  data?: unknown
+  enabled?: boolean
+  input?: unknown
+  isError?: boolean
+  isFetching?: boolean
+  isLoading?: boolean
+  queryKey?: readonly unknown[]
+  retry?: boolean
+}
 
 type QueryResult = {
   data?: {
@@ -62,9 +74,22 @@ const mockRollbackMutation = vi.hoisted<{ current: MutationResult }>(() => ({
 }))
 
 vi.mock('jotai-tanstack-query', () => ({
-  atomWithQuery: (createOptions: (get: Getter) => unknown) => atom((get) => {
-    createOptions(get)
-    return mockDeploymentOptionsQuery.current
+  atomWithQuery: (createOptions: (get: Getter) => QueryOptions) => atom((get) => {
+    const options = createOptions(get)
+    if (options.queryKey?.[0] === 'computeDeploymentOptions') {
+      return {
+        ...options,
+        ...mockDeploymentOptionsQuery.current,
+      }
+    }
+
+    return {
+      ...options,
+      data: undefined,
+      isLoading: false,
+      isFetching: false,
+      isError: false,
+    }
   }),
   atomWithMutation: (createOptions: () => MutationOptions) => atom(() => {
     const options = createOptions()
@@ -78,6 +103,13 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     enterprise: {
       releaseService: {
+        computeReleaseDeploymentView: {
+          queryOptions: ({ enabled, input }: { enabled: boolean, input: unknown }) => ({
+            enabled,
+            input,
+            queryKey: ['computeReleaseDeploymentView', input],
+          }),
+        },
         computeDeploymentOptions: {
           queryOptions: ({ enabled, input }: { enabled: boolean, input: unknown }) => ({
             enabled,
@@ -254,6 +286,23 @@ describe('deploy drawer state', () => {
     expect(store.get(state.deployDrawerAppInstanceIdAtom)).toBeUndefined()
     expect(store.get(state.deployDrawerEnvironmentIdAtom)).toBeUndefined()
     expect(store.get(state.deployDrawerReleaseIdAtom)).toBeUndefined()
+  })
+
+  it('should disable release deployment view query with skipToken until form app instance exists', async () => {
+    const state = await loadState()
+    const store = createStore()
+
+    expect(store.get(state.releaseDeploymentViewQueryAtom)).toMatchObject({
+      enabled: false,
+      input: skipToken,
+    })
+
+    store.set(state.deployFormAppInstanceIdAtom, 'app-instance-1')
+
+    expect(store.get(state.releaseDeploymentViewQueryAtom)).toMatchObject({
+      enabled: true,
+      input: { params: { appInstanceId: 'app-instance-1' } },
+    })
   })
 
   it('should derive default environment and release selections from config', async () => {
