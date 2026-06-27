@@ -30,6 +30,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
@@ -268,21 +269,10 @@ class ErrorDocsResponse(DocumentStatusListResponse):
     total: int
 
 
-class IndexingEstimatePreviewItemResponse(ResponseModel):
-    content: str
-    child_chunks: list[str] | None = None
-    summary: str | None = None
-
-
-class IndexingEstimateQaPreviewItemResponse(ResponseModel):
-    question: str
-    answer: str
-
-
-class IndexingEstimateResponse(ResponseModel):
-    total_segments: int
-    preview: list[IndexingEstimatePreviewItemResponse]
-    qa_preview: list[IndexingEstimateQaPreviewItemResponse] | None = None
+class IndexingEstimateResponse(IndexingEstimate):
+    tokens: int
+    total_price: float | int
+    currency: str
 
 
 class RetrievalSettingResponse(ResponseModel):
@@ -644,7 +634,7 @@ class DatasetApi(Resource):
         else:
             data["embedding_available"] = True
 
-        return data, 200
+        return dump_response(DatasetDetailWithPartialMembersResponse, data), 200
 
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
@@ -713,7 +703,7 @@ class DatasetApi(Resource):
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str, db.session)
         result_data.update({"partial_member_list": partial_member_list})
 
-        return result_data, 200
+        return dump_response(DatasetDetailWithPartialMembersResponse, result_data), 200
 
     @setup_required
     @login_required
@@ -756,7 +746,7 @@ class DatasetUseCheckApi(Resource):
         dataset_id_str = str(dataset_id)
 
         dataset_is_using = DatasetService.dataset_use_check(dataset_id_str, db.session)
-        return {"is_using": dataset_is_using}, 200
+        return UsageCheckResponse(is_using=dataset_is_using).model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
@@ -897,7 +887,17 @@ class DatasetIndexingEstimateApi(Resource):
         except Exception as e:
             raise IndexingEstimateError(str(e))
 
-        return response.model_dump(), 200
+        return (
+            IndexingEstimateResponse(
+                tokens=0,
+                total_price=0,
+                currency="USD",
+                total_segments=response.total_segments,
+                preview=response.preview,
+                qa_preview=response.qa_preview,
+            ).model_dump(mode="json", exclude_none=True),
+            200,
+        )
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
@@ -1014,7 +1014,7 @@ class DatasetApiKeyApi(Resource):
         keys = db.session.scalars(
             select(ApiToken).where(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_tenant_id)
         ).all()
-        return ApiKeyList.model_validate({"data": keys}, from_attributes=True).model_dump(mode="json")
+        return dump_response(ApiKeyList, {"data": keys})
 
     @console_ns.response(200, "API key created successfully", console_ns.models[ApiKeyItem.__name__])
     @console_ns.response(400, "Maximum keys exceeded")
@@ -1048,7 +1048,7 @@ class DatasetApiKeyApi(Resource):
         api_token.type = self.resource_type
         db.session.add(api_token)
         db.session.commit()
-        return ApiKeyItem.model_validate(api_token, from_attributes=True).model_dump(mode="json"), 200
+        return dump_response(ApiKeyItem, api_token), 200
 
 
 @console_ns.route("/datasets/api-keys/<uuid:api_key_id>")
@@ -1103,7 +1103,7 @@ class DatasetEnableApiApi(Resource):
 
         DatasetService.update_dataset_api_status(dataset_id_str, status == "enable", db.session)
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/api-base-info")
@@ -1116,7 +1116,7 @@ class DatasetApiBaseUrlApi(Resource):
     @account_initialization_required
     def get(self):
         base = dify_config.SERVICE_API_URL or request.host_url.rstrip("/")
-        return {"api_base_url": normalize_api_base_url(base)}
+        return ApiBaseUrlResponse(api_base_url=normalize_api_base_url(base)).model_dump(mode="json")
 
 
 @console_ns.route("/datasets/retrieval-setting")

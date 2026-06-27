@@ -7,21 +7,45 @@ import * as z from 'zod'
  */
 export const zGeneratorResponse = z.unknown()
 
-/**
- * LLMMode
- *
- * Enum class for large language model mode.
- */
-export const zLlmMode = z.enum(['chat', 'completion'])
+export const zJsonValue = z
+  .union([
+    z.string(),
+    z.int(),
+    z.number(),
+    z.boolean(),
+    z.record(z.string(), z.unknown()),
+    z.array(z.unknown()),
+  ])
+  .nullable()
 
 /**
  * ModelConfig
  */
 export const zModelConfig = z.object({
-  completion_params: z.record(z.string(), z.unknown()).optional(),
-  mode: zLlmMode,
-  name: z.string(),
-  provider: z.string(),
+  agent_mode: zJsonValue.nullish(),
+  annotation_reply: zJsonValue.nullish(),
+  chat_prompt_config: zJsonValue.nullish(),
+  completion_prompt_config: zJsonValue.nullish(),
+  created_at: z.int().nullish(),
+  created_by: z.string().nullish(),
+  dataset_configs: zJsonValue.nullish(),
+  dataset_query_variable: z.string().nullish(),
+  external_data_tools: zJsonValue.nullish(),
+  file_upload: zJsonValue.nullish(),
+  model: zJsonValue.nullish(),
+  more_like_this: zJsonValue.nullish(),
+  opening_statement: z.string().nullish(),
+  pre_prompt: z.string().nullish(),
+  prompt_type: z.string().nullish(),
+  retriever_resource: zJsonValue.nullish(),
+  sensitive_word_avoidance: zJsonValue.nullish(),
+  speech_to_text: zJsonValue.nullish(),
+  suggested_questions: zJsonValue.nullish(),
+  suggested_questions_after_answer: zJsonValue.nullish(),
+  text_to_speech: zJsonValue.nullish(),
+  updated_at: z.int().nullish(),
+  updated_by: z.string().nullish(),
+  user_input_form: zJsonValue.nullish(),
 })
 
 /**
