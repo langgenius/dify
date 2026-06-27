@@ -10,7 +10,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { API_PREFIX } from '@/config'
@@ -22,6 +22,7 @@ const byteFormatter = new Intl.NumberFormat(undefined, {
 })
 const BYTE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB']
 const DOWNLOAD_TASK_POLLING_INTERVAL = 3000
+const ARCHIVE_MONTH_PAGE_SIZE = 20
 
 function formatNumber(value: number) {
   return numberFormatter.format(value)
@@ -62,11 +63,34 @@ const tableGridClassName = 'grid-cols-[0.66fr_0.78fr_0.78fr_1fr]'
 
 export default function WorkflowLogArchivesPage() {
   const { t } = useTranslation()
+  const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
+  const loadMoreRef = useRef<HTMLDivElement | null>(null)
   const archiveListQuery = useQuery(consoleQuery.workflowRunArchives.get.queryOptions())
   const archiveData = archiveListQuery.data
   const archiveMonths = archiveData?.months ?? []
+  const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
   const summary = archiveData?.summary
   const isLoading = archiveListQuery.isLoading
+  const hasMoreArchives = visibleArchiveMonths.length < archiveMonths.length
+
+  useEffect(() => {
+    if (!hasMoreArchives)
+      return
+
+    const loadMoreElement = loadMoreRef.current
+    if (!loadMoreElement)
+      return
+
+    const observer = new IntersectionObserver((entries) => {
+      if (!entries[0]?.isIntersecting)
+        return
+
+      setVisibleArchiveMonthCount(count => Math.min(count + ARCHIVE_MONTH_PAGE_SIZE, archiveMonths.length))
+    }, { rootMargin: '120px' })
+    observer.observe(loadMoreElement)
+
+    return () => observer.disconnect()
+  }, [archiveMonths.length, hasMoreArchives, visibleArchiveMonthCount])
 
   const summaryItems = [
     {
@@ -151,7 +175,7 @@ export default function WorkflowLogArchivesPage() {
                 <div className="system-xs-regular text-text-tertiary">{t('archives.empty.description', { ns: 'appLog' })}</div>
               </div>
             )}
-            {!isLoading && !archiveListQuery.isError && archiveMonths.map((archive) => {
+            {!isLoading && !archiveListQuery.isError && visibleArchiveMonths.map((archive) => {
               const archiveMonth = formatMonth(archive.year, archive.month)
 
               return (
@@ -161,6 +185,11 @@ export default function WorkflowLogArchivesPage() {
                 />
               )
             })}
+            {!isLoading && !archiveListQuery.isError && hasMoreArchives && (
+              <div ref={loadMoreRef} className="flex h-10 items-center justify-center border-t border-divider-subtle bg-components-card-bg" aria-hidden="true">
+                <SkeletonRectangle className="h-4 w-20 animate-pulse rounded-md" />
+              </div>
+            )}
           </div>
         </div>
       </div>
