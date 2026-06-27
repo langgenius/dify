@@ -6,7 +6,7 @@ import * as z from 'zod'
  * Annotation
  */
 export const zAnnotation = z.object({
-  content: z.string().nullish(),
+  answer: z.string().nullish(),
   created_at: z.int().nullish(),
   hit_count: z.int().nullish(),
   id: z.string(),
@@ -22,12 +22,20 @@ export const zAnnotationCreatePayload = z.object({
 })
 
 /**
+ * AnnotationJobStatusDetailResponse
+ */
+export const zAnnotationJobStatusDetailResponse = z.object({
+  error_msg: z.string().optional().default(''),
+  job_id: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
+})
+
+/**
  * AnnotationJobStatusResponse
  */
 export const zAnnotationJobStatusResponse = z.object({
-  error_msg: z.string().nullish(),
   job_id: z.string(),
-  job_status: z.string(),
+  job_status: z.union([z.enum(['completed', 'error', 'processing', 'waiting']), z.string()]),
 })
 
 /**
@@ -2353,7 +2361,8 @@ export const zGetAppsAnnotationReplyByActionStatusByJobIdPath = z.object({
 /**
  * Successfully retrieved task status.
  */
-export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse = zAnnotationJobStatusResponse
+export const zGetAppsAnnotationReplyByActionStatusByJobIdResponse
+  = zAnnotationJobStatusDetailResponse
 
 export const zGetAppsAnnotationsQuery = z.object({
   keyword: z.string().optional().default(''),
@@ -2411,7 +2420,7 @@ export const zPostChatMessagesBody = zChatRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `ChatCompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of Server-Sent Events.
  */
-export const zPostChatMessagesResponse = zGeneratedAppResponse
+export const zPostChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostChatMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -2432,7 +2441,7 @@ export const zPostCompletionMessagesBody = zCompletionRequestPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `CompletionResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkCompletionEvent` objects.
  */
-export const zPostCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostCompletionMessagesByTaskIdStopBody = zRequiredServiceApiUserPayload
 
@@ -3254,7 +3263,7 @@ export const zPostWorkflowsRunBody = zWorkflowRunPayloadWithUser
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkflowsRunByWorkflowRunIdPath = z.object({
   workflow_run_id: z.string(),
@@ -3288,7 +3297,7 @@ export const zPostWorkflowsByWorkflowIdRunPath = z.object({
  * - If `response_mode` is `blocking`, returns `application/json` with a `WorkflowBlockingResponse` object.
  * - If `response_mode` is `streaming`, returns `text/event-stream` with a stream of `ChunkWorkflowEvent` objects.
  */
-export const zPostWorkflowsByWorkflowIdRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsByWorkflowIdRunResponse = z.record(z.string(), z.unknown())
 
 export const zGetWorkspacesCurrentModelsModelTypesByModelTypePath = z.object({
   model_type: z.enum(['llm', 'moderation', 'rerank', 'speech2text', 'text-embedding', 'tts']),
