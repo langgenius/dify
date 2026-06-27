@@ -22,11 +22,11 @@ export function AgentBuildDraftBar({
 }: AgentBuildDraftBarProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCustom } = useTranslation('custom')
-  const isPending = isApplying || isDiscarding
   const metaLabel = changesCount > 0
     ? t('agentDetail.configure.buildDraft.changes', { count: changesCount })
     : t('agentDetail.configure.buildDraft.noChanges')
-  const actionsDisabled = disabled || isPending
+  const applyDisabled = disabled || isDiscarding
+  const discardDisabled = disabled || isApplying
 
   return (
     <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2 pl-4 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -42,7 +42,7 @@ export function AgentBuildDraftBar({
         type="button"
         variant="primary"
         loading={isApplying}
-        disabled={actionsDisabled}
+        disabled={applyDisabled}
         className="h-8 rounded-lg px-3"
         onClick={onApply}
       >
@@ -52,7 +52,7 @@ export function AgentBuildDraftBar({
         type="button"
         variant="secondary"
         loading={isDiscarding}
-        disabled={actionsDisabled}
+        disabled={discardDisabled}
         className="h-8 rounded-lg px-3"
         onClick={onDiscard}
       >
