@@ -166,6 +166,24 @@ function RuntimeConversationHarness() {
   )
 }
 
+function RuntimeClearCommandHarness({
+  inputPlaceholder,
+}: {
+  inputPlaceholder: string
+}) {
+  const [clearChatList, setClearChatList] = useState(true)
+
+  return (
+    <AgentChatRuntime
+      agentId="agent-1"
+      clearChatList={clearChatList}
+      inputPlaceholder={inputPlaceholder}
+      renderEmptyState={() => null}
+      onClearChatListChange={setClearChatList}
+    />
+  )
+}
+
 function renderPreviewChatWithConversationHarness() {
   const store = createStore()
   const queryClient = new QueryClient({
@@ -188,6 +206,35 @@ function renderPreviewChatWithConversationHarness() {
       </JotaiProvider>
     </QueryClientProvider>,
   )
+}
+
+function renderPreviewChatWithClearCommandHarness() {
+  const store = createStore()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  store.set(agentComposerModelAtom, {
+    provider: 'openai',
+    model: 'gpt-4',
+  })
+  store.set(agentComposerPromptAtom, 'You are helpful.')
+
+  const renderHarness = (inputPlaceholder: string) => (
+    <QueryClientProvider client={queryClient}>
+      <JotaiProvider store={store}>
+        <RuntimeClearCommandHarness inputPlaceholder={inputPlaceholder} />
+      </JotaiProvider>
+    </QueryClientProvider>
+  )
+
+  return {
+    ...render(renderHarness('Message agent')),
+    renderHarness,
+  }
 }
 
 describe('AgentPreviewChat', () => {
@@ -357,6 +404,20 @@ describe('AgentPreviewChat', () => {
     expect(screen.getByRole('button', { name: 'send' })).toBeInTheDocument()
     expect(screen.getByText('sessionSent:yes')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('should keep the reset command acknowledgement stable while clear chat is pending', async () => {
+    const { renderHarness, rerender } = renderPreviewChatWithClearCommandHarness()
+
+    await waitFor(() => expect(useChatMock).toHaveBeenCalled())
+    const firstResetAcknowledgement = useChatMock.mock.calls.at(-1)?.[5]
+
+    rerender(renderHarness('Message agent again'))
+
+    await waitFor(() => expect(useChatMock.mock.calls.length).toBeGreaterThan(1))
+    const secondResetAcknowledgement = useChatMock.mock.calls.at(-1)?.[5]
+
+    expect(secondResetAcknowledgement).toBe(firstResetAcknowledgement)
   })
 
   it('should keep preview file upload disabled by default', async () => {

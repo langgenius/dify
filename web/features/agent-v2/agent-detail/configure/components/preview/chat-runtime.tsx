@@ -467,11 +467,11 @@ export function AgentChatRuntime({
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
   const [currentSessionConversationId, setCurrentSessionConversationId] = useState<string | null>(null)
-  const handleClearChatListChange = (nextClearChatList: boolean) => {
+  const handleClearChatListChange = useCallback((nextClearChatList: boolean) => {
     if (!nextClearChatList)
       setCurrentSessionConversationId(null)
     onClearChatListChange(nextClearChatList)
-  }
+  }, [onClearChatListChange])
   const historyQuery = useQuery({
     queryKey: ['agent-chat-conversation-messages', agentId, conversationId],
     queryFn: () => fetchAgentConversationMessages(agentId, conversationId!),
