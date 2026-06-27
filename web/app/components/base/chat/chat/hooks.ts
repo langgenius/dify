@@ -328,8 +328,7 @@ export const useChat = (
               )
               setSuggestedQuestions(data)
             }
-            // eslint-disable-next-line unused-imports/no-unused-vars
-            catch (e) {
+            catch {
               setSuggestedQuestions([])
             }
           }
@@ -881,8 +880,7 @@ export const useChat = (
               )
               setSuggestedQuestions(data)
             }
-            // eslint-disable-next-line unused-imports/no-unused-vars
-            catch (e) {
+            catch {
               setSuggestedQuestions([])
             }
           }

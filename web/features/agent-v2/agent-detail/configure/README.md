@@ -21,7 +21,6 @@ Owns the Agent V2 configure workflow, including editable composer draft wiring, 
 - app/components/header/account-setting/model-provider-page
 - app/components/plugins
 - app/components/tools
-- app/components/workflow
 - app/components/workflow/hooks/use-serial-async-callback
 - app/components/workflow/nodes
 - config

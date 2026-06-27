@@ -161,9 +161,21 @@ export function useAgentConfigureBuildDraftActions({
     setSoulSourceOverride,
   })
 
+  const cancelBuildDraftRefresh = useCallback(() => {
+    if (!buildDraftRefreshTimerRef.current)
+      return
+
+    clearTimeout(buildDraftRefreshTimerRef.current)
+    buildDraftRefreshTimerRef.current = null
+  }, [])
+
+  const prepareBuildDraftRun = useCallback(async () => {
+    cancelBuildDraftRefresh()
+    return prepareBuildDraftBeforeRun()
+  }, [cancelBuildDraftRefresh, prepareBuildDraftBeforeRun])
+
   const refreshBuildDraftAfterBuildChat = useCallback((onRefreshed?: () => void) => {
-    if (buildDraftRefreshTimerRef.current)
-      clearTimeout(buildDraftRefreshTimerRef.current)
+    cancelBuildDraftRefresh()
 
     buildDraftRefreshTimerRef.current = setTimeout(async () => {
       buildDraftRefreshTimerRef.current = null
@@ -177,9 +189,10 @@ export function useAgentConfigureBuildDraftActions({
         onRefreshed?.()
       }
     }, 1000)
-  }, [rebaseComposerDraft, refetchBuildDraft])
+  }, [cancelBuildDraftRefresh, rebaseComposerDraft, refetchBuildDraft])
 
   const exitBuildDraftMode = useCallback(async (shouldRefetchComposer: boolean) => {
+    cancelBuildDraftRefresh()
     await resetBuildChatSession().catch(() => undefined)
     setSoulSourceOverride('draft')
     queryClient.removeQueries({
@@ -193,7 +206,7 @@ export function useAgentConfigureBuildDraftActions({
     else {
       rebaseComposerDraft(normalAgentSoulConfig)
     }
-  }, [buildDraftQueryOptions.queryKey, normalAgentSoulConfig, onComposerRebased, queryClient, rebaseComposerDraft, refetchComposer, resetBuildChatSession, setSoulSourceOverride])
+  }, [buildDraftQueryOptions.queryKey, cancelBuildDraftRefresh, normalAgentSoulConfig, onComposerRebased, queryClient, rebaseComposerDraft, refetchComposer, resetBuildChatSession, setSoulSourceOverride])
 
   const applyBuildDraft = async () => {
     try {
@@ -233,17 +246,16 @@ export function useAgentConfigureBuildDraftActions({
 
   useEffect(() => {
     return () => {
-      if (buildDraftRefreshTimerRef.current)
-        clearTimeout(buildDraftRefreshTimerRef.current)
+      cancelBuildDraftRefresh()
     }
-  }, [])
+  }, [cancelBuildDraftRefresh])
 
   return {
     applyBuildDraft,
     discardBuildDraft,
     isApplyingBuildDraft,
     isDiscardingBuildDraft,
-    prepareBuildDraftBeforeRun,
+    prepareBuildDraftBeforeRun: prepareBuildDraftRun,
     refreshBuildDraftAfterBuildChat,
   }
 }
