@@ -635,12 +635,14 @@ def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(
         active_config_is_published=True,
     )
     active_agent_soul = _agent_soul_with_model()
-    build_agent_soul = AgentSoulConfig.model_validate({
-        **active_agent_soul.model_dump(mode="json"),
-        "prompt": {
-            "system_prompt": "Build draft prompt",
-        },
-    })
+    build_agent_soul = AgentSoulConfig.model_validate(
+        {
+            **active_agent_soul.model_dump(mode="json"),
+            "prompt": {
+                "system_prompt": "Build draft prompt",
+            },
+        }
+    )
     build_draft = AgentConfigDraft(
         tenant_id="tenant-1",
         agent_id="agent-1",
