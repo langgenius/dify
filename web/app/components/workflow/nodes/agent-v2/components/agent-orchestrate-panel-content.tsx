@@ -243,8 +243,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentSoulConfig: AgentSoulConfig
   buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
 }) {
-  const { t } = useTranslation()
-  const { t: tCommon } = useTranslation('common')
+  const { t } = useTranslation('common')
   const queryClient = useQueryClient()
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
   const composerState = inlineComposerState
@@ -330,10 +329,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? buildDraft.agentSoulConfig)
-      toast.success(tCommon('api.actionSuccess'))
+      toast.success(t('api.actionSuccess'))
     }
     catch {
-      toast.error(tCommon('api.actionFailed'))
+      toast.error(t('api.actionFailed'))
     }
     finally {
       setIsApplyingInlineBuildDraft(false)
@@ -352,10 +351,10 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         queryKey: buildDraftQueryOptions.queryKey,
       })
       rebaseComposerDraftFromSoulConfig(agentSoulConfig)
-      toast.success(tCommon('api.actionSuccess'))
+      toast.success(t('api.actionSuccess'))
     }
     catch {
-      toast.error(tCommon('api.actionFailed'))
+      toast.error(t('api.actionFailed'))
     }
   }
   const hasRestartCurrentChatTarget = !!conversationIds[rightPanelChatMode] || buildDraft.isActive
@@ -438,7 +437,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
                   type="button"
                   onClick={onClose}
                   className="flex size-8 items-center justify-center rounded-lg text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  aria-label={t('operation.close', { ns: 'common' })}
+                  aria-label={t('operation.close')}
                 >
                   <span aria-hidden className="i-ri-close-line size-4" />
                 </button>
