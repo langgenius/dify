@@ -26,7 +26,9 @@ from controllers.console.workspace.workspace import (
     WebappLogoWorkspaceApi,
     WorkspaceInfoApi,
     WorkspaceListApi,
+    WorkspaceLogoUploadResponse,
     WorkspacePermissionApi,
+    WorkspacePermissionResponse,
 )
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
@@ -587,7 +589,8 @@ class TestWebappLogoWorkspaceApi:
             result, status = method(api, user)
 
         assert status == 201
-        assert result["id"] == "file1"
+        assert result == {"id": "file1"}
+        assert WorkspaceLogoUploadResponse.model_validate(result).model_dump(mode="json") == {"id": "file1"}
 
     def test_filename_missing(self, app: Flask):
         api = WebappLogoWorkspaceApi()
@@ -676,7 +679,7 @@ class TestWorkspaceInfoApi:
             patch("controllers.console.workspace.workspace.db.session.commit"),
             patch(
                 "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
-                return_value={"name": "New Name"},
+                return_value={"id": "t1", "name": "New Name"},
             ),
         ):
             result = method(api, "t1")
@@ -717,7 +720,13 @@ class TestWorkspacePermissionApi:
             result, status = method(api, "t1")
 
         assert status == 200
-        assert result["workspace_id"] == "t1"
+        expected = {
+            "workspace_id": "t1",
+            "allow_member_invite": True,
+            "allow_owner_transfer": False,
+        }
+        assert result == expected
+        assert WorkspacePermissionResponse.model_validate(result).model_dump(mode="json") == expected
 
     def test_no_current_tenant(self, app: Flask):
         api = WorkspacePermissionApi()

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 import services
@@ -30,8 +30,8 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.base import ResponseModel
-from fields.member_fields import AccountWithRole, AccountWithRoleList
-from libs.helper import extract_remote_ip
+from fields.member_fields import AccountWithRoleListResponse, AccountWithRoleResponse
+from libs.helper import dump_response, extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
 from models.account import Account, TenantAccountJoin, TenantAccountRole
 from services.account_service import AccountService, RegisterService, TenantService
@@ -70,14 +70,14 @@ class MemberInviteResultResponse(ResponseModel):
     message: str | None = None
 
 
+class MemberActionResponse(ResponseModel):
+    result: str
+    tenant_id: str = ""
+
+
 class MemberInviteResponse(ResponseModel):
     result: str
     invitation_results: list[MemberInviteResultResponse]
-    tenant_id: str
-
-
-class MemberActionTenantResponse(ResponseModel):
-    result: str
     tenant_id: str
 
 
@@ -92,13 +92,14 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    AccountWithRole,
-    AccountWithRoleList,
+    AccountWithRoleResponse,
+    AccountWithRoleListResponse,
+    MemberActionResponse,
+    MemberInviteResponse,
+    MemberInviteResultResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
-    MemberInviteResponse,
-    MemberActionTenantResponse,
 )
 
 
@@ -179,7 +180,7 @@ class MemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @with_current_user
     def get(self, current_user: Account | None = None):
         if current_user is None:
@@ -216,9 +217,7 @@ class MemberListApi(Resource):
                 }
             )
 
-        member_models = TypeAdapter(list[AccountWithRole]).validate_python(serialized_members)
-        response = AccountWithRoleList(accounts=member_models)
-        return response.model_dump(mode="json"), 200
+        return dump_response(AccountWithRoleListResponse, {"accounts": serialized_members}), 200
 
 
 @console_ns.route("/workspaces/current/members/invite-email")
@@ -254,7 +253,7 @@ class MemberInviteEmailApi(Resource):
 
         check_workspace_member_invite_permission(inviter.current_tenant.id)
 
-        invitation_results = []
+        invitation_results: list[MemberInviteResultResponse] = []
         console_web_url = dify_config.CONSOLE_WEB_URL
 
         tenant_id = inviter.current_tenant.id
@@ -277,38 +276,40 @@ class MemberInviteEmailApi(Resource):
                     )
                     encoded_invitee_email = parse.quote(invitee_email)
                     invitation_results.append(
-                        {
-                            "status": "success",
-                            "email": invitee_email,
-                            "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
-                        }
+                        MemberInviteResultResponse(
+                            status="success",
+                            email=invitee_email,
+                            url=f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
+                        )
                     )
                 except AccountAlreadyInTenantError:
                     invitation_results.append(
-                        {
-                            "status": "already_member",
-                            "email": invitee_email,
-                            "message": "Account already in workspace.",
-                        }
+                        MemberInviteResultResponse(
+                            status="already_member",
+                            email=invitee_email,
+                            message="Account already in workspace.",
+                        )
                     )
                 except Exception as e:
-                    invitation_results.append({"status": "failed", "email": invitee_email, "message": str(e)})
+                    invitation_results.append(
+                        MemberInviteResultResponse(status="failed", email=invitee_email, message=str(e))
+                    )
 
-        return {
-            "result": "success",
-            "invitation_results": invitation_results,
-            "tenant_id": str(inviter.current_tenant.id) if inviter.current_tenant else "",
-        }, 201
+        return MemberInviteResponse(
+            result="success",
+            invitation_results=invitation_results,
+            tenant_id=inviter.current_tenant.id if inviter.current_tenant else "",
+        ).model_dump(mode="json"), 201
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>")
 class MemberCancelInviteApi(Resource):
     """Cancel an invitation by member id."""
 
-    @console_ns.response(200, "Success", console_ns.models[MemberActionTenantResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[MemberActionResponse.__name__])
     @with_current_user
     def delete(self, current_user: Account, member_id: UUID):
         if not current_user.current_tenant:
@@ -330,10 +331,10 @@ class MemberCancelInviteApi(Resource):
             except Exception as e:
                 raise ValueError(str(e))
 
-        return {
-            "result": "success",
-            "tenant_id": str(current_user.current_tenant.id) if current_user.current_tenant else "",
-        }, 200
+        return MemberActionResponse(
+            result="success",
+            tenant_id=current_user.current_tenant.id if current_user.current_tenant else "",
+        ).model_dump(mode="json"), 200
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/update-role")
@@ -377,7 +378,7 @@ class MemberUpdateRoleApi(Resource):
         except Exception as e:
             raise ValueError(str(e))
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/dataset-operators")
@@ -387,15 +388,13 @@ class DatasetOperatorMemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
+    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @with_current_user
     def get(self, current_user: Account):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant, session=db.session)
-        member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
-        response = AccountWithRoleList(accounts=member_models)
-        return response.model_dump(mode="json"), 200
+        return dump_response(AccountWithRoleListResponse, {"accounts": members}), 200
 
 
 @console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")
@@ -435,7 +434,7 @@ class SendOwnerTransferEmailApi(Resource):
             workspace_name=current_user.current_tenant.name if current_user.current_tenant else "",
         )
 
-        return {"result": "success", "data": token}
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
@@ -480,7 +479,7 @@ class OwnerTransferCheckApi(Resource):
         _, new_token = AccountService.generate_owner_transfer_token(user_email, code=args.code, additional_data={})
 
         AccountService.reset_owner_transfer_error_rate_limit(user_email)
-        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+        return VerificationTokenResponse(is_valid=True, email=user_email, token=new_token).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
@@ -546,4 +545,4 @@ class OwnerTransfer(Resource):
         except Exception as e:
             raise ValueError(str(e))
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
