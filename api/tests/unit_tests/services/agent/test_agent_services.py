@@ -441,6 +441,7 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
         active_config_is_published=True,
         updated_by=None,
     )
+    active_version = SimpleNamespace(config_snapshot_dict=AgentSoulConfig().model_dump(mode="json"))
     fake_session = FakeSession(scalar=[agent])
     saved = {}
 
@@ -451,6 +452,7 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
         "_save_agent_draft",
         lambda **kwargs: saved.update(kwargs) or SimpleNamespace(id="draft-1"),
     )
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
     monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **kwargs: {"loaded": True})
     payload = ComposerSavePayload.model_validate(
         {
@@ -470,6 +472,42 @@ def test_save_agent_app_composer_updates_normal_draft(monkeypatch: pytest.Monkey
     assert saved["agent_soul"].model_dump(mode="json") == _agent_soul_with_model().model_dump(mode="json")
     assert agent.active_config_is_published is False
     assert fake_session._scalar == []
+    assert fake_session.commits == 1
+
+
+def test_save_agent_app_composer_keeps_published_when_draft_matches_active_snapshot(monkeypatch: pytest.MonkeyPatch):
+    agent_soul = _agent_soul_with_model()
+    agent = SimpleNamespace(
+        id="agent-1",
+        active_config_snapshot_id="version-1",
+        active_config_is_published=False,
+        updated_by=None,
+    )
+    active_version = SimpleNamespace(config_snapshot_dict=agent_soul.model_dump(mode="json"))
+    fake_session = FakeSession(scalar=[agent])
+
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+    monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_save_agent_draft",
+        lambda **_kwargs: SimpleNamespace(id="draft-1"),
+    )
+    monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **_kwargs: active_version)
+    monkeypatch.setattr(AgentComposerService, "load_agent_composer", lambda **_kwargs: {"loaded": True})
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.AGENT_APP.value,
+            "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
+            "agent_soul": agent_soul.model_dump(mode="json"),
+        }
+    )
+
+    AgentComposerService.save_agent_app_composer(
+        tenant_id="tenant-1", app_id="app-1", account_id="account-1", payload=payload
+    )
+
+    assert agent.active_config_is_published is True
     assert fake_session.commits == 1
 
 

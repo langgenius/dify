@@ -168,6 +168,7 @@ describe('useAgentConfigureSync', () => {
   it('should automatically save configure page changes to draft', async () => {
     vi.setSystemTime(1710000100000)
     const { queryClient, result, store } = renderUseAgentConfigureSync()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: true,
       name: 'Agent',
@@ -208,8 +209,11 @@ describe('useAgentConfigureSync', () => {
     }))
     expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toBeUndefined()
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: false,
+      active_config_is_published: true,
       name: 'Agent',
+    })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['agent-detail', 'agent-1'],
     })
     expect(result.current.draftSavedAt).toBe(1710000105000)
   })

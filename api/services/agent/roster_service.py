@@ -992,9 +992,10 @@ class AgentRosterService:
     def load_active_config_is_published_by_agent_id(self, *, tenant_id: str, agents: list[Agent]) -> dict[str, bool]:
         """Return each Agent's stored normal-draft publish state.
 
-        The flag is maintained by write paths: normal shared draft writes mark it
-        dirty, while publish/version creation paths mark it clean. User-scoped
-        debug drafts intentionally do not affect this state.
+        The flag is maintained by write paths against the normal shared draft:
+        saves compare the draft content with the active snapshot, while publish
+        and version creation paths mark the new active snapshot clean.
+        User-scoped debug drafts intentionally do not affect this state.
         """
         agents = [agent for agent in agents if agent.id]
         if not agents:

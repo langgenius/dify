@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentAppDetailWithSite, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -65,21 +65,6 @@ export function useAgentConfigureSync({
     currentModel: currentModelRef.current,
   }), [store])
 
-  const markActiveConfigUnpublished = useCallback(() => {
-    queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
-      consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
-      (agentDetail) => {
-        if (!agentDetail)
-          return agentDetail
-
-        return {
-          ...agentDetail,
-          active_config_is_published: false,
-        }
-      },
-    )
-  }, [agentId, queryClient])
-
   const {
     mutateAsync: saveComposerDraft,
   } = useMutation(
@@ -100,6 +85,7 @@ export function useAgentConfigureSync({
     draftBaseline: AgentSoulConfigFormState
   }) => {
     const savedDraftKey = JSON.stringify(configSnapshot)
+    const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
     try {
       await saveComposerDraft({
         params: {
@@ -111,13 +97,15 @@ export function useAgentConfigureSync({
           agent_soul: configSnapshot,
         },
       })
+      await queryClient.invalidateQueries({
+        queryKey: agentDetailQueryKey,
+      })
     }
     catch {
       // Draft sync follows workflow autosave behavior: save failures are silent and keep the local draft intact.
       return false
     }
 
-    markActiveConfigUnpublished()
     setOriginalDraft(draftBaseline)
     setDraftSavedAt(Date.now())
     lastAutosavedDraftKeyRef.current = savedDraftKey
@@ -183,7 +171,7 @@ export function useAgentConfigureSync({
 
       debouncedSaveDraft()
     })
-  }, [debouncedSaveDraft, getAgentSoulDraft, markActiveConfigUnpublished, store])
+  }, [debouncedSaveDraft, getAgentSoulDraft, store])
 
   useEffect(() => {
     return () => {

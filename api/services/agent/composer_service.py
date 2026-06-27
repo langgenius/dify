@@ -96,6 +96,10 @@ def _validate_composer_payload_for_strategy(payload: ComposerSavePayload) -> Non
     ComposerConfigValidator.validate_draft_save_payload(payload)
 
 
+def _agent_soul_config_json(agent_soul: AgentSoulConfig | dict[str, Any]) -> dict[str, Any]:
+    return AgentSoulConfig.model_validate(agent_soul).model_dump(mode="json")
+
+
 class AgentComposerService:
     @classmethod
     def load_workflow_composer(
@@ -419,7 +423,11 @@ class AgentComposerService:
             account_id_for_audit=account_id,
         )
         agent.updated_by = account_id
-        agent.active_config_is_published = False
+        agent.active_config_is_published = cls._agent_soul_matches_active_config(
+            tenant_id=tenant_id,
+            agent=agent,
+            agent_soul=payload.agent_soul,
+        )
 
         db.session.commit()
         state = cls.load_agent_composer(tenant_id=tenant_id, agent_id=agent.id)
@@ -429,6 +437,27 @@ class AgentComposerService:
             agent_id=agent.id,
         )
         return state
+
+    @classmethod
+    def _agent_soul_matches_active_config(
+        cls,
+        *,
+        tenant_id: str,
+        agent: Agent,
+        agent_soul: AgentSoulConfig,
+    ) -> bool:
+        if not agent.active_config_snapshot_id:
+            return False
+
+        active_version = cls._get_version_if_present(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        if not active_version:
+            return False
+
+        return _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
 
     @classmethod
     def publish_agent_app_draft(
