@@ -7179,11 +7179,6 @@
       "count": 7
     }
   },
-  "web/service/base.spec.ts": {
-    "no-restricted-imports": {
-      "count": 1
-    }
-  },
   "web/service/base.ts": {
     "no-restricted-imports": {
       "count": 2
