@@ -841,7 +841,7 @@ class DocumentStatusApi(DatasetApiResource):
         except ValueError as e:
             raise InvalidActionError(str(e))
 
-        return dump_response(SimpleResultResponse, {"result": "success"}), 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @service_api_ns.route("/datasets/tags")
@@ -907,11 +907,8 @@ class DatasetTagsApi(DatasetApiResource):
         payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
         tag = TagService.save_tags(SaveTagPayload(name=payload.name, type=TagType.KNOWLEDGE), db.session)
 
-        response = dump_response(
-            KnowledgeTagResponse,
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0},
-        )
-        return response, 200
+        response = KnowledgeTagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count="0")
+        return response.model_dump(mode="json"), 200
 
     @service_api_ns.doc(
         summary="Update Knowledge Tag",
@@ -949,11 +946,8 @@ class DatasetTagsApi(DatasetApiResource):
 
         binding_count = TagService.get_tag_binding_count(tag_id, db.session, tag_type=TagType.KNOWLEDGE)
 
-        response = dump_response(
-            KnowledgeTagResponse,
-            {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": binding_count},
-        )
-        return response, 200
+        response = KnowledgeTagResponse(id=tag.id, name=tag.name, type=tag.type, binding_count=str(binding_count))
+        return response.model_dump(mode="json"), 200
 
     @service_api_ns.doc(
         summary="Delete Knowledge Tag",
@@ -1084,5 +1078,8 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         tags = TagService.get_tags_by_target_id(
             "knowledge", current_user.current_tenant_id, str(dataset_id), db.session
         )
-        tags_list = [{"id": tag.id, "name": tag.name} for tag in tags]
-        return dump_response(DatasetBoundTagListResponse, {"data": tags_list, "total": len(tags)}), 200
+        response = DatasetBoundTagListResponse(
+            data=[DatasetBoundTagResponse(id=tag.id, name=tag.name) for tag in tags],
+            total=len(tags),
+        )
+        return response.model_dump(mode="json"), 200

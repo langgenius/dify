@@ -15,13 +15,13 @@ simple_account_fields = {
 }
 
 
-class SimpleAccount(ResponseModel):
+class SimpleAccountResponse(ResponseModel):
     id: str
     name: str
     email: str
 
 
-class _AccountAvatar(ResponseModel):
+class _AccountAvatarResponseMixin(ResponseModel):
     avatar: str | None = None
 
     @computed_field(return_type=str | None)  # type: ignore[prop-decorator]
@@ -30,7 +30,7 @@ class _AccountAvatar(ResponseModel):
         return build_avatar_url(self.avatar)
 
 
-class Account(_AccountAvatar):
+class AccountResponse(_AccountAvatarResponseMixin):
     id: str
     name: str
     email: str
@@ -48,7 +48,7 @@ class Account(_AccountAvatar):
         return to_timestamp(value)
 
 
-class AccountWithRole(_AccountAvatar):
+class AccountWithRoleResponse(_AccountAvatarResponseMixin):
     id: str
     name: str
     email: str
@@ -65,5 +65,11 @@ class AccountWithRole(_AccountAvatar):
         return to_timestamp(value)
 
 
-class AccountWithRoleList(ResponseModel):
-    accounts: list[AccountWithRole]
+class AccountWithRoleListResponse(ResponseModel):
+    accounts: list[AccountWithRoleResponse]
+
+
+SimpleAccount = SimpleAccountResponse
+Account = AccountResponse
+AccountWithRole = AccountWithRoleResponse
+AccountWithRoleList = AccountWithRoleListResponse

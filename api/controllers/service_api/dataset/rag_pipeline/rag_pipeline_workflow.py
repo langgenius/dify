@@ -1,9 +1,10 @@
 from collections.abc import Generator
+from datetime import datetime
 from typing import Any
 from uuid import UUID
 
 from flask import request
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field, RootModel, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -97,6 +98,13 @@ class PipelineUploadFileResponse(ResponseModel):
     mime_type: str | None = None
     created_by: str
     created_at: str | None = None
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | str | None) -> str | None:
+        if isinstance(value, datetime):
+            return value.isoformat()
+        return value
 
 
 register_schema_model(service_api_ns, DatasourceNodeRunPayload)
