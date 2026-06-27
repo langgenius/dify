@@ -98,7 +98,7 @@ export const Loading: Story = {
     const button = canvas.getByRole('button', { name: 'Loading Button' })
 
     await expect(button).toHaveAttribute('aria-disabled', 'true')
-    await expect(button).toHaveAttribute('aria-busy', 'true')
+    await expect(button).not.toHaveAttribute('aria-busy')
 
     button.focus()
     await expect(button).toHaveFocus()

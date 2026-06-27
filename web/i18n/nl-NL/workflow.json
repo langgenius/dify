@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Agenttaak",
   "nodes.agent.task.mention": "Vermelden",
   "nodes.agent.task.placeholder": "Beschrijf wat deze agent moet doen...",
-  "nodes.agent.task.tooltip": "Bepaal de taakinstructies die deze agent in deze workflow moet volgen.",
+  "nodes.agent.task.tooltip": "Aanvullende prompt om de agent te helpen deze specifieke node af te handelen. Gebruik / om expliciet naar variabelen te verwijzen.\nAls dit goed is geconfigureerd, kun je erop vertrouwen dat je agent zelf uitzoekt wat nodig is.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Not Authorized",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} is not installed",
   "nodes.agent.toolbox": "toolbox",

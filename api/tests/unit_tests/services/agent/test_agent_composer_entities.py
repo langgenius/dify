@@ -1,4 +1,5 @@
 import pytest
+from pydantic import ValidationError
 
 from models.agent_config_entities import AgentKnowledgeQueryMode, AgentSoulModelConfig, DeclaredOutputType
 from services.agent.composer_service import AgentComposerService
@@ -24,6 +25,24 @@ def test_workflow_variant_rejects_agent_app_only_fields():
                 },
             }
         )
+
+
+def test_workflow_variant_accepts_agent_soul_files_section():
+    payload = ComposerSavePayload.model_validate(
+        {
+            "variant": ComposerVariant.WORKFLOW,
+            "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY,
+            "agent_soul": {
+                "schema_version": 1,
+                "prompt": {"system_prompt": "jjjj"},
+                "files": {"skills": [], "files": []},
+            },
+        }
+    )
+
+    assert payload.agent_soul is not None
+    assert payload.agent_soul.files.skills == []
+    assert payload.agent_soul.files.files == []
 
 
 def test_agent_app_variant_rejects_workflow_node_job():
@@ -131,14 +150,144 @@ def test_knowledge_query_mode_uses_stable_backend_enums():
     config = AgentSoulConfig.model_validate(
         {
             "knowledge": {
-                "datasets": [{"dataset_id": "dataset-1"}],
-                "query_mode": "generated_query",
-                "query_config": {"generation_prompt": "Create a retrieval query."},
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    }
+                ],
             }
         }
     )
 
-    assert config.knowledge.query_mode == AgentKnowledgeQueryMode.GENERATED_QUERY
+    assert config.knowledge.sets[0].query.mode == AgentKnowledgeQueryMode.GENERATED_QUERY
+
+
+@pytest.mark.parametrize(
+    ("knowledge_payload", "match"),
+    [
+        (
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    },
+                    {
+                        "id": "support",
+                        "name": "Billing KB",
+                        "datasets": [{"id": "dataset-2"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    },
+                ]
+            },
+            "knowledge set ids must be unique",
+        ),
+        (
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Shared KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    },
+                    {
+                        "id": "billing",
+                        "name": "Shared KB",
+                        "datasets": [{"id": "dataset-2"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    },
+                ]
+            },
+            "knowledge set names must be unique",
+        ),
+        (
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}, {"id": " dataset-1 "}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    },
+                ]
+            },
+            "knowledge set dataset ids must be unique",
+        ),
+        (
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "user_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                    },
+                ]
+            },
+            "knowledge query.value is required for user_query mode",
+        ),
+        (
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "single"},
+                    },
+                ]
+            },
+            "knowledge retrieval.model is required for single mode",
+        ),
+        (
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                        "metadata_filtering": {"mode": "automatic"},
+                    },
+                ]
+            },
+            "metadata_filtering.model_config is required for automatic mode",
+        ),
+        (
+            {
+                "sets": [
+                    {
+                        "id": "support",
+                        "name": "Support KB",
+                        "datasets": [{"id": "dataset-1"}],
+                        "query": {"mode": "generated_query"},
+                        "retrieval": {"mode": "multiple", "top_k": 4},
+                        "metadata_filtering": {"mode": "manual"},
+                    },
+                ]
+            },
+            "metadata_filtering.conditions is required for manual mode",
+        ),
+    ],
+)
+def test_knowledge_sets_contract_rejects_invalid_configs(knowledge_payload, match: str):
+    with pytest.raises(ValidationError, match=match):
+        AgentSoulConfig.model_validate({"knowledge": knowledge_payload})
 
 
 def test_agent_soul_model_config_is_first_class_without_credentials():
