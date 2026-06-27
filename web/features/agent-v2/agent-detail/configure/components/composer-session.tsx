@@ -295,7 +295,16 @@ function AgentConfigurePageComposerContent({
   const selectVersion = useCallback((versionId: string | null) => {
     onSelectVersion(versionId)
   }, [onSelectVersion])
+  const hasRestartCurrentChatTarget = !!conversationIds[rightPanelChatMode] || (rightPanelChatMode === 'build' && buildDraft.isActive)
+  const isRestartCurrentChatDisabled = !hasRestartCurrentChatTarget
+    || buildDraftActionsDisabled
+    || isRefreshingDebugConversation
+    || buildDraftActions.isApplyingBuildDraft
+    || buildDraftActions.isDiscardingBuildDraft
   const restartCurrentChat = () => {
+    if (isRestartCurrentChatDisabled)
+      return
+
     if (rightPanelChatMode === 'build' && buildDraft.isActive) {
       void buildDraftActions.discardBuildDraft()
       return
@@ -365,7 +374,7 @@ function AgentConfigurePageComposerContent({
                 workingDirectoryPanel.openWorkingDirectory()
               }}
               onRefresh={restartCurrentChat}
-              refreshDisabled={isRefreshingDebugConversation || buildDraftActions.isDiscardingBuildDraft}
+              refreshDisabled={isRestartCurrentChatDisabled}
             />
           )}
           chat={(

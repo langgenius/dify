@@ -358,7 +358,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       toast.error(tCommon('api.actionFailed'))
     }
   }
+  const hasRestartCurrentChatTarget = !!conversationIds[rightPanelChatMode] || buildDraft.isActive
+  const isRestartCurrentChatDisabled = !hasRestartCurrentChatTarget
+    || buildDraftActionsDisabled
+    || isApplyingInlineBuildDraft
+    || discardBuildDraftMutation.isPending
   const restartCurrentChat = () => {
+    if (isRestartCurrentChatDisabled)
+      return
+
     if (buildDraft.isActive) {
       void discardInlineBuildDraft()
       return
@@ -423,7 +431,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onToggleChatFeatures={() => undefined}
               onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
               onRefresh={restartCurrentChat}
-              refreshDisabled={discardBuildDraftMutation.isPending}
+              refreshDisabled={isRestartCurrentChatDisabled}
               showChatFeaturesAction={false}
               trailingAction={(
                 <button

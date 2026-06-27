@@ -304,6 +304,10 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })
       renderWorkspace()
 
+      expect(await screen.findByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      })).toBeDisabled()
+
       fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
 
       await waitFor(() => expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes'))
@@ -313,6 +317,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      })).toBeDisabled()
 
       vi.useFakeTimers()
       fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
@@ -326,6 +333,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new')
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      })).toBeEnabled()
     })
 
     it('should apply inline build draft through the workflow node composer owner', async () => {

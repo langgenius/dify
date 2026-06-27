@@ -275,6 +275,7 @@ vi.mock('../components/preview/header', () => ({
     onModeChange: (mode: 'build' | 'preview') => void
     onOpenWorkingDirectory: () => void
     onRefresh: () => void
+    refreshDisabled?: boolean
   }) => (
     <div>
       <div>{props.mode}</div>
@@ -287,7 +288,7 @@ vi.mock('../components/preview/header', () => ({
       <button type="button" onClick={props.onOpenWorkingDirectory}>
         open working directory
       </button>
-      <button type="button" onClick={props.onRefresh}>
+      <button type="button" disabled={props.refreshDisabled} onClick={props.onRefresh}>
         restart preview
       </button>
     </div>
@@ -449,6 +450,40 @@ describe('AgentConfigurePage', () => {
 
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:debug-conversation-old')
       expect(screen.queryByRole('region', { name: 'preview-chat', hidden: true })).not.toBeInTheDocument()
+    })
+
+    it('should disable restart when there is no conversation or build draft to reset', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      mocks.queryState.agent = {
+        ...mocks.queryState.agent,
+        data: {
+          ...mocks.queryState.agent.data,
+          debug_conversation_id: '',
+        },
+      }
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      const restartButton = screen.getByRole('button', { name: 'restart preview' })
+
+      expect(restartButton).toBeDisabled()
+
+      await user.click(restartButton)
+
+      expect(mocks.refreshDebugConversation).not.toHaveBeenCalled()
     })
 
     it('should stay in normal draft mode when build draft returns 404 even if a debug conversation exists', () => {
