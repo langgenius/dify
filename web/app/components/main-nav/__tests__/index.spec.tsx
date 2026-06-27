@@ -20,7 +20,7 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
-import MainNav from '../index'
+import { MainNav } from '../index'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
 const activeGradientMaskClassName = 'aria-[current=page]:dify-blue-glass-surface'
