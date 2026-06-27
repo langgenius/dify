@@ -808,6 +808,7 @@ describe('AgentConfigurePage', () => {
     it('should apply the build draft and rebase the composer store from the refetched normal draft', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
+      const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
       const refetchComposer = vi.fn(async () => {
         mocks.queryState.composer = {
           ...mocks.queryState.composer,
@@ -871,6 +872,9 @@ describe('AgentConfigurePage', () => {
         },
         expect.any(Object),
       ))
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['agent'],
+      })
       expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
         params: {
           agent_id: 'agent-1',

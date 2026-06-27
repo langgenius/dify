@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   deleteBuildDraft: vi.fn(),
   loadBuildDraft: vi.fn(),
   applyBuildDraft: vi.fn(),
+  saveBuildDraft: vi.fn(),
   saveAgentSoulConfig: vi.fn(),
   saveDraft: vi.fn(),
 }))
@@ -133,6 +134,9 @@ vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
       byAgentId: {
+        get: {
+          queryKey: () => ['agent-detail'],
+        },
         composer: {
           get: {
             queryOptions: vi.fn(),
@@ -144,6 +148,9 @@ vi.mock('@/service/client', () => ({
           },
           delete: {
             mutationOptions: () => ({ mutationFn: mocks.deleteBuildDraft }),
+          },
+          put: {
+            mutationOptions: () => ({ mutationFn: mocks.saveBuildDraft }),
           },
           apply: {
             post: {
@@ -209,6 +216,16 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       draft: {},
       variant: 'agent_app',
     })
+    mocks.saveBuildDraft.mockResolvedValue({
+      agent_soul: {
+        schema_version: 1,
+        prompt: {
+          system_prompt: 'Help with workflow tasks.',
+        },
+      },
+      draft: {},
+      variant: 'agent_app',
+    })
     mocks.saveDraft.mockResolvedValue(createInlineComposerState())
     mocks.saveAgentSoulConfig.mockResolvedValue(createInlineComposerState())
   })
@@ -265,28 +282,35 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
   })
 
   describe('Build Chat', () => {
-    it('should save the workflow agent draft and checkout a build draft before starting build chat', async () => {
+    it('should save the workflow agent draft and write that snapshot into the build draft before starting build chat', async () => {
       renderWorkspace()
 
       fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
 
       await waitFor(() => expect(mocks.saveDraft).toHaveBeenCalled())
-      expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith({
+      expect(mocks.saveBuildDraft).toHaveBeenCalledWith({
         params: {
           agent_id: 'agent-1',
         },
         body: {
-          force: false,
+          variant: 'agent_app',
+          save_strategy: 'save_to_current_version',
+          agent_soul: expect.objectContaining({
+            prompt: expect.objectContaining({
+              system_prompt: 'Help with workflow tasks.',
+            }),
+          }),
         },
       }, expect.any(Object))
       const saveDraftCallOrder = mocks.saveDraft.mock.invocationCallOrder[0]
-      const checkoutBuildDraftCallOrder = mocks.checkoutBuildDraft.mock.invocationCallOrder[0]
+      const saveBuildDraftCallOrder = mocks.saveBuildDraft.mock.invocationCallOrder[0]
       expect(saveDraftCallOrder).toBeDefined()
-      expect(checkoutBuildDraftCallOrder).toBeDefined()
-      if (saveDraftCallOrder === undefined || checkoutBuildDraftCallOrder === undefined)
-        throw new Error('Expected save draft and checkout mutations to be called')
+      expect(saveBuildDraftCallOrder).toBeDefined()
+      if (saveDraftCallOrder === undefined || saveBuildDraftCallOrder === undefined)
+        throw new Error('Expected workflow draft and build draft saves to be called')
 
-      expect(saveDraftCallOrder).toBeLessThan(checkoutBuildDraftCallOrder)
+      expect(saveDraftCallOrder).toBeLessThan(saveBuildDraftCallOrder)
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
     })
 
     it('should enter build draft mode without resetting the current inline build chat', async () => {
@@ -302,7 +326,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           draft: {},
           variant: 'agent_app',
         })
-      mocks.checkoutBuildDraft.mockResolvedValue({
+      mocks.saveBuildDraft.mockResolvedValue({
         agent_soul: {
           schema_version: 1,
           prompt: {
@@ -361,7 +385,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           draft: {},
           variant: 'agent_app',
         })
-      mocks.checkoutBuildDraft.mockResolvedValue({
+      mocks.saveBuildDraft.mockResolvedValue({
         agent_soul: {
           schema_version: 1,
           prompt: {

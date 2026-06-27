@@ -262,6 +262,14 @@ export const useChat = (
     }: SendCallback,
   ) => {
     const getOrCreatePlayer = createAudioPlayerManager()
+    let hasSettled = false
+    const settleSend = (hasError?: boolean) => {
+      if (hasSettled)
+        return
+
+      hasSettled = true
+      onSendSettled?.(hasError)
+    }
     // Re-subscribe to workflow events for the specific message
     const url = `/workflow/${workflowRunId}/events?include_state_snapshot=true`
 
@@ -327,7 +335,7 @@ export const useChat = (
           }
         }
         finally {
-          onSendSettled?.(hasError)
+          settleSend(hasError)
         }
       },
       onFile(file) {
@@ -411,6 +419,7 @@ export const useChat = (
       },
       onError() {
         handleResponding(false)
+        settleSend(true)
       },
       onWorkflowStarted: ({ workflow_run_id, task_id }) => {
         handleResponding(true)
@@ -753,6 +762,14 @@ export const useChat = (
 
     let isAgentMode = false
     let hasSetResponseId = false
+    let hasSettled = false
+    const settleSend = (hasError?: boolean) => {
+      if (hasSettled)
+        return
+
+      hasSettled = true
+      onSendSettled?.(hasError)
+    }
 
     const getOrCreatePlayer = createAudioPlayerManager()
 
@@ -871,7 +888,7 @@ export const useChat = (
           }
         }
         finally {
-          onSendSettled?.(hasError)
+          settleSend(hasError)
         }
       },
       onFile(file) {
@@ -979,6 +996,7 @@ export const useChat = (
       },
       onError() {
         handleResponding(false)
+        settleSend(true)
         updateCurrentQAOnTree({
           placeholderQuestionId,
           questionItem,

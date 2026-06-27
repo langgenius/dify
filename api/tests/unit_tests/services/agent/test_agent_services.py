@@ -603,7 +603,8 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
     assert checked_out["agent_soul"] == normal_draft.config_snapshot_dict
     assert fake_session.commits == 1
 
-    fake_session = FakeSession(scalar=[agent, build_draft, normal_draft])
+    active_version = SimpleNamespace(config_snapshot_dict=build_draft.config_snapshot_dict)
+    fake_session = FakeSession(scalar=[agent, build_draft, normal_draft, active_version])
     monkeypatch.setattr(composer_service.db, "session", fake_session)
 
     applied = AgentComposerService.apply_agent_app_build_draft(
@@ -614,6 +615,60 @@ def test_agent_app_build_draft_checkout_and_apply_use_user_isolated_draft(monkey
 
     assert applied["result"] == "success"
     assert applied["draft"]["id"] == normal_draft.id
+    assert normal_draft.config_snapshot_dict == build_draft.config_snapshot_dict
+    assert agent.active_config_is_published is True
+    assert fake_session.deleted == [build_draft]
+    assert fake_session.commits == 1
+
+
+def test_agent_app_build_draft_apply_marks_unpublished_when_build_draft_differs(monkeypatch: pytest.MonkeyPatch):
+    agent = Agent(
+        id="agent-1",
+        tenant_id="tenant-1",
+        name="Iris",
+        description="",
+        agent_kind=AgentKind.DIFY_AGENT,
+        scope=AgentScope.ROSTER,
+        source=AgentSource.AGENT_APP,
+        status=AgentStatus.ACTIVE,
+        active_config_snapshot_id="version-1",
+        active_config_is_published=True,
+    )
+    active_agent_soul = _agent_soul_with_model()
+    build_agent_soul = AgentSoulConfig.model_validate({
+        **active_agent_soul.model_dump(mode="json"),
+        "prompt": {
+            "system_prompt": "Build draft prompt",
+        },
+    })
+    build_draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DEBUG_BUILD,
+        account_id="account-1",
+        draft_owner_key="account-1",
+        base_snapshot_id="version-1",
+        config_snapshot=build_agent_soul,
+    )
+    normal_draft = AgentConfigDraft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        draft_type=AgentConfigDraftType.DRAFT,
+        account_id=None,
+        draft_owner_key="",
+        base_snapshot_id="version-1",
+        config_snapshot=active_agent_soul,
+    )
+    active_version = SimpleNamespace(config_snapshot_dict=active_agent_soul.model_dump(mode="json"))
+    fake_session = FakeSession(scalar=[agent, build_draft, normal_draft, active_version])
+    monkeypatch.setattr(composer_service.db, "session", fake_session)
+
+    AgentComposerService.apply_agent_app_build_draft(
+        tenant_id="tenant-1",
+        agent_id="agent-1",
+        account_id="account-1",
+    )
+
     assert normal_draft.config_snapshot_dict == build_draft.config_snapshot_dict
     assert agent.active_config_is_published is False
     assert fake_session.deleted == [build_draft]

@@ -395,6 +395,32 @@ describe('useChat', () => {
       )
     })
 
+    it('should settle a send once when the SSE stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+
+      vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const { result } = renderHook(() => useChat())
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'hello' }, {
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(result.current.isResponding).toBe(false)
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
+    })
+
     it('should handle onThought and different workflow events', async () => {
       let callbacks: HookCallbacks
 

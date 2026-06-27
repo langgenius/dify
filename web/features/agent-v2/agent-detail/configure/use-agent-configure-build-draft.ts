@@ -146,6 +146,7 @@ export function useAgentConfigureBuildDraftActions({
       },
     },
   })
+  const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
   const applyBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions())
   const discardBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions())
   const { mutateAsync: applyBuildDraftRequest, isPending: isApplyingBuildDraft } = applyBuildDraftMutation
@@ -198,6 +199,9 @@ export function useAgentConfigureBuildDraftActions({
         params: {
           agent_id: agentId,
         },
+      })
+      await queryClient.invalidateQueries({
+        queryKey: agentDetailQueryKey,
       })
       await exitBuildDraftMode(true)
       toast.success(tCommon('api.actionSuccess'))

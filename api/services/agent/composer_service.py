@@ -586,16 +586,21 @@ class AgentComposerService:
         )
         if build_draft is None:
             raise AgentVersionNotFoundError()
+        applied_agent_soul = AgentSoulConfig.model_validate(build_draft.config_snapshot_dict)
         normal_draft = cls._save_agent_draft(
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DRAFT,
             account_id=None,
-            agent_soul=AgentSoulConfig.model_validate(build_draft.config_snapshot_dict),
+            agent_soul=applied_agent_soul,
             account_id_for_audit=account_id,
             base_snapshot_id=build_draft.base_snapshot_id,
         )
-        agent.active_config_is_published = False
+        agent.active_config_is_published = cls._agent_soul_matches_active_config(
+            tenant_id=tenant_id,
+            agent=agent,
+            agent_soul=applied_agent_soul,
+        )
         agent.updated_by = account_id
         db.session.delete(build_draft)
         db.session.commit()

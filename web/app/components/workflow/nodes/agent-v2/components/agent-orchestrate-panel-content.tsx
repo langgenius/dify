@@ -10,16 +10,16 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
+import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerDraftAtom, rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configure/components/orchestrate'
 import { AgentBuildDraftBar } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar'
@@ -245,6 +245,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 }) {
   const { t } = useTranslation('common')
   const queryClient = useQueryClient()
+  const jotaiStore = useJotaiStore()
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
   const composerState = inlineComposerState
   const buildDraftActionsDisabled = useAtomValue(agentConfigureBuildDraftActionsDisabledAtom)
@@ -310,7 +311,33 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       },
     },
   })
+  const { mutateAsync: saveBuildDraft } = useMutation(consoleQuery.agent.byAgentId.buildDraft.put.mutationOptions())
   const discardBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions())
+  const getInlineAgentSoulDraft = useCallback(() => formStateToAgentSoulConfig({
+    baseConfig: agentSoulConfig,
+    formState: jotaiStore.get(agentComposerDraftAtom),
+    currentModel,
+  }), [agentSoulConfig, currentModel, jotaiStore])
+  const prepareInlineBuildDraftBeforeRun = useCallback(async () => {
+    const configSnapshot = getInlineAgentSoulDraft()
+    const savedComposerState = await saveDraft()
+    const preparedAgentSoulConfig = savedComposerState?.agent_soul ?? configSnapshot
+    const buildDraftState = await saveBuildDraft({
+      params: {
+        agent_id: agentId,
+      },
+      body: {
+        variant: 'agent_app',
+        save_strategy: 'save_to_current_version',
+        agent_soul: preparedAgentSoulConfig,
+      },
+    })
+
+    queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraftState)
+    rebaseComposerDraftFromSoulConfig(preparedAgentSoulConfig)
+    buildDraft.setSoulSourceOverride('build-draft')
+    return preparedAgentSoulConfig
+  }, [agentId, buildDraft, buildDraftQueryOptions.queryKey, getInlineAgentSoulDraft, queryClient, rebaseComposerDraftFromSoulConfig, saveBuildDraft, saveDraft])
   const applyInlineBuildDraft = async () => {
     setIsApplyingInlineBuildDraft(true)
     try {
@@ -322,7 +349,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
         params: {
           agent_id: agentId,
         },
-      })
+      }).catch(() => undefined)
       await resetBuildChatSession().catch(() => undefined)
       buildDraft.setSoulSourceOverride('draft')
       queryClient.removeQueries({
@@ -467,7 +494,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onSaveDraftBeforeRun={async () => {
                 setBuildDraftActionsDisabled(true)
                 try {
-                  return await buildDraftActions.prepareBuildDraftBeforeRun()
+                  return await prepareInlineBuildDraftBeforeRun()
                 }
                 catch (error) {
                   setBuildDraftActionsDisabled(false)
