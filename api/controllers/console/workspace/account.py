@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 
 import pytz
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -47,7 +47,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.member_fields import Account as AccountResponse
+from fields.member_fields import AccountResponse
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
@@ -194,10 +194,6 @@ register_schema_models(
 )
 
 
-def _serialize_account(account) -> dict[str, Any]:
-    return AccountResponse.model_validate(account, from_attributes=True).model_dump(mode="json")
-
-
 class AccountIntegrateResponse(ResponseModel):
     provider: str
     created_at: int | None = None
@@ -236,23 +232,15 @@ class EducationAutocompleteResponse(ResponseModel):
     has_next: bool | None = None
 
 
-class EducationActivateResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
-
-
-register_schema_models(
-    console_ns,
-    AccountIntegrateResponse,
-    AccountIntegrateListResponse,
-    EducationVerifyResponse,
-    EducationStatusResponse,
-    EducationAutocompleteResponse,
-)
 register_response_schema_models(
     console_ns,
     AccountResponse,
+    AccountIntegrateResponse,
+    AccountIntegrateListResponse,
     AvatarUrlResponse,
-    EducationActivateResponse,
+    EducationVerifyResponse,
+    EducationStatusResponse,
+    EducationAutocompleteResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
@@ -302,7 +290,7 @@ class AccountInitApi(Resource):
         account.initialized_at = naive_utc_now()
         db.session.commit()
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/account/profile")
@@ -314,7 +302,7 @@ class AccountProfileApi(Resource):
     @enterprise_license_required
     @with_current_user
     def get(self, current_user: Account):
-        return _serialize_account(current_user)
+        return dump_response(AccountResponse, current_user)
 
 
 @console_ns.route("/account/name")
@@ -330,7 +318,7 @@ class AccountNameApi(Resource):
         args = AccountNamePayload.model_validate(payload)
         updated_account = AccountService.update_account(current_user, session=db.session, name=args.name)
 
-        return _serialize_account(updated_account)
+        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/avatar")
@@ -349,7 +337,7 @@ class AccountAvatarApi(Resource):
         avatar = args.avatar
 
         if avatar.startswith(("http://", "https://")):
-            return dump_response(AvatarUrlResponse, {"avatar_url": avatar})
+            return AvatarUrlResponse(avatar_url=avatar).model_dump(mode="json")
 
         upload_file = db.session.scalar(select(UploadFile).where(UploadFile.id == avatar).limit(1))
         if upload_file is None:
@@ -362,7 +350,7 @@ class AccountAvatarApi(Resource):
             raise NotFound("Avatar file not found")
 
         avatar_url = file_helpers.get_signed_file_url(upload_file_id=upload_file.id)
-        return dump_response(AvatarUrlResponse, {"avatar_url": avatar_url})
+        return AvatarUrlResponse(avatar_url=avatar_url).model_dump(mode="json")
 
     @console_ns.expect(console_ns.models[AccountAvatarPayload.__name__])
     @setup_required
@@ -376,7 +364,7 @@ class AccountAvatarApi(Resource):
 
         updated_account = AccountService.update_account(current_user, session=db.session, avatar=args.avatar)
 
-        return _serialize_account(updated_account)
+        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/interface-language")
@@ -395,7 +383,7 @@ class AccountInterfaceLanguageApi(Resource):
             current_user, session=db.session, interface_language=args.interface_language
         )
 
-        return _serialize_account(updated_account)
+        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/interface-theme")
@@ -414,7 +402,7 @@ class AccountInterfaceThemeApi(Resource):
             current_user, session=db.session, interface_theme=args.interface_theme
         )
 
-        return _serialize_account(updated_account)
+        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/timezone")
@@ -431,7 +419,7 @@ class AccountTimezoneApi(Resource):
 
         updated_account = AccountService.update_account(current_user, session=db.session, timezone=args.timezone)
 
-        return _serialize_account(updated_account)
+        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/password")
@@ -452,7 +440,7 @@ class AccountPasswordApi(Resource):
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
-        return _serialize_account(current_user)
+        return dump_response(AccountResponse, current_user)
 
 
 @console_ns.route("/account/integrates")
@@ -471,33 +459,29 @@ class AccountIntegrateApi(Resource):
         oauth_base_path = "/console/api/oauth/login"
         providers = ["github", "google"]
 
-        integrate_data = []
+        integrate_data: list[AccountIntegrateResponse] = []
         for provider in providers:
             existing_integrate = next((ai for ai in account_integrates if ai.provider == provider), None)
             if existing_integrate:
                 integrate_data.append(
-                    {
-                        "id": existing_integrate.id,
-                        "provider": provider,
-                        "created_at": existing_integrate.created_at,
-                        "is_bound": True,
-                        "link": None,
-                    }
+                    AccountIntegrateResponse(
+                        provider=provider,
+                        created_at=to_timestamp(existing_integrate.created_at),
+                        is_bound=True,
+                        link=None,
+                    )
                 )
             else:
                 integrate_data.append(
-                    {
-                        "id": None,
-                        "provider": provider,
-                        "created_at": None,
-                        "is_bound": False,
-                        "link": f"{base_url}{oauth_base_path}/{provider}",
-                    }
+                    AccountIntegrateResponse(
+                        provider=provider,
+                        created_at=None,
+                        is_bound=False,
+                        link=f"{base_url}{oauth_base_path}/{provider}",
+                    )
                 )
 
-        return AccountIntegrateListResponse(
-            data=[AccountIntegrateResponse.model_validate(item) for item in integrate_data]
-        ).model_dump(mode="json")
+        return AccountIntegrateListResponse(data=integrate_data).model_dump(mode="json")
 
 
 @console_ns.route("/account/delete/verify")
@@ -511,7 +495,7 @@ class AccountDeleteVerifyApi(Resource):
         token, code = AccountService.generate_account_deletion_verification_code(account)
         AccountService.send_account_deletion_verification_email(account, code)
 
-        return {"result": "success", "data": token}
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
 @console_ns.route("/account/delete")
@@ -531,7 +515,7 @@ class AccountDeleteApi(Resource):
 
         AccountService.delete_account(account)
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/account/delete/feedback")
@@ -545,7 +529,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
 
         BillingService.update_account_deletion_feedback(args.email, args.feedback)
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route("/account/education/verify")
@@ -558,15 +542,16 @@ class EducationVerifyApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[EducationVerifyResponse.__name__])
     @with_current_user
     def get(self, account: Account):
-        return EducationVerifyResponse.model_validate(
-            BillingService.EducationIdentity.verify(account.id, account.email) or {}
-        ).model_dump(mode="json")
+        return dump_response(
+            EducationVerifyResponse, BillingService.EducationIdentity.verify(account.id, account.email) or {}
+        )
 
 
 @console_ns.route("/account/education")
 class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[EducationActivateResponse.__name__])
+    # response-contract:ignore billing-service activation payload; TODO: model education activation result.
+    @console_ns.response(200, "Success")
     @setup_required
     @login_required
     @account_initialization_required
@@ -577,7 +562,8 @@ class EducationApi(Resource):
         payload = console_ns.payload or {}
         args = EducationActivatePayload.model_validate(payload)
 
-        return BillingService.EducationIdentity.activate(account, args.token, args.institution, args.role)
+        result = BillingService.EducationIdentity.activate(account, args.token, args.institution, args.role)
+        return result
 
     @setup_required
     @login_required
@@ -591,7 +577,7 @@ class EducationApi(Resource):
         # convert expire_at to UTC timestamp from isoformat
         if res and "expire_at" in res:
             res["expire_at"] = datetime.fromisoformat(res["expire_at"]).astimezone(pytz.utc)
-        return EducationStatusResponse.model_validate(res).model_dump(mode="json")
+        return dump_response(EducationStatusResponse, res)
 
 
 @console_ns.route("/account/education/autocomplete")
@@ -607,9 +593,10 @@ class EducationAutoCompleteApi(Resource):
         payload = request.args.to_dict(flat=True)
         args = EducationAutocompleteQuery.model_validate(payload)
 
-        return EducationAutocompleteResponse.model_validate(
-            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit) or {}
-        ).model_dump(mode="json")
+        return dump_response(
+            EducationAutocompleteResponse,
+            BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit) or {},
+        )
 
 
 @console_ns.route("/account/change-email")
@@ -669,7 +656,7 @@ class ChangeEmailSendEmailApi(Resource):
             language=language,
             phase=send_phase,
         )
-        return {"result": "success", "data": token}
+        return SimpleResultDataResponse(result="success", data=token).model_dump(mode="json")
 
 
 @console_ns.route("/account/change-email/validity")
@@ -716,7 +703,9 @@ class ChangeEmailCheckApi(Resource):
         new_token = AccountService.generate_change_email_token(refreshed_token_data, current_user)
 
         AccountService.reset_change_email_error_rate_limit(user_email)
-        return {"is_valid": True, "email": normalized_token_email, "token": new_token}
+        return VerificationTokenResponse(is_valid=True, email=normalized_token_email, token=new_token).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/account/change-email/reset")
@@ -768,7 +757,7 @@ class ChangeEmailResetApi(Resource):
             email=normalized_new_email,
         )
 
-        return _serialize_account(updated_account)
+        return dump_response(AccountResponse, updated_account)
 
 
 @console_ns.route("/account/change-email/check-email-unique")
@@ -784,4 +773,4 @@ class CheckEmailUnique(Resource):
             raise AccountInFreezeError()
         if not AccountService.check_email_unique(normalized_email, session=db.session):
             raise EmailAlreadyInUseError()
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")
