@@ -1,15 +1,18 @@
 from inspect import unwrap as inspect_unwrap
 from io import BytesIO
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
-from flask import Flask
+from flask import Flask, Response, g
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import controllers.console.explore.trial as module
+from configs import dify_config
 from controllers.console.app.error import (
+    AppNotFoundError,
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
@@ -30,12 +33,14 @@ from core.errors.error import (
 )
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account
-from models.account import TenantStatus
+from models.account import AccountStatus, TenantStatus
 from models.model import AppMode
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
 
 unwrap: Any = inspect_unwrap
+TENANT_A_APP_ID = "79b2c301-d895-44c3-b231-afed8857afcb"
+TENANT_B_ID = "98aff511-4a83-4be4-a186-a456bc0c1150"
 
 
 @pytest.fixture
@@ -95,6 +100,109 @@ def valid_parameters() -> dict[str, object]:
 def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
     assert module.simple_account_model.name == "TrialSimpleAccount"
     assert hasattr(module.simple_account_model, "items")
+
+
+def _private_trial_app_from_tenant_a() -> SimpleNamespace:
+    return SimpleNamespace(
+        id=TENANT_A_APP_ID,
+        tenant_id="tenant-a",
+        status="normal",
+        tenant=SimpleNamespace(status=TenantStatus.NORMAL),
+        mode=AppMode.CHAT,
+        workflow_id="workflow-a",
+        workflow=None,
+        app_model_config=SimpleNamespace(to_dict=lambda: {"user_input_form": []}),
+    )
+
+
+def _cross_tenant_scalar(stmt: object) -> object | None:
+    where_criteria = getattr(stmt, "_where_criteria", ())
+    if any("tenant_id" in str(criterion) for criterion in where_criteria):
+        return None
+
+    sql = str(stmt)
+    if "sites" in sql:
+        return SimpleNamespace(
+            title="Private site",
+            code="site-secret",
+            chat_color_theme=None,
+            chat_color_theme_inverted=False,
+            default_language="en-US",
+            show_workflow_steps=False,
+            use_icon_as_answer_icon=False,
+        )
+    return _private_trial_app_from_tenant_a()
+
+
+def test_trial_app_detail_read_requires_authenticated_console_user(app: Flask) -> None:
+    api = module.AppApi()
+
+    class LoginManager:
+        def load_user_from_request_context(self) -> None:
+            g._login_user = None
+
+        def unauthorized(self) -> Response:
+            return Response(status=401)
+
+    original_login_disabled = dify_config.LOGIN_DISABLED
+    dify_config.LOGIN_DISABLED = False
+    app.login_manager = LoginManager()
+    try:
+        with (
+            app.test_request_context(f"/trial-apps/{TENANT_A_APP_ID}", method="GET"),
+            patch.object(module.db.session, "scalar", side_effect=AssertionError("private app was loaded")),
+        ):
+            result = api.get(app_id=TENANT_A_APP_ID)
+    finally:
+        dify_config.LOGIN_DISABLED = original_login_disabled
+
+    assert isinstance(result, Response)
+    assert result.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("resource_cls", "path"),
+    [
+        (module.TrialSitApi, f"/trial-apps/{TENANT_A_APP_ID}/site"),
+        (module.TrialAppParameterApi, f"/trial-apps/{TENANT_A_APP_ID}/parameters"),
+        (module.AppApi, f"/trial-apps/{TENANT_A_APP_ID}"),
+        (module.AppWorkflowApi, f"/trial-apps/{TENANT_A_APP_ID}/workflows"),
+        (module.DatasetListApi, f"/trial-apps/{TENANT_A_APP_ID}/datasets?ids=dataset-a"),
+    ],
+)
+def test_trial_app_read_handlers_reject_cross_tenant_app_ids(
+    app: Flask,
+    account: Account,
+    resource_cls: type,
+    path: str,
+    valid_parameters: dict[str, object],
+) -> None:
+    account._current_tenant = SimpleNamespace(id=TENANT_B_ID)
+    account.status = AccountStatus.ACTIVE
+    api = resource_cls()
+
+    original_login_disabled = dify_config.LOGIN_DISABLED
+    dify_config.LOGIN_DISABLED = True
+    try:
+        with (
+            app.test_request_context(path, method="GET"),
+            patch("controllers.console.wraps.current_account_with_tenant", return_value=(account, TENANT_B_ID)),
+            patch("controllers.console.app.wraps.current_account_with_tenant", return_value=(account, TENANT_B_ID)),
+            patch.object(module.db.session, "scalar", side_effect=_cross_tenant_scalar),
+            patch.object(module.db.session, "get", return_value=SimpleNamespace(id="workflow-a")),
+            patch.object(module.AppService, "get_app", side_effect=lambda app_model: app_model),
+            patch.object(module.DatasetService, "get_datasets_by_ids", return_value=([], 0)),
+            patch.object(module, "get_parameters_from_feature_dict", return_value=valid_parameters),
+            patch.object(
+                module.ParametersResponse,
+                "model_validate",
+                return_value=SimpleNamespace(model_dump=lambda mode=None: {"ok": True}),
+            ),
+        ):
+            with pytest.raises(AppNotFoundError):
+                api.get(app_id=TENANT_A_APP_ID)
+    finally:
+        dify_config.LOGIN_DISABLED = original_login_disabled
 
 
 class TestTrialAppWorkflowRunApi:

@@ -36,7 +36,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from controllers.console.app.wraps import get_app_model_with_trial
+from controllers.console.app.wraps import get_app_model
 from controllers.console.explore.error import (
     AppSuggestedQuestionsAfterAnswerDisabledError,
     NotChatAppError,
@@ -44,7 +44,7 @@ from controllers.console.explore.error import (
     NotWorkflowAppError,
 )
 from controllers.console.explore.wraps import TrialAppResource, trial_feature_enable
-from controllers.console.wraps import with_current_user
+from controllers.console.wraps import account_initialization_required, with_current_user
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -76,6 +76,7 @@ from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
+from libs.login import login_required
 from models import Account
 from models.account import TenantStatus
 from models.model import AppMode, Site
@@ -507,7 +508,9 @@ class TrialSitApi(Resource):
     """Resource for trial app sites."""
 
     @console_ns.response(200, "Success", console_ns.models[SiteResponse.__name__])
-    @get_app_model_with_trial(None)
+    @login_required
+    @account_initialization_required
+    @get_app_model
     def get(self, app_model):
         """Retrieve app site info.
 
@@ -529,7 +532,9 @@ class TrialAppParameterApi(Resource):
     """Resource for app variables."""
 
     @console_ns.response(200, "Success", console_ns.models[ParametersResponse.__name__])
-    @get_app_model_with_trial(None)
+    @login_required
+    @account_initialization_required
+    @get_app_model
     def get(self, app_model):
         """Retrieve app parameters."""
 
@@ -558,7 +563,9 @@ class TrialAppParameterApi(Resource):
 
 class AppApi(Resource):
     @console_ns.response(200, "Success", app_detail_with_site_model)
-    @get_app_model_with_trial(None)
+    @login_required
+    @account_initialization_required
+    @get_app_model
     @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
         """Get app detail"""
@@ -571,7 +578,9 @@ class AppApi(Resource):
 
 class AppWorkflowApi(Resource):
     @console_ns.response(200, "Success", workflow_model)
-    @get_app_model_with_trial(None)
+    @login_required
+    @account_initialization_required
+    @get_app_model
     @marshal_with(workflow_model)
     def get(self, app_model):
         """Get workflow detail"""
@@ -585,7 +594,9 @@ class AppWorkflowApi(Resource):
 class DatasetListApi(Resource):
     @console_ns.doc(params=query_params_from_model(TrialDatasetListQuery))
     @console_ns.response(200, "Success", dataset_list_model)
-    @get_app_model_with_trial(None)
+    @login_required
+    @account_initialization_required
+    @get_app_model
     def get(self, app_model):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
