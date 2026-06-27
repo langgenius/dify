@@ -225,43 +225,15 @@ export type WorkflowPartial = {
 }
 
 export type TrialDatasetListItemResponse = {
-  app_count: number
-  author_name: string | null
-  built_in_field_enabled: boolean
-  chunk_structure: string | null
-  created_at: number
+  created_at: number | null
   created_by: string
   data_source_type: string | null
   description: string | null
-  doc_form: string | null
-  doc_metadata: Array<DatasetDocMetadataResponse>
-  document_count: number
-  embedding_available?: boolean | null
-  embedding_model: string | null
-  embedding_model_provider: string | null
-  enable_api: boolean
-  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
-  icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
-  is_multimodal: boolean
-  is_published: boolean
-  maintainer?: string | null
   name: string
   permission: string
   permission_keys?: Array<string>
-  pipeline_id: string | null
-  provider: string
-  retrieval_model_dict: DatasetRetrievalModelResponse
-  runtime_mode: string | null
-  summary_index_setting?: DatasetSummaryIndexSettingResponse
-  tags: Array<DatasetTagResponse>
-  total_available_documents: number
-  total_documents: number
-  updated_at: number
-  updated_by: string | null
-  word_count: number
 }
 
 export type JsonObject = {
@@ -316,77 +288,6 @@ export type PipelineVariableResponse = {
 }
 
 export type IconType = 'emoji' | 'image' | 'link'
-
-export type DatasetDocMetadataResponse = {
-  id: string
-  name: string
-  type: string
-}
-
-export type DatasetExternalKnowledgeInfoResponse = {
-  external_knowledge_api_endpoint?: string | null
-  external_knowledge_api_id?: string | null
-  external_knowledge_api_name?: string | null
-  external_knowledge_id?: string | null
-}
-
-export type DatasetExternalRetrievalModelResponse = {
-  score_threshold?: number | null
-  score_threshold_enabled?: boolean | null
-  top_k: number
-}
-
-export type DatasetIconInfoResponse = {
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  icon_url?: string | null
-}
-
-export type DatasetRetrievalModelResponse = {
-  reranking_enable: boolean
-  reranking_mode?: string | null
-  reranking_model?: DatasetRerankingModelResponse
-  score_threshold?: number | null
-  score_threshold_enabled: boolean
-  search_method: string
-  top_k: number
-  weights?: DatasetWeightedScoreResponse | null
-}
-
-export type DatasetSummaryIndexSettingResponse = {
-  enable?: boolean | null
-  model_name?: string | null
-  model_provider_name?: string | null
-  summary_prompt?: string | null
-}
-
-export type DatasetTagResponse = {
-  id: string
-  name: string
-  type: string
-}
-
-export type DatasetRerankingModelResponse = {
-  reranking_model_name?: string | null
-  reranking_provider_name?: string | null
-}
-
-export type DatasetWeightedScoreResponse = {
-  keyword_setting?: DatasetKeywordSettingResponse
-  vector_setting?: DatasetVectorSettingResponse
-  weight_type?: string | null
-}
-
-export type DatasetKeywordSettingResponse = {
-  keyword_weight?: number | null
-}
-
-export type DatasetVectorSettingResponse = {
-  embedding_model_name?: string | null
-  embedding_provider_name?: string | null
-  vector_weight?: number | null
-}
 
 export type AppDetailWithSiteWritable = {
   access_mode?: string | null

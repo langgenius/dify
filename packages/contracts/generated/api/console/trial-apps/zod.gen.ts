@@ -151,6 +151,32 @@ export const zWorkflowPartial = z.object({
   updated_by: z.string().nullish(),
 })
 
+/**
+ * TrialDatasetListItemResponse
+ */
+export const zTrialDatasetListItemResponse = z.object({
+  created_at: z.int().nullable(),
+  created_by: z.string(),
+  data_source_type: z.string().nullable(),
+  description: z.string().nullable(),
+  id: z.string(),
+  indexing_technique: z.string().nullable(),
+  name: z.string(),
+  permission: z.string(),
+  permission_keys: z.array(z.string()).optional(),
+})
+
+/**
+ * TrialDatasetListResponse
+ */
+export const zTrialDatasetListResponse = z.object({
+  data: z.array(zTrialDatasetListItemResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
+  page: z.int(),
+  total: z.int(),
+})
+
 export const zJsonObject = z.record(z.string(), z.unknown())
 
 /**
@@ -322,164 +348,6 @@ export const zAppDetailWithSite = z.object({
   updated_by: z.string().nullish(),
   use_icon_as_answer_icon: z.boolean().nullish(),
   workflow: zWorkflowPartial.nullish(),
-})
-
-/**
- * DatasetDocMetadataResponse
- */
-export const zDatasetDocMetadataResponse = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.string(),
-})
-
-/**
- * DatasetExternalKnowledgeInfoResponse
- */
-export const zDatasetExternalKnowledgeInfoResponse = z.object({
-  external_knowledge_api_endpoint: z.string().nullish(),
-  external_knowledge_api_id: z.string().nullish(),
-  external_knowledge_api_name: z.string().nullish(),
-  external_knowledge_id: z.string().nullish(),
-})
-
-/**
- * DatasetExternalRetrievalModelResponse
- */
-export const zDatasetExternalRetrievalModelResponse = z.object({
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean().nullish(),
-  top_k: z.int(),
-})
-
-/**
- * DatasetIconInfoResponse
- */
-export const zDatasetIconInfoResponse = z.object({
-  icon: z.string().nullish(),
-  icon_background: z.string().nullish(),
-  icon_type: z.string().nullish(),
-  icon_url: z.string().nullish(),
-})
-
-/**
- * DatasetSummaryIndexSettingResponse
- */
-export const zDatasetSummaryIndexSettingResponse = z.object({
-  enable: z.boolean().nullish(),
-  model_name: z.string().nullish(),
-  model_provider_name: z.string().nullish(),
-  summary_prompt: z.string().nullish(),
-})
-
-/**
- * DatasetTagResponse
- */
-export const zDatasetTagResponse = z.object({
-  id: z.string(),
-  name: z.string(),
-  type: z.string(),
-})
-
-/**
- * DatasetRerankingModelResponse
- */
-export const zDatasetRerankingModelResponse = z.object({
-  reranking_model_name: z.string().nullish(),
-  reranking_provider_name: z.string().nullish(),
-})
-
-/**
- * DatasetKeywordSettingResponse
- */
-export const zDatasetKeywordSettingResponse = z.object({
-  keyword_weight: z.number().nullish(),
-})
-
-/**
- * DatasetVectorSettingResponse
- */
-export const zDatasetVectorSettingResponse = z.object({
-  embedding_model_name: z.string().nullish(),
-  embedding_provider_name: z.string().nullish(),
-  vector_weight: z.number().nullish(),
-})
-
-/**
- * DatasetWeightedScoreResponse
- */
-export const zDatasetWeightedScoreResponse = z.object({
-  keyword_setting: zDatasetKeywordSettingResponse.optional(),
-  vector_setting: zDatasetVectorSettingResponse.optional(),
-  weight_type: z.string().nullish(),
-})
-
-/**
- * DatasetRetrievalModelResponse
- */
-export const zDatasetRetrievalModelResponse = z.object({
-  reranking_enable: z.boolean(),
-  reranking_mode: z.string().nullish(),
-  reranking_model: zDatasetRerankingModelResponse.optional(),
-  score_threshold: z.number().nullish(),
-  score_threshold_enabled: z.boolean(),
-  search_method: z.string(),
-  top_k: z.int(),
-  weights: zDatasetWeightedScoreResponse.nullish(),
-})
-
-/**
- * TrialDatasetListItemResponse
- */
-export const zTrialDatasetListItemResponse = z.object({
-  app_count: z.int(),
-  author_name: z.string().nullable(),
-  built_in_field_enabled: z.boolean(),
-  chunk_structure: z.string().nullable(),
-  created_at: z.int(),
-  created_by: z.string(),
-  data_source_type: z.string().nullable(),
-  description: z.string().nullable(),
-  doc_form: z.string().nullable(),
-  doc_metadata: z.array(zDatasetDocMetadataResponse),
-  document_count: z.int(),
-  embedding_available: z.boolean().nullish(),
-  embedding_model: z.string().nullable(),
-  embedding_model_provider: z.string().nullable(),
-  enable_api: z.boolean(),
-  external_knowledge_info: zDatasetExternalKnowledgeInfoResponse.optional(),
-  external_retrieval_model: zDatasetExternalRetrievalModelResponse.nullable(),
-  icon_info: zDatasetIconInfoResponse.optional(),
-  id: z.string(),
-  indexing_technique: z.string().nullable(),
-  is_multimodal: z.boolean(),
-  is_published: z.boolean(),
-  maintainer: z.string().nullish(),
-  name: z.string(),
-  permission: z.string(),
-  permission_keys: z.array(z.string()).optional(),
-  pipeline_id: z.string().nullable(),
-  provider: z.string(),
-  retrieval_model_dict: zDatasetRetrievalModelResponse,
-  runtime_mode: z.string().nullable(),
-  summary_index_setting: zDatasetSummaryIndexSettingResponse.optional(),
-  tags: z.array(zDatasetTagResponse),
-  total_available_documents: z.int(),
-  total_documents: z.int(),
-  updated_at: z.int(),
-  updated_by: z.string().nullable(),
-  word_count: z.int(),
-})
-
-/**
- * TrialDatasetListResponse
- */
-export const zTrialDatasetListResponse = z.object({
-  data: z.array(zTrialDatasetListItemResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
-  page: z.int(),
-  total: z.int(),
 })
 
 /**
