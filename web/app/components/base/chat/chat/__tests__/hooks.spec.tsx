@@ -3,7 +3,6 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
-// eslint-disable-next-line no-restricted-imports
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
 

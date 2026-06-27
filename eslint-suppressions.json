@@ -1150,6 +1150,11 @@
       "count": 1
     }
   },
+  "web/app/components/base/chat/chat/__tests__/hooks.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/app/components/base/chat/chat/answer/agent-content.tsx": {
     "style/multiline-ternary": {
       "count": 2
@@ -7172,6 +7177,11 @@
     },
     "ts/no-explicit-any": {
       "count": 7
+    }
+  },
+  "web/service/base.spec.ts": {
+    "no-restricted-imports": {
+      "count": 1
     }
   },
   "web/service/base.ts": {

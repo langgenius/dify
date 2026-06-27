@@ -24,22 +24,38 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/features/agent-v2/agent-detail/configure/components/orchestrate', () => ({
-  AgentOrchestratePanel: (props: {
-    bottomAction?: ReactNode
-    headerAction?: ReactNode
-    isBuildDraftActive?: boolean
-    readOnly?: boolean
-  }) => (
-    <div role="region" aria-label="orchestrate-panel">
-      <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
-      <span>{`buildDraft:${props.isBuildDraftActive ? 'yes' : 'no'}`}</span>
-      {props.headerAction}
-      <input aria-label="local composer draft" defaultValue="" />
-      {props.bottomAction}
-    </div>
-  ),
-}))
+vi.mock('@/features/agent-v2/agent-detail/configure/components/orchestrate', async () => {
+  const { useAtom } = await import('jotai')
+  const { agentComposerDraftAtom } = await import('@/features/agent-v2/agent-composer/store')
+
+  return {
+    AgentOrchestratePanel: (props: {
+      bottomAction?: ReactNode
+      headerAction?: ReactNode
+      isBuildDraftActive?: boolean
+      readOnly?: boolean
+    }) => {
+      const [draft, setDraft] = useAtom(agentComposerDraftAtom)
+
+      return (
+        <div role="region" aria-label="orchestrate-panel">
+          <span>{`readonly:${props.readOnly ? 'yes' : 'no'}`}</span>
+          <span>{`buildDraft:${props.isBuildDraftActive ? 'yes' : 'no'}`}</span>
+          {props.headerAction}
+          <input
+            aria-label="local composer draft"
+            value={draft.prompt}
+            onChange={event => setDraft({
+              ...draft,
+              prompt: event.currentTarget.value,
+            })}
+          />
+          {props.bottomAction}
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar', () => ({
   AgentBuildDraftBar: (props: {

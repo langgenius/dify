@@ -1,7 +1,6 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-// eslint-disable-next-line no-restricted-imports
 import { handleStream, sseGet, ssePost } from './base'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
