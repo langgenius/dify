@@ -13,7 +13,7 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { hasAgentComposerUnpublishedChangesAtom } from '@/features/agent-v2/agent-composer/store'
+import { hasAgentComposerUnpublishedChangesAtom, isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -43,22 +43,27 @@ type AgentConfigurePublishBarProps = {
 function getPublishState({
   activeConfigIsPublished,
   activeConfigSnapshot,
-  isDirty,
+  hasLocalChanges,
+  hasUnpublishedChanges,
   isPublishing,
 }: {
   activeConfigIsPublished?: boolean
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  isDirty: boolean
+  hasLocalChanges: boolean
+  hasUnpublishedChanges: boolean
   isPublishing: boolean
 }): AgentConfigurePublishState {
   if (isPublishing)
     return 'publishing'
 
-  if (isDirty)
+  if (hasLocalChanges)
     return 'unpublished'
 
   if (activeConfigIsPublished)
     return 'published'
+
+  if (hasUnpublishedChanges)
+    return 'unpublished'
 
   if (!activeConfigSnapshot)
     return 'draft'
@@ -97,19 +102,22 @@ export function AgentConfigurePublishBar({
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
   const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
+  const hasLocalChanges = useAtomValue(isAgentComposerDirtyAtom)
   const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
   const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
     activeConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing: false,
   })
   const publishState = getPublishState({
     activeConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing,
   })
   const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')

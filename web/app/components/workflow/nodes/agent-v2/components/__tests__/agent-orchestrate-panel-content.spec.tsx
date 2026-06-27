@@ -515,6 +515,30 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(mocks.applyBuildDraft).not.toHaveBeenCalled()
     })
 
+    it('should keep exiting inline build draft when debug conversation refresh fails after applying', async () => {
+      mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
+      mocks.loadBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Applied inline build prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'apply build draft' }))
+
+      await waitFor(() => expect(mocks.saveAgentSoulConfig).toHaveBeenCalled())
+      expect(mocks.deleteBuildDraft).toHaveBeenCalled()
+      await waitFor(() => expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument())
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
+    })
+
     it('should refresh the inline build debug conversation when discarding the build draft', async () => {
       mocks.loadBuildDraft.mockResolvedValue({
         agent_soul: {
@@ -544,6 +568,29 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         },
       }, expect.any(Object))
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+    })
+
+    it('should keep exiting inline build draft when debug conversation refresh fails after discarding', async () => {
+      mocks.refreshDebugConversation.mockRejectedValueOnce(new Error('refresh failed'))
+      mocks.loadBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Discarded inline build prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'discard build draft' }))
+
+      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalled())
+      await waitFor(() => expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument())
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
     })
 
     it('should keep the composer session mounted when the inline snapshot changes', async () => {

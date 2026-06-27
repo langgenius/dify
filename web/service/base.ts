@@ -553,7 +553,9 @@ export const ssePost = async (
             refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
               ssePost(url, fetchOptions, otherOptions)
             }).catch((err) => {
+              const errorMessage = String(err)
               console.error(err)
+              onError?.(errorMessage)
             })
           }
         }

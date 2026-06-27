@@ -437,6 +437,31 @@ describe('AgentConfigurePublishBar', () => {
     expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
   })
 
+  it('should trust backend published state after autosave confirms the draft matches the active snapshot', () => {
+    const stalePublishedDraftBaseline = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Old unpublished normal draft',
+    }
+    const savedDraftMatchingActiveSnapshot = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Published prompt',
+    }
+
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot,
+      setupStore: (store) => {
+        store.set(agentComposerPublishedDraftAtom, stalePublishedDraftBaseline)
+        store.set(agentComposerOriginalDraftAtom, savedDraftMatchingActiveSnapshot)
+        store.set(agentComposerDraftAtom, savedDraftMatchingActiveSnapshot)
+      },
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).not.toBeInTheDocument()
+  })
+
   it('should render publishing as a single disabled action state', () => {
     renderPublishBar({ isPublishing: true, prompt: 'Updated system prompt' })
 

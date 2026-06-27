@@ -4,10 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 // eslint-disable-next-line no-restricted-imports
 import { handleStream, ssePost } from './base'
 
+const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: vi.fn(),
   },
+}))
+
+vi.mock('./refresh-token', () => ({
+  refreshAccessTokenOrReLogin: refreshAccessTokenOrReLoginMock,
 }))
 
 describe('handleStream', () => {
@@ -283,5 +289,23 @@ describe('ssePost', () => {
       expect(onError).toHaveBeenCalledWith('TypeError: Network failed')
     })
     expect(toast.error).toHaveBeenCalledWith('TypeError: Network failed')
+  })
+
+  it('should report token refresh failures through onError', async () => {
+    const onError = vi.fn()
+    refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('refresh failed'))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    await ssePost('/chat-messages', {
+      body: {
+        query: 'hello',
+      },
+    }, {
+      onError,
+    })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: refresh failed')
+    })
   })
 })

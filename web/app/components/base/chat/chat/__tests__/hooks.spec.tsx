@@ -3,6 +3,7 @@ import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
 import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
+// eslint-disable-next-line no-restricted-imports
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
 
@@ -1556,6 +1557,45 @@ describe('useChat', () => {
       renderHook(() => useChat(undefined, undefined, undefined, undefined, true, clearChatListCallback))
 
       expect(clearChatListCallback).toHaveBeenCalledWith(false)
+    })
+
+    it('should keep the first send after a reset acknowledgement', () => {
+      let clearChatList = true
+      const clearChatListCallback = vi.fn((nextClearChatList: boolean) => {
+        clearChatList = nextClearChatList
+      })
+      const { rerender, result } = renderHook(() => useChat(
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        clearChatList,
+        clearChatListCallback,
+      ))
+
+      expect(clearChatListCallback).toHaveBeenCalledWith(false)
+
+      rerender()
+
+      act(() => {
+        result.current.handleSend('test-url', { query: 'first after reset' }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            query: 'first after reset',
+          }),
+        }),
+        expect.any(Object),
+      )
+      expect(result.current.chatList).toEqual(expect.arrayContaining([
+        expect.objectContaining({
+          content: 'first after reset',
+          isAnswer: false,
+        }),
+      ]))
     })
   })
 
