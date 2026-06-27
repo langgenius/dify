@@ -2,8 +2,8 @@ services:
   api:
     image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
     build:
-      context: ../api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: api/Dockerfile
       args:
         COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
     environment:
@@ -16,8 +16,8 @@ services:
   worker:
     image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
     build:
-      context: ../api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: api/Dockerfile
       args:
         COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
     environment:
@@ -30,8 +30,8 @@ services:
   worker_beat:
     image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
     build:
-      context: ../api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: api/Dockerfile
       args:
         COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
     environment:
@@ -44,8 +44,8 @@ services:
   api_websocket:
     image: ${DIFY_ENTERPRISE_API_IMAGE:-dify-api-enterprise}:${DIFY_ENTERPRISE_VERSION:-local}
     build:
-      context: ../api
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: api/Dockerfile
       args:
         COMMIT_SHA: ${DIFY_ENTERPRISE_VERSION:-local}
     environment:
