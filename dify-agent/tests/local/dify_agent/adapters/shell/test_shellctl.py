@@ -19,9 +19,6 @@ from dify_agent.adapters.shell.config import ShellAdapterSettings
 from dify_agent.adapters.shell.factory import create_shell_provisioner
 from dify_agent.adapters.shell.protocols import (
     ShellEnvironmentDescriptor,
-    ShellExecutionHandle,
-    SupportsShellInput,
-    SupportsShellInterrupt,
 )
 from dify_agent.adapters.shell.shellctl import (
     ShellctlProvisioner,
@@ -124,7 +121,7 @@ def _provisioner(client: FakeShellctlClient) -> ShellctlProvisioner:
     return ShellctlProvisioner(client_factory=lambda: client)
 
 
-def test_provision_allocates_workspace_and_execute_wait_drains_merged_output() -> None:
+def test_provision_allocates_workspace_and_execute_drains_merged_output() -> None:
     def run_handler(script: str, cwd: str | None, env: dict[str, str] | None) -> _Job:
         del env
         if script.startswith("mkdir"):
@@ -144,9 +141,7 @@ def test_provision_allocates_workspace_and_execute_wait_drains_merged_output() -
         handle = await _provisioner(client).provision()
         assert handle.workspace_cwd == _WORKSPACE_CWD
         executor = await handle.get_executor()
-        started = await executor.execute("pwd", env={"FOO": "bar"})
-        assert isinstance(started, ShellExecutionHandle)
-        result = await executor.wait(started)
+        result = await executor.execute("pwd", env={"FOO": "bar"})
         assert result.stdout() == "partial"
         assert result.stderr() == ""
         assert result.exit_code() == 0
@@ -162,7 +157,7 @@ def test_provision_allocates_workspace_and_execute_wait_drains_merged_output() -
     assert "user-job" in client.delete_calls
 
 
-def test_wait_reports_truncated_when_output_window_cap_is_hit() -> None:
+def test_execute_reports_truncated_when_output_window_cap_is_hit() -> None:
     def run_handler(script: str, cwd: str | None, env: dict[str, str] | None) -> _Job:
         del cwd, env
         if script.startswith("mkdir"):
@@ -177,8 +172,7 @@ def test_wait_reports_truncated_when_output_window_cap_is_hit() -> None:
     async def scenario() -> bool:
         handle = await _provisioner(client).provision()
         executor = await handle.get_executor()
-        started = await executor.execute("tail -f log")
-        result = await executor.wait(started)
+        result = await executor.execute("tail -f log")
         return result.truncated()
 
     assert asyncio.run(scenario()) is True
@@ -213,62 +207,6 @@ def test_destroy_runs_cleanup_in_default_cwd_then_closes_client() -> None:
     assert cleanup_call.cwd is None
     assert _SESSION_HEX in cleanup_call.script and cleanup_call.script.startswith("rm -rf")
     assert client.closed is True
-
-
-def test_executor_advertises_and_implements_optional_input_and_interrupt() -> None:
-    def run_handler(script: str, cwd: str | None, env: dict[str, str] | None) -> _Job:
-        del cwd, env
-        if script.startswith("mkdir"):
-            return _Job(job_id="mkdir-job", done=True, exit_code=0)
-        return _Job(job_id="user-job", done=False, output="prompt:", offset=7, exit_code=None)
-
-    client = FakeShellctlClient(
-        run_handler=run_handler,
-        input_handler=lambda job_id, text, offset: _Job(
-            job_id=job_id, done=True, output=" ok", offset=offset + len(text), exit_code=0
-        ),
-        terminate_handler=lambda job_id: _Status(job_id=job_id, done=True, offset=7, exit_code=130),
-    )
-
-    async def scenario() -> None:
-        handle = await _provisioner(client).provision()
-        executor = await handle.get_executor()
-        assert isinstance(executor, SupportsShellInput)
-        assert isinstance(executor, SupportsShellInterrupt)
-
-        started = await executor.execute("read x")
-        input_result = await executor.input(started, "y\n")
-        assert input_result.stdout() == "prompt: ok"
-        assert input_result.exit_code() == 0
-
-    asyncio.run(scenario())
-
-    assert client.input_calls and client.input_calls[0][1] == "y\n"
-
-
-def test_interrupt_terminates_then_returns_accumulated_output() -> None:
-    def run_handler(script: str, cwd: str | None, env: dict[str, str] | None) -> _Job:
-        del cwd, env
-        if script.startswith("mkdir"):
-            return _Job(job_id="mkdir-job", done=True, exit_code=0)
-        return _Job(job_id="user-job", done=False, output="running", offset=7, exit_code=None)
-
-    client = FakeShellctlClient(
-        run_handler=run_handler,
-        terminate_handler=lambda job_id: _Status(job_id=job_id, done=True, offset=7, exit_code=130),
-    )
-
-    async def scenario() -> None:
-        handle = await _provisioner(client).provision()
-        executor = await handle.get_executor()
-        started = await executor.execute("sleep 100")
-        result = await executor.interrupt(started)
-        assert result.stdout() == "running"
-        assert result.exit_code() == 130
-
-    asyncio.run(scenario())
-
-    assert client.terminate_calls and client.terminate_calls[0][0] == "user-job"
 
 
 def test_file_transfer_download_decodes_sentinel_framed_base64() -> None:
@@ -362,8 +300,7 @@ def test_reattach_rebuilds_handle_without_mkdir_and_executes_in_same_workspace()
     async def scenario() -> str:
         handle = await _provisioner(client).reattach(descriptor)
         executor = await handle.get_executor()
-        started = await executor.execute("pwd")
-        result = await executor.wait(started)
+        result = await executor.execute("pwd")
         return result.stdout()
 
     assert asyncio.run(scenario()) == "ok"

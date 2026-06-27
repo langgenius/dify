@@ -1,16 +1,5 @@
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
-
-
-@dataclass(frozen=True, slots=True)
-class ShellExecutionHandle:
-    """Opaque reference to one started shell command.
-
-    ``job_id`` is backend-defined and is only meaningful to the executor that
-    produced it. Callers must treat it as opaque and pass it back unchanged.
-    """
-
-    job_id: str
+from typing import Protocol
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,11 +38,15 @@ class ShellExecutionResult(Protocol):
 class ShellExecutorProtocol(Protocol):
     """Runs commands inside an already-provisioned shell environment.
 
-    Only ``execute`` and ``wait`` are required. Interactive stdin and
-    interruption are optional capabilities advertised by the separate
-    ``SupportsShellInput`` and ``SupportsShellInterrupt`` protocols; callers must
-    feature-detect them (e.g. ``isinstance(executor, SupportsShellInput)``)
-    before use, since not every backend supports them.
+    ``execute`` drains the command to completion before returning — there is no
+    separate ``wait`` step. This suits the current server-side callers (sandbox
+    file helpers, workspace bootstrap) that always run a script to completion.
+
+    If a future use case needs to start a command, interact with its stdin, or
+    interrupt it before completion, split this protocol into ``execute`` →
+    ``ShellExecutionHandle`` plus ``wait`` / ``input`` / ``interrupt`` optional
+    capabilities, mirroring the shape that was prototyped here before
+    simplification.
     """
 
     async def execute(
@@ -62,32 +55,7 @@ class ShellExecutorProtocol(Protocol):
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-    ) -> ShellExecutionHandle: ...
-
-    async def wait(self, handle: ShellExecutionHandle) -> ShellExecutionResult: ...
-
-
-@runtime_checkable
-class SupportsShellInput(Protocol):
-    """Optional capability: send stdin to a running command, then await its result.
-
-    Only backends that can write to a live process's stdin implement this.
-    ``input`` waits for the command to finish after sending ``text`` (the base
-    contract has no partial-output form), so it suits answering a single prompt,
-    not multi-turn interaction.
-    """
-
-    async def input(self, handle: ShellExecutionHandle, text: str) -> ShellExecutionResult: ...
-
-
-@runtime_checkable
-class SupportsShellInterrupt(Protocol):
-    """Optional capability: interrupt a running command and await its result.
-
-    Only backends that can signal/terminate a live process implement this.
-    """
-
-    async def interrupt(self, handle: ShellExecutionHandle) -> ShellExecutionResult: ...
+    ) -> ShellExecutionResult: ...
 
 
 class ShellFileTransferProtocol(Protocol):

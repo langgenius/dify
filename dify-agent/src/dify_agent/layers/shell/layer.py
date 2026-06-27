@@ -521,8 +521,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             workspace_cwd=self._require_workspace_cwd(),
             timeout=timeout,
         )
-        exec_handle = await executor.execute(script, env=env)
-        result = await executor.wait(exec_handle)
+        result = await executor.execute(script, env=env)
         return RemoteCommandResult(
             status="exited" if not result.truncated() else "running",
             exit_code=result.exit_code(),

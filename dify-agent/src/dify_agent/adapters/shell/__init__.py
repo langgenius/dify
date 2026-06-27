@@ -9,14 +9,11 @@ from dify_agent.adapters.shell.config import DEFAULT_SHELL_PROVIDER, ShellAdapte
 from dify_agent.adapters.shell.factory import create_shell_provisioner
 from dify_agent.adapters.shell.protocols import (
     ShellEnvironmentDescriptor,
-    ShellExecutionHandle,
     ShellExecutionResult,
     ShellExecutorProtocol,
     ShellFileTransferProtocol,
     ShellHandle,
     ShellProvisionProtocol,
-    SupportsShellInput,
-    SupportsShellInterrupt,
 )
 from dify_agent.adapters.shell.shellctl import (
     ShellctlProvisioner,
@@ -29,7 +26,6 @@ __all__ = [
     "DEFAULT_SHELL_PROVIDER",
     "ShellAdapterSettings",
     "ShellEnvironmentDescriptor",
-    "ShellExecutionHandle",
     "ShellExecutionResult",
     "ShellExecutorProtocol",
     "ShellFileTransferError",
@@ -38,8 +34,6 @@ __all__ = [
     "ShellProvisionError",
     "ShellProvisionProtocol",
     "ShellctlProvisioner",
-    "SupportsShellInput",
-    "SupportsShellInterrupt",
     "create_default_shellctl_client_factory",
     "create_shell_provisioner",
 ]

@@ -5,10 +5,10 @@ import binascii
 import logging
 import secrets
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Protocol
 
-from dify_agent.adapters.shell.protocols import ShellEnvironmentDescriptor, ShellExecutionHandle, ShellHandle
+from dify_agent.adapters.shell.protocols import ShellEnvironmentDescriptor, ShellHandle
 
 logger = logging.getLogger(__name__)
 
@@ -153,34 +153,18 @@ class ShellctlExecutionResult:
 
 
 @dataclass(slots=True)
-class _JobProgress:
-    """Mutable drain progress for one started shellctl job."""
-
-    offset: int
-    output_parts: list[str]
-    done: bool
-    truncated: bool
-    exit_code: int | None
-
-
-@dataclass(slots=True)
 class ShellctlExecutor:
     """Runs commands in one provisioned shellctl workspace.
 
-    Conforms structurally to ``ShellExecutorProtocol`` and additionally to the
-    optional ``SupportsShellInput`` / ``SupportsShellInterrupt`` capabilities,
-    since the shellctl client supports stdin and termination. Stateful:
-    ``execute`` records the initial job result so ``wait`` can resume from
-    shellctl's paging offset and accumulate the full merged output instead of
-    re-reading from the start. The executor is single-environment and is not
-    safe to share across workspaces.
+    Conforms structurally to ``ShellExecutorProtocol``. ``execute`` drains the
+    command to completion (accumulating shellctl's paged output windows) and
+    best-effort deletes the finished job before returning. The executor is
+    single-environment and is not safe to share across workspaces.
     """
 
     client: ShellctlClientProtocol
     workspace_cwd: str
     timeout: float = _DEFAULT_TIMEOUT_SECONDS
-    grace_seconds: float = _DEFAULT_TERMINATE_GRACE_SECONDS
-    _jobs: dict[str, _JobProgress] = field(default_factory=dict)
 
     async def execute(
         self,
@@ -188,77 +172,35 @@ class ShellctlExecutor:
         *,
         cwd: str | None = None,
         env: dict[str, str] | None = None,
-    ) -> ShellExecutionHandle:
+    ) -> ShellctlExecutionResult:
         result = await self.client.run(
             command,
             cwd=cwd if cwd is not None else self.workspace_cwd,
             env=env,
             timeout=self.timeout,
         )
-        self._jobs[result.job_id] = _JobProgress(
-            offset=result.offset,
-            output_parts=[result.output],
-            done=result.done,
-            truncated=result.truncated,
-            exit_code=result.exit_code,
-        )
-        return ShellExecutionHandle(job_id=result.job_id)
-
-    async def wait(self, handle: ShellExecutionHandle) -> ShellctlExecutionResult:
-        """Drain a tracked job to completion; delete and forget it once done.
-
-        ``wait`` is consuming: when the job finishes it is best-effort deleted
-        from shellctl and dropped from the executor, so a completed handle cannot
-        be waited on again. A job that is still running after the output-window
-        cap is left intact for a subsequent ``wait``.
-        """
-        progress = self._require_progress(handle.job_id)
-
-        windows = 0
-        while (not progress.done or progress.truncated) and windows < _MAX_OUTPUT_WINDOWS:
-            result = await self.client.wait(handle.job_id, offset=progress.offset, timeout=self.timeout)
-            progress.output_parts.append(result.output)
-            progress.offset = result.offset
-            progress.done = result.done
-            progress.truncated = result.truncated
-            progress.exit_code = result.exit_code
+        output_parts = [result.output]
+        done = result.done
+        truncated = result.truncated
+        offset = result.offset
+        exit_code = result.exit_code
+        job_id = result.job_id
+        windows = 1
+        while (not done or truncated) and windows < _MAX_OUTPUT_WINDOWS:
+            result = await self.client.wait(job_id, offset=offset, timeout=self.timeout)
+            output_parts.append(result.output)
+            done = result.done
+            truncated = result.truncated
+            offset = result.offset
+            exit_code = result.exit_code
             windows += 1
-
-        result_view = ShellctlExecutionResult(
-            stdout="".join(progress.output_parts),
-            exit_code=progress.exit_code,
-            truncated=progress.truncated,
+        if done:
+            await _delete_job_best_effort(self.client, job_id)
+        return ShellctlExecutionResult(
+            stdout="".join(output_parts),
+            exit_code=exit_code,
+            truncated=truncated,
         )
-        if progress.done:
-            await _delete_job_best_effort(self.client, handle.job_id)
-            del self._jobs[handle.job_id]
-        return result_view
-
-    async def input(self, handle: ShellExecutionHandle, text: str) -> ShellctlExecutionResult:
-        """Send stdin to a tracked job, then drain it to completion."""
-        progress = self._require_progress(handle.job_id)
-        result = await self.client.input(handle.job_id, text, offset=progress.offset, timeout=self.timeout)
-        progress.output_parts.append(result.output)
-        progress.offset = result.offset
-        progress.done = result.done
-        progress.truncated = result.truncated
-        progress.exit_code = result.exit_code
-        return await self.wait(handle)
-
-    async def interrupt(self, handle: ShellExecutionHandle) -> ShellctlExecutionResult:
-        """Interrupt a tracked job, then drain any remaining output to completion."""
-        progress = self._require_progress(handle.job_id)
-        status = await self.client.terminate(handle.job_id, grace_seconds=self.grace_seconds)
-        progress.offset = status.offset
-        progress.done = status.done
-        progress.exit_code = status.exit_code
-        return await self.wait(handle)
-
-    def _require_progress(self, job_id: str) -> _JobProgress:
-        progress = self._jobs.get(job_id)
-        if progress is None:
-            raise ValueError(f"Unknown shell job id for this executor: {job_id}.")
-        return progress
 
 
 @dataclass(slots=True)
