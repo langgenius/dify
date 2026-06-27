@@ -80,9 +80,11 @@ export function useAgentConfigureSync({
   const saveComposer = useSerialAsyncCallback(async ({
     configSnapshot,
     draftBaseline,
+    silent = true,
   }: {
     configSnapshot: AgentSoulConfig
     draftBaseline: AgentSoulConfigFormState
+    silent?: boolean
   }) => {
     const savedDraftKey = JSON.stringify(configSnapshot)
     const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
@@ -106,7 +108,12 @@ export function useAgentConfigureSync({
       })
     }
     catch {
-      // Draft sync follows workflow autosave behavior: save failures are silent and keep the local draft intact.
+      // Autosave is silent and keeps the local draft intact; explicit commands must stop at this boundary.
+      if (!silent) {
+        toast.error(tCommon('api.actionFailed'))
+        throw new Error('Failed to save agent composer draft.')
+      }
+
       return false
     }
 
@@ -148,6 +155,7 @@ export function useAgentConfigureSync({
     await saveComposer({
       configSnapshot,
       draftBaseline: draft,
+      silent: false,
     })
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
 
@@ -203,6 +211,7 @@ export function useAgentConfigureSync({
       const saved = await saveComposer({
         configSnapshot,
         draftBaseline: draft,
+        silent: false,
       })
       if (!saved)
         return

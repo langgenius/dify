@@ -9,6 +9,7 @@ import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/stor
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
 const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
   success: vi.fn(),
 }))
 
@@ -363,6 +364,27 @@ describe('useAgentConfigureSync', () => {
     expect(result.current.draftSavedAt).toBeUndefined()
   })
 
+  it('should keep autosave failures silent and leave the local draft dirty', async () => {
+    composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Unsaved autosave prompt',
+      })
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(result.current.draftSavedAt).toBeUndefined()
+    expect(store.get(agentComposerDraftAtom).prompt).toBe('Unsaved autosave prompt')
+    expect(toastMock.error).not.toHaveBeenCalled()
+  })
+
   it('should save the latest draft immediately when requested', async () => {
     vi.setSystemTime(1710000200000)
     const { result, store } = renderUseAgentConfigureSync()
@@ -394,6 +416,23 @@ describe('useAgentConfigureSync', () => {
       }),
     }))
     expect(result.current.draftSavedAt).toBe(1710000200000)
+  })
+
+  it('should reject explicit save requests when the draft cannot be saved', async () => {
+    composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Run prompt',
+      })
+    })
+
+    await expect(result.current.saveDraft()).rejects.toThrow('Failed to save agent composer draft.')
+    expect(result.current.draftSavedAt).toBeUndefined()
+    expect(store.get(agentComposerDraftAtom).prompt).toBe('Run prompt')
+    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
   it('should not save the draft immediately when the composer draft is unchanged', async () => {
@@ -592,6 +631,31 @@ describe('useAgentConfigureSync', () => {
       }),
     }))
     expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('should reject publish and keep the publish mutation untouched when saving the draft fails', async () => {
+    composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: false,
+      name: 'Agent',
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Unpublished prompt',
+      })
+    })
+
+    await expect(result.current.publishDraft()).rejects.toThrow('Failed to save agent composer draft.')
+
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: false,
+      name: 'Agent',
+    })
+    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
   it('should reject publish when knowledge retrieval validation fails', async () => {
