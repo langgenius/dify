@@ -334,11 +334,11 @@ class TestPipelineRunApiEntity:
     def test_entity_missing_required_field(self):
         """Test entity raises on missing required field."""
         with pytest.raises(ValueError):
-            PipelineRunApiEntity(
-                inputs={},
-                datasource_type="online_document",
+            PipelineRunApiEntity(**{
+                "inputs": {},
+                "datasource_type": "online_document",
                 # missing datasource_info_list, start_node_id, etc.
-            )
+            })
 
 
 class TestDatasourceNodeRunApiEntity:

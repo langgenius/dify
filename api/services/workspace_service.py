@@ -1,3 +1,4 @@
+from typing import Any
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,10 +11,10 @@ from services.feature_service import FeatureService
 
 class WorkspaceService:
     @classmethod
-    def get_tenant_info(cls, tenant: Tenant, session: Session, user: Account):
+    def get_tenant_info(cls, tenant: Tenant | None, session: Session | Any, user: Account | Any):
         if not tenant:
             return None
-        tenant_info: dict[str, object] = {
+        tenant_info: dict[str, Any] = {
             "id": tenant.id,
             "name": tenant.name,
             "plan": tenant.plan,

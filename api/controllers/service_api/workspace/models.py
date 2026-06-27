@@ -60,6 +60,8 @@ class ModelProviderAvailableModelApi(Resource):
         Returns a list of available models for the specified model type.
         """
         tenant_id = current_user.current_tenant_id
+        if not tenant_id:
+            raise ValueError("tenant_id is required")
 
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)

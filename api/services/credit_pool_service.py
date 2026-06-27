@@ -1,3 +1,4 @@
+from typing import Any
 """Tenant credit pool accounting.
 
 Credit deductions are guarded by a tenant-level Redis lock before the database
@@ -65,7 +66,7 @@ class CreditPoolService:
         )
 
     @classmethod
-    def create_default_pool(cls, tenant_id: str, session: Session) -> TenantCreditPool:
+    def create_default_pool(cls, tenant_id: str, session: Session | Any) -> TenantCreditPool:
         """create default credit pool for new tenant"""
         credit_pool = TenantCreditPool(
             tenant_id=tenant_id,
