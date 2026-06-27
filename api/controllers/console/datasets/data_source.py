@@ -243,72 +243,71 @@ class DataSourceNotionListApi(Resource):
         if not credential:
             raise NotFound("Credential not found.")
         exist_page_ids = []
-        with sessionmaker(db.engine).begin() as session:
-            # import notion in the exist dataset
-            if query.dataset_id:
-                dataset = DatasetService.get_dataset(query.dataset_id, db.session)
-                if not dataset:
-                    raise NotFound("Dataset not found.")
-                if dataset.data_source_type != "notion_import":
-                    raise ValueError("Dataset is not notion type.")
+        # import notion in the exist dataset
+        if query.dataset_id:
+            dataset = DatasetService.get_dataset(query.dataset_id, db.session)
+            if not dataset:
+                raise NotFound("Dataset not found.")
+            if dataset.data_source_type != "notion_import":
+                raise ValueError("Dataset is not notion type.")
 
-                documents = session.scalars(
-                    select(Document).where(
-                        Document.dataset_id == query.dataset_id,
-                        Document.tenant_id == current_tenant_id,
-                        Document.data_source_type == "notion_import",
-                        Document.enabled.is_(True),
-                    )
-                ).all()
-                if documents:
-                    for document in documents:
-                        data_source_info = json.loads(document.data_source_info)
-                        exist_page_ids.append(data_source_info["notion_page_id"])
-            # get all authorized pages
-            from core.datasource.datasource_manager import DatasourceManager
-
-            datasource_runtime = DatasourceManager.get_datasource_runtime(
-                provider_id="langgenius/notion_datasource/notion_datasource",
-                datasource_name="notion_datasource",
-                tenant_id=current_tenant_id,
-                datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
-            )
-            datasource_provider_service = DatasourceProviderService()
-            if credential:
-                datasource_runtime.runtime.credentials = credential
-            datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
-            online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
-                datasource_runtime.get_online_document_pages(
-                    user_id=current_user.id,
-                    datasource_parameters={},
-                    provider_type=datasource_runtime.datasource_provider_type(),
+            documents = db.session.scalars(
+                select(Document).where(
+                    Document.dataset_id == query.dataset_id,
+                    Document.tenant_id == current_tenant_id,
+                    Document.data_source_type == "notion_import",
+                    Document.enabled.is_(True),
                 )
+            ).all()
+            if documents:
+                for document in documents:
+                    data_source_info = json.loads(document.data_source_info)
+                    exist_page_ids.append(data_source_info["notion_page_id"])
+        # get all authorized pages
+        from core.datasource.datasource_manager import DatasourceManager
+
+        datasource_runtime = DatasourceManager.get_datasource_runtime(
+            provider_id="langgenius/notion_datasource/notion_datasource",
+            datasource_name="notion_datasource",
+            tenant_id=current_tenant_id,
+            datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
+        )
+        datasource_provider_service = DatasourceProviderService()
+        if credential:
+            datasource_runtime.runtime.credentials = credential
+        datasource_runtime = cast(OnlineDocumentDatasourcePlugin, datasource_runtime)
+        online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
+            datasource_runtime.get_online_document_pages(
+                user_id=current_user.id,
+                datasource_parameters={},
+                provider_type=datasource_runtime.datasource_provider_type(),
             )
-            try:
-                pages = []
-                workspace_info = {}
-                for message in online_document_result:
-                    result = message.result
-                    for info in result:
-                        workspace_info = {
-                            "workspace_id": info.workspace_id,
-                            "workspace_name": info.workspace_name,
-                            "workspace_icon": info.workspace_icon,
+        )
+        try:
+            pages = []
+            workspace_info = {}
+            for message in online_document_result:
+                result = message.result
+                for info in result:
+                    workspace_info = {
+                        "workspace_id": info.workspace_id,
+                        "workspace_name": info.workspace_name,
+                        "workspace_icon": info.workspace_icon,
+                    }
+                    for page in info.pages:
+                        page_info = {
+                            "page_id": page.page_id,
+                            "page_name": page.page_name,
+                            "type": page.type,
+                            "parent_id": page.parent_id,
+                            "is_bound": page.page_id in exist_page_ids,
+                            "page_icon": page.page_icon,
                         }
-                        for page in info.pages:
-                            page_info = {
-                                "page_id": page.page_id,
-                                "page_name": page.page_name,
-                                "type": page.type,
-                                "parent_id": page.parent_id,
-                                "is_bound": page.page_id in exist_page_ids,
-                                "page_icon": page.page_icon,
-                            }
-                            pages.append(page_info)
-            except Exception as e:
-                raise e
-            notion_info = [{**workspace_info, "pages": pages}] if workspace_info else []
-            return dump_response(NotionIntegrateInfoListResponse, {"notion_info": notion_info}), 200
+                        pages.append(page_info)
+        except Exception as e:
+            raise e
+        notion_info = [{**workspace_info, "pages": pages}] if workspace_info else []
+        return dump_response(NotionIntegrateInfoListResponse, {"notion_info": notion_info}), 200
 
 
 @console_ns.route("/notion/pages/<uuid:page_id>/<string:page_type>/preview")
