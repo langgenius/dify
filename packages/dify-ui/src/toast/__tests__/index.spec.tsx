@@ -3,6 +3,10 @@ import { toast, ToastHost } from '../index'
 
 const asHTMLElement = (element: HTMLElement | SVGElement) => element as HTMLElement
 
+type BaseUIAnimationGlobal = typeof globalThis & {
+  BASE_UI_ANIMATIONS_DISABLED: boolean
+}
+
 const dispatchToastMouseOver = (element: HTMLElement | SVGElement) => {
   element.dispatchEvent(new MouseEvent('mouseover', {
     bubbles: true,
@@ -40,7 +44,7 @@ describe('@langgenius/dify-ui/toast', () => {
     await expect.element(screen.getByText('Your changes are available now.')).toBeInTheDocument()
     await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveAttribute('aria-live', 'polite')
     await expect.element(screen.getByRole('region', { name: 'Notifications' })).toHaveClass('z-60')
-    expect(screen.getByRole('region', { name: 'Notifications' }).element().firstElementChild).toHaveClass('top-4')
+    expect(screen.getByRole('region', { name: 'Notifications' }).element()).toHaveClass('top-4')
     expect(screen.getByText('Saved').element().closest('[class*="transition-opacity"]')).toHaveClass('motion-reduce:transition-none')
     expect(screen.getByRole('dialog').element()).not.toHaveClass('outline-hidden')
     expect(document.body.querySelector('[aria-hidden="true"].i-ri-checkbox-circle-fill')).toBeInTheDocument()
@@ -164,6 +168,87 @@ describe('@langgenius/dify-ui/toast', () => {
       expect(document.body).not.toHaveTextContent('Dismiss me')
     })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should let pointer events pass through a toast while it is exiting', async () => {
+    const onClick = vi.fn()
+    const baseUIAnimationGlobal = globalThis as BaseUIAnimationGlobal
+    const animationState = baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED
+    baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = false
+
+    try {
+      const screen = await render(
+        <>
+          <style>
+            {`
+            [role="dialog"] {
+              transition: opacity 10000s, transform 10000s !important;
+            }
+            [role="dialog"][data-ending-style] {
+              opacity: 0 !important;
+              transform: translateY(-150%) !important;
+            }
+            .data-ending-style\\:pointer-events-none[data-ending-style] {
+              pointer-events: none;
+            }
+            .data-ending-style\\:after\\:pointer-events-none[data-ending-style]::after {
+              pointer-events: none;
+            }
+          `}
+          </style>
+          <button
+            type="button"
+            onClick={onClick}
+            style={{
+              position: 'fixed',
+              top: '16px',
+              right: '32px',
+              width: '360px',
+              height: '96px',
+            }}
+          >
+            Underlying action
+          </button>
+          <ToastHost />
+        </>,
+      )
+
+      toast('Dismiss me', {
+        timeout: 0,
+      })
+
+      await expect.element(screen.getByRole('dialog', { name: 'Dismiss me' })).toBeInTheDocument()
+      asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
+
+      const viewport = screen.getByRole('region', { name: 'Notifications' }).element()
+      dispatchToastMouseOver(viewport)
+
+      await expect.element(screen.getByRole('button', { name: 'Close notification' })).toBeInTheDocument()
+      asHTMLElement(screen.getByRole('button', { name: 'Close notification' }).element()).click()
+
+      await vi.waitFor(() => {
+        expect(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).toHaveAttribute('data-ending-style')
+      })
+
+      asHTMLElement(screen.getByRole('dialog', { name: 'Dismiss me' }).element()).click()
+
+      const underlyingAction = asHTMLElement(screen.getByRole('button', { name: 'Underlying action' }).element())
+      const rect = underlyingAction.getBoundingClientRect()
+      const x = rect.left + rect.width / 2
+      const y = rect.top + rect.height / 2
+
+      document.elementFromPoint(x, y)?.dispatchEvent(new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        clientY: y,
+      }))
+
+      expect(onClick).toHaveBeenCalledTimes(1)
+    }
+    finally {
+      baseUIAnimationGlobal.BASE_UI_ANIMATIONS_DISABLED = animationState
+    }
   })
 
   it('should keep zero-timeout toasts persistent', async () => {
