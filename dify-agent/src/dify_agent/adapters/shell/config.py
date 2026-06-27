@@ -1,13 +1,3 @@
-"""Environment-driven selection of the shell adapter provider.
-
-``ShellAdapterSettings`` reads the ``DIFY_AGENT_`` env namespace (the same prefix
-as ``dify_agent.server.settings.ServerSettings``), so the shellctl entrypoint and
-auth token are sourced from the existing ``DIFY_AGENT_SHELLCTL_ENTRYPOINT`` /
-``DIFY_AGENT_SHELLCTL_AUTH_TOKEN`` variables. ``DIFY_AGENT_SHELL_PROVIDER`` selects
-which backend ``dify_agent.adapters.shell.factory.create_shell_provisioner`` builds
-and defaults to ``shellctl``.
-"""
-
 from typing import ClassVar
 
 from pydantic_settings import BaseSettings, SettingsConfigDict

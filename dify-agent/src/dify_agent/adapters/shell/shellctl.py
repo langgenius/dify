@@ -1,33 +1,3 @@
-"""Default shellctl-backed implementation of the shell adapter boundary.
-
-This module maps the provider-agnostic ``protocols`` onto the private
-``shell-session-manager`` shellctl client. The shellctl client is imported
-lazily inside ``create_default_shellctl_client_factory`` so this module (and its
-tests) stay importable without the private package installed; the structural
-``ShellctlClientProtocol`` here is the only shape the adapter depends on.
-
-Lifecycle and state:
-
-- ``ShellctlProvisioner.provision`` opens one shellctl client and allocates an
-  isolated ``~/workspace/<session_id>`` directory; ``reattach`` rebuilds a live
-  handle for an existing workspace from a descriptor without re-allocating it;
-  ``destroy`` removes the workspace directory (best effort) and always closes
-  the client.
-- ``ShellctlExecutor`` runs every command inside the provisioned workspace cwd
-  and keeps per-job output progress so ``wait`` can drain shellctl's paged
-  output windows to completion. shellctl exposes a single merged output stream,
-  so results always report that stream as ``stdout`` and leave ``stderr`` blank.
-  Because the model is non-interactive run-to-completion, jobs do not span
-  scopes: every finished job (user commands and internal lifecycle scripts) is
-  best-effort deleted from shellctl as it completes, so no job-id state needs to
-  be tracked or serialized.
-- ``ShellctlFileTransfer`` moves file bytes over that same merged text channel:
-  uploads embed base64 in the command and pipe it through ``base64 -d``;
-  downloads emit sentinel-framed base64 so prompt/tmux noise can be stripped
-  before decoding. This primitive targets ordinary control-plane file sizes;
-  higher-level Dify/skill file transfers (Agent Stub signed URLs) layer on top.
-"""
-
 from __future__ import annotations
 
 import base64

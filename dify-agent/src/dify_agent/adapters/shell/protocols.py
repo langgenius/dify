@@ -1,23 +1,3 @@
-"""Provider-agnostic shell provisioning and execution boundary.
-
-The contract is two-phase so different shell backends can plug in behind one
-interface:
-
-1. A ``ShellProvisionProtocol`` (the *Provisioner*) sets up one shell
-   environment via ``provision()`` and tears it down via ``destroy()``.
-2. The returned ``ShellHandle`` hands out a ``ShellExecutorProtocol`` (the
-   *Executor*), which starts commands and waits for their results.
-
-``ShellExecutionResult`` exposes ``stdout``, ``stderr``, and ``exit_code`` as
-the reserved, provider-agnostic result surface. A backend that cannot populate
-one of them leaves it blank (empty string for stdout/stderr, ``None`` for
-exit_code); for example the default shellctl backend merges stderr into stdout
-and always reports an empty ``stderr()``.
-
-The default implementation and env-var-driven provider selection live in
-``dify_agent.adapters.shell.shellctl`` and ``dify_agent.adapters.shell.factory``.
-"""
-
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 

@@ -1,12 +1,3 @@
-"""Construct a shell provisioner from environment-driven settings.
-
-``create_shell_provisioner`` is the single entry point callers use to obtain a
-``ShellProvisionProtocol`` without hard-coding a backend. The provider is chosen
-by ``DIFY_AGENT_SHELL_PROVIDER`` (default ``shellctl``); unknown providers and
-missing required settings raise ``ValueError`` so misconfiguration fails fast at
-construction rather than at first use.
-"""
-
 from dify_agent.adapters.shell.config import ShellAdapterSettings
 from dify_agent.adapters.shell.protocols import ShellProvisionProtocol
 from dify_agent.adapters.shell.shellctl import ShellctlProvisioner, create_default_shellctl_client_factory
