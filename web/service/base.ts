@@ -611,9 +611,10 @@ export const ssePost = async (
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().errorMessage.includes('TypeError: Cannot assign to read only property'))
-        toast.error(String(e))
-      onError?.(e)
+      const errorMessage = String(e)
+      if (errorMessage !== 'AbortError: The user aborted a request.' && !errorMessage.includes('TypeError: Cannot assign to read only property'))
+        toast.error(errorMessage)
+      onError?.(errorMessage)
     })
 }
 
@@ -761,9 +762,10 @@ export const sseGet = async (
       )
     })
     .catch((e) => {
-      if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
-        toast.error(String(e))
-      onError?.(e)
+      const errorMessage = String(e)
+      if (errorMessage !== 'AbortError: The user aborted a request.' && !errorMessage.includes('TypeError: Cannot assign to read only property'))
+        toast.error(errorMessage)
+      onError?.(errorMessage)
     })
 }
 

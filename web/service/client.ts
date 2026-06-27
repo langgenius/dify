@@ -520,12 +520,12 @@ export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQue
           put: {
             mutationOptions: {
               onSuccess: (_composerState, variables, _onMutateResult, context) => {
-                if (variables.body.save_strategy !== 'save_as_new_version')
-                  return
-
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.get.key(),
                 })
+                if (variables.body.save_strategy !== 'save_as_new_version')
+                  return
+
                 context.client.invalidateQueries({
                   queryKey: consoleQuery.agent.inviteOptions.get.key(),
                 })

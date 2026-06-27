@@ -87,7 +87,7 @@ export function useAgentConfigureSync({
     const savedDraftKey = JSON.stringify(configSnapshot)
     const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
     try {
-      await saveComposerDraft({
+      const composerState = await saveComposerDraft({
         params: {
           agent_id: agentId,
         },
@@ -97,6 +97,10 @@ export function useAgentConfigureSync({
           agent_soul: configSnapshot,
         },
       })
+      queryClient.setQueryData(
+        consoleQuery.agent.byAgentId.composer.get.queryKey({ input: { params: { agent_id: agentId } } }),
+        composerState,
+      )
       await queryClient.invalidateQueries({
         queryKey: agentDetailQueryKey,
       })

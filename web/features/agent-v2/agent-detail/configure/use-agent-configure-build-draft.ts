@@ -203,6 +203,9 @@ export function useAgentConfigureBuildDraftActions({
       await queryClient.invalidateQueries({
         queryKey: agentDetailQueryKey,
       })
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.agent.get.key(),
+      })
       await exitBuildDraftMode(true)
       toast.success(tCommon('api.actionSuccess'))
     }

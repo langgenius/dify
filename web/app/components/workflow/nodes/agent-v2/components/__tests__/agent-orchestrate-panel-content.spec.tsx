@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   deleteBuildDraft: vi.fn(),
   loadBuildDraft: vi.fn(),
   applyBuildDraft: vi.fn(),
+  refreshDebugConversation: vi.fn(),
   saveBuildDraft: vi.fn(),
   saveAgentSoulConfig: vi.fn(),
   saveDraft: vi.fn(),
@@ -137,6 +138,16 @@ vi.mock('@/service/client', () => ({
         get: {
           queryKey: () => ['agent-detail'],
         },
+        debugConversation: {
+          refresh: {
+            post: {
+              mutationOptions: (options?: { onSuccess?: (data: { debug_conversation_id: string }) => void }) => ({
+                mutationFn: mocks.refreshDebugConversation,
+                ...options,
+              }),
+            },
+          },
+        },
         composer: {
           get: {
             queryOptions: vi.fn(),
@@ -170,8 +181,10 @@ vi.mock('@/service/client', () => ({
 
 function createInlineComposerState({
   snapshotId = 'snapshot-1',
+  systemPrompt = 'Help with workflow tasks.',
 }: {
   snapshotId?: string
+  systemPrompt?: string
 } = {}): WorkflowAgentComposerResponse {
   return {
     active_config_snapshot: {
@@ -187,7 +200,7 @@ function createInlineComposerState({
     agent_soul: {
       schema_version: 1,
       prompt: {
-        system_prompt: 'Help with workflow tasks.',
+        system_prompt: systemPrompt,
       },
     } satisfies AgentSoulConfig,
     binding: {
@@ -215,6 +228,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       agent_soul: {},
       draft: {},
       variant: 'agent_app',
+    })
+    mocks.refreshDebugConversation.mockResolvedValue({
+      debug_conversation_id: 'build-conversation-refreshed',
     })
     mocks.saveBuildDraft.mockResolvedValue({
       agent_soul: {
@@ -283,6 +299,10 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
   describe('Build Chat', () => {
     it('should save the workflow agent draft and write that snapshot into the build draft before starting build chat', async () => {
+      mocks.saveDraft.mockResolvedValue(createInlineComposerState({
+        snapshotId: 'snapshot-saved',
+        systemPrompt: 'Saved workflow snapshot prompt.',
+      }))
       renderWorkspace()
 
       fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
@@ -297,7 +317,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           save_strategy: 'save_to_current_version',
           agent_soul: expect.objectContaining({
             prompt: expect.objectContaining({
-              system_prompt: 'Help with workflow tasks.',
+              system_prompt: 'Saved workflow snapshot prompt.',
             }),
           }),
         },
@@ -410,6 +430,55 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })).toBeEnabled()
     })
 
+    it('should refresh the inline build debug conversation when restarting after a build send', async () => {
+      mocks.loadBuildDraft
+        .mockRejectedValueOnce(new Response(null, { status: 404 }))
+        .mockResolvedValue({
+          agent_soul: {
+            schema_version: 1,
+            prompt: {
+              system_prompt: 'Build draft prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        })
+      mocks.saveBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Build draft prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
+      await waitFor(() => expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new'))
+
+      fireEvent.click(screen.getByRole('button', { name: 'fail build conversation' }))
+      fireEvent.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      }))
+
+      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      }, expect.any(Object)))
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          debug_conversation_id: 'build-conversation-new',
+        },
+      }, expect.any(Object))
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+    })
+
     it('should apply inline build draft through the workflow node composer owner', async () => {
       mocks.loadBuildDraft.mockResolvedValue({
         agent_soul: {
@@ -435,7 +504,46 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
           agent_id: 'agent-1',
         },
       }, expect.any(Object))
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          debug_conversation_id: '',
+        },
+      }, expect.any(Object))
       expect(mocks.applyBuildDraft).not.toHaveBeenCalled()
+    })
+
+    it('should refresh the inline build debug conversation when discarding the build draft', async () => {
+      mocks.loadBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Discarded inline build prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'discard build draft' }))
+
+      await waitFor(() => expect(mocks.deleteBuildDraft).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      }, expect.any(Object)))
+      expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+        body: {
+          debug_conversation_id: '',
+        },
+      }, expect.any(Object))
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
 
     it('should keep the composer session mounted when the inline snapshot changes', async () => {

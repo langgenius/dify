@@ -359,6 +359,41 @@ describe('AgentPreviewChat', () => {
     })
   })
 
+  it('should notify the owner when a send settles with an error', async () => {
+    const onSendInterrupted = vi.fn()
+    renderPreviewChat({
+      onSendInterrupted,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    act(() => {
+      callbacks.onSendSettled(true)
+    })
+
+    expect(onSendInterrupted).toHaveBeenCalledTimes(1)
+  })
+
+  it('should notify the owner when stopping a responding send', async () => {
+    const onSendInterrupted = vi.fn()
+    renderPreviewChat({
+      onSendInterrupted,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'stop' }))
+
+    expect(onSendInterrupted).toHaveBeenCalledTimes(1)
+    expect(stopPostMock).toHaveBeenCalledWith({
+      params: {
+        agent_id: 'agent-1',
+        task_id: 'task-1',
+      },
+    })
+  })
+
   it('should not send preview chat when draft save fails', async () => {
     const saveDraftBeforeRun = vi.fn().mockRejectedValue(new Error('save failed'))
     renderPreviewChat({

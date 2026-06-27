@@ -88,6 +88,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
+      get: {
+        key: () => ['agents'],
+      },
       byAgentId: {
         get: {
           queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
@@ -207,7 +210,13 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     }))
-    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toBeUndefined()
+    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toEqual({
+      agent_soul: expect.objectContaining({
+        prompt: expect.objectContaining({
+          system_prompt: 'Draft only prompt',
+        }),
+      }),
+    })
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
       active_config_is_published: true,
       name: 'Agent',

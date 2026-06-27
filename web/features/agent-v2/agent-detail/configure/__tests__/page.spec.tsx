@@ -82,6 +82,9 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
+      get: {
+        key: () => ['agents'],
+      },
       byAgentId: {
         get: {
           queryOptions: () => ({ queryKey: ['agent'] }),
@@ -874,6 +877,9 @@ describe('AgentConfigurePage', () => {
       ))
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['agent'],
+      })
+      expect(invalidateQueries).toHaveBeenCalledWith({
+        queryKey: ['agents'],
       })
       expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
         params: {

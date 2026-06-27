@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentAppDetailWithSite, AgentConfigSnapshotSummaryResponse, AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentComposerBindingResponse, WorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/types.gen'
 import {
   DropdownMenu,
@@ -57,6 +57,15 @@ type WorkflowInlineAgentConfigureWorkspaceProps = {
   onSaved?: (binding: AgentComposerBindingResponse) => void
   onSaveInlineToRoster?: () => void
   open: boolean
+}
+
+type DebugConversationRefreshInput = {
+  params: {
+    agent_id: string
+  }
+  body: {
+    debug_conversation_id: string
+  }
 }
 
 export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRosterAgentOrchestratePanelContentProps) {
@@ -277,10 +286,46 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     },
     enabled: open && !!agentSoulConfig && !buildDraft.isActive,
   })
+  const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
+    onSuccess: ({ debug_conversation_id }) => {
+      queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
+        consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
+        (agentDetail) => {
+          if (!agentDetail)
+            return agentDetail
+
+          return {
+            ...agentDetail,
+            debug_conversation_id,
+          }
+        },
+      )
+    },
+  }))
+  const {
+    mutateAsync: refreshDebugConversationRequestAsync,
+    isPending: isRefreshingDebugConversation,
+  } = refreshDebugConversationMutation
+  const refreshDebugConversationInput = useCallback((conversationId: string): DebugConversationRefreshInput => ({
+    params: {
+      agent_id: agentId,
+    },
+    body: {
+      debug_conversation_id: conversationId,
+    },
+  }), [agentId])
+  const refreshDebugConversationAsync = useCallback((conversationId: string) => {
+    const input = refreshDebugConversationInput(conversationId)
+
+    return refreshDebugConversationRequestAsync(
+      input as unknown as Parameters<typeof refreshDebugConversationRequestAsync>[0],
+    )
+  }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
   const resetBuildChatSession = useCallback(async () => {
+    await refreshDebugConversationAsync(conversationIds.build ?? '').catch(() => undefined)
     setConversationId({ mode: 'build', conversationId: null })
     setClearPreviewChat(true)
-  }, [setClearPreviewChat, setConversationId])
+  }, [conversationIds.build, refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback((agentSoulConfig?: AgentSoulConfig) => {
     rebaseComposerDraft({
       draft: agentSoulConfigToFormState(agentSoulConfig),
@@ -389,6 +434,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     || buildDraftActionsDisabled
     || isApplyingInlineBuildDraft
     || discardBuildDraftMutation.isPending
+    || isRefreshingDebugConversation
   const restartCurrentChat = () => {
     if (isRestartCurrentChatDisabled)
       return
