@@ -37,15 +37,6 @@ import { useAgentWorkingDirectoryPanel } from './preview/use-working-directory-p
 import { AgentPreviewVersionsPanel } from './preview/versions-panel'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from './workspace'
 
-type DebugConversationRefreshInput = {
-  params: {
-    agent_id: string
-  }
-  body: {
-    debug_conversation_id: string
-  }
-}
-
 export function AgentConfigureComposerScope({
   agentId,
   composerRebaseRevision,
@@ -144,27 +135,16 @@ function AgentConfigurePageComposerSession({
     mutateAsync: refreshDebugConversationRequestAsync,
     isPending: isRefreshingDebugConversation,
   } = refreshDebugConversationMutation
-  const refreshDebugConversationInput = useCallback((conversationId: string): DebugConversationRefreshInput => ({
+  const refreshDebugConversationInput = useCallback(() => ({
     params: {
       agent_id: agentId,
     },
-    body: {
-      debug_conversation_id: conversationId,
-    },
   }), [agentId])
-  const refreshDebugConversation = useCallback((conversationId: string) => {
-    const input = refreshDebugConversationInput(conversationId)
-
-    refreshDebugConversationRequest(
-      input as unknown as Parameters<typeof refreshDebugConversationRequest>[0],
-    )
+  const refreshDebugConversation = useCallback(() => {
+    refreshDebugConversationRequest(refreshDebugConversationInput())
   }, [refreshDebugConversationInput, refreshDebugConversationRequest])
-  const refreshDebugConversationAsync = useCallback((conversationId: string) => {
-    const input = refreshDebugConversationInput(conversationId)
-
-    return refreshDebugConversationRequestAsync(
-      input as unknown as Parameters<typeof refreshDebugConversationRequestAsync>[0],
-    )
+  const refreshDebugConversationAsync = useCallback(() => {
+    return refreshDebugConversationRequestAsync(refreshDebugConversationInput())
   }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
 
   return (
@@ -221,8 +201,8 @@ function AgentConfigurePageComposerContent({
   isViewingVersion: boolean
   workingDirectoryPanel: ReturnType<typeof useAgentWorkingDirectoryPanel>
   onComposerRebase: () => void
-  onRefreshDebugConversation: (conversationId: string) => void
-  onRefreshDebugConversationAsync: (conversationId: string) => Promise<unknown>
+  onRefreshDebugConversation: () => void
+  onRefreshDebugConversationAsync: () => Promise<unknown>
   onSelectVersion: (versionId: string | null) => void
 }) {
   const {
@@ -251,13 +231,13 @@ function AgentConfigurePageComposerContent({
   const showBuildDraftBar = buildDraft.isActive
   const resetBuildChatSession = useCallback(async () => {
     try {
-      await onRefreshDebugConversationAsync(conversationIds.build ?? '')
+      await onRefreshDebugConversationAsync()
     }
     finally {
       setConversationId({ mode: 'build', conversationId: null })
       setClearPreviewChat(true)
     }
-  }, [conversationIds.build, onRefreshDebugConversationAsync, setClearPreviewChat, setConversationId])
+  }, [onRefreshDebugConversationAsync, setClearPreviewChat, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback((agentSoulConfig?: AgentSoulConfig) => {
     rebaseComposerDraft({
       draft: agentSoulConfigToFormState(agentSoulConfig),
@@ -311,7 +291,7 @@ function AgentConfigurePageComposerContent({
     }
 
     if (rightPanelChatMode === 'build')
-      onRefreshDebugConversation(conversationIds.build ?? '')
+      onRefreshDebugConversation()
 
     resetConversation(rightPanelChatMode)
   }

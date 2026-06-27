@@ -412,9 +412,6 @@ describe('AgentConfigurePage', () => {
         params: {
           agent_id: 'agent-1',
         },
-        body: {
-          debug_conversation_id: 'build-conversation-new',
-        },
       }, expect.any(Object))
 
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
@@ -749,9 +746,6 @@ describe('AgentConfigurePage', () => {
         params: {
           agent_id: 'agent-1',
         },
-        body: {
-          debug_conversation_id: 'debug-conversation-old',
-        },
       }, expect.any(Object))
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
@@ -885,9 +879,6 @@ describe('AgentConfigurePage', () => {
         params: {
           agent_id: 'agent-1',
         },
-        body: {
-          debug_conversation_id: 'debug-conversation-old',
-        },
       }, expect.any(Object))
       expect(refetchComposer).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
@@ -967,9 +958,6 @@ describe('AgentConfigurePage', () => {
         params: {
           agent_id: 'agent-1',
         },
-        body: {
-          debug_conversation_id: 'debug-conversation-old',
-        },
       }, expect.any(Object))
       expect(refetchComposer).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
@@ -1025,9 +1013,6 @@ describe('AgentConfigurePage', () => {
         params: {
           agent_id: 'agent-1',
         },
-        body: {
-          debug_conversation_id: 'debug-conversation-old',
-        },
       }, expect.any(Object))
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
@@ -1078,9 +1063,6 @@ describe('AgentConfigurePage', () => {
       expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
         params: {
           agent_id: 'agent-1',
-        },
-        body: {
-          debug_conversation_id: 'debug-conversation-old',
         },
       }, expect.any(Object))
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')

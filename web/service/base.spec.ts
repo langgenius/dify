@@ -2,7 +2,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 // eslint-disable-next-line no-restricted-imports
-import { handleStream, ssePost } from './base'
+import { handleStream, sseGet, ssePost } from './base'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -267,7 +267,7 @@ describe('handleStream', () => {
   })
 })
 
-describe('ssePost', () => {
+describe('ssePost and sseGet', () => {
   afterEach(() => {
     vi.restoreAllMocks()
     vi.clearAllMocks()
@@ -306,6 +306,20 @@ describe('ssePost', () => {
 
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Error: refresh failed')
+    })
+  })
+
+  it('should report event stream token refresh failures through onError', async () => {
+    const onError = vi.fn()
+    refreshAccessTokenOrReLoginMock.mockRejectedValueOnce(new Error('resume refresh failed'))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(null, { status: 401 }))
+
+    await sseGet('/workflow/workflow-run-1/events', {}, {
+      onError,
+    })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: resume refresh failed')
     })
   })
 })

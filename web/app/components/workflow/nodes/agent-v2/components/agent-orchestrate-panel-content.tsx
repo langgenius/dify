@@ -59,15 +59,6 @@ type WorkflowInlineAgentConfigureWorkspaceProps = {
   open: boolean
 }
 
-type DebugConversationRefreshInput = {
-  params: {
-    agent_id: string
-  }
-  body: {
-    debug_conversation_id: string
-  }
-}
-
 export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRosterAgentOrchestratePanelContentProps) {
   const {
     agentId,
@@ -306,26 +297,19 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     mutateAsync: refreshDebugConversationRequestAsync,
     isPending: isRefreshingDebugConversation,
   } = refreshDebugConversationMutation
-  const refreshDebugConversationInput = useCallback((conversationId: string): DebugConversationRefreshInput => ({
+  const refreshDebugConversationInput = useCallback(() => ({
     params: {
       agent_id: agentId,
     },
-    body: {
-      debug_conversation_id: conversationId,
-    },
   }), [agentId])
-  const refreshDebugConversationAsync = useCallback((conversationId: string) => {
-    const input = refreshDebugConversationInput(conversationId)
-
-    return refreshDebugConversationRequestAsync(
-      input as unknown as Parameters<typeof refreshDebugConversationRequestAsync>[0],
-    )
+  const refreshDebugConversationAsync = useCallback(() => {
+    return refreshDebugConversationRequestAsync(refreshDebugConversationInput())
   }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
   const resetBuildChatSession = useCallback(async () => {
-    await refreshDebugConversationAsync(conversationIds.build ?? '').catch(() => undefined)
+    await refreshDebugConversationAsync().catch(() => undefined)
     setConversationId({ mode: 'build', conversationId: null })
     setClearPreviewChat(true)
-  }, [conversationIds.build, refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
+  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback((agentSoulConfig?: AgentSoulConfig) => {
     rebaseComposerDraft({
       draft: agentSoulConfigToFormState(agentSoulConfig),

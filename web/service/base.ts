@@ -706,7 +706,9 @@ export const sseGet = async (
             refreshAccessTokenOrReLogin(TIME_OUT).then(() => {
               sseGet(url, fetchOptions, otherOptions)
             }).catch((err) => {
+              const errorMessage = String(err)
               console.error(err)
+              onError?.(errorMessage)
             })
           }
         }

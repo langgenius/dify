@@ -1175,6 +1175,44 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false)
     })
 
+    it('should settle a resume once when the event stream errors', () => {
+      let callbacks: HookCallbacks
+      const onSendSettled = vi.fn()
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-resume-error',
+          content: 'initial',
+          isAnswer: true,
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-resume-error', 'wr-error', {
+          isPublicAPI: true,
+          onSendSettled,
+        })
+      })
+
+      act(() => {
+        callbacks.onError()
+        callbacks.onCompleted(true)
+      })
+
+      expect(onSendSettled).toHaveBeenCalledTimes(1)
+      expect(onSendSettled).toHaveBeenCalledWith(true)
+      expect(result.current.isResponding).toBe(false)
+    })
+
     it('should abort previous workflow event stream when resuming again', () => {
       const callbacksList: HookCallbacks[] = []
       vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
