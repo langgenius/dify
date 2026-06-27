@@ -2,6 +2,7 @@ import type { AgentSoulConfig, WorkflowAgentComposerResponse } from '@dify/contr
 import type { DefaultModelResponse } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
+import isEqual from 'fast-deep-equal'
 import { useStore as useJotaiStore, useSetAtom } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -143,11 +144,14 @@ export function useWorkflowInlineAgentConfigureSync({
   const saveDraft = useCallback(async () => {
     if (!enabledRef.current)
       return
-    if (!store.get(isAgentComposerDirtyAtom))
+
+    const configSnapshot = getAgentSoulDraft()
+    const hasEffectiveModelChange = !isEqual(configSnapshot.model, baseConfigRef.current?.model)
+    debouncedSaveDraft.cancel?.()
+    if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange)
       return
 
-    debouncedSaveDraft.cancel?.()
-    return saveComposer(getAgentSoulDraft())
+    return saveComposer(configSnapshot)
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
   const saveAgentSoulConfig = useCallback(async (agentSoulConfig: AgentSoulConfig) => {
     debouncedSaveDraft.cancel?.()

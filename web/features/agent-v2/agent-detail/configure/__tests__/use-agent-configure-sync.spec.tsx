@@ -373,6 +373,37 @@ describe('useAgentConfigureSync', () => {
     expect(result.current.draftSavedAt).toBeUndefined()
   })
 
+  it('should save the effective model before run when the form draft is unchanged', async () => {
+    const { result } = renderUseAgentConfigureSync({
+      baseConfig: {
+        schema_version: 1,
+        prompt: {
+          system_prompt: '',
+        },
+      },
+      currentModel: {
+        provider: 'langgenius/openai/openai',
+        model: 'gpt-4o-mini',
+      },
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          model: expect.objectContaining({
+            model_provider: 'langgenius/openai/openai',
+            model: 'gpt-4o-mini',
+            plugin_id: 'langgenius/openai',
+          }),
+        }),
+      }),
+    }))
+  })
+
   it('should reject manual save when knowledge retrieval validation fails', async () => {
     const { result, store } = renderUseAgentConfigureSync()
 

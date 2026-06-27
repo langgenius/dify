@@ -6,6 +6,7 @@ import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-compose
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { debounce } from 'es-toolkit/compat'
+import isEqual from 'fast-deep-equal'
 import { useSetAtom, useStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -146,12 +147,14 @@ export function useAgentConfigureSync({
     const draft = store.get(agentComposerDraftAtom)
     if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
       throw new InvalidKnowledgeConfigurationError()
-    if (!store.get(isAgentComposerDirtyAtom))
+    const configSnapshot = getAgentSoulDraft()
+    const hasEffectiveModelChange = !isEqual(configSnapshot.model, baseConfigRef.current?.model)
+    debouncedSaveDraft.cancel?.()
+    if (!store.get(isAgentComposerDirtyAtom) && !hasEffectiveModelChange)
       return
 
-    debouncedSaveDraft.cancel?.()
     await saveComposer({
-      configSnapshot: getAgentSoulDraft(),
+      configSnapshot,
       draftBaseline: draft,
     })
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])

@@ -461,4 +461,53 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
     expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toBeUndefined()
     expect(result.current.draftSavedAt).toBeUndefined()
   })
+
+  it('saves the effective inline model when the form draft is unchanged', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+        mutations: {
+          retry: false,
+        },
+      },
+    })
+    const { result } = renderWorkflowHook(() => useWorkflowInlineAgentConfigureSync({
+      nodeId: 'node-1',
+      baseConfig: {
+        schema_version: 1,
+      },
+      currentModel: {
+        provider: 'langgenius/openai/openai',
+        model: 'gpt-4o-mini',
+      },
+      enabled: true,
+    }), {
+      queryClient,
+      hooksStoreProps: {
+        configsMap: {
+          flowId: 'app-1',
+          flowType: FlowType.appFlow,
+          fileSettings: {} as never,
+        },
+      },
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(mockComposerMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          model: expect.objectContaining({
+            model_provider: 'langgenius/openai/openai',
+            model: 'gpt-4o-mini',
+            plugin_id: 'langgenius/openai',
+          }),
+        }),
+      }),
+    }), expect.any(Object))
+  })
 })
