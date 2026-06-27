@@ -1724,11 +1724,14 @@ def test_agent_app_draft_match_does_not_mark_create_version_as_published(monkeyp
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
 
-    assert AgentComposerService._agent_soul_matches_active_config(
-        tenant_id="tenant-1",
-        agent=agent,
-        agent_soul=agent_soul,
-    ) is False
+    assert (
+        AgentComposerService._agent_soul_matches_active_config(
+            tenant_id="tenant-1",
+            agent=agent,
+            agent_soul=agent_soul,
+        )
+        is False
+    )
 
 
 def test_agent_app_draft_match_marks_publish_visible_revision_as_published(monkeypatch: pytest.MonkeyPatch):
@@ -1744,11 +1747,14 @@ def test_agent_app_draft_match_marks_publish_visible_revision_as_published(monke
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: snapshot)
 
-    assert AgentComposerService._agent_soul_matches_active_config(
-        tenant_id="tenant-1",
-        agent=agent,
-        agent_soul=agent_soul,
-    ) is True
+    assert (
+        AgentComposerService._agent_soul_matches_active_config(
+            tenant_id="tenant-1",
+            agent=agent,
+            agent_soul=agent_soul,
+        )
+        is True
+    )
 
 
 def test_composer_version_helpers_and_lookup_errors(monkeypatch: pytest.MonkeyPatch):
