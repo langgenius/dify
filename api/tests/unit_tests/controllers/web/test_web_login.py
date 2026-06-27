@@ -95,7 +95,7 @@ class TestEmailCodeLoginApi:
         ):
             response = EmailCodeLoginApi().post()
 
-        assert response.get_json() == {"result": "success", "data": {"access_token": "new-access-token"}}
+        assert response == {"result": "success", "data": {"access_token": "new-access-token"}}
         mock_get_user.assert_called_once_with("User@Example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_login.assert_called_once()
@@ -115,7 +115,7 @@ class TestLoginApi:
         ):
             response = LoginApi().post()
 
-        assert response.get_json()["data"]["access_token"] == "access-tok"
+        assert response["data"]["access_token"] == "access-tok"
         mock_auth.assert_called_once()
 
     @patch(
