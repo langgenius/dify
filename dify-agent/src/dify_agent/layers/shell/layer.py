@@ -23,6 +23,7 @@ from collections.abc import AsyncGenerator, Callable, Sequence
 from contextlib import asynccontextmanager
 import json
 import logging
+import re
 from dataclasses import dataclass
 from typing import ClassVar, NotRequired, Protocol, TypedDict, cast
 
@@ -239,8 +240,10 @@ class DifyShellRuntimeState(BaseModel):
         """Reject session ids that could escape the workspace root or inject shell syntax."""
         if value is None:
             return value
-        if "/" in value or ".." in value or "'" in value:
-            raise ValueError("session_id must not contain '/', '..', or single quotes.")
+        if not re.fullmatch(r"[0-9a-f]{7,16}", value):
+            raise ValueError(
+                "session_id must be 7 or 16 lowercase hex characters (got an invalid value)."
+            )
         return value
 
     @field_validator("job_ids")
