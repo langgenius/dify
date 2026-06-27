@@ -467,12 +467,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onSaveDraftBeforeRun={async () => {
                 setBuildDraftActionsDisabled(true)
                 try {
-                  await buildDraftActions.prepareBuildDraftBeforeRun()
+                  return await buildDraftActions.prepareBuildDraftBeforeRun()
                 }
                 catch (error) {
                   setBuildDraftActionsDisabled(false)
                   throw error
                 }
+              }}
+              onSendInterrupted={() => {
+                setBuildDraftActionsDisabled(false)
               }}
             />
           )}

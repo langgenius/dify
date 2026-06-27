@@ -1,7 +1,7 @@
 import type { ChatConfig, ChatItemInTree } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { act, renderHook } from '@testing-library/react'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { InputVarType, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { useChat } from '../hooks'
@@ -351,6 +351,48 @@ describe('useChat', () => {
       expect(result.current.isResponding).toBe(false)
       expect(result.current.chatList[1]!.content).toBe('hi there')
       expect(result.current.chatList[1]!.id).toBe('m-1')
+    })
+
+    it('should process inputs with the per-send input form override', () => {
+      vi.mocked(ssePost).mockImplementation(async () => undefined)
+      const { result } = renderHook(() => useChat(undefined, {
+        inputs: {},
+        inputsForm: [{
+          type: InputVarType.textInput,
+          label: 'City',
+          variable: 'city',
+          required: true,
+          hide: false,
+        }],
+      }))
+
+      act(() => {
+        result.current.handleSend('test-url', {
+          query: 'hello',
+          inputs: {
+            enabled: undefined,
+          },
+          overrideInputsForm: [{
+            type: InputVarType.checkbox,
+            label: 'Enabled',
+            variable: 'enabled',
+            required: true,
+            hide: false,
+          }],
+        }, {})
+      })
+
+      expect(ssePost).toHaveBeenCalledWith(
+        'test-url',
+        expect.objectContaining({
+          body: expect.objectContaining({
+            inputs: {
+              enabled: false,
+            },
+          }),
+        }),
+        expect.any(Object),
+      )
     })
 
     it('should handle onThought and different workflow events', async () => {

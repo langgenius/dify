@@ -164,11 +164,15 @@ export function useAgentConfigureBuildDraftActions({
 
     buildDraftRefreshTimerRef.current = setTimeout(async () => {
       buildDraftRefreshTimerRef.current = null
-      const result = await refetchBuildDraft()
-      const agentSoulConfig = getAgentSoulConfigFromRefetchResult(result)
-      if (agentSoulConfig)
-        rebaseComposerDraft(agentSoulConfig)
-      onRefreshed?.()
+      try {
+        const result = await refetchBuildDraft()
+        const agentSoulConfig = getAgentSoulConfigFromRefetchResult(result)
+        if (agentSoulConfig)
+          rebaseComposerDraft(agentSoulConfig)
+      }
+      finally {
+        onRefreshed?.()
+      }
     }, 1000)
   }, [rebaseComposerDraft, refetchBuildDraft])
 

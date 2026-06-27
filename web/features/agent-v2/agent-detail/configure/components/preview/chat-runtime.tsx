@@ -11,7 +11,7 @@ import type {
 import type {
   ReactNode,
 } from 'react'
-import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType, IChatItem, InputForm, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
@@ -153,6 +153,15 @@ const toInputForm = (variable: NonNullable<AgentSoulConfig['app_variables']>[num
     required: variable.required ?? true,
     hide: false,
   }
+}
+
+const getAgentSoulInputsForm = (agentSoulConfig?: AgentSoulConfig) => (agentSoulConfig?.app_variables ?? []).map(toInputForm)
+
+const getAgentSoulInputs = (inputsForm: InputForm[]) => {
+  return inputsForm.reduce<Inputs>((acc, input) => {
+    acc[input.variable] = (input.default ?? '') as Inputs[string]
+    return acc
+  }, {})
 }
 
 const toAgentTool = (tool: AgentSoulDifyToolConfig) => ({
@@ -445,7 +454,8 @@ export type AgentChatRuntimeProps = {
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string) => void
   onConversationIdChange?: (conversationId: string) => void
-  onSaveDraftBeforeRun?: () => Promise<void>
+  onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
+  onSendInterrupted?: () => void
 }
 
 export function AgentChatRuntime({
@@ -464,6 +474,7 @@ export function AgentChatRuntime({
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
+  onSendInterrupted,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
   const [currentSessionConversationId, setCurrentSessionConversationId] = useState<string | null>(null)
@@ -514,6 +525,7 @@ export function AgentChatRuntime({
       onConversationComplete={onConversationComplete}
       onConversationIdChange={onConversationIdChange}
       onCurrentSessionConversationIdChange={setCurrentSessionConversationId}
+      onSendInterrupted={onSendInterrupted}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
   )
@@ -537,6 +549,7 @@ function AgentPreviewChatSession({
   onConversationComplete,
   onConversationIdChange,
   onCurrentSessionConversationIdChange,
+  onSendInterrupted,
   onSaveDraftBeforeRun,
 }: {
   agentId: string
@@ -556,7 +569,8 @@ function AgentPreviewChatSession({
   onConversationComplete?: (conversationId: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onCurrentSessionConversationIdChange: (conversationId: string) => void
-  onSaveDraftBeforeRun?: () => Promise<void>
+  onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
+  onSendInterrupted?: () => void
 }) {
   const { userProfile } = useAppContext()
   const prompt = useAtomValue(agentComposerPromptAtom)
@@ -566,13 +580,8 @@ function AgentPreviewChatSession({
     currentModel,
     prompt,
   }), [agentSoulConfig, currentModel, prompt])
-  const inputsForm = useMemo(() => (agentSoulConfig?.app_variables ?? []).map(toInputForm), [agentSoulConfig?.app_variables])
-  const inputs = useMemo(() => {
-    return inputsForm.reduce<Inputs>((acc, input) => {
-      acc[input.variable] = (input.default ?? '') as Inputs[string]
-      return acc
-    }, {})
-  }, [inputsForm])
+  const inputsForm = useMemo(() => getAgentSoulInputsForm(agentSoulConfig), [agentSoulConfig])
+  const inputs = useMemo(() => getAgentSoulInputs(inputsForm), [inputsForm])
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
@@ -603,41 +612,59 @@ function AgentPreviewChatSession({
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     try {
-      await onSaveDraftBeforeRun?.()
-    }
-    catch {
-      return
-    }
+      const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
+      const runtimeAgentSoulConfig = preparedAgentSoulConfig || agentSoulConfig
+      const runtimeInputsForm = preparedAgentSoulConfig ? getAgentSoulInputsForm(runtimeAgentSoulConfig) : inputsForm
+      const runtimeInputs = preparedAgentSoulConfig ? getAgentSoulInputs(runtimeInputsForm) : inputs
+      const runtimeConfig = preparedAgentSoulConfig
+        ? buildChatConfig({
+            agentSoulConfig: runtimeAgentSoulConfig,
+            currentModel: undefined,
+            prompt: runtimeAgentSoulConfig?.prompt?.system_prompt ?? '',
+          })
+        : config
 
-    const currentProvider = textGenerationModelList.find(item => item.provider === config.model.provider)
-    const selectedModel = currentProvider?.models.find(model => model.model === config.model.name)
-    const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
-    const data: Record<string, unknown> = {
-      query: message,
-      inputs,
-      parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
-    }
-    if (draftType)
-      data.draft_type = draftType
+      const currentProvider = textGenerationModelList.find(item => item.provider === runtimeConfig.model.provider)
+      const selectedModel = currentProvider?.models.find(model => model.model === runtimeConfig.model.name)
+      const supportVision = selectedModel?.features?.includes(ModelFeatureEnum.vision)
+      const data: Record<string, unknown> = {
+        query: message,
+        inputs: runtimeInputs,
+        overrideInputsForm: runtimeInputsForm,
+        parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+      }
+      if (draftType)
+        data.draft_type = draftType
 
-    if (files?.length && supportVision)
-      data.files = files
+      if (files?.length && supportVision)
+        data.files = files
 
-    handleSend(
-      `agent/${agentId}/chat-messages`,
-      data as Parameters<typeof handleSend>[1],
-      {
-        onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
-        onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
-        onConversationComplete: (completedConversationId) => {
-          if (completedConversationId && completedConversationId !== conversationId)
-            onCurrentSessionConversationIdChange(completedConversationId)
-          onConversationIdChange?.(completedConversationId)
-          onConversationComplete?.(completedConversationId)
+      handleSend(
+        `agent/${agentId}/chat-messages`,
+        data as Parameters<typeof handleSend>[1],
+        {
+          onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
+          onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
+          onConversationComplete: (completedConversationId) => {
+            if (completedConversationId && completedConversationId !== conversationId)
+              onCurrentSessionConversationIdChange(completedConversationId)
+            onConversationIdChange?.(completedConversationId)
+            onConversationComplete?.(completedConversationId)
+          },
+          onSendSettled: (hasError) => {
+            if (hasError)
+              onSendInterrupted?.()
+          },
         },
-      },
-    )
-  }, [agentId, chatList, config.model.name, config.model.provider, conversationId, draftType, handleSend, inputs, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
+      )
+    }
+    catch {}
+  }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, onSendInterrupted, textGenerationModelList])
+
+  const doStopResponding = useCallback(() => {
+    handleStop()
+    onSendInterrupted?.()
+  }, [handleStop, onSendInterrupted])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)
@@ -700,7 +727,7 @@ function AgentPreviewChatSession({
       inputsForm={inputsForm}
       onRegenerate={doRegenerate}
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
-      onStopResponding={handleStop}
+      onStopResponding={doStopResponding}
       noChatInput={isEmptyChat}
       showPromptLog
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}

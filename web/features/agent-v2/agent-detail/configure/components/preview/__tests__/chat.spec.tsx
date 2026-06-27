@@ -388,6 +388,60 @@ describe('AgentPreviewChat', () => {
     )
   })
 
+  it('should send build chat inputs from the prepared build draft snapshot', async () => {
+    const saveDraftBeforeRun = vi.fn().mockResolvedValue({
+      app_variables: [
+        {
+          name: 'city',
+          type: 'text-input',
+          default: 'Paris',
+          required: true,
+        },
+      ],
+      model: {
+        model_provider: 'openai',
+        model: 'gpt-4',
+      },
+      prompt: {
+        system_prompt: 'Build draft prompt',
+      },
+    })
+    renderPreviewChat({
+      agentSoulConfig: {
+        app_variables: [
+          {
+            name: 'city',
+            type: 'text-input',
+            default: 'London',
+            required: true,
+          },
+        ],
+      },
+      draftType: 'debug_build',
+      onSaveDraftBeforeRun: saveDraftBeforeRun,
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    expect(handleSendMock).toHaveBeenCalledWith(
+      'agent/agent-1/chat-messages',
+      expect.objectContaining({
+        draft_type: 'debug_build',
+        inputs: {
+          city: 'Paris',
+        },
+        overrideInputsForm: [
+          expect.objectContaining({
+            variable: 'city',
+            default: 'Paris',
+          }),
+        ],
+      }),
+      expect.any(Object),
+    )
+  })
+
   it('should keep the current chat session visible when a sent message creates a conversation', async () => {
     chatMessagesGetMock.mockReturnValue(new Promise(() => undefined))
     renderPreviewChatWithConversationHarness()

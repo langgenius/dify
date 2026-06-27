@@ -48,6 +48,7 @@ export function usePrepareAgentBuildDraftBeforeRun({
     queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraft)
     rebaseComposerDraft?.(buildDraft.agent_soul as AgentSoulConfig | undefined)
     setSoulSourceOverride?.('build-draft')
+    return buildDraft.agent_soul as AgentSoulConfig | undefined
   }, [agentId, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isBuildDraftActive, queryClient, rebaseComposerDraft, saveDraft, setSoulSourceOverride])
 
   return {

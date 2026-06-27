@@ -66,6 +66,7 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
       conversationId?: string | null
       onConversationComplete?: () => void
       onConversationIdChange?: (conversationId: string) => void
+      onSendInterrupted?: () => void
       onSaveDraftBeforeRun?: () => Promise<void>
     }) => {
       const [messageSent, setMessageSent] = useState(false)
@@ -87,6 +88,15 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
           </button>
           <button type="button" onClick={() => props.onConversationComplete?.()}>
             complete build conversation
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setMessageSent(true)
+              props.onSendInterrupted?.()
+            }}
+          >
+            fail build conversation
           </button>
         </div>
       )
@@ -331,6 +341,44 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(mocks.loadBuildDraft).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new')
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      })).toBeEnabled()
+    })
+
+    it('should re-enable inline build draft actions when build chat fails', async () => {
+      mocks.loadBuildDraft
+        .mockRejectedValueOnce(new Response(null, { status: 404 }))
+        .mockResolvedValue({
+          agent_soul: {
+            schema_version: 1,
+            prompt: {
+              system_prompt: 'Build draft prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        })
+      mocks.checkoutBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Build draft prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled())
+
+      fireEvent.click(screen.getByRole('button', { name: 'fail build conversation' }))
+
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
       expect(screen.getByRole('button', {
