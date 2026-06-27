@@ -16,7 +16,6 @@ import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState } from '../../../shared/components/empty-state'
 import { TitleTooltip } from '../../../shared/components/title-tooltip'
 import { formatDate, releaseCommit } from '../../../shared/domain/release'
-import { OVERVIEW_CARD_CLASS_NAME, OVERVIEW_ICON_CLASS_NAME } from '../card-styles'
 
 type ReleaseHeroProps = {
   latestRelease?: Release
@@ -28,6 +27,9 @@ type ReleaseMetaItemProps = {
   showSeparator?: boolean
   children: ReactNode
 }
+
+const OVERVIEW_CARD_CLASS_NAME = 'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
+const OVERVIEW_ICON_CLASS_NAME = 'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
 
 export function ReleaseHero({ latestRelease, releaseCount }: ReleaseHeroProps) {
   const { t } = useTranslation('deployments')

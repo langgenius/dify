@@ -18,7 +18,6 @@ import { DeploymentStatusBadge } from '../../../shared/ui/deployment-status-badg
 import {
   deploymentStatusLabelKey,
 } from '../../../shared/ui/deployment-status-style'
-import { OVERVIEW_ICON_CLASS_NAME, OVERVIEW_INTERACTIVE_CARD_CLASS_NAME } from '../card-styles'
 import {
   renderActionLabel,
   renderDriftTitle,
@@ -26,6 +25,13 @@ import {
   resolveConfig,
 } from './environment-tile-utils'
 import { computeDrift, latestReleaseId } from './overview-drift'
+
+const OVERVIEW_CARD_CLASS_NAME = 'rounded-xl border border-components-panel-border bg-components-panel-bg p-4'
+const OVERVIEW_INTERACTIVE_CARD_CLASS_NAME = cn(
+  OVERVIEW_CARD_CLASS_NAME,
+  'transition-colors hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-components-button-primary-bg',
+)
+const OVERVIEW_ICON_CLASS_NAME = 'flex size-8 shrink-0 items-center justify-center rounded-lg bg-background-section-burn text-text-tertiary'
 
 type EnvironmentTileProps = {
   row: EnvironmentDeployment

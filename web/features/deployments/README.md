@@ -49,6 +49,7 @@ flowchart TD
   detail --> detailAccess
   detail --> detailApiTokens
   detail --> detailReleases
+  detail --> instanceHeaderActions
 
   detailOverview --> overviewAccessSummary
   detailOverview --> overviewEnvironmentStatus
@@ -78,7 +79,6 @@ flowchart TD
   apiTokenManagement --> apiDocs
   apiKeys --> detailApiTokens
 
-  detailReleases --> releaseActions
   detailReleases --> releaseHistory
   releaseActions --> deployDrawer
   releaseHistory --> detailReleases
