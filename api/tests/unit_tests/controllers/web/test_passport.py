@@ -34,12 +34,11 @@ def test_decode_enterprise_webapp_user_id_valid(monkeypatch: pytest.MonkeyPatch)
 def test_exchange_token_public_flow(monkeypatch: pytest.MonkeyPatch) -> None:
     site = SimpleNamespace(id="s1", app_id="a1", code="code", status="normal")
     app_model = SimpleNamespace(id="a1", status="normal", enable_site=True)
+    call_state = {"calls": 0}
 
     def _scalar_side_effect(*_args, **_kwargs):
-        if not hasattr(_scalar_side_effect, "calls"):
-            _scalar_side_effect.calls = 0
-        _scalar_side_effect.calls += 1
-        return site if _scalar_side_effect.calls == 1 else app_model
+        call_state["calls"] += 1
+        return site if call_state["calls"] == 1 else app_model
 
     db_session = SimpleNamespace(scalar=_scalar_side_effect)
     monkeypatch.setattr("controllers.web.passport.db", SimpleNamespace(session=db_session))
@@ -53,12 +52,11 @@ def test_exchange_token_public_flow(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_exchange_token_requires_external(monkeypatch: pytest.MonkeyPatch) -> None:
     site = SimpleNamespace(id="s1", app_id="a1", code="code", status="normal")
     app_model = SimpleNamespace(id="a1", status="normal", enable_site=True)
+    call_state = {"calls": 0}
 
     def _scalar_side_effect(*_args, **_kwargs):
-        if not hasattr(_scalar_side_effect, "calls"):
-            _scalar_side_effect.calls = 0
-        _scalar_side_effect.calls += 1
-        return site if _scalar_side_effect.calls == 1 else app_model
+        call_state["calls"] += 1
+        return site if call_state["calls"] == 1 else app_model
 
     db_session = SimpleNamespace(scalar=_scalar_side_effect)
     monkeypatch.setattr("controllers.web.passport.db", SimpleNamespace(session=db_session))
@@ -71,14 +69,13 @@ def test_exchange_token_requires_external(monkeypatch: pytest.MonkeyPatch) -> No
 def test_exchange_token_missing_session_id(monkeypatch: pytest.MonkeyPatch) -> None:
     site = SimpleNamespace(id="s1", app_id="a1", code="code", status="normal")
     app_model = SimpleNamespace(id="a1", status="normal", enable_site=True, tenant_id="t1")
+    call_state = {"calls": 0}
 
     def _scalar_side_effect(*_args, **_kwargs):
-        if not hasattr(_scalar_side_effect, "calls"):
-            _scalar_side_effect.calls = 0
-        _scalar_side_effect.calls += 1
-        if _scalar_side_effect.calls == 1:
+        call_state["calls"] += 1
+        if call_state["calls"] == 1:
             return site
-        if _scalar_side_effect.calls == 2:
+        if call_state["calls"] == 2:
             return app_model
         return None
 
