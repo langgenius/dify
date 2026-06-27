@@ -145,7 +145,7 @@ export const zGetOauthPluginByProviderToolAuthorizationUrlPath = z.object({
 })
 
 /**
- * Authorization URL retrieved successfully
+ * Tool OAuth authorization URL generated successfully
  */
 export const zGetOauthPluginByProviderToolAuthorizationUrlResponse
   = zPluginOAuthAuthorizationUrlResponse
