@@ -456,8 +456,35 @@ class AgentComposerService:
         )
         if not active_version:
             return False
+        if agent.source == AgentSource.AGENT_APP and not cls._has_publish_visible_revision(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=agent.active_config_snapshot_id,
+        ):
+            return False
 
         return _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
+
+    @classmethod
+    def _has_publish_visible_revision(cls, *, tenant_id: str, agent_id: str, snapshot_id: str) -> bool:
+        revisions = db.session.scalars(
+            select(AgentConfigRevision.operation).where(
+                AgentConfigRevision.tenant_id == tenant_id,
+                AgentConfigRevision.agent_id == agent_id,
+                AgentConfigRevision.current_snapshot_id == snapshot_id,
+            )
+        ).all()
+
+        return any(
+            operation
+            in {
+                AgentConfigRevisionOperation.PUBLISH_DRAFT,
+                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+                AgentConfigRevisionOperation.RESTORE_VERSION,
+            }
+            for operation in revisions
+        )
 
     @classmethod
     def publish_agent_app_draft(

@@ -51,6 +51,15 @@ const mocks = vi.hoisted(() => ({
   },
 }))
 
+function createDeferredPromise<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve
+  })
+
+  return { promise, resolve }
+}
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
@@ -866,6 +875,92 @@ describe('AgentConfigurePage', () => {
       })
 
       expect(refetchBuildDraft).not.toHaveBeenCalled()
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
+    })
+
+    it('should ignore a previous build completion refresh that is already in flight', async () => {
+      vi.useFakeTimers()
+      const queryClient = new QueryClient()
+      const refetchBuildDraft = vi.fn()
+      const staleRefresh = createDeferredPromise<unknown>()
+      refetchBuildDraft.mockReturnValueOnce(staleRefresh.promise)
+      mocks.checkoutBuildDraft.mockResolvedValue({
+        agent_soul: {
+          prompt: {
+            system_prompt: 'build prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: refetchBuildDraft,
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await act(async () => {
+        await Promise.resolve()
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+      expect(refetchBuildDraft).toHaveBeenCalledTimes(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await act(async () => {
+        await Promise.resolve()
+      })
+      await act(async () => {
+        staleRefresh.resolve({
+          data: {
+            agent_soul: {
+              prompt: {
+                system_prompt: 'stale refreshed prompt',
+              },
+            },
+          },
+        })
+        await staleRefresh.promise
+      })
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('prompt:build prompt')
       expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
     })

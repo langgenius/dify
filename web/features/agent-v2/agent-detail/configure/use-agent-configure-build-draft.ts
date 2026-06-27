@@ -141,6 +141,7 @@ export function useAgentConfigureBuildDraftActions({
   const { t: tCommon } = useTranslation('common')
   const queryClient = useQueryClient()
   const buildDraftRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const buildDraftRefreshGenerationRef = useRef(0)
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: {
@@ -162,6 +163,7 @@ export function useAgentConfigureBuildDraftActions({
   })
 
   const cancelBuildDraftRefresh = useCallback(() => {
+    buildDraftRefreshGenerationRef.current += 1
     if (!buildDraftRefreshTimerRef.current)
       return
 
@@ -176,17 +178,22 @@ export function useAgentConfigureBuildDraftActions({
 
   const refreshBuildDraftAfterBuildChat = useCallback((onRefreshed?: () => void) => {
     cancelBuildDraftRefresh()
+    const refreshGeneration = buildDraftRefreshGenerationRef.current
 
     buildDraftRefreshTimerRef.current = setTimeout(async () => {
       buildDraftRefreshTimerRef.current = null
       try {
         const result = await refetchBuildDraft()
+        if (refreshGeneration !== buildDraftRefreshGenerationRef.current)
+          return
+
         const agentSoulConfig = getAgentSoulConfigFromRefetchResult(result)
         if (agentSoulConfig)
           rebaseComposerDraft(agentSoulConfig)
       }
       finally {
-        onRefreshed?.()
+        if (refreshGeneration === buildDraftRefreshGenerationRef.current)
+          onRefreshed?.()
       }
     }, 1000)
   }, [cancelBuildDraftRefresh, rebaseComposerDraft, refetchBuildDraft])
