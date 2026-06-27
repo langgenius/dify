@@ -1,7 +1,8 @@
 import type { ComponentProps } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
+import { useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
@@ -131,6 +132,46 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntim
           onClearChatListChange={vi.fn()}
           {...props}
         />
+      </JotaiProvider>
+    </QueryClientProvider>,
+  )
+}
+
+function RuntimeConversationHarness() {
+  const [conversationId, setConversationId] = useState<string | null>(null)
+
+  return (
+    <AgentChatRuntime
+      agentId="agent-1"
+      clearChatList={false}
+      conversationId={conversationId}
+      inputPlaceholder="Message agent"
+      renderEmptyState={() => null}
+      onClearChatListChange={vi.fn()}
+      onConversationIdChange={setConversationId}
+    />
+  )
+}
+
+function renderPreviewChatWithConversationHarness() {
+  const store = createStore()
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+    },
+  })
+  store.set(agentComposerModelAtom, {
+    provider: 'openai',
+    model: 'gpt-4',
+  })
+  store.set(agentComposerPromptAtom, 'You are helpful.')
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <JotaiProvider store={store}>
+        <RuntimeConversationHarness />
       </JotaiProvider>
     </QueryClientProvider>,
   )
@@ -285,6 +326,23 @@ describe('AgentPreviewChat', () => {
       }),
       expect.any(Object),
     )
+  })
+
+  it('should keep the current chat session visible when a sent message creates a conversation', async () => {
+    chatMessagesGetMock.mockReturnValue(new Promise(() => undefined))
+    renderPreviewChatWithConversationHarness()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    await act(async () => {
+      callbacks.onConversationComplete('conversation-created-by-send')
+    })
+
+    expect(screen.getByRole('button', { name: 'send' })).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
   it('should keep preview file upload disabled by default', async () => {

@@ -23,7 +23,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -466,27 +466,32 @@ export function AgentChatRuntime({
   onConversationIdChange,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
+  const [currentSessionConversationId, setCurrentSessionConversationId] = useState<string | null>(null)
   const historyQuery = useQuery({
     queryKey: ['agent-chat-conversation-messages', agentId, conversationId],
     queryFn: () => fetchAgentConversationMessages(agentId, conversationId!),
     enabled: !!conversationId,
   })
+  const conversationBelongsToCurrentSession = !!conversationId && conversationId === currentSessionConversationId
   const initialChatTree = useMemo(
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
 
-  if (conversationId && historyQuery.isPending) {
+  if (conversationId && historyQuery.isPending && !conversationBelongsToCurrentSession) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading type="app" />
       </div>
     )
   }
+  const chatSessionKey = conversationBelongsToCurrentSession
+    ? 'current-session'
+    : `${conversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`
 
   return (
     <AgentPreviewChatSession
-      key={`${conversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`}
+      key={chatSessionKey}
       agentId={agentId}
       agentIcon={agentIcon}
       agentIconBackground={agentIconBackground}
@@ -503,6 +508,7 @@ export function AgentChatRuntime({
       onClearChatListChange={onClearChatListChange}
       onConversationComplete={onConversationComplete}
       onConversationIdChange={onConversationIdChange}
+      onCurrentSessionConversationIdChange={setCurrentSessionConversationId}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
   )
@@ -525,6 +531,7 @@ function AgentPreviewChatSession({
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
+  onCurrentSessionConversationIdChange,
   onSaveDraftBeforeRun,
 }: {
   agentId: string
@@ -543,6 +550,7 @@ function AgentPreviewChatSession({
   onClearChatListChange: (clearChatList: boolean) => void
   onConversationComplete?: (conversationId: string) => void
   onConversationIdChange?: (conversationId: string) => void
+  onCurrentSessionConversationIdChange: (conversationId: string) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }) {
   const { userProfile } = useAppContext()
@@ -616,13 +624,15 @@ function AgentPreviewChatSession({
       {
         onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
         onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
-        onConversationComplete: (conversationId) => {
-          onConversationIdChange?.(conversationId)
-          onConversationComplete?.(conversationId)
+        onConversationComplete: (completedConversationId) => {
+          if (completedConversationId && completedConversationId !== conversationId)
+            onCurrentSessionConversationIdChange(completedConversationId)
+          onConversationIdChange?.(completedConversationId)
+          onConversationComplete?.(completedConversationId)
         },
       },
     )
-  }, [agentId, chatList, config.model.name, config.model.provider, draftType, handleSend, inputs, onConversationComplete, onConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
+  }, [agentId, chatList, config.model.name, config.model.provider, conversationId, draftType, handleSend, inputs, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)
