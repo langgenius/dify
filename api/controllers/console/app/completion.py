@@ -399,7 +399,6 @@ def _create_chat_message(
         streaming=streaming,
     )
 
-
 def _create_build_chat_finalization_message(
     *, session: Session, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
@@ -536,6 +535,7 @@ def _generate_chat_message_response(
     )
     if AppMode.value_of(app_model.mode) == AppMode.AGENT and streaming:
         response = _raise_agent_stream_error_before_response(response)
+    # response-contract:ignore compact_generate_response
     return helper.compact_generate_response(response)
 
 
