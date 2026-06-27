@@ -1,5 +1,7 @@
+from datetime import UTC, datetime
 from inspect import unwrap as inspect_unwrap
 from io import BytesIO
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -96,6 +98,58 @@ def valid_parameters() -> dict[str, object]:
 def test_trial_workflow_uses_trial_scoped_simple_account_model() -> None:
     assert module.simple_account_model.name == "TrialSimpleAccount"
     assert hasattr(module.simple_account_model, "items")
+
+
+def test_trial_dataset_list_preserves_slim_dataset_fields(app: Flask):
+    class DatasetListItem:
+        id = "dataset-1"
+        name = "Dataset"
+        description = "description"
+        permission = "only_me"
+        data_source_type = "upload_file"
+        indexing_technique = "high_quality"
+        created_by = "user-1"
+        created_at = datetime(2024, 1, 1, tzinfo=UTC)
+        permission_keys = ["dataset.acl.readonly"]
+
+        @property
+        def app_count(self):
+            raise AssertionError("trial dataset list should not serialize detail-only computed fields")
+
+    api = module.DatasetListApi()
+    method = unwrap(api.get)
+    app_model = SimpleNamespace(tenant_id="tenant-1")
+
+    with (
+        app.test_request_context("/?page=1&limit=20&ids=dataset-1"),
+        patch.object(
+            module.DatasetService,
+            "get_datasets_by_ids",
+            return_value=([DatasetListItem()], 1),
+        ) as get_datasets,
+    ):
+        result = method(api, app_model)
+
+    get_datasets.assert_called_once_with(["dataset-1"], "tenant-1")
+    assert result == {
+        "data": [
+            {
+                "id": "dataset-1",
+                "name": "Dataset",
+                "description": "description",
+                "permission": "only_me",
+                "data_source_type": "upload_file",
+                "indexing_technique": "high_quality",
+                "created_by": "user-1",
+                "created_at": 1704067200,
+                "permission_keys": ["dataset.acl.readonly"],
+            }
+        ],
+        "has_more": False,
+        "limit": 20,
+        "total": 1,
+        "page": 1,
+    }
 
 
 class TestTrialAppWorkflowRunApi:
