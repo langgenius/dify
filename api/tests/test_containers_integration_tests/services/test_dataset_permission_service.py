@@ -311,7 +311,7 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
         )
         user_list = DatasetPermissionTestDataFactory.build_user_list_payload([replacement_member.id])
         rollback_called = {"count": 0}
-        original_rollback = db.session.rollback
+        original_rollback = db_session_with_containers.rollback
 
         # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
@@ -323,8 +323,8 @@ class TestDatasetPermissionServiceUpdatePartialMemberList:
                 rollback_called["count"] += 1
                 original_rollback()
 
-            mp.setattr("services.dataset_service.db.session.commit", _raise_commit)
-            mp.setattr("services.dataset_service.db.session.rollback", _rollback_and_mark)
+            mp.setattr(db_session_with_containers, "commit", _raise_commit)
+            mp.setattr(db_session_with_containers, "rollback", _rollback_and_mark)
             with pytest.raises(Exception, match="Database connection error"):
                 DatasetPermissionService.update_partial_member_list(
                     tenant.id, dataset.id, user_list, session=db_session_with_containers
@@ -408,7 +408,7 @@ class TestDatasetPermissionServiceClearPartialMemberList:
             tenant.id, dataset.id, users, session=db_session_with_containers
         )
         rollback_called = {"count": 0}
-        original_rollback = db.session.rollback
+        original_rollback = db_session_with_containers.rollback
 
         # Act / Assert
         with pytest.MonkeyPatch.context() as mp:
@@ -420,8 +420,8 @@ class TestDatasetPermissionServiceClearPartialMemberList:
                 rollback_called["count"] += 1
                 original_rollback()
 
-            mp.setattr("services.dataset_service.db.session.commit", _raise_commit)
-            mp.setattr("services.dataset_service.db.session.rollback", _rollback_and_mark)
+            mp.setattr(db_session_with_containers, "commit", _raise_commit)
+            mp.setattr(db_session_with_containers, "rollback", _rollback_and_mark)
             with pytest.raises(Exception, match="Database connection error"):
                 DatasetPermissionService.clear_partial_member_list(dataset.id, session=db_session_with_containers)
 

@@ -426,7 +426,7 @@ class TestDatasetServiceUpdateDataset:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model="text-embedding-ada-002",
             )
-            mock_get_binding.assert_called_once_with("openai", "text-embedding-ada-002")
+            mock_get_binding.assert_called_once_with("openai", "text-embedding-ada-002", db_session_with_containers)
             mock_task.delay.assert_called_once_with(dataset.id, "add")
 
         db_session_with_containers.refresh(dataset)
@@ -522,7 +522,7 @@ class TestDatasetServiceUpdateDataset:
                 model_type=ModelType.TEXT_EMBEDDING,
                 model="text-embedding-3-small",
             )
-            mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small")
+            mock_get_binding.assert_called_once_with("openai", "text-embedding-3-small", db_session_with_containers)
             mock_task.delay.assert_called_once_with(dataset.id, "update")
             mock_regenerate_task.delay.assert_called_once_with(
                 dataset.id,
