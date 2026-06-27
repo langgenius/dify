@@ -4,31 +4,35 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
-export type TrialAppDetailResponse = {
+export type AppDetailWithSite = {
   access_mode?: string | null
   api_base_url?: string | null
+  app_id?: string | null
+  bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
-  deleted_tools?: Array<TrialDeletedToolResponse>
+  deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean
   enable_site: boolean
   icon?: string | null
   icon_background?: string | null
-  icon_type?: TrialIconType | null
-  icon_url?: string | null
+  icon_type?: string | null
+  readonly icon_url: string | null
   id: string
+  maintainer?: string | null
   max_active_requests?: number | null
-  mode: TrialAppMode
-  model_config?: TrialAppModelConfigResponse | null
+  mode: string
+  model_config?: ModelConfig | null
   name: string
   permission_keys?: Array<string>
-  site: TrialSiteResponse
-  tags?: Array<TrialTagResponse>
+  site?: AppDetailSiteResponse | null
+  tags?: Array<Tag>
+  tracing?: JsonValue | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
-  workflow?: TrialWorkflowPartialResponse | null
+  workflow?: WorkflowPartial | null
 }
 
 export type AudioTranscriptResponse = {
@@ -46,8 +50,6 @@ export type ChatRequest = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
-
 export type CompletionRequest = {
   files?: Array<unknown> | null
   inputs: {
@@ -59,7 +61,7 @@ export type CompletionRequest = {
 }
 
 export type TrialDatasetListResponse = {
-  data: Array<TrialDatasetResponse>
+  data: Array<TrialDatasetListItemResponse>
   has_more: boolean
   limit: number
   page: number
@@ -112,22 +114,26 @@ export type TextToSpeechRequest = {
 
 export type AudioBinaryResponse = Blob | File
 
-export type TrialWorkflowResponse = {
-  conversation_variables?: Array<JsonObject2>
-  created_at?: number | null
-  created_by?: TrialWorkflowAccount | null
-  environment_variables?: Array<JsonObject2>
-  features?: JsonObject2
-  graph: JsonObject2
-  hash?: string | null
+export type WorkflowResponse = {
+  conversation_variables: Array<WorkflowConversationVariableResponse>
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  environment_variables: Array<WorkflowEnvironmentVariableResponse>
+  features: {
+    [key: string]: unknown
+  }
+  graph: {
+    [key: string]: unknown
+  }
+  hash: string
   id: string
-  marked_comment?: string | null
-  marked_name?: string | null
-  rag_pipeline_variables?: Array<JsonObject2>
-  tool_published?: boolean | null
-  updated_at?: number | null
-  updated_by?: TrialWorkflowAccount | null
-  version?: string | null
+  marked_comment: string
+  marked_name: string
+  rag_pipeline_variables: Array<PipelineVariableResponse>
+  tool_published: boolean
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
 }
 
 export type WorkflowRunRequest = {
@@ -141,44 +147,40 @@ export type SimpleResultResponse = {
   result: string
 }
 
-export type TrialDeletedToolResponse = {
+export type DeletedTool = {
   provider_id: string
   tool_name: string
   type: string
 }
 
-export type TrialIconType = 'emoji' | 'image' | 'link'
-
-export type TrialAppMode = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
-
-export type TrialAppModelConfigResponse = {
-  agent_mode?: TrialAppAgentMode | null
-  annotation_reply?: JsonObject2 | null
-  chat_prompt_config?: JsonObject2 | null
-  completion_prompt_config?: JsonObject2 | null
+export type ModelConfig = {
+  agent_mode?: JsonValue | null
+  annotation_reply?: JsonValue | null
+  chat_prompt_config?: JsonValue | null
+  completion_prompt_config?: JsonValue | null
   created_at?: number | null
   created_by?: string | null
-  dataset_configs?: JsonObject2 | null
+  dataset_configs?: JsonValue | null
   dataset_query_variable?: string | null
-  external_data_tools?: Array<JsonObject2>
-  file_upload?: JsonObject2 | null
-  model?: TrialAppModel | null
-  more_like_this?: JsonObject2 | null
+  external_data_tools?: JsonValue | null
+  file_upload?: JsonValue | null
+  model?: JsonValue | null
+  more_like_this?: JsonValue | null
   opening_statement?: string | null
   pre_prompt?: string | null
   prompt_type?: string | null
-  retriever_resource?: JsonObject2 | null
-  sensitive_word_avoidance?: JsonObject2 | null
-  speech_to_text?: JsonObject2 | null
-  suggested_questions?: Array<string>
-  suggested_questions_after_answer?: JsonObject2 | null
-  text_to_speech?: JsonObject2 | null
+  retriever_resource?: JsonValue | null
+  sensitive_word_avoidance?: JsonValue | null
+  speech_to_text?: JsonValue | null
+  suggested_questions?: JsonValue | null
+  suggested_questions_after_answer?: JsonValue | null
+  text_to_speech?: JsonValue | null
   updated_at?: number | null
   updated_by?: string | null
-  user_input_form?: Array<JsonObject2>
+  user_input_form?: JsonValue | null
 }
 
-export type TrialSiteResponse = {
+export type AppDetailSiteResponse = {
   access_token?: string | null
   app_base_url?: string | null
   chat_color_theme?: string | null
@@ -190,34 +192,26 @@ export type TrialSiteResponse = {
   custom_disclaimer?: string | null
   customize_domain?: string | null
   customize_token_strategy?: string | null
-  default_language: string
+  default_language?: string | null
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: TrialIconType | null
-  icon_url?: string | null
+  icon_type?: string | IconType | null
+  readonly icon_url: string | null
   input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null
-  title: string
+  title?: string | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
 }
 
-export type TrialTagResponse = {
+export type Tag = {
   id: string
   name: string
   type: string
-}
-
-export type TrialWorkflowPartialResponse = {
-  created_at?: number | null
-  created_by?: string | null
-  id: string
-  updated_at?: number | null
-  updated_by?: string | null
 }
 
 export type JsonValue
@@ -231,16 +225,52 @@ export type JsonValue
     | Array<unknown>
     | null
 
-export type TrialDatasetResponse = {
+export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
-  data_source_type?: string | null
-  description?: string | null
   id: string
-  indexing_technique?: string | null
+  updated_at?: number | null
+  updated_by?: string | null
+}
+
+export type TrialDatasetListItemResponse = {
+  app_count: number
+  author_name: string | null
+  built_in_field_enabled: boolean
+  chunk_structure: string | null
+  created_at: number
+  created_by: string
+  data_source_type: string | null
+  description: string | null
+  doc_form: string | null
+  doc_metadata: Array<DatasetDocMetadataResponse>
+  document_count: number
+  embedding_available?: boolean | null
+  embedding_model: string | null
+  embedding_model_provider: string | null
+  enable_api: boolean
+  external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
+  icon_info?: DatasetIconInfoResponse
+  id: string
+  indexing_technique: string | null
+  is_multimodal: boolean
+  is_published: boolean
+  maintainer?: string | null
   name: string
-  permission?: string | null
+  permission: string
   permission_keys?: Array<string>
+  pipeline_id: string | null
+  provider: string
+  retrieval_model_dict: DatasetRetrievalModelResponse
+  runtime_mode: string | null
+  summary_index_setting?: DatasetSummaryIndexSettingResponse
+  tags: Array<DatasetTagResponse>
+  total_available_documents: number
+  total_documents: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
 }
 
 export type JsonObject = {
@@ -255,30 +285,147 @@ export type SystemParameters = {
   workflow_file_upload_limit: number
 }
 
-export type JsonObject2 = {
-  [key: string]: unknown
-}
-
-export type TrialWorkflowAccount = {
-  email?: string | null
+export type WorkflowConversationVariableResponse = {
+  description: string
   id: string
-  name?: string | null
-}
-
-export type TrialAppAgentMode = {
-  enabled?: boolean | null
-  strategy?: string | null
-  tools?: Array<JsonObject2>
-}
-
-export type TrialAppModel = {
-  completion_params?: JsonObject2
-  mode?: string | null
   name: string
-  provider: string
+  value: unknown
+  value_type: string
 }
 
-export type GeneratedAppResponseWritable = JsonValue
+export type SimpleAccountResponse = {
+  email: string
+  id: string
+  name: string
+}
+
+export type WorkflowEnvironmentVariableResponse = {
+  description: string
+  id: string
+  name: string
+  value: unknown
+  value_type: string
+}
+
+export type PipelineVariableResponse = {
+  allowed_file_extensions?: Array<string> | null
+  allowed_file_types?: Array<string> | null
+  allowed_file_upload_methods?: Array<string> | null
+  belong_to_node_id: string
+  default_value?: unknown
+  label: string
+  max_length?: number | null
+  options?: Array<string> | null
+  placeholder?: string | null
+  required: boolean
+  tooltips?: string | null
+  type: string
+  unit?: string | null
+  variable: string
+}
+
+export type IconType = 'emoji' | 'image' | 'link'
+
+export type DatasetDocMetadataResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetExternalKnowledgeInfoResponse = {
+  external_knowledge_api_endpoint?: string | null
+  external_knowledge_api_id?: string | null
+  external_knowledge_api_name?: string | null
+  external_knowledge_id?: string | null
+}
+
+export type DatasetExternalRetrievalModelResponse = {
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k: number
+}
+
+export type DatasetIconInfoResponse = {
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  icon_url?: string | null
+}
+
+export type DatasetRetrievalModelResponse = {
+  reranking_enable: boolean
+  reranking_mode?: string | null
+  reranking_model?: DatasetRerankingModelResponse
+  score_threshold?: number | null
+  score_threshold_enabled: boolean
+  search_method: string
+  top_k: number
+  weights?: DatasetWeightedScoreResponse | null
+}
+
+export type DatasetSummaryIndexSettingResponse = {
+  enable?: boolean | null
+  model_name?: string | null
+  model_provider_name?: string | null
+  summary_prompt?: string | null
+}
+
+export type DatasetTagResponse = {
+  id: string
+  name: string
+  type: string
+}
+
+export type DatasetRerankingModelResponse = {
+  reranking_model_name?: string | null
+  reranking_provider_name?: string | null
+}
+
+export type DatasetWeightedScoreResponse = {
+  keyword_setting?: DatasetKeywordSettingResponse
+  vector_setting?: DatasetVectorSettingResponse
+  weight_type?: string | null
+}
+
+export type DatasetKeywordSettingResponse = {
+  keyword_weight?: number | null
+}
+
+export type DatasetVectorSettingResponse = {
+  embedding_model_name?: string | null
+  embedding_provider_name?: string | null
+  vector_weight?: number | null
+}
+
+export type AppDetailWithSiteWritable = {
+  access_mode?: string | null
+  api_base_url?: string | null
+  app_id?: string | null
+  bound_agent_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  deleted_tools?: Array<DeletedTool>
+  description?: string | null
+  enable_api: boolean
+  enable_site: boolean
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | null
+  id: string
+  maintainer?: string | null
+  max_active_requests?: number | null
+  mode: string
+  model_config?: ModelConfig | null
+  name: string
+  permission_keys?: Array<string>
+  site?: AppDetailSiteResponseWritable | null
+  tags?: Array<Tag>
+  tracing?: JsonValue | null
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
+  workflow?: WorkflowPartial | null
+}
 
 export type SiteWritable = {
   chat_color_theme?: string | null
@@ -297,6 +444,33 @@ export type SiteWritable = {
   use_icon_as_answer_icon: boolean
 }
 
+export type AppDetailSiteResponseWritable = {
+  access_token?: string | null
+  app_base_url?: string | null
+  chat_color_theme?: string | null
+  chat_color_theme_inverted?: boolean | null
+  code?: string | null
+  copyright?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  custom_disclaimer?: string | null
+  customize_domain?: string | null
+  customize_token_strategy?: string | null
+  default_language?: string | null
+  description?: string | null
+  icon?: string | null
+  icon_background?: string | null
+  icon_type?: string | IconType | null
+  input_placeholder?: string | null
+  privacy_policy?: string | null
+  prompt_public?: boolean | null
+  show_workflow_steps?: boolean | null
+  title?: string | null
+  updated_at?: number | null
+  updated_by?: string | null
+  use_icon_as_answer_icon?: boolean | null
+}
+
 export type GetTrialAppsByAppIdData = {
   body?: never
   path: {
@@ -307,7 +481,7 @@ export type GetTrialAppsByAppIdData = {
 }
 
 export type GetTrialAppsByAppIdResponses = {
-  200: TrialAppDetailResponse
+  200: AppDetailWithSite
 }
 
 export type GetTrialAppsByAppIdResponse
@@ -339,7 +513,9 @@ export type PostTrialAppsByAppIdChatMessagesData = {
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdChatMessagesResponse
@@ -355,7 +531,9 @@ export type PostTrialAppsByAppIdCompletionMessagesData = {
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdCompletionMessagesResponse
@@ -456,7 +634,7 @@ export type GetTrialAppsByAppIdWorkflowsData = {
 }
 
 export type GetTrialAppsByAppIdWorkflowsResponses = {
-  200: TrialWorkflowResponse
+  200: WorkflowResponse
 }
 
 export type GetTrialAppsByAppIdWorkflowsResponse
@@ -472,7 +650,9 @@ export type PostTrialAppsByAppIdWorkflowsRunData = {
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostTrialAppsByAppIdWorkflowsRunResponse
