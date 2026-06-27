@@ -3,7 +3,8 @@ from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from flask import Flask
+from flask import Flask, Response, g
+from flask_restx import Api
 
 from controllers.console.workspace.account import (
     AccountDeleteUpdateFeedbackApi,
@@ -663,6 +664,41 @@ class TestAccountDeletionFeedback:
 
 
 class TestCheckEmailUnique:
+    @patch("controllers.console.workspace.account.AccountService.check_email_unique")
+    @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
+    @patch("controllers.console.wraps.db")
+    def test_should_reject_anonymous_callers_before_email_uniqueness_check(
+        self,
+        mock_setup_db: MagicMock,
+        mock_is_freeze: MagicMock,
+        mock_check_unique: MagicMock,
+    ):
+        flask_app = Flask(__name__)
+        flask_app.config["TESTING"] = True
+        flask_app.config["RESTX_MASK_HEADER"] = "X-Fields"
+        flask_app.login_manager = SimpleNamespace(  # type: ignore[attr-defined]
+            load_user_from_request_context=lambda: setattr(g, "_login_user", None),
+            unauthorized=lambda: Response(
+                '{"code":"unauthorized","message":"Unauthorized."}',
+                status=401,
+                content_type="application/json",
+            ),
+        )
+        api = Api(flask_app)
+        api.add_resource(CheckEmailUnique, "/account/change-email/check-email-unique")
+        mock_setup_db.session.scalar.return_value = object()
+        mock_is_freeze.return_value = False
+        mock_check_unique.return_value = True
+
+        response = flask_app.test_client().post(
+            "/account/change-email/check-email-unique",
+            json={"email": "known@example.com"},
+        )
+
+        assert response.status_code == 401
+        mock_is_freeze.assert_not_called()
+        mock_check_unique.assert_not_called()
+
     @patch("controllers.console.workspace.account.AccountService.check_email_unique")
     @patch("controllers.console.workspace.account.AccountService.is_account_in_freeze")
     def test_should_normalize_email(self, mock_is_freeze: MagicMock, mock_check_unique: MagicMock, app: Flask):

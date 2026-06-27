@@ -1,7 +1,7 @@
 import json
 from datetime import datetime, timedelta
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
@@ -250,6 +250,43 @@ class TestAccountService:
         assert result == mock_account
         assert mock_account.status == "active"
         self._assert_database_operations_called(mock_db_dependencies["db"])
+
+    # ==================== Console Session Token Tests ====================
+
+    @patch("services.account_service.redis_client")
+    @patch("services.account_service.generate_csrf_token")
+    @patch("services.account_service.PassportService")
+    def test_login_binds_access_and_csrf_tokens_to_server_side_session(
+        self,
+        mock_passport_service: MagicMock,
+        mock_generate_csrf_token: MagicMock,
+        mock_redis_client: MagicMock,
+        mock_db_dependencies,
+    ):
+        """Access and CSRF tokens must carry a revocable session id."""
+        mock_account = TestAccountAssociatedDataFactory.create_account_mock()
+        mock_passport_service.return_value.issue.return_value = "access-token"
+        mock_generate_csrf_token.return_value = "csrf-token"
+
+        token_pair = AccountService.login(account=mock_account, session=mock_db_dependencies["db"].session)
+
+        assert token_pair.access_token == "access-token"
+        assert token_pair.csrf_token == "csrf-token"
+        mock_passport_service.return_value.issue.assert_called_once()
+        access_payload = mock_passport_service.return_value.issue.call_args.args[0]
+        assert access_payload["session_id"]
+        mock_generate_csrf_token.assert_called_once_with(mock_account.id, session_id=access_payload["session_id"])
+        mock_redis_client.setex.assert_any_call(ANY, ANY, mock_account.id)
+
+    @patch("services.account_service.redis_client")
+    def test_logout_deletes_current_console_session(self, mock_redis_client: MagicMock):
+        """Logging out must invalidate the session that existing access tokens reference."""
+        account = TestAccountAssociatedDataFactory.create_account_mock()
+        mock_redis_client.get.side_effect = [b"refresh-token", b"session-id"]
+
+        AccountService.logout(account=account)
+
+        assert mock_redis_client.delete.call_args_list[-1].args == (f"account_session:{account.id}",)
 
     # ==================== Account Creation Tests ====================
 

@@ -128,7 +128,10 @@ class TokenPair(BaseModel):
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
 ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
+CONSOLE_SESSION_PREFIX = "console_session:"
+ACCOUNT_SESSION_PREFIX = "account_session:"
 REFRESH_TOKEN_EXPIRY = timedelta(days=dify_config.REFRESH_TOKEN_EXPIRE_DAYS)
+ACCESS_TOKEN_EXPIRY = timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
 ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX = "account_last_active_refresh:"
 ACCOUNT_LAST_ACTIVE_REFRESH_INTERVAL = timedelta(minutes=10)
 
@@ -155,6 +158,7 @@ class AccountService:
     CHANGE_EMAIL_MAX_ERROR_LIMITS = 5
     OWNER_TRANSFER_MAX_ERROR_LIMITS = 5
     EMAIL_REGISTER_MAX_ERROR_LIMITS = 5
+    EMAIL_CODE_LOGIN_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def _resolve_legacy_role_id(tenant_id: str, account_id: str, role: TenantAccountRole) -> str:
@@ -226,6 +230,14 @@ class AccountService:
         return f"{ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
 
     @staticmethod
+    def _get_console_session_key(session_id: str) -> str:
+        return f"{CONSOLE_SESSION_PREFIX}{session_id}"
+
+    @staticmethod
+    def _get_account_session_key(account_id: str) -> str:
+        return f"{ACCOUNT_SESSION_PREFIX}{account_id}"
+
+    @staticmethod
     def _get_account_last_active_refresh_key(account_id: str) -> str:
         return f"{ACCOUNT_LAST_ACTIVE_REFRESH_PREFIX}{account_id}"
 
@@ -270,6 +282,28 @@ class AccountService:
     def _delete_refresh_token(refresh_token: str, account_id: str):
         redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
         redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
+
+    @staticmethod
+    def _store_console_session(session_id: str, account_id: str) -> None:
+        redis_client.setex(AccountService._get_console_session_key(session_id), ACCESS_TOKEN_EXPIRY, account_id)
+        redis_client.setex(AccountService._get_account_session_key(account_id), ACCESS_TOKEN_EXPIRY, session_id)
+
+    @staticmethod
+    def _delete_console_session(account_id: str) -> None:
+        session_id = redis_client.get(AccountService._get_account_session_key(account_id))
+        if session_id:
+            redis_client.delete(AccountService._get_console_session_key(session_id.decode("utf-8")))
+        redis_client.delete(AccountService._get_account_session_key(account_id))
+
+    @staticmethod
+    @redis_fallback(default_return=False)
+    def is_console_session_valid(account_id: str, session_id: str | None) -> bool:
+        if not session_id:
+            return False
+
+        session_account_id = redis_client.get(AccountService._get_console_session_key(session_id))
+        account_session_id = redis_client.get(AccountService._get_account_session_key(account_id))
+        return session_account_id == account_id.encode("utf-8") and account_session_id == session_id.encode("utf-8")
 
     @staticmethod
     def get_account_by_email(session: Session | scoped_session, email: str) -> Account | None:
@@ -345,11 +379,16 @@ class AccountService:
         return account
 
     @staticmethod
-    def get_account_jwt_token(account: Account) -> str:
+    def get_account_jwt_token(account: Account, session_id: str | None = None) -> str:
+        if session_id is None:
+            session_id = str(uuid.uuid4())
+            AccountService._store_console_session(session_id, account.id)
+
         exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
         exp = int(exp_dt.timestamp())
         payload = {
             "user_id": account.id,
+            "session_id": session_id,
             "exp": exp,
             "iss": dify_config.EDITION,
             "sub": "Console API Passport",
@@ -633,9 +672,11 @@ class AccountService:
             account.status = AccountStatus.ACTIVE
             session.commit()
 
-        access_token = AccountService.get_account_jwt_token(account=account)
+        session_id = str(uuid.uuid4())
+        AccountService._store_console_session(session_id, account.id)
+        access_token = AccountService.get_account_jwt_token(account=account, session_id=session_id)
         refresh_token = _generate_refresh_token()
-        csrf_token = generate_csrf_token(account.id)
+        csrf_token = generate_csrf_token(account.id, session_id=session_id)
 
         AccountService._store_refresh_token(refresh_token, account.id)
 
@@ -646,6 +687,7 @@ class AccountService:
         refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account.id))
         if refresh_token:
             AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
+        AccountService._delete_console_session(account.id)
 
     @staticmethod
     def refresh_token(refresh_token: str, *, session: scoped_session | Session) -> TokenPair:
@@ -658,18 +700,24 @@ class AccountService:
         if not account:
             raise ValueError("Invalid account")
 
+        AccountService._delete_console_session(account.id)
+
         # Generate new access token and refresh token
-        new_access_token = AccountService.get_account_jwt_token(account)
+        session_id = str(uuid.uuid4())
+        AccountService._store_console_session(session_id, account.id)
+        new_access_token = AccountService.get_account_jwt_token(account, session_id=session_id)
         new_refresh_token = _generate_refresh_token()
 
         AccountService._delete_refresh_token(refresh_token, account.id)
         AccountService._store_refresh_token(new_refresh_token, account.id)
-        csrf_token = generate_csrf_token(account.id)
+        csrf_token = generate_csrf_token(account.id, session_id=session_id)
 
         return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token, csrf_token=csrf_token)
 
     @staticmethod
-    def load_logged_in_account(*, account_id: str, session: scoped_session | Session):
+    def load_logged_in_account(*, account_id: str, session_id: str | None = None, session: scoped_session | Session):
+        if not AccountService.is_console_session_valid(account_id, session_id):
+            raise Unauthorized("Invalid Authorization token.")
         return AccountService.load_user(account_id, session)
 
     @classmethod
@@ -1020,6 +1068,35 @@ class AccountService:
     @classmethod
     def revoke_email_code_login_token(cls, token: str):
         TokenManager.revoke_token(token, "email_code_login")
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def add_email_code_login_error_rate_limit(email: str) -> None:
+        key = f"email_code_login_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            count = 0
+        count = int(count) + 1
+        redis_client.setex(key, dify_config.LOGIN_LOCKOUT_DURATION, count)
+
+    @staticmethod
+    @redis_fallback(default_return=False)
+    def is_email_code_login_error_rate_limit(email: str) -> bool:
+        key = f"email_code_login_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            return False
+
+        count = int(count)
+        if count > AccountService.EMAIL_CODE_LOGIN_MAX_ERROR_LIMITS:
+            return True
+        return False
+
+    @staticmethod
+    @redis_fallback(default_return=None)
+    def reset_email_code_login_error_rate_limit(email: str) -> None:
+        key = f"email_code_login_error_rate_limit:{email}"
+        redis_client.delete(key)
 
     @classmethod
     def get_user_through_email(cls, email: str, *, session: scoped_session | Session):
