@@ -252,6 +252,7 @@ export function useAgentConfigureBuildDraftActions({
 
   return {
     applyBuildDraft,
+    cancelBuildDraftRefresh,
     discardBuildDraft,
     isApplyingBuildDraft,
     isDiscardingBuildDraft,

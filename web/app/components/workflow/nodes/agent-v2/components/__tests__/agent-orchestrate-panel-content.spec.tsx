@@ -474,6 +474,40 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       })).toBeEnabled()
     })
 
+    it('should not let a previous inline build completion refresh unlock a new build run', async () => {
+      mocks.loadBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Build draft prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      await screen.findByRole('region', { name: 'build-draft-bar' })
+      const initialBuildDraftLoadCount = mocks.loadBuildDraft.mock.calls.length
+
+      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
+      await waitFor(() => expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled())
+
+      vi.useFakeTimers()
+      fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await act(async () => {
+        await Promise.resolve()
+      })
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000)
+      })
+
+      expect(mocks.loadBuildDraft).toHaveBeenCalledTimes(initialBuildDraftLoadCount)
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
+    })
+
     it('should refresh the inline build debug conversation when restarting after a build send', async () => {
       mocks.loadBuildDraft
         .mockRejectedValueOnce(new Response(null, { status: 404 }))

@@ -333,6 +333,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     },
     setSoulSourceOverride: buildDraft.setSoulSourceOverride,
   })
+  const { cancelBuildDraftRefresh } = buildDraftActions
   const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: {
@@ -348,6 +349,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     currentModel,
   }), [agentSoulConfig, currentModel, jotaiStore])
   const prepareInlineBuildDraftBeforeRun = useCallback(async () => {
+    cancelBuildDraftRefresh()
     const configSnapshot = getInlineAgentSoulDraft()
     const savedComposerState = await saveDraft()
     const preparedAgentSoulConfig = savedComposerState?.agent_soul ?? configSnapshot
@@ -367,8 +369,9 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     rebaseComposerDraftFromSoulConfig(savedBuildAgentSoulConfig)
     buildDraft.setSoulSourceOverride('build-draft')
     return savedBuildAgentSoulConfig
-  }, [agentId, buildDraft, buildDraftQueryOptions.queryKey, getInlineAgentSoulDraft, queryClient, rebaseComposerDraftFromSoulConfig, saveBuildDraft, saveDraft])
+  }, [agentId, buildDraft, buildDraftQueryOptions.queryKey, cancelBuildDraftRefresh, getInlineAgentSoulDraft, queryClient, rebaseComposerDraftFromSoulConfig, saveBuildDraft, saveDraft])
   const applyInlineBuildDraft = async () => {
+    cancelBuildDraftRefresh()
     setIsApplyingInlineBuildDraft(true)
     try {
       if (!buildDraft.agentSoulConfig)
@@ -396,6 +399,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     }
   }
   const discardInlineBuildDraft = async () => {
+    cancelBuildDraftRefresh()
     try {
       await discardBuildDraftMutation.mutateAsync({
         params: {
