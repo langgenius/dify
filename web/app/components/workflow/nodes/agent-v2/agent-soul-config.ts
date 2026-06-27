@@ -143,10 +143,16 @@ export function useWorkflowInlineAgentConfigureSync({
   const saveDraft = useCallback(async () => {
     if (!enabledRef.current)
       return
+    if (!store.get(isAgentComposerDirtyAtom))
+      return
 
     debouncedSaveDraft.cancel?.()
     return saveComposer(getAgentSoulDraft())
-  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer])
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
+  const saveAgentSoulConfig = useCallback(async (agentSoulConfig: AgentSoulConfig) => {
+    debouncedSaveDraft.cancel?.()
+    return saveComposer(agentSoulConfig)
+  }, [debouncedSaveDraft, saveComposer])
 
   useEffect(() => {
     return store.sub(agentComposerDraftAtom, () => {
@@ -175,6 +181,7 @@ export function useWorkflowInlineAgentConfigureSync({
 
   return {
     draftSavedAt,
+    saveAgentSoulConfig,
     saveDraft,
   }
 }

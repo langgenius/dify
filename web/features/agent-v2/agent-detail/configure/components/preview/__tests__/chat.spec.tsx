@@ -18,23 +18,36 @@ const chatMessagesGetMock = vi.hoisted(() => vi.fn())
 const suggestedQuestionsGetMock = vi.hoisted(() => vi.fn())
 const stopPostMock = vi.hoisted(() => vi.fn())
 
-vi.mock('@/next/dynamic', () => ({
-  default: () => function MockChat(props: {
-    onSend: (message: string) => void
-    onStopResponding: () => void
-  }) {
-    return (
-      <div>
-        <button type="button" onClick={() => props.onSend('hello')}>
-          send
-        </button>
-        <button type="button" onClick={props.onStopResponding}>
-          stop
-        </button>
-      </div>
-    )
-  },
-}))
+vi.mock('@/next/dynamic', async () => {
+  const { useState } = await import('react')
+
+  return {
+    default: () => function MockChat(props: {
+      onSend: (message: string) => void
+      onStopResponding: () => void
+    }) {
+      const [sent, setSent] = useState(false)
+
+      return (
+        <div>
+          <span>{`sessionSent:${sent ? 'yes' : 'no'}`}</span>
+          <button
+            type="button"
+            onClick={() => {
+              setSent(true)
+              props.onSend('hello')
+            }}
+          >
+            send
+          </button>
+          <button type="button" onClick={props.onStopResponding}>
+            stop
+          </button>
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('@/app/components/base/chat/chat/hooks', () => ({
   useChat: useChatMock.mockImplementation((
@@ -342,6 +355,7 @@ describe('AgentPreviewChat', () => {
     })
 
     expect(screen.getByRole('button', { name: 'send' })).toBeInTheDocument()
+    expect(screen.getByText('sessionSent:yes')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 

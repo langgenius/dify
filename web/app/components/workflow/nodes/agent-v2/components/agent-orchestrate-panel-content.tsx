@@ -8,24 +8,37 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { skipToken, useQuery } from '@tanstack/react-query'
-import { useAtom } from 'jotai'
-import { useState } from 'react'
+import { toast } from '@langgenius/dify-ui/toast'
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { ScopeProvider } from 'jotai-scope'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
+import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configure/components/orchestrate'
+import { AgentBuildDraftBar } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar'
 import { AgentBuildPanelBackground } from '@/features/agent-v2/agent-detail/configure/components/preview/build-background'
-import { AgentBuildChat } from '@/features/agent-v2/agent-detail/configure/components/preview/build-chat'
 import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
+import { AgentConfigureRightPanelChat } from '@/features/agent-v2/agent-detail/configure/components/preview/right-panel-chat'
 import { useAgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/use-working-directory-panel'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from '@/features/agent-v2/agent-detail/configure/components/workspace'
-import { useAgentPreviewSoulConfig } from '@/features/agent-v2/agent-detail/configure/hooks'
-import { usePrepareAgentBuildDraftBeforeRun } from '@/features/agent-v2/agent-detail/configure/use-agent-build-draft-run'
+import {
+  agentConfigureBuildDraftActionsDisabledAtom,
+  agentConfigureClearPreviewChatAtom,
+  agentConfigureConversationIdsAtom,
+  agentConfigureRightPanelChatModeAtom,
+  agentConfigureScopedAtoms,
+  agentConfigureSoulSourceOverrideAtom,
+  resetAgentConfigureConversationAtom,
+  setAgentConfigureConversationIdAtom,
+} from '@/features/agent-v2/agent-detail/configure/state'
+import { useAgentConfigureBuildDraftActions, useAgentConfigureBuildDraftData } from '@/features/agent-v2/agent-detail/configure/use-agent-configure-build-draft'
 import { consoleQuery } from '@/service/client'
 import { useWorkflowInlineAgentConfigureSync } from '../agent-soul-config'
 
@@ -150,19 +163,63 @@ export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgent
     )
   }
 
-  const composerSessionKey = `${nodeId}:${agentId}:${activeConfigSnapshot?.id ?? 'draft'}`
+  const composerSessionKey = `${nodeId}:${agentId}`
+
+  return (
+    <ScopeProvider key={composerSessionKey} atoms={agentConfigureScopedAtoms} name="WorkflowInlineAgentConfigure">
+      <WorkflowInlineAgentConfigureWorkspaceComposerScope
+        {...props}
+        activeConfigSnapshot={activeConfigSnapshot}
+        agentId={agentId}
+        agentSoulConfig={agentSoulConfig}
+      />
+    </ScopeProvider>
+  )
+}
+
+function WorkflowInlineAgentConfigureWorkspaceComposerScope({
+  agentId,
+  agentSoulConfig,
+  activeConfigSnapshot,
+  ...props
+}: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  agentId: string
+  agentSoulConfig: AgentSoulConfig
+}) {
+  const soulSourceOverride = useAtomValue(agentConfigureSoulSourceOverrideAtom)
+  const setSoulSourceOverride = useSetAtom(agentConfigureSoulSourceOverrideAtom)
+  const buildDraft = useAgentConfigureBuildDraftData({
+    agentId,
+    activeVersionId: activeConfigSnapshot?.id,
+    composerAgentSoulConfig: agentSoulConfig,
+    isViewingVersion: false,
+    normalAgentSoulConfig: agentSoulConfig,
+    setSoulSourceOverride,
+    soulSourceOverride,
+  })
+  const composerSessionKey = `${props.nodeId}:${agentId}`
+
+  if (buildDraft.isPending) {
+    return (
+      <div className="flex h-full min-h-80 items-center justify-center bg-components-panel-bg">
+        <Loading type="app" />
+      </div>
+    )
+  }
 
   return (
     <AgentComposerProvider
       key={composerSessionKey}
-      initialDraft={agentSoulConfigToFormState(agentSoulConfig)}
-      initialOriginalConfig={agentSoulConfig}
+      initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
+      initialOriginalConfig={buildDraft.agentSoulConfig}
     >
       <WorkflowInlineAgentConfigureWorkspaceContent
         {...props}
         activeConfigSnapshot={activeConfigSnapshot}
         agentId={agentId}
         agentSoulConfig={agentSoulConfig}
+        buildDraft={buildDraft}
       />
     </AgentComposerProvider>
   )
@@ -173,6 +230,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   agentId,
   agentSoulConfig,
   appId,
+  buildDraft,
   inlineComposerState,
   nodeId,
   onClose,
@@ -183,14 +241,25 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig: AgentSoulConfig
+  buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
 }) {
   const { t } = useTranslation()
-  const [clearChatList, setClearChatList] = useState(false)
-  const [conversationId, setConversationId] = useState<string | null>(null)
+  const { t: tCommon } = useTranslation('common')
+  const queryClient = useQueryClient()
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
   const composerState = inlineComposerState
+  const buildDraftActionsDisabled = useAtomValue(agentConfigureBuildDraftActionsDisabledAtom)
+  const clearPreviewChat = useAtomValue(agentConfigureClearPreviewChatAtom)
+  const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
+  const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
+  const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
+  const setBuildDraftActionsDisabled = useSetAtom(agentConfigureBuildDraftActionsDisabledAtom)
+  const setClearPreviewChat = useSetAtom(agentConfigureClearPreviewChatAtom)
+  const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
+  const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
   const { currentModel, setConfigureModel, textGenerationModelList } = useAgentOrchestrateModelOptions()
-  const { draftSavedAt, saveDraft } = useWorkflowInlineAgentConfigureSync({
+  const [isApplyingInlineBuildDraft, setIsApplyingInlineBuildDraft] = useState(false)
+  const { draftSavedAt, saveAgentSoulConfig, saveDraft } = useWorkflowInlineAgentConfigureSync({
     nodeId,
     baseConfig: agentSoulConfig,
     currentModel,
@@ -206,14 +275,97 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 
       onSaved?.(binding)
     },
-    enabled: open && !!agentSoulConfig,
+    enabled: open && !!agentSoulConfig && !buildDraft.isActive,
   })
-  const buildDraftRun = usePrepareAgentBuildDraftBeforeRun({
+  const resetBuildChatSession = useCallback(async () => {
+    setConversationId({ mode: 'build', conversationId: null })
+    setClearPreviewChat(true)
+  }, [setClearPreviewChat, setConversationId])
+  const rebaseComposerDraftFromSoulConfig = useCallback((agentSoulConfig?: AgentSoulConfig) => {
+    rebaseComposerDraft({
+      draft: agentSoulConfigToFormState(agentSoulConfig),
+      originalConfig: agentSoulConfig,
+    })
+  }, [rebaseComposerDraft])
+  const buildDraftActions = useAgentConfigureBuildDraftActions({
     agentId,
-    isBuildDraftActive: false,
-    saveDraft,
+    isActive: buildDraft.isActive,
+    normalAgentSoulConfig: agentSoulConfig,
+    rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
+    refetchBuildDraft: buildDraft.refetch,
+    refetchComposer: async () => ({
+      data: {
+        agent_soul: agentSoulConfig,
+      },
+    }),
+    resetBuildChatSession,
+    saveDraft: async () => {
+      await saveDraft()
+    },
+    setSoulSourceOverride: buildDraft.setSoulSourceOverride,
   })
-  const previewAgentSoulConfig = useAgentPreviewSoulConfig(agentSoulConfig as AgentSoulConfig | undefined)
+  const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+    input: {
+      params: {
+        agent_id: agentId,
+      },
+    },
+  })
+  const discardBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions())
+  const applyInlineBuildDraft = async () => {
+    setIsApplyingInlineBuildDraft(true)
+    try {
+      if (!buildDraft.agentSoulConfig)
+        return
+
+      const savedComposerState = await saveAgentSoulConfig(buildDraft.agentSoulConfig)
+      await discardBuildDraftMutation.mutateAsync({
+        params: {
+          agent_id: agentId,
+        },
+      })
+      await resetBuildChatSession().catch(() => undefined)
+      buildDraft.setSoulSourceOverride('draft')
+      queryClient.removeQueries({
+        queryKey: buildDraftQueryOptions.queryKey,
+      })
+      rebaseComposerDraftFromSoulConfig(savedComposerState?.agent_soul ?? buildDraft.agentSoulConfig)
+      toast.success(tCommon('api.actionSuccess'))
+    }
+    catch {
+      toast.error(tCommon('api.actionFailed'))
+    }
+    finally {
+      setIsApplyingInlineBuildDraft(false)
+    }
+  }
+  const discardInlineBuildDraft = async () => {
+    try {
+      await discardBuildDraftMutation.mutateAsync({
+        params: {
+          agent_id: agentId,
+        },
+      })
+      await resetBuildChatSession().catch(() => undefined)
+      buildDraft.setSoulSourceOverride('draft')
+      queryClient.removeQueries({
+        queryKey: buildDraftQueryOptions.queryKey,
+      })
+      rebaseComposerDraftFromSoulConfig(agentSoulConfig)
+      toast.success(tCommon('api.actionSuccess'))
+    }
+    catch {
+      toast.error(tCommon('api.actionFailed'))
+    }
+  }
+  const restartCurrentChat = () => {
+    if (buildDraft.isActive) {
+      void discardInlineBuildDraft()
+      return
+    }
+
+    resetConversation(rightPanelChatMode)
+  }
 
   return (
     <AgentConfigureWorkspace
@@ -224,12 +376,30 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           appId={appId}
           nodeId={nodeId}
           activeConfigSnapshot={activeConfigSnapshot}
-          agentSoulConfig={agentSoulConfig}
+          agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}
           textGenerationModelList={textGenerationModelList}
           draftSavedAt={draftSavedAt}
+          readOnly={buildDraft.isActive}
+          isBuildDraftActive={buildDraft.isActive}
           showPublishBar={false}
+          bottomAction={buildDraft.isActive
+            ? (
+                <AgentBuildDraftBar
+                  changesCount={buildDraft.changesCount}
+                  disabled={buildDraftActionsDisabled}
+                  isApplying={isApplyingInlineBuildDraft}
+                  isDiscarding={discardBuildDraftMutation.isPending}
+                  onApply={() => {
+                    void applyInlineBuildDraft()
+                  }}
+                  onDiscard={() => {
+                    void discardInlineBuildDraft()
+                  }}
+                />
+              )
+            : undefined}
           headerAction={onSaveInlineToRoster
             ? <WorkflowInlineAgentConfigureMoreAction onSaveInlineToRoster={onSaveInlineToRoster} />
             : undefined}
@@ -252,10 +422,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onModeChange={() => undefined}
               onToggleChatFeatures={() => undefined}
               onOpenWorkingDirectory={workingDirectoryPanel.openWorkingDirectory}
-              onRefresh={() => {
-                setConversationId(null)
-                setClearChatList(true)
-              }}
+              onRefresh={restartCurrentChat}
+              refreshDisabled={discardBuildDraftMutation.isPending}
               showChatFeaturesAction={false}
               trailingAction={(
                 <button
@@ -270,19 +438,35 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
             />
           )}
           chat={(
-            <AgentBuildChat
+            <AgentConfigureRightPanelChat
               agentId={agentId}
               agentIcon={composerState?.agent?.icon}
               agentIconBackground={composerState?.agent?.icon_background}
-              agentIconType={composerState?.agent?.icon_type as Parameters<typeof AgentBuildChat>[0]['agentIconType']}
+              agentIconType={composerState?.agent?.icon_type as Parameters<typeof AgentConfigureRightPanelChat>[0]['agentIconType']}
               agentName={composerState?.agent?.name}
-              agentSoulConfig={previewAgentSoulConfig}
-              clearChatList={clearChatList}
-              conversationId={conversationId}
+              agentSoulConfig={buildDraft.agentSoulConfig}
+              clearChatList={clearPreviewChat}
+              conversationIds={conversationIds}
               draftType="debug_build"
-              onClearChatListChange={setClearChatList}
-              onConversationIdChange={setConversationId}
-              onSaveDraftBeforeRun={buildDraftRun.prepareBuildDraftBeforeRun}
+              mode={rightPanelChatMode}
+              onClearChatListChange={setClearPreviewChat}
+              onConversationComplete={(mode) => {
+                if (mode === 'build')
+                  buildDraftActions.refreshBuildDraftAfterBuildChat(() => setBuildDraftActionsDisabled(false))
+              }}
+              onConversationIdChange={(mode, conversationId) => {
+                setConversationId({ mode, conversationId })
+              }}
+              onSaveDraftBeforeRun={async () => {
+                setBuildDraftActionsDisabled(true)
+                try {
+                  await buildDraftActions.prepareBuildDraftBeforeRun()
+                }
+                catch (error) {
+                  setBuildDraftActionsDisabled(false)
+                  throw error
+                }
+              }}
             />
           )}
         />
