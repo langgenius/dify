@@ -1,4 +1,3 @@
-from sqlalchemy.orm import scoped_session
 import base64
 import hashlib
 import hmac
@@ -15,7 +14,7 @@ from uuid import uuid4
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, select
-from sqlalchemy.orm import Mapped, Session, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column, scoped_session
 
 from configs import dify_config
 from core.rag.entities import ParentMode, Rule

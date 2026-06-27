@@ -1,4 +1,3 @@
-from sqlalchemy.orm import scoped_session
 import base64
 import hashlib
 import json
@@ -16,7 +15,7 @@ from Crypto.Util.Padding import pad, unpad
 from flask_login import current_user
 from pydantic import BaseModel
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from core.file import remote_fetcher
 from core.helper.name_generator import generate_incremental_name

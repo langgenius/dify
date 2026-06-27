@@ -1,6 +1,5 @@
 from flask_restx import Resource
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
