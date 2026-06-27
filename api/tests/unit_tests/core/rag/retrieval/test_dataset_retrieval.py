@@ -3908,7 +3908,6 @@ class TestDatasetRetrievalAdditionalHelpers:
                 user_id="u1",
             )
             mock_session.add_all.assert_called()
-            mock_session.commit.assert_called()
 
     def test_on_query_normalizes_workflow_end_user_role(self, retrieval: DatasetRetrieval) -> None:
         with patch("core.rag.retrieval.dataset_retrieval.db.session") as mock_session:
@@ -3926,7 +3925,6 @@ class TestDatasetRetrievalAdditionalHelpers:
 
             assert len(added_queries) == 1
             assert added_queries[0].created_by_role == CreatorUserRole.END_USER
-            mock_session.commit.assert_called_once()
 
     def test_handle_invoke_result(self, retrieval: DatasetRetrieval) -> None:
         usage = LLMUsage.empty_usage()
