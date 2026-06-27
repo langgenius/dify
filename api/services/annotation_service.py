@@ -313,7 +313,11 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        annotation = session.get(MessageAnnotation, annotation_id)
+        annotation = session.scalar(
+            select(MessageAnnotation)
+            .where(MessageAnnotation.id == annotation_id, MessageAnnotation.app_id == app.id)
+            .limit(1)
+        )
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -357,7 +361,11 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        annotation = session.get(MessageAnnotation, annotation_id)
+        annotation = session.scalar(
+            select(MessageAnnotation)
+            .where(MessageAnnotation.id == annotation_id, MessageAnnotation.app_id == app.id)
+            .limit(1)
+        )
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -397,7 +405,7 @@ class AppAnnotationService:
         annotations_to_delete = db.session.execute(
             select(MessageAnnotation, AppAnnotationSetting)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .where(MessageAnnotation.id.in_(annotation_ids))
+            .where(MessageAnnotation.id.in_(annotation_ids), MessageAnnotation.app_id == app.id)
         ).all()
 
         if not annotations_to_delete:
@@ -420,7 +428,9 @@ class AppAnnotationService:
 
         # Step 4: Bulk delete annotations in a single query
         delete_result = db.session.execute(
-            delete(MessageAnnotation).where(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            delete(MessageAnnotation).where(
+                MessageAnnotation.id.in_(annotation_ids_to_delete), MessageAnnotation.app_id == app.id
+            )
         )
         deleted_count = getattr(delete_result, "rowcount", 0)
 

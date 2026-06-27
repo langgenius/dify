@@ -10,6 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas as pd
 import pytest
+from sqlalchemy.sql import Select
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
@@ -44,6 +45,7 @@ def _make_message(message_id: str = "msg-1", app_id: str = "app-1") -> MagicMock
 def _make_annotation(annotation_id: str = "ann-1") -> MagicMock:
     annotation = MagicMock(spec=MessageAnnotation)
     annotation.id = annotation_id
+    annotation.app_id = "app-1"
     annotation.content = ""
     annotation.question = ""
     annotation.question_text = ""
@@ -64,6 +66,10 @@ def _make_setting(setting_id: str = "setting-1", with_detail: bool = True) -> Ma
 
 def _make_file(content: bytes) -> FileStorage:
     return FileStorage(stream=BytesIO(content))
+
+
+def _compiled_sql(statement: Select[Any]) -> str:
+    return str(statement.compile(compile_kwargs={"literal_binds": True}))
 
 
 class TestAppAnnotationServiceUpInsert:
@@ -541,12 +547,34 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = None
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
                 AppAnnotationService.update_app_annotation_directly(args, app.id, "ann-1", mock_db.session)
+
+    def test_update_app_annotation_directly_should_reject_annotation_from_another_app(self) -> None:
+        """Test update treats cross-app annotation IDs as not found."""
+        # Arrange
+        args = {"answer": "hello", "question": "q1"}
+        tenant_id = "tenant-1"
+        app = _make_app(app_id="app-a")
+        other_annotation = _make_annotation("ann-1")
+        other_annotation.app_id = "app-b"
+
+        with (
+            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
+            patch("services.annotation_service.db") as mock_db,
+        ):
+            mock_db.session.scalar.side_effect = [app, None]
+            mock_db.session.get.return_value = other_annotation
+
+            # Act & Assert
+            with pytest.raises(NotFound):
+                AppAnnotationService.update_app_annotation_directly(args, app.id, other_annotation.id, mock_db.session)
+            assert other_annotation.content == ""
+            assert other_annotation.question == ""
+            mock_db.session.commit.assert_not_called()
 
     def test_update_app_annotation_directly_should_raise_not_found_when_app_missing(self) -> None:
         """Test missing app raises NotFound in update path."""
@@ -576,8 +604,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = annotation
+            mock_db.session.scalar.side_effect = [app, annotation]
 
             # Act & Assert
             with pytest.raises(ValueError):
@@ -598,8 +625,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.update_annotation_to_index_task") as mock_task,
         ):
-            mock_db.session.scalar.side_effect = [app, setting]
-            mock_db.session.get.return_value = annotation
+            mock_db.session.scalar.side_effect = [app, annotation, setting]
 
             # Act
             result = AppAnnotationService.update_app_annotation_directly(args, app.id, annotation.id, mock_db.session)
@@ -632,8 +658,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
-            mock_db.session.scalar.side_effect = [app, setting]
-            mock_db.session.get.return_value = annotation
+            mock_db.session.scalar.side_effect = [app, annotation, setting]
 
             scalars_result = MagicMock()
             scalars_result.all.return_value = [history1, history2]
@@ -679,12 +704,32 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = None
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
                 AppAnnotationService.delete_app_annotation(app.id, "ann-1", mock_db.session)
+
+    def test_delete_app_annotation_should_reject_annotation_from_another_app(self) -> None:
+        """Test delete treats cross-app annotation IDs as not found."""
+        # Arrange
+        tenant_id = "tenant-1"
+        app = _make_app(app_id="app-a")
+        other_annotation = _make_annotation("ann-1")
+        other_annotation.app_id = "app-b"
+
+        with (
+            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
+            patch("services.annotation_service.db") as mock_db,
+        ):
+            mock_db.session.scalar.side_effect = [app, None]
+            mock_db.session.get.return_value = other_annotation
+
+            # Act & Assert
+            with pytest.raises(NotFound):
+                AppAnnotationService.delete_app_annotation(app.id, other_annotation.id, mock_db.session)
+            mock_db.session.delete.assert_not_called()
+            mock_db.session.commit.assert_not_called()
 
     def test_delete_app_annotations_in_batch_should_return_zero_when_none_found(self) -> None:
         """Test batch delete returns zero when no annotations found."""
@@ -750,6 +795,33 @@ class TestAppAnnotationServiceDirectManipulation:
             assert result == {"deleted_count": 2}
             mock_task.delay.assert_called_once_with(annotation1.id, app.id, tenant_id, setting.collection_binding_id)
             mock_db.session.commit.assert_called_once()
+
+    def test_delete_app_annotations_in_batch_should_scope_lookup_and_delete_to_app(self) -> None:
+        """Test batch delete filters requested annotation IDs by the caller's app."""
+        # Arrange
+        tenant_id = "tenant-1"
+        app = _make_app(app_id="app-a")
+
+        with (
+            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
+            patch("services.annotation_service.db") as mock_db,
+        ):
+            mock_db.session.scalar.return_value = app
+
+            execute_result_multi = MagicMock()
+            execute_result_multi.all.return_value = [(_make_annotation("ann-1"), None)]
+            execute_result_delete = MagicMock()
+            execute_result_delete.rowcount = 1
+            mock_db.session.execute.side_effect = [execute_result_multi, MagicMock(), execute_result_delete]
+
+            # Act
+            AppAnnotationService.delete_app_annotations_in_batch(app.id, ["ann-1"])
+
+            # Assert
+            lookup_statement = mock_db.session.execute.call_args_list[0].args[0]
+            delete_statement = mock_db.session.execute.call_args_list[2].args[0]
+            assert "message_annotations.app_id = 'app-a'" in _compiled_sql(lookup_statement)
+            assert "message_annotations.app_id = 'app-a'" in _compiled_sql(delete_statement)
 
 
 class TestAppAnnotationServiceBatchImport:
