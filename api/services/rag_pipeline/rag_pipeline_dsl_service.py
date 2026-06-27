@@ -1,3 +1,4 @@
+from sqlalchemy.orm import scoped_session
 import base64
 import hashlib
 import json
@@ -83,7 +84,7 @@ class RagPipelineDslService:
     when generated IDs are needed mid-operation; they never commit or rollback.
     """
 
-    def __init__(self, session: Session):
+    def __init__(self, session: Session | scoped_session):
         self._session = session
 
     def import_rag_pipeline(

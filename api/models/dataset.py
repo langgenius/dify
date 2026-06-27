@@ -1,3 +1,4 @@
+from sqlalchemy.orm import scoped_session
 import base64
 import hashlib
 import hmac
@@ -1670,7 +1671,7 @@ class Pipeline(TypeBase):
         init=False,
     )
 
-    def retrieve_dataset(self, session: Session):
+    def retrieve_dataset(self, session: Session | scoped_session):
         return session.scalar(select(Dataset).where(Dataset.pipeline_id == self.id))
 
 
