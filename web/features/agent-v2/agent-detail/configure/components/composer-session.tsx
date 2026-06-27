@@ -4,7 +4,7 @@ import type { AgentAppDetailWithSite, AgentIconType, AgentSoulConfig } from '@di
 import type { useAgentConfigureData } from '../hooks'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useHydrateAtoms } from 'jotai/utils'
+import { ScopeProvider } from 'jotai-scope'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
@@ -122,15 +122,6 @@ function AgentConfigurePageComposerSession({
   } = configureData
   const queryClient = useQueryClient()
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
-  const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
-  const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
-  const setClearPreviewChat = useSetAtom(agentConfigureClearPreviewChatAtom)
-  useHydrateAtoms([
-    [agentConfigureConversationIdsAtom, {
-      build: agentQuery.data?.debug_conversation_id ?? null,
-      preview: null,
-    }],
-  ] as const)
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
   const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
     onSuccess: ({ debug_conversation_id }) => {
@@ -175,36 +166,37 @@ function AgentConfigurePageComposerSession({
       input as unknown as Parameters<typeof refreshDebugConversationRequestAsync>[0],
     )
   }, [refreshDebugConversationInput, refreshDebugConversationRequestAsync])
-  const resetBuildChatSession = useCallback(async () => {
-    try {
-      await refreshDebugConversationAsync(conversationIds.build ?? '')
-    }
-    finally {
-      setConversationId({ mode: 'build', conversationId: null })
-      setClearPreviewChat(true)
-    }
-  }, [conversationIds.build, refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
 
   return (
-    <AgentComposerProvider
-      key={composerSessionKey}
-      initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
-      initialOriginalConfig={buildDraft.agentSoulConfig}
+    <ScopeProvider
+      atoms={[
+        [agentConfigureConversationIdsAtom, {
+          build: agentQuery.data?.debug_conversation_id ?? null,
+          preview: null,
+        }],
+      ]}
+      name="AgentConfigureConversation"
     >
-      <AgentConfigurePageComposerContent
-        agentId={agentId}
-        agentIconType={agentIconType}
-        buildDraft={buildDraft}
-        configureData={configureData}
-        isRefreshingDebugConversation={isRefreshingDebugConversation}
-        isViewingVersion={isViewingVersion}
-        resetBuildChatSession={resetBuildChatSession}
-        workingDirectoryPanel={workingDirectoryPanel}
-        onComposerRebase={onComposerRebase}
-        onRefreshDebugConversation={refreshDebugConversation}
-        onSelectVersion={onSelectVersion}
-      />
-    </AgentComposerProvider>
+      <AgentComposerProvider
+        key={composerSessionKey}
+        initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
+        initialOriginalConfig={buildDraft.agentSoulConfig}
+      >
+        <AgentConfigurePageComposerContent
+          agentId={agentId}
+          agentIconType={agentIconType}
+          buildDraft={buildDraft}
+          configureData={configureData}
+          isRefreshingDebugConversation={isRefreshingDebugConversation}
+          isViewingVersion={isViewingVersion}
+          workingDirectoryPanel={workingDirectoryPanel}
+          onComposerRebase={onComposerRebase}
+          onRefreshDebugConversation={refreshDebugConversation}
+          onRefreshDebugConversationAsync={refreshDebugConversationAsync}
+          onSelectVersion={onSelectVersion}
+        />
+      </AgentComposerProvider>
+    </ScopeProvider>
   )
 }
 
@@ -215,10 +207,10 @@ function AgentConfigurePageComposerContent({
   configureData,
   isRefreshingDebugConversation,
   isViewingVersion,
-  resetBuildChatSession,
   workingDirectoryPanel,
   onComposerRebase,
   onRefreshDebugConversation,
+  onRefreshDebugConversationAsync,
   onSelectVersion,
 }: {
   agentId: string
@@ -227,10 +219,10 @@ function AgentConfigurePageComposerContent({
   configureData: ReturnType<typeof useAgentConfigureData>
   isRefreshingDebugConversation: boolean
   isViewingVersion: boolean
-  resetBuildChatSession: () => Promise<void>
   workingDirectoryPanel: ReturnType<typeof useAgentWorkingDirectoryPanel>
   onComposerRebase: () => void
   onRefreshDebugConversation: (conversationId: string) => void
+  onRefreshDebugConversationAsync: (conversationId: string) => Promise<unknown>
   onSelectVersion: (versionId: string | null) => void
 }) {
   const {
@@ -257,6 +249,15 @@ function AgentConfigurePageComposerContent({
   const setShowPreviewVersions = useSetAtom(agentConfigureShowPreviewVersionsAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
   const showBuildDraftBar = buildDraft.isActive
+  const resetBuildChatSession = useCallback(async () => {
+    try {
+      await onRefreshDebugConversationAsync(conversationIds.build ?? '')
+    }
+    finally {
+      setConversationId({ mode: 'build', conversationId: null })
+      setClearPreviewChat(true)
+    }
+  }, [conversationIds.build, onRefreshDebugConversationAsync, setClearPreviewChat, setConversationId])
   const rebaseComposerDraftFromSoulConfig = useCallback((agentSoulConfig?: AgentSoulConfig) => {
     rebaseComposerDraft({
       draft: agentSoulConfigToFormState(agentSoulConfig),
