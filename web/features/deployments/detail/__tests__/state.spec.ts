@@ -61,9 +61,9 @@ async function loadState() {
   return await import('../state')
 }
 
-function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1') {
+function setDeploymentRoute(store: ReturnType<typeof createStore>, appInstanceId = 'app-instance-1', tab = 'overview') {
   store.set(setNextRouteStateAtom, {
-    pathname: `/deployments/${appInstanceId}/overview`,
+    pathname: `/deployments/${appInstanceId}/${tab}`,
     params: { appInstanceId },
   })
 }
@@ -122,6 +122,17 @@ describe('deployment detail state', () => {
       input: { params: { appInstanceId: 'app-instance-1' } },
     })
     expect(environmentDeploymentsQuery.refetchInterval).toEqual(expect.any(Function))
+  })
+
+  it('should derive active detail tab from route pathname', async () => {
+    const state = await loadState()
+    const store = createStore()
+
+    setDeploymentRoute(store, 'app-instance-1', 'releases')
+    expect(store.get(state.deploymentDetailActiveTabAtom)).toBe('releases')
+
+    setDeploymentRoute(store, 'app-instance-1', 'unknown')
+    expect(store.get(state.deploymentDetailActiveTabAtom)).toBe('overview')
   })
 
   it('should derive runtime instance rows from environment deployments', async () => {

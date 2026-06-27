@@ -1,23 +1,24 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { InstanceDetailTabKey } from './tabs'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
-import { useSelectedLayoutSegment } from '@/next/navigation'
 import { CreateReleaseControl } from '../create-release'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
 import { DeveloperApiHeaderSwitch } from './api-tokens/developer-api-header-switch'
 import { NewDeploymentHeaderAction } from './instances/header-actions/new-deployment-button'
-import { INSTANCE_DETAIL_TAB_KEYS, isInstanceDetailTabKey } from './tabs'
+import { deploymentDetailActiveTabAtom } from './state'
+import { INSTANCE_DETAIL_TAB_KEYS } from './tabs'
 
-function MobileDetailTabs({ appInstanceId, activeTab }: {
-  appInstanceId: string
-  activeTab: InstanceDetailTabKey
-}) {
+function MobileDetailTabs() {
   const { t } = useTranslation('deployments')
+  const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
+  const activeTab = useAtomValue(deploymentDetailActiveTabAtom)
+
+  if (!appInstanceId)
+    return null
 
   return (
     <nav
@@ -48,9 +49,7 @@ export function InstanceDetail({ children }: {
 }) {
   const { t } = useTranslation('deployments')
   const appInstanceId = useAtomValue(deploymentRouteAppInstanceIdAtom)
-  const selectedSegment = useSelectedLayoutSegment()
-  const selectedTab = selectedSegment ?? undefined
-  const activeTab: InstanceDetailTabKey = isInstanceDetailTabKey(selectedTab) ? selectedTab : 'overview'
+  const activeTab = useAtomValue(deploymentDetailActiveTabAtom)
 
   useDocumentTitle(t('documentTitle.detail'))
 
@@ -84,7 +83,7 @@ export function InstanceDetail({ children }: {
                 )}
               </div>
             </div>
-            <MobileDetailTabs appInstanceId={appInstanceId} activeTab={activeTab} />
+            <MobileDetailTabs />
             {children}
           </div>
         </div>
