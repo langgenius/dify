@@ -1,18 +1,20 @@
 'use client'
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigureSoulSource } from './state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { consoleQuery } from '@/service/client'
 import { agentConfigureConsoleQuery } from './build-draft-query'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
-export type AgentConfigureSoulSource = 'draft' | 'build-draft' | 'view-version'
-
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
+const getAgentSoulConfigFromRefetchResult = (result: unknown) => {
+  return (result as { data?: { agent_soul?: AgentSoulConfig } } | undefined)?.data?.agent_soul
+}
 
 export function useAgentConfigureBuildDraftData({
   agentId,
@@ -20,15 +22,18 @@ export function useAgentConfigureBuildDraftData({
   composerAgentSoulConfig,
   isViewingVersion,
   normalAgentSoulConfig,
+  setSoulSourceOverride,
+  soulSourceOverride,
 }: {
   agentId: string
   activeVersionId: string | null | undefined
   composerAgentSoulConfig?: AgentSoulConfig
   isViewingVersion: boolean
   normalAgentSoulConfig?: AgentSoulConfig
+  setSoulSourceOverride: (source: AgentConfigureSoulSource | null) => void
+  soulSourceOverride: AgentConfigureSoulSource | null
 }) {
   const shouldSilenceBuildDraftCheckRef = useRef(true)
-  const [soulSourceOverride, setSoulSourceOverride] = useState<AgentConfigureSoulSource | null>(null)
   const buildDraftQueryInput = {
     params: {
       agent_id: agentId,
@@ -111,6 +116,8 @@ export function useAgentConfigureBuildDraftData({
 export function useAgentConfigureBuildDraftActions({
   agentId,
   isActive,
+  normalAgentSoulConfig,
+  rebaseComposerDraft,
   refetchBuildDraft,
   refetchComposer,
   resetBuildChatSession,
@@ -120,6 +127,8 @@ export function useAgentConfigureBuildDraftActions({
 }: {
   agentId: string
   isActive: boolean
+  normalAgentSoulConfig?: AgentSoulConfig
+  rebaseComposerDraft: (agentSoulConfig?: AgentSoulConfig) => void
   refetchBuildDraft: () => Promise<unknown>
   refetchComposer: () => Promise<unknown>
   resetBuildChatSession: () => Promise<void>
@@ -144,6 +153,7 @@ export function useAgentConfigureBuildDraftActions({
   const { prepareBuildDraftBeforeRun } = usePrepareAgentBuildDraftBeforeRun({
     agentId,
     isBuildDraftActive: isActive,
+    rebaseComposerDraft,
     saveDraft,
     setSoulSourceOverride,
   })
@@ -154,10 +164,13 @@ export function useAgentConfigureBuildDraftActions({
 
     buildDraftRefreshTimerRef.current = setTimeout(async () => {
       buildDraftRefreshTimerRef.current = null
-      await refetchBuildDraft()
+      const result = await refetchBuildDraft()
+      const agentSoulConfig = getAgentSoulConfigFromRefetchResult(result)
+      if (agentSoulConfig)
+        rebaseComposerDraft(agentSoulConfig)
       onRefreshed?.()
     }, 1000)
-  }, [refetchBuildDraft])
+  }, [rebaseComposerDraft, refetchBuildDraft])
 
   const exitBuildDraftMode = useCallback(async (shouldRefetchComposer: boolean) => {
     await resetBuildChatSession().catch(() => undefined)
@@ -166,10 +179,14 @@ export function useAgentConfigureBuildDraftActions({
       queryKey: buildDraftQueryOptions.queryKey,
     })
     if (shouldRefetchComposer) {
-      await refetchComposer()
+      const result = await refetchComposer()
+      rebaseComposerDraft(getAgentSoulConfigFromRefetchResult(result) ?? normalAgentSoulConfig)
       onComposerRebased?.()
     }
-  }, [buildDraftQueryOptions.queryKey, onComposerRebased, queryClient, refetchComposer, resetBuildChatSession, setSoulSourceOverride])
+    else {
+      rebaseComposerDraft(normalAgentSoulConfig)
+    }
+  }, [buildDraftQueryOptions.queryKey, normalAgentSoulConfig, onComposerRebased, queryClient, rebaseComposerDraft, refetchComposer, resetBuildChatSession, setSoulSourceOverride])
 
   const applyBuildDraft = async () => {
     try {

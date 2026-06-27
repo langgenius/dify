@@ -199,43 +199,56 @@ vi.mock('../components/orchestrate', async () => {
 vi.mock('../components/orchestrate/build-draft-bar', () => ({
   AgentBuildDraftBar: (props: {
     changesCount: number
+    disabled?: boolean
     onApply: () => void
     onDiscard: () => void
   }) => (
     <div role="region" aria-label="build-draft-bar">
       <span>{`changes:${props.changesCount}`}</span>
-      <button type="button" onClick={props.onApply}>apply build draft</button>
-      <button type="button" onClick={props.onDiscard}>discard build draft</button>
+      <button type="button" disabled={props.disabled} onClick={props.onApply}>apply build draft</button>
+      <button type="button" disabled={props.disabled} onClick={props.onDiscard}>discard build draft</button>
     </div>
   ),
 }))
 
-vi.mock('../components/preview/build-chat', () => ({
-  AgentBuildChat: (props: {
-    conversationId?: string | null
-    onConversationComplete?: () => void
-    onConversationIdChange?: (conversationId: string) => void
-    onSaveDraftBeforeRun?: () => Promise<void>
-  }) => (
-    <div role="region" aria-label="build-chat">
-      <span>{`build:${props.conversationId ?? 'none'}`}</span>
-      <button type="button" onClick={() => props.onConversationIdChange?.('build-conversation-new')}>
-        save build conversation
-      </button>
-      <button
-        type="button"
-        onClick={() => {
-          void props.onSaveDraftBeforeRun?.()
-        }}
-      >
-        send build message
-      </button>
-      <button type="button" onClick={() => props.onConversationComplete?.()}>
-        complete build conversation
-      </button>
-    </div>
-  ),
-}))
+vi.mock('../components/preview/build-chat', async () => {
+  const { useState } = await import('react')
+
+  return {
+    AgentBuildChat: (props: {
+      conversationId?: string | null
+      onConversationComplete?: () => void
+      onConversationIdChange?: (conversationId: string) => void
+      onSaveDraftBeforeRun?: () => Promise<void>
+    }) => {
+      const [messageSent, setMessageSent] = useState(false)
+
+      return (
+        <div role="region" aria-label="build-chat">
+          <span>{`build:${props.conversationId ?? 'none'}`}</span>
+          <span>{`sent:${messageSent ? 'yes' : 'no'}`}</span>
+          <button type="button" onClick={() => props.onConversationIdChange?.('build-conversation-new')}>
+            save build conversation
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void props.onSaveDraftBeforeRun?.().then(() => {
+                setMessageSent(true)
+                props.onConversationIdChange?.('build-conversation-new')
+              })
+            }}
+          >
+            send build message
+          </button>
+          <button type="button" onClick={() => props.onConversationComplete?.()}>
+            complete build conversation
+          </button>
+        </div>
+      )
+    },
+  }
+})
 
 vi.mock('../components/preview/preview-chat', () => ({
   AgentPreviewChat: (props: {
@@ -524,7 +537,66 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
     })
 
-    it('should show the build draft bar after a new build conversation refresh completes', async () => {
+    it('should switch to build draft mode without resetting the sending chat when sending from normal draft mode', async () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: undefined as unknown,
+        dataUpdatedAt: 0,
+        error: new Response(null, { status: 404 }),
+        isFetching: false,
+        isError: true,
+        isPending: false,
+        isSuccess: false,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:no')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:no')
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(mocks.checkoutBuildDraft).toHaveBeenCalledWith({
+          params: {
+            agent_id: 'agent-1',
+          },
+          body: {
+            force: false,
+          },
+        }, expect.any(Object))
+      })
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:build-conversation-new')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('readonly:yes')
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
+    })
+
+    it('should keep the build draft bar disabled while a build conversation is responding', async () => {
       vi.useFakeTimers()
       const queryClient = new QueryClient()
       const refetchBuildDraft = vi.fn().mockResolvedValue({})
@@ -571,7 +643,13 @@ describe('AgentConfigurePage', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
 
-      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+      await act(async () => {
+        await Promise.resolve()
+      })
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeDisabled()
 
       fireEvent.click(screen.getByRole('button', { name: 'complete build conversation' }))
 
@@ -583,6 +661,8 @@ describe('AgentConfigurePage', () => {
 
       expect(refetchBuildDraft).toHaveBeenCalled()
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
     })
 
     it('should discard the build draft when restarting build mode with a build draft', async () => {

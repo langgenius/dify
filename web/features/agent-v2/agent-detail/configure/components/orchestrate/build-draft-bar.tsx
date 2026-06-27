@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 type AgentBuildDraftBarProps = {
   changesCount: number
+  disabled?: boolean
   isApplying?: boolean
   isDiscarding?: boolean
   onApply: () => void
@@ -13,6 +14,7 @@ type AgentBuildDraftBarProps = {
 
 export function AgentBuildDraftBar({
   changesCount,
+  disabled = false,
   isApplying = false,
   isDiscarding = false,
   onApply,
@@ -24,6 +26,7 @@ export function AgentBuildDraftBar({
   const metaLabel = changesCount > 0
     ? t('agentDetail.configure.buildDraft.changes', { count: changesCount })
     : t('agentDetail.configure.buildDraft.noChanges')
+  const actionsDisabled = disabled || isPending
 
   return (
     <div className="pointer-events-auto flex max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur py-2 pr-2 pl-4 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
@@ -39,7 +42,7 @@ export function AgentBuildDraftBar({
         type="button"
         variant="primary"
         loading={isApplying}
-        disabled={isPending}
+        disabled={actionsDisabled}
         className="h-8 rounded-lg px-3"
         onClick={onApply}
       >
@@ -49,7 +52,7 @@ export function AgentBuildDraftBar({
         type="button"
         variant="secondary"
         loading={isDiscarding}
-        disabled={isPending}
+        disabled={actionsDisabled}
         className="h-8 rounded-lg px-3"
         onClick={onDiscard}
       >

@@ -1,19 +1,21 @@
 'use client'
 
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigureSoulSource } from './state'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { consoleQuery } from '@/service/client'
 
-export type AgentConfigureSoulSource = 'draft' | 'build-draft' | 'view-version'
-
 export function usePrepareAgentBuildDraftBeforeRun({
   agentId,
   isBuildDraftActive,
+  rebaseComposerDraft,
   saveDraft,
   setSoulSourceOverride,
 }: {
   agentId?: string
   isBuildDraftActive: boolean
+  rebaseComposerDraft?: (agentSoulConfig?: AgentSoulConfig) => void
   saveDraft: () => Promise<unknown>
   setSoulSourceOverride?: (source: AgentConfigureSoulSource) => void
 }) {
@@ -44,8 +46,9 @@ export function usePrepareAgentBuildDraftBeforeRun({
       },
     })
     queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraft)
+    rebaseComposerDraft?.(buildDraft.agent_soul as AgentSoulConfig | undefined)
     setSoulSourceOverride?.('build-draft')
-  }, [agentId, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isBuildDraftActive, queryClient, saveDraft, setSoulSourceOverride])
+  }, [agentId, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isBuildDraftActive, queryClient, rebaseComposerDraft, saveDraft, setSoulSourceOverride])
 
   return {
     isCheckingOutBuildDraft,
