@@ -3,7 +3,7 @@
 import type { ComponentProps } from 'react'
 import Link from '@/next/link'
 
-export const createDeploymentGuideHref = '/deployments/create'
+const createDeploymentGuideHref = '/deployments/create'
 
 type CreateDeploymentGuideLinkProps = Omit<ComponentProps<typeof Link>, 'href'>
 

@@ -53,7 +53,7 @@ export function availableInstanceName(sourceName: string, existingNameSet: Set<s
   return `${sourceName}-${randomLetterCombination(RANDOM_SUFFIX_FALLBACK_LENGTH)}`
 }
 
-export function envVarValueSource(slot: EnvVarBindingSlot, selection: EnvVarValueSelection | undefined) {
+function envVarValueSource(slot: EnvVarBindingSlot, selection: EnvVarValueSelection | undefined) {
   return selection?.valueSource
     ?? (slot.hasDefaultValue
       ? ApiEnvVarValueSource.ENV_VAR_VALUE_SOURCE_DSL_DEFAULT
