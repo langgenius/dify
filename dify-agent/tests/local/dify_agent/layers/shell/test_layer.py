@@ -202,9 +202,7 @@ class FakeShellctlClient:
         self.events.append(("close", "client"))
 
 
-def _shell_layer(
-    *, client: FakeShellctlClient, config: DifyShellLayerConfig | None = None
-) -> DifyShellLayer:
+def _shell_layer(*, client: FakeShellctlClient, config: DifyShellLayerConfig | None = None) -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         config or DifyShellLayerConfig(),
         shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
@@ -295,7 +293,9 @@ def test_shell_layer_suspend_closes_client_before_resource_context_exits() -> No
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             await layer.on_context_suspend()
             assert client.closed is True
 
@@ -378,7 +378,9 @@ def test_shell_layer_delete_force_deletes_tracked_jobs_then_destroys_workspace()
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
             layer.runtime_state.job_ids = ["user-job", "mkdir-job"]
             layer.runtime_state.job_offsets = {"user-job": 9, "mkdir-job": 1}
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             await layer.on_context_delete()
 
     asyncio.run(scenario())
@@ -567,7 +569,9 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
 
             run_tool_def = await tools["shell_run"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
             wait_tool_def = await tools["shell_wait"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
@@ -699,7 +703,9 @@ def test_run_remote_script_uses_workspace_cwd_accumulates_output_and_deletes_job
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             result = await layer.run_remote_script("printf 'hello world'", timeout=7.5)
             assert result.output == "hello world"
             assert result.exit_code == 0
@@ -733,7 +739,9 @@ def test_run_remote_script_deletes_job_even_when_command_exits_non_zero() -> Non
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             result = await layer.run_remote_script("exit 17", timeout=3.0)
             assert result.exit_code == 17
             assert result.output == "failed\n"
@@ -772,7 +780,9 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             _ = await layer.run_remote_script("dify-agent file upload report.txt", inject_agent_stub_env=True)
 
     asyncio.run(scenario())
@@ -801,7 +811,9 @@ def test_run_remote_script_raises_when_agent_stub_env_is_unavailable() -> None:
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             with pytest.raises(RuntimeError, match="Agent Stub environment injection is not available"):
                 await layer.run_remote_script("dify-agent file upload report.txt", inject_agent_stub_env=True)
 
@@ -832,7 +844,9 @@ def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency()
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
             _ = await tools["shell_run"].function_schema.call(
                 {"script": "pwd"},
                 None,  # pyright: ignore[reportArgumentType]
@@ -851,7 +865,9 @@ def test_shell_layer_tools_reject_untracked_job_ids_without_shellctl_calls() -> 
     async def scenario() -> None:
         async with layer.resource_context():
             layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer._shell_handle = ShellctlHandle(client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+            layer._shell_handle = ShellctlHandle(
+                client=client, workspace_cwd="~/workspace/abc12ff", session_id="abc12ff"
+            )
 
             wait_result = await tools["shell_wait"].function_schema.call(
                 {"job_id": "missing-job"},

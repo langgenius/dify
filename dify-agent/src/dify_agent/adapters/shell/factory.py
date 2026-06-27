@@ -16,9 +16,7 @@ def create_shell_provisioner(settings: ShellAdapterSettings | None = None) -> Sh
         case "shellctl":
             entrypoint = (resolved.shellctl_entrypoint or "").strip()
             if not entrypoint:
-                raise ValueError(
-                    "DIFY_AGENT_SHELLCTL_ENTRYPOINT is required for the 'shellctl' shell provider."
-                )
+                raise ValueError("DIFY_AGENT_SHELLCTL_ENTRYPOINT is required for the 'shellctl' shell provider.")
             return ShellctlProvisioner(
                 client_factory=create_default_shellctl_client_factory(
                     entrypoint=entrypoint,

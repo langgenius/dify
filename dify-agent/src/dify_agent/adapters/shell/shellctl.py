@@ -475,20 +475,17 @@ def _cleanup_script(session_id: str) -> str:
 def _upload_script(*, remote_path: str, encoded: str) -> str:
     """Return a script that recreates a file from embedded base64 in the workspace."""
     quoted = _shquote(remote_path)
-    return (
-        f'mkdir -p "$(dirname -- {quoted})" && '
-        f"printf %s '{encoded}' | base64 -d > {quoted}"
-    )
+    return f"mkdir -p \"$(dirname -- {quoted})\" && printf %s '{encoded}' | base64 -d > {quoted}"
 
 
 def _download_script(*, remote_path: str) -> str:
     """Return a script that emits a file's base64 between transfer sentinels."""
     quoted = _shquote(remote_path)
     return (
-        f'if [ ! -f {quoted} ]; then exit {_DOWNLOAD_MISSING_EXIT_CODE}; fi; '
-        f'printf %s {_shquote(_TRANSFER_BEGIN)}; '
+        f"if [ ! -f {quoted} ]; then exit {_DOWNLOAD_MISSING_EXIT_CODE}; fi; "
+        f"printf %s {_shquote(_TRANSFER_BEGIN)}; "
         f'base64 < {quoted} | tr -d "\\n"; '
-        f'printf %s {_shquote(_TRANSFER_END)}'
+        f"printf %s {_shquote(_TRANSFER_END)}"
     )
 
 

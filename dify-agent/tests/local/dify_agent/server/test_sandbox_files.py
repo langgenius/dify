@@ -19,8 +19,7 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
-from dify_agent.adapters.shell.protocols import ShellEnvironmentDescriptor
-from dify_agent.adapters.shell.shellctl import ShellctlHandle, ShellctlProvisioner
+from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
 from dify_agent.protocol import (
     CreateRunRequest,
     RunComposition,

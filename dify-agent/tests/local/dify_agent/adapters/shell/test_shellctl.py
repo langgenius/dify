@@ -200,9 +200,7 @@ def test_provision_failure_closes_client_and_raises() -> None:
 
 
 def test_destroy_runs_cleanup_in_default_cwd_then_closes_client() -> None:
-    client = FakeShellctlClient(
-        run_handler=lambda _script, _cwd, _env: _Job(job_id="job", done=True, exit_code=0)
-    )
+    client = FakeShellctlClient(run_handler=lambda _script, _cwd, _env: _Job(job_id="job", done=True, exit_code=0))
 
     async def scenario() -> None:
         provisioner = _provisioner(client)
@@ -320,7 +318,7 @@ def test_file_transfer_upload_embeds_base64_and_succeeds() -> None:
 
     def run_handler(script: str, cwd: str | None, env: dict[str, str] | None) -> _Job:
         del env
-        if script.startswith("mkdir -p \"$HOME"):
+        if script.startswith('mkdir -p "$HOME'):
             return _Job(job_id="mkdir-job", done=True, exit_code=0)
         assert cwd == _WORKSPACE_CWD
         assert encoded in script
