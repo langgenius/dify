@@ -86,8 +86,10 @@ class AwsS3Storage(BaseStorage):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except:
-            return False
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
+                return False
+            raise
 
     @override
     def delete(self, filename: str):

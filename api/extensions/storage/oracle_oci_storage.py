@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Generator
 from typing import override
 
@@ -5,6 +6,8 @@ import boto3
 from botocore.exceptions import ClientError
 
 from configs import dify_config
+
+logger = logging.getLogger(__name__)
 from extensions.storage.base_storage import BaseStorage
 
 
@@ -58,8 +61,10 @@ class OracleOCIStorage(BaseStorage):
         try:
             self.client.head_object(Bucket=self.bucket_name, Key=filename)
             return True
-        except:
-            return False
+        except ClientError as e:
+            if e.response.get("Error", {}).get("Code") in ("404", "NoSuchKey"):
+                return False
+            raise
 
     @override
     def delete(self, filename: str):
