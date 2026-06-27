@@ -241,7 +241,7 @@ class DifyShellRuntimeState(BaseModel):
         if value is None:
             return value
         if not re.fullmatch(r"[0-9a-f]{7,16}", value):
-            raise ValueError("session_id must be 7 or 16 lowercase hex characters (got an invalid value).")
+            raise ValueError("session_id must be 7 to 16 lowercase hex characters (got an invalid value).")
         return value
 
     @field_validator("job_ids")
