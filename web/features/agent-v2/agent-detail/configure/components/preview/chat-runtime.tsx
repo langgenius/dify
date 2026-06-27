@@ -23,7 +23,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -582,6 +582,14 @@ function AgentPreviewChatSession({
   }), [agentSoulConfig, currentModel, prompt])
   const inputsForm = useMemo(() => getAgentSoulInputsForm(agentSoulConfig), [agentSoulConfig])
   const inputs = useMemo(() => getAgentSoulInputs(inputsForm), [inputsForm])
+  const sendInterruptedRef = useRef(false)
+  const notifySendInterrupted = useCallback(() => {
+    if (sendInterruptedRef.current)
+      return
+
+    sendInterruptedRef.current = true
+    onSendInterrupted?.()
+  }, [onSendInterrupted])
   const {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(currentModel)
@@ -611,6 +619,8 @@ function AgentPreviewChatSession({
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+    sendInterruptedRef.current = false
+
     try {
       const preparedAgentSoulConfig = await onSaveDraftBeforeRun?.()
       const runtimeAgentSoulConfig = preparedAgentSoulConfig || agentSoulConfig
@@ -653,18 +663,18 @@ function AgentPreviewChatSession({
           },
           onSendSettled: (hasError) => {
             if (hasError)
-              onSendInterrupted?.()
+              notifySendInterrupted()
           },
         },
       )
     }
     catch {}
-  }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, onSendInterrupted, textGenerationModelList])
+  }, [agentId, agentSoulConfig, chatList, config, conversationId, draftType, handleSend, inputs, inputsForm, notifySendInterrupted, onConversationComplete, onConversationIdChange, onCurrentSessionConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
 
   const doStopResponding = useCallback(() => {
     handleStop()
-    onSendInterrupted?.()
-  }, [handleStop, onSendInterrupted])
+    notifySendInterrupted()
+  }, [handleStop, notifySendInterrupted])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)

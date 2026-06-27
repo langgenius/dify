@@ -362,10 +362,11 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       },
     })
 
+    const savedBuildAgentSoulConfig = buildDraftState.agent_soul ?? preparedAgentSoulConfig
     queryClient.setQueryData(buildDraftQueryOptions.queryKey, buildDraftState)
-    rebaseComposerDraftFromSoulConfig(preparedAgentSoulConfig)
+    rebaseComposerDraftFromSoulConfig(savedBuildAgentSoulConfig)
     buildDraft.setSoulSourceOverride('build-draft')
-    return preparedAgentSoulConfig
+    return savedBuildAgentSoulConfig
   }, [agentId, buildDraft, buildDraftQueryOptions.queryKey, getInlineAgentSoulDraft, queryClient, rebaseComposerDraftFromSoulConfig, saveBuildDraft, saveDraft])
   const applyInlineBuildDraft = async () => {
     setIsApplyingInlineBuildDraft(true)

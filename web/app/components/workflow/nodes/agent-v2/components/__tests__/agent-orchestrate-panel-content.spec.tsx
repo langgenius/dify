@@ -69,18 +69,21 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
       onConversationComplete?: () => void
       onConversationIdChange?: (conversationId: string) => void
       onSendInterrupted?: () => void
-      onSaveDraftBeforeRun?: () => Promise<void>
+      onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
     }) => {
       const [messageSent, setMessageSent] = useState(false)
+      const [sentPrompt, setSentPrompt] = useState<string | undefined>()
 
       return (
         <div role="region" aria-label="build-chat">
           <span>{`build:${props.conversationId ?? 'none'}`}</span>
           <span>{`sent:${messageSent ? 'yes' : 'no'}`}</span>
+          <span>{`prompt:${sentPrompt ?? 'none'}`}</span>
           <button
             type="button"
             onClick={() => {
-              void props.onSaveDraftBeforeRun?.().then(() => {
+              void props.onSaveDraftBeforeRun?.().then((agentSoulConfig) => {
+                setSentPrompt(agentSoulConfig?.prompt?.system_prompt)
                 setMessageSent(true)
                 props.onConversationIdChange?.('build-conversation-new')
               })
@@ -331,6 +334,31 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
 
       expect(saveDraftCallOrder).toBeLessThan(saveBuildDraftCallOrder)
       expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+    })
+
+    it('should use the saved build draft response as the build chat source', async () => {
+      mocks.saveDraft.mockResolvedValue(createInlineComposerState({
+        snapshotId: 'snapshot-saved',
+        systemPrompt: 'Saved workflow snapshot prompt.',
+      }))
+      mocks.saveBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Normalized build draft prompt.',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+      renderWorkspace()
+
+      fireEvent.click(await screen.findByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('prompt:Normalized build draft prompt.')
     })
 
     it('should enter build draft mode without resetting the current inline build chat', async () => {
