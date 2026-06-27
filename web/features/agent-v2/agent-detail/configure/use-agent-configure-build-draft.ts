@@ -73,6 +73,8 @@ export function useAgentConfigureBuildDraftData({
       }
     },
     retry: false,
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
   })
   const {
     data: buildDraftData,

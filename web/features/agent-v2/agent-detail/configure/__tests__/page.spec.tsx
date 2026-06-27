@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentConfigurePage } from '../page'
@@ -268,7 +268,20 @@ vi.mock('../components/preview/preview-chat', () => ({
 }))
 
 vi.mock('../components/preview/chat-features-panel', () => ({
-  AgentChatFeaturesPanel: () => null,
+  AgentChatFeaturesPanel: (props: {
+    appFeatures?: {
+      opening_statement?: string
+    }
+    disabled?: boolean
+    show: boolean
+  }) => props.show
+    ? (
+        <div role="region" aria-label="chat-features-panel">
+          <span>{`chatFeaturesDisabled:${props.disabled ? 'yes' : 'no'}`}</span>
+          <span>{`opening:${props.appFeatures?.opening_statement ?? ''}`}</span>
+        </div>
+      )
+    : null,
 }))
 
 vi.mock('../components/preview/header', () => ({
@@ -276,6 +289,7 @@ vi.mock('../components/preview/header', () => ({
     mode: 'build' | 'preview'
     previewEnabled: boolean
     onModeChange: (mode: 'build' | 'preview') => void
+    onToggleChatFeatures: () => void
     onOpenWorkingDirectory: () => void
     onRefresh: () => void
     refreshDisabled?: boolean
@@ -287,6 +301,9 @@ vi.mock('../components/preview/header', () => ({
       </button>
       <button type="button" onClick={() => props.onModeChange('build')}>
         build mode
+      </button>
+      <button type="button" onClick={props.onToggleChatFeatures}>
+        chat features
       </button>
       <button type="button" onClick={props.onOpenWorkingDirectory}>
         open working directory
@@ -525,6 +542,43 @@ describe('AgentConfigurePage', () => {
       expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
     })
 
+    it('should keep build draft query refresh owned by explicit workflow actions', () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      let buildDraftQueryOptions: unknown
+      for (const [options] of vi.mocked(useQuery).mock.calls) {
+        if (Array.isArray(options.queryKey) && options.queryKey[0] === 'build-draft') {
+          buildDraftQueryOptions = options
+          break
+        }
+      }
+
+      expect(buildDraftQueryOptions).toMatchObject({
+        refetchOnReconnect: false,
+        refetchOnWindowFocus: false,
+      })
+    })
+
     it('should enter build draft mode when build draft data exists', () => {
       const queryClient = new QueryClient()
       mocks.queryState.composer = {
@@ -570,6 +624,60 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
       expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('publish:no')
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+    })
+
+    it('should show chat features from the active build draft source as read-only', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            app_features: {
+              opening_statement: 'draft opening',
+            },
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            app_features: {
+              opening_statement: 'build opening',
+            },
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      await user.click(screen.getByRole('button', { name: 'chat features' }))
+
+      expect(screen.getByRole('region', { name: 'chat-features-panel' })).toHaveTextContent('chatFeaturesDisabled:yes')
+      expect(screen.getByRole('region', { name: 'chat-features-panel' })).toHaveTextContent('opening:build opening')
     })
 
     it('should switch to build draft mode without resetting the sending chat when sending from normal draft mode', async () => {
