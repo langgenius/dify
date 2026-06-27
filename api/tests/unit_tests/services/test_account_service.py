@@ -2026,10 +2026,10 @@ class TestRegisterService:
                 mock_task_dependencies.delay.assert_called_once()
                 mock_lookup.assert_called_once_with(mock_db_dependencies["db"].session, "existing@example.com")
 
-    def test_invite_existing_active_account_requires_acceptance_before_joining(
+    def test_invite_existing_active_account_is_added_as_member(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
     ):
-        """Existing active accounts outside the tenant receive an invite without immediate membership."""
+        """Existing active accounts outside the tenant are added as a member when invited."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-456"
         mock_tenant.name = "Test Workspace"
@@ -2066,7 +2066,9 @@ class TestRegisterService:
                     "add",
                     session=mock_db_dependencies["db"].session,
                 )
-                mock_create_member.assert_not_called()
+                mock_create_member.assert_called_once_with(
+                    mock_tenant, mock_existing_account, mock_db_dependencies["db"].session, "admin"
+                )
                 mock_generate_token.assert_called_once_with(
                     mock_tenant, mock_existing_account, "admin", requires_setup=False
                 )
@@ -2221,10 +2223,10 @@ class TestRegisterService:
                     role_ids=["rbac-role-id-456"],
                 )
 
-    def test_invite_new_member_rbac_enabled_existing_active_account_adds_role_before_signin_response(
+    def test_invite_new_member_rbac_enabled_existing_active_account_creates_member(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies
     ):
-        """Existing active accounts still need an RBAC membership before the API returns the signin URL."""
+        """Existing active accounts outside the tenant are added as a member with RBAC role when invited."""
         mock_tenant = MagicMock()
         mock_tenant.id = "tenant-789"
         mock_inviter = TestAccountAssociatedDataFactory.create_account_mock(account_id="inviter-456", name="Inviter")
@@ -2245,16 +2247,20 @@ class TestRegisterService:
                 patch("services.account_service.TenantService.check_member_permission"),
                 patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
                 patch("services.account_service.RBACService") as mock_rbac_service,
+                patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
             ):
-                with pytest.raises(AccountAlreadyInTenantError):
-                    RegisterService.invite_new_member(
-                        tenant=mock_tenant,
-                        email="existing-rbac@example.com",
-                        language="en-US",
-                        role="rbac-role-id-456",
-                        inviter=mock_inviter,
-                        session=mock_db_dependencies["db"].session,
-                    )
+                mock_generate_token.return_value = "invite-token-rbac"
+
+                result = RegisterService.invite_new_member(
+                    tenant=mock_tenant,
+                    email="existing-rbac@example.com",
+                    language="en-US",
+                    role="rbac-role-id-456",
+                    inviter=mock_inviter,
+                    session=mock_db_dependencies["db"].session,
+                )
+
+                assert result == "invite-token-rbac"
 
                 mock_create_member.assert_called_once_with(
                     mock_tenant,
@@ -2268,7 +2274,7 @@ class TestRegisterService:
                     member_account_id=mock_existing_account.id,
                     role_ids=["rbac-role-id-456"],
                 )
-                mock_task_dependencies.delay.assert_not_called()
+                mock_task_dependencies.delay.assert_called_once()
 
     def test_invite_new_member_rbac_disabled_uses_legacy_role(
         self, mock_db_dependencies, mock_redis_dependencies, mock_task_dependencies

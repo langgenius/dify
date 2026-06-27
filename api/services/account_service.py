@@ -2042,19 +2042,12 @@ class RegisterService:
             )
             requires_setup = account.status == AccountStatus.PENDING
 
-            if not ta and (account.status == AccountStatus.PENDING or dify_config.RBAC_ENABLED):
+            if not ta:
                 TenantService.create_tenant_member(tenant, account, session, tenant_join_role)
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING:
-                if dify_config.RBAC_ENABLED and not ta:
-                    RBACService.MemberRoles.replace(
-                        tenant_id=str(tenant.id),
-                        account_id=inviter.id,
-                        member_account_id=account.id,
-                        role_ids=[role],
-                    )
-                if ta or dify_config.RBAC_ENABLED:
+                if ta:
                     raise AccountAlreadyInTenantError("Account already in tenant.")
 
         # Assign RBAC role if RBAC is enabled
