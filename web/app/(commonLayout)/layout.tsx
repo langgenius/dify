@@ -17,7 +17,6 @@ import { ModalContextProvider } from '@/context/modal-context-provider'
 import { ProviderContextProvider } from '@/context/provider-context-provider'
 import PartnerStack from '../components/billing/partner-stack'
 import { CommonLayoutHydrationBoundary } from './hydration-boundary'
-import { RoleRouteGuard } from './role-route-guard'
 
 export default async function Layout({ children }: { children: ReactNode }) {
   return (
@@ -33,9 +32,7 @@ export default async function Layout({ children }: { children: ReactNode }) {
               <ProviderContextProvider>
                 <ModalContextProvider>
                   <MainNavLayout>
-                    <RoleRouteGuard>
-                      {children}
-                    </RoleRouteGuard>
+                    {children}
                   </MainNavLayout>
                   <InSiteMessageNotification />
                   <PartnerStack />
