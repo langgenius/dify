@@ -35,8 +35,6 @@ Owns the Agent V2 configure workflow, including editable composer draft wiring, 
 - models/datasets
 - models/debug
 - models/log
-- next/dynamic
-- next/link
 - service/base
 - service/use-common
 - types/app
