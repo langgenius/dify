@@ -1,10 +1,10 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 from typing import Any
+
+from sqlalchemy import select
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import TenantAccountJoin, TenantAccountRole
 from services.account_service import TenantService
 from services.feature_service import FeatureService
 
