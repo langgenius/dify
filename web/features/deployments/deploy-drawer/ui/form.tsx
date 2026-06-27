@@ -9,7 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
 import { useTranslation } from 'react-i18next'
-import { EnvVarBindingsPanel } from '../../components/env-var-bindings'
+import { EnvVarBindingsPanel } from '../../shared/components/env-var-bindings'
 import { isAvailableDeploymentTarget } from '../../shared/domain/runtime-status'
 import { canAttemptDeployAtom, canSubmitDeployAtom, closeDeployDrawerAtom, deployBindingSlotsAtom, deployEnvVarSlotsAtom, deployEnvVarValuesAtom, deployFormAppInstanceIdAtom, deployHasBindingOptionsErrorAtom, deployHasSelectedEnvironmentAtom, deployIsBindingOptionsLoadingAtom, deployReadyFormConfigAtom, deployReadyFormLocalAtoms, deployReleaseSubmissionAtom, deploySelectedBindingsAtom, deployShowValidationErrorsAtom, deployTargetReleaseIdAtom, isDeployReleaseSubmittingAtom, releaseDeploymentViewQueryAtom, selectDeployBindingAtom, setDeployEnvVarAtom, showDeployValidationErrorsAtom } from '../state'
 import {

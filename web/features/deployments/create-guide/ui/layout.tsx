@@ -1,11 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { GuideStep } from '@/features/deployments/create-guide/state'
+import type { GuideStep } from '@/features/deployments/create-guide/state/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useTranslation } from 'react-i18next'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
 
 const GUIDE_PROGRESS_STEPS: GuideStep[] = ['source', 'release', 'target']
 
