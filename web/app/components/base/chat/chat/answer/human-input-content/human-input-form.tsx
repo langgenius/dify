@@ -36,7 +36,7 @@ const HumanInputForm = ({
     setIsSubmitting(false)
   }
 
-  const isActionDisabled = isSubmitting || hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
+  const isActionDisabled = isSubmitting || !formToken || hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
 
   return (
     <>
@@ -55,7 +55,7 @@ const HumanInputForm = ({
             key={action.id}
             disabled={isActionDisabled}
             variant={getButtonStyle(action.button_style) as ButtonProps['variant']}
-            onClick={() => submit(formToken, action.id, inputs)}
+            onClick={() => formToken && submit(formToken, action.id, inputs)}
           >
             {action.title}
           </Button>

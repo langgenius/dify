@@ -342,10 +342,10 @@ export type HumanInputFormData = {
   form_content: string
   inputs: FormInputItem[]
   actions: UserAction[]
-  form_token: string
+  form_token: string | null
   resolved_default_values: Record<string, HumanInputResolvedValue>
   display_in_ui: boolean
-  expiration_time: number
+  expiration_time: number | null
 }
 
 export type HumanInputRequiredResponse = {
