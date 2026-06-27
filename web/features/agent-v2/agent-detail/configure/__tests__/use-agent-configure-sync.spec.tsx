@@ -183,7 +183,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: false,
+      active_config_is_published: true,
       name: 'Agent',
     })
     expect(composerPutMutationFn).not.toHaveBeenCalled()
@@ -212,6 +212,35 @@ describe('useAgentConfigureSync', () => {
       name: 'Agent',
     })
     expect(result.current.draftSavedAt).toBe(1710000105000)
+  })
+
+  it('should cancel pending autosave when the draft returns to the saved baseline', async () => {
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Temporary prompt',
+      })
+    })
+    act(() => {
+      store.set(agentComposerDraftAtom, defaultAgentSoulConfigFormState)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+    expect(result.current.draftSavedAt).toBeUndefined()
   })
 
   it('should include Agent Soul files when autosaving file changes', async () => {

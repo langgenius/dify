@@ -169,10 +169,10 @@ export function useAgentConfigureSync({
         !enabledRef.current
         || !isDirty
       ) {
+        if (!isDirty)
+          debouncedSaveDraft.cancel?.()
         return
       }
-
-      markActiveConfigUnpublished()
 
       if (
         !validateKnowledgeRetrievals(store.get(agentComposerDraftAtom).knowledgeRetrievals).isValid
