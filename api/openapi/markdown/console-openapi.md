@@ -20273,43 +20273,15 @@ Enum class for tool provider
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| app_count | integer |  | Yes |
-| author_name | string |  | Yes |
-| built_in_field_enabled | boolean |  | Yes |
-| chunk_structure | string |  | Yes |
 | created_at | integer |  | Yes |
 | created_by | string |  | Yes |
 | data_source_type | string |  | Yes |
 | description | string |  | Yes |
-| doc_form | string |  | Yes |
-| doc_metadata | [ [DatasetDocMetadataResponse](#datasetdocmetadataresponse) ] |  | Yes |
-| document_count | integer |  | Yes |
-| embedding_available | boolean |  | No |
-| embedding_model | string |  | Yes |
-| embedding_model_provider | string |  | Yes |
-| enable_api | boolean |  | Yes |
-| external_knowledge_info | [DatasetExternalKnowledgeInfoResponse](#datasetexternalknowledgeinforesponse) |  | No |
-| external_retrieval_model | [DatasetExternalRetrievalModelResponse](#datasetexternalretrievalmodelresponse) |  | Yes |
-| icon_info | [DatasetIconInfoResponse](#dataseticoninforesponse) |  | No |
 | id | string |  | Yes |
 | indexing_technique | string |  | Yes |
-| is_multimodal | boolean |  | Yes |
-| is_published | boolean |  | Yes |
-| maintainer | string |  | No |
 | name | string |  | Yes |
 | permission | string |  | Yes |
 | permission_keys | [ string ] |  | No |
-| pipeline_id | string |  | Yes |
-| provider | string |  | Yes |
-| retrieval_model_dict | [DatasetRetrievalModelResponse](#datasetretrievalmodelresponse) |  | Yes |
-| runtime_mode | string |  | Yes |
-| summary_index_setting | [DatasetSummaryIndexSettingResponse](#datasetsummaryindexsettingresponse) |  | No |
-| tags | [ [DatasetTagResponse](#datasettagresponse) ] |  | Yes |
-| total_available_documents | integer |  | Yes |
-| total_documents | integer |  | Yes |
-| updated_at | integer |  | Yes |
-| updated_by | string |  | Yes |
-| word_count | integer |  | Yes |
 
 #### TrialDatasetListQuery
 
