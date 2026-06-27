@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import ANY, Mock
@@ -9,6 +9,7 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
+from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
 
 
@@ -39,30 +40,78 @@ def _account(account_id: str = "account-1") -> Account:
     return account
 
 
-def _snippet(**overrides) -> SimpleNamespace:
+def _snippet(**overrides) -> CustomizedSnippet:
     data = {
         "id": "snippet-1",
         "tenant_id": "tenant-1",
         "name": "Snippet",
         "description": "Description",
         "type": snippets_module.SnippetType.NODE,
-        "version": 1,
-        "use_count": 0,
-        "is_published": False,
-        "icon_info": None,
-        "graph_dict": {},
-        "input_fields_list": [],
-        "tags": [],
-        "created_by": None,
-        "author_name": None,
-        "created_by_account": None,
-        "created_at": datetime.fromtimestamp(1_704_067_200, UTC),
+        "version": 3,
+        "use_count": 7,
+        "is_published": True,
+        "icon_info": {"icon": "star", "icon_background": "#101828", "icon_type": "emoji"},
+        "input_fields": '[{"label": "Question", "variable": "query", "type": "text-input"}]',
+        "created_by": "account-1",
+        "created_at": datetime(2024, 1, 2, 3, 4, 5),
         "updated_by": None,
-        "updated_by_account": None,
-        "updated_at": datetime.fromtimestamp(1_704_153_600, UTC),
+        "updated_at": datetime(2024, 1, 3, 4, 5, 6),
     }
     data.update(overrides)
-    return SimpleNamespace(**data)
+    return CustomizedSnippet(**data)
+
+
+def _patch_snippet_response_properties(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        CustomizedSnippet,
+        "tags",
+        property(lambda _snippet: [{"id": "tag-1", "name": "Search", "type": "snippet"}]),
+    )
+    monkeypatch.setattr(CustomizedSnippet, "created_by_account", property(lambda _snippet: _account("account-1")))
+    monkeypatch.setattr(CustomizedSnippet, "updated_by_account", property(lambda _snippet: None))
+
+
+def _expected_snippet_list_item(snippet: CustomizedSnippet) -> dict:
+    return {
+        "id": snippet.id,
+        "name": snippet.name,
+        "description": snippet.description,
+        "type": snippet.type,
+        "version": snippet.version,
+        "use_count": snippet.use_count,
+        "is_published": snippet.is_published,
+        "icon_info": snippet.icon_info,
+        "tags": [{"id": "tag-1", "name": "Search", "type": "snippet"}],
+        "created_by": snippet.created_by,
+        "author_name": "Test User",
+        "created_at": int(snippet.created_at.timestamp()),
+        "updated_by": snippet.updated_by,
+        "updated_at": int(snippet.updated_at.timestamp()),
+    }
+
+
+def _expected_snippet_response(snippet: CustomizedSnippet) -> dict:
+    return {
+        "id": snippet.id,
+        "name": snippet.name,
+        "description": snippet.description,
+        "type": snippet.type,
+        "version": snippet.version,
+        "use_count": snippet.use_count,
+        "is_published": snippet.is_published,
+        "icon_info": snippet.icon_info,
+        "graph": {},
+        "input_fields": [{"label": "Question", "variable": "query", "type": "text-input"}],
+        "tags": [{"id": "tag-1", "name": "Search", "type": "snippet"}],
+        "created_by": {
+            "id": "account-1",
+            "name": "Test User",
+            "email": "account-1@example.com",
+        },
+        "created_at": int(snippet.created_at.timestamp()),
+        "updated_by": None,
+        "updated_at": int(snippet.updated_at.timestamp()),
+    }
 
 
 def test_normalize_snippet_list_query_args_sorts_indexed_values():
@@ -114,35 +163,19 @@ def test_list_snippets_returns_pagination(app: Flask, monkeypatch: pytest.Monkey
     tag_id = "11111111-1111-1111-1111-111111111111"
     get_snippets = Mock(return_value=(snippets, 1, False))
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippets", get_snippets)
+    _patch_snippet_response_properties(monkeypatch)
 
     api = snippets_module.CustomizedSnippetsApi()
     handler = unwrap(api.get)
 
     with app.test_request_context(
-        f"/workspaces/current/customized-snippets?page=2&limit=10&tag_ids[0]={tag_id}&creators[0]=account-2"
+        f"/workspaces/current/customized-snippets?page=2&limit=10&tag_ids[0]={tag_id}&creator_ids[0]=account-2"
     ):
         response, status_code = handler(api, "tenant-1")
 
     assert status_code == 200
     assert response == {
-        "data": [
-            {
-                "id": "snippet-1",
-                "name": "Snippet",
-                "description": "Description",
-                "type": snippets_module.SnippetType.NODE.value,
-                "version": 1,
-                "use_count": 0,
-                "is_published": False,
-                "icon_info": None,
-                "tags": [],
-                "created_by": None,
-                "author_name": None,
-                "created_at": 1_704_067_200,
-                "updated_by": None,
-                "updated_at": 1_704_153_600,
-            }
-        ],
+        "data": [_expected_snippet_list_item(snippets[0])],
         "page": 2,
         "limit": 10,
         "total": 1,
@@ -165,6 +198,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
     snippet = _snippet()
     create_snippet = Mock(return_value=snippet)
     monkeypatch.setattr(snippets_module.SnippetService, "create_snippet", create_snippet)
+    _patch_snippet_response_properties(monkeypatch)
     monkeypatch.setattr(
         snippets_module.CreateSnippetPayload,
         "model_validate",
@@ -191,8 +225,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(app: Flask, mo
         response, status_code = handler(api, "tenant-1", user)
 
     assert status_code == 201
-    assert response["id"] == "snippet-1"
-    assert response["type"] == snippets_module.SnippetType.NODE.value
+    assert response == _expected_snippet_response(snippet)
     assert create_snippet.call_args.kwargs["snippet_type"] == snippets_module.SnippetType.NODE
 
 
@@ -239,6 +272,7 @@ def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.
 def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
+    _patch_snippet_response_properties(monkeypatch)
 
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.get)
@@ -247,8 +281,7 @@ def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.Monk
         response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
 
     assert status_code == 200
-    assert response["id"] == "snippet-1"
-    assert response["name"] == "Snippet"
+    assert response == _expected_snippet_response(snippet)
 
 
 def test_patch_snippet_returns_400_for_empty_payload(app: Flask, monkeypatch: pytest.MonkeyPatch):
@@ -285,6 +318,7 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
     monkeypatch.setattr(snippets_module.SnippetService, "update_snippet", update_snippet)
     monkeypatch.setattr(snippets_module, "Session", SessionContext)
     monkeypatch.setattr(snippets_module, "db", SimpleNamespace(engine=object()))
+    _patch_snippet_response_properties(monkeypatch)
 
     api = snippets_module.CustomizedSnippetDetailApi()
     handler = unwrap(api.patch)
@@ -297,8 +331,7 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
         response, status_code = handler(api, "tenant-1", user, snippet_id="snippet-1")
 
     assert status_code == 200
-    assert response["id"] == "snippet-1"
-    assert response["name"] == "New"
+    assert response == _expected_snippet_response(updated_snippet)
     update_snippet.assert_called_once()
     assert update_snippet.call_args.kwargs["data"] == {
         "name": "New",
@@ -483,7 +516,9 @@ def test_check_dependencies_raises_when_snippet_missing(app: Flask, monkeypatch:
 
 def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: pytest.MonkeyPatch):
     snippet = _snippet()
-    check_dependencies = Mock(return_value=SimpleNamespace(model_dump=Mock(return_value={"leaked_dependencies": []})))
+    check_dependencies = Mock(
+        return_value=SimpleNamespace(model_dump=Mock(return_value={"dependencies": [], "missing_dependencies": []}))
+    )
     session = SimpleNamespace()
 
     class SessionContext(_SessionContext):
@@ -506,7 +541,7 @@ def test_check_dependencies_returns_dependency_result(app: Flask, monkeypatch: p
         response, status_code = handler(api, "tenant-1", snippet_id="snippet-1")
 
     assert status_code == 200
-    assert response == {"leaked_dependencies": []}
+    assert response == {"dependencies": [], "missing_dependencies": []}
     check_dependencies.assert_called_once_with(snippet=snippet)
 
 

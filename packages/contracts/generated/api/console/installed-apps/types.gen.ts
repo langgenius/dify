@@ -181,16 +181,7 @@ export type InstalledAppResponse = {
   uninstallable: boolean
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>

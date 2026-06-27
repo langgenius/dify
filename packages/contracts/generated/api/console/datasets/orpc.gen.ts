@@ -359,8 +359,12 @@ export const get5 = oc
   .input(z.object({ params: zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdPath }))
   .output(zGetDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponse)
 
+/**
+ * Update external knowledge API template
+ */
 export const patch = oc
   .route({
+    description: 'Update external knowledge API template',
     inputStructure: 'detailed',
     method: 'PATCH',
     operationId: 'patchDatasetsExternalKnowledgeApiByExternalKnowledgeApiId',
@@ -397,8 +401,12 @@ export const get6 = oc
   .input(z.object({ query: zGetDatasetsExternalKnowledgeApiQuery.optional() }))
   .output(zGetDatasetsExternalKnowledgeApiResponse)
 
+/**
+ * Create external knowledge API template
+ */
 export const post4 = oc
   .route({
+    description: 'Create external knowledge API template',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postDatasetsExternalKnowledgeApi',
