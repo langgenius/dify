@@ -1,14 +1,8 @@
 import type { StepByStepTourAccountState, StepByStepTourTaskDefinition } from './types'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
+import { STEP_BY_STEP_TOUR_TARGETS } from './target-registry'
 
 export const STEP_BY_STEP_TOUR_STORAGE_KEY = 'step-by-step-tour-account-state'
-
-export const STEP_BY_STEP_TOUR_TARGETS = {
-  home: 'step-by-step-tour-home',
-  studio: 'step-by-step-tour-studio',
-  knowledge: 'step-by-step-tour-knowledge',
-  integration: 'step-by-step-tour-integration',
-} as const
 
 export const STEP_BY_STEP_TOUR_TASKS = [
   {

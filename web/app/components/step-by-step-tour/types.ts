@@ -8,6 +8,7 @@ export type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'di
 
 export type StepByStepTourAccountState = {
   firstWorkspaceId?: string
+  activeTaskId?: StepByStepTourTaskId
   manuallyEnabledWorkspaceIds: string[]
   manuallyDisabledWorkspaceIds: string[]
   minimized: boolean

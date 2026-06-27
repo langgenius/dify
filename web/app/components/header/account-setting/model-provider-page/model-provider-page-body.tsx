@@ -3,6 +3,7 @@ import type { ModelProvider } from './declarations'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { Trans, useTranslation } from 'react-i18next'
 import { SkeletonContainer, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { IS_CLOUD_EDITION } from '@/config'
 import InstallFromMarketplace from './install-from-marketplace'
 import ProviderAddedCard from './provider-added-card'
@@ -80,7 +81,9 @@ function EmptyProviderState({
                     <a
                       href="#model-provider-marketplace"
                       className="system-xs-medium text-text-accent hover:underline"
-                    />
+                    >
+                      {t('mainNav.marketplace', { ns: 'common' })}
+                    </a>
                   ),
                 }}
               />
@@ -134,7 +137,7 @@ const ModelProviderPageBody: FC<ModelProviderPageBodyProps> = ({
   return (
     <div className="flex flex-col gap-2">
       {IS_CLOUD_EDITION && (
-        <div>
+        <div data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.integration}>
           <QuotaPanel providers={providers} />
         </div>
       )}

@@ -312,9 +312,13 @@ const MainNav = ({
             </div>
           )}
         </div>
-        {bottomNavigationExpanded && (
-          <StepByStepTourMount className="relative z-40 shrink-0 overflow-visible px-2 pb-2" />
+        <StepByStepTourMount className={cn(
+          'relative z-40 shrink-0 overflow-visible',
+          bottomNavigationExpanded
+            ? 'px-2 pb-2'
+            : 'px-0 pb-2',
         )}
+        />
         <div className={cn(
           !bottomNavigationExpanded
             ? 'flex w-full shrink-0 flex-col items-center gap-0.5 rounded-lg px-2 pt-1 pb-3'

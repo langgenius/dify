@@ -63,6 +63,35 @@ vi.mock('@/next/navigation', async (importOriginal) => {
   }
 })
 
+vi.mock('react-i18next', async () => {
+  const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+
+  return {
+    ...actual,
+    ...createReactI18nextMock({
+      'common.stepByStepTour.title': 'Get to know Dify',
+      'common.stepByStepTour.duration': 'A quick tour — about 5 minutes',
+      'common.stepByStepTour.skip': 'Skip',
+      'common.stepByStepTour.minimize': 'Minimize tour',
+      'common.stepByStepTour.restore': 'Open step-by-step tour',
+      'common.stepByStepTour.learnMore': 'Learn more',
+      'common.stepByStepTour.tasks.home.title': 'Try a Learn Dify lesson',
+      'common.stepByStepTour.tasks.home.description': 'Open a hands-on lesson from Learn Dify to see Dify in action.',
+      'common.stepByStepTour.tasks.home.primaryActionLabel': 'Show me',
+      'common.stepByStepTour.tasks.studio.title': 'Manage your apps in Studio',
+      'common.stepByStepTour.tasks.studio.description': 'All your apps live in Studio — edit, organize, and publish them here.',
+      'common.stepByStepTour.tasks.studio.primaryActionLabel': 'Take a look',
+      'common.stepByStepTour.tasks.knowledge.title': 'Add your own data',
+      'common.stepByStepTour.tasks.knowledge.description': 'Build a knowledge base so your apps answer from your documents.',
+      'common.stepByStepTour.tasks.knowledge.primaryActionLabel': 'Take a look',
+      'common.stepByStepTour.tasks.integration.title': 'Explore integrations',
+      'common.stepByStepTour.tasks.integration.description': 'Models, tools, data sources & more — explore what you can connect.',
+      'common.stepByStepTour.tasks.integration.primaryActionLabel': 'Take a look',
+    }),
+  }
+})
+
 vi.mock('@/service/client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/client')>()
   const currentWorkspaceQueryKey = ['console', 'workspaces', 'current', 'post'] as const
@@ -920,51 +949,63 @@ describe('MainNav', () => {
     expect(mockPush).not.toHaveBeenCalled()
   })
 
-  it('shows Step-by-step Tour switch in help menu and stores the current workspace override', async () => {
+  it('shows Step-by-step Tour switch in help menu and stores the current workspace disable override', async () => {
     renderMainNav({ enable_learn_app: true })
 
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
     const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })
-    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'false')
+    expect(stepByStepTourItem).toHaveAttribute('aria-checked', 'true')
 
     fireEvent.click(stepByStepTourItem)
 
     await waitFor(() => {
-      expect(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)).toContain('"manuallyEnabledWorkspaceIds":["workspace-1"]')
+      expect(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)).toContain('"manuallyDisabledWorkspaceIds":["workspace-1"]')
     })
-    expect(screen.getByRole('region', { name: 'Step-by-step Tour' })).toBeInTheDocument()
-    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', '0 of 4 steps completed')
-    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
     expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('restores the expanded Step-by-step Tour after toggling it off and on again', async () => {
     renderMainNav({ enable_learn_app: true })
 
+    expect(await screen.findByRole('region', { name: 'Get to know Dify' })).toBeVisible()
+
     fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
     const stepByStepTourItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })
 
     fireEvent.click(stepByStepTourItem)
 
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Step-by-step Tour' })).toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Get to know Dify' })).not.toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' }))
-    const enabledStepByStepTourItem = await screen.findByRole('menuitemcheckbox', { name: 'common.mainNav.help.stepByStepTour' })
-
-    fireEvent.click(enabledStepByStepTourItem)
+    fireEvent.click(stepByStepTourItem)
 
     await waitFor(() => {
-      expect(screen.queryByRole('region', { name: 'Step-by-step Tour' })).not.toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'Get to know Dify' })).toBeVisible()
     })
+    expect(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)).toContain('"manuallyDisabledWorkspaceIds":[]')
+  })
 
-    fireEvent.click(enabledStepByStepTourItem)
+  it('keeps Step-by-step Tour mini mounted when detail navigation is collapsed during walkthrough', async () => {
+    mockPathname = '/app/app-1/overview'
+    useAppStore.getState().setAppDetail({
+      id: 'app-1',
+    } as NonNullable<ReturnType<typeof useAppStore.getState>['appDetail']>)
+    localStorage.setItem(DETAIL_SIDEBAR_STORAGE_KEY, 'collapse')
+    localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+      activeTaskId: 'integration',
+      manuallyEnabledWorkspaceIds: ['workspace-1'],
+      manuallyDisabledWorkspaceIds: [],
+      minimized: false,
+      completedTaskIds: ['home', 'studio', 'knowledge'],
+      skipped: false,
+    }))
 
-    await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Step-by-step Tour' })).toBeVisible()
-    })
-    expect(localStorage.getItem(STEP_BY_STEP_TOUR_STORAGE_KEY)).toContain('"manuallyEnabledWorkspaceIds":["workspace-1"]')
+    renderMainNav({ enable_learn_app: true })
+
+    expect(await screen.findByRole('button', { name: 'Open step-by-step tour' })).toBeInTheDocument()
   })
 
   it('hides Learn Dify switch in help menu when learn app is disabled', async () => {
