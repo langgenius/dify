@@ -5,7 +5,7 @@ from flask import request
 from flask_restx import Resource, fields, marshal
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 import services
 from configs import dify_config
@@ -32,8 +32,8 @@ from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.helper import OptionalTimestampField, TimestampField, dump_response, to_timestamp
-from libs.login import login_required
-from models.account import Account, Tenant, TenantAccountJoin, TenantCustomConfigDict, TenantStatus
+from libs.login import current_account_with_tenant, login_required
+from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantCustomConfigDict, TenantStatus
 from services.account_service import TenantService
 from services.billing_service import BillingService, SubscriptionPlan
 from services.enterprise.enterprise_service import EnterpriseService
@@ -42,6 +42,12 @@ from services.file_service import FileService
 from services.workspace_service import WorkspaceService
 
 logger = logging.getLogger(__name__)
+
+
+def _require_current_workspace_manager() -> None:
+    current_user, _ = current_account_with_tenant()
+    if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        raise Forbidden()
 
 
 class WorkspaceListQuery(BaseModel):
@@ -447,6 +453,7 @@ class WorkspaceInfoApi(Resource):
 
         if not current_tenant_id:
             raise ValueError("No current tenant")
+        _require_current_workspace_manager()
         tenant = db.get_or_404(Tenant, current_tenant_id)
         tenant.name = args.name
         db.session.commit()

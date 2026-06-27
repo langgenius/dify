@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 import services
 from controllers.common.errors import (
@@ -30,12 +30,13 @@ from controllers.console.workspace.workspace import (
 )
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from models.account import Account, Tenant, TenantAccountRole, TenantCustomConfigDict, TenantStatus
 
 
-def make_account(account_id: str = "u1") -> Account:
+def make_account(account_id: str = "u1", *, role: TenantAccountRole = TenantAccountRole.OWNER) -> Account:
     account = Account(name="Test User", email=f"{account_id}@example.com")
     account.id = account_id
+    account.role = role
     return account
 
 
@@ -667,11 +668,17 @@ class TestWorkspaceInfoApi:
         method = inspect.unwrap(api.post)
 
         tenant = make_tenant()
+        user = make_account(role=TenantAccountRole.OWNER)
 
         payload = {"name": "New Name"}
 
         with (
             app.test_request_context("/workspaces/info", json=payload),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant",
+                return_value=(user, "t1"),
+                create=True,
+            ),
             patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
             patch("controllers.console.workspace.workspace.db.session.commit"),
             patch(
@@ -682,6 +689,32 @@ class TestWorkspaceInfoApi:
             result = method(api, "t1")
 
         assert result["result"] == "success"
+
+    def test_post_forbids_normal_member_rename(self, app: Flask):
+        api = WorkspaceInfoApi()
+        method = inspect.unwrap(api.post)
+        tenant = make_tenant()
+        user = make_account(role=TenantAccountRole.NORMAL)
+
+        with (
+            app.test_request_context("/workspaces/info", json={"name": "Renamed By Normal"}),
+            patch(
+                "controllers.console.workspace.workspace.current_account_with_tenant",
+                return_value=(user, "t1"),
+                create=True,
+            ),
+            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
+            patch("controllers.console.workspace.workspace.db.session.commit") as commit,
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={"name": "Renamed By Normal"},
+            ),
+        ):
+            with pytest.raises(Forbidden):
+                method(api, "t1")
+
+        assert tenant.name == "Tenant t1"
+        commit.assert_not_called()
 
     def test_no_current_tenant(self, app: Flask):
         api = WorkspaceInfoApi()
