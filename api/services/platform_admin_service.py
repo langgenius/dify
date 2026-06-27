@@ -217,7 +217,7 @@ class PlatformAdminService:
 
     @staticmethod
     def get_workspace_members(tenant: Tenant) -> list[Account]:
-        return TenantService.get_tenant_members(tenant)
+        return TenantService.get_tenant_members(tenant, session=db.session)
 
     @staticmethod
     def invite_member(

@@ -89,6 +89,19 @@ def test_assign_workspace_owner_registers_pending_owner_and_returns_invite_url(
     assert result == "http://localhost/activate?email=owner%40example.com&token=invite-token"
 
 
+@patch("services.platform_admin_service.TenantService")
+@patch("services.platform_admin_service.db")
+def test_get_workspace_members_passes_session_to_tenant_service(mock_db, mock_tenant_service):
+    tenant = SimpleNamespace(id="tenant-1")
+    expected_members = [SimpleNamespace(id="account-1")]
+    mock_tenant_service.get_tenant_members.return_value = expected_members
+
+    result = PlatformAdminService.get_workspace_members(tenant)
+
+    assert result == expected_members
+    mock_tenant_service.get_tenant_members.assert_called_once_with(tenant, session=mock_db.session)
+
+
 @patch("services.platform_admin_service.dify_config")
 @patch("services.platform_admin_service.db")
 def test_remove_member_deletes_pending_account_without_remaining_workspaces(mock_db, mock_dify_config):
