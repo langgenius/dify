@@ -479,7 +479,7 @@ class TestExternalKnowledgeHitTestingApi:
             resp = method(api, MagicMock(), current_user, "dataset-id")
 
         assert resp == retrieve_response
-        check_dataset_permission.assert_called_once_with(dataset, current_user)
+        check_dataset_permission.assert_called_once_with(dataset, current_user, db.session)
         hit_testing_args_check.assert_called_once_with(payload)
         external_retrieve.assert_called_once_with(
             session=db.session,
@@ -672,7 +672,7 @@ class TestExternalKnowledgeHitTestingApiAdvanced:
                 }
             ],
         }
-        check_permission.assert_called_once_with(dataset, current_user)
+        check_permission.assert_called_once_with(dataset, current_user, db.session)
         args_check.assert_called_once_with(payload)
         external_retrieve.assert_called_once_with(
             session=db.session,
