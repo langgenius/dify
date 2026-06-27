@@ -348,16 +348,7 @@ export const zHumanInputUploadTokenResponse = z.object({
 
 export const zJsonObject = z.record(z.string(), z.unknown())
 
-export const zJsonValue = z
-  .union([
-    z.string(),
-    z.int(),
-    z.number(),
-    z.boolean(),
-    z.record(z.string(), z.unknown()),
-    z.array(z.unknown()),
-  ])
-  .nullable()
+export const zJsonValue = z.unknown()
 
 /**
  * AgentThought
@@ -375,11 +366,6 @@ export const zAgentThought = z.object({
   tool_input: z.string().nullish(),
   tool_labels: zJsonValue,
 })
-
-/**
- * GeneratedAppResponse
- */
-export const zGeneratedAppResponse = zJsonValue
 
 export const zJsonValueType = z.unknown()
 
@@ -932,7 +918,7 @@ export const zPostChatMessagesBody = zChatMessagePayload
 /**
  * Success
  */
-export const zPostChatMessagesResponse = zGeneratedAppResponse
+export const zPostChatMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostChatMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -948,7 +934,7 @@ export const zPostCompletionMessagesBody = zCompletionMessagePayload
 /**
  * Success
  */
-export const zPostCompletionMessagesResponse = zGeneratedAppResponse
+export const zPostCompletionMessagesResponse = z.record(z.string(), z.unknown())
 
 export const zPostCompletionMessagesByTaskIdStopPath = z.object({
   task_id: z.string(),
@@ -1151,7 +1137,7 @@ export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
 /**
  * Success
  */
-export const zGetMessagesByMessageIdMoreLikeThisResponse = zGeneratedAppResponse
+export const zGetMessagesByMessageIdMoreLikeThisResponse = z.record(z.string(), z.unknown())
 
 export const zGetMessagesByMessageIdSuggestedQuestionsPath = z.object({
   message_id: z.uuid(),
@@ -1277,7 +1263,7 @@ export const zPostWorkflowsRunBody = zWorkflowRunPayload
 /**
  * Success
  */
-export const zPostWorkflowsRunResponse = zGeneratedAppResponse
+export const zPostWorkflowsRunResponse = z.record(z.string(), z.unknown())
 
 export const zPostWorkflowsTasksByTaskIdStopPath = z.object({
   task_id: z.string(),

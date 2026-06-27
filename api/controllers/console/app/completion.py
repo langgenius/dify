@@ -380,7 +380,6 @@ def _create_chat_message(
         streaming=streaming,
     )
 
-
 def _create_build_chat_finalization_message(
     *, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
@@ -510,6 +509,7 @@ def _generate_chat_message_response(
         args=args,
         streaming=streaming,
     )
+    # response-contract:ignore compact_generate_response
     return helper.compact_generate_response(response)
 
 

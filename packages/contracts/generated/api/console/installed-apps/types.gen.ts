@@ -45,8 +45,6 @@ export type ChatMessagePayload = {
   retriever_from?: string
 }
 
-export type GeneratedAppResponse = JsonValue
-
 export type SimpleResultResponse = {
   result: string
 }
@@ -181,16 +179,7 @@ export type InstalledAppResponse = {
   uninstallable: boolean
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type ExploreMessageListItem = {
   agent_thoughts: Array<AgentThought>
@@ -520,7 +509,9 @@ export type PostInstalledAppsByInstalledAppIdChatMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdChatMessagesResponse
@@ -553,7 +544,9 @@ export type PostInstalledAppsByInstalledAppIdCompletionMessagesData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdCompletionMessagesResponse
@@ -714,7 +707,9 @@ export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisData 
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetInstalledAppsByInstalledAppIdMessagesByMessageIdMoreLikeThisResponse
@@ -847,7 +842,9 @@ export type PostInstalledAppsByInstalledAppIdWorkflowsRunData = {
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostInstalledAppsByInstalledAppIdWorkflowsRunResponse
