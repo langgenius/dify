@@ -236,6 +236,16 @@ export const handleStream = (
   let buffer = ''
   let bufferObj: Record<string, any>
   let isFirstMessage = true
+  const completeWithError = (errorMessage: string, errorCode?: string) => {
+    onData('', false, {
+      conversationId: bufferObj?.conversation_id,
+      messageId: bufferObj?.message_id ?? '',
+      errorMessage,
+      errorCode,
+    })
+    onCompleted?.(true, errorMessage)
+  }
+
   function read() {
     let hasError = false
     reader?.read().then((result: ReadableStreamReadResult<Uint8Array>) => {
@@ -399,6 +409,8 @@ export const handleStream = (
       }
       if (!hasError)
         read()
+    }, (e: unknown) => {
+      completeWithError(String(e), 'stream_read_error')
     })
   }
   read()

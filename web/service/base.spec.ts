@@ -256,6 +256,34 @@ describe('handleStream', () => {
       expect(onData).not.toHaveBeenCalled()
     })
 
+    it('should complete with error when the stream reader rejects', async () => {
+      const onData = vi.fn()
+      const onCompleted = vi.fn()
+
+      const mockReader = {
+        read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
+      }
+
+      const mockResponse = {
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      } as unknown as Response
+
+      handleStream(mockResponse, onData, onCompleted)
+
+      await waitFor(() => {
+        expect(onData).toHaveBeenCalledWith('', false, {
+          conversationId: undefined,
+          messageId: '',
+          errorMessage: 'Error: stream lost',
+          errorCode: 'stream_read_error',
+        })
+      })
+      expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+    })
+
     it('should throw error when response is not ok', () => {
       const onData = vi.fn()
       const mockResponse = {
@@ -321,5 +349,37 @@ describe('ssePost and sseGet', () => {
     await waitFor(() => {
       expect(onError).toHaveBeenCalledWith('Error: resume refresh failed')
     })
+  })
+
+  it('should report stream reader failures through onError and onCompleted', async () => {
+    const onError = vi.fn()
+    const onCompleted = vi.fn()
+    const mockReader = {
+      read: vi.fn().mockRejectedValueOnce(new Error('stream lost')),
+    }
+    const response = {
+      status: 200,
+      ok: true,
+      body: {
+        getReader: () => mockReader,
+      },
+    } as unknown as Response
+
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(response)
+
+    await ssePost('/chat-messages', {
+      body: {
+        query: 'hello',
+      },
+    }, {
+      onError,
+      onCompleted,
+    })
+
+    await waitFor(() => {
+      expect(onError).toHaveBeenCalledWith('Error: stream lost', 'stream_read_error')
+    })
+    expect(onCompleted).toHaveBeenCalledWith(true, 'Error: stream lost')
+    expect(toast.error).toHaveBeenCalledWith('Error: stream lost')
   })
 })
