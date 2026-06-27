@@ -59,14 +59,10 @@ def _remote_result(
     truncated: bool = False,
 ) -> RemoteCommandResult:
     return RemoteCommandResult(
-        job_id="remote-drive-pull",
         status="exited",
-        done=True,
         exit_code=exit_code,
         output=output,
-        offset=len(output),
         truncated=truncated,
-        output_path="/tmp/output.log",
     )
 
 

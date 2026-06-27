@@ -24,6 +24,7 @@ from dify_agent.layers.shell import (
     DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
+from dify_agent.adapters.shell.protocols import ShellEnvironmentDescriptor
 from dify_agent.layers.shell.layer import DifyShellLayer, DifyShellRuntimeState, ShellctlClientFactory
 from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
 
@@ -249,6 +250,22 @@ def _shell_provider(*, client_factory: ShellctlClientFactory) -> LayerProvider[D
 
 def test_shell_type_id_constant_matches_implementation_class() -> None:
     assert DIFY_SHELL_LAYER_TYPE_ID == DifyShellLayer.type_id
+
+
+def test_environment_descriptor_returns_workspace_seed_from_runtime_state() -> None:
+    layer = _shell_layer(client_factory=lambda _entrypoint: FakeShellctlClient())
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+
+    descriptor = layer.environment_descriptor()
+
+    assert descriptor == ShellEnvironmentDescriptor(workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+
+
+def test_environment_descriptor_raises_without_session_identity() -> None:
+    layer = _shell_layer(client_factory=lambda _entrypoint: FakeShellctlClient())
+
+    with pytest.raises(ValueError, match="session_id or workspace_cwd"):
+        _ = layer.environment_descriptor()
 
 
 def test_shell_layer_create_generates_5_plus_2_hex_session_id_and_retries_workspace_collision(
