@@ -18,7 +18,6 @@ export type AccessTokenResultResponse = {
 }
 
 export type AgentThought = {
-  answer?: string | null
   chain_id?: string | null
   created_at?: number | null
   files: Array<string>
@@ -47,7 +46,9 @@ export type AppPermissionQuery = {
   appId: string
 }
 
-export type AudioToTextResponse = {
+export type AudioBinaryResponse = Blob | File
+
+export type AudioTranscriptResponse = {
   text: string
 }
 
@@ -599,10 +600,8 @@ export type WebMessageInfiniteScrollPagination = {
 export type WebMessageListItem = {
   agent_thoughts: Array<AgentThought>
   answer: string
-  answer_tokens?: number
   conversation_id: string
   created_at?: number | null
-  currency?: string | null
   error?: string | null
   extra_contents: Array<HumanInputContent>
   feedback?: SimpleFeedback | null
@@ -611,15 +610,11 @@ export type WebMessageListItem = {
     [key: string]: JsonValueType
   }
   message_files: Array<MessageFile>
-  message_tokens?: number
   metadata?: JsonValueType | null
   parent_message_id?: string | null
-  provider_response_latency?: number
   query: string
   retriever_resources: Array<RetrieverResource>
   status: string
-  total_price?: string | null
-  readonly total_tokens: number
 }
 
 export type WebModelConfigResponse = {
@@ -691,37 +686,6 @@ export type WebAppSiteResponseWritable = {
   site: WebSiteResponseWritable
 }
 
-export type WebMessageInfiniteScrollPaginationWritable = {
-  data: Array<WebMessageListItemWritable>
-  has_more: boolean
-  limit: number
-}
-
-export type WebMessageListItemWritable = {
-  agent_thoughts: Array<AgentThought>
-  answer: string
-  answer_tokens?: number
-  conversation_id: string
-  created_at?: number | null
-  currency?: string | null
-  error?: string | null
-  extra_contents: Array<HumanInputContent>
-  feedback?: SimpleFeedback | null
-  id: string
-  inputs: {
-    [key: string]: JsonValueType
-  }
-  message_files: Array<MessageFile>
-  message_tokens?: number
-  metadata?: JsonValueType | null
-  parent_message_id?: string | null
-  provider_response_latency?: number
-  query: string
-  retriever_resources: Array<RetrieverResource>
-  status: string
-  total_price?: string | null
-}
-
 export type WebSiteResponseWritable = {
   chat_color_theme?: string | null
   chat_color_theme_inverted: boolean
@@ -757,7 +721,7 @@ export type PostAudioToTextErrors = {
 }
 
 export type PostAudioToTextResponses = {
-  200: AudioToTextResponse
+  200: AudioTranscriptResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
@@ -1561,9 +1525,7 @@ export type PostTextToAudioErrors = {
 }
 
 export type PostTextToAudioResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioBinaryResponse
 }
 
 export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]

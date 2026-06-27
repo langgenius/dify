@@ -21,7 +21,7 @@ Convert audio file to text using speech-to-text service.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AudioToTextResponse](#audiototextresponse)<br> |
+| 200 | Success | **application/json**: [AudioTranscriptResponse](#audiotranscriptresponse)<br> |
 | 400 | Bad Request |  |
 | 401 | Unauthorized |  |
 | 403 | Forbidden |  |
@@ -813,13 +813,13 @@ Convert text to audio using text-to-speech service.
 
 #### Responses
 
-| Code | Description |
-| ---- | ----------- |
-| 200 | Success |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 500 | Internal Server Error |
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [AudioBinaryResponse](#audiobinaryresponse)<br> |
+| 400 | Bad Request |  |
+| 401 | Unauthorized |  |
+| 403 | Forbidden |  |
+| 500 | Internal Server Error |  |
 
 ### [GET] /webapp/access-mode
 Retrieve the access mode for a web application (public or restricted).
@@ -950,7 +950,6 @@ Returns Server-Sent Events stream.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| answer | string |  | No |
 | chain_id | string |  | No |
 | created_at | integer |  | No |
 | files | [ string ] |  | Yes |
@@ -982,7 +981,13 @@ Returns Server-Sent Events stream.
 | ---- | ---- | ----------- | -------- |
 | appId | string | Application ID | Yes |
 
-#### AudioToTextResponse
+#### AudioBinaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AudioBinaryResponse | string |  |  |
+
+#### AudioTranscriptResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -1685,25 +1690,19 @@ in form definiton, or a variable while the workflow is running.
 | ---- | ---- | ----------- | -------- |
 | agent_thoughts | [ [AgentThought](#agentthought) ] |  | Yes |
 | answer | string |  | Yes |
-| answer_tokens | integer |  | No |
 | conversation_id | string |  | Yes |
 | created_at | integer |  | No |
-| currency | string |  | No |
 | error | string |  | No |
 | extra_contents | [ [HumanInputContent](#humaninputcontent) ] |  | Yes |
 | feedback | [SimpleFeedback](#simplefeedback) |  | No |
 | id | string |  | Yes |
 | inputs | object |  | Yes |
 | message_files | [ [MessageFile](#messagefile) ] |  | Yes |
-| message_tokens | integer |  | No |
 | metadata | [JSONValueType](#jsonvaluetype) |  | No |
 | parent_message_id | string |  | No |
-| provider_response_latency | number |  | No |
 | query | string |  | Yes |
 | retriever_resources | [ [RetrieverResource](#retrieverresource) ] |  | Yes |
 | status | string |  | Yes |
-| total_price | string |  | No |
-| total_tokens | integer |  | Yes |
 
 #### WebModelConfigResponse
 
