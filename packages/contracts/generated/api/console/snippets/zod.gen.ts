@@ -134,7 +134,6 @@ export const zWorkflowPublishResponse = z.object({
 })
 
 /**
-<<<<<<< HEAD
  * WorkflowUpdatePayload
  */
 export const zWorkflowUpdatePayload = z.object({
@@ -143,12 +142,7 @@ export const zWorkflowUpdatePayload = z.object({
 })
 
 /**
- * SimpleAccount
-||||||| parent of 540d9defed (refactor(api): migrate workspace account endpoints to BaseModel)
- * SimpleAccount
-=======
  * SimpleAccountResponse
->>>>>>> 540d9defed (refactor(api): migrate workspace account endpoints to BaseModel)
  */
 export const zSimpleAccountResponse = z.object({
   email: z.string(),
