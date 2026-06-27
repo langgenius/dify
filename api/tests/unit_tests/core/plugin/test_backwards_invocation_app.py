@@ -157,6 +157,32 @@ class TestPluginAppBackwardsInvocation:
         assert route.call_args.args[1] is workflow
         assert route.call_args.args[2] is end_user
 
+    def test_invoke_app_creates_app_scoped_end_user_for_session_user(self, mocker: MockerFixture):
+        app = MagicMock(mode=AppMode.CHAT)
+        end_user = MagicMock(id="end-user", session_id="wecom-user")
+        mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=app)
+        mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", side_effect=ValueError("user not found"))
+        get_or_create = mocker.patch(
+            "core.plugin.backwards_invocation.app.EndUserService.get_or_create_end_user",
+            return_value=end_user,
+        )
+        route = mocker.patch.object(PluginAppBackwardsInvocation, "invoke_chat_app", return_value={"ok": True})
+
+        result = PluginAppBackwardsInvocation.invoke_app(
+            app_id="app",
+            user_id="wecom-user",
+            tenant_id="tenant",
+            conversation_id=None,
+            query="hello",
+            stream=False,
+            inputs={},
+            files=[],
+        )
+
+        assert result == {"ok": True}
+        get_or_create.assert_called_once_with(app, "wecom-user")
+        assert route.call_args.args[1] is end_user
+
     def test_invoke_app_missing_query_for_chat_raises(self, mocker: MockerFixture):
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_app", return_value=MagicMock(mode=AppMode.CHAT))
         mocker.patch.object(PluginAppBackwardsInvocation, "_get_user", return_value=MagicMock())

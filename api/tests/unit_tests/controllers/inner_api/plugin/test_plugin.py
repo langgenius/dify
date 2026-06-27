@@ -8,6 +8,7 @@ handler tests use inspect.unwrap() to bypass them.
 """
 
 import inspect
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -189,6 +190,70 @@ class TestPluginInvokeAppApi:
     def test_has_post_method(self, api_instance):
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
+
+    @patch("controllers.inner_api.plugin.plugin.length_prefixed_response", return_value="stream-response")
+    @patch("controllers.inner_api.plugin.plugin.PluginAppBackwardsInvocation")
+    def test_post_uses_payload_user_for_app_user_id(self, mock_invocation, mock_response, api_instance, app: Flask):
+        mock_payload = SimpleNamespace(
+            app_id="app-1",
+            user="wecom-user",
+            conversation_id=None,
+            query="hello",
+            response_mode="blocking",
+            inputs={"x": 1},
+            files=[],
+        )
+        mock_user = SimpleNamespace(id="wrapper-user-id", session_id="wrapper-session")
+        mock_tenant = SimpleNamespace(id="tenant-1")
+        mock_invocation.invoke_app.return_value = {"ok": True}
+        mock_invocation.convert_to_event_stream.return_value = iter([b"{}"])
+
+        raw_post = _extract_raw_post(PluginInvokeAppApi)
+        result = raw_post(api_instance, user_model=mock_user, tenant_model=mock_tenant, payload=mock_payload)
+
+        assert result == "stream-response"
+        mock_invocation.invoke_app.assert_called_once_with(
+            app_id="app-1",
+            user_id="wecom-user",
+            tenant_id="tenant-1",
+            conversation_id=None,
+            query="hello",
+            stream=False,
+            inputs={"x": 1},
+            files=[],
+        )
+
+    @patch("controllers.inner_api.plugin.plugin.length_prefixed_response", return_value="stream-response")
+    @patch("controllers.inner_api.plugin.plugin.PluginAppBackwardsInvocation")
+    def test_post_falls_back_to_wrapper_session_id(self, mock_invocation, mock_response, api_instance, app: Flask):
+        mock_payload = SimpleNamespace(
+            app_id="app-1",
+            user=None,
+            conversation_id="conv-1",
+            query="hello",
+            response_mode="streaming",
+            inputs={},
+            files=[],
+        )
+        mock_user = SimpleNamespace(id="wrapper-user-id", session_id="wrapper-session")
+        mock_tenant = SimpleNamespace(id="tenant-1")
+        mock_invocation.invoke_app.return_value = {"ok": True}
+        mock_invocation.convert_to_event_stream.return_value = iter([b"{}"])
+
+        raw_post = _extract_raw_post(PluginInvokeAppApi)
+        result = raw_post(api_instance, user_model=mock_user, tenant_model=mock_tenant, payload=mock_payload)
+
+        assert result == "stream-response"
+        mock_invocation.invoke_app.assert_called_once_with(
+            app_id="app-1",
+            user_id="wrapper-session",
+            tenant_id="tenant-1",
+            conversation_id="conv-1",
+            query="hello",
+            stream=True,
+            inputs={},
+            files=[],
+        )
 
 
 class TestPluginInvokeEncryptApi:
