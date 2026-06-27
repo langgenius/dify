@@ -354,6 +354,25 @@ describe('useAgentConfigureSync', () => {
     expect(result.current.draftSavedAt).toBe(1710000200000)
   })
 
+  it('should not save the draft immediately when the composer draft is unchanged', async () => {
+    const { queryClient, result } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+    expect(result.current.draftSavedAt).toBeUndefined()
+  })
+
   it('should reject manual save when knowledge retrieval validation fails', async () => {
     const { result, store } = renderUseAgentConfigureSync()
 

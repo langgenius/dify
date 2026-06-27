@@ -146,6 +146,8 @@ export function useAgentConfigureSync({
     const draft = store.get(agentComposerDraftAtom)
     if (!validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid)
       throw new InvalidKnowledgeConfigurationError()
+    if (!store.get(isAgentComposerDirtyAtom))
+      return
 
     debouncedSaveDraft.cancel?.()
     await saveComposer({
