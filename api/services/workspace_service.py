@@ -1,5 +1,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from typing import Any
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
@@ -10,7 +11,7 @@ from services.feature_service import FeatureService
 
 class WorkspaceService:
     @classmethod
-    def get_tenant_info(cls, tenant: Tenant, session: Session, user: Account):
+    def get_tenant_info(cls, tenant: Any, session: Any, user: Any):
         if not tenant:
             return None
         tenant_info: dict[str, object] = {
