@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from typing import cast
+from typing import Literal, cast
 
 import pytest
 
 from dify_agent.layers.drive import DifyDriveLayerConfig, DifyDriveSkillConfig
 from dify_agent.layers.drive.layer import DifyDriveLayer, DifyDriveLayerError
 from dify_agent.layers.shell import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import DifyShellLayer, RemoteCommandResult, ShellctlClientFactory
+from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer, ShellctlClientFactory
 
 
 def _unused_client_factory(_entrypoint: str):
@@ -56,16 +56,18 @@ def _remote_result(
     output: str,
     *,
     exit_code: int | None = 0,
-    truncated: bool = False,
-) -> RemoteCommandResult:
-    return RemoteCommandResult(
+    output_complete: bool = True,
+    incomplete_reason: Literal["output_limit", "timeout"] | None = None,
+) -> CompleteRemoteCommandResult:
+    return CompleteRemoteCommandResult(
         job_id="remote-drive-pull",
         status="exited",
         done=True,
         exit_code=exit_code,
         output=output,
+        output_complete=output_complete,
+        incomplete_reason=incomplete_reason,
         offset=len(output),
-        truncated=truncated,
         output_path="/tmp/output.log",
     )
 
@@ -116,19 +118,19 @@ async def test_on_context_create_pulls_mentioned_targets_through_shell(
     layer = _build_layer()
     captured: dict[str, object] = {}
 
-    async def fake_run_remote_script(
+    async def fake_run_remote_script_complete(
         self: DifyShellLayer,
         script: str,
         *,
         timeout: float = 10.0,
         inject_agent_stub_env: bool = False,
-    ) -> RemoteCommandResult:
+    ) -> CompleteRemoteCommandResult:
         del self, timeout
         captured["script"] = script
         captured["inject_agent_stub_env"] = inject_agent_stub_env
         return _remote_result(_pulled_output())
 
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
 
     await layer.on_context_create()
 
@@ -155,20 +157,20 @@ async def test_on_context_resume_repulls_mentioned_targets_through_shell(
     layer = _build_layer()
     calls = 0
 
-    async def fake_run_remote_script(
+    async def fake_run_remote_script_complete(
         self: DifyShellLayer,
         script: str,
         *,
         timeout: float = 10.0,
         inject_agent_stub_env: bool = False,
-    ) -> RemoteCommandResult:
+    ) -> CompleteRemoteCommandResult:
         del self, script, timeout
         nonlocal calls
         calls += 1
         assert inject_agent_stub_env is True
         return _remote_result(_pulled_output())
 
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
 
     await layer.on_context_resume()
 
@@ -182,13 +184,13 @@ async def test_on_context_create_raises_when_mentioned_file_is_missing(
 ) -> None:
     layer = _build_layer()
 
-    async def fake_run_remote_script(
+    async def fake_run_remote_script_complete(
         self: DifyShellLayer,
         script: str,
         *,
         timeout: float = 10.0,
         inject_agent_stub_env: bool = False,
-    ) -> RemoteCommandResult:
+    ) -> CompleteRemoteCommandResult:
         del self, script, timeout, inject_agent_stub_env
         output = (
             "__DIFY_DRIVE_MENTIONED_PATH__\ttender-analyzer/SKILL.md\t/mnt/drive/agent-1/tender-analyzer/SKILL.md\n"
@@ -198,7 +200,7 @@ async def test_on_context_create_raises_when_mentioned_file_is_missing(
         )
         return _remote_result(output)
 
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
 
     with pytest.raises(DifyDriveLayerError, match="missing pulled file"):
         await layer.on_context_create()
@@ -210,41 +212,148 @@ async def test_on_context_create_raises_when_shell_pull_fails(
 ) -> None:
     layer = _build_layer()
 
-    async def fake_run_remote_script(
+    async def fake_run_remote_script_complete(
         self: DifyShellLayer,
         script: str,
         *,
         timeout: float = 10.0,
         inject_agent_stub_env: bool = False,
-    ) -> RemoteCommandResult:
+    ) -> CompleteRemoteCommandResult:
         del self, script, timeout, inject_agent_stub_env
         return _remote_result("permission denied\n", exit_code=1)
 
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
 
-    with pytest.raises(DifyDriveLayerError, match="drive mentioned pull failed in shell"):
+    with pytest.raises(DifyDriveLayerError) as exc_info:
         await layer.on_context_create()
+
+    message = str(exc_info.value)
+    assert "drive mentioned pull failed in shell: exited exit_code=1" in message
+    assert "output_complete=True" in message
+    assert "incomplete_reason=None" in message
+    assert "output_path=/tmp/output.log" in message
+    assert "permission denied\n" in message
 
 
 @pytest.mark.anyio
-async def test_on_context_create_raises_when_shell_output_is_truncated(
+async def test_on_context_create_keeps_complete_business_payload_when_capture_is_incomplete(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layer = _build_layer()
 
-    async def fake_run_remote_script(
+    async def fake_run_remote_script_complete(
         self: DifyShellLayer,
         script: str,
         *,
         timeout: float = 10.0,
         inject_agent_stub_env: bool = False,
-    ) -> RemoteCommandResult:
+    ) -> CompleteRemoteCommandResult:
         del self, script, timeout, inject_agent_stub_env
-        return _remote_result(_pulled_output(), truncated=True)
+        return _remote_result(_pulled_output(), output_complete=False, incomplete_reason="output_limit")
 
-    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
 
-    with pytest.raises(DifyDriveLayerError, match="output was truncated"):
+    await layer.on_context_create()
+
+    prompt = layer.build_prompt_context()
+    assert "# Tender Analyzer\nUse carefully." in prompt
+    assert "files/report.pdf -> /mnt/drive/agent-1/files/report.pdf" in prompt
+
+
+@pytest.mark.anyio
+async def test_on_context_create_raises_incomplete_capture_when_skill_body_is_missing_from_incomplete_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+
+    async def fake_run_remote_script_complete(
+        self: DifyShellLayer,
+        script: str,
+        *,
+        timeout: float = 10.0,
+        inject_agent_stub_env: bool = False,
+    ) -> CompleteRemoteCommandResult:
+        del self, script, timeout, inject_agent_stub_env
+        output = (
+            "__DIFY_DRIVE_MENTIONED_PATH__\ttender-analyzer/SKILL.md\t/mnt/drive/agent-1/tender-analyzer/SKILL.md\n"
+            "__DIFY_DRIVE_SKILL_BEGIN__\ttender-analyzer/SKILL.md\n"
+            "# Tender Analyzer\n"
+        )
+        return _remote_result(output, output_complete=False, incomplete_reason="output_limit")
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
+
+    with pytest.raises(DifyDriveLayerError) as exc_info:
+        await layer.on_context_create()
+
+    message = str(exc_info.value)
+    assert "drive mentioned pull output incomplete before required SKILL.md content was captured" in message
+    assert "reason=output_limit" in message
+    assert "output_path=/tmp/output.log" in message
+    assert "__DIFY_DRIVE_SKILL_BEGIN__\ttender-analyzer/SKILL.md" in message
+    assert "# Tender Analyzer\n" in message
+
+
+@pytest.mark.anyio
+async def test_on_context_create_raises_incomplete_capture_when_mentioned_file_path_marker_is_missing_from_incomplete_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+
+    async def fake_run_remote_script_complete(
+        self: DifyShellLayer,
+        script: str,
+        *,
+        timeout: float = 10.0,
+        inject_agent_stub_env: bool = False,
+    ) -> CompleteRemoteCommandResult:
+        del self, script, timeout, inject_agent_stub_env
+        output = (
+            "__DIFY_DRIVE_MENTIONED_PATH__\ttender-analyzer/SKILL.md\t/mnt/drive/agent-1/tender-analyzer/SKILL.md\n"
+            "__DIFY_DRIVE_SKILL_BEGIN__\ttender-analyzer/SKILL.md\n"
+            "# Tender Analyzer\n"
+            "Use carefully.\n"
+            "__DIFY_DRIVE_SKILL_END__\ttender-analyzer/SKILL.md\n"
+        )
+        return _remote_result(output, output_complete=False, incomplete_reason="output_limit")
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
+
+    with pytest.raises(DifyDriveLayerError) as exc_info:
+        await layer.on_context_create()
+
+    message = str(exc_info.value)
+    assert "drive mentioned pull output incomplete before required SKILL.md content was captured" in message
+    assert "reason=output_limit" in message
+    assert "output_path=/tmp/output.log" in message
+    assert "__DIFY_DRIVE_SKILL_END__\ttender-analyzer/SKILL.md" in message
+    assert "Use carefully.\n" in message
+
+
+@pytest.mark.anyio
+async def test_on_context_create_raises_business_failure_when_skill_body_is_missing_from_complete_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    layer = _build_layer()
+
+    async def fake_run_remote_script_complete(
+        self: DifyShellLayer,
+        script: str,
+        *,
+        timeout: float = 10.0,
+        inject_agent_stub_env: bool = False,
+    ) -> CompleteRemoteCommandResult:
+        del self, script, timeout, inject_agent_stub_env
+        output = (
+            "__DIFY_DRIVE_MENTIONED_PATH__\ttender-analyzer/SKILL.md\t/mnt/drive/agent-1/tender-analyzer/SKILL.md\n"
+            "__DIFY_DRIVE_SKILL_BEGIN__\ttender-analyzer/SKILL.md\n"
+            "# Tender Analyzer\n"
+        )
+        return _remote_result(output)
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)
+
+    with pytest.raises(DifyDriveLayerError, match="omitted SKILL.md end marker"):
         await layer.on_context_create()
 
 

@@ -22,7 +22,7 @@ re-raising the failure. Agent Soul shell env is injected into user-visible
 commands and CLI bootstrap commands without persisting a workspace env file.
 Agent Stub env injection uses shellctl's native per-run ``env`` argument for
 user-visible ``shell.run`` and for trusted server-owned fixed scripts executed
-through ``run_remote_script()``.
+through ``run_remote_script_complete()`` or ``run_remote_script_prompt_text()``.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ import re
 import secrets
 import time
 from dataclasses import dataclass
-from typing import ClassVar, NotRequired, Protocol, TypedDict
+from typing import ClassVar, Literal, NotRequired, Protocol, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
 from pydantic_ai import Tool
@@ -53,6 +53,7 @@ from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, Pydanti
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
+from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
 
 
 logger = logging.getLogger(__name__)
@@ -63,7 +64,10 @@ _SESSION_TIME_HEX_MASK = 0xFFFFF
 _SESSION_RANDOM_HEX_LENGTH = 2
 _SESSION_ID_ATTEMPT_LIMIT = 256
 _SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{7}$")
-_REMOTE_COMMAND_MAX_OUTPUT_WINDOWS = 64
+_SHELL_OUTPUT_PROMPT_EDGE_BYTES = 8 * 1024
+_SHELLCTL_OUTPUT_LIMIT_BYTES = 2 * _SHELL_OUTPUT_PROMPT_EDGE_BYTES
+_REMOTE_COMPLETE_OUTPUT_MAX_BYTES = 1024 * 1024
+_REMOTE_COMMAND_TIMEOUT_SECONDS = 60.0
 _SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
 
 1. shell_run
@@ -135,29 +139,6 @@ response = httpx.get("https://example.com", timeout=10)
 print(f"[green]status:[/green] {response.status_code}")"""
 
 
-class ShellJobObservation(TypedDict):
-    """JSON-safe output-oriented shell tool observation."""
-
-    job_id: str
-    status: str
-    done: bool
-    exit_code: int | None
-    output: str
-    offset: int
-    truncated: bool
-    output_path: str
-
-
-class ShellJobStatusObservation(TypedDict):
-    """JSON-safe status-only shell tool observation."""
-
-    job_id: str
-    status: str
-    done: bool
-    exit_code: int | None
-    offset: int
-
-
 class ShellToolErrorObservation(TypedDict):
     """Tool-visible failure payload for expected shell-layer errors."""
 
@@ -165,8 +146,8 @@ class ShellToolErrorObservation(TypedDict):
     job_id: NotRequired[str]
 
 
-type ShellRunToolResult = ShellJobObservation | ShellToolErrorObservation
-type ShellInterruptToolResult = ShellJobStatusObservation | ShellToolErrorObservation
+type ShellRunToolResult = str | ShellToolErrorObservation
+type ShellInterruptToolResult = str | ShellToolErrorObservation
 
 
 class DifyShellLayerDeps(LayerDeps):
@@ -208,6 +189,8 @@ class ShellctlClientProtocol(Protocol):
         offset: int,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> JobResult: ...
+
+    async def tail(self, job_id: str) -> JobResult: ...
 
     async def terminate(
         self,
@@ -285,17 +268,31 @@ class DifyShellRuntimeState(BaseModel):
 
 
 @dataclass(frozen=True, slots=True)
-class RemoteCommandResult:
-    """Completed remote sandbox command returned to server-owned callers."""
+class CompleteRemoteCommandResult:
+    """Raw remote command output for callers that need structured stdout parsing."""
 
     job_id: str
     status: str
     done: bool
     exit_code: int | None
     output: str
+    output_complete: bool
+    incomplete_reason: Literal["output_limit", "timeout"] | None
     offset: int
-    truncated: bool
     output_path: str
+
+
+@dataclass(slots=True)
+class PromptRemoteCommandResult:
+    """Prompt-safe remote command text for bounded diagnostics."""
+
+    job_id: str
+    status: str
+    done: bool
+    exit_code: int | None
+    text: str
+    output_path: str
+    timed_out: bool
 
 
 @dataclass(slots=True)
@@ -454,13 +451,13 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                     _workspace_cleanup_script(session_id=session_id),
                     cwd=None,
                 )
-                cleanup_job_id = cleanup_result["job_id"]
-                if cleanup_result["exit_code"] != 0:
+                cleanup_job_id = cleanup_result.job_id
+                if cleanup_result.exit_code != 0:
                     logger.warning(
                         "Shell workspace cleanup job %s for session %s exited with code %s.",
                         cleanup_job_id,
                         session_id,
-                        cleanup_result["exit_code"],
+                        cleanup_result.exit_code,
                     )
             except (RuntimeError, ValueError, ShellctlClientError) as exc:
                 logger.warning("Failed to remove shell workspace for session %s: %s", session_id, exc)
@@ -482,7 +479,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 timeout=timeout,
             )
             self._track_job_result(result)
-            return _job_result_observation(result)
+            return await self._prompt_text_observation(result)
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
             return _tool_error(str(exc))
 
@@ -493,7 +490,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             offset = self._tracked_offset(job_id)
             result = await client.wait(job_id, offset=offset, timeout=timeout)
             self._track_job_result(result)
-            return _job_result_observation(result)
+            return await self._prompt_text_observation(result)
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
             return _tool_error(str(exc), job_id=job_id)
 
@@ -504,7 +501,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             offset = self._tracked_offset(job_id)
             result = await client.input(job_id, text, offset=offset, timeout=timeout)
             self._track_job_result(result)
-            return _job_result_observation(result)
+            return await self._prompt_text_observation(result)
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
             return _tool_error(str(exc), job_id=job_id)
 
@@ -519,37 +516,103 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             self._ensure_tracked_job(job_id)
             result = await client.terminate(job_id, grace_seconds=grace_seconds)
             self._track_job_status(result)
-            return _job_status_observation(result)
+            output_path = ""
+            try:
+                output_path = (await client.tail(job_id)).output_path
+            except (RuntimeError, ValueError, ShellctlClientError) as exc:
+                logger.warning(
+                    "Failed to fetch output path for interrupted shellctl job %s in session %s: %s",
+                    job_id,
+                    self.runtime_state.session_id,
+                    exc,
+                )
+            return _tagged_shell_observation(
+                {
+                    "job_id": result.job_id,
+                    "status": result.status.value,
+                    "done": result.done,
+                    "exit_code": result.exit_code,
+                    "output_path": output_path,
+                },
+                "Job was interrupted.",
+            )
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
             return _tool_error(str(exc), job_id=job_id)
 
-    async def run_remote_script(
+    async def _prompt_text_observation(self, result: JobResult) -> str:
+        """Render one shellctl result into the model-visible tagged text shape."""
+        client = self._require_client()
+        text, output_path = await _job_prompt_observation_parts(result, client)
+        return _tagged_shell_observation(
+            {
+                "job_id": result.job_id,
+                "status": result.status.value,
+                "done": result.done,
+                "exit_code": result.exit_code,
+                "output_path": output_path,
+            },
+            text,
+        )
+
+    async def run_remote_script_complete(
         self,
         script: str,
         *,
-        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        timeout: float = _REMOTE_COMMAND_TIMEOUT_SECONDS,
+        max_output_bytes: int = _REMOTE_COMPLETE_OUTPUT_MAX_BYTES,
         inject_agent_stub_env: bool = False,
-    ) -> RemoteCommandResult:
-        """Run one trusted server-side script inside the sandbox workspace.
+    ) -> CompleteRemoteCommandResult:
+        """Run one trusted server-side script and return raw captured output.
 
-        The sandbox file service uses this boundary for fixed list/read/upload
-        helpers. The layer owns output paging, transient shellctl job cleanup,
-        and optional Agent Stub env injection.
-
-        Unlike model-visible ``shell.run``, this server-owned boundary does not
-        inject Agent Soul shell env. Keeping the user-controlled shell env out
-        of this path prevents sandbox code from clobbering trusted Agent Stub
-        env values before ``dify-agent file upload`` executes.
+        Structured callers such as drive eager pull and sandbox file helpers
+        need raw stdout, but they also need an explicit completeness marker so
+        missing delimiters are not confused with transport-bounded capture.
         """
         env = None
         if inject_agent_stub_env:
             env = self._build_user_shell_run_env()
             if env is None:
                 raise RuntimeError("Agent Stub environment injection is not available for this shell session.")
-        return await self._run_remote_job_to_completion(
+        return await self._run_remote_job_complete(
             script,
             timeout=timeout,
+            max_output_bytes=max_output_bytes,
             env=env,
+        )
+
+    async def run_remote_script_prompt_text(
+        self,
+        script: str,
+        *,
+        timeout: float = _REMOTE_COMMAND_TIMEOUT_SECONDS,
+        edge_bytes: int = _SHELL_OUTPUT_PROMPT_EDGE_BYTES,
+        inject_agent_stub_env: bool = False,
+    ) -> PromptRemoteCommandResult:
+        """Run one trusted server-side script and return bounded prompt text."""
+        env = None
+        if inject_agent_stub_env:
+            env = self._build_user_shell_run_env()
+            if env is None:
+                raise RuntimeError("Agent Stub environment injection is not available for this shell session.")
+        return await self._run_remote_job_prompt_text(
+            script,
+            timeout=timeout,
+            edge_bytes=edge_bytes,
+            env=env,
+        )
+
+    async def run_remote_script(
+        self,
+        script: str,
+        *,
+        timeout: float = _REMOTE_COMMAND_TIMEOUT_SECONDS,
+        inject_agent_stub_env: bool = False,
+    ) -> CompleteRemoteCommandResult:
+        """Compatibility wrapper for callers that still expect raw output mode."""
+        return await self.run_remote_script_complete(
+            script,
+            timeout=timeout,
+            inject_agent_stub_env=inject_agent_stub_env,
         )
 
     async def _allocate_workspace(self) -> tuple[str, str]:
@@ -560,11 +623,12 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 _workspace_mkdir_script(session_id=session_id),
                 cwd=None,
             )
-            if mkdir_result["exit_code"] == _WORKSPACE_COLLISION_EXIT_CODE:
+            if mkdir_result.exit_code == _WORKSPACE_COLLISION_EXIT_CODE:
                 continue
-            if mkdir_result["exit_code"] != 0:
+            if mkdir_result.exit_code != 0:
                 raise RuntimeError(
-                    f"Failed to create shell workspace {_workspace_cwd(session_id)}: {mkdir_result['status']} exit_code={mkdir_result['exit_code']}"
+                    f"Failed to create shell workspace {_workspace_cwd(session_id)}: "
+                    + f"{mkdir_result.status.value} exit_code={mkdir_result.exit_code}"
                 )
             return session_id, _workspace_cwd(session_id)
         raise RuntimeError("Failed to allocate a unique shell workspace session id after 256 attempts.")
@@ -575,9 +639,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         if not bootstrap_script:
             return
         result = await self._run_internal_job_to_completion(bootstrap_script, cwd=workspace_cwd)
-        if result["exit_code"] != 0:
+        if result.exit_code != 0:
             raise RuntimeError(
-                f"Failed to bootstrap shell workspace {workspace_cwd}: {result['status']} exit_code={result['exit_code']}"
+                f"Failed to bootstrap shell workspace {workspace_cwd}: {result.status.value} exit_code={result.exit_code}"
             )
 
     async def _cleanup_create_failure(self) -> None:
@@ -602,7 +666,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         script: str,
         *,
         cwd: str | None,
-    ) -> ShellJobObservation:
+    ) -> JobResult:
         """Run an internal lifecycle command, track it, and wait for completion."""
         client = self._require_client()
         result = await client.run(script, cwd=cwd, env=None, timeout=DEFAULT_TIMEOUT_SECONDS)
@@ -614,44 +678,161 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 timeout=DEFAULT_TIMEOUT_SECONDS,
             )
             self._track_job_result(result)
-        return _job_result_observation(result)
+        return result
 
-    async def _run_remote_job_to_completion(
+    async def _run_remote_job_complete(
         self,
         script: str,
         *,
         timeout: float,
+        max_output_bytes: int,
         env: dict[str, str] | None,
-    ) -> RemoteCommandResult:
-        """Run a workspace-scoped script to completion and delete its job state.
-
-        Shellctl's ``truncated`` flag is per output window: it means the caller
-        should continue from the returned offset. After this helper drains those
-        windows, only the final window can describe whether output is still
-        unread, usually because the safety window cap was reached.
-        """
+    ) -> CompleteRemoteCommandResult:
+        """Run a workspace-scoped script until done, byte budget, or timeout."""
         client = self._require_client()
         job_id: str | None = None
+        deadline = time.monotonic() + timeout
         try:
-            result = await client.run(script, cwd=self._require_workspace_cwd(), env=env, timeout=timeout)
+            result = await client.run(
+                script,
+                cwd=self._require_workspace_cwd(),
+                env=env,
+                timeout=_remaining_time(deadline),
+            )
             job_id = result.job_id
             self._track_job_result(result)
-            output_parts = [result.output]
-            windows = 1
-            while (result.truncated or not result.done) and windows < _REMOTE_COMMAND_MAX_OUTPUT_WINDOWS:
-                result = await client.wait(result.job_id, offset=self._tracked_offset(result.job_id), timeout=timeout)
+            output_parts: list[str] = []
+            captured_bytes = 0
+            incomplete_reason: Literal["output_limit", "timeout"] | None = None
+
+            while True:
+                limited_output = utf8_prefix(result.output, max_output_bytes - captured_bytes)
+                output_parts.append(limited_output)
+                captured_bytes += len(limited_output.encode("utf-8"))
+                if limited_output != result.output:
+                    incomplete_reason = "output_limit"
+                    break
+                if result.done and not result.truncated:
+                    break
+                if captured_bytes >= max_output_bytes:
+                    incomplete_reason = "output_limit"
+                    break
+                remaining_time = _remaining_time(deadline)
+                if remaining_time <= 0.0:
+                    incomplete_reason = "timeout"
+                    break
+                result = await client.wait(result.job_id, offset=self._tracked_offset(result.job_id), timeout=remaining_time)
                 self._track_job_result(result)
-                output_parts.append(result.output)
-                windows += 1
-            return RemoteCommandResult(
+
+            final_status = result.status
+            final_done = result.done
+            final_exit_code = result.exit_code
+            final_offset = result.offset
+            if incomplete_reason is not None and not result.done:
+                terminal_status = await client.terminate(result.job_id)
+                self._track_job_status(terminal_status)
+                final_status = terminal_status.status
+                final_done = terminal_status.done
+                final_exit_code = terminal_status.exit_code
+                final_offset = terminal_status.offset
+            return CompleteRemoteCommandResult(
+                job_id=result.job_id,
+                status=final_status.value,
+                done=final_done,
+                exit_code=final_exit_code,
+                output="".join(output_parts),
+                output_complete=incomplete_reason is None,
+                incomplete_reason=incomplete_reason,
+                offset=final_offset,
+                output_path=result.output_path,
+            )
+        finally:
+            if job_id is not None:
+                await self._delete_job_best_effort(job_id)
+                self._forget_tracked_job(job_id)
+
+    async def _run_remote_job_prompt_text(
+        self,
+        script: str,
+        *,
+        timeout: float,
+        edge_bytes: int,
+        env: dict[str, str] | None,
+    ) -> PromptRemoteCommandResult:
+        """Run a workspace-scoped script and synthesize bounded prompt text."""
+        client = self._require_client()
+        job_id: str | None = None
+        deadline = time.monotonic() + timeout
+        try:
+            result = await client.run(
+                script,
+                cwd=self._require_workspace_cwd(),
+                env=env,
+                timeout=_remaining_time(deadline),
+            )
+            job_id = result.job_id
+            self._track_job_result(result)
+            head_parts: list[str] = []
+            head_bytes = 0
+            needs_tail = False
+            timed_out = False
+            current_output_path = result.output_path
+
+            while True:
+                remaining_head_bytes = max(edge_bytes - head_bytes, 0)
+                head_piece = utf8_prefix(result.output, remaining_head_bytes)
+                if head_piece:
+                    head_parts.append(head_piece)
+                    head_bytes += len(head_piece.encode("utf-8"))
+                if head_piece != result.output or result.truncated:
+                    needs_tail = True
+                if result.done and not result.truncated:
+                    break
+                remaining_time = _remaining_time(deadline)
+                if remaining_time <= 0.0:
+                    timed_out = True
+                    needs_tail = True
+                    result = await client.terminate(result.job_id)
+                    break
+                next_result = await client.wait(
+                    result.job_id,
+                    offset=self._tracked_offset(result.job_id),
+                    timeout=remaining_time,
+                )
+                self._track_job_result(next_result)
+                current_output_path = next_result.output_path
+                if next_result.output:
+                    needs_tail = needs_tail or head_bytes >= edge_bytes
+                result = next_result
+
+            output_path = current_output_path
+            tail_text: str | None = None
+            if needs_tail:
+                tail_text, output_path = await _best_effort_tail_text(
+                    client,
+                    job_id=job_id,
+                    edge_bytes=edge_bytes,
+                    fallback_output_path=output_path,
+                )
+            truncation_message = None
+            if timed_out:
+                truncation_message = "command timed out before full output was captured"
+            text = normalized_output_text(
+                "".join(head_parts),
+                tail=tail_text,
+                output_path=output_path if needs_tail else None,
+                max_output_size_bytes=2 * edge_bytes,
+                truncated_in_middle=needs_tail,
+                truncation_message=truncation_message,
+            )
+            return PromptRemoteCommandResult(
                 job_id=result.job_id,
                 status=result.status.value,
                 done=result.done,
                 exit_code=result.exit_code,
-                output="".join(output_parts),
-                offset=result.offset,
-                truncated=result.truncated,
-                output_path=result.output_path,
+                text=text,
+                output_path=output_path,
+                timed_out=timed_out,
             )
         finally:
             if job_id is not None:
@@ -789,32 +970,49 @@ def create_shellctl_client_factory(*, token: str) -> ShellctlClientFactory:
     """Return the default shellctl client factory used by server-side providers."""
 
     def factory(entrypoint: str) -> ShellctlClientProtocol:
-        return ShellctlClient(entrypoint, token=token)
+        return ShellctlClient(entrypoint, token=token, output_limit=_SHELLCTL_OUTPUT_LIMIT_BYTES)
 
     return factory
 
 
-def _job_result_observation(result: JobResult) -> ShellJobObservation:
-    return {
-        "job_id": result.job_id,
-        "status": result.status.value,
-        "done": result.done,
-        "exit_code": result.exit_code,
-        "output": result.output,
-        "offset": result.offset,
-        "truncated": result.truncated,
-        "output_path": result.output_path,
-    }
+async def _job_prompt_observation_parts(result: JobResult, client: ShellctlClientProtocol) -> tuple[str, str]:
+    output_exceeds_edge_budget = len(result.output.encode("utf-8")) > _SHELL_OUTPUT_PROMPT_EDGE_BYTES
+    tail: str | None = None
+    output_path = result.output_path
+    if result.truncated:
+        tail, output_path = await _best_effort_tail_text(
+            client,
+            job_id=result.job_id,
+            edge_bytes=_SHELL_OUTPUT_PROMPT_EDGE_BYTES,
+            fallback_output_path=result.output_path,
+        )
+    elif output_exceeds_edge_budget:
+        tail = utf8_suffix(result.output, _SHELL_OUTPUT_PROMPT_EDGE_BYTES)
+    return (
+        normalized_output_text(
+            utf8_prefix(result.output, _SHELL_OUTPUT_PROMPT_EDGE_BYTES),
+            tail=tail,
+            output_path=output_path if (tail is not None or result.truncated) else None,
+            max_output_size_bytes=_SHELLCTL_OUTPUT_LIMIT_BYTES,
+            truncated_in_middle=result.truncated or output_exceeds_edge_budget,
+        ),
+        output_path,
+    )
 
 
-def _job_status_observation(result: JobStatusView) -> ShellJobStatusObservation:
-    return {
-        "job_id": result.job_id,
-        "status": result.status.value,
-        "done": result.done,
-        "exit_code": result.exit_code,
-        "offset": result.offset,
-    }
+async def _best_effort_tail_text(
+    client: ShellctlClientProtocol,
+    *,
+    job_id: str,
+    edge_bytes: int,
+    fallback_output_path: str,
+) -> tuple[str | None, str]:
+    try:
+        tail_result = await client.tail(job_id)
+    except (RuntimeError, ValueError, ShellctlClientError) as exc:
+        logger.warning("Failed to fetch tail for shellctl job %s: %s", job_id, exc)
+        return None, fallback_output_path
+    return utf8_suffix(tail_result.output, edge_bytes), tail_result.output_path or fallback_output_path
 
 
 def _tool_error(message: str, *, job_id: str | None = None) -> ShellToolErrorObservation:
@@ -923,11 +1121,20 @@ def _deduplicate_preserving_order(values: Sequence[str]) -> list[str]:
     return result
 
 
+def _tagged_shell_observation(metadata: dict[str, object], output: str) -> str:
+    compact_metadata = json.dumps(metadata, separators=(",", ":"))
+    return f"<metadata>\n{compact_metadata}\n</metadata>\n\n<output>\n{output}\n</output>"
+
+
+def _remaining_time(deadline: float) -> float:
+    return max(0.0, deadline - time.monotonic())
+
+
 __all__ = [
     "DifyShellLayerDeps",
     "DifyShellLayer",
     "DifyShellRuntimeState",
-    "RemoteCommandResult",
+    "CompleteRemoteCommandResult",
     "ShellctlClientFactory",
     "ShellctlClientProtocol",
     "create_shellctl_client_factory",
