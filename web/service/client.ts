@@ -7,7 +7,7 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import type { ContractRouterClient } from '@orpc/contract'
 import type { JsonifiedClient } from '@orpc/openapi-client'
-import type { RouterUtils } from '@orpc/tanstack-query'
+import type { RouterUtils, TanstackQueryOperationContext } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { Tag } from '@/contract/console/tags'
 import { createORPCClient, onError } from '@orpc/client'
@@ -94,7 +94,11 @@ type AppDeployInvalidationOptions = {
   developerApiSettings?: boolean
 }
 
-type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>>>
+export type ConsoleClientContext = TanstackQueryOperationContext & {
+  silent?: boolean
+}
+
+type ConsoleQueryUtils = RouterUtils<JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>>>
 
 const defaultAppDeployInvalidationOptions = {
   appInstances: true,
@@ -323,15 +327,16 @@ async function invalidateReleaseMutationQueries(
   ])
 }
 
-const consoleLink = new OpenAPILink(consoleRouterContract, {
+const consoleLink = new OpenAPILink<ConsoleClientContext>(consoleRouterContract, {
   url: getBaseURL(API_PREFIX),
-  fetch: (input, init) => {
+  fetch: (input, init, options) => {
     return request(
       input.url,
       init,
       {
         fetchCompat: true,
         request: input,
+        silent: options.context.silent,
       },
     )
   },
@@ -342,7 +347,7 @@ const consoleLink = new OpenAPILink(consoleRouterContract, {
   ],
 })
 
-export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract>> = createORPCClient(consoleLink)
+export const consoleClient: JsonifiedClient<ContractRouterClient<typeof consoleRouterContract, ConsoleClientContext>> = createORPCClient(consoleLink)
 
 export const consoleQuery: RouterUtils<typeof consoleClient> = createTanstackQueryUtils(consoleClient, {
   path: ['console'],

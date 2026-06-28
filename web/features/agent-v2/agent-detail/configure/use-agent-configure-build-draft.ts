@@ -8,7 +8,6 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { consoleQuery } from '@/service/client'
-import { agentConfigureConsoleQuery } from './build-draft-query'
 import { usePrepareAgentBuildDraftBeforeRun } from './use-agent-build-draft-run'
 
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
@@ -39,13 +38,13 @@ export function useAgentConfigureBuildDraftData({
       agent_id: agentId,
     },
   }
-  const buildDraftQueryOptions = agentConfigureConsoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+  const buildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: buildDraftQueryInput.params,
     },
     context: {},
   })
-  const silentBuildDraftQueryOptions = agentConfigureConsoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+  const silentBuildDraftQueryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
     input: {
       params: buildDraftQueryInput.params,
     },

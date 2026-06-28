@@ -125,7 +125,11 @@ vi.mock('@/service/client', () => ({
         },
         buildDraft: {
           get: {
-            queryOptions: () => ({ queryKey: ['build-draft'] }),
+            queryOptions: (options?: object) => ({
+              ...options,
+              queryFn: vi.fn(),
+              queryKey: ['build-draft'],
+            }),
           },
           checkout: {
             post: {
@@ -149,23 +153,6 @@ vi.mock('@/service/client', () => ({
           },
           get: {
             key: () => ['versions'],
-          },
-        },
-      },
-    },
-  },
-}))
-
-vi.mock('../build-draft-query', () => ({
-  agentConfigureConsoleQuery: {
-    agent: {
-      byAgentId: {
-        buildDraft: {
-          get: {
-            queryOptions: () => ({
-              queryFn: vi.fn(),
-              queryKey: ['build-draft'],
-            }),
           },
         },
       },
