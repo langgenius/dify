@@ -8,6 +8,7 @@ type VisualStyle = 'default' | 'compact' | 'list'
 type BaseProps = {
   badge?: string
   badgeVariant?: 'basic' | 'advanced'
+  stepByStepTourTarget?: string
   description: string
   icon: ReactNode
   title: string
@@ -127,7 +128,7 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
 
   if (props.href) {
     return (
-      <Link href={props.href} className={className}>
+      <Link href={props.href} className={className} data-step-by-step-tour-target={props.stepByStepTourTarget}>
         <ActionCardContent
           badge={props.badge}
           badgeVariant={props.badgeVariant}
@@ -141,7 +142,7 @@ function FirstEmptyActionCard(props: FirstEmptyActionCardProps) {
   }
 
   return (
-    <button type="button" className={className} onClick={props.onClick}>
+    <button type="button" className={className} data-step-by-step-tour-target={props.stepByStepTourTarget} onClick={props.onClick}>
       <ActionCardContent
         badge={props.badge}
         badgeVariant={props.badgeVariant}

@@ -1,6 +1,6 @@
 'use client'
 
-import type { FormEvent, FormEventHandler, KeyboardEvent, MouseEvent } from 'react'
+import type { ComponentProps, FormEvent, FormEventHandler, KeyboardEvent, MouseEvent } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -89,12 +89,27 @@ const ACCESS_MODE_LABEL_KEYS = {
   [AccessMode.ORGANIZATION]: 'accessItemsDescription.organization',
   [AccessMode.EXTERNAL_MEMBERS]: 'accessItemsDescription.external',
 } as const
+const STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR = 'data-step-by-step-tour-highlight-part'
+const STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME = 'transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100'
+type DropdownMenuPositionerProps = ComponentProps<typeof DropdownMenuContent>['positionerProps']
+
+const getStepByStepTourHighlightPartPositionerProps = (target?: string): DropdownMenuPositionerProps => {
+  if (!target)
+    return undefined
+
+  return {
+    [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]: target,
+  } as DropdownMenuPositionerProps
+}
 
 type AppCardProps = {
   app: App
   onlineUsers?: WorkflowOnlineUser[]
   onRefresh?: () => void
   onOpenTagManagement?: () => void
+  stepByStepTourActionMenuOpen?: boolean
+  stepByStepTourCardTarget?: string
+  stepByStepTourActionMenuHighlightPart?: string
 }
 
 type AppAccessModeIconProps = {
@@ -292,7 +307,10 @@ type AppCardActionBarProps = {
   onRefresh?: () => void
 }
 
-export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
+export function AppCardActionBar({
+  app,
+  onRefresh,
+}: AppCardActionBarProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
@@ -725,7 +743,15 @@ export function AppCardActionBar({ app, onRefresh }: AppCardActionBarProps) {
   )
 }
 
-export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement = () => {} }: AppCardProps) {
+export function AppCard({
+  app,
+  onlineUsers = [],
+  onRefresh,
+  onOpenTagManagement = () => {},
+  stepByStepTourActionMenuOpen = false,
+  stepByStepTourCardTarget,
+  stepByStepTourActionMenuHighlightPart,
+}: AppCardProps) {
   const { t } = useTranslation()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
@@ -1014,6 +1040,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
   const starActionLabel = app.is_starred
     ? t('studio.unstarApp', { ns: 'app' })
     : t('studio.starApp', { ns: 'app' })
+  const operationsMenuOpen = isOperationsMenuOpen || stepByStepTourActionMenuOpen
   const showPreviewOnlyAccessWarning = useCallback(() => {
     toast.warning(t('noAccessResourcePermission', { ns: 'app' }))
   }, [t])
@@ -1075,24 +1102,26 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
       >
         {isPreviewOnly
           ? (
-              <article
+              <div
                 role="button"
                 tabIndex={0}
                 aria-disabled="true"
                 aria-labelledby={appNameId}
                 aria-describedby={app.description ? appDescriptionId : undefined}
+                data-step-by-step-tour-target={stepByStepTourCardTarget}
                 className={appCardClassName}
                 onClick={showPreviewOnlyAccessWarning}
                 onKeyDown={handlePreviewOnlyCardKeyDown}
               >
                 {appCardContent}
-              </article>
+              </div>
             )
           : (
               <Link
                 href={appHref}
                 aria-labelledby={appNameId}
                 aria-describedby={app.description ? appDescriptionId : undefined}
+                data-step-by-step-tour-target={stepByStepTourCardTarget}
                 className={appCardClassName}
               >
                 {appCardContent}
@@ -1100,10 +1129,6 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
             )}
         <div
           className="absolute top-[104px] right-3 left-3 flex h-[26px] min-w-0 items-start"
-          onClick={(e) => {
-            e.stopPropagation()
-            e.preventDefault()
-          }}
         >
           <AppCardTags
             appId={app.id}
@@ -1118,7 +1143,7 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
           <div
             className={cn(
               'absolute top-2 right-2 flex items-center overflow-hidden rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-lg backdrop-blur-xs transition-opacity',
-              isOperationsMenuOpen
+              operationsMenuOpen
                 ? 'pointer-events-auto opacity-100'
                 : 'pointer-events-none opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100',
             )}
@@ -1146,12 +1171,12 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
               <TooltipContent>{starActionLabel}</TooltipContent>
             </Tooltip>
             {shouldShowOperationsMenu && (
-              <DropdownMenu modal={false} open={isOperationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
+              <DropdownMenu modal={false} open={operationsMenuOpen} onOpenChange={setIsOperationsMenuOpen}>
                 <DropdownMenuTrigger
                   aria-label={t('operation.more', { ns: 'common' })}
                   className={cn(
                     'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
-                    isOperationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
+                    operationsMenuOpen ? 'bg-state-base-hover' : 'hover:bg-state-base-hover',
                   )}
                   onClick={(e) => {
                     e.stopPropagation()
@@ -1164,7 +1189,11 @@ export function AppCard({ app, onlineUsers = [], onRefresh, onOpenTagManagement 
                 <DropdownMenuContent
                   placement="bottom-end"
                   sideOffset={4}
-                  popupClassName={operationsMenuWidthClassName}
+                  popupClassName={cn(
+                    operationsMenuWidthClassName,
+                    stepByStepTourActionMenuOpen && STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME,
+                  )}
+                  positionerProps={getStepByStepTourHighlightPartPositionerProps(stepByStepTourActionMenuHighlightPart)}
                 >
                   {systemFeatures.webapp_auth.enabled
                     ? (

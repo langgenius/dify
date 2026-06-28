@@ -1,5 +1,6 @@
 'use client'
 
+import type { ComponentProps } from 'react'
 import type { AppListCategory } from './app-type-filter-shared'
 import type { AppListSortBy } from '@/contract/console/apps'
 import { Button } from '@langgenius/dify-ui/button'
@@ -11,6 +12,19 @@ import { TagFilter } from '@/features/tag-management/components/tag-filter'
 import { AppSortFilter } from './app-sort-filter'
 import { AppTypeFilter } from './app-type-filter'
 import CreatorsFilter from './creators-filter'
+
+const STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR = 'data-step-by-step-tour-highlight-part'
+const STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME = 'transition-none data-starting-style:scale-100 data-starting-style:opacity-100 data-ending-style:scale-100 data-ending-style:opacity-100'
+type DropdownMenuPositionerProps = ComponentProps<typeof DropdownMenuContent>['positionerProps']
+
+const getStepByStepTourHighlightPartPositionerProps = (target?: string): DropdownMenuPositionerProps => {
+  if (!target)
+    return undefined
+
+  return {
+    [STEP_BY_STEP_TOUR_HIGHLIGHT_PART_DATA_ATTR]: target,
+  } as DropdownMenuPositionerProps
+}
 
 type AppListHeaderFiltersProps = {
   category: AppListCategory
@@ -28,6 +42,9 @@ type AppListHeaderFiltersProps = {
   onImportDSL: () => void
   onOpenTagManagement: () => void
   showCreateButton: boolean
+  stepByStepTourCreateMenuOpen?: boolean
+  stepByStepTourCreateMenuTarget?: string
+  stepByStepTourCreateMenuHighlightPart?: string
 }
 
 export function AppListHeaderFilters({
@@ -46,8 +63,17 @@ export function AppListHeaderFilters({
   onImportDSL,
   onOpenTagManagement,
   showCreateButton,
+  stepByStepTourCreateMenuOpen,
+  stepByStepTourCreateMenuTarget,
+  stepByStepTourCreateMenuHighlightPart,
 }: AppListHeaderFiltersProps) {
   const { t } = useTranslation()
+  const createMenuOpenProps = stepByStepTourCreateMenuOpen === undefined
+    ? {}
+    : {
+        open: stepByStepTourCreateMenuOpen,
+        onOpenChange: () => {},
+      }
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -71,10 +97,11 @@ export function AppListHeaderFilters({
       </div>
       <div className="flex items-center gap-2">
         {showCreateButton && (
-          <DropdownMenu modal={false}>
+          <DropdownMenu modal={false} {...createMenuOpenProps}>
             <DropdownMenuTrigger
               render={(
                 <Button
+                  data-step-by-step-tour-target={stepByStepTourCreateMenuTarget}
                   variant="primary"
                   size="medium"
                   className="gap-0.5 px-2 shadow-xs shadow-shadow-shadow-3"
@@ -88,7 +115,11 @@ export function AppListHeaderFilters({
             <DropdownMenuContent
               placement="bottom-end"
               sideOffset={4}
-              popupClassName="w-70 p-0"
+              popupClassName={cn(
+                'w-70 p-0',
+                stepByStepTourCreateMenuOpen && STEP_BY_STEP_TOUR_MENU_POPUP_NO_MOTION_CLASS_NAME,
+              )}
+              positionerProps={getStepByStepTourHighlightPartPositionerProps(stepByStepTourCreateMenuHighlightPart)}
             >
               <div className="py-1">
                 <DropdownMenuItem

@@ -22,7 +22,10 @@ type StarredAppCardProps = {
   onRefresh?: () => void
 }
 
-export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
+export function StarredAppCard({
+  app,
+  onRefresh,
+}: StarredAppCardProps) {
   const { t } = useTranslation()
   const currentUserId = useAppContextSelector(state => state.userProfile?.id)
   const workspacePermissionKeys = useAppContextSelector(state => state.workspacePermissionKeys)
@@ -90,7 +93,7 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
     <div className="group relative">
       {isPreviewOnly
         ? (
-            <article
+            <div
               role="button"
               tabIndex={0}
               aria-disabled="true"
@@ -100,14 +103,19 @@ export function StarredAppCard({ app, onRefresh }: StarredAppCardProps) {
               onKeyDown={handlePreviewOnlyCardKeyDown}
             >
               {cardContent}
-            </article>
+            </div>
           )
         : (
             <Link href={href} className={cardClassName}>
               {cardContent}
             </Link>
           )}
-      {!isPreviewOnly && <AppCardActionBar app={app} onRefresh={onRefresh} />}
+      {!isPreviewOnly && (
+        <AppCardActionBar
+          app={app}
+          onRefresh={onRefresh}
+        />
+      )}
     </div>
   )
 }

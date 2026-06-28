@@ -23,6 +23,8 @@ type CoachmarkPosition = {
   bubbleStyle: CSSProperties
 }
 
+export type StepByStepTourCoachmarkPlacement = 'bottom' | 'top'
+
 const getViewportSize = (): ViewportSize => ({
   height: window.innerHeight,
   width: window.innerWidth,
@@ -33,22 +35,27 @@ const clamp = (value: number, min: number, max: number) => {
 }
 
 export const getStepByStepTourCoachmarkPosition = (
-  targetRect: StepByStepTourTargetRect,
+  placementRect: StepByStepTourTargetRect,
   viewportSize: ViewportSize,
+  placement: StepByStepTourCoachmarkPlacement = 'bottom',
+  anchorRect: StepByStepTourTargetRect = placementRect,
 ): CoachmarkPosition => {
   const maxBubbleLeft = viewportSize.width - BUBBLE_WIDTH - VIEWPORT_PADDING
   const bubbleLeft = clamp(
-    targetRect.left,
+    placementRect.left,
     VIEWPORT_PADDING,
     Math.max(VIEWPORT_PADDING, maxBubbleLeft),
   )
   const maxBubbleTop = viewportSize.height - BUBBLE_HEIGHT - VIEWPORT_PADDING
+  const preferredBubbleTop = placement === 'top'
+    ? placementRect.top - BUBBLE_HEIGHT - BUBBLE_SIDE_OFFSET
+    : placementRect.top + placementRect.height + BUBBLE_SIDE_OFFSET
   const bubbleTop = clamp(
-    targetRect.top + targetRect.height + BUBBLE_SIDE_OFFSET,
+    preferredBubbleTop,
     VIEWPORT_PADDING,
     Math.max(VIEWPORT_PADDING, maxBubbleTop),
   )
-  const targetAnchorX = targetRect.left + FIGMA_ARROW_FRAME_LEFT + FIGMA_ARROW_DOT_CENTER_X
+  const targetAnchorX = anchorRect.left + FIGMA_ARROW_FRAME_LEFT + FIGMA_ARROW_DOT_CENTER_X
   const arrowLeft = clamp(
     targetAnchorX - bubbleLeft - FIGMA_ARROW_DOT_CENTER_X,
     MIN_ARROW_LEFT,
@@ -66,7 +73,11 @@ export const getStepByStepTourCoachmarkPosition = (
   }
 }
 
-export const useStepByStepTourCoachmarkPosition = (targetRect: StepByStepTourTargetRect) => {
+export const useStepByStepTourCoachmarkPosition = (
+  placementRect: StepByStepTourTargetRect,
+  placement: StepByStepTourCoachmarkPlacement = 'bottom',
+  anchorRect: StepByStepTourTargetRect = placementRect,
+) => {
   const [viewportSize, setViewportSize] = useState<ViewportSize>(() => getViewportSize())
 
   useLayoutEffect(() => {
@@ -81,5 +92,5 @@ export const useStepByStepTourCoachmarkPosition = (targetRect: StepByStepTourTar
     }
   }, [])
 
-  return getStepByStepTourCoachmarkPosition(targetRect, viewportSize)
+  return getStepByStepTourCoachmarkPosition(placementRect, viewportSize, placement, anchorRect)
 }

@@ -4,6 +4,7 @@ import type { App } from '@/models/explore'
 import type { App as WorkspaceApp } from '@/types/app'
 import type { TryAppSelection } from '@/types/try-app'
 import ContinueWork from '@/app/components/explore/continue-work'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import dynamic from '@/next/dynamic'
 
 const LearnDify = dynamic(() => import('@/app/components/explore/learn-dify'), { ssr: false })
@@ -27,6 +28,7 @@ export function ExploreRecommendations({
         className="pb-0"
         onCreate={onCreate}
         onTry={onTry}
+        stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home}
       />
     </>
   )

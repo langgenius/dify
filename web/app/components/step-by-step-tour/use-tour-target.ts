@@ -17,19 +17,41 @@ export const useStepByStepTourTarget = (target?: string) => {
 
     const selector = target ? getStepByStepTourTargetSelector(target) : undefined
 
-    const syncTarget = () => {
-      setTargetElement(selector ? document.querySelector<HTMLElement>(selector) : null)
+    if (!selector) {
+      const animationFrame = window.requestAnimationFrame(() => setTargetElement(null))
+      return () => window.cancelAnimationFrame(animationFrame)
     }
 
-    const animationFrame = window.requestAnimationFrame(syncTarget)
-    const observer = new MutationObserver(syncTarget)
+    let animationFrame = 0
+
+    const syncTarget = () => {
+      animationFrame = 0
+      const nextTargetElement = document.querySelector<HTMLElement>(selector)
+      setTargetElement(currentTargetElement => (
+        currentTargetElement === nextTargetElement
+          ? currentTargetElement
+          : nextTargetElement
+      ))
+    }
+
+    const scheduleSyncTarget = () => {
+      if (animationFrame)
+        return
+
+      animationFrame = window.requestAnimationFrame(syncTarget)
+    }
+
+    scheduleSyncTarget()
+
+    const observer = new MutationObserver(scheduleSyncTarget)
     observer.observe(document.body, {
       childList: true,
       subtree: true,
     })
 
     return () => {
-      window.cancelAnimationFrame(animationFrame)
+      if (animationFrame)
+        window.cancelAnimationFrame(animationFrame)
       observer.disconnect()
     }
   }, [target])

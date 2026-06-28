@@ -28,6 +28,9 @@ The frontend can temporarily use a local placeholder while backend state is unav
 ```ts
 type StepByStepTourAccountState = {
   firstWorkspaceId?: string
+  activeTaskId?: StepByStepTourTaskId
+  activeGuideIndex?: number
+  activeGuideGroup?: 'studioEmpty' | 'studioWithApps'
   manuallyEnabledWorkspaceIds: string[]
   manuallyDisabledWorkspaceIds: string[]
   minimized: boolean
@@ -146,11 +149,28 @@ type StepByStepTourTaskDefinition = {
   id: StepByStepTourTaskId
   route: string
   target: string
+  highlightPartSelectors?: string[]
   fallbackTarget?: string
   canClickThrough: boolean
   permissionFallback?: 'show-parent-empty-state' | 'show-disabled-reason'
 }
 ```
+
+Guides that declare `highlightPartSelectors` must keep the active tour overlay
+shell mounted while measurement settles. The backdrop must not depend on
+highlight-part readiness. The measured highlight and coachmark should render
+only from a stable measured overlay: keep the previous stable overlay visible
+while the next target, dropdown, or menu is mounting, then replace it only after
+each selector has at least one visible, measurable element and the union rect has
+settled. This keeps the screen and highlight from flashing while also preventing
+union highlights from appearing as primary-target-only rectangles or
+intermediate floating-position rects while portalled dropdowns or menus are
+still mounting and positioning.
+
+For portalled overlays, attach highlight-part attributes to a stable positioning
+element rather than the animated popup surface. Dropdown popups scale during
+their opening transition, so measuring the popup itself can make the tour
+highlight appear to change padding even when the configured padding is constant.
 
 Expected tasks:
 
@@ -158,6 +178,145 @@ Expected tasks:
 - `studio`: Studio/apps page.
 - `knowledge`: Knowledge/datasets page.
 - `integration`: Integrations page.
+
+### Step 1: Home / Learn Dify
+
+Step 1 orients the user to Learn Dify on the Home surface. The task route is
+`/`, which renders the Home Explore app list. The active guide target must be
+the rendered Learn Dify section on that page, not just the route itself.
+
+When the user clicks the Home task CTA from the floating checklist:
+
+- Route to `/`.
+- Minimize the floating checklist.
+- Start the Home guide only after the Learn Dify section has rendered a
+  matching `data-step-by-step-tour-target`.
+
+Required target contract:
+
+- `STEP_BY_STEP_TOUR_GUIDES.home` must contain a guide for
+  `STEP_BY_STEP_TOUR_TARGETS.home`.
+- The real Home Learn Dify section must expose
+  `data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.home}` when it is
+  rendered.
+- A unit test that creates a fake Home target proves the mount/controller path,
+  but it does not prove the real Home page exposes that target. The Explore
+  app-list tests should also assert that the Learn Dify section carries the
+  Home tour target when Learn Dify is enabled and visible.
+
+Known regression pattern:
+
+- If the Home guide is missing from the target registry, clicking `Show me`
+  only routes to `/`; no active guide is available, so no coachmark can render.
+- If the Home guide exists but the real Learn Dify section does not expose the
+  target attribute, the route and state update succeed, but
+  `useStepByStepTourTarget` cannot resolve the target element, so the user still
+  sees no visible response.
+
+### Step 2: Studio
+
+Step 2 is for users who can create and manage apps, currently represented in
+the frontend by the `app.create_and_management` permission. Owner, Admin, and
+Editor roles are expected to have this permission, but the walkthrough should
+key off the permission rather than hard-coded role names.
+
+When the user clicks the Studio task CTA from the floating checklist:
+
+- Route to `/apps`.
+- Minimize the floating checklist.
+- Start the Studio walkthrough only after the Studio surface has rendered a
+  matching target.
+
+Studio uses the same app-presence signal as the page itself. The current
+frontend signal is the first apps-list page total:
+
+```ts
+const studioHasApps = (pages[0]?.total ?? 0) > 0
+```
+
+If a backend onboarding payload later exposes `studioHasApps`, it should be
+treated as the same product concept and kept consistent with the Studio page's
+empty-state decision. Do not introduce a second frontend definition that can
+drift from the page.
+
+#### Empty Studio Walkthrough
+
+When `studioHasApps` is false and the user can create apps, Studio shows the
+first-empty-state surface. The empty walkthrough is a display walkthrough, not
+an action-completion flow. It highlights the available starting points and is
+completed by the final `Got it`, not by opening one of the create dialogs.
+
+Dynamic walkthrough step list:
+
+1. `Create from a template` entry card.
+1. `Create from blank` entry card.
+1. `Import a DSL file` entry card.
+1. Bottom `Learn Dify` section, only when Learn Dify is enabled and rendered.
+
+If Learn Dify is disabled or the Learn Dify section is not rendered, the empty
+walkthrough should skip that target and become a 3-step walkthrough.
+
+#### With-apps Studio Walkthrough
+
+When `studioHasApps` is true, Studio shows the existing app list. The with-apps
+walkthrough is also a display walkthrough. It orients the user to creation and
+management affordances and is completed by the final `Got it`.
+
+Dynamic walkthrough step list:
+
+1. Top-right `Create` trigger/action area. During this guide, automatically
+   open the Create dropdown so users can see template, blank-canvas, and DSL
+   import options. The primary target remains the stable trigger/action area;
+   the visual highlight includes the opened dropdown as a highlight part.
+1. First workspace app card in the main app list, only when an app card target
+   is rendered. During this guide, automatically show the card action bar and
+   open its more-actions menu. The primary target remains the stable card; the
+   visual highlight includes the opened menu as a highlight part.
+
+If no workspace app card target is rendered, the with-apps walkthrough should
+skip that optional target and become a 1-step walkthrough.
+
+#### Composite Highlight Rules
+
+Composite highlights must separate positioning from visual coverage:
+
+- `anchorRect`: only the primary target. This is used for coachmark placement
+  and arrow alignment.
+- `highlightRect`: union of the primary target and all visible
+  `highlightPartSelectors`. This is used for the mask/highlight.
+
+Do not use the union rect as the coachmark anchor. For the Create guide, the
+primary target is the Create button and the dropdown is only a highlight part.
+For the app-management guide, the primary target is the app card and the
+actions menu is only a highlight part. If coachmark placement is based on the
+union rect, dropdown/menu height will push the bubble away from the real
+semantic target.
+
+When unioning highlight parts:
+
+- Compute the union from the outer edges:
+  `left = min(lefts)`, `top = min(tops)`, `right = max(rights)`,
+  `bottom = max(bottoms)`.
+- Derive `width = right - left` and `height = bottom - top`.
+- Apply configured highlight padding only after the union is computed.
+- Measure the stable portalled positioner when possible, not the animated popup
+  surface.
+
+The overlay should avoid both flicker and runaway measurement:
+
+- Do not render a primary-target-only highlight for a guide that declares
+  required highlight parts.
+- Keep the previous stable overlay visible while the next target or highlight
+  parts are mounting and settling.
+- Do not use a permanent per-frame measurement loop. Prefer event-driven
+  measurement from target resize, scroll/resize, mutation, and explicit
+  positioner movement signals.
+- Disable dropdown/menu opening motion only for tour-driven auto-open states
+  when the animation itself changes measured geometry.
+
+`Skip walkthrough` during any Studio guide exits the active Studio walkthrough,
+keeps the floating checklist minimized, and does not mark Studio complete.
+The full checklist `Skip tour` remains the account-level skip.
 
 ### Completion Controller
 
@@ -168,7 +327,7 @@ Completion should be explicit per task. Do not assume every CTA click means comp
 Possible first rules:
 
 - `home`: completed after user opens the Learn Dify lesson or lands on the chosen learning surface.
-- `studio`: completed after user visits Studio/apps page.
+- `studio`: completed after the final guide in the active Studio walkthrough. Empty Studio currently completes after the final `Got it` in the empty walkthrough.
 - `knowledge`: completed after user visits Knowledge page, opens a dataset, or creates one. PM decision needed.
 - `integration`: completed after user visits Integrations page or reaches a valid fallback empty state. PM decision needed.
 
@@ -246,6 +405,12 @@ Open questions:
 - Add target registry.
 - Add target data attributes to product surfaces.
 - Add overlay with fallback target behavior.
+- Studio empty walkthrough is the first multi-guide slice. It should use the
+  same empty-state signal as Studio, dynamically skip the optional Learn Dify
+  target when that section is not rendered, and keep the minimized tour visible
+  without completing when a required empty-state target is unavailable. This
+  rule covers the empty state only; the non-empty Studio target list will be
+  defined separately.
 
 ### Slice 4: Completion Rules
 

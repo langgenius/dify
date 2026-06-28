@@ -1,5 +1,6 @@
 'use client'
 
+import type { StepByStepTourGuide } from './target-registry'
 import type { StepByStepTourAccountState, StepByStepTourTaskId, StepByStepTourTaskView } from './types'
 import { Popover, PopoverContent } from '@langgenius/dify-ui/popover'
 import { useEffect, useRef } from 'react'
@@ -15,7 +16,11 @@ import {
   useSetStepByStepTourAccountState as useSetStepByStepTourAccount,
   useStepByStepTourAccountStateValue as useStepByStepTourAccountValue,
 } from './storage'
-import { STEP_BY_STEP_TOUR_GUIDES } from './target-registry'
+import {
+  getStepByStepTourGuides,
+  getStepByStepTourTargetSelector,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from './target-registry'
 import { useStepByStepTourTarget } from './use-tour-target'
 
 const addCompletedTask = (
@@ -48,6 +53,16 @@ const getEnabledForCurrentWorkspace = (
 
 const shouldHideOnPathname = (pathname: string) =>
   pathname.startsWith('/app/') || pathname.includes('/installed/')
+
+const isOptionalGuideTargetAvailable = (guide: StepByStepTourGuide) => {
+  if (!guide.optional)
+    return true
+
+  if (typeof document === 'undefined')
+    return true
+
+  return Boolean(document.querySelector(getStepByStepTourTargetSelector(guide.target)))
+}
 
 type StepByStepTourMountProps = {
   className?: string
@@ -82,13 +97,19 @@ export default function StepByStepTourMount({
   const activeTask = accountState.activeTaskId
     ? STEP_BY_STEP_TOUR_TASKS.find(task => task.id === accountState.activeTaskId)
     : undefined
-  const activeGuide = activeTask ? STEP_BY_STEP_TOUR_GUIDES[activeTask.id] : undefined
+  const activeGuides = activeTask ? getStepByStepTourGuides(activeTask.id, accountState.activeGuideGroup) : []
+  const activeGuideIndex = accountState.activeGuideIndex ?? 0
+  const activeGuide = activeGuides[activeGuideIndex]
   const hasActiveGuide = Boolean(activeTask && activeGuide)
   const minimized = Boolean(activeTask) || accountState.minimized
   const expanded = !minimized
   const activeTaskIndex = activeTask
     ? STEP_BY_STEP_TOUR_TASKS.findIndex(task => task.id === activeTask.id)
     : -1
+  const activeStepIndex = activeGuides.length > 1 ? activeGuideIndex : activeTaskIndex
+  const activeStepTotal = activeGuides.length > 1
+    ? activeGuides.filter(guide => isOptionalGuideTargetAvailable(guide)).length
+    : STEP_BY_STEP_TOUR_TASKS.length
   const activeTaskLearnMoreHref = activeTask?.learnMoreDocPath
     ? docLink(activeTask.learnMoreDocPath)
     : undefined
@@ -142,13 +163,47 @@ export default function StepByStepTourMount({
     setAccountState(nextState)
   }
 
-  const completeActiveTask = () => {
-    if (!activeTask)
+  const getNextVisibleActiveGuideIndex = (startIndex: number) => {
+    for (let index = startIndex; index < activeGuides.length; index += 1) {
+      if (isOptionalGuideTargetAvailable(activeGuides[index]!))
+        return index
+    }
+
+    return -1
+  }
+
+  const completeActiveGuide = () => {
+    if (!activeTask || !activeGuide)
       return
+
+    if (activeGuideIndex < activeGuides.length - 1) {
+      const nextActiveGuideIndex = getNextVisibleActiveGuideIndex(activeGuideIndex + 1)
+
+      if (nextActiveGuideIndex === -1) {
+        updateAccountState({
+          ...accountState,
+          activeTaskId: undefined,
+          activeGuideIndex: undefined,
+          activeGuideGroup: undefined,
+          completedTaskIds: addCompletedTask(accountState.completedTaskIds, activeTask.id),
+          minimized: false,
+        })
+        return
+      }
+
+      updateAccountState({
+        ...accountState,
+        activeGuideIndex: nextActiveGuideIndex,
+        minimized: true,
+      })
+      return
+    }
 
     updateAccountState({
       ...accountState,
       activeTaskId: undefined,
+      activeGuideIndex: undefined,
+      activeGuideGroup: undefined,
       completedTaskIds: addCompletedTask(accountState.completedTaskIds, activeTask.id),
       minimized: false,
     })
@@ -189,6 +244,8 @@ export default function StepByStepTourMount({
         updateAccountState({
           ...accountState,
           activeTaskId: taskId,
+          activeGuideIndex: 0,
+          activeGuideGroup: undefined,
           minimized: true,
         })
         router.push(task.route)
@@ -206,18 +263,26 @@ export default function StepByStepTourMount({
     <div className={className}>
       {activeTask && activeGuide && activeTargetElement && (
         <StepByStepTourCoachmark
-          key={activeGuide.target}
-          guide={activeGuide}
+          guide={{
+            ...activeGuide,
+            description: t(activeGuide.description),
+            learnMoreLabel: t(activeGuide.learnMoreLabel),
+            primaryActionLabel: t(activeGuide.primaryActionLabel),
+            title: t(activeGuide.title),
+          }}
           targetElement={activeTargetElement}
-          stepLabel={`${activeTaskIndex + 1} of ${STEP_BY_STEP_TOUR_TASKS.length}`}
+          placement={activeGuide.target === STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify ? 'top' : 'bottom'}
+          stepLabel={`${activeStepIndex + 1} of ${activeStepTotal}`}
           skipLabel={t('stepByStepTour.skip')}
           learnMoreHref={activeTaskLearnMoreHref}
           onSkip={() => updateAccountState({
             ...accountState,
             activeTaskId: undefined,
+            activeGuideIndex: undefined,
+            activeGuideGroup: undefined,
             minimized: true,
           })}
-          onComplete={completeActiveTask}
+          onComplete={completeActiveGuide}
         />
       )}
       <Popover open={expanded}>

@@ -7,6 +7,14 @@ import { useDebounce } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNeedRefreshAppList } from '@/app/components/apps/storage'
+import {
+  useSetStepByStepTourAccountState,
+  useStepByStepTourAccountStateValue,
+} from '@/app/components/step-by-step-tour/storage'
+import {
+  getStepByStepTourGuides,
+  STEP_BY_STEP_TOUR_TARGETS,
+} from '@/app/components/step-by-step-tour/target-registry'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -63,6 +71,10 @@ function List({
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(false)
   const [droppedDSLFile, setDroppedDSLFile] = useState<File | undefined>()
   const [needsRefreshAppList, setNeedsRefreshAppList] = useNeedRefreshAppList()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
+  const stepByStepTourAccountState = useStepByStepTourAccountStateValue()
+  // eslint-disable-next-line react/use-state -- Step-by-step tour storage hooks are not React useState calls.
+  const setStepByStepTourAccountState = useSetStepByStepTourAccountState()
   const canCreateApp = hasPermission(workspacePermissionKeys, 'app.create_and_management')
 
   const handleDSLFileDropped = useCallback((file: File) => {
@@ -211,6 +223,16 @@ function List({
   const hasActiveFilters = category !== 'all' || tagIDs.length > 0 || keywords.trim().length > 0 || debouncedKeywords.trim().length > 0 || creatorIDs.length > 0
   const showSkeleton = isLoading || (isFetching && pages.length === 0)
   const showFirstEmptyState = !showSkeleton && !hasAnyApp && canCreateApp && hasResolvedFirstPage && !hasActiveFilters
+  const activeStudioGuideGroup = showFirstEmptyState
+    ? 'studioEmpty'
+    : hasAnyApp ? 'studioWithApps' : undefined
+  const effectiveActiveStudioGuideGroup = stepByStepTourAccountState.activeGuideGroup ?? activeStudioGuideGroup
+  const activeStudioGuides = stepByStepTourAccountState.activeTaskId === 'studio' && effectiveActiveStudioGuideGroup
+    ? getStepByStepTourGuides('studio', effectiveActiveStudioGuideGroup)
+    : []
+  const activeStudioGuide = activeStudioGuides[stepByStepTourAccountState.activeGuideIndex ?? 0]
+  const shouldOpenStepByStepTourCreateMenu = activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate
+  const shouldOpenStepByStepTourAppCardActionMenu = activeStudioGuide?.target === STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard
   const openCreateBlankModal = useCallback(() => {
     if (canCreateApp)
       setShowNewAppModal(true)
@@ -223,6 +245,30 @@ function List({
     if (canCreateApp)
       setShowCreateFromDSLModal(true)
   }, [canCreateApp])
+
+  useEffect(() => {
+    if (stepByStepTourAccountState.activeTaskId !== 'studio')
+      return
+    if (!hasResolvedFirstPage || showSkeleton || !activeStudioGuideGroup)
+      return
+    if (stepByStepTourAccountState.activeGuideGroup === activeStudioGuideGroup)
+      return
+
+    // Sync the active walkthrough branch into the tour storage owner after the
+    // Studio list data resolves.
+    // eslint-disable-next-line react/set-state-in-effect
+    setStepByStepTourAccountState({
+      ...stepByStepTourAccountState,
+      activeGuideGroup: activeStudioGuideGroup,
+      activeGuideIndex: 0,
+    })
+  }, [
+    activeStudioGuideGroup,
+    hasResolvedFirstPage,
+    setStepByStepTourAccountState,
+    showSkeleton,
+    stepByStepTourAccountState,
+  ])
 
   return (
     <>
@@ -255,6 +301,9 @@ function List({
             onImportDSL={openCreateFromDSLModal}
             onOpenTagManagement={() => setShowTagManagementModal(true)}
             showCreateButton={canCreateApp}
+            stepByStepTourCreateMenuOpen={activeStudioGuide ? shouldOpenStepByStepTourCreateMenu : undefined}
+            stepByStepTourCreateMenuTarget={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate}
+            stepByStepTourCreateMenuHighlightPart={STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu}
           />
         </StudioListHeader>
         {showFirstEmptyState
@@ -282,13 +331,16 @@ function List({
                   {showSkeleton
                     ? <AppCardSkeleton count={6} />
                     : hasAnyApp
-                      ? apps.map(app => (
+                      ? apps.map((app, index) => (
                           <AppCard
                             key={app.id}
                             app={app}
                             onlineUsers={workflowOnlineUsersMap[app.id] ?? []}
                             onRefresh={refreshAppLists}
                             onOpenTagManagement={() => setShowTagManagementModal(true)}
+                            stepByStepTourActionMenuOpen={index === 0 ? shouldOpenStepByStepTourAppCardActionMenu : undefined}
+                            stepByStepTourCardTarget={index === 0 ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard : undefined}
+                            stepByStepTourActionMenuHighlightPart={index === 0 && shouldOpenStepByStepTourAppCardActionMenu ? STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu : undefined}
                           />
                         ))
                       : <Empty />}

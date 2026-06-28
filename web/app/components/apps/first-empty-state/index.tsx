@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import LearnDify from '@/app/components/explore/learn-dify'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import FirstEmptyActionCard from './action-card'
 
 const EMPTY_PLACEHOLDER_CARD_IDS = Array.from({ length: 16 }, (_, index) => `placeholder-card-${index}`)
@@ -13,6 +14,7 @@ type EmptyCreateAction = {
   title: string
   description: string
   onClick: () => void
+  target: string
 }
 
 type Props = {
@@ -37,6 +39,7 @@ function FirstEmptyState({
       title: t('newApp.startFromTemplate', { ns: 'app' }),
       description: t('firstEmpty.templateDescription', { ns: 'app' }),
       onClick: onCreateTemplate,
+      target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate,
     },
     {
       id: 'blank',
@@ -44,6 +47,7 @@ function FirstEmptyState({
       title: t('newApp.startFromBlank', { ns: 'app' }),
       description: t('firstEmpty.blankDescription', { ns: 'app' }),
       onClick: onCreateBlank,
+      target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank,
     },
     {
       id: 'dsl',
@@ -51,6 +55,7 @@ function FirstEmptyState({
       title: t('importDSL', { ns: 'app' }),
       description: t('firstEmpty.importDescription', { ns: 'app' }),
       onClick: onImportDSL,
+      target: STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL,
     },
   ]
 
@@ -83,6 +88,7 @@ function FirstEmptyState({
                     description={action.description}
                     icon={action.icon}
                     onClick={action.onClick}
+                    stepByStepTourTarget={action.target}
                     title={action.title}
                     visualStyle="list"
                   />
@@ -97,6 +103,7 @@ function FirstEmptyState({
                 description={actions[2]!.description}
                 icon={actions[2]!.icon}
                 onClick={actions[2]!.onClick}
+                stepByStepTourTarget={actions[2]!.target}
                 title={actions[2]!.title}
                 visualStyle="list"
               />
@@ -105,13 +112,15 @@ function FirstEmptyState({
         </section>
       </div>
       {showLearnDify && (
-        <LearnDify
-          className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
-          dismissible={false}
-          itemLimit={4}
-          showDescription
-          title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
-        />
+        <div data-step-by-step-tour-target={STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify}>
+          <LearnDify
+            className="px-4 pt-2 pb-0 [&_div.grid]:gap-3 [&>div]:mx-0 [&>div]:rounded-t-2xl [&>div]:rounded-b-none [&>div]:px-5 [&>div]:pt-4 [&>div]:pb-5"
+            dismissible={false}
+            itemLimit={4}
+            showDescription
+            title={t('firstEmpty.learnDifyTitle', { ns: 'app' })}
+          />
+        </div>
       )}
     </div>
   )

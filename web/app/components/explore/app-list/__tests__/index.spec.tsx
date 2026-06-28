@@ -7,6 +7,7 @@ import type { App as WorkspaceApp } from '@/types/app'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { useAppContext } from '@/context/app-context'
 import { fetchAppDetail, fetchAppList, fetchBanners } from '@/service/explore'
 import { renderWithNuqs } from '@/test/nuqs-testing'
@@ -536,7 +537,12 @@ describe('AppList', () => {
 
       renderAppList()
 
-      expect(screen.getByRole('heading', { name: 'explore.learnDify.title' })).toBeInTheDocument()
+      const learnDifyHeading = screen.getByRole('heading', { name: 'explore.learnDify.title' })
+      expect(learnDifyHeading).toBeInTheDocument()
+      expect(learnDifyHeading.closest('section')).toHaveAttribute(
+        'data-step-by-step-tour-target',
+        STEP_BY_STEP_TOUR_TARGETS.home,
+      )
       expect(screen.getByText('Learn Workflow Basics')).toBeInTheDocument()
       expect(screen.getByText('Learn Agent Basics')).toBeInTheDocument()
       expect(screen.queryByRole('link', { name: 'explore.learnDify.moreTemplates' })).not.toBeInTheDocument()

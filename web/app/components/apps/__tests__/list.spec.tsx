@@ -3,6 +3,8 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { createSystemFeaturesWrapper } from '@/__tests__/utils/mock-system-features'
+import { STEP_BY_STEP_TOUR_STORAGE_KEY } from '@/app/components/step-by-step-tour/constants'
+import { STEP_BY_STEP_TOUR_TARGETS } from '@/app/components/step-by-step-tour/target-registry'
 import { renderWithNuqs } from '@/test/nuqs-testing'
 import { AppModeEnum } from '@/types/app'
 
@@ -278,10 +280,40 @@ vi.mock('@/next/dynamic', () => ({
 }))
 
 vi.mock('../app-card', () => ({
-  AppCard: ({ app }: { app: { id: string, name: string } }) => {
-    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
+  AppCard: ({
+    app,
+    stepByStepTourActionMenuOpen,
+    stepByStepTourActionMenuHighlightPart,
+    stepByStepTourCardTarget,
+  }: {
+    app: { id: string, name: string }
+    stepByStepTourActionMenuOpen?: boolean
+    stepByStepTourActionMenuHighlightPart?: string
+    stepByStepTourCardTarget?: string
+  }) => {
+    return React.createElement(
+      'div',
+      {
+        'data-testid': `app-card-${app.id}`,
+        'data-step-by-step-tour-target': stepByStepTourCardTarget,
+        'role': 'article',
+      },
+      app.name,
+      React.createElement('button', {
+        'data-testid': `app-card-action-bar-${app.id}`,
+        'data-step-by-step-tour-highlight-part': stepByStepTourActionMenuHighlightPart,
+        'data-step-by-step-tour-menu-open': String(Boolean(stepByStepTourActionMenuOpen)),
+        'type': 'button',
+      }),
+    )
   },
-  AppCardActionBar: ({ app, onRefresh }: { app: { id: string }, onRefresh?: () => void }) => {
+  AppCardActionBar: ({
+    app,
+    onRefresh,
+  }: {
+    app: { id: string }
+    onRefresh?: () => void
+  }) => {
     return React.createElement('button', {
       'data-testid': `app-card-action-bar-${app.id}`,
       'type': 'button',
@@ -358,6 +390,22 @@ const openAppSortSelect = async (user = userEvent.setup()) => {
   return user
 }
 
+const setActiveStudioStepByStepTour = (
+  activeGuideIndex: number,
+  activeGuideGroup: 'studioWithApps' | undefined = 'studioWithApps',
+) => {
+  localStorage.setItem(STEP_BY_STEP_TOUR_STORAGE_KEY, JSON.stringify({
+    activeTaskId: 'studio',
+    activeGuideGroup,
+    activeGuideIndex,
+    manuallyEnabledWorkspaceIds: ['workspace-1'],
+    manuallyDisabledWorkspaceIds: [],
+    minimized: true,
+    completedTaskIds: ['home'],
+    skipped: false,
+  }))
+}
+
 describe('List', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -424,6 +472,32 @@ describe('List', () => {
     it('should render create button for editors', () => {
       renderList()
       expect(screen.getByRole('button', { name: 'common.operation.create' }))!.toBeInTheDocument()
+    })
+
+    it('should open the create menu for the Studio with-apps tour create guide', async () => {
+      setActiveStudioStepByStepTour(0)
+
+      renderList()
+
+      expect(screen.getByRole('button', { name: 'common.operation.create' }))
+        .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate)
+      expect(await screen.findByRole('menuitem', { name: 'app.newApp.startFromBlank' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'app.newApp.startFromTemplate' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: /app\.importDSL/ })).toBeInTheDocument()
+      expect(document.body.querySelector('[data-step-by-step-tour-highlight-part]'))
+        .toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu)
+    })
+
+    it('should open the create menu before the Studio with-apps guide group is persisted', async () => {
+      setActiveStudioStepByStepTour(0, undefined)
+
+      renderList()
+
+      expect(screen.getByRole('button', { name: 'common.operation.create' }))
+        .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreate)
+      expect(await screen.findByRole('menuitem', { name: 'app.newApp.startFromBlank' })).toBeInTheDocument()
+      expect(document.body.querySelector('[data-step-by-step-tour-highlight-part]'))
+        .toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsCreateMenu)
     })
 
     it('should render sort filter before search and hide the snippets link', () => {
@@ -494,6 +568,45 @@ describe('List', () => {
       expect(mockRefetchStarredAppList).toHaveBeenCalledTimes(1)
     })
 
+    it('should expose the first workspace app card and open its action menu for the Studio with-apps tour manage guide', () => {
+      setActiveStudioStepByStepTour(1)
+      mockStarredAppData = {
+        data: [{
+          id: 'starred-app-1',
+          name: 'Starred App',
+          description: 'Starred description',
+          mode: AppModeEnum.CHAT,
+          icon: '⭐',
+          icon_type: 'emoji',
+          icon_background: '#FFEAD5',
+          icon_url: null,
+          tags: [],
+          author_name: 'Author 1',
+          created_at: 1704067200,
+          updated_at: 1704153600,
+        }],
+        total: 1,
+        page: 1,
+        limit: 100,
+        has_more: false,
+      }
+
+      renderList()
+
+      const firstWorkspaceCard = screen.getByTestId('app-card-app-1')
+      const firstWorkspaceActionBar = screen.getByTestId('app-card-action-bar-app-1')
+      const starredCard = screen.getByRole('link', { name: /Starred App/ })
+      const starredActionBar = screen.getByTestId('app-card-action-bar-starred-app-1')
+
+      expect(firstWorkspaceCard).toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCard)
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-highlight-part', STEP_BY_STEP_TOUR_TARGETS.studioWithAppsFirstAppCardActionsMenu)
+      expect(firstWorkspaceActionBar).toHaveAttribute('data-step-by-step-tour-menu-open', 'true')
+      expect(screen.queryByRole('menuitem', { name: 'app.newApp.startFromBlank' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('menuitem', { name: 'app.newApp.startFromTemplate' })).not.toBeInTheDocument()
+      expect(starredCard).not.toHaveAttribute('data-step-by-step-tour-target')
+      expect(starredActionBar).not.toHaveAttribute('data-step-by-step-tour-highlight-part')
+    })
+
     it('should not render new app card in the app grid', () => {
       renderList()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
@@ -515,6 +628,14 @@ describe('List', () => {
       expect(screen.getByRole('button', { name: 'Types' }))!.toBeInTheDocument()
       expect(screen.queryByTestId('new-app-card')).not.toBeInTheDocument()
       expect(screen.queryByTestId('empty-state')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /app\.newApp\.startFromTemplate/ }))
+        .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioEmptyTemplate)
+      expect(screen.getByRole('button', { name: /app\.newApp\.startFromBlank/ }))
+        .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioEmptyBlank)
+      expect(screen.getByRole('button', { name: /app\.importDSL/ }))
+        .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioEmptyDSL)
+      expect(screen.getByText('app.firstEmpty.learnDifyTitle').closest('[data-step-by-step-tour-target]'))
+        .toHaveAttribute('data-step-by-step-tour-target', STEP_BY_STEP_TOUR_TARGETS.studioEmptyLearnDify)
     })
 
     it('should hide learn dify in first empty state when learn app is disabled', () => {

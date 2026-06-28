@@ -21,6 +21,7 @@ type LearnDifyProps = {
   onCreate?: (app: App) => void
   onTry?: (params: TryAppSelection) => void
   showDescription?: boolean
+  stepByStepTourTarget?: string
   title?: string
 }
 
@@ -37,6 +38,7 @@ const LearnDifyContent = ({
   onCreate,
   onTry,
   showDescription = true,
+  stepByStepTourTarget,
   title,
 }: LearnDifyContentProps) => {
   const { t } = useTranslation()
@@ -93,6 +95,7 @@ const LearnDifyContent = ({
       )}
       style={isClosing ? { transform: collapseTransform, transformOrigin: 'center center' } : undefined}
       aria-labelledby="learn-dify-title"
+      data-step-by-step-tour-target={stepByStepTourTarget}
     >
       <div className="-mx-4 rounded-2xl bg-background-section p-4">
         <div className="flex items-start justify-between gap-4 pb-2.5">

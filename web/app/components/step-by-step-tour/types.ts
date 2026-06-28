@@ -6,9 +6,13 @@ export type StepByStepTourTaskId = typeof STEP_BY_STEP_TOUR_TASK_IDS[number]
 
 export type StepByStepTourTaskStatus = 'completed' | 'current' | 'pending' | 'disabled'
 
+export type StepByStepTourGuideGroup = 'studioEmpty' | 'studioWithApps'
+
 export type StepByStepTourAccountState = {
   firstWorkspaceId?: string
   activeTaskId?: StepByStepTourTaskId
+  activeGuideIndex?: number
+  activeGuideGroup?: StepByStepTourGuideGroup
   manuallyEnabledWorkspaceIds: string[]
   manuallyDisabledWorkspaceIds: string[]
   minimized: boolean
