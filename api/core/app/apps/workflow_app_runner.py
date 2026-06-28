@@ -90,6 +90,60 @@ from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 logger = logging.getLogger(__name__)
 
 
+def init_graph(
+    *,
+    app_id: str,
+    graph_config: Mapping[str, Any],
+    graph_runtime_state: GraphRuntimeState,
+    user_from: UserFrom,
+    invoke_from: InvokeFrom,
+    workflow_id: str = "",
+    tenant_id: str = "",
+    user_id: str = "",
+    root_node_id: str | None = None,
+    trace_session_id: str | None = None,
+    call_depth: int = 0,
+    extra_context: Mapping[str, Any] | None = None,
+) -> Graph:
+    if "nodes" not in graph_config or "edges" not in graph_config:
+        raise ValueError("nodes or edges not found in workflow graph")
+
+    if not isinstance(graph_config.get("nodes"), list):
+        raise ValueError("nodes in workflow graph must be a list")
+
+    if not isinstance(graph_config.get("edges"), list):
+        raise ValueError("edges in workflow graph must be a list")
+
+    run_context = build_dify_run_context(
+        tenant_id=tenant_id or "",
+        app_id=app_id,
+        user_id=user_id,
+        user_from=user_from,
+        invoke_from=invoke_from,
+        trace_session_id=trace_session_id,
+        extra_context=extra_context,
+    )
+    graph_init_context = DifyGraphInitContext(
+        workflow_id=workflow_id,
+        graph_config=graph_config,
+        run_context=run_context,
+        call_depth=call_depth,
+    )
+    node_factory = DifyNodeFactory.from_graph_init_context(
+        graph_init_context=graph_init_context,
+        graph_runtime_state=graph_runtime_state,
+    )
+
+    if root_node_id is None:
+        root_node_id = get_default_root_node_id(graph_config)
+
+    graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
+    if not graph:
+        raise ValueError("graph not found in workflow")
+
+    return graph
+
+
 class WorkflowBasedAppRunner:
     def __init__(
         self,
@@ -125,48 +179,18 @@ class WorkflowBasedAppRunner:
         """
         Init graph
         """
-        if "nodes" not in graph_config or "edges" not in graph_config:
-            raise ValueError("nodes or edges not found in workflow graph")
-
-        if not isinstance(graph_config.get("nodes"), list):
-            raise ValueError("nodes in workflow graph must be a list")
-
-        if not isinstance(graph_config.get("edges"), list):
-            raise ValueError("edges in workflow graph must be a list")
-
-        # Create explicit graph init context for Graph.init.
-        run_context = build_dify_run_context(
-            tenant_id=tenant_id or "",
+        return init_graph(
             app_id=self._app_id,
-            user_id=user_id,
+            graph_config=graph_config,
+            graph_runtime_state=graph_runtime_state,
             user_from=user_from,
             invoke_from=invoke_from,
+            workflow_id=workflow_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            root_node_id=root_node_id,
             trace_session_id=trace_session_id,
         )
-        graph_init_context = DifyGraphInitContext(
-            workflow_id=workflow_id,
-            graph_config=graph_config,
-            run_context=run_context,
-            call_depth=0,
-        )
-
-        # Use the provided graph_runtime_state for consistent state management
-
-        node_factory = DifyNodeFactory.from_graph_init_context(
-            graph_init_context=graph_init_context,
-            graph_runtime_state=graph_runtime_state,
-        )
-
-        if root_node_id is None:
-            root_node_id = get_default_root_node_id(graph_config)
-
-        # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
-
-        if not graph:
-            raise ValueError("graph not found in workflow")
-
-        return graph
 
     def _prepare_single_node_execution(
         self,

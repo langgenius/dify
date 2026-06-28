@@ -313,7 +313,7 @@ class TestCompletionAppGenerator:
 
         runner_instance = MagicMock()
         runner_instance.run.side_effect = error
-        mocker.patch.object(module, "CompletionAppRunner", return_value=runner_instance)
+        mocker.patch.object(module, "CompletionWorkflowRunner", return_value=runner_instance)
 
         queue_manager = MagicMock()
         generator._generate_worker(

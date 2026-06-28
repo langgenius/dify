@@ -483,6 +483,7 @@ class TestDifyNodeFactoryCreateNode:
     def factory(self):
         factory = object.__new__(node_factory.DifyNodeFactory)
         factory.graph_init_params = sentinel.graph_init_params
+        factory.graph_init_params.run_context = {}
         factory.graph_runtime_state = SimpleNamespace(variable_pool=MagicMock())
         factory._dify_context = SimpleNamespace(
             tenant_id="tenant-id",
@@ -732,6 +733,43 @@ class TestDifyNodeFactoryCreateNode:
         wrap_model.assert_called_once_with(
             node_data=node_data,
             model_instance=sentinel.model_instance,
+            before_invoke=None,
+        )
+        assert kwargs["model_instance"] is wrapped_model_instance
+
+    def test_build_llm_compatible_node_init_kwargs_passes_before_llm_hook(self, factory):
+        before_llm_invoke = MagicMock()
+        factory.graph_init_params.run_context[node_factory.DIFY_BEFORE_LLM_INVOKE_KEY] = before_llm_invoke
+        node_data = LLMNodeData.model_validate(
+            {
+                "type": BuiltinNodeTypes.LLM,
+                "title": "LLM",
+                "model": {"provider": "provider", "name": "model", "mode": "chat", "completion_params": {}},
+                "prompt_template": [{"role": "system", "text": "x"}],
+                "context": {"enabled": False, "variable_selector": []},
+                "vision": {"enabled": False},
+            }
+        )
+        wrapped_model_instance = sentinel.wrapped_model_instance
+        factory._build_model_instance_for_llm_node = MagicMock(return_value=sentinel.model_instance)
+        factory._build_memory_for_llm_node = MagicMock(return_value=sentinel.memory)
+
+        with patch.object(factory, "_wrap_model_instance_for_node", return_value=wrapped_model_instance) as wrap_model:
+            kwargs = factory._build_llm_compatible_node_init_kwargs(
+                node_class=sentinel.node_class,
+                node_data=node_data,
+                wrap_model_instance=True,
+                include_http_client=False,
+                include_llm_file_saver=False,
+                include_prompt_message_serializer=False,
+                include_retriever_attachment_loader=False,
+                include_jinja2_template_renderer=False,
+            )
+
+        wrap_model.assert_called_once_with(
+            node_data=node_data,
+            model_instance=sentinel.model_instance,
+            before_invoke=before_llm_invoke,
         )
         assert kwargs["model_instance"] is wrapped_model_instance
 

@@ -584,6 +584,94 @@ def test_convert_app_model_config_to_workflow_should_build_workflow_mode_with_en
     assert set(features.keys()) == {"text_to_speech", "file_upload", "sensitive_word_avoidance"}
 
 
+def test_build_graph_from_app_config_for_completion_does_not_create_workflow(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
+    app_config = SimpleNamespace(
+        variables=[],
+        external_data_variables=[],
+        dataset=None,
+        model=_build_model_config(mode=LLMMode.CHAT),
+        prompt_template=PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="Hello",
+        ),
+        additional_features=None,
+        app_model_config_dict={
+            "text_to_speech": {"enabled": False},
+            "file_upload": {"enabled": False},
+            "sensitive_word_avoidance": {"enabled": False},
+        },
+    )
+    db_session = SimpleNamespace(add=MagicMock(), commit=MagicMock())
+    monkeypatch.setattr(converter_module, "db", SimpleNamespace(session=db_session))
+
+    graph, features = converter.build_graph_from_app_config(
+        app_model=app_model,
+        app_config=app_config,
+        target_app_mode=AppMode.WORKFLOW,
+    )
+
+    assert [node["id"] for node in graph["nodes"]] == ["start", "llm", "end"]
+    assert features == {
+        "text_to_speech": {"enabled": False},
+        "file_upload": {"enabled": False},
+        "sensitive_word_avoidance": {"enabled": False},
+    }
+    db_session.add.assert_not_called()
+    db_session.commit.assert_not_called()
+
+
+def test_build_graph_from_app_config_preserves_api_based_variable_nodes(
+    converter: WorkflowConverter,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    app_model = _app_model(id="app-1", tenant_id="tenant-1", mode=AppMode.COMPLETION)
+    app_config = SimpleNamespace(
+        variables=[VariableEntity(variable="city", label="City", type=VariableEntityType.TEXT_INPUT)],
+        external_data_variables=[
+            ExternalDataVariableEntity(
+                variable="weather",
+                type="api",
+                config={"api_based_extension_id": "api_based_extension_id"},
+            )
+        ],
+        dataset=None,
+        model=_build_model_config(mode=LLMMode.CHAT),
+        prompt_template=PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="Weather: {{weather}}",
+        ),
+        additional_features=None,
+        app_model_config_dict={},
+    )
+    extension = SimpleNamespace(
+        name="Weather API",
+        api_endpoint="https://example.com/weather",
+        api_key="encrypted-token",
+    )
+    monkeypatch.setattr(converter, "_get_api_based_extension", MagicMock(return_value=extension))
+    monkeypatch.setattr(converter_module.encrypter, "decrypt_token", MagicMock(return_value="plain-token"))
+
+    graph, _ = converter.build_graph_from_app_config(
+        app_model=app_model,
+        app_config=app_config,
+        target_app_mode=AppMode.WORKFLOW,
+    )
+
+    assert [node["data"]["type"] for node in graph["nodes"]] == [
+        BuiltinNodeTypes.START,
+        BuiltinNodeTypes.HTTP_REQUEST,
+        BuiltinNodeTypes.CODE,
+        BuiltinNodeTypes.LLM,
+        BuiltinNodeTypes.END,
+    ]
+    llm_node = next(node for node in graph["nodes"] if node["id"] == "llm")
+    assert "{{#code_1.result#}}" in llm_node["data"]["prompt_template"][0]["text"]
+
+
 def test_convert_to_app_config_should_route_to_correct_manager(
     converter: WorkflowConverter,
     monkeypatch: pytest.MonkeyPatch,

@@ -95,6 +95,8 @@ if TYPE_CHECKING:
     from graphon.nodes.tool.entities import ToolNodeData
 
 
+DIFY_BEFORE_LLM_INVOKE_KEY = "_dify_before_llm_invoke"
+BeforeLLMInvoke = Callable[[Sequence[PromptMessage]], None]
 _file_access_controller = DatabaseFileAccessController()
 
 
@@ -151,8 +153,9 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
 class DifyPreparedLLM(LLMProtocol):
     """Workflow-layer adapter that hides the full `ModelInstance` API from `graphon` nodes."""
 
-    def __init__(self, model_instance: ModelInstance) -> None:
+    def __init__(self, model_instance: ModelInstance, before_invoke: BeforeLLMInvoke | None = None) -> None:
         self._model_instance = model_instance
+        self._before_invoke = before_invoke
 
     @property
     @override
@@ -193,6 +196,10 @@ class DifyPreparedLLM(LLMProtocol):
     def get_llm_num_tokens(self, prompt_messages: Sequence[PromptMessage]) -> int:
         return self._model_instance.get_llm_num_tokens(prompt_messages)
 
+    def _run_before_invoke(self, prompt_messages: Sequence[PromptMessage]) -> None:
+        if self._before_invoke is not None:
+            self._before_invoke(prompt_messages)
+
     @overload
     def invoke_llm(
         self,
@@ -225,6 +232,7 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResult | Generator[LLMResultChunk, None, None]:
+        self._run_before_invoke(prompt_messages)
         return self._model_instance.invoke_llm(
             prompt_messages=list(prompt_messages),
             model_parameters=dict(model_parameters),
@@ -265,6 +273,7 @@ class DifyPreparedLLM(LLMProtocol):
         stop: Sequence[str] | None,
         stream: bool,
     ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+        self._run_before_invoke(prompt_messages)
         return invoke_llm_with_structured_output(
             provider=self.provider,
             model_schema=self.get_model_schema(),
@@ -284,10 +293,10 @@ class DifyPreparedLLM(LLMProtocol):
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
 
-    def __init__(self, model_instance: ModelInstance) -> None:
+    def __init__(self, model_instance: ModelInstance, before_invoke: BeforeLLMInvoke | None = None) -> None:
         from core.plugin.impl.model_runtime import PluginModelRuntime
 
-        super().__init__(model_instance)
+        super().__init__(model_instance, before_invoke=before_invoke)
         model_type_instance = model_instance.model_type_instance
         if not isinstance(model_type_instance, LargeLanguageModel):
             raise TypeError("Polling wrapper requires a large-language-model instance.")
@@ -308,6 +317,7 @@ class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
         stop: Sequence[str] | None,
         json_schema: Mapping[str, Any] | None,
     ) -> LLMPollingResult:
+        self._run_before_invoke(prompt_messages)
         return self._plugin_model_runtime.start_llm_polling(
             provider=self.provider,
             model=self.model_name,

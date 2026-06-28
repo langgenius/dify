@@ -277,6 +277,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if isinstance(event, QueueMessageEndEvent):
                         if event.llm_result:
                             self._task_state.llm_result = event.llm_result
+                        saved_prompt = getattr(event, "saved_prompt", None)
+                        if saved_prompt is not None:
+                            self._task_state.saved_prompt = saved_prompt
                     else:
                         self._handle_stop(event)
 
@@ -393,9 +396,11 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if not conversation:
             raise ValueError(f"Conversation {self._conversation_id} not found")
 
-        saved_prompt = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-            self._model_config.mode, self._task_state.llm_result.prompt_messages
-        )
+        saved_prompt = self._task_state.saved_prompt
+        if saved_prompt is None:
+            saved_prompt = PromptMessageUtil.prompt_messages_to_prompt_for_saving(
+                self._model_config.mode, self._task_state.llm_result.prompt_messages
+            )
         object.__setattr__(message, "message", saved_prompt)
         message.message_tokens = usage.prompt_tokens
         message.message_unit_price = usage.prompt_unit_price

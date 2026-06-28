@@ -139,7 +139,9 @@ class ChatMessageTextApi(Resource):
     @get_app_model
     def post(self, app_model: App):
         try:
-            payload = TextToSpeechPayload.model_validate(console_ns.payload)
+            payload_data = dict(console_ns.payload or {})
+            payload_data.setdefault("text", "")
+            payload = TextToSpeechPayload.model_validate(payload_data)
 
             response = AudioService.transcript_tts(
                 app_model=app_model,

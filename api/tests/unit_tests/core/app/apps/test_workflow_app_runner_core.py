@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner, init_graph
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
@@ -115,6 +115,40 @@ class TestWorkflowBasedAppRunner:
         )
 
         assert captured["run_context"][DIFY_RUN_CONTEXT_KEY].trace_session_id == "session-1"
+
+    def test_init_graph_accepts_call_depth_and_extra_context(self, monkeypatch: pytest.MonkeyPatch):
+        runtime_state = GraphRuntimeState(
+            variable_pool=VariablePool.from_bootstrap(system_variables=default_system_variables()),
+            start_at=0.0,
+        )
+        hook = object()
+        captured = {}
+
+        def fake_from_graph_init_context(**kwargs):
+            graph_init_context = kwargs["graph_init_context"]
+            captured["run_context"] = graph_init_context.run_context
+            captured["call_depth"] = graph_init_context.call_depth
+            return SimpleNamespace()
+
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.DifyNodeFactory.from_graph_init_context",
+            fake_from_graph_init_context,
+        )
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.Graph.init", lambda **_kwargs: SimpleNamespace())
+
+        init_graph(
+            app_id="app",
+            graph_config={"nodes": [], "edges": []},
+            graph_runtime_state=runtime_state,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            root_node_id="root",
+            call_depth=2,
+            extra_context={"hook": hook},
+        )
+
+        assert captured["call_depth"] == 2
+        assert captured["run_context"]["hook"] is hook
 
     def test_prepare_single_node_execution_requires_run(self):
         runner = WorkflowBasedAppRunner(queue_manager=SimpleNamespace(), app_id="app")
