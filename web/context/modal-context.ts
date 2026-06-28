@@ -26,6 +26,7 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 
 export type ModalState<T> = {
   payload: T
+  source?: 'agent'
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void
   onRemoveCallback?: (newPayload?: T, formValues?: Record<string, unknown>) => void

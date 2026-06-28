@@ -89,7 +89,7 @@ export const applyToNewApp = async ({
   instruction,
   appName,
   icon,
-}: ApplyToNewAppParams): Promise<{ appId: string, appMode: AppModeEnum }> => {
+}: ApplyToNewAppParams): Promise<{ appId: string, appMode: AppModeEnum, permissionKeys?: string[] }> => {
   const appMode = MODE_TO_APP_MODE[mode]
   const name = (appName ?? '').trim() || deriveAppName(instruction)
   const appIcon = (icon ?? '').trim() || '🤖'
@@ -131,7 +131,7 @@ export const applyToNewApp = async ({
     throw syncErr
   }
 
-  return { appId: app.id, appMode }
+  return { appId: app.id, appMode, permissionKeys: app.permission_keys }
 }
 
 type ApplyToCurrentAppParams = {

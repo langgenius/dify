@@ -8,6 +8,7 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import * as React from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { createAccountProfileQueryClient } from '@/test/account-profile-query'
 import { PluginCategoryEnum, PluginSource } from '../../../types'
 import AutoUpdateSetting from '../index'
@@ -51,6 +52,32 @@ vi.mock('@/context/modal-context', () => ({
 // Mock i18n context
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
+}))
+
+vi.mock('react-i18next', () => ({
+  useTranslation: (defaultNs?: string) => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const ns = (options?.ns as string | undefined) ?? defaultNs
+      const params = { ...options }
+      delete params.ns
+      const suffix = Object.keys(params).length > 0 ? `:${JSON.stringify(params)}` : ''
+      return `${ns ? `${ns}.` : ''}${key}${suffix}`
+    },
+    i18n: {
+      language: 'en',
+      changeLanguage: vi.fn(),
+    },
+  }),
+  Trans: ({ i18nKey, components }: {
+    i18nKey: string
+    components?: Record<string, React.ReactElement>
+  }) => {
+    const setTimezone = components?.setTimezone
+    if (setTimezone)
+      return React.cloneElement(setTimezone, undefined, i18nKey)
+
+    return <span>{i18nKey}</span>
+  },
 }))
 
 // Mock plugins service
@@ -1330,8 +1357,10 @@ describe('auto-update-setting', () => {
 
         // Act
         render(<AutoUpdateSetting {...defaultProps} payload={payload} />)
+        fireEvent.click(screen.getByText('autoUpdate.changeTimezone'))
 
-        expect(screen.getByText('autoUpdate.changeTimezone')).toBeInTheDocument()
+        // Assert
+        expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })
       })
     })
 

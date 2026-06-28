@@ -13,6 +13,8 @@ import type {
 import type { HumanInputFormSubmitData } from './answer/human-input-content/type'
 import type { InputForm } from './type'
 import type { Emoji } from '@/app/components/tools/types'
+import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { Node } from '@/app/components/workflow/types'
 import type { AppData } from '@/models/share'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -39,7 +41,7 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
-  inputs?: Record<string, any>
+  inputs?: Record<string, unknown>
   inputsForm?: InputForm[]
   onRegenerate?: OnRegenerate
   chatContainerClassName?: string
@@ -64,14 +66,18 @@ export type ChatProps = {
   switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
+  featureBarReadonly?: boolean
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
+  inputPlaceholder?: string
+  inputPlaceholderBotName?: string
+  sendButtonLabel?: string
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   sendOnEnter?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
-  getHumanInputNodeData?: (nodeID: string) => any
+  getHumanInputNodeData?: (nodeID: string) => Node<HumanInputNodeType> | undefined
 }
 
 const Chat: FC<ChatProps> = ({
@@ -109,9 +115,13 @@ const Chat: FC<ChatProps> = ({
   switchSibling,
   showFeatureBar,
   showFileUpload,
+  featureBarReadonly,
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
+  inputPlaceholder,
+  inputPlaceholderBotName,
+  sendButtonLabel,
   sidebarCollapseState,
   hideAvatar,
   sendOnEnter,
@@ -178,7 +188,7 @@ const Chat: FC<ChatProps> = ({
                       appData={appData}
                       key={item.id}
                       item={item}
-                      question={chatList[index - 1]?.content!}
+                      question={chatList[index - 1]?.content ?? ''}
                       index={index}
                       config={config}
                       answerIcon={answerIcon}
@@ -238,10 +248,12 @@ const Chat: FC<ChatProps> = ({
             {
               !noChatInput && (
                 <ChatInputArea
-                  botName={appData?.site?.title || 'Bot'}
+                  botName={inputPlaceholderBotName || appData?.site?.title || 'Bot'}
+                  customPlaceholder={inputPlaceholder ?? appData?.site?.input_placeholder}
                   disabled={inputDisabled}
                   showFeatureBar={showFeatureBar}
                   showFileUpload={showFileUpload}
+                  featureBarReadonly={featureBarReadonly}
                   featureBarDisabled={isResponding}
                   onFeatureBarClick={onFeatureBarClick}
                   visionConfig={config?.file_upload}
@@ -252,6 +264,7 @@ const Chat: FC<ChatProps> = ({
                   theme={themeBuilder?.theme}
                   isResponding={isResponding}
                   readonly={readonly}
+                  sendButtonLabel={sendButtonLabel}
                   sendOnEnter={sendOnEnter}
                 />
               )

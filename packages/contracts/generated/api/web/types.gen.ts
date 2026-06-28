@@ -80,6 +80,7 @@ export type AppSiteResponse = {
   icon_background?: string | null
   icon_type?: string | null
   icon_url?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null
@@ -146,7 +147,16 @@ export type ConversationListQuery = {
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 }
 
-export type ConversationRenamePayload = {
+export type ConversationRenamePayload = (
+  | {
+    auto_generate: true
+    name?: string | null
+  }
+  | {
+    auto_generate?: false
+    name: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
 }
@@ -540,12 +550,14 @@ export type SuggestedQuestionsResponse = {
 
 export type SystemFeatureModel = {
   branding: BrandingModel
+  enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
   enable_creators_platform: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_explore_banner: boolean
+  enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_trial_app: boolean
@@ -556,6 +568,7 @@ export type SystemFeatureModel = {
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
+  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
   webapp_auth: WebAppAuthModel
@@ -630,7 +643,10 @@ export type WebMessageListItem = {
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown

@@ -8,14 +8,18 @@ import * as appsService from '@/service/apps'
 import * as exploreService from '@/service/explore'
 import * as workflowService from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
-import AppCard from '../app-card'
+import { AppACLPermission } from '@/utils/permission'
+import { AppCard } from '../app-card'
+import { StarredAppCard } from '../starred-app-card'
 
 let mockWebappAuthEnabled = false
+let mockRbacEnabled = true
 
 const render = (ui: React.ReactElement) => renderWithSystemFeatures(ui, {
   systemFeatures: {
     webapp_auth: { enabled: mockWebappAuthEnabled },
     branding: { enabled: false },
+    rbac_enabled: mockRbacEnabled,
   },
 })
 
@@ -60,11 +64,16 @@ vi.mock('use-context-selector', () => ({
   }),
 }))
 
+const mockAppContext = vi.hoisted(() => ({
+  isCurrentWorkspaceEditor: true,
+  userProfile: { id: 'user-1' },
+  workspacePermissionKeys: ['app.create_and_management'] as string[],
+}))
+
 // Mock app context
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceEditor: true,
-  }),
+  useAppContext: () => mockAppContext,
+  useSelector: (selector: (state: typeof mockAppContext) => unknown) => selector(mockAppContext),
 }))
 
 // Mock provider context
@@ -114,6 +123,13 @@ vi.mock('@/service/access-control', () => ({
   }),
 }))
 
+vi.mock('@/service/access-control/use-app-access-control', () => ({
+  useGetUserCanAccessApp: () => ({
+    data: { result: true },
+    isLoading: false,
+  }),
+}))
+
 // Mock hooks
 const mockOpenAsyncWindow = vi.fn()
 vi.mock('@/hooks/use-async-window-open', () => ({
@@ -126,7 +142,7 @@ const { mockGetRedirection } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/utils/app-redirection', () => ({
-  getRedirectionPath: (_isCurrentWorkspaceEditor: boolean, app: { id: string }) => `/app/${app.id}/configuration`,
+  getRedirectionPath: (app: { id: string }) => `/app/${app.id}/configuration`,
   getRedirection: mockGetRedirection,
 }))
 
@@ -305,8 +321,21 @@ vi.mock('@langgenius/dify-ui/dropdown-menu', () => {
 
 // AppCardTags has tag API dependencies - mock for isolated testing
 vi.mock('@/features/tag-management/components/app-card-tags', () => ({
-  AppCardTags: ({ tags }: { tags?: { id: string, name: string }[] }) => {
-    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)))
+  AppCardTags: ({
+    tags,
+    canBindOrUnbindTags,
+  }: {
+    tags?: { id: string, name: string }[]
+    canBindOrUnbindTags?: boolean
+  }) => {
+    return React.createElement(
+      'div',
+      {
+        'aria-label': 'tag-selector',
+        'data-can-bind-or-unbind-tags': String(Boolean(canBindOrUnbindTags)),
+      },
+      tags?.map((tag: { id: string, name: string }) => React.createElement('span', { key: tag.id }, tag.name)),
+    )
   },
 }))
 
@@ -325,6 +354,8 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
   icon_background: '#FFEAD5',
   icon_url: null,
   author_name: 'Test Author',
+  created_by: 'user-1',
+  maintainer: 'user-1',
   created_at: 1704067200,
   updated_at: 1704153600,
   tags: [],
@@ -348,14 +379,82 @@ describe('AppCard', () => {
     vi.clearAllMocks()
     mockOpenAsyncWindow.mockReset()
     mockWebappAuthEnabled = false
+    mockRbacEnabled = true
     mockDeleteMutationPending = false
     mockToggleStarMutationPending = false
+    mockAppContext.isCurrentWorkspaceEditor = true
+    mockAppContext.userProfile = { id: 'user-1' }
+    mockAppContext.workspacePermissionKeys = ['app.create_and_management']
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<AppCard app={mockApp} />)
       expect(screen.getByRole('link', { name: 'Test App' })).toBeInTheDocument()
+    })
+
+    it('should render preview-only app card as a dimmed information-only card', () => {
+      const previewOnlyApp = createMockApp({
+        name: 'Preview Only App',
+        description: 'Only visible metadata',
+        author_name: 'Readonly Author',
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.Preview],
+      })
+
+      render(<AppCard app={previewOnlyApp} />)
+
+      const card = screen.getByRole('button', { name: 'Preview Only App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByText('Only visible metadata')).toBeInTheDocument()
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+      const tagSelector = screen.getByLabelText('tag-selector')
+      expect(tagSelector).toBeInTheDocument()
+      expect(tagSelector).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
+      expect(screen.queryByRole('link', { name: 'Preview Only App' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+
+      fireEvent.click(tagSelector)
+
+      expect(toastMocks.record).not.toHaveBeenCalled()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
+    })
+
+    it('should render preview-only starred app card as a dimmed information-only card', () => {
+      const previewOnlyApp = createMockApp({
+        name: 'Preview Only Starred App',
+        author_name: 'Readonly Author',
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.Preview],
+      })
+
+      render(<StarredAppCard app={previewOnlyApp} />)
+
+      const card = screen.getByRole('button', { name: 'Preview Only Starred App' })
+      expect(card).toHaveClass('opacity-60')
+      expect(card).toHaveAttribute('aria-disabled', 'true')
+      expect(screen.getByText('Readonly Author')).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Preview Only Starred App' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'app.studio.starApp' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.operation.more' })).not.toBeInTheDocument()
+
+      fireEvent.click(card)
+
+      expect(toastMocks.record).toHaveBeenCalledWith({
+        type: 'warning',
+        message: 'app.noAccessResourcePermission',
+      })
     })
 
     it('should display app name', () => {
@@ -424,6 +523,51 @@ describe('AppCard', () => {
 
       expect(screen.getByText('New Tag')).toBeInTheDocument()
       expect(screen.queryByText('Old Tag')).not.toBeInTheDocument()
+    })
+
+    it('should allow app edit permission to bind tags without workspace tag management permission', () => {
+      mockAppContext.isCurrentWorkspaceEditor = false
+      mockAppContext.workspacePermissionKeys = []
+      mockAppContext.userProfile = { id: 'user-2' }
+      const editableApp = createMockApp({
+        maintainer: 'user-1',
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.Edit],
+      })
+
+      render(<AppCard app={editableApp} />)
+
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-can-bind-or-unbind-tags', 'true')
+    })
+
+    it('should allow workspace app tag management permission to bind tags without app edit permission', () => {
+      mockAppContext.isCurrentWorkspaceEditor = false
+      mockAppContext.workspacePermissionKeys = ['app.tag.manage']
+      mockAppContext.userProfile = { id: 'user-2' }
+      const tagManageApp = createMockApp({
+        maintainer: 'user-1',
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+
+      render(<AppCard app={tagManageApp} />)
+
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-can-bind-or-unbind-tags', 'true')
+    })
+
+    it('should render existing app tags as readonly without app edit or workspace tag management permission', () => {
+      mockAppContext.isCurrentWorkspaceEditor = false
+      mockAppContext.workspacePermissionKeys = []
+      mockAppContext.userProfile = { id: 'user-2' }
+      const readonlyApp = createMockApp({
+        maintainer: 'user-1',
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app' as const, binding_count: 0 }],
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+
+      render(<AppCard app={readonlyApp} />)
+
+      expect(screen.getByLabelText('tag-selector')).toHaveAttribute('data-can-bind-or-unbind-tags', 'false')
     })
 
     it('should render with onRefresh callback', () => {
@@ -557,6 +701,38 @@ describe('AppCard', () => {
       })
     })
 
+    it('should show duplicate option when user can create apps without app import export permission', async () => {
+      const appWithoutImportExportPermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+      render(<AppCard app={appWithoutImportExportPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+    })
+
+    it('should show duplicate option on starred cards when user can create apps without app import export permission', async () => {
+      const appWithoutImportExportPermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.ViewLayout],
+      })
+      render(<StarredAppCard app={appWithoutImportExportPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.export')).not.toBeInTheDocument()
+    })
+
     it('should show export option when dropdown menu is opened', async () => {
       render(<AppCard app={mockApp} />)
 
@@ -586,6 +762,24 @@ describe('AppCard', () => {
       await waitFor(() => {
         expect(screen.getByText(/switch/i)).toBeInTheDocument()
       })
+    })
+
+    it('should show switch option when user can edit app without app creation permission', async () => {
+      mockAppContext.workspacePermissionKeys = []
+      const editableChatApp = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        mode: AppModeEnum.CHAT,
+        permission_keys: [AppACLPermission.Edit],
+      })
+      render(<AppCard app={editableChatApp} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText(/switch/i)).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.duplicate')).not.toBeInTheDocument()
     })
 
     it('should show switch option for completion mode apps', async () => {
@@ -1623,6 +1817,71 @@ describe('AppCard', () => {
       })
     })
 
+    it('should show access control option when user has app release and version permission', async () => {
+      const appWithReleasePermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.ReleaseAndVersion],
+      })
+      render(<AppCard app={appWithReleasePermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+      })
+    })
+
+    it('should show resource access option when user only has app access config permission', async () => {
+      const appWithAccessConfigPermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
+      })
+      render(<AppCard app={appWithAccessConfigPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('app.accessControl')).not.toBeInTheDocument()
+      expect(screen.getByText('common.settings.resourceAccess')).toBeInTheDocument()
+    })
+
+    it('should hide resource access option when RBAC is disabled', async () => {
+      mockRbacEnabled = false
+      const appWithAccessConfigPermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.AccessConfig, AppACLPermission.Delete],
+      })
+      render(<AppCard app={appWithAccessConfigPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+
+      await waitFor(() => {
+        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      })
+      expect(screen.queryByText('common.settings.resourceAccess')).not.toBeInTheDocument()
+    })
+
+    it('should navigate to app access config when resource access is clicked', async () => {
+      const appWithAccessConfigPermission = createMockApp({
+        created_by: 'another-user',
+        maintainer: 'another-user',
+        permission_keys: [AppACLPermission.AccessConfig],
+      })
+      render(<AppCard app={appWithAccessConfigPermission} />)
+
+      fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('common.settings.resourceAccess'))
+      })
+
+      expect(mockPush).toHaveBeenCalledWith('/app/test-app-id/access-config')
+    })
+
     it('should click access control button', async () => {
       render(<AppCard app={mockApp} />)
 
@@ -1731,7 +1990,7 @@ describe('AppCard', () => {
       vi.resetModules()
       vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
-      const { default: IsolatedAppCard } = await import('../app-card')
+      const { AppCard: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
@@ -1753,7 +2012,7 @@ describe('AppCard', () => {
       vi.resetModules()
       vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
-      const { default: IsolatedAppCard } = await import('../app-card')
+      const { AppCard: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))
@@ -1773,7 +2032,7 @@ describe('AppCard', () => {
       mockDeleteMutationPending = true
       vi.doMock('@langgenius/dify-ui/alert-dialog', createMockAlertDialogModule)
 
-      const { default: IsolatedAppCard } = await import('../app-card')
+      const { AppCard: IsolatedAppCard } = await import('../app-card')
       render(<IsolatedAppCard app={mockApp} />)
 
       fireEvent.click(screen.getByTestId('dropdown-menu-trigger'))

@@ -15,14 +15,18 @@ const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextTyp
 
 type ExternalKnowledgeApiProviderProps = {
   children: ReactNode
+  enabled?: boolean
 }
 
-export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children }) => {
-  const { data, refetch, isLoading } = useExternalKnowledgeApiList()
+export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children, enabled = true }) => {
+  const { data, refetch, isLoading } = useExternalKnowledgeApiList({ enabled })
 
   const mutateExternalKnowledgeApis = useCallback(() => {
+    if (!enabled)
+      return Promise.resolve(undefined)
+
     return refetch().then(res => res.data)
-  }, [refetch])
+  }, [enabled, refetch])
 
   const contextValue = useMemo<ExternalKnowledgeApiContextType>(() => ({
     externalKnowledgeApiList: data?.data || [],

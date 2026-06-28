@@ -125,13 +125,12 @@ export function Button({
       className={cn(buttonVariants({ variant, size, tone, className }))}
       disabled={disabled || loading}
       focusableWhenDisabled={focusableWhenDisabled ?? loading}
-      aria-busy={loading || undefined}
       {...props}
     >
       {children}
       {loading && (
         <i
-          className="ml-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
+          className="ms-1 i-ri-loader-2-line size-3 animate-spin motion-reduce:animate-none"
           aria-hidden="true"
         />
       )}

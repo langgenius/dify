@@ -4,6 +4,7 @@ import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -12,6 +13,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import {
   fetchNodesDefaultConfigs,
@@ -20,8 +22,36 @@ import {
   syncWorkflowDraft,
 } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
+import { getAppACLCapabilities } from '@/utils/permission'
 import { useWorkflowDraftGraphForCanvas } from './use-workflow-draft-graph-for-canvas'
 import { useWorkflowTemplate } from './use-workflow-template'
+
+const emptyAccount = {
+  id: '',
+  name: '',
+  email: '',
+}
+
+const createLocalWorkflowDraft = (
+  graph: FetchWorkflowDraftResponse['graph'],
+): FetchWorkflowDraftResponse => ({
+  id: '',
+  graph,
+  features: {
+    retriever_resource: { enabled: true },
+  },
+  created_at: 0,
+  created_by: emptyAccount,
+  hash: '',
+  updated_at: 0,
+  updated_by: emptyAccount,
+  tool_published: false,
+  environment_variables: [],
+  conversation_variables: [],
+  version: '',
+  marked_name: '',
+  marked_comment: '',
+})
 
 const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
   const startNodeIds = nodes
@@ -41,6 +71,13 @@ export const useWorkflowInit = () => {
     edges: edgesTemplate,
   } = useWorkflowTemplate()
   const appDetail = useAppStore(state => state.appDetail)!
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const appACLCapabilities = useMemo(() => getAppACLCapabilities(appDetail.permission_keys, {
+    currentUserId,
+    resourceMaintainer: appDetail.maintainer,
+    workspacePermissionKeys,
+  }), [appDetail.maintainer, appDetail.permission_keys, currentUserId, workspacePermissionKeys])
   const { getWorkflowDraftGraphForCanvas } = useWorkflowDraftGraphForCanvas(appDetail.mode)
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
@@ -86,6 +123,10 @@ export const useWorkflowInit = () => {
         error.json().then((err: any) => {
           if (err.code === 'draft_workflow_not_exist') {
             const isAdvancedChat = appDetail.mode === AppModeEnum.ADVANCED_CHAT
+            const initialGraph = {
+              nodes: isAdvancedChat ? nodesTemplate : [],
+              edges: isAdvancedChat ? edgesTemplate : [],
+            }
             workflowStore.setState({
               notInitialWorkflow: true,
               showOnboarding: false,
@@ -94,13 +135,28 @@ export const useWorkflowInit = () => {
               hasShownOnboarding: !isAdvancedChat,
             })
 
+            if (!appACLCapabilities.canEdit) {
+              const initialData = createLocalWorkflowDraft({
+                ...getWorkflowDraftGraphForCanvas(initialGraph, {
+                  localStartPlaceholderNodes: nodesTemplate,
+                }),
+              })
+              setData(initialData)
+              workflowStore.setState({
+                envSecrets: {},
+                environmentVariables: [],
+                conversationVariables: [],
+                isWorkflowDataLoaded: true,
+              })
+              setSyncWorkflowDraftHash(initialData.hash)
+              setIsLoading(false)
+              return
+            }
+
             syncWorkflowDraft({
               url: `/apps/${appDetail.id}/workflows/draft`,
               params: {
-                graph: {
-                  nodes: isAdvancedChat ? nodesTemplate : [],
-                  edges: isAdvancedChat ? edgesTemplate : [],
-                },
+                graph: initialGraph,
                 features: {
                   retriever_resource: { enabled: true },
                 },
@@ -116,7 +172,7 @@ export const useWorkflowInit = () => {
         })
       }
     }
-  }, [appDetail, getWorkflowDraftGraphForCanvas, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
+  }, [appACLCapabilities.canEdit, appDetail, getWorkflowDraftGraphForCanvas, nodesTemplate, edgesTemplate, workflowStore, setSyncWorkflowDraftHash])
 
   useEffect(() => {
     handleGetInitialWorkflowData()

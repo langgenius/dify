@@ -11,6 +11,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.db.session_factory import create_session
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationError
@@ -46,7 +47,10 @@ class ChatAppRunner(AppRunner):
         app_config = application_generate_entity.app_config
         app_config = cast(ChatAppConfig, app_config)
         stmt = select(App).where(App.id == app_config.app_id)
-        app_record = db.session.scalar(stmt)
+        with create_session() as session:
+            app_record = session.scalar(stmt)
+            if app_record:
+                session.expunge(app_record)
         if not app_record:
             raise ValueError("App not found")
 
@@ -216,6 +220,8 @@ class ChatAppRunner(AppRunner):
             model=application_generate_entity.model_conf.model,
         )
 
+        # Release the Flask scoped session before LLM streaming so a checked-out DB connection
+        # is not held for the lifetime of the provider response.
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(

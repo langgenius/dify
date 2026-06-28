@@ -127,7 +127,7 @@ export function MainNavMenuContent({
         </DropdownMenuLinkItem>
         <DropdownMenuItem
           className={mainNavMenuItemClassName}
-          onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}
+          onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PREFERENCES })}
         >
           <MenuItemContent
             iconClassName="i-ri-equalizer-2-line"

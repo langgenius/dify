@@ -3,10 +3,8 @@ import { FormTypeEnum } from '@/app/components/header/account-setting/model-prov
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 import {
-  createEmptyAppValue,
   createFilterVar,
   createPickerProps,
-  createReasoningFormContext,
   getFieldFlags,
   getFieldTitle,
   getVarKindType,
@@ -161,21 +159,7 @@ describe('reasoning-config-form helpers', () => {
     }))
   })
 
-  it('provides label helpers and empty defaults', () => {
+  it('provides label helpers', () => {
     expect(getFieldTitle({ en_US: 'Prompt', zh_Hans: 'Prompt' }, 'en_US')).toBe('Prompt')
-    expect(createEmptyAppValue()).toEqual({
-      app_id: '',
-      inputs: {},
-      files: [],
-    })
-    expect(createReasoningFormContext({
-      availableNodes: [{ id: 'node-1' }] as never,
-      nodeId: 'node-current',
-      nodeOutputVars: [{ nodeId: 'node-1' }] as never,
-    })).toEqual({
-      availableNodes: [{ id: 'node-1' }],
-      nodeId: 'node-current',
-      nodeOutputVars: [{ nodeId: 'node-1' }],
-    })
   })
 })

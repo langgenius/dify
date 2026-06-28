@@ -39,15 +39,6 @@ type KnowledgeBaseValidationPayload = Pick<KnowledgeBaseNodeType, 'chunk_structu
   retrieval_model?: Pick<KnowledgeBaseNodeType['retrieval_model'], 'search_method' | 'reranking_enable' | 'reranking_model'>
 }
 
-const EMBEDDING_ISSUE_CODES = new Set<KnowledgeBaseValidationIssueCode>([
-  KnowledgeBaseValidationIssueCode.embeddingModelNotConfigured,
-  KnowledgeBaseValidationIssueCode.embeddingModelConfigureRequired,
-  KnowledgeBaseValidationIssueCode.embeddingModelApiKeyUnavailable,
-  KnowledgeBaseValidationIssueCode.embeddingModelCreditsExhausted,
-  KnowledgeBaseValidationIssueCode.embeddingModelDisabled,
-  KnowledgeBaseValidationIssueCode.embeddingModelIncompatible,
-])
-
 const resolveIssue = (code: KnowledgeBaseValidationIssueCode): KnowledgeBaseValidationIssue => ({
   code,
 })
@@ -178,11 +169,4 @@ export const getKnowledgeBaseValidationMessage = (
     default:
       return ''
   }
-}
-
-export const isKnowledgeBaseEmbeddingIssue = (issue: KnowledgeBaseValidationIssue | null | undefined) => {
-  if (!issue)
-    return false
-
-  return EMBEDDING_ISSUE_CODES.has(issue.code)
 }

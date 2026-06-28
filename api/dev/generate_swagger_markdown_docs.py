@@ -167,6 +167,12 @@ def _patch_union_schema_markdown(markdown: str, spec_path: Path) -> str:
     return markdown
 
 
+def _strip_trailing_line_whitespace(markdown: str) -> str:
+    """Remove converter-emitted trailing whitespace without changing line structure."""
+
+    return "\n".join(line.rstrip(" \t") for line in markdown.split("\n"))
+
+
 def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
     markdown_path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=f"{markdown_path.stem}-") as temp_dir:
@@ -201,6 +207,7 @@ def _convert_spec_to_markdown(spec_path: Path, markdown_path: Path) -> None:
             temp_markdown_path.read_text(encoding="utf-8"),
             spec_path,
         )
+        converted_markdown = _strip_trailing_line_whitespace(converted_markdown)
         if not converted_markdown.strip():
             raise RuntimeError(f"swagger-markdown wrote an empty document for {markdown_path}")
 

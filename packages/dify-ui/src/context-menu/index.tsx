@@ -219,7 +219,7 @@ export function ContextMenuSubTrigger({
       {...props}
     >
       {children}
-      <span aria-hidden className="ml-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
+      <span aria-hidden className="ms-auto i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
     </BaseContextMenu.SubmenuTrigger>
   )
 }

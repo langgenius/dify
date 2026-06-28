@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Param, ParamType } from '../../types'
 import type { ToolParameter } from '@/app/components/tools/types'
 import type {
-  PluginDefaultValue,
+  BlockDefaultValue,
   ToolDefaultValue,
 } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
@@ -50,7 +50,7 @@ const ImportFromTool: FC<Props> = ({
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
 
-  const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: PluginDefaultValue) => {
+  const handleSelectTool = useCallback((_type: BlockEnum, toolInfo?: BlockDefaultValue) => {
     if (!toolInfo || 'datasource_name' in toolInfo || !('tool_name' in toolInfo))
       return
 

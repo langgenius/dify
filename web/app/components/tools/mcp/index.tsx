@@ -3,6 +3,7 @@ import type { ToolsContentInset } from '../content-inset'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useEffect, useMemo, useState } from 'react'
+import { useCanManageMCP } from '@/app/components/tools/hooks/use-tool-permissions'
 import ToolCardSkeletonGrid from '@/app/components/tools/provider/tool-card-skeleton'
 import {
   useAllToolProviders,
@@ -27,6 +28,7 @@ const MCPList = ({
   onCreatedProviderHandled,
   showCreateCard = true,
 }: Props) => {
+  const canManageMCP = useCanManageMCP()
   const { data: list = [] as ToolWithProvider[], isLoading, refetch } = useAllToolProviders()
   const [isTriggerAuthorize, setIsTriggerAuthorize] = useState<boolean>(false)
 
@@ -47,13 +49,16 @@ const MCPList = ({
   }, [list, currentProviderID])
 
   const handleCreate = async (provider: ToolWithProvider) => {
+    if (!canManageMCP)
+      return
+
     await refetch() // update list
     setCurrentProviderID(provider.id)
     setIsTriggerAuthorize(true)
   }
 
   useEffect(() => {
-    if (!createdProviderId)
+    if (!canManageMCP || !createdProviderId)
       return
 
     let isActive = true
@@ -78,9 +83,12 @@ const MCPList = ({
     return () => {
       isActive = false
     }
-  }, [createdProviderId, onCreatedProviderHandled, refetch])
+  }, [canManageMCP, createdProviderId, onCreatedProviderHandled, refetch])
 
   const handleUpdate = async (providerID: string) => {
+    if (!canManageMCP)
+      return
+
     await refetch() // update list
     setCurrentProviderID(providerID)
     setIsTriggerAuthorize(true)
@@ -96,7 +104,7 @@ const MCPList = ({
           isLoading && 'h-[calc(100vh-136px)] overflow-hidden',
         )}
       >
-        {!isLoading && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
+        {!isLoading && canManageMCP && showCreateCard && <NewMCPCard handleCreate={handleCreate} />}
         {isLoading
           ? <ToolCardSkeletonGrid variant="mcp" />
           : filteredList.map(provider => (

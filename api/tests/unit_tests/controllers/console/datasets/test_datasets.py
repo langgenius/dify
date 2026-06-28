@@ -2,6 +2,7 @@ import datetime
 import json
 from contextlib import ExitStack
 from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -39,6 +40,7 @@ from models.dataset import Dataset, DatasetQuery, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import ApiToken, App, AppMode, IconType, UploadFile
 from services.dataset_service import DatasetPermissionService, DatasetService
+from services.enterprise import rbac_service as enterprise_rbac_service
 
 
 @pytest.fixture(autouse=True)
@@ -210,6 +212,201 @@ class TestDatasetList:
         by_ids_mock.assert_called_once()
         assert status == 200
         assert resp["total"] == 2
+
+    def test_get_attaches_current_user_permission_keys(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        dataset = make_dataset(id="dataset-1")
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
+                default_permission_keys=["dataset.acl.readonly"],
+                overrides=[
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-1",
+                        permission_keys=["dataset.acl.readonly", "dataset.acl.edit"],
+                    )
+                ],
+            )
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch.object(DatasetService, "get_datasets", return_value=([dataset], 1)),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ) as get_permissions,
+            ):
+                resp, status = method(api, "tenant-1", current_user)
+
+        get_permissions.assert_called_once_with("tenant-1", current_user.id)
+        assert status == 200
+        assert resp["data"][0]["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
+
+    def test_get_limits_to_own_datasets_without_default_read_permission(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            workspace=enterprise_rbac_service.WorkspacePermissionSnapshot(
+                permission_keys=["dataset.create_and_management"]
+            )
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(resource_ids=[]),
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == []
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is True
+
+    def test_get_workspace_owner_bypasses_dataset_whitelist(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(default_permission_keys=["dataset.preview"])
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(unrestricted=True, resource_ids=[]),
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] is None
+
+    def test_get_limits_to_dataset_read_overrides(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse(
+            dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
+                overrides=[
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-acl-shared",
+                        permission_keys=["dataset.acl.preview"],
+                    ),
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-full",
+                        permission_keys=["dataset.full_access"],
+                    ),
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-shared",
+                        permission_keys=["dataset.preview"],
+                    ),
+                    enterprise_rbac_service.ResourcePermissionKeys(
+                        resource_id="dataset-hidden",
+                        permission_keys=[],
+                    ),
+                ]
+            )
+        )
+
+        with app.test_request_context("/datasets"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets", return_value=([], 0)) as get_datasets,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(
+                        resource_ids=[
+                            "dataset-shared",
+                            "dataset-acl-shared",
+                            "dataset-full",
+                            "dataset-whitelist-only",
+                        ]
+                    ),
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        assert get_datasets.call_args.kwargs["accessible_dataset_ids"] == [
+            "dataset-acl-shared",
+            "dataset-full",
+            "dataset-shared",
+            "dataset-whitelist-only",
+        ]
+        assert get_datasets.call_args.kwargs["include_own_datasets"] is False
+
+    def test_get_with_ids_applies_dataset_visibility(self, app: Flask):
+        api = DatasetListApi()
+        method = unwrap(api.get)
+        current_user = self._mock_user()
+        permissions = enterprise_rbac_service.MyPermissionsResponse()
+
+        with app.test_request_context("/datasets?ids=dataset-1"):
+            with (
+                patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+                patch.object(DatasetService, "get_datasets_by_ids", return_value=([], 0)) as get_datasets_by_ids,
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                    return_value=permissions,
+                ),
+                patch(
+                    "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.DatasetAccess.whitelist_resources",
+                    return_value=SimpleNamespace(resource_ids=[]),
+                ),
+                patch.object(
+                    ProviderManager,
+                    "get_configurations",
+                    return_value=MagicMock(get_models=lambda **_: []),
+                ),
+            ):
+                method(api, "tenant-1", current_user)
+
+        get_datasets_by_ids.assert_called_once_with(
+            ["dataset-1"],
+            "tenant-1",
+            user=current_user,
+            accessible_dataset_ids=[],
+            include_own_datasets=False,
+        )
 
     def test_get_with_tag_ids(self, app: Flask):
         api = DatasetListApi()
@@ -503,6 +700,51 @@ class TestDatasetApiGet:
 
         assert status == 200
         assert data["embedding_available"] is True
+
+    def test_get_attaches_permission_keys_when_rbac_enabled(self, app: Flask):
+        api = DatasetApi()
+        method = unwrap(api.get)
+
+        dataset_id = "123e4567-e89b-12d3-a456-426614174000"
+        user = MagicMock(id="account-1")
+        tenant_id = "tenant-1"
+        dataset = make_dataset(id=dataset_id)
+
+        with (
+            app.test_request_context(f"/datasets/{dataset_id}"),
+            patch("controllers.console.datasets.datasets.dify_config.RBAC_ENABLED", True),
+            patch.object(
+                DatasetService,
+                "get_dataset",
+                return_value=dataset,
+            ),
+            patch.object(
+                DatasetService,
+                "check_dataset_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets.enterprise_rbac_service.RBACService.MyPermissions.get",
+                return_value=enterprise_rbac_service.MyPermissionsResponse(
+                    dataset=enterprise_rbac_service.ResourcePermissionSnapshot(
+                        overrides=[
+                            enterprise_rbac_service.ResourcePermissionKeys(
+                                resource_id=dataset_id,
+                                permission_keys=["dataset.acl.readonly", "dataset.acl.edit"],
+                            )
+                        ]
+                    )
+                ),
+            ) as get_permissions,
+            patch("controllers.console.datasets.datasets.create_plugin_provider_manager") as provider_manager_mock,
+        ):
+            provider_manager_mock.return_value.get_configurations.return_value.get_models.return_value = []
+
+            data, status = method(api, tenant_id, user, dataset_id)
+
+        get_permissions.assert_called_once_with(tenant_id, user.id, dataset_id=dataset_id)
+        assert status == 200
+        assert data["permission_keys"] == ["dataset.acl.readonly", "dataset.acl.edit"]
 
     def test_get_uses_default_external_retrieval_model(self, app: Flask):
         api = DatasetApi()

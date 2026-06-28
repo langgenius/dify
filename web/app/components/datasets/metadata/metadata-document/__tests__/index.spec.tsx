@@ -103,6 +103,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
       expect(container.firstChild)!.toBeInTheDocument()
@@ -114,6 +115,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
       expect(screen.getByText('field_one'))!.toBeInTheDocument()
@@ -134,6 +136,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
       expect(screen.getAllByText(/metadata/i).length).toBeGreaterThan(0)
@@ -150,6 +153,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -169,6 +173,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -187,6 +192,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -205,6 +211,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -222,6 +229,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -242,6 +250,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -253,15 +262,40 @@ describe('MetadataDocument', () => {
   })
 
   describe('Edit Mode', () => {
-    it('should show edit button when not in edit mode and embedding available', () => {
+    it('should show edit button when not in edit mode, embedding available, and canEdit is true', () => {
       render(
         <MetadataDocument
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
       expect(screen.getByText(/edit/i))!.toBeInTheDocument()
+    })
+
+    it('should hide edit button by default when canEdit is omitted', () => {
+      render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
+        />,
+      )
+      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
+    })
+
+    it('should hide edit button when canEdit is false', () => {
+      render(
+        <MetadataDocument
+          datasetId="ds-1"
+          documentId="doc-1"
+          docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit={false}
+        />,
+      )
+      expect(screen.queryByText(/^edit$/i)).not.toBeInTheDocument()
     })
 
     it('should call startToEdit when edit button is clicked', () => {
@@ -277,6 +311,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -297,6 +332,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -317,6 +353,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -340,6 +377,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -364,6 +402,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -388,6 +427,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -412,6 +452,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -431,6 +472,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -454,6 +496,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -478,6 +521,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -714,6 +758,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 
@@ -731,6 +776,7 @@ describe('MetadataDocument', () => {
           datasetId="ds-1"
           documentId="doc-1"
           docDetail={mockDocDetail as Parameters<typeof MetadataDocument>[0]['docDetail']}
+          canEdit
         />,
       )
 

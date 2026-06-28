@@ -32,6 +32,7 @@ from dify_agent.layers.execution_context import (
     DIFY_EXECUTION_CONTEXT_LAYER_TYPE_ID,
     DifyExecutionContextLayerConfig,
 )
+from dify_agent.layers.knowledge import DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID, DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.output import DIFY_OUTPUT_LAYER_TYPE_ID, DifyOutputLayerConfig
 from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.protocol import (
@@ -55,6 +56,7 @@ AGENT_APP_USER_PROMPT_LAYER_ID = "agent_app_user_prompt"
 DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_DRIVE_LAYER_ID = "drive"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
+DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
 DIFY_ASK_HUMAN_LAYER_ID = "ask_human"
 DIFY_SHELL_LAYER_ID = "shell"
 
@@ -74,6 +76,24 @@ def _filter_snapshot_to_specs(
     if len(filtered_layers) == len(snapshot.layers):
         return snapshot
     return CompositorSessionSnapshot(schema_version=snapshot.schema_version, layers=filtered_layers)
+
+
+def _shell_layer_deps() -> dict[str, str]:
+    return {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
+
+
+def _drive_layer_deps() -> dict[str, str]:
+    return {"shell": DIFY_SHELL_LAYER_ID}
+
+
+def _shell_config_with_drive_ref(
+    shell_config: DifyShellLayerConfig | None,
+    drive_config: DifyDriveLayerConfig | None,
+) -> DifyShellLayerConfig:
+    config = shell_config or DifyShellLayerConfig()
+    if drive_config is None:
+        return config
+    return config.model_copy(update={"agent_stub_drive_ref": drive_config.drive_ref})
 
 
 class AgentBackendModelConfig(BaseModel):
@@ -139,6 +159,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    knowledge: DifyKnowledgeBaseLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
     drive_config: DifyDriveLayerConfig | None = None
@@ -185,6 +206,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    knowledge: DifyKnowledgeBaseLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
     # through the back proxy, never inline content; see AGENT_DRIVE_MANIFEST_ENABLED.
     drive_config: DifyDriveLayerConfig | None = None
@@ -221,7 +243,7 @@ class AgentBackendRunRequestBuilder:
 
         Layer graph: optional Agent Soul system prompt → user prompt →
         execution context → optional history (multi-turn) → LLM → optional
-        plugin tools → optional structured output. Mirrors the workflow-node
+        plugin tools / knowledge search → optional structured output. Mirrors the workflow-node
         layer ordering minus the workflow-job / previous-node prompt.
         """
         layers: list[RunLayerSpec] = []
@@ -252,13 +274,29 @@ class AgentBackendRunRequestBuilder:
             ]
         )
 
+        include_shell = run_input.include_shell or run_input.drive_config is not None
+        if include_shell:
+            # Sandboxed bash workspace (dify.shell). It enters before drive so
+            # drive can materialize mentioned targets with `dify-agent drive pull`
+            # in the same shell-visible filesystem used by model commands.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_SHELL_LAYER_ID,
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps=_shell_layer_deps(),
+                    metadata=run_input.metadata,
+                    config=_shell_config_with_drive_ref(run_input.shell_config, run_input.drive_config),
+                )
+            )
+
         if run_input.drive_config is not None:
-            # Drive Skills & Files declaration (dify.drive): a config-only index;
-            # the agent pulls listed entries through the back proxy by drive_ref.
+            # Drive Skills & Files declaration (dify.drive): the catalog plus
+            # prompt-mentioned entries eagerly pulled through the shell layer.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    deps=_drive_layer_deps(),
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )
@@ -300,6 +338,17 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge is not None and run_input.knowledge.sets:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
+                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.knowledge,
+                )
+            )
+
         if run_input.ask_human_config is not None:
             # Human-in-the-loop ask_human deferred tool (dify.ask_human). A call ends
             # the run with a deferred_tool_call; the caller pauses (workflow HITL) and
@@ -310,20 +359,6 @@ class AgentBackendRunRequestBuilder:
                     type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
                     config=run_input.ask_human_config,
-                )
-            )
-
-        if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). Depends on execution_context so
-            # the agent server can mint per-command Agent Stub env (back proxy);
-            # shellctl connection itself is server-injected.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                    metadata=run_input.metadata,
-                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 
@@ -398,7 +433,12 @@ class AgentBackendRunRequestBuilder:
         )
 
     def build_for_workflow_node(self, run_input: AgentBackendWorkflowNodeRunInput) -> CreateRunRequest:
-        """Build a workflow Agent Node run request without defining another wire schema."""
+        """Build a workflow Agent Node run request without defining another wire schema.
+
+        Layer graph mirrors the workflow surface: prompts → execution context →
+        optional drive/history → LLM → optional plugin tools / knowledge search
+        → optional auxiliary layers such as ask_human, shell, and structured output.
+        """
         layers: list[RunLayerSpec] = []
         if run_input.agent_soul_prompt:
             layers.append(
@@ -416,7 +456,7 @@ class AgentBackendRunRequestBuilder:
                     name=WORKFLOW_NODE_JOB_PROMPT_LAYER_ID,
                     type=PLAIN_PROMPT_LAYER_TYPE_ID,
                     metadata={**run_input.metadata, "origin": "workflow_node_job"},
-                    config=PromptLayerConfig(prefix=run_input.workflow_node_job_prompt),
+                    config=PromptLayerConfig(user=run_input.workflow_node_job_prompt),
                 ),
                 RunLayerSpec(
                     name=WORKFLOW_USER_PROMPT_LAYER_ID,
@@ -433,13 +473,29 @@ class AgentBackendRunRequestBuilder:
             ]
         )
 
+        include_shell = run_input.include_shell or run_input.drive_config is not None
+        if include_shell:
+            # Sandboxed bash workspace (dify.shell). It enters before drive so
+            # drive can materialize mentioned targets with `dify-agent drive pull`
+            # in the same shell-visible filesystem used by model commands.
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_SHELL_LAYER_ID,
+                    type=DIFY_SHELL_LAYER_TYPE_ID,
+                    deps=_shell_layer_deps(),
+                    metadata=run_input.metadata,
+                    config=_shell_config_with_drive_ref(run_input.shell_config, run_input.drive_config),
+                )
+            )
+
         if run_input.drive_config is not None:
-            # Drive Skills & Files declaration (dify.drive): a config-only index;
-            # the agent pulls listed entries through the back proxy by drive_ref.
+            # Drive Skills & Files declaration (dify.drive): the catalog plus
+            # prompt-mentioned entries eagerly pulled through the shell layer.
             layers.append(
                 RunLayerSpec(
                     name=DIFY_DRIVE_LAYER_ID,
                     type=DIFY_DRIVE_LAYER_TYPE_ID,
+                    deps=_drive_layer_deps(),
                     metadata=run_input.metadata,
                     config=run_input.drive_config,
                 )
@@ -483,6 +539,17 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.knowledge is not None and run_input.knowledge.sets:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_KNOWLEDGE_BASE_LAYER_ID,
+                    type=DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.knowledge,
+                )
+            )
+
         if run_input.ask_human_config is not None:
             # Human-in-the-loop ask_human deferred tool (dify.ask_human). A call ends
             # the run with a deferred_tool_call; the caller pauses (workflow HITL) and
@@ -493,20 +560,6 @@ class AgentBackendRunRequestBuilder:
                     type=DIFY_ASK_HUMAN_LAYER_TYPE_ID,
                     metadata=run_input.metadata,
                     config=run_input.ask_human_config,
-                )
-            )
-
-        if run_input.include_shell:
-            # Sandboxed bash workspace (dify.shell). Depends on execution_context so
-            # the agent server can mint per-command Agent Stub env (back proxy);
-            # shellctl connection itself is server-injected.
-            layers.append(
-                RunLayerSpec(
-                    name=DIFY_SHELL_LAYER_ID,
-                    type=DIFY_SHELL_LAYER_TYPE_ID,
-                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
-                    metadata=run_input.metadata,
-                    config=run_input.shell_config or DifyShellLayerConfig(),
                 )
             )
 

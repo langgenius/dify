@@ -46,13 +46,32 @@ from core.repositories.human_input_repository import HumanInputFormRepository, H
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from models.agent_config_entities import AgentSoulConfig
 
 logger = logging.getLogger(__name__)
 
 
-def publish_text_answer(*, queue_manager: AppQueueManager, model_name: str, answer: str) -> None:
+class _DefaultSessionScopeSnapshotId:
+    pass
+
+
+_DEFAULT_SESSION_SCOPE_SNAPSHOT_ID = _DefaultSessionScopeSnapshotId()
+
+
+def _prompt_messages_from_query(user_query: str | None) -> list[PromptMessage]:
+    if not user_query:
+        return []
+    return [UserPromptMessage(content=user_query)]
+
+
+def publish_text_answer(
+    *,
+    queue_manager: AppQueueManager,
+    model_name: str,
+    answer: str,
+    user_query: str | None = None,
+) -> None:
     """Publish a complete assistant answer as one chunk + message-end.
 
     The EasyUI chat task pipeline consumes a QueueLLMChunkEvent stream followed
@@ -60,17 +79,53 @@ def publish_text_answer(*, queue_manager: AppQueueManager, model_name: str, answ
     both the backend-produced answer and short-circuited answers (moderation /
     annotation reply) share the exact same persistence + SSE path.
     """
+    publish_text_delta(
+        queue_manager=queue_manager,
+        model_name=model_name,
+        delta=answer,
+        user_query=user_query,
+    )
+    publish_message_end(
+        queue_manager=queue_manager,
+        model_name=model_name,
+        answer=answer,
+        user_query=user_query,
+    )
+
+
+def publish_text_delta(
+    *,
+    queue_manager: AppQueueManager,
+    model_name: str,
+    delta: str,
+    user_query: str | None = None,
+) -> None:
+    """Publish one assistant text delta through the EasyUI chat pipeline."""
+    if not delta:
+        return
+    prompt_messages = _prompt_messages_from_query(user_query)
     chunk = LLMResultChunk(
         model=model_name,
-        prompt_messages=[],
-        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=answer)),
+        prompt_messages=prompt_messages,
+        delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=delta)),
     )
     queue_manager.publish(QueueLLMChunkEvent(chunk=chunk), PublishFrom.APPLICATION_MANAGER)
+
+
+def publish_message_end(
+    *,
+    queue_manager: AppQueueManager,
+    model_name: str,
+    answer: str,
+    user_query: str | None = None,
+) -> None:
+    """Publish the terminal assistant result without emitting another delta."""
+    prompt_messages = _prompt_messages_from_query(user_query)
     queue_manager.publish(
         QueueMessageEndEvent(
             llm_result=LLMResult(
                 model=model_name,
-                prompt_messages=[],
+                prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(content=answer),
                 usage=LLMUsage.empty_usage(),
             ),
@@ -107,13 +162,18 @@ class AgentAppRunner:
         message_id: str,
         model_name: str,
         queue_manager: AppQueueManager,
+        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
     ) -> None:
+        if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):
+            effective_session_scope_snapshot_id: str | None = agent_config_snapshot_id
+        else:
+            effective_session_scope_snapshot_id = session_scope_snapshot_id
         scope = AgentAppSessionScope(
             tenant_id=dify_context.tenant_id,
             app_id=dify_context.app_id,
             conversation_id=conversation_id,
             agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
+            agent_config_snapshot_id=effective_session_scope_snapshot_id,
         )
         # ENG-638: if a prior turn paused on ask_human and the form is now answered,
         # resume by threading the human's reply into this run as deferred_tool_results.
@@ -138,7 +198,12 @@ class AgentAppRunner:
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
-        terminal = self._consume_stream(create_response.run_id, queue_manager=queue_manager)
+        terminal, streamed_answer = self._consume_stream(
+            create_response.run_id,
+            queue_manager=queue_manager,
+            model_name=model_name,
+            query=query,
+        )
 
         if isinstance(terminal, AgentBackendDeferredToolCallInternalEvent):
             # ENG-635: the agent asked a human. End this turn with the question and
@@ -153,6 +218,7 @@ class AgentAppRunner:
                 model_name=model_name,
                 runtime=runtime,
                 queue_manager=queue_manager,
+                query=query,
             )
             return
 
@@ -161,7 +227,13 @@ class AgentAppRunner:
             raise AgentBackendError(str(error))
 
         answer = self._extract_answer(terminal.output)
-        self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
+        self._publish_terminal_answer(
+            queue_manager=queue_manager,
+            model_name=model_name,
+            answer=answer,
+            query=query,
+            streamed_answer=streamed_answer,
+        )
         self._save_session(
             scope=scope,
             backend_run_id=terminal.run_id,
@@ -181,6 +253,7 @@ class AgentAppRunner:
         model_name: str,
         runtime: AgentAppRuntimeRequest,
         queue_manager: AppQueueManager,
+        query: str,
     ) -> None:
         """End the chat turn on a dify.ask_human call: create a conversation-owned
         HITL form, persist the pause correlation, and surface the question."""
@@ -214,6 +287,7 @@ class AgentAppRunner:
             queue_manager=queue_manager,
             model_name=model_name,
             answer=self._ask_human_message(created.args),
+            query=query,
         )
 
     def _resolve_pending_ask_human(
@@ -256,8 +330,16 @@ class AgentAppRunner:
             parts.append(args.markdown)
         return "\n\n".join(parts)
 
-    def _consume_stream(self, run_id: str, *, queue_manager: AppQueueManager):
+    def _consume_stream(
+        self,
+        run_id: str,
+        *,
+        queue_manager: AppQueueManager,
+        model_name: str,
+        query: str | None,
+    ):
         terminal = None
+        streamed_answer_parts: list[str] = []
         for public_event in self._agent_backend_client.stream_events(run_id):
             if queue_manager.is_stopped():
                 self._cancel_run(run_id)
@@ -270,16 +352,23 @@ class AgentAppRunner:
                     AgentBackendInternalEventType.RUN_STARTED,
                     AgentBackendInternalEventType.STREAM_EVENT,
                 ):
-                    # Stream deltas are accumulated by the backend into the
-                    # terminal output; token-level forwarding is an S3 refinement.
                     if isinstance(internal_event, AgentBackendStreamInternalEvent):
+                        text_delta = self._extract_stream_text_delta(internal_event)
+                        if text_delta:
+                            streamed_answer_parts.append(text_delta)
+                            publish_text_delta(
+                                queue_manager=queue_manager,
+                                model_name=model_name,
+                                delta=text_delta,
+                                user_query=query,
+                            )
                         continue
                     continue
                 terminal = internal_event
                 break
             if terminal is not None:
                 break
-        return terminal
+        return terminal, "".join(streamed_answer_parts)
 
     def _cancel_run(self, run_id: str) -> None:
         try:
@@ -287,10 +376,41 @@ class AgentAppRunner:
         except Exception:
             logger.warning("Failed to cancel stopped Agent App backend run: run_id=%s", run_id, exc_info=True)
 
-    def _publish_answer(self, *, queue_manager: AppQueueManager, model_name: str, answer: str) -> None:
+    def _publish_answer(
+        self, *, queue_manager: AppQueueManager, model_name: str, answer: str, query: str | None
+    ) -> None:
         # MVP: emit the full answer as a single chunk + message-end. The chat
         # task pipeline streams the chunk over SSE and persists the message.
-        publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer)
+        publish_text_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
+
+    def _publish_terminal_answer(
+        self,
+        *,
+        queue_manager: AppQueueManager,
+        model_name: str,
+        answer: str,
+        query: str | None,
+        streamed_answer: str,
+    ) -> None:
+        """Finish a successful streamed turn without duplicating the final text."""
+        if not streamed_answer:
+            self._publish_answer(queue_manager=queue_manager, model_name=model_name, answer=answer, query=query)
+            return
+
+        if answer.startswith(streamed_answer):
+            publish_text_delta(
+                queue_manager=queue_manager,
+                model_name=model_name,
+                delta=answer[len(streamed_answer) :],
+                user_query=query,
+            )
+        elif answer != streamed_answer:
+            logger.warning(
+                "Agent App streamed answer does not match terminal output; "
+                "using terminal output for message persistence."
+            )
+
+        publish_message_end(queue_manager=queue_manager, model_name=model_name, answer=answer, user_query=query)
 
     def _save_session(
         self,
@@ -339,5 +459,27 @@ class AgentAppRunner:
             return json.dumps(output, ensure_ascii=False)
         return json.dumps(output, ensure_ascii=False)
 
+    @staticmethod
+    def _extract_stream_text_delta(event: AgentBackendStreamInternalEvent) -> str | None:
+        data = event.data
+        if not isinstance(data, dict):
+            return None
 
-__all__ = ["AgentAppRunner", "publish_text_answer"]
+        if data.get("event_kind") == "part_delta":
+            delta = data.get("delta")
+            if isinstance(delta, dict) and delta.get("part_delta_kind") == "text":
+                content_delta = delta.get("content_delta")
+                if isinstance(content_delta, str):
+                    return content_delta
+
+        if data.get("event_kind") == "part_start":
+            part = data.get("part")
+            if isinstance(part, dict) and part.get("part_kind") == "text":
+                content = part.get("content")
+                if isinstance(content, str):
+                    return content
+
+        return None
+
+
+__all__ = ["AgentAppRunner", "publish_message_end", "publish_text_answer", "publish_text_delta"]

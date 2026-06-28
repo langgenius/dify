@@ -14,6 +14,7 @@ Tests follow the Arrange-Act-Assert pattern for clarity.
 """
 
 import json
+import logging
 from unittest.mock import MagicMock, patch
 
 import httpx
@@ -170,7 +171,9 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_valid_json(self, mock_httpx_request, mock_billing_config, status_code):
+    def test_delete_request_non_200_with_valid_json(
+        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
+    ):
         """Test DELETE request with non-200 status code raises ValueError.
 
         DELETE now checks status code and raises ValueError for non-200 responses.
@@ -184,13 +187,11 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with patch("services.billing_service.logger") as mock_logger:
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
-            # Verify error logging
-            mock_logger.error.assert_called_once()
-            assert "DELETE response" in str(mock_logger.error.call_args)
+            assert "DELETE response" in caplog.text
 
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
@@ -213,7 +214,9 @@ class TestBillingServiceSendRequest:
     @pytest.mark.parametrize(
         "status_code", [httpx.codes.BAD_REQUEST, httpx.codes.INTERNAL_SERVER_ERROR, httpx.codes.NOT_FOUND]
     )
-    def test_delete_request_non_200_with_invalid_json(self, mock_httpx_request, mock_billing_config, status_code):
+    def test_delete_request_non_200_with_invalid_json(
+        self, mock_httpx_request, mock_billing_config, status_code, caplog: pytest.LogCaptureFixture
+    ):
         """Test DELETE request with non-200 status code raises ValueError before JSON parsing.
 
         DELETE now checks status code before calling response.json(), so ValueError is raised
@@ -227,13 +230,11 @@ class TestBillingServiceSendRequest:
         mock_httpx_request.return_value = mock_response
 
         # Act & Assert
-        with patch("services.billing_service.logger") as mock_logger:
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
             with pytest.raises(ValueError) as exc_info:
                 BillingService._send_request("DELETE", "/test", json={"key": "value"})
             assert "Unable to process delete request" in str(exc_info.value)
-            # Verify error logging
-            mock_logger.error.assert_called_once()
-            assert "DELETE response" in str(mock_logger.error.call_args)
+            assert "DELETE response" in caplog.text
 
     def test_retry_on_request_error(self, mock_httpx_request, mock_billing_config):
         """Test that _send_request retries on httpx.RequestError."""
@@ -1030,8 +1031,7 @@ class TestBillingServiceAccountManagement:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session."""
-        with patch("services.billing_service.db.session") as mock_session:
-            yield mock_session
+        return MagicMock()
 
     def test_delete_account(self, mock_send_request):
         """Test account deletion."""
@@ -1115,7 +1115,8 @@ class TestBillingServiceAccountManagement:
         mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
+        mock_db_session.scalar.assert_called_once()
 
     def test_is_tenant_owner_or_admin_admin(self, mock_db_session):
         """Test tenant owner/admin check for admin role."""
@@ -1130,7 +1131,8 @@ class TestBillingServiceAccountManagement:
         mock_db_session.scalar.return_value = mock_join
 
         # Act - should not raise exception
-        BillingService.is_tenant_owner_or_admin(current_user)
+        BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
+        mock_db_session.scalar.assert_called_once()
 
     def test_is_tenant_owner_or_admin_normal_user_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error for normal user."""
@@ -1146,8 +1148,9 @@ class TestBillingServiceAccountManagement:
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
         assert "Only team owner or team admin can perform this action" in str(exc_info.value)
+        mock_db_session.scalar.assert_called_once()
 
     def test_is_tenant_owner_or_admin_no_join_raises_error(self, mock_db_session):
         """Test tenant owner/admin check raises error when join not found."""
@@ -1160,8 +1163,9 @@ class TestBillingServiceAccountManagement:
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
-            BillingService.is_tenant_owner_or_admin(current_user)
+            BillingService.is_tenant_owner_or_admin(mock_db_session, current_user)
         assert "Tenant account join not found" in str(exc_info.value)
+        mock_db_session.scalar.assert_called_once()
 
 
 class TestBillingServiceCacheManagement:
@@ -1511,7 +1515,7 @@ class TestBillingServiceSubscriptionOperations:
         assert isinstance(result["tenant-1"]["expiration_date"], int)
         assert result["tenant-1"]["expiration_date"] == 1735689600
 
-    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request):
+    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request, caplog: pytest.LogCaptureFixture):
         """Test bulk plan retrieval when one tenant has invalid plan data (should skip that tenant)."""
         # Arrange
         tenant_ids = ["tenant-valid-1", "tenant-invalid", "tenant-valid-2"]
@@ -1526,7 +1530,7 @@ class TestBillingServiceSubscriptionOperations:
         }
 
         # Act
-        with patch("services.billing_service.logger") as mock_logger:
+        with caplog.at_level(logging.ERROR, logger="services.billing_service"):
             result = BillingService.get_plan_bulk(tenant_ids)
 
         # Assert - should only contain valid tenants
@@ -1542,10 +1546,11 @@ class TestBillingServiceSubscriptionOperations:
         assert result["tenant-valid-2"]["expiration_date"] == 1767225600
 
         # Verify exception was logged for the invalid tenant
-        mock_logger.exception.assert_called_once()
-        log_call_args = mock_logger.exception.call_args[0]
-        assert "get_plan_bulk: failed to validate subscription plan for tenant" in log_call_args[0]
-        assert "tenant-invalid" in log_call_args[1]
+        exception_records = [r for r in caplog.records if r.levelname == "ERROR"]
+        assert len(exception_records) == 1
+        formatted = exception_records[0].getMessage()
+        assert "get_plan_bulk: failed to validate subscription plan for tenant" in formatted
+        assert "tenant-invalid" in formatted
 
     def test_get_expired_subscription_cleanup_whitelist_success(self, mock_send_request):
         """Test successful retrieval of expired subscription cleanup whitelist."""

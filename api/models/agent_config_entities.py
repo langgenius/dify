@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import re
 from enum import StrEnum
-from typing import Any, Final, Literal
+from typing import Annotated, Any, Final, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, WithJsonSchema, field_validator, model_validator
 
+from core.rag.entities.metadata_entities import ConditionValue, SupportedComparisonOperator
 from core.workflow.file_reference import is_canonical_file_reference
 from graphon.file import FileTransferMethod
 
@@ -27,6 +28,44 @@ class DeclaredOutputType(StrEnum):
     ARRAY = "array"
     BOOLEAN = "boolean"
     FILE = "file"
+
+
+_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA = {
+    "type": "array",
+    "items": {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "name": {"type": "string"},
+            "type": {
+                "type": "string",
+                "enum": [item.value for item in DeclaredOutputType],
+            },
+            "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+            "required": {"type": "boolean"},
+            "file": {"type": "object", "additionalProperties": True},
+            "array_item": {
+                "type": "object",
+                "additionalProperties": True,
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "enum": [item.value for item in DeclaredOutputType],
+                    },
+                    "description": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+                    "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+                },
+            },
+            "children": {"type": "array", "items": {"type": "object", "additionalProperties": True}},
+        },
+        "required": ["name", "type"],
+    },
+}
+
+DeclaredOutputChildren = Annotated[
+    list["DeclaredOutputChildConfig"],
+    WithJsonSchema(_DECLARED_OUTPUT_CHILDREN_JSON_SCHEMA),
+]
 
 
 class AgentCliToolAuthorizationStatus(StrEnum):
@@ -123,6 +162,11 @@ class AgentSkillRefConfig(AgentFlexibleConfig):
     manifest_files: list[str] | None = None
 
 
+class AgentSoulFilesConfig(BaseModel):
+    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
+    files: list[AgentFileRefConfig] = Field(default_factory=list)
+
+
 class AgentPermissionConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -148,6 +192,9 @@ class AgentSecretRefConfig(AgentFlexibleConfig):
     env_name: str | None = Field(default=None, max_length=255)
     variable: str | None = Field(default=None, max_length=255)
     type: str | None = Field(default=None, max_length=64)
+    # UI-facing selected secret reference. This is a credential/ref id, not the
+    # plaintext secret value; runtime maps it to the shell-layer ``ref``.
+    value: str | None = Field(default=None, max_length=255)
     id: str | None = Field(default=None, max_length=255)
     ref: str | None = Field(default=None, max_length=255)
     credential_id: str | None = Field(default=None, max_length=255)
@@ -195,17 +242,161 @@ class AgentCliToolConfig(AgentFlexibleConfig):
     inferred_from: str | None = Field(default=None, max_length=255)
 
 
-class AgentKnowledgeDatasetConfig(AgentFlexibleConfig):
+class AgentKnowledgeDatasetConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     id: str | None = Field(default=None, max_length=255)
     name: str | None = Field(default=None, max_length=255)
     description: str | None = None
 
 
-class AgentKnowledgeQueryConfig(AgentFlexibleConfig):
-    query: str | None = None
+class AgentKnowledgeQueryConfig(BaseModel):
+    """Per-set query policy for Agent v2 knowledge retrieval.
+
+    Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
+    legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
+    set owns its own query policy, so ``user_query`` must carry an explicit
+    ``value`` while ``generated_query`` leaves that value empty.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: AgentKnowledgeQueryMode
+    value: str | None = None
+
+    @model_validator(mode="after")
+    def validate_query(self) -> Self:
+        if self.mode == AgentKnowledgeQueryMode.USER_QUERY and not (self.value or "").strip():
+            raise ValueError("knowledge query.value is required for user_query mode")
+        return self
+
+
+class AgentKnowledgeModelConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    mode: str = Field(min_length=1, max_length=64)
+    completion_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentKnowledgeRerankingModelConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(min_length=1, max_length=255)
+    model: str = Field(min_length=1, max_length=255)
+
+
+class AgentKnowledgeWeightedScoreConfig(AgentFlexibleConfig):
+    weight_type: str | None = Field(default=None, max_length=64)
+    vector_setting: dict[str, Any] | None = None
+    keyword_setting: dict[str, Any] | None = None
+
+
+class AgentKnowledgeRetrievalConfig(BaseModel):
+    """Per-set retrieval policy for Agent v2 knowledge retrieval.
+
+    Retrieval settings now live on each knowledge set instead of one shared
+    flat config. A set may use either ``multiple`` retrieval with ``top_k`` or
+    ``single`` retrieval with a required model config.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    mode: Literal["single", "multiple"]
     top_k: int | None = Field(default=None, ge=1)
     score_threshold: float | None = Field(default=None, ge=0, le=1)
-    score_threshold_enabled: bool | None = None
+    reranking_mode: str = "reranking_model"
+    reranking_enable: bool = True
+    reranking_model: AgentKnowledgeRerankingModelConfig | None = None
+    weights: AgentKnowledgeWeightedScoreConfig | None = None
+    model: AgentKnowledgeModelConfig | None = None
+
+    @model_validator(mode="after")
+    def validate_mode_fields(self) -> Self:
+        if self.mode == "multiple" and self.top_k is None:
+            raise ValueError("knowledge retrieval.top_k is required for multiple mode")
+        if self.mode == "single" and self.model is None:
+            raise ValueError("knowledge retrieval.model is required for single mode")
+        return self
+
+
+class AgentKnowledgeMetadataCondition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    comparison_operator: SupportedComparisonOperator
+    value: ConditionValue = None
+
+
+class AgentKnowledgeMetadataConditions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    logical_operator: Literal["and", "or"] = "and"
+    conditions: list[AgentKnowledgeMetadataCondition] = Field(default_factory=list)
+
+
+class AgentKnowledgeMetadataFilteringConfig(BaseModel):
+    """Per-set metadata filtering policy.
+
+    The Python attribute uses ``metadata_model_config`` for clarity because the
+    model belongs to metadata filtering specifically, while the external API and
+    generated schema keep the historical ``model_config`` field name via alias.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    mode: Literal["disabled", "automatic", "manual"] = "disabled"
+    # Internal name is explicit; wire format remains ``model_config``.
+    metadata_model_config: AgentKnowledgeModelConfig | None = Field(default=None, alias="model_config")
+    conditions: AgentKnowledgeMetadataConditions | None = None
+
+    @model_validator(mode="after")
+    def validate_mode_fields(self) -> Self:
+        if self.mode == "automatic" and self.metadata_model_config is None:
+            raise ValueError("metadata_filtering.model_config is required for automatic mode")
+        if self.mode == "manual" and (self.conditions is None or not self.conditions.conditions):
+            raise ValueError("metadata_filtering.conditions is required for manual mode")
+        return self
+
+
+class AgentKnowledgeSetConfig(BaseModel):
+    """One explicit knowledge set in Agent v2.
+
+    ``knowledge.sets`` replaces the old flat knowledge config. Each set owns
+    its datasets plus query, retrieval, and metadata policies. An individual
+    set must contain at least one dataset id even though the overall knowledge
+    section may be empty, which is how callers express "no knowledge layer".
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
+    description: str | None = None
+    datasets: list[AgentKnowledgeDatasetConfig]
+    query: AgentKnowledgeQueryConfig
+    retrieval: AgentKnowledgeRetrievalConfig
+    metadata_filtering: AgentKnowledgeMetadataFilteringConfig = Field(
+        default_factory=AgentKnowledgeMetadataFilteringConfig
+    )
+
+    @field_validator("id", "name")
+    @classmethod
+    def validate_non_blank_identity(cls, value: str) -> str:
+        normalized = value.strip()
+        if not normalized:
+            raise ValueError("knowledge set id and name must not be blank")
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_datasets(self) -> Self:
+        dataset_ids = [(dataset.id or "").strip() for dataset in self.datasets]
+        if not dataset_ids or any(not dataset_id for dataset_id in dataset_ids):
+            raise ValueError("knowledge set requires at least one dataset id")
+        if len(dataset_ids) != len(set(dataset_ids)):
+            raise ValueError("knowledge set dataset ids must be unique")
+        return self
 
 
 class AgentHumanContactConfig(AgentFlexibleConfig):
@@ -320,11 +511,6 @@ class AgentSoulPromptConfig(BaseModel):
     system_prompt: str = ""
 
 
-class AgentSoulSkillsFilesConfig(BaseModel):
-    files: list[AgentFileRefConfig] = Field(default_factory=list)
-    skills: list[AgentSkillRefConfig] = Field(default_factory=list)
-
-
 class AgentSoulDifyToolCredentialRef(BaseModel):
     """Reference to a stored Dify Plugin Tool credential.
 
@@ -417,9 +603,28 @@ class AgentSoulToolsConfig(BaseModel):
 
 
 class AgentSoulKnowledgeConfig(BaseModel):
-    datasets: list[AgentKnowledgeDatasetConfig] = Field(default_factory=list)
-    query_mode: AgentKnowledgeQueryMode | None = None
-    query_config: AgentKnowledgeQueryConfig = Field(default_factory=AgentKnowledgeQueryConfig)
+    """Top-level Agent v2 knowledge config.
+
+    Agent v2 models knowledge as explicit sets instead of one flat
+    ``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
+    list means no knowledge layer should be emitted at runtime, while set-name
+    uniqueness stays case-insensitive because runtime selection addresses sets
+    by name.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    sets: list[AgentKnowledgeSetConfig] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_sets(self) -> Self:
+        set_ids = [item.id.strip() for item in self.sets]
+        if len(set_ids) != len(set(set_ids)):
+            raise ValueError("knowledge set ids must be unique")
+        set_names = [item.name.strip().lower() for item in self.sets]
+        if len(set_names) != len(set(set_names)):
+            raise ValueError("knowledge set names must be unique")
+        return self
 
 
 class AgentSoulHumanConfig(BaseModel):
@@ -473,11 +678,11 @@ class AgentSoulConfig(BaseModel):
 
     schema_version: int = 1
     prompt: AgentSoulPromptConfig = Field(default_factory=AgentSoulPromptConfig)
-    skills_files: AgentSoulSkillsFilesConfig = Field(default_factory=AgentSoulSkillsFilesConfig)
     tools: AgentSoulToolsConfig = Field(default_factory=AgentSoulToolsConfig)
     knowledge: AgentSoulKnowledgeConfig = Field(default_factory=AgentSoulKnowledgeConfig)
     human: AgentSoulHumanConfig = Field(default_factory=AgentSoulHumanConfig)
     env: AgentSoulEnvConfig = Field(default_factory=AgentSoulEnvConfig)
+    files: AgentSoulFilesConfig = Field(default_factory=AgentSoulFilesConfig)
     sandbox: AgentSoulSandboxConfig = Field(default_factory=AgentSoulSandboxConfig)
     memory: AgentSoulMemoryConfig = Field(default_factory=AgentSoulMemoryConfig)
     model: AgentSoulModelConfig | None = None
@@ -507,11 +712,55 @@ class DeclaredArrayItem(BaseModel):
 
     type: DeclaredOutputType
     description: str | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _reject_nested_array(self) -> DeclaredArrayItem:
         if self.type == DeclaredOutputType.ARRAY:
             raise ValueError("nested arrays are not supported as array_item.type")
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("array_item.children is only allowed when array_item.type is object")
+        return self
+
+
+class DeclaredOutputChildConfig(BaseModel):
+    """Nested field under an object-shaped declared output.
+
+    The first backend version keeps child fields lightweight: they describe the
+    variable-picker/schema tree but do not own independent retry/check behavior.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=255)
+    type: DeclaredOutputType
+    description: str | None = None
+    required: bool = True
+    file: DeclaredOutputFileConfig | None = None
+    array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _validate_shape(self) -> DeclaredOutputChildConfig:
+        if not _OUTPUT_NAME_PATTERN.fullmatch(self.name):
+            raise ValueError(
+                f"output child name {self.name!r} must match {_OUTPUT_NAME_PATTERN.pattern} "
+                "(JSON-schema-friendly identifier)"
+            )
+        if self.type == DeclaredOutputType.FILE:
+            if self.file is None:
+                self.file = DeclaredOutputFileConfig()
+        elif self.file is not None:
+            raise ValueError("file metadata is only allowed for file output children")
+
+        if self.type == DeclaredOutputType.ARRAY:
+            if self.array_item is None:
+                self.array_item = DeclaredArrayItem(type=DeclaredOutputType.OBJECT)
+        elif self.array_item is not None:
+            raise ValueError("array_item is only allowed when child type is array")
+
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object output children")
         return self
 
 
@@ -592,6 +841,7 @@ class DeclaredOutputConfig(BaseModel):
     required: bool = True
     file: DeclaredOutputFileConfig | None = None
     array_item: DeclaredArrayItem | None = None
+    children: DeclaredOutputChildren = Field(default_factory=list)
     check: DeclaredOutputCheckConfig | None = None
     failure_strategy: DeclaredOutputFailureStrategy = Field(default_factory=DeclaredOutputFailureStrategy)
 
@@ -624,6 +874,9 @@ class DeclaredOutputConfig(BaseModel):
                 self.array_item = DeclaredArrayItem(type=DeclaredOutputType.OBJECT)
         elif self.array_item is not None:
             raise ValueError("array_item is only allowed when type is array")
+
+        if self.children and self.type != DeclaredOutputType.OBJECT:
+            raise ValueError("children is only allowed for object outputs")
 
         # Per PRD §OUTPUT 配置框: output check is file-only.
         if self.check is not None and self.check.enabled and self.type != DeclaredOutputType.FILE:

@@ -153,13 +153,13 @@ function ToastCard({
     <BaseToast.Root
       toast={toastItem}
       className={cn(
-        'pointer-events-auto absolute top-0 right-0 w-90 max-w-[calc(100vw-2rem)] origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
+        'pointer-events-auto absolute top-0 right-0 w-full origin-top cursor-default rounded-xl select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden',
         '[--toast-current-height:var(--toast-frontmost-height,var(--toast-height))] [--toast-gap:8px] [--toast-peek:5px] [--toast-scale:calc(1-(var(--toast-index)*0.0225))] [--toast-shrink:calc(1-var(--toast-scale))]',
         'z-[calc(100-var(--toast-index))] h-(--toast-current-height)',
         '[transition:transform_500ms_cubic-bezier(0.22,1,0.36,1),opacity_500ms,height_150ms] motion-reduce:transition-none',
         'transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-swipe-movement-y)+(var(--toast-index)*var(--toast-peek))+(var(--toast-shrink)*var(--toast-current-height))))_scale(var(--toast-scale))]',
         'data-expanded:h-(--toast-height) data-expanded:transform-[translateX(var(--toast-swipe-movement-x))_translateY(calc(var(--toast-offset-y)+var(--toast-swipe-movement-y)+(var(--toast-index)*8px)))_scale(1)]',
-        'data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0',
+        'data-ending-style:pointer-events-none data-ending-style:after:pointer-events-none data-ending-style:transform-[translateY(-150%)] data-ending-style:opacity-0',
         'data-ending-style:data-[swipe-direction=down]:transform-[translateY(calc(var(--toast-swipe-movement-y)+150%))]',
         'data-ending-style:data-[swipe-direction=right]:transform-[translateX(calc(var(--toast-swipe-movement-x)+150%))]',
         'data-limited:pointer-events-none data-limited:opacity-0 data-starting-style:transform-[translateY(-150%)] data-starting-style:opacity-0',
@@ -176,15 +176,15 @@ function ToastCard({
             <ToastIcon type={toastType} />
           </div>
           <div className="min-w-0 flex-1 p-1">
-            <div className="flex w-full items-center gap-1">
+            <div className="flex w-full min-w-0 items-center gap-1">
               {toastItem.title != null && (
-                <BaseToast.Title className="system-sm-semibold wrap-break-word text-text-primary">
+                <BaseToast.Title className="min-w-0 flex-1 system-sm-semibold wrap-break-word text-text-primary">
                   {toastItem.title}
                 </BaseToast.Title>
               )}
             </div>
             {toastItem.description != null && (
-              <BaseToast.Description className="mt-1 system-xs-regular wrap-break-word text-text-secondary">
+              <BaseToast.Description className="mt-1 min-w-0 system-xs-regular wrap-break-word text-text-secondary">
                 {toastItem.description}
               </BaseToast.Description>
             )}
@@ -222,21 +222,15 @@ function ToastViewport() {
     <BaseToast.Viewport
       aria-label={toastViewportLabel}
       className={cn(
-        'group/toast-viewport pointer-events-none fixed inset-0 z-60 overflow-visible',
+        'group/toast-viewport pointer-events-none fixed top-4 right-4 z-60 w-90 max-w-[calc(100vw-2rem)] overflow-visible sm:right-8',
       )}
     >
-      <div
-        className={cn(
-          'pointer-events-none absolute top-4 right-4 w-90 max-w-[calc(100vw-2rem)] sm:right-8',
-        )}
-      >
-        {toasts.map(toastItem => (
-          <ToastCard
-            key={toastItem.id}
-            toast={toastItem}
-          />
-        ))}
-      </div>
+      {toasts.map(toastItem => (
+        <ToastCard
+          key={toastItem.id}
+          toast={toastItem}
+        />
+      ))}
     </BaseToast.Viewport>
   )
 }

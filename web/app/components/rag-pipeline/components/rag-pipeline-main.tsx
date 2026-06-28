@@ -6,14 +6,17 @@ import {
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import {
   useAvailableNodesMetaData,
-  useDSL,
+  useDSLByCanEdit,
   useGetRunAndTraceUrl,
-  useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
   usePipelineRefreshDraft,
-  usePipelineRun,
-  usePipelineStartRun,
+  usePipelineRunByCanEdit,
+  usePipelineStartRunByCanEdit,
 } from '../hooks'
 import { useConfigsMap } from '../hooks/use-configs-map'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
@@ -26,6 +29,17 @@ const RagPipelineMain = ({
   viewport,
 }: RagPipelineMainProps) => {
   const workflowStore = useWorkflowStore()
+  const dataset = useDatasetDetailContextWithSelector(s => s.dataset)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const datasetACLCapabilities = useMemo(
+    () => getDatasetACLCapabilities(dataset?.permission_keys, {
+      currentUserId,
+      resourceMaintainer: dataset?.maintainer,
+      workspacePermissionKeys,
+    }),
+    [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
+  )
 
   const handleWorkflowDataUpdate = useCallback((payload: any) => {
     const {
@@ -45,7 +59,7 @@ const RagPipelineMain = ({
   const {
     doSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
-  } = useNodesSyncDraft()
+  } = useNodesSyncDraftByCanEdit(datasetACLCapabilities.canEdit)
   const { handleRefreshWorkflowDraft } = usePipelineRefreshDraft()
   const {
     handleBackupDraft,
@@ -53,17 +67,17 @@ const RagPipelineMain = ({
     handleRestoreFromPublishedWorkflow,
     handleRun,
     handleStopRun,
-  } = usePipelineRun()
+  } = usePipelineRunByCanEdit(datasetACLCapabilities.canEdit)
   const {
     handleStartWorkflowRun,
     handleWorkflowStartRunInWorkflow,
-  } = usePipelineStartRun()
+  } = usePipelineStartRunByCanEdit(datasetACLCapabilities.canEdit)
   const availableNodesMetaData = useAvailableNodesMetaData()
   const { getWorkflowRunAndTraceUrl } = useGetRunAndTraceUrl()
   const {
     exportCheck,
     handleExportDSL,
-  } = useDSL()
+  } = useDSLByCanEdit(datasetACLCapabilities.canEdit)
 
   const configsMap = useConfigsMap()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue({
@@ -117,6 +131,13 @@ const RagPipelineMain = ({
       invalidateSysVarValues,
       resetConversationVar,
       invalidateConversationVarValues,
+      accessControl: {
+        canEdit: datasetACLCapabilities.canEdit,
+        canComment: datasetACLCapabilities.canReadonly || datasetACLCapabilities.canEdit,
+        canRun: datasetACLCapabilities.canPipelineTest,
+        canImportExportDSL: datasetACLCapabilities.canImportExportDSL,
+        canReleaseAndVersion: datasetACLCapabilities.canPipelineRelease,
+      },
       configsMap,
     }
   }, [
@@ -149,6 +170,7 @@ const RagPipelineMain = ({
     invalidateSysVarValues,
     resetConversationVar,
     invalidateConversationVarValues,
+    datasetACLCapabilities,
     configsMap,
   ])
 

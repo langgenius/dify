@@ -65,7 +65,7 @@ describe('Operator Component', () => {
     it('should call onRename when "rename" action is selected', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} canManageCredential />)
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -81,7 +81,7 @@ describe('Operator Component', () => {
     it('should handle missing onRename gracefully when "rename" action is selected', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} />)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} canManageCredential />)
 
       // Act & Assert
       await userEvent.setup().click(screen.getByRole('button'))
@@ -92,7 +92,7 @@ describe('Operator Component', () => {
     it('should call onAction for "setDefault" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} canUseCredential />)
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -107,7 +107,7 @@ describe('Operator Component', () => {
     it('should call onAction for "edit" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} canManageCredential />)
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -122,7 +122,7 @@ describe('Operator Component', () => {
     it('should call onAction for "change" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.OAUTH2)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} canManageCredential />)
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -137,7 +137,7 @@ describe('Operator Component', () => {
     it('should call onAction for "delete" action', async () => {
       // Arrange
       const credential = createMockCredential(CredentialTypeEnum.API_KEY)
-      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} canManageCredential />)
 
       // Act
       await userEvent.setup().click(screen.getByRole('button'))
@@ -146,6 +146,21 @@ describe('Operator Component', () => {
       // Assert
       await waitFor(() => {
         expect(mockOnAction).toHaveBeenCalledWith('delete', credential)
+      })
+    })
+
+    it('should not call actions by default when credential permissions are omitted', async () => {
+      const credential = createMockCredential(CredentialTypeEnum.API_KEY)
+      render(<Operator credentialItem={credential} onAction={mockOnAction} onRename={mockOnRename} />)
+
+      await userEvent.setup().click(screen.getByRole('button'))
+      fireEvent.click(await screen.findByText('plugin.auth.setDefault'))
+      fireEvent.click(screen.getByText('common.operation.edit'))
+      fireEvent.click(screen.getByText('common.operation.remove'))
+
+      await waitFor(() => {
+        expect(mockOnAction).not.toHaveBeenCalled()
+        expect(mockOnRename).not.toHaveBeenCalled()
       })
     })
   })

@@ -300,32 +300,11 @@ export const zSnippetWorkflowResponse = z.object({
 })
 
 /**
- * WorkflowResponse
+ * SnippetWorkflowPaginationResponse
  */
-export const zWorkflowResponse = z.object({
-  conversation_variables: z.array(zWorkflowConversationVariableResponse),
-  created_at: z.int(),
-  created_by: zSimpleAccount.nullish(),
-  environment_variables: z.array(zWorkflowEnvironmentVariableResponse),
-  features: z.record(z.string(), z.unknown()),
-  graph: z.record(z.string(), z.unknown()),
-  hash: z.string(),
-  id: z.string(),
-  marked_comment: z.string(),
-  marked_name: z.string(),
-  rag_pipeline_variables: z.array(zPipelineVariableResponse),
-  tool_published: z.boolean(),
-  updated_at: z.int(),
-  updated_by: zSimpleAccount.nullish(),
-  version: z.string(),
-})
-
-/**
- * WorkflowPaginationResponse
- */
-export const zWorkflowPaginationResponse = z.object({
+export const zSnippetWorkflowPaginationResponse = z.object({
   has_more: z.boolean(),
-  items: z.array(zWorkflowResponse),
+  items: z.array(zSnippetWorkflowResponse),
   limit: z.int(),
   page: z.int(),
 })
@@ -387,7 +366,7 @@ export const zWorkflowDraftVariableListWithoutValue = z.object({
 })
 
 export const zGetSnippetsBySnippetIdWorkflowRunsPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 export const zGetSnippetsBySnippetIdWorkflowRunsQuery = z.object({
@@ -401,7 +380,7 @@ export const zGetSnippetsBySnippetIdWorkflowRunsQuery = z.object({
 export const zGetSnippetsBySnippetIdWorkflowRunsResponse = zWorkflowRunPaginationResponse
 
 export const zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
   task_id: z.string(),
 })
 
@@ -411,8 +390,8 @@ export const zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopPath = z.objec
 export const zPostSnippetsBySnippetIdWorkflowRunsTasksByTaskIdStopResponse = zSimpleResultResponse
 
 export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath = z.object({
-  run_id: z.string(),
-  snippet_id: z.string(),
+  run_id: z.uuid(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -421,8 +400,8 @@ export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdPath = z.object({
 export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdResponse = zWorkflowRunDetailResponse
 
 export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsPath = z.object({
-  run_id: z.string(),
-  snippet_id: z.string(),
+  run_id: z.uuid(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -432,7 +411,7 @@ export const zGetSnippetsBySnippetIdWorkflowRunsByRunIdNodeExecutionsResponse
   = zWorkflowRunNodeExecutionListResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 export const zGetSnippetsBySnippetIdWorkflowsQuery = z.object({
@@ -443,10 +422,10 @@ export const zGetSnippetsBySnippetIdWorkflowsQuery = z.object({
 /**
  * Published workflows retrieved successfully
  */
-export const zGetSnippetsBySnippetIdWorkflowsResponse = zWorkflowPaginationResponse
+export const zGetSnippetsBySnippetIdWorkflowsResponse = zSnippetWorkflowPaginationResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -456,7 +435,7 @@ export const zGetSnippetsBySnippetIdWorkflowsDefaultWorkflowBlockConfigsResponse
   = zDefaultBlockConfigsResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -467,7 +446,7 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftResponse = zSnippetWorkflowRes
 export const zPostSnippetsBySnippetIdWorkflowsDraftBody = zSnippetDraftSyncPayload
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -476,7 +455,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftPath = z.object({
 export const zPostSnippetsBySnippetIdWorkflowsDraftResponse = zWorkflowRestoreResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftConfigPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -485,7 +464,7 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftConfigPath = z.object({
 export const zGetSnippetsBySnippetIdWorkflowsDraftConfigResponse = zSnippetDraftConfigResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -495,7 +474,7 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftConversationVariablesResponse
   = zWorkflowDraftVariableList
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftEnvironmentVariablesPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -509,7 +488,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunBody
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftIterationNodesByNodeIdRunPath = z.object({
   node_id: z.string(),
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -523,7 +502,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunBody
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunPath = z.object({
   node_id: z.string(),
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -534,7 +513,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftLoopNodesByNodeIdRunResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdLastRunPath = z.object({
   node_id: z.string(),
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -548,7 +527,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunBody
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunPath = z.object({
   node_id: z.string(),
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -559,7 +538,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdRunResponse
 
 export const zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
   node_id: z.string(),
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -569,7 +548,7 @@ export const zDeleteSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesRespo
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesPath = z.object({
   node_id: z.string(),
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -581,7 +560,7 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftNodesByNodeIdVariablesResponse
 export const zPostSnippetsBySnippetIdWorkflowsDraftRunBody = zSnippetDraftRunPayload
 
 export const zPostSnippetsBySnippetIdWorkflowsDraftRunPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -590,7 +569,7 @@ export const zPostSnippetsBySnippetIdWorkflowsDraftRunPath = z.object({
 export const zPostSnippetsBySnippetIdWorkflowsDraftRunResponse = zGeneratedAppResponse
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -600,7 +579,7 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftSystemVariablesResponse
   = zWorkflowDraftVariableList
 
 export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -609,7 +588,7 @@ export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesPath = z.object({
 export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesResponse = z.void()
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesQuery = z.object({
@@ -624,8 +603,8 @@ export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesResponse
   = zWorkflowDraftVariableListWithoutValue
 
 export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  snippet_id: z.string(),
-  variable_id: z.string(),
+  snippet_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
@@ -634,8 +613,8 @@ export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath =
 export const zDeleteSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse = z.void()
 
 export const zGetSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  snippet_id: z.string(),
-  variable_id: z.string(),
+  snippet_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
@@ -648,8 +627,8 @@ export const zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdBody
   = zWorkflowDraftVariableUpdatePayload
 
 export const zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath = z.object({
-  snippet_id: z.string(),
-  variable_id: z.string(),
+  snippet_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 /**
@@ -659,8 +638,8 @@ export const zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdRespons
   = zWorkflowDraftVariable
 
 export const zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetPath = z.object({
-  snippet_id: z.string(),
-  variable_id: z.string(),
+  snippet_id: z.uuid(),
+  variable_id: z.uuid(),
 })
 
 export const zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResponse = z.union([
@@ -669,7 +648,7 @@ export const zPutSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResetResp
 ])
 
 export const zGetSnippetsBySnippetIdWorkflowsPublishPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -680,7 +659,7 @@ export const zGetSnippetsBySnippetIdWorkflowsPublishResponse = zSnippetWorkflowR
 export const zPostSnippetsBySnippetIdWorkflowsPublishBody = zPublishWorkflowPayload
 
 export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
 })
 
 /**
@@ -689,7 +668,7 @@ export const zPostSnippetsBySnippetIdWorkflowsPublishPath = z.object({
 export const zPostSnippetsBySnippetIdWorkflowsPublishResponse = zWorkflowPublishResponse
 
 export const zPostSnippetsBySnippetIdWorkflowsByWorkflowIdRestorePath = z.object({
-  snippet_id: z.string(),
+  snippet_id: z.uuid(),
   workflow_id: z.string(),
 })
 
