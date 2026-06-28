@@ -31,6 +31,14 @@ vi.mock('@/features/system-features/client', () => ({
       },
     }),
   }),
+  webAppSystemFeaturesQueryOptions: () => queryOptions({
+    queryKey: ['webapp', 'system-features'],
+    queryFn: () => Promise.resolve({
+      webapp_auth: {
+        enabled: mockSystemFeatures.webappAuthEnabled,
+      },
+    }),
+  }),
 }))
 
 const createWrapper = () => {

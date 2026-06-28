@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { IS_CE_EDITION } from '@/config'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { webAppSystemFeaturesQueryOptions } from '@/features/system-features/client'
 import { LicenseStatus } from '@/features/system-features/constants'
 import Link from '@/next/link'
 import MailAndCodeAuth from './components/mail-and-code-auth'
@@ -18,7 +18,7 @@ const NormalForm = () => {
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(true)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures } = useSuspenseQuery(webAppSystemFeaturesQueryOptions())
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
   const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)

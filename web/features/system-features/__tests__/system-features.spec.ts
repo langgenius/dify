@@ -68,12 +68,19 @@ const loadSystemFeaturesModule = async ({
       },
     },
   }))
+  const getPublic = systemFeaturesError
+    ? vi.fn().mockRejectedValue(systemFeaturesError)
+    : vi.fn().mockResolvedValue(systemFeaturesResult)
+  vi.doMock('@/service/base', () => ({
+    getPublic,
+  }))
 
   const module = await import('../client')
 
   return {
     module,
     systemFeatures,
+    getPublic,
   }
 }
 
@@ -213,6 +220,60 @@ describe('systemFeaturesQueryOptions', () => {
     expect(data).toEqual(defaultSystemFeatures)
 
     errorSpy.mockRestore()
+  })
+})
+
+describe('webAppSystemFeaturesQueryOptions', () => {
+  it('should fetch web system-features without calling console system-features', async () => {
+    const systemFeaturesResult = {
+      ...defaultSystemFeatures,
+      webapp_auth: {
+        ...defaultSystemFeatures.webapp_auth,
+        enabled: true,
+      },
+    }
+    const { module, systemFeatures, getPublic } = await loadSystemFeaturesModule({
+      isCloudEdition: false,
+      systemFeaturesResult,
+    })
+
+    const options = module.webAppSystemFeaturesQueryOptions()
+    const data = await options.queryFn?.(queryContext)
+
+    expect(systemFeatures).not.toHaveBeenCalled()
+    expect(getPublic).toHaveBeenCalledWith('/system-features', {}, { silent: true })
+    expect(data).toBe(systemFeaturesResult)
+  })
+
+  it('should fall back to defaults when the web request fails', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { module, systemFeatures, getPublic } = await loadSystemFeaturesModule({
+      isCloudEdition: false,
+      systemFeaturesError: new Error('network failed'),
+    })
+
+    const options = module.webAppSystemFeaturesQueryOptions()
+    const data = await options.queryFn?.(queryContext)
+
+    expect(systemFeatures).not.toHaveBeenCalled()
+    expect(getPublic).toHaveBeenCalledTimes(1)
+    expect(data).toEqual(defaultSystemFeatures)
+
+    errorSpy.mockRestore()
+  })
+
+  it('should return Cloud defaults without calling system-features when Cloud edition is enabled', async () => {
+    const { module, systemFeatures, getPublic } = await loadSystemFeaturesModule({
+      isCloudEdition: true,
+    })
+
+    const options = module.webAppSystemFeaturesQueryOptions()
+    const data = await options.queryFn?.(queryContext)
+
+    expect(systemFeatures).not.toHaveBeenCalled()
+    expect(getPublic).not.toHaveBeenCalled()
+    expect(options.staleTime).toBe('static')
+    expect(data?.enable_marketplace).toBe(true)
   })
 })
 

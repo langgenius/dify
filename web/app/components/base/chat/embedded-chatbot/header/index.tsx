@@ -10,7 +10,7 @@ import ActionButton from '@/app/components/base/action-button'
 import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
 import Divider from '@/app/components/base/divider'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { webAppSystemFeaturesQueryOptions } from '@/features/system-features/client'
 import { isClient } from '@/utils/client'
 import {
   useEmbeddedChatbotContext,
@@ -45,7 +45,7 @@ const Header: FC<IHeaderProps> = ({
   const [parentOrigin, setParentOrigin] = useState('')
   const [showToggleExpandButton, setShowToggleExpandButton] = useState(false)
   const [expanded, setExpanded] = useState(false)
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures } = useSuspenseQuery(webAppSystemFeaturesQueryOptions())
 
   const handleMessageReceived = useCallback((event: MessageEvent) => {
     let currentParentOrigin = parentOrigin

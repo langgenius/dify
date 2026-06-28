@@ -2,12 +2,17 @@
 import { useQuery } from '@tanstack/react-query'
 import { useFavicon, useTitle } from 'ahooks'
 import { useEffect } from 'react'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { systemFeaturesQueryOptions, webAppSystemFeaturesQueryOptions } from '@/features/system-features/client'
 import { defaultSystemFeatures } from '@/features/system-features/config'
+import { usePathname } from '@/next/navigation'
+import { canEmbedPath } from '@/proxy'
 import { basePath } from '@/utils/var'
 
 export default function useDocumentTitle(title: string) {
-  const { data, isPending } = useQuery(systemFeaturesQueryOptions())
+  const pathname = usePathname() ?? ''
+  const { data, isPending } = useQuery(
+    canEmbedPath(pathname) ? webAppSystemFeaturesQueryOptions() : systemFeaturesQueryOptions(),
+  )
   const systemFeatures = data ?? defaultSystemFeatures
   const prefix = title ? `${title} - ` : ''
   let titleStr = ''

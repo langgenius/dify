@@ -34,6 +34,7 @@ import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT
 import { asyncRunSafe } from '@/utils'
 import { isClient } from '@/utils/client'
 import { basePath } from '@/utils/var'
+import { canEmbedPath } from '@/proxy'
 import { base, ContentType, getBaseOptions } from './fetch'
 import { refreshAccessTokenOrReLogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
@@ -142,6 +143,13 @@ function jumpTo(url: string) {
   if (targetPath === window.location.pathname)
     return
   window.location.href = url
+}
+
+function isWebAppSurfacePathname(pathname: string) {
+  const pathWithoutBase = basePath && pathname.startsWith(basePath)
+    ? pathname.slice(basePath.length) || '/'
+    : pathname
+  return canEmbedPath(pathWithoutBase)
 }
 
 const OAUTH_AUTHORIZE_PATH = '/account/oauth/authorize'
@@ -832,6 +840,8 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       // there. Redirecting to /signin loses the user_code context and
       // the post-login flow lands on /apps instead of returning here.
       if (window.location.pathname === `${basePath}/device`)
+        return Promise.reject(err)
+      if (isWebAppSurfacePathname(window.location.pathname))
         return Promise.reject(err)
       if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
         jumpTo(buildSigninUrlWithRedirect())

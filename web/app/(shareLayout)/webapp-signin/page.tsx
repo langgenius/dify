@@ -6,7 +6,7 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import { useWebAppStore } from '@/context/web-app-context'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { webAppSystemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { webAppLogout } from '@/service/webapp-auth'
@@ -15,7 +15,7 @@ import NormalForm from './normalForm'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()
-  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const { data: systemFeatures } = useSuspenseQuery(webAppSystemFeaturesQueryOptions())
   const webAppAccessMode = useWebAppStore(s => s.webAppAccessMode)
   const searchParams = useSearchParams()
   const router = useRouter()
