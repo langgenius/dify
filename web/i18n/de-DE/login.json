@@ -44,6 +44,7 @@
   "interfaceLanguage": "Oberflächensprache",
   "invalid": "Der Link ist abgelaufen",
   "invalidInvitationCode": "Ungültiger Einladungscode",
+  "invitationAccountMismatch": "Sie sind mit einem anderen Konto angemeldet. Bitte wechseln Sie zum eingeladenen Konto und versuchen Sie es erneut.",
   "invitationCode": "Einladungscode",
   "invitationCodePlaceholder": "Dein Einladungscode",
   "join": "Beitreten",

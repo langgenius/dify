@@ -44,6 +44,7 @@
   "interfaceLanguage": "Język interfejsu",
   "invalid": "Link wygasł",
   "invalidInvitationCode": "Niewłaściwy kod zaproszenia",
+  "invitationAccountMismatch": "Zalogowano się na inne konto. Przełącz się na zaproszone konto i spróbuj ponownie.",
   "invitationCode": "Kod zaproszenia",
   "invitationCodePlaceholder": "Twój kod zaproszenia",
   "join": "Dołącz",

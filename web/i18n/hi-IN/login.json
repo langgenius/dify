@@ -44,6 +44,7 @@
   "interfaceLanguage": "इंटरफेस भाषा",
   "invalid": "लिंक समाप्त हो गया है",
   "invalidInvitationCode": "अवैध निमंत्रण कोड",
+  "invitationAccountMismatch": "आप किसी दूसरे खाते से साइन इन हैं। कृपया आमंत्रित खाते पर स्विच करें और फिर से कोशिश करें।",
   "invitationCode": "निमंत्रण कोड",
   "invitationCodePlaceholder": "आपका निमंत्रण कोड",
   "join": "शामिल हों",

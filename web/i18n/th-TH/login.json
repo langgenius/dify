@@ -44,6 +44,7 @@
   "interfaceLanguage": "ภาษาอินเทอร์เฟซ",
   "invalid": "ลิงก์หมดอายุ",
   "invalidInvitationCode": "รหัสเชิญไม่ถูกต้อง",
+  "invitationAccountMismatch": "คุณลงชื่อเข้าใช้ด้วยบัญชีอื่น โปรดเปลี่ยนไปใช้บัญชีที่ได้รับเชิญแล้วลองอีกครั้ง",
   "invitationCode": "รหัสเชิญ",
   "invitationCodePlaceholder": "รหัสเชิญของคุณ",
   "join": "ต่อ",

@@ -44,6 +44,7 @@
   "interfaceLanguage": "Язык интерфейса",
   "invalid": "Ссылка истекла",
   "invalidInvitationCode": "Неверный пригласительный код",
+  "invitationAccountMismatch": "Вы вошли с другой учетной записью. Переключитесь на приглашенную учетную запись и попробуйте снова.",
   "invitationCode": "Пригласительный код",
   "invitationCodePlaceholder": "Ваш пригласительный код",
   "join": "Присоединиться",

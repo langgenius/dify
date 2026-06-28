@@ -44,6 +44,7 @@
   "interfaceLanguage": "Jezik vmesnika",
   "invalid": "Povezava je potekla",
   "invalidInvitationCode": "Neveljavna vabilna koda",
+  "invitationAccountMismatch": "Prijavljeni ste z drugim računom. Preklopite na povabljeni račun in poskusite znova.",
   "invitationCode": "Vabilna koda",
   "invitationCodePlaceholder": "Vaša vabilna koda",
   "join": "Pridruži se",

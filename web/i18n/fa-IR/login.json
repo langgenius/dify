@@ -44,6 +44,7 @@
   "interfaceLanguage": "زبان رابط کاربری",
   "invalid": "لینک منقضی شده است",
   "invalidInvitationCode": "کد دعوت نامعتبر است",
+  "invitationAccountMismatch": "شما با حساب دیگری وارد شده‌اید. لطفاً به حساب دعوت‌شده بروید و دوباره تلاش کنید.",
   "invitationCode": "کد دعوت",
   "invitationCodePlaceholder": "کد دعوت شما",
   "join": "عضویت",

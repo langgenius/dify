@@ -44,6 +44,7 @@
   "interfaceLanguage": "인터페이스 언어",
   "invalid": "링크의 유효 기간이 만료되었습니다.",
   "invalidInvitationCode": "유효하지 않은 초대 코드입니다.",
+  "invitationAccountMismatch": "다른 계정으로 로그인되어 있습니다. 초대받은 계정으로 전환한 후 다시 시도하세요.",
   "invitationCode": "초대 코드",
   "invitationCodePlaceholder": "초대 코드를 입력하세요",
   "join": "가입하기",

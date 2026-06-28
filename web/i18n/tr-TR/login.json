@@ -44,6 +44,7 @@
   "interfaceLanguage": "Arayüz Dili",
   "invalid": "Bağlantı süresi doldu",
   "invalidInvitationCode": "Geçersiz davet kodu",
+  "invitationAccountMismatch": "Farklı bir hesapla oturum açtınız. Lütfen davet edilen hesaba geçip tekrar deneyin.",
   "invitationCode": "Davet Kodu",
   "invitationCodePlaceholder": "Davet kodunuz",
   "join": "Katıl",

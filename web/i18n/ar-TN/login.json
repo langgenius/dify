@@ -44,6 +44,7 @@
   "interfaceLanguage": "لغة الواجهة",
   "invalid": "انتهت صلاحية الرابط",
   "invalidInvitationCode": "رمز دعوة غير صالح",
+  "invitationAccountMismatch": "لقد سجلت الدخول بحساب مختلف. يرجى التبديل إلى الحساب المدعو والمحاولة مرة أخرى.",
   "invitationCode": "رمز الدعوة",
   "invitationCodePlaceholder": "رمز الدعوة الخاص بك",
   "join": "انضم ",

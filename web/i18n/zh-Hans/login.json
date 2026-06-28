@@ -44,6 +44,7 @@
   "interfaceLanguage": "界面语言",
   "invalid": "链接已失效",
   "invalidInvitationCode": "无效的邀请码",
+  "invitationAccountMismatch": "当前登录账号不是被邀请账号。请切换到被邀请账号后重试。",
   "invitationCode": "邀请码",
   "invitationCodePlaceholder": "输入邀请码",
   "join": "加入 ",

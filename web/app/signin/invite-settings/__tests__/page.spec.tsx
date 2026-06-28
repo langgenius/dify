@@ -233,5 +233,37 @@ describe('InviteSettingsPage', () => {
         })
       })
     })
+
+    it('should show account mismatch warning when the logged-in account is not the invitee', async () => {
+      mockUseInvitationCheck.mockReturnValue({
+        data: {
+          is_valid: true,
+          data: {
+            workspace_name: 'Acme',
+            workspace_id: 'workspace-id',
+            email: 'invitee@example.com',
+            account_status: 'active',
+            requires_setup: false,
+          },
+        },
+        refetch: mockRefetch,
+      } as unknown as ReturnType<typeof useInvitationCheck>)
+      mockActivateMember.mockRejectedValue(
+        new Response(
+          JSON.stringify({
+            code: 'invitation_account_mismatch',
+            message: 'Please sign in with the account that was invited to this workspace.',
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json' } },
+        ),
+      )
+
+      render(<InviteSettingsPage />)
+
+      fireEvent.click(screen.getByRole('button', { name: 'login.join Acme' }))
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('login.invitationAccountMismatch')
+      expect(mockRefetch).not.toHaveBeenCalled()
+    })
   })
 })

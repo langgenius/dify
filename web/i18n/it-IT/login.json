@@ -44,6 +44,7 @@
   "interfaceLanguage": "Lingua dell'interfaccia",
   "invalid": "Il link è scaduto",
   "invalidInvitationCode": "Codice di invito non valido",
+  "invitationAccountMismatch": "Hai effettuato l'accesso con un account diverso. Passa all'account invitato e riprova.",
   "invitationCode": "Codice di invito",
   "invitationCodePlaceholder": "Il tuo codice di invito",
   "join": "Unisciti",
