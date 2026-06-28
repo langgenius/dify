@@ -54,6 +54,7 @@ import {
   zGetWorkspacesCurrentEndpointsListPluginResponse,
   zGetWorkspacesCurrentEndpointsListQuery,
   zGetWorkspacesCurrentEndpointsListResponse,
+  zGetWorkspacesCurrentMembersQuery,
   zGetWorkspacesCurrentMembersResponse,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlPath,
   zGetWorkspacesCurrentModelProvidersByProviderCheckoutUrlResponse,
@@ -1041,6 +1042,7 @@ export const get11 = oc
     path: '/workspaces/current/members',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetWorkspacesCurrentMembersQuery.optional() }))
   .output(zGetWorkspacesCurrentMembersResponse)
 
 export const members = {

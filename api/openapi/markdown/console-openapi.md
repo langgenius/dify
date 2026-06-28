@@ -9574,6 +9574,12 @@ Update a plugin endpoint
 | 403 | Admin privileges required |  |
 
 ### [GET] /workspaces/current/members
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| include_pending_invites | query |  | No | boolean |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -12137,6 +12143,7 @@ Default namespace
 | id | string |  | Yes |
 | last_active_at | integer |  | No |
 | last_login_at | integer |  | No |
+| membership_status | string, <br>**Default:** joined |  | No |
 | name | string |  | Yes |
 | role | string |  | Yes |
 | roles | [ object ] |  | No |
@@ -17388,6 +17395,12 @@ Enum class for large language model mode.
 | message | string |  | No |
 | status | string |  | Yes |
 | url | string |  | No |
+
+#### MemberListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| include_pending_invites | boolean |  | No |
 
 #### MemberRoleUpdatePayload
 

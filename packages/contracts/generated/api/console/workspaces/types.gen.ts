@@ -928,6 +928,7 @@ export type AccountWithRole = {
   id: string
   last_active_at?: number | null
   last_login_at?: number | null
+  membership_status?: string
   name: string
   role: string
   roles?: Array<{
@@ -1999,7 +2000,9 @@ export type PatchWorkspacesCurrentEndpointsByIdResponse
 export type GetWorkspacesCurrentMembersData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    include_pending_invites?: boolean
+  }
   url: '/workspaces/current/members'
 }
 
