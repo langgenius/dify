@@ -28,6 +28,7 @@ class TiDBVectorConfig(BaseModel):
     password: str
     database: str
     program_name: str
+    enable_fulltext_search: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -99,6 +100,11 @@ class TiDBVector(BaseVector):
             if redis_client.get(collection_exist_cache_key):
                 return
             tidb_dist_func = self._get_distance_func()
+            fulltext_index_statement = (
+                ",\n                        FULLTEXT INDEX idx_text (text) WITH PARSER MULTILINGUAL"
+                if self._client_config.enable_fulltext_search
+                else ""
+            )
             with sessionmaker(bind=self._engine).begin() as session:
                 create_statement = sql_text(f"""
                     CREATE TABLE IF NOT EXISTS {self._collection_name} (
@@ -113,6 +119,7 @@ class TiDBVector(BaseVector):
                         KEY (doc_id),
                         KEY (document_id),
                         VECTOR INDEX idx_vector (({tidb_dist_func}(vector))) USING HNSW
+                        {fulltext_index_statement}
                     );
                 """)
                 session.execute(create_statement)
@@ -241,8 +248,49 @@ class TiDBVector(BaseVector):
 
     @override
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # tidb doesn't support bm25 search
-        return []
+        if not self._client_config.enable_fulltext_search or not query:
+            return []
+
+        top_k = kwargs.get("top_k", 4)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        document_ids_filter = kwargs.get("document_ids_filter")
+
+        where_conditions = ["FTS_MATCH_WORD(text, :query)"]
+        if document_ids_filter:
+            document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
+            where_conditions.append(f"meta->>'$.document_id' in ({document_ids})")
+        where_clause = " AND ".join(where_conditions)
+
+        docs = []
+        with Session(self._engine) as session:
+            select_statement = sql_text(f"""
+                SELECT meta, text, score
+                FROM (
+                  SELECT
+                    meta,
+                    text,
+                    FTS_MATCH_WORD(text, :query) AS score
+                  FROM {self._collection_name}
+                  WHERE {where_clause}
+                  ORDER BY score DESC
+                  LIMIT :top_k
+                ) t
+                WHERE score >= :score_threshold
+                """)
+            res = session.execute(
+                select_statement,
+                params={
+                    "query": query,
+                    "score_threshold": score_threshold,
+                    "top_k": top_k,
+                },
+            )
+            results = [(row[0], row[1], row[2]) for row in res]
+            for meta, text, score in results:
+                metadata = parse_metadata_json(meta)
+                metadata["score"] = score
+                docs.append(Document(page_content=text, metadata=metadata))
+        return docs
 
     @override
     def delete(self):
@@ -280,5 +328,6 @@ class TiDBVectorFactory(AbstractVectorFactory):
                 password=dify_config.TIDB_VECTOR_PASSWORD or "",
                 database=dify_config.TIDB_VECTOR_DATABASE or "",
                 program_name=dify_config.APPLICATION_NAME,
+                enable_fulltext_search=dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH,
             ),
         )
