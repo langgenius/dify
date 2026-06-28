@@ -1,21 +1,44 @@
-from dataclasses import dataclass
-from typing import Protocol
+from typing import Protocol, TypeVar
+
+from pydantic import BaseModel, ConfigDict, model_validator
+from typing_extensions import Self
 
 
-@dataclass(frozen=True, slots=True)
-class ShellEnvironmentDescriptor:
+class ShellEnvironmentDescriptor(BaseModel):
     """Minimal, serializable seed used to re-derive a provisioned environment.
 
     Holds only the provider-agnostic identity needed to reattach to an existing
     shell environment across a snapshot/resume cycle — never live resources
     (clients, handles, executors). Callers persist this in their snapshot and
     pass it back to ``ShellProvisionProtocol.reattach`` to reconstruct an
-    equivalent ``ShellHandle`` without allocating a new environment. The shellctl
-    backend stores the isolated workspace path (and its session id) here.
+    equivalent ``ShellHandle`` without allocating a new environment.
+
+    Each provider defines its own concrete subclass carrying the fields it needs
+    to reattach (e.g. workspace path + session id for shellctl). Validation runs
+    at instantiation time via Pydantic so a malicious or corrupt snapshot cannot
+    escape the workspace root or inject shell syntax into lifecycle commands,
+    even if a future caller uses the provider directly.
     """
 
-    workspace_cwd: str
-    session_id: str
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    @model_validator(mode="after")
+    def _run_validate(self) -> Self:
+        self.validate()
+        return self
+
+    def validate(self) -> None:
+        """validate the correctness of the object.
+
+        Advanced validations that requires remote procedure calls, 
+        for example access control, quota checks, should be implemented in 
+        provision and reattach.
+
+        """
+        raise NotImplementedError
+
+
+DescriptorT = TypeVar("DescriptorT", bound=ShellEnvironmentDescriptor)
 
 
 class ShellExecutionResult(Protocol):
@@ -73,21 +96,23 @@ class ShellFileTransferProtocol(Protocol):
     async def download(self, *, remote_path: str) -> bytes: ...
 
 
-class ShellHandle(Protocol):
+# pyrefly: ignore [variance-mismatch]
+# intended to be invariant
+class ShellHandle(Protocol[DescriptorT]):
     """Live reference to one provisioned shell environment.
 
     The handle itself is not serialized. ``descriptor()`` returns the minimal
     seed needed to reconstruct an equivalent handle after a snapshot/resume.
     """
 
-    def descriptor(self) -> ShellEnvironmentDescriptor: ...
+    def descriptor(self) -> DescriptorT: ...
 
     async def get_executor(self) -> ShellExecutorProtocol: ...
 
     async def get_file_transfer(self) -> ShellFileTransferProtocol: ...
 
 
-class ShellProvisionProtocol(Protocol):
+class ShellProvisionProtocol(Protocol[DescriptorT]):
     """Creates, reattaches to, and destroys shell environments.
 
     ``provision`` allocates a fresh environment; ``reattach`` rebuilds a live
@@ -96,8 +121,8 @@ class ShellProvisionProtocol(Protocol):
     eventually clean up. ``destroy`` tears an environment down.
     """
 
-    async def provision(self) -> ShellHandle: ...
+    async def provision(self) -> ShellHandle[DescriptorT]: ...
 
-    async def reattach(self, descriptor: ShellEnvironmentDescriptor) -> ShellHandle: ...
+    async def reattach(self, descriptor: DescriptorT) -> ShellHandle[DescriptorT]: ...
 
-    async def destroy(self, handle: ShellHandle) -> None: ...
+    async def destroy(self, handle: ShellHandle[DescriptorT]) -> None: ...

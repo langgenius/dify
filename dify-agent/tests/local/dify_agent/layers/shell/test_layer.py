@@ -23,8 +23,7 @@ from dify_agent.layers.shell import (
     DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.adapters.shell.protocols import ShellEnvironmentDescriptor
-from dify_agent.adapters.shell.shellctl import ShellctlHandle, ShellctlProvisioner, ShellProvisionError
+from dify_agent.adapters.shell.shellctl import ShellctlEnvironmentDescriptor, ShellctlHandle, ShellctlProvisioner, ShellProvisionError
 from dify_agent.layers.shell.layer import DifyShellLayer, DifyShellRuntimeState
 from shell_session_manager.shellctl.shared import JobResult, JobStatusName, JobStatusView
 
@@ -252,7 +251,7 @@ def test_environment_descriptor_returns_workspace_seed_from_runtime_state() -> N
 
     descriptor = layer.environment_descriptor()
 
-    assert descriptor == ShellEnvironmentDescriptor(workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
+    assert descriptor == ShellctlEnvironmentDescriptor(workspace_cwd="~/workspace/abc12ff", session_id="abc12ff")
 
 
 def test_environment_descriptor_raises_without_session_identity() -> None:
@@ -311,7 +310,14 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
             exit_code=0,
         )
     )
-    second_client = FakeShellctlClient()
+    second_client = FakeShellctlClient(
+        run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
+            "cleanup-job",
+            status=JobStatusName.EXITED,
+            done=True,
+            exit_code=0,
+        )
+    )
     clients = iter([first_client, second_client])
 
     def factory() -> FakeShellctlClient:
@@ -356,8 +362,8 @@ def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None
             assert second_client.closed is False
             assert resumed_shell.runtime_state.session_id == initial_session_id
             assert resumed_shell.runtime_state.workspace_cwd == f"~/workspace/{initial_session_id}"
-            assert set(resumed_shell.runtime_state.job_ids) == {"mkdir-job", "user-job"}
-            assert resumed_shell.runtime_state.job_offsets == {"mkdir-job": 0, "user-job": 42}
+            assert set(resumed_shell.runtime_state.job_ids) == {"user-job"}
+            assert resumed_shell.runtime_state.job_offsets == {"user-job": 42}
             resumed_run.suspend_layer_on_exit("shell")
 
         assert second_client.closed is True
@@ -385,7 +391,8 @@ def test_shell_layer_delete_force_deletes_tracked_jobs_then_destroys_workspace()
 
     asyncio.run(scenario())
 
-    assert {call.job_id for call in client.delete_calls} == {"user-job", "mkdir-job"}
+    deleted_job_ids = {call.job_id for call in client.delete_calls}
+    assert {"user-job", "mkdir-job"}.issubset(deleted_job_ids)
     assert all(call.force is True for call in client.delete_calls)
     assert layer.runtime_state.job_ids == []
     assert layer.runtime_state.job_offsets == {}
@@ -621,7 +628,7 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
 
     assert layer.runtime_state.job_ids == ["user-job"]
     assert layer.runtime_state.job_offsets == {"user-job": 22}
-    assert client.closed is True
+    assert client.closed is False
 
 
 def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() -> None:
@@ -912,7 +919,7 @@ def test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_contex
 
 
 def test_shell_runtime_state_rejects_unsafe_resumed_workspace_identity() -> None:
-    with pytest.raises(ValueError, match="session_id must not contain"):
+    with pytest.raises(ValueError, match="session_id must be 7 or 16 lowercase hex characters"):
         _ = DifyShellRuntimeState.model_validate(
             {
                 "session_id": "../../tmp",

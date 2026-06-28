@@ -16,6 +16,7 @@ from dify_agent.adapters.shell.protocols import (
     ShellProvisionProtocol,
 )
 from dify_agent.adapters.shell.shellctl import (
+    ShellctlEnvironmentDescriptor,
     ShellctlProvisioner,
     ShellFileTransferError,
     ShellProvisionError,
@@ -33,6 +34,7 @@ __all__ = [
     "ShellHandle",
     "ShellProvisionError",
     "ShellProvisionProtocol",
+    "ShellctlEnvironmentDescriptor",
     "ShellctlProvisioner",
     "create_default_shellctl_client_factory",
     "create_shell_provisioner",

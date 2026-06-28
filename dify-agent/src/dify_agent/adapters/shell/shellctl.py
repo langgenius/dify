@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import binascii
 import logging
+import re
 import secrets
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 _WORKSPACE_ROOT = "~/workspace"
 _DEFAULT_TIMEOUT_SECONDS = 30.0
+_SESSION_ID_PATTERN = re.compile(r"[0-9a-f]{7,16}")
 # Drains at most this many shellctl output windows per wait so a stuck or
 # pathologically chatty job cannot loop forever inside one wait() call.
 _MAX_OUTPUT_WINDOWS = 64
@@ -32,6 +34,23 @@ class ShellProvisionError(RuntimeError):
 
 class ShellFileTransferError(RuntimeError):
     """Raised when a file cannot be uploaded to or downloaded from the workspace."""
+
+
+class ShellctlEnvironmentDescriptor(ShellEnvironmentDescriptor):
+    """Shellctl-specific descriptor carrying the workspace path and session id."""
+
+    workspace_cwd: str
+    session_id: str
+
+    def validate(self) -> None:
+        if not _SESSION_ID_PATTERN.fullmatch(self.session_id):
+            raise ValueError(f"Invalid session_id in reattach descriptor: {self.session_id!r}.")
+        expected_workspace = f"{_WORKSPACE_ROOT}/{self.session_id}"
+        if self.workspace_cwd != expected_workspace:
+            raise ValueError(
+                f"workspace_cwd must equal {expected_workspace!r} for session_id {self.session_id!r}, "
+                f"got {self.workspace_cwd!r}."
+            )
 
 
 class ShellctlJobResult(Protocol):
@@ -269,8 +288,8 @@ class ShellctlHandle:
     workspace_cwd: str
     session_id: str
 
-    def descriptor(self) -> ShellEnvironmentDescriptor:
-        return ShellEnvironmentDescriptor(workspace_cwd=self.workspace_cwd, session_id=self.session_id)
+    def descriptor(self) -> ShellctlEnvironmentDescriptor:
+        return ShellctlEnvironmentDescriptor(workspace_cwd=self.workspace_cwd, session_id=self.session_id)
 
     async def get_executor(self) -> ShellctlExecutor:
         return ShellctlExecutor(client=self.client, workspace_cwd=self.workspace_cwd)
@@ -305,7 +324,7 @@ class ShellctlProvisioner:
             )
         return ShellctlHandle(client=client, workspace_cwd=workspace_cwd, session_id=session_id)
 
-    async def reattach(self, descriptor: ShellEnvironmentDescriptor) -> ShellctlHandle:
+    async def reattach(self, descriptor: ShellctlEnvironmentDescriptor) -> ShellctlHandle:
         """Rebuild a live handle for an existing workspace without re-allocating it.
 
         Opens a fresh shellctl client and points it at the workspace recorded in
@@ -320,7 +339,7 @@ class ShellctlProvisioner:
             session_id=descriptor.session_id,
         )
 
-    async def destroy(self, handle: ShellHandle) -> None:
+    async def destroy(self, handle: ShellHandle[ShellctlEnvironmentDescriptor]) -> None:
         if not isinstance(handle, ShellctlHandle):
             raise TypeError("ShellctlProvisioner can only destroy handles it provisioned.")
         try:
@@ -455,6 +474,7 @@ __all__ = [
     "ShellProvisionError",
     "ShellctlClientFactory",
     "ShellctlClientProtocol",
+    "ShellctlEnvironmentDescriptor",
     "ShellctlExecutionResult",
     "ShellctlExecutor",
     "ShellctlFileTransfer",

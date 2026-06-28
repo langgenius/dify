@@ -2,25 +2,23 @@
 
 from __future__ import annotations
 
-from typing import cast
-
 import pytest
 
 from dify_agent.layers.drive import DifyDriveLayerConfig, DifyDriveSkillConfig
 from dify_agent.layers.drive.layer import DifyDriveLayer, DifyDriveLayerError
+from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
 from dify_agent.layers.shell import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import DifyShellLayer, RemoteCommandResult, ShellctlClientFactory
+from dify_agent.layers.shell.layer import DifyShellLayer, RemoteCommandResult
 
 
-def _unused_client_factory(_entrypoint: str):
+def _unused_client_factory():
     raise AssertionError("shellctl client should not be used by these drive-layer tests")
 
 
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=cast(ShellctlClientFactory, _unused_client_factory),
+        shell_provisioner=ShellctlProvisioner(client_factory=_unused_client_factory),
     )
 
 

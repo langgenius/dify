@@ -39,8 +39,8 @@ from shell_session_manager.shellctl.shared import (
 from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
-from dify_agent.adapters.shell.protocols import ShellEnvironmentDescriptor, ShellProvisionProtocol
-from dify_agent.adapters.shell.shellctl import ShellctlExecutor, ShellctlHandle
+from dify_agent.adapters.shell.protocols import ShellProvisionProtocol
+from dify_agent.adapters.shell.shellctl import ShellctlEnvironmentDescriptor, ShellctlExecutor, ShellctlHandle
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
@@ -300,7 +300,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
     type_id: ClassVar[str | None] = DIFY_SHELL_LAYER_TYPE_ID
 
     config: DifyShellLayerConfig
-    shell_provisioner: ShellProvisionProtocol
+    shell_provisioner: ShellProvisionProtocol[ShellctlEnvironmentDescriptor]
     agent_stub_api_base_url: str | None = None
     agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
     _shell_handle: ShellctlHandle | None = None
@@ -317,7 +317,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         cls,
         config: DifyShellLayerConfig,
         *,
-        shell_provisioner: ShellProvisionProtocol | None,
+        shell_provisioner: ShellProvisionProtocol[ShellctlEnvironmentDescriptor] | None,
         agent_stub_api_base_url: str | None = None,
         agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
@@ -403,7 +403,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         transition the slot back to ``ACTIVE``.
         """
         session_id, workspace_cwd = self._require_session_identity()
-        descriptor = ShellEnvironmentDescriptor(
+        descriptor = ShellctlEnvironmentDescriptor(
             workspace_cwd=workspace_cwd,
             session_id=session_id,
         )
@@ -529,7 +529,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             truncated=result.truncated(),
         )
 
-    def environment_descriptor(self) -> ShellEnvironmentDescriptor:
+    def environment_descriptor(self) -> ShellctlEnvironmentDescriptor:
         """Return the serializable workspace seed for the shell adapter.
 
         Bridges this layer's ``runtime_state`` to
@@ -540,7 +540,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         missing or inconsistent.
         """
         session_id, workspace_cwd = self._require_session_identity()
-        return ShellEnvironmentDescriptor(workspace_cwd=workspace_cwd, session_id=session_id)
+        return ShellctlEnvironmentDescriptor(workspace_cwd=workspace_cwd, session_id=session_id)
 
     async def _bootstrap_workspace(self, workspace_cwd: str) -> None:
         """Apply Agent Soul shell config to the freshly-created workspace."""

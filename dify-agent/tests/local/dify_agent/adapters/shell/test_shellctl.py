@@ -21,6 +21,7 @@ from dify_agent.adapters.shell.protocols import (
     ShellEnvironmentDescriptor,
 )
 from dify_agent.adapters.shell.shellctl import (
+    ShellctlEnvironmentDescriptor,
     ShellctlProvisioner,
     ShellFileTransferError,
     ShellProvisionError,
@@ -282,12 +283,13 @@ def test_provision_exposes_descriptor_seed() -> None:
         return handle.descriptor()
 
     descriptor = asyncio.run(scenario())
+    assert isinstance(descriptor, ShellctlEnvironmentDescriptor)
     assert descriptor.workspace_cwd == _WORKSPACE_CWD
     assert descriptor.session_id == _SESSION_HEX
 
 
 def test_reattach_rebuilds_handle_without_mkdir_and_executes_in_same_workspace() -> None:
-    descriptor = ShellEnvironmentDescriptor(workspace_cwd=_WORKSPACE_CWD, session_id=_SESSION_HEX)
+    descriptor = ShellctlEnvironmentDescriptor(workspace_cwd=_WORKSPACE_CWD, session_id=_SESSION_HEX)
 
     def run_handler(script: str, cwd: str | None, env: dict[str, str] | None) -> _Job:
         del env
