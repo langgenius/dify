@@ -1,7 +1,11 @@
 import type { NextConfig } from '@/next'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
+
+const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 
 const isDev = process.env.NODE_ENV === 'development'
 const withMDX = createMDX()
@@ -47,6 +51,7 @@ const nextConfig: NextConfig = {
     ]
   },
   output: 'standalone',
+  outputFileTracingRoot: path.join(projectRoot, '../'),
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
   },
