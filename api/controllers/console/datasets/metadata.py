@@ -2,7 +2,7 @@ from typing import Literal
 from uuid import UUID
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.common.controller_schemas import MetadataUpdatePayload
 from controllers.common.schema import register_response_schema_models, register_schema_models
@@ -33,6 +33,7 @@ from services.entities.knowledge_entities.knowledge_entities import (
     MetadataDetail,
     MetadataOperationData,
 )
+from services.errors.account import NoPermissionError
 from services.metadata_service import MetadataService
 
 register_schema_models(
@@ -78,12 +79,17 @@ class DatasetMetadataCreateApi(Resource):
     @console_ns.response(
         200, "Metadata retrieved successfully", console_ns.models[DatasetMetadataListResponse.__name__]
     )
+    @with_current_user
     @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
-    def get(self, dataset_id: UUID):
+    def get(self, current_user: Account, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
+        except NoPermissionError as e:
+            raise Forbidden(str(e))
         metadata = MetadataService.get_dataset_metadatas(db.session(), dataset)
         return dump_response(DatasetMetadataListResponse, metadata), 200
 

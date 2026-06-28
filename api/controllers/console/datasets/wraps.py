@@ -2,11 +2,14 @@ from collections.abc import Callable
 from functools import wraps
 
 from sqlalchemy import select
+from werkzeug.exceptions import Forbidden
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant
 from models.dataset import Pipeline
+from services.dataset_service import DatasetService
+from services.errors.account import NoPermissionError
 
 
 def get_rag_pipeline[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
@@ -15,7 +18,7 @@ def get_rag_pipeline[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
         if not kwargs.get("pipeline_id"):
             raise ValueError("missing pipeline_id in path parameters")
 
-        _, current_tenant_id = current_account_with_tenant()
+        current_account, current_tenant_id = current_account_with_tenant()
 
         pipeline_id = kwargs.get("pipeline_id")
         pipeline_id = str(pipeline_id)
@@ -28,6 +31,15 @@ def get_rag_pipeline[**P, R](view_func: Callable[P, R]) -> Callable[P, R]:
 
         if not pipeline:
             raise PipelineNotFoundError()
+
+        dataset = pipeline.retrieve_dataset(db.session)
+        if not dataset:
+            raise PipelineNotFoundError()
+
+        try:
+            DatasetService.check_dataset_permission(dataset, current_account, db.session)
+        except NoPermissionError as e:
+            raise Forbidden(str(e))
 
         kwargs["pipeline"] = pipeline
 
