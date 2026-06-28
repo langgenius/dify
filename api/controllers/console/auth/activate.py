@@ -7,10 +7,11 @@ from configs import dify_config
 from constants.languages import supported_language
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console import console_ns
-from controllers.console.error import AccountInFreezeError, AlreadyActivateError
+from controllers.console.error import AccountInFreezeError, AlreadyActivateError, InvitationAccountMismatchError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, timezone
+from libs.login import current_account_with_tenant_optional
 from models import AccountStatus
 from models.account import TenantAccountJoin, TenantAccountRole
 from services.account_service import RegisterService, TenantService
@@ -148,6 +149,10 @@ class ActivateApi(Resource):
         account = invitation["account"]
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(account.email):
             raise AccountInFreezeError()
+
+        current_user, _ = current_account_with_tenant_optional()
+        if current_user and current_user.id != account.id:
+            raise InvitationAccountMismatchError()
 
         tenant = invitation["tenant"]
         raw_role = invitation["data"].get("role")

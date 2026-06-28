@@ -40,6 +40,12 @@ class AlreadyActivateError(BaseHTTPException):
     code = 403
 
 
+class InvitationAccountMismatchError(BaseHTTPException):
+    error_code = "invitation_account_mismatch"
+    description = "Please sign in with the account that was invited to this workspace."
+    code = 403
+
+
 class NotAllowedCreateWorkspace(BaseHTTPException):
     error_code = "not_allowed_create_workspace"
     description = "Workspace not found, please contact system admin to invite you to join in a workspace."

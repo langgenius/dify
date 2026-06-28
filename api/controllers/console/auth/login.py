@@ -149,6 +149,19 @@ class LoginApi(Resource):
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account, session=db.session)
         if len(tenants) == 0:
+            if invitation_data:
+                token_pair = AccountService.login(
+                    account=account, session=db.session, ip_address=extract_remote_ip(request)
+                )
+                AccountService.reset_login_error_rate_limit(normalized_email)
+
+                response = make_response({"result": "success"})
+                set_access_token_to_cookie(request, response, token_pair.access_token)
+                set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+                set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
+
+                return response
+
             system_features = FeatureService.get_system_features()
 
             if system_features.is_allow_create_workspace and not system_features.license.workspaces.is_available():
