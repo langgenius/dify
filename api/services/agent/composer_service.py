@@ -96,6 +96,10 @@ def _validate_composer_payload_for_strategy(payload: ComposerSavePayload) -> Non
     ComposerConfigValidator.validate_draft_save_payload(payload)
 
 
+def _agent_soul_config_json(agent_soul: AgentSoulConfig | dict[str, Any]) -> dict[str, Any]:
+    return AgentSoulConfig.model_validate(agent_soul).model_dump(mode="json")
+
+
 class AgentComposerService:
     @classmethod
     def load_workflow_composer(
@@ -419,7 +423,11 @@ class AgentComposerService:
             account_id_for_audit=account_id,
         )
         agent.updated_by = account_id
-        agent.active_config_is_published = False
+        agent.active_config_is_published = cls._agent_soul_matches_active_config(
+            tenant_id=tenant_id,
+            agent=agent,
+            agent_soul=payload.agent_soul,
+        )
 
         db.session.commit()
         state = cls.load_agent_composer(tenant_id=tenant_id, agent_id=agent.id)
@@ -429,6 +437,54 @@ class AgentComposerService:
             agent_id=agent.id,
         )
         return state
+
+    @classmethod
+    def _agent_soul_matches_active_config(
+        cls,
+        *,
+        tenant_id: str,
+        agent: Agent,
+        agent_soul: AgentSoulConfig,
+    ) -> bool:
+        if not agent.active_config_snapshot_id:
+            return False
+
+        active_version = cls._get_version_if_present(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            version_id=agent.active_config_snapshot_id,
+        )
+        if not active_version:
+            return False
+        if agent.source == AgentSource.AGENT_APP and not cls._has_publish_visible_revision(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            snapshot_id=agent.active_config_snapshot_id,
+        ):
+            return False
+
+        return _agent_soul_config_json(agent_soul) == _agent_soul_config_json(active_version.config_snapshot_dict)
+
+    @classmethod
+    def _has_publish_visible_revision(cls, *, tenant_id: str, agent_id: str, snapshot_id: str) -> bool:
+        revisions = db.session.scalars(
+            select(AgentConfigRevision.operation).where(
+                AgentConfigRevision.tenant_id == tenant_id,
+                AgentConfigRevision.agent_id == agent_id,
+                AgentConfigRevision.current_snapshot_id == snapshot_id,
+            )
+        ).all()
+
+        return any(
+            operation
+            in {
+                AgentConfigRevisionOperation.PUBLISH_DRAFT,
+                AgentConfigRevisionOperation.SAVE_NEW_VERSION,
+                AgentConfigRevisionOperation.SAVE_TO_ROSTER,
+                AgentConfigRevisionOperation.RESTORE_VERSION,
+            }
+            for operation in revisions
+        )
 
     @classmethod
     def publish_agent_app_draft(
@@ -557,16 +613,21 @@ class AgentComposerService:
         )
         if build_draft is None:
             raise AgentVersionNotFoundError()
+        applied_agent_soul = AgentSoulConfig.model_validate(build_draft.config_snapshot_dict)
         normal_draft = cls._save_agent_draft(
             tenant_id=tenant_id,
             agent=agent,
             draft_type=AgentConfigDraftType.DRAFT,
             account_id=None,
-            agent_soul=AgentSoulConfig.model_validate(build_draft.config_snapshot_dict),
+            agent_soul=applied_agent_soul,
             account_id_for_audit=account_id,
             base_snapshot_id=build_draft.base_snapshot_id,
         )
-        agent.active_config_is_published = False
+        agent.active_config_is_published = cls._agent_soul_matches_active_config(
+            tenant_id=tenant_id,
+            agent=agent,
+            agent_soul=applied_agent_soul,
+        )
         agent.updated_by = account_id
         db.session.delete(build_draft)
         db.session.commit()
