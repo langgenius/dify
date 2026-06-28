@@ -701,16 +701,24 @@ def _delete_records(query_sql: str, params: dict[str, Any], delete_func: Callabl
             if not rows:
                 break
 
+            success_count = 0
             for i in rows:
                 record_id = str(i.id)
                 try:
                     delete_func(session, record_id)
                     logger.info(click.style(f"Deleted {name} {record_id}", fg="green"))
+                    session.commit()
+                    success_count += 1
                 except Exception:
                     logger.exception("Error occurred while deleting %s %s", name, record_id)
                     # continue with next record even if one deletion fails
                     session.rollback()
-                    break
-                session.commit()
+                    continue
 
             rs.close()
+            
+            # If we couldn't delete ANY records in this batch, we must break out of the while loop
+            # to prevent an infinite loop where we keep fetching the same failing records.
+            if success_count == 0:
+                logger.warning(click.style(f"Failed to delete any {name} in the current batch. Stopping to prevent infinite loop.", fg="yellow"))
+                break
