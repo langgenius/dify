@@ -379,6 +379,4 @@ class ToolEngine:
 
             result.append(message_file.id)
 
-        db.session.close()
-
         return result

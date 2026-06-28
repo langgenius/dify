@@ -142,7 +142,6 @@ def test_create_message_files_and_invoke_generator():
 
     assert ids == ["mf-1", "mf-2"]
     assert mock_db.session.add.call_count == 2
-    mock_db.session.close.assert_called_once()
 
     tool = _build_tool()
     invoked = list(ToolEngine._invoke(tool, {"a": 1}, user_id="u"))
