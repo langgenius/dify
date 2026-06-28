@@ -129,7 +129,6 @@ function AgentConfigurePageComposerContent({
     versionQuery,
     selectedVersionId,
     activeVersionId,
-    activeVersionSnapshot,
     agentSoulConfig,
   } = configureData
   const [showChatFeatures, setShowChatFeatures] = useState(false)
@@ -169,6 +168,10 @@ function AgentConfigurePageComposerContent({
     buildDraft.setSoulSourceOverride(versionId ? 'view-version' : null)
     onSelectVersion(versionId)
   }, [buildDraft, onSelectVersion])
+  const openPreviewVersions = useCallback(() => {
+    workingDirectoryPanel.closeWorkingDirectory()
+    setShowPreviewVersions(true)
+  }, [workingDirectoryPanel])
   const restartCurrentChat = () => {
     if (rightPanelChatMode === 'build' && buildDraft.isActive) {
       void buildDraftActions.discardBuildDraft()
@@ -191,16 +194,13 @@ function AgentConfigurePageComposerContent({
       leftPanel={(
         <AgentOrchestratePanel
           agentId={agentId}
-          activeConfigIsPublished={agentQuery.data?.active_config_is_published}
-          activeVersionSnapshot={activeVersionSnapshot}
+          configureData={configureData}
           agentSoulConfig={agentSoulConfig}
-          agentName={agentQuery.data?.name}
           currentModel={currentModel}
           textGenerationModelList={textGenerationModelList}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
           readOnly={isViewingVersion || buildDraft.isActive}
-          selectedVersionSnapshot={isViewingVersion ? activeVersionSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           showPublishBar={!buildDraft.isActive}
           bottomAction={showBuildDraftBar
@@ -220,10 +220,7 @@ function AgentConfigurePageComposerContent({
             : undefined}
           onSelectModel={setConfigureModel}
           onPublish={publishDraft}
-          onOpenVersions={() => {
-            workingDirectoryPanel.closeWorkingDirectory()
-            setShowPreviewVersions(true)
-          }}
+          onOpenVersions={openPreviewVersions}
           onExitVersions={() => selectVersion(null)}
         />
       )}

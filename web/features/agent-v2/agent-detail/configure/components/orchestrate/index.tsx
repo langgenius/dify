@@ -2,6 +2,7 @@
 
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
+import type { useAgentConfigureData } from '../../hooks'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -25,7 +26,7 @@ type AgentOrchestratePanelProps = {
   agentId: string
   appId?: string
   nodeId?: string
-  activeConfigIsPublished?: boolean
+  configureData?: ReturnType<typeof useAgentConfigureData>
   activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
@@ -42,16 +43,16 @@ type AgentOrchestratePanelProps = {
   headerAction?: ReactNode
   bottomAction?: ReactNode
   onSelectModel: (model: DefaultModel) => void
-  onPublish: () => void | Promise<void>
+  onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
-  onOpenVersions: () => void
+  onOpenVersions?: () => void
 }
 
 export function AgentOrchestratePanel({
   agentId,
   appId,
   nodeId,
-  activeConfigIsPublished,
+  configureData,
   activeVersionSnapshot,
   agentSoulConfig: _agentSoulConfig,
   agentName,
@@ -79,7 +80,7 @@ export function AgentOrchestratePanel({
     ? (
         <AgentConfigurePublishBar
           agentId={agentId}
-          activeConfigIsPublished={activeConfigIsPublished}
+          configureData={configureData}
           activeVersionSnapshot={activeVersionSnapshot}
           agentName={agentName}
           draftSavedAt={draftSavedAt}

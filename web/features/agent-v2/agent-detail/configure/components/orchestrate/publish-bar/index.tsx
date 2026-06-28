@@ -2,6 +2,7 @@
 
 import type { AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
+import type { useAgentConfigureData } from '../../../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -29,6 +30,7 @@ type PublishBarMode = { status: 'compact' }
 
 type AgentConfigurePublishBarProps = {
   agentId: string
+  configureData?: ReturnType<typeof useAgentConfigureData>
   activeConfigIsPublished?: boolean
   activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentName?: string | null
@@ -37,7 +39,7 @@ type AgentConfigurePublishBarProps = {
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
-  onOpenVersions: () => void
+  onOpenVersions?: () => void
 }
 
 function getPublishState({
@@ -81,12 +83,13 @@ function PublishShortcut() {
 
 export function AgentConfigurePublishBar({
   agentId,
-  activeConfigIsPublished,
-  activeVersionSnapshot,
-  agentName,
+  configureData,
+  activeConfigIsPublished: activeConfigIsPublishedProp,
+  activeVersionSnapshot: activeVersionSnapshotProp,
+  agentName: agentNameProp,
   draftSavedAt,
   isPublishing = false,
-  selectedVersionSnapshot,
+  selectedVersionSnapshot: selectedVersionSnapshotProp,
   onPublish,
   onExitVersions,
   onOpenVersions,
@@ -96,6 +99,12 @@ export function AgentConfigurePublishBar({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
+  const activeConfigIsPublished = configureData?.agentQuery.data?.active_config_is_published ?? activeConfigIsPublishedProp
+  const activeVersionSnapshot = configureData?.activeVersionSnapshot ?? activeVersionSnapshotProp
+  const agentName = configureData?.agentQuery.data?.name ?? agentNameProp
+  const selectedVersionSnapshot = configureData?.selectedVersionId
+    ? configureData.activeVersionSnapshot
+    : selectedVersionSnapshotProp
   const isDirty = useAtomValue(isAgentComposerDirtyAtom)
   const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
@@ -296,7 +305,7 @@ export function AgentConfigurePublishBar({
         statusLabel={currentStateMeta.statusLabel}
         canPublish={canPublish}
         onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
-        onOpenVersions={onOpenVersions}
+        onOpenVersions={onOpenVersions ?? (() => undefined)}
         onPublishRequest={handlePublishRequest}
       />
     </CollapsibleRoot>

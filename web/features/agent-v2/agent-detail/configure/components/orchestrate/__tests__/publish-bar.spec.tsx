@@ -118,6 +118,27 @@ const originalDraftWithFile = {
   ],
 } satisfies typeof defaultAgentSoulConfigFormState
 
+function createConfigureData({
+  activeConfigIsPublished,
+  activeVersionSnapshot,
+  selectedVersionSnapshot,
+}: {
+  activeConfigIsPublished?: boolean
+  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+}): NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['configureData']> {
+  return {
+    activeVersionSnapshot: selectedVersionSnapshot ?? activeVersionSnapshot,
+    agentQuery: {
+      data: {
+        active_config_is_published: activeConfigIsPublished,
+        name: 'Iris',
+      },
+    },
+    selectedVersionId: selectedVersionSnapshot?.id ?? null,
+  } as unknown as NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['configureData']>
+}
+
 const publishedReferences: AgentReferencingWorkflowResponse[] = [
   {
     app_id: 'app-python',
@@ -154,6 +175,7 @@ function createDeferredPromise() {
 function renderPublishBar({
   activeConfigIsPublished,
   activeVersionSnapshot,
+  configureData,
   draftSavedAt,
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
@@ -165,6 +187,7 @@ function renderPublishBar({
 }: {
   activeConfigIsPublished?: boolean
   activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  configureData?: ComponentProps<typeof AgentConfigurePublishBar>['configureData']
   draftSavedAt?: number
   isPublishing?: boolean
   onPublish?: PublishMock
@@ -192,6 +215,7 @@ function renderPublishBar({
       <JotaiProvider store={store}>
         <AgentConfigurePublishBar
           agentId="agent-1"
+          configureData={configureData}
           activeConfigIsPublished={activeConfigIsPublished}
           activeVersionSnapshot={activeVersionSnapshot}
           draftSavedAt={draftSavedAt}
@@ -331,6 +355,20 @@ describe('AgentConfigurePublishBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' }))
 
     expect(onPublish).not.toHaveBeenCalled()
+  })
+
+  it('should derive publish state from configure data when provided', () => {
+    renderPublishBar({
+      activeConfigIsPublished: false,
+      activeVersionSnapshot: null,
+      configureData: createConfigureData({
+        activeConfigIsPublished: true,
+        activeVersionSnapshot,
+      }),
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
   })
 
   it('should keep published state when the published detail updates before the active snapshot is refreshed', () => {
