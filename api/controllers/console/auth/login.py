@@ -279,7 +279,17 @@ class EmailCodeLoginApi(Resource):
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.EMAIL_CODE_EMAIL_MISMATCH)
             raise InvalidEmailError()
 
+        if AccountService.is_email_code_login_error_rate_limit(user_email):
+            AccountService.revoke_email_code_login_token(args.token)
+            _log_console_login_failure(email=user_email, reason=LoginFailureReason.LOGIN_RATE_LIMITED)
+            raise EmailPasswordLoginLimitError()
+
         if token_data["code"] != args.code:
+            AccountService.add_email_code_login_error_rate_limit(user_email)
+            if AccountService.is_email_code_login_error_rate_limit(user_email):
+                AccountService.revoke_email_code_login_token(args.token)
+                _log_console_login_failure(email=user_email, reason=LoginFailureReason.LOGIN_RATE_LIMITED)
+                raise EmailPasswordLoginLimitError()
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.INVALID_EMAIL_CODE)
             raise EmailCodeError()
 
@@ -324,6 +334,7 @@ class EmailCodeLoginApi(Resource):
                 raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, session=db.session, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(user_email)
+        AccountService.reset_email_code_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body
         response = make_response({"result": "success"})

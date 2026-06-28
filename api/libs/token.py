@@ -211,15 +211,24 @@ def check_csrf_token(request: Request, user_id: str):
     if verified.get("sub") != user_id:
         _unauthorized()
 
+    session_id = verified.get("session_id")
+    if session_id is not None:
+        from services.account_service import AccountService
+
+        if not isinstance(session_id, str) or not AccountService.is_console_session_valid(user_id, session_id):
+            _unauthorized()
+
     exp: int | None = verified.get("exp")
     if not exp or exp < int(datetime.now(UTC).timestamp()):
         _unauthorized()
 
 
-def generate_csrf_token(user_id: str) -> str:
+def generate_csrf_token(user_id: str, session_id: str | None = None) -> str:
     exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = {
         "exp": int(exp_dt.timestamp()),
         "sub": user_id,
     }
+    if session_id is not None:
+        payload["session_id"] = session_id
     return PassportService().issue(payload)

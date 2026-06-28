@@ -15,7 +15,12 @@ import pytest
 from flask import Flask
 from pydantic import ValidationError
 
-from controllers.console.auth.error import EmailCodeError, InvalidEmailError, InvalidTokenError
+from controllers.console.auth.error import (
+    EmailCodeError,
+    EmailPasswordLoginLimitError,
+    InvalidEmailError,
+    InvalidTokenError,
+)
 from controllers.console.auth.login import EmailCodeLoginApi, EmailCodeLoginPayload, EmailCodeLoginSendEmailApi
 from controllers.console.error import (
     AccountInFreezeError,
@@ -436,6 +441,36 @@ class TestEmailCodeLoginApi:
             api = EmailCodeLoginApi()
             with pytest.raises(EmailCodeError):
                 api.post()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.AccountService.is_email_code_login_error_rate_limit")
+    @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
+    @patch("controllers.console.auth.login.AccountService.add_email_code_login_error_rate_limit")
+    @patch("controllers.console.auth.login.AccountService.revoke_email_code_login_token")
+    def test_email_code_login_wrong_code_hits_attempt_limit_and_revokes_token(
+        self,
+        mock_revoke_token: MagicMock,
+        mock_add_error_rate_limit: MagicMock,
+        mock_get_data: MagicMock,
+        mock_is_error_rate_limited: MagicMock,
+        mock_db: MagicMock,
+        app: Flask,
+    ):
+        """Wrong email-code login guesses must stop instead of being processed indefinitely."""
+        mock_get_data.return_value = {"email": "test@example.com", "code": "123456"}
+        mock_is_error_rate_limited.return_value = True
+
+        with app.test_request_context(
+            "/email-code-login/validity",
+            method="POST",
+            json={"email": "test@example.com", "code": encode_code("wrong_code"), "token": "token"},
+        ):
+            api = EmailCodeLoginApi()
+            with pytest.raises(EmailPasswordLoginLimitError):
+                api.post()
+
+        mock_add_error_rate_limit.assert_not_called()
+        mock_revoke_token.assert_called_once_with("token")
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.AccountService.get_email_code_login_data")
