@@ -35,9 +35,7 @@ def test_default_layer_providers_register_shell_layer_with_configured_token_fact
         captured_settings.append(settings)
         return cast(ShellProvisionProtocol, fake_provisioner)
 
-    monkeypatch.setattr(
-        compositor_factory_module, "create_shell_provisioner", fake_create_shell_provisioner
-    )
+    monkeypatch.setattr(compositor_factory_module, "create_shell_provisioner", fake_create_shell_provisioner)
 
     providers = create_default_layer_providers(
         shellctl_entrypoint="http://shellctl.example",
@@ -62,9 +60,7 @@ def test_default_layer_providers_keep_empty_shellctl_token_by_default(
         captured_settings.append(settings)
         return cast(ShellProvisionProtocol, FakeProvisioner())
 
-    monkeypatch.setattr(
-        compositor_factory_module, "create_shell_provisioner", fake_create_shell_provisioner
-    )
+    monkeypatch.setattr(compositor_factory_module, "create_shell_provisioner", fake_create_shell_provisioner)
 
     providers = create_default_layer_providers(shellctl_entrypoint="http://shellctl.example")
     shell_provider = next(provider for provider in providers if provider.type_id == DIFY_SHELL_LAYER_TYPE_ID)

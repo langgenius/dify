@@ -1,9 +1,15 @@
 from dify_agent.adapters.shell.config import ShellAdapterSettings
 from dify_agent.adapters.shell.protocols import ShellProvisionProtocol
-from dify_agent.adapters.shell.shellctl import ShellctlEnvironmentDescriptor, ShellctlProvisioner, create_default_shellctl_client_factory
+from dify_agent.adapters.shell.shellctl import (
+    ShellctlEnvironmentDescriptor,
+    ShellctlProvisioner,
+    create_default_shellctl_client_factory,
+)
 
 
-def create_shell_provisioner(settings: ShellAdapterSettings | None = None) -> ShellProvisionProtocol[ShellctlEnvironmentDescriptor]:
+def create_shell_provisioner(
+    settings: ShellAdapterSettings | None = None,
+) -> ShellProvisionProtocol[ShellctlEnvironmentDescriptor]:
     """Return the shell provisioner selected by ``DIFY_AGENT_SHELL_PROVIDER``.
 
     Raises:

@@ -23,7 +23,12 @@ from dify_agent.layers.shell import (
     DifyShellSandboxConfig,
     DifyShellSecretRefConfig,
 )
-from dify_agent.adapters.shell.shellctl import ShellctlEnvironmentDescriptor, ShellctlHandle, ShellctlProvisioner, ShellProvisionError
+from dify_agent.adapters.shell.shellctl import (
+    ShellctlEnvironmentDescriptor,
+    ShellctlHandle,
+    ShellctlProvisioner,
+    ShellProvisionError,
+)
 from dify_agent.layers.shell.layer import DifyShellLayer, DifyShellRuntimeState
 from shell_session_manager.shellctl.shared import JobResult, JobStatusName, JobStatusView
 

@@ -30,8 +30,8 @@ class ShellEnvironmentDescriptor(BaseModel):
     def validate(self) -> None:
         """validate the correctness of the object.
 
-        Advanced validations that requires remote procedure calls, 
-        for example access control, quota checks, should be implemented in 
+        Advanced validations that requires remote procedure calls,
+        for example access control, quota checks, should be implemented in
         provision and reattach.
 
         """
