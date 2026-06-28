@@ -105,8 +105,7 @@ class TestLLMGenerator:
     def test_generate_suggested_questions_after_answer_strips_reasoning_blocks(self, mock_model_instance):
         mock_response = MagicMock()
         mock_response.message.get_text_content.return_value = (
-            "<think>\nReasoning about follow-ups.\n</think>\n"
-            '["Follow-up one?", "Follow-up two?"]'
+            '<think>\nReasoning about follow-ups.\n</think>\n["Follow-up one?", "Follow-up two?"]'
         )
         mock_model_instance.invoke_llm.return_value = mock_response
 
