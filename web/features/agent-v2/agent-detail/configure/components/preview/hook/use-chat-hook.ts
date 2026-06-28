@@ -1,7 +1,7 @@
 'use client'
 
 import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentConfigureConversationIds } from './preview/right-panel-chat'
+import type { AgentConfigureConversationIds } from '../right-panel-chat'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { consoleQuery } from '@/service/client'

@@ -16,10 +16,10 @@ import { AgentConfigurePageLoading } from './page-loading'
 import { AgentBuildPanelBackground } from './preview/build-background'
 import { AgentChatFeaturesPanel } from './preview/chat-features-panel'
 import { AgentPreviewHeader } from './preview/header'
+import { useAgentConfigureChat } from './preview/hook/use-chat-hook'
+import { useAgentWorkingDirectoryPanel } from './preview/hook/use-working-directory-panel'
 import { AgentConfigureRightPanelChat } from './preview/right-panel-chat'
-import { useAgentWorkingDirectoryPanel } from './preview/use-working-directory-panel'
 import { AgentPreviewVersionsPanel } from './preview/versions-panel'
-import { useAgentConfigureChat } from './use-chat-hook'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from './workspace'
 
 export function AgentConfigureComposerScope({

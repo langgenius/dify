@@ -22,7 +22,7 @@ import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configur
 import { AgentBuildPanelBackground } from '@/features/agent-v2/agent-detail/configure/components/preview/build-background'
 import { AgentBuildChat } from '@/features/agent-v2/agent-detail/configure/components/preview/build-chat'
 import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
-import { useAgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/use-working-directory-panel'
+import { useAgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/hook/use-working-directory-panel'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from '@/features/agent-v2/agent-detail/configure/components/workspace'
 import { useAgentPreviewSoulConfig } from '@/features/agent-v2/agent-detail/configure/hooks'
 import { usePrepareAgentBuildDraftBeforeRun } from '@/features/agent-v2/agent-detail/configure/use-agent-build-draft-run'
