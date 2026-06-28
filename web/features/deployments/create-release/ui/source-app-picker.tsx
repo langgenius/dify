@@ -1,7 +1,6 @@
 'use client'
 import type { SourceAppPickerValue } from '../state'
 import type { App } from '@/types/app'
-import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Combobox,
@@ -14,16 +13,18 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from '@langgenius/dify-ui/combobox'
-import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { consoleQuery } from '@/service/client'
-import { AppModeEnum } from '@/types/app'
-import { TitleTooltip } from '../../components/title-tooltip'
+import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
+import { TitleTooltip } from '../../shared/components/title-tooltip'
+import {
+  createReleaseSourceAppSearchTextAtom,
+  createReleaseSourceAppsQueryAtom,
+} from '../state'
 
-const SOURCE_APP_PAGE_SIZE = 20
 const SOURCE_APP_PICKER_SKELETON_KEYS = ['first-source-app', 'second-source-app', 'third-source-app']
 
 function sourceAppSearchText(app: App) {
@@ -131,29 +132,19 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
 }) {
   const { t } = useTranslation('deployments')
   const [isShow, setIsShow] = useState(false)
-  const [searchText, setSearchText] = useState('')
-
+  const searchText = useAtomValue(createReleaseSourceAppSearchTextAtom)
+  const setSearchText = useSetAtom(createReleaseSourceAppSearchTextAtom)
+  const sourceAppsQuery = useAtomValue(createReleaseSourceAppsQueryAtom)
   const {
     data,
     isLoading,
     isFetchingNextPage,
-    fetchNextPage,
     hasNextPage,
-  } = useInfiniteQuery({
-    ...consoleQuery.apps.list.infiniteOptions({
-      input: pageParam => ({
-        query: {
-          page: Number(pageParam),
-          limit: SOURCE_APP_PAGE_SIZE,
-          name: searchText,
-          mode: AppModeEnum.WORKFLOW,
-        },
-      }),
-      getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
-      initialPageParam: 1,
-      placeholderData: keepPreviousData,
-    }),
-    enabled: !disabled,
+  } = sourceAppsQuery
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(sourceAppsQuery, {
+    enabled: isShow && !disabled,
+    rootMargin: '0px 0px 160px 0px',
+    threshold: 0.1,
   })
 
   const apps = data?.pages.flatMap(page => page.data) ?? []
@@ -216,7 +207,7 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
               />
             </ComboboxInputGroup>
           </div>
-          <div className="min-h-0 flex-1 overflow-y-auto p-1">
+          <div ref={rootRef} className="min-h-0 flex-1 overflow-y-auto p-1">
             {(isLoading || isFetchingNextPage) && apps.length === 0 && <SourceAppPickerSkeleton />}
             <ComboboxList className="max-h-none p-0">
               {(app: App) => (
@@ -228,20 +219,12 @@ export function SourceAppPicker({ value, onChange, disabled = false }: {
                 {t('createModal.appSearchEmpty')}
               </ComboboxEmpty>
             )}
-            {hasNextPage && (
-              <div className="flex justify-center px-3 py-2">
-                <Button
-                  type="button"
-                  size="small"
-                  disabled={isFetchingNextPage}
-                  onClick={() => {
-                    void fetchNextPage()
-                  }}
-                >
-                  {isFetchingNextPage ? t('createModal.loadingApps') : t('createModal.loadMoreApps')}
-                </Button>
+            {isFetchingNextPage && apps.length > 0 && (
+              <div className="px-3 py-2 text-center system-xs-regular text-text-tertiary">
+                {t('createModal.loadingApps')}
               </div>
             )}
+            {hasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
           </div>
         </div>
       </ComboboxContent>

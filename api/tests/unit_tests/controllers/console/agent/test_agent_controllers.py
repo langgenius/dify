@@ -15,6 +15,7 @@ from controllers.console.agent.composer import (
     AgentComposerValidateApi,
     WorkflowAgentComposerApi,
     WorkflowAgentComposerCandidatesApi,
+    WorkflowAgentComposerCopyFromRosterApi,
     WorkflowAgentComposerImpactApi,
     WorkflowAgentComposerSaveToRosterApi,
     WorkflowAgentComposerValidateApi,
@@ -27,10 +28,15 @@ from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppCopyApi,
     AgentAppListApi,
+    AgentBuildDraftApi,
+    AgentBuildDraftApplyApi,
+    AgentBuildDraftCheckoutApi,
+    AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
+    AgentPublishApi,
     AgentRosterVersionDetailApi,
     AgentRosterVersionRestoreApi,
     AgentRosterVersionsApi,
@@ -93,7 +99,7 @@ def _agent_app_composer_response() -> dict:
         },
         "active_config_snapshot": _version_response(),
         "agent_soul": {},
-        "save_options": ["save_to_current_version", "save_as_new_version"],
+        "save_options": ["save_to_current_version"],
     }
 
 
@@ -149,6 +155,10 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/composer/candidates",
         "/agent/<uuid:agent_id>/features",
         "/agent/<uuid:agent_id>/copy",
+        "/agent/<uuid:agent_id>/publish",
+        "/agent/<uuid:agent_id>/build-draft/checkout",
+        "/agent/<uuid:agent_id>/build-draft",
+        "/agent/<uuid:agent_id>/build-draft/apply",
         "/agent/<uuid:agent_id>/referencing-workflows",
         "/agent/<uuid:agent_id>/drive/files",
         "/agent/<uuid:agent_id>/sandbox/files",
@@ -158,6 +168,7 @@ def test_agent_v2_console_routes_are_agent_id_first() -> None:
         "/agent/<uuid:agent_id>/api-enable",
         "/agent/<uuid:agent_id>/api-keys",
         "/agent/<uuid:agent_id>/api-keys/<uuid:api_key_id>",
+        "/agent/<uuid:agent_id>/debug-conversation/refresh",
         "/agent/<uuid:agent_id>/chat-messages",
         "/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop",
         "/agent/<uuid:agent_id>/feedbacks",
@@ -230,6 +241,8 @@ def test_agent_app_list_and_create_use_agent_route(
         lambda _self, **kwargs: {
             "app-list": SimpleNamespace(
                 id="agent-list",
+                app_id="app-list",
+                backing_app_id=None,
                 role="List role",
                 debug_conversation_id="debug-conversation-list",
                 active_config_snapshot_id=None,
@@ -241,6 +254,8 @@ def test_agent_app_list_and_create_use_agent_route(
         "get_app_backing_agent",
         lambda _self, **kwargs: SimpleNamespace(
             id="agent-created",
+            app_id="app-created",
+            backing_app_id=None,
             role="Created role",
             debug_conversation_id="debug-conversation-created",
             active_config_snapshot_id=None,
@@ -365,6 +380,14 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
 ) -> None:
     agent_id = "00000000-0000-0000-0000-000000000001"
     app_model = _app_detail_obj(id="app-1", bound_agent_id=agent_id)
+    agent = SimpleNamespace(
+        id=agent_id,
+        app_id="app-1",
+        backing_app_id=None,
+        role="Resolved role",
+        debug_conversation_id="debug-conversation-detail",
+        active_config_snapshot_id=None,
+    )
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
@@ -372,15 +395,12 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         "get_agent_app_model",
         lambda _self, **kwargs: app_model,
     )
+    monkeypatch.setattr(roster_controller, "resolve_agent_runtime_app_model", lambda **kwargs: app_model)
+    monkeypatch.setattr(roster_controller.db.session, "scalar", lambda _stmt: agent)
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
         "get_app_backing_agent",
-        lambda _self, **kwargs: SimpleNamespace(
-            id=agent_id,
-            role="Resolved role",
-            debug_conversation_id="debug-conversation-detail",
-            active_config_snapshot_id=None,
-        ),
+        lambda _self, **kwargs: agent,
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
@@ -462,6 +482,7 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         json={
             "name": "Iris copy",
             "description": "Copied",
+            "role": "Copied role",
             "icon_type": "emoji",
             "icon": "sparkles",
             "icon_background": "#fff",
@@ -477,10 +498,166 @@ def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
         "account": current_user,
         "name": "Iris copy",
         "description": "Copied",
+        "role": "Copied role",
         "icon_type": "emoji",
         "icon": "sparkles",
         "icon_background": "#fff",
     }
+
+
+def test_agent_debug_conversation_refresh_uses_current_user(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    captured: dict[str, object] = {}
+
+    class FakeRosterService:
+        def refresh_agent_app_debug_conversation_id(self, **kwargs: object) -> str:
+            captured.update(kwargs)
+            return "new-debug-conversation-id"
+
+    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda: FakeRosterService())
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/debug-conversation/refresh",
+        method="POST",
+    ):
+        response = unwrap(AgentDebugConversationRefreshApi.post)(
+            AgentDebugConversationRefreshApi(),
+            "tenant-1",
+            SimpleNamespace(id=account_id),
+            agent_id,
+        )
+
+    assert response == {"debug_conversation_id": "new-debug-conversation-id"}
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account_id": account_id,
+    }
+
+
+def test_agent_publish_and_build_draft_routes_call_composer_service(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    current_user = SimpleNamespace(id=account_id)
+    captured: dict[str, object] = {}
+
+    def publish_agent_app_draft(**kwargs: object) -> dict[str, object]:
+        captured["publish"] = kwargs
+        return {"result": "success", "active_config_snapshot_id": "version-1"}
+
+    def checkout_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["checkout"] = kwargs
+        return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
+
+    def load_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["load"] = kwargs
+        return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
+
+    def save_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["save"] = kwargs
+        return {"variant": "agent_app", "draft": {"id": "build-draft-1"}, "agent_soul": {}}
+
+    def apply_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["apply"] = kwargs
+        return {"result": "success", "draft": {"id": "draft-1"}}
+
+    def discard_agent_app_build_draft(**kwargs: object) -> dict[str, object]:
+        captured["discard"] = kwargs
+        return {"result": "success"}
+
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "publish_agent_app_draft",
+        publish_agent_app_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "checkout_agent_app_build_draft",
+        checkout_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "load_agent_app_build_draft",
+        load_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "save_agent_app_build_draft",
+        save_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "apply_agent_app_build_draft",
+        apply_agent_app_build_draft,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentComposerService,
+        "discard_agent_app_build_draft",
+        discard_agent_app_build_draft,
+    )
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/publish",
+        json={"version_note": "publish v1"},
+    ):
+        published = unwrap(AgentPublishApi.post)(AgentPublishApi(), "tenant-1", current_user, agent_id)
+    assert published["active_config_snapshot_id"] == "version-1"
+    assert captured["publish"] == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account_id": account_id,
+        "version_note": "publish v1",
+    }
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft/checkout",
+        json={"force": True},
+    ):
+        checked_out = unwrap(AgentBuildDraftCheckoutApi.post)(
+            AgentBuildDraftCheckoutApi(), "tenant-1", current_user, agent_id
+        )
+    assert checked_out["draft"]["id"] == "build-draft-1"
+    assert captured["checkout"] == {
+        "tenant_id": "tenant-1",
+        "agent_id": agent_id,
+        "account_id": account_id,
+        "force": True,
+    }
+
+    with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft"):
+        loaded = unwrap(AgentBuildDraftApi.get)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
+    assert loaded["draft"]["id"] == "build-draft-1"
+    assert captured["load"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
+        json={"variant": "agent_app", "save_strategy": "save_to_current_version", "agent_soul": {}},
+    ):
+        saved = unwrap(AgentBuildDraftApi.put)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
+    assert saved["draft"]["id"] == "build-draft-1"
+    assert captured["save"]["tenant_id"] == "tenant-1"
+    assert captured["save"]["agent_id"] == agent_id
+    assert captured["save"]["account_id"] == account_id
+    assert captured["save"]["payload"].variant == ComposerVariant.AGENT_APP
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft/apply",
+        method="POST",
+    ):
+        applied = unwrap(AgentBuildDraftApplyApi.post)(AgentBuildDraftApplyApi(), "tenant-1", current_user, agent_id)
+    assert applied == {"result": "success", "draft": {"id": "draft-1"}}
+    assert captured["apply"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
+
+    with app.test_request_context(
+        "/console/api/agent/00000000-0000-0000-0000-000000000001/build-draft",
+        method="DELETE",
+    ):
+        discarded = unwrap(AgentBuildDraftApi.delete)(AgentBuildDraftApi(), "tenant-1", current_user, agent_id)
+    assert discarded == {"result": "success"}
+    assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
 
 
 def test_agent_api_access_uses_agent_id_and_returns_service_api_metadata(
@@ -714,7 +891,12 @@ def test_agent_versions_call_services(app: Flask, monkeypatch: pytest.MonkeyPatc
     restored = unwrap(AgentRosterVersionRestoreApi.post)(
         AgentRosterVersionRestoreApi(), "tenant-1", SimpleNamespace(id="account-1"), agent_id, version_id
     )
-    assert restored == {"result": "success", "active_config_snapshot_id": version_id}
+    assert restored == {
+        "result": "success",
+        "active_config_snapshot_id": version_id,
+        "draft_config_id": None,
+        "restored_version_id": None,
+    }
     assert captured_restore == {
         "tenant_id": "tenant-1",
         "agent_id": agent_id,
@@ -850,7 +1032,7 @@ def test_agent_observability_routes_resolve_app_from_agent_id(
                 },
             }
 
-    monkeypatch.setattr(roster_controller, "_resolve_agent_app_model", lambda **kwargs: app_model)
+    monkeypatch.setattr(roster_controller, "resolve_agent_runtime_app_model", lambda **kwargs: app_model)
     monkeypatch.setattr(roster_controller, "_agent_observability_service", lambda: FakeObservabilityService())
 
     account = SimpleNamespace(id=account_id, timezone="UTC")
@@ -926,17 +1108,18 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         "save_strategy": ComposerSaveStrategy.NODE_JOB_ONLY.value,
         "binding": {"binding_type": "roster_agent", "current_snapshot_id": "version-1"},
     }
+    captured_load: dict[str, object] = {}
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "load_workflow_composer",
-        lambda **kwargs: _workflow_composer_response(node_id=kwargs["node_id"]),
+        lambda **kwargs: captured_load.update(kwargs) or _workflow_composer_response(node_id=kwargs["node_id"]),
     )
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "save_workflow_composer",
         lambda **kwargs: _workflow_composer_response(save_options=[kwargs["payload"].save_strategy.value]),
     )
-    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
     monkeypatch.setattr(
         composer_controller.AgentComposerService, "resolve_workflow_node_agent_id", lambda **kwargs: None
     )
@@ -956,8 +1139,12 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         },
     )
 
-    workflow_state = unwrap(WorkflowAgentComposerApi.get)(WorkflowAgentComposerApi(), "tenant-1", app_model, "node-1")
+    with app.test_request_context("?snapshot_id=preview-version"):
+        workflow_state = unwrap(WorkflowAgentComposerApi.get)(
+            WorkflowAgentComposerApi(), "tenant-1", app_model, "node-1"
+        )
     assert workflow_state["node_id"] == "node-1"
+    assert captured_load["snapshot_id"] == "preview-version"
     with app.test_request_context(json=payload):
         saved_state = unwrap(WorkflowAgentComposerApi.put)(
             WorkflowAgentComposerApi(), "tenant-1", account_id, app_model, "node-1"
@@ -979,6 +1166,58 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
         assert unwrap(WorkflowAgentComposerSaveToRosterApi.post)(
             WorkflowAgentComposerSaveToRosterApi(), "tenant-1", account_id, app_model, "node-1"
         )["save_options"] == ["node_job_only"]
+
+
+def test_workflow_composer_copy_from_roster(app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str) -> None:
+    app_model = SimpleNamespace(id="app-1")
+    captured: dict[str, object] = {}
+
+    def fake_copy_from_roster(**kwargs):
+        captured.update(kwargs)
+        return _workflow_composer_response(
+            binding={
+                "id": "binding-1",
+                "binding_type": "inline_agent",
+                "agent_id": "inline-agent-1",
+                "current_snapshot_id": "inline-version-1",
+                "workflow_id": "workflow-1",
+                "node_id": kwargs["node_id"],
+            },
+            agent={
+                "id": "inline-agent-1",
+                "name": "Nadia",
+                "description": "",
+                "scope": "workflow_only",
+                "status": "active",
+            },
+            active_config_snapshot={"id": "inline-version-1", "version": 1},
+        )
+
+    monkeypatch.setattr(
+        composer_controller.AgentComposerService, "copy_workflow_composer_from_roster", fake_copy_from_roster
+    )
+
+    with app.test_request_context(
+        json={
+            "source_agent_id": "roster-agent-1",
+            "source_snapshot_id": "roster-version-1",
+            "idempotency_key": "copy-1",
+        }
+    ):
+        result = unwrap(WorkflowAgentComposerCopyFromRosterApi.post)(
+            WorkflowAgentComposerCopyFromRosterApi(), "tenant-1", account_id, app_model, "node-1"
+        )
+
+    assert result["binding"]["binding_type"] == "inline_agent"
+    assert captured == {
+        "tenant_id": "tenant-1",
+        "app_id": "app-1",
+        "node_id": "node-1",
+        "account_id": account_id,
+        "source_agent_id": "roster-agent-1",
+        "source_snapshot_id": "roster-version-1",
+        "idempotency_key": "copy-1",
+    }
 
 
 def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
@@ -1003,13 +1242,11 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
         "agent_soul": {"prompt": {"system_prompt": "x"}},
     }
 
-    monkeypatch.setattr(composer_controller, "resolve_agent_app_model", lambda **kwargs: SimpleNamespace(id="app-1"))
-
-    def load_agent_app_composer(**kwargs: object) -> dict:
+    def load_agent_composer(**kwargs: object) -> dict:
         captured["load"] = kwargs
         return _agent_app_composer_response()
 
-    def save_agent_app_composer(**kwargs: object) -> dict:
+    def save_agent_composer(**kwargs: object) -> dict:
         captured["save"] = kwargs
         return _agent_app_composer_response()
 
@@ -1023,15 +1260,15 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
 
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
-        "load_agent_app_composer",
-        load_agent_app_composer,
+        "load_agent_composer",
+        load_agent_composer,
     )
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
-        "save_agent_app_composer",
-        save_agent_app_composer,
+        "save_agent_composer",
+        save_agent_composer,
     )
-    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_save_payload", lambda payload: None)
+    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
     monkeypatch.setattr(
         composer_controller.AgentComposerService,
         "collect_validation_findings",
@@ -1044,13 +1281,13 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
     )
 
     assert unwrap(AgentComposerApi.get)(AgentComposerApi(), "tenant-1", agent_id)["variant"] == "agent_app"
-    assert cast(dict[str, object], captured["load"])["app_id"] == "app-1"
+    assert cast(dict[str, object], captured["load"])["agent_id"] == agent_id
 
     with app.test_request_context(json=payload):
         assert (
             unwrap(AgentComposerApi.put)(AgentComposerApi(), "tenant-1", account_id, agent_id)["variant"] == "agent_app"
         )
-        assert cast(dict[str, object], captured["save"])["app_id"] == "app-1"
+        assert cast(dict[str, object], captured["save"])["agent_id"] == agent_id
         assert unwrap(AgentComposerValidateApi.post)(AgentComposerValidateApi(), "tenant-1", agent_id) == {
             "result": "success",
             "errors": [],
@@ -1061,7 +1298,7 @@ def test_agent_composer_routes_resolve_app_from_agent_id(
 
     candidates = unwrap(AgentComposerCandidatesApi.get)(AgentComposerCandidatesApi(), "tenant-1", account_id, agent_id)
     assert candidates["variant"] == "agent_app"
-    assert cast(dict[str, object], captured["candidates"])["app_id"] == "app-1"
+    assert cast(dict[str, object], captured["candidates"])["agent_id"] == agent_id
 
 
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
@@ -1083,7 +1320,7 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
         captured["stop"] = kwargs
         return {"result": "success"}, 200
 
-    monkeypatch.setattr(completion_controller, "resolve_agent_app_model", resolve_agent_app_model)
+    monkeypatch.setattr(completion_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
     monkeypatch.setattr(completion_controller, "_create_chat_message", create_chat_message)
     monkeypatch.setattr(completion_controller, "_stop_chat_message", stop_chat_message)
 
@@ -1286,7 +1523,7 @@ def test_agent_chat_message_routes_resolve_app_from_agent_id(app: Flask, monkeyp
         captured["detail"] = kwargs
         return {"id": message_id}
 
-    monkeypatch.setattr(message_controller, "resolve_agent_app_model", resolve_agent_app_model)
+    monkeypatch.setattr(message_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
     monkeypatch.setattr(message_controller, "_list_chat_messages", list_chat_messages)
     monkeypatch.setattr(message_controller, "_update_message_feedback", update_message_feedback)
     monkeypatch.setattr(message_controller, "_get_message_suggested_questions", get_message_suggested_questions)

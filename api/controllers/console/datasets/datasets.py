@@ -602,7 +602,7 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
@@ -774,7 +774,7 @@ class DatasetQueryApi(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -915,7 +915,7 @@ class DatasetRelatedAppListApi(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -1194,7 +1194,7 @@ class DatasetPermissionUserListApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 

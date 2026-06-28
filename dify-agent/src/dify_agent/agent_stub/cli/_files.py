@@ -5,7 +5,7 @@ from __future__ import annotations
 import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import ClassVar, Literal, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
@@ -26,7 +26,7 @@ class UploadedToolFileMapping(BaseModel):
     transfer_method: Literal["tool_file"] = "tool_file"
     reference: str
 
-    model_config = ConfigDict(extra="forbid")
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,12 +76,14 @@ def upload_tool_file_resource_from_environment(*, path: str) -> UploadedToolFile
     environment = read_agent_stub_environment()
     filename = source_path.name
     mime_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    upload_request = request_agent_stub_file_upload_sync(
+    upload_request: object = request_agent_stub_file_upload_sync(
         url=environment.url,
         auth_jwe=environment.auth_jwe,
         filename=filename,
         mimetype=mime_type,
     )
+    if not hasattr(upload_request, "upload_url") or not isinstance(upload_request.upload_url, str):
+        raise AgentStubTransferError("signed file upload response is missing upload_url")
     with source_path.open("rb") as file_obj:
         payload = upload_file_to_signed_url_sync(
             upload_url=upload_request.upload_url,
@@ -94,36 +96,71 @@ def upload_tool_file_resource_from_environment(*, path: str) -> UploadedToolFile
 
 def download_file_from_environment(
     *,
-    transfer_method: str,
-    reference_or_url: str,
-    directory: str | None = None,
+    transfer_method: str | None = None,
+    reference_or_url: str | None = None,
+    mapping: str | None = None,
+    local_dir: str | None = None,
 ) -> DownloadedFileResult:
-    """Download one workflow file mapping into the sandbox filesystem."""
+    """Download one workflow file mapping into the sandbox filesystem.
 
+    Callers may provide either the public positional pair
+    ``TRANSFER_METHOD REFERENCE_OR_URL`` or one JSON ``--mapping`` payload.
+    The helper normalizes both forms into ``AgentStubFileMapping`` before
+    requesting a signed download URL from the Agent Stub.
+    """
+
+    file_mapping = _build_download_mapping(
+        transfer_method=transfer_method,
+        reference_or_url=reference_or_url,
+        mapping=mapping,
+    )
     environment = read_agent_stub_environment()
+
+    download_request: object = request_agent_stub_file_download_sync(
+        url=environment.url,
+        auth_jwe=environment.auth_jwe,
+        file=file_mapping,
+    )
+    if not hasattr(download_request, "filename") or not isinstance(download_request.filename, str):
+        raise AgentStubTransferError("signed file download response is missing filename")
+    if not hasattr(download_request, "download_url") or not isinstance(download_request.download_url, str):
+        raise AgentStubTransferError("signed file download response is missing download_url")
+    target_dir = Path(local_dir).expanduser().resolve() if local_dir else Path.cwd()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    destination = _deduplicate_destination_path(target_dir / _sanitize_download_filename(download_request.filename))
+    _ = destination.write_bytes(download_file_bytes_from_signed_url_sync(download_url=download_request.download_url))
+    return DownloadedFileResult(path=destination)
+
+
+def _build_download_mapping(
+    *,
+    transfer_method: str | None,
+    reference_or_url: str | None,
+    mapping: str | None,
+) -> AgentStubFileMapping:
+    if mapping is not None:
+        if transfer_method is not None or reference_or_url is not None:
+            raise AgentStubValidationError("--mapping cannot be combined with TRANSFER_METHOD or REFERENCE_OR_URL")
+        try:
+            return AgentStubFileMapping.model_validate_json(mapping)
+        except ValidationError as exc:
+            raise AgentStubValidationError("invalid file download mapping") from exc
+
+    if transfer_method is None or reference_or_url is None:
+        raise AgentStubValidationError("file download requires either --mapping or TRANSFER_METHOD REFERENCE_OR_URL")
+
     normalized_transfer_method = cast(
         Literal["local_file", "tool_file", "datasource_file", "remote_url"],
         transfer_method,
     )
     try:
-        file_mapping = AgentStubFileMapping(
+        return AgentStubFileMapping(
             transfer_method=normalized_transfer_method,
             url=reference_or_url if normalized_transfer_method == "remote_url" else None,
             reference=reference_or_url if normalized_transfer_method != "remote_url" else None,
         )
     except ValidationError as exc:
         raise AgentStubValidationError("invalid file download arguments") from exc
-
-    download_request = request_agent_stub_file_download_sync(
-        url=environment.url,
-        auth_jwe=environment.auth_jwe,
-        file=file_mapping,
-    )
-    target_dir = Path(directory).expanduser().resolve() if directory else Path.cwd()
-    target_dir.mkdir(parents=True, exist_ok=True)
-    destination = _deduplicate_destination_path(target_dir / _sanitize_download_filename(download_request.filename))
-    destination.write_bytes(download_file_bytes_from_signed_url_sync(download_url=download_request.download_url))
-    return DownloadedFileResult(path=destination)
 
 
 def _normalize_uploaded_tool_file_resource(payload: dict[str, object]) -> UploadedToolFileResource:

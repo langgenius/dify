@@ -4,6 +4,7 @@ import type { SseEvent } from '@/http/sse'
 import { newError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { parseReasoningChunk, ReasoningChunkRenderer } from '@/sys/io/reasoning'
 import { filterThinkInOutputs, ThinkChunkFilter } from '@/sys/io/think-filter'
 import { RUN_MODES } from './handlers'
 import { HitlPauseError } from './sse-collector'
@@ -43,9 +44,12 @@ function handleCommonEvents(ev: SseEvent): boolean {
 class ChatStreamPrinter implements StreamPrinter {
   private convoId = ''
   private readonly filter: ThinkChunkFilter
+  private readonly reasoning = new ReasoningChunkRenderer()
+  private readonly think: boolean
   private readonly isTTY: boolean
   constructor(think: boolean, isTTY = false) {
     this.filter = new ThinkChunkFilter(think)
+    this.think = think
     this.isTTY = isTTY
   }
 
@@ -62,6 +66,15 @@ class ChatStreamPrinter implements StreamPrinter {
           this.convoId = c.conversation_id
         return
       }
+      // Stream separated-mode reasoning to stderr under --think.
+      case 'reasoning_chunk': {
+        if (!this.think)
+          return
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined)
+          this.reasoning.push(chunk, errOut)
+        return
+      }
       case 'agent_thought':
         if (typeof c.thought === 'string' && c.thought !== '')
           errOut.write(`thought: ${c.thought}\n`)
@@ -73,6 +86,7 @@ class ChatStreamPrinter implements StreamPrinter {
   }
 
   onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.reasoning.flush(errOut)
     this.filter.flush(out, errOut)
     out.write('\n')
     if (this.convoId !== '') {
@@ -106,6 +120,7 @@ class CompletionStreamPrinter implements StreamPrinter {
 
 class WorkflowStreamPrinter implements StreamPrinter {
   private final: Record<string, unknown> | undefined
+  private readonly reasoning = new ReasoningChunkRenderer()
   private readonly think: boolean
   constructor(think: boolean) {
     this.think = think
@@ -124,6 +139,15 @@ class WorkflowStreamPrinter implements StreamPrinter {
           errOut.write(`→ ${title}\n`)
         return
       }
+      // Stream separated-mode reasoning to stderr under --think; the prior → title attributes the node.
+      case 'reasoning_chunk': {
+        if (!this.think)
+          return
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined)
+          this.reasoning.push(chunk, errOut)
+        return
+      }
       case 'node_finished': {
         const status = typeof c.status === 'string' ? c.status : ''
         if (status !== '' && status !== 'succeeded') {
@@ -138,6 +162,7 @@ class WorkflowStreamPrinter implements StreamPrinter {
   }
 
   onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.reasoning.flush(errOut)
     if (this.final === undefined)
       return
     const data = this.final.data

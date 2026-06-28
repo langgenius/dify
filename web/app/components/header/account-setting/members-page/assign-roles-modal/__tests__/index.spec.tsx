@@ -49,6 +49,33 @@ describe('AssignRolesModal', () => {
   })
 
   describe('Role selection', () => {
+    it('should hide selected count when multiple roles are disabled', () => {
+      render(
+        <AssignRolesModal
+          selectedRoles={[roles[0]!]}
+          allowMultipleRoles={false}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+        />,
+      )
+
+      expect(screen.queryByText(/common\.members\.assignRolesModal\.selectedCount/i)).not.toBeInTheDocument()
+    })
+
+    it('should show single-role description when multiple roles are disabled', () => {
+      render(
+        <AssignRolesModal
+          selectedRoles={[roles[0]!]}
+          allowMultipleRoles={false}
+          onClose={vi.fn()}
+          onSubmit={vi.fn()}
+        />,
+      )
+
+      expect(screen.getByText(/common\.members\.assignRolesModal\.singleDescription/i)).toBeInTheDocument()
+      expect(screen.queryByText(/common\.members\.assignRolesModal\.description/i)).not.toBeInTheDocument()
+    })
+
     it('should disable confirm when the last selected role is unchecked', async () => {
       const user = userEvent.setup()
 

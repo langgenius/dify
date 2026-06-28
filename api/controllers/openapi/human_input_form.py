@@ -22,7 +22,7 @@ from controllers.openapi._contract import accepts, returns
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
 from controllers.openapi._models import FormSubmitResponse, HumanInputFormDefinitionResponse
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     is_recipient_type_allowed_for_surface,
@@ -98,7 +98,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 
         submission_user_id: str | None = None
         submission_end_user_id: str | None = None
-        if caller_kind == "account":
+        if caller_kind == CallerKind.ACCOUNT:
             submission_user_id = caller.id
         else:
             submission_end_user_id = caller.id

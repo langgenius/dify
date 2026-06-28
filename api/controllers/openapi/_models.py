@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from enum import StrEnum
+from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -11,6 +12,30 @@ from models.model import AppMode
 
 # Server-side cap on `limit` query param for /openapi/v1/* list endpoints.
 MAX_PAGE_LIMIT = 200
+
+
+class SupportedAppType(StrEnum):
+    """App types the ``app`` usage face (``get app``) lists and filters.
+
+    A curated subset of :class:`AppMode`: the real, user-facing app categories.
+    Excludes runtime-only mode tags that are not standalone apps
+    (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+    roster-owned ``agent`` type (surfaced through the roster, not this list).
+
+    Members reference ``AppMode.*.value`` so the subset relationship is
+    type-checked: dropping a member from ``AppMode`` breaks this at import.
+    This is the single source for the listable set — params, filters, and the
+    generated CLI whitelist all derive from it.
+    """
+
+    COMPLETION = AppMode.COMPLETION.value
+    CHAT = AppMode.CHAT.value
+    ADVANCED_CHAT = AppMode.ADVANCED_CHAT.value
+    WORKFLOW = AppMode.WORKFLOW.value
+    AGENT_CHAT = AppMode.AGENT_CHAT.value
+
+
+SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
 
 class UsageInfo(BaseModel):
@@ -279,12 +304,12 @@ class AppDescribeQuery(BaseModel):
 
 
 class AppListQuery(BaseModel):
-    """mode is a closed enum."""
+    """mode is a closed enum of listable app types."""
 
     workspace_id: UUIDStr
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
 
@@ -335,7 +360,7 @@ class PermittedExternalAppsListQuery(BaseModel):
 
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=MAX_PAGE_LIMIT)
-    mode: AppMode | None = None
+    mode: SupportedAppType | None = None
     name: str | None = Field(None, max_length=200)
 
 

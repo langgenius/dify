@@ -1,4 +1,10 @@
-import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type {
+  AgentKnowledgeMetadataConditions,
+  AgentKnowledgeModelConfig,
+  AgentKnowledgeRetrievalConfig,
+  AgentKnowledgeSetConfig,
+  AgentSoulConfig,
+} from '@dify/contracts/api/console/agent/types.gen'
 import type {
   AgentCliTool,
   AgentFileNode,
@@ -10,151 +16,158 @@ import type {
   EnvVariable,
 } from './form-state'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  MetadataFilteringConditions,
+  MultipleRetrievalConfig,
+  SingleRetrievalConfig,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { ModelConfig } from '@/app/components/workflow/types'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { DATASET_DEFAULT } from '@/config'
+import { RETRIEVE_TYPE } from '@/types/app'
 import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'
+import { getKnowledgeRetrievalSetName } from './knowledge-validation'
+
+type AgentSoulFileRefConfig = {
+  id?: string | null
+  file_id?: string | null
+  name?: string | null
+  type?: string | null
+  drive_key?: string | null
+}
+
+type AgentSoulSkillRefConfig = {
+  id?: string | null
+  name?: string | null
+  description?: string | null
+  path?: string | null
+  skill_md_key?: string | null
+  full_archive_key?: string | null
+}
+
+type AgentSoulFilesConfig = {
+  skills?: AgentSoulSkillRefConfig[]
+  files?: AgentSoulFileRefConfig[]
+}
+
+export type AgentSoulConfigWithFiles = AgentSoulConfig & {
+  files?: AgentSoulFilesConfig
+}
 
 type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
 type AgentSoulCliToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['cli_tools']>[number]
 type AgentSoulToolRuntimeParameterValue = NonNullable<AgentSoulDifyToolConfig['runtime_parameters']>[string]
-type AgentSoulFileRefConfig = NonNullable<NonNullable<AgentSoulConfig['skills_files']>['files']>[number]
 type AgentSoulEnvVariableConfig = NonNullable<NonNullable<AgentSoulConfig['env']>['variables']>[number]
 
-const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => [
-  file,
-  ...flattenFileNodes(file.children ?? []),
-])
-
-const toSkillRefs = (skills: AgentSkill[]) => skills.map(skill => ({
-  description: skill.description,
-  file_id: skill.fileId,
-  full_archive_file_id: skill.fullArchiveFileId,
-  full_archive_key: skill.fullArchiveKey,
-  id: skill.id,
-  manifest_files: skill.files,
-  name: skill.name,
-  path: skill.path,
-  skill_md_file_id: skill.skillMdFileId,
-  skill_md_key: skill.skillMdKey,
-}))
-
-const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => (
-  config?.skills_files?.skills ?? []
-).flatMap((skill) => {
-  const id = skill.id ?? skill.file_id ?? skill.path
-  if (!id)
-    return []
-
-  return [{
-    description: skill.description ?? undefined,
-    fileId: skill.file_id ?? undefined,
-    files: skill.manifest_files ?? undefined,
-    fullArchiveFileId: skill.full_archive_file_id ?? undefined,
-    fullArchiveKey: skill.full_archive_key ?? undefined,
-    id,
-    name: skill.name ?? id,
-    path: skill.path ?? undefined,
-    skillMdFileId: skill.skill_md_file_id ?? undefined,
-    skillMdKey: skill.skill_md_key ?? undefined,
-  }]
-})
-
-const toFileIcon = (file: AgentSoulFileRefConfig): AgentFileNode['icon'] => {
-  const type = file.type?.toLowerCase()
-
-  if (type === 'image' || type === 'pdf' || type === 'markdown' || type === 'json' || type === 'table' || type === 'archive' || type === 'code' || type === 'text' || type === 'folder')
-    return type
-
-  return 'file'
-}
-
-const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => (
-  config?.skills_files?.files ?? []
-).flatMap((file) => {
-  const id = file.id ?? file.file_id ?? file.upload_file_id ?? file.reference ?? file.remote_url ?? file.url
-  if (!id)
-    return []
-
-  return [{
-    id,
-    name: file.name ?? id,
-    icon: toFileIcon(file),
-    driveKey: file.drive_key ?? undefined,
-  }]
-})
-
-const toFileRefs = (files: AgentFileNode[]) => flattenFileNodes(files).map(file => ({
-  ...(file.driveKey ? { drive_key: file.driveKey } : {}),
-  id: file.id,
-  name: file.name,
-  type: file.icon,
-}))
-
-const getKnowledgeRetrievalName = (item: AgentKnowledgeRetrievalItem) => item.name ?? item.nameKey ?? item.id
-
-const toKnowledgeDatasets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]) => knowledgeRetrievals.flatMap((item) => {
-  if (item.selectedDatasets?.length) {
+const toKnowledgeDatasetRefs = (item: AgentKnowledgeRetrievalItem) => {
+  if (item.selectedDatasets !== undefined) {
     return item.selectedDatasets.map(dataset => ({
       description: dataset.description,
       id: dataset.id,
       name: dataset.name,
     }))
   }
-  if (item.datasetRefs?.length)
-    return item.datasetRefs
 
-  return [{
-    id: item.id,
-    name: getKnowledgeRetrievalName(item),
-  }]
+  return item.datasetRefs ?? []
+}
+
+const toRetrievalConfig = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeRetrievalConfig => {
+  if (item.retrievalMode === RETRIEVE_TYPE.oneWay) {
+    return {
+      mode: 'single',
+      model: item.singleRetrievalConfig?.model,
+    }
+  }
+
+  const config = item.multipleRetrievalConfig
+  return {
+    mode: 'multiple',
+    top_k: config?.top_k ?? DATASET_DEFAULT.top_k,
+    score_threshold: config?.score_threshold ?? undefined,
+    reranking_mode: config?.reranking_mode,
+    reranking_enable: config?.reranking_enable ?? false,
+    reranking_model: config?.reranking_model,
+    weights: config?.weights,
+  }
+}
+
+const toModelFormState = (model?: AgentKnowledgeModelConfig | null): ModelConfig | undefined => {
+  if (!model)
+    return undefined
+
+  return {
+    provider: model.provider,
+    name: model.name,
+    mode: model.mode,
+    completion_params: model.completion_params ?? {},
+  }
+}
+
+const toMultipleRetrievalFormState = (config?: AgentKnowledgeRetrievalConfig): MultipleRetrievalConfig => ({
+  top_k: config?.top_k ?? DATASET_DEFAULT.top_k,
+  score_threshold: config?.score_threshold ?? null,
+  reranking_model: config?.reranking_model ?? undefined,
+  reranking_mode: config?.reranking_mode as MultipleRetrievalConfig['reranking_mode'],
+  weights: config?.weights as MultipleRetrievalConfig['weights'],
+  reranking_enable: config?.reranking_enable ?? false,
 })
 
+const toSingleRetrievalFormState = (config?: AgentKnowledgeRetrievalConfig): SingleRetrievalConfig | undefined => (
+  config?.model
+    ? {
+        model: toModelFormState(config.model)!,
+      }
+    : undefined
+)
+
+const toMetadataFilteringConfig = (item: AgentKnowledgeRetrievalItem): AgentKnowledgeSetConfig['metadata_filtering'] => {
+  const mode = item.metadataFilterMode ?? MetadataFilteringModeEnum.disabled
+
+  return {
+    mode,
+    model_config: mode === MetadataFilteringModeEnum.automatic ? item.metadataModelConfig : undefined,
+    conditions: mode === MetadataFilteringModeEnum.manual
+      ? item.metadataFilteringConditions as AgentKnowledgeMetadataConditions | undefined
+      : undefined,
+  }
+}
+
+const toKnowledgeSets = (knowledgeRetrievals: AgentKnowledgeRetrievalItem[]): AgentKnowledgeSetConfig[] => knowledgeRetrievals.map(item => ({
+  id: item.id,
+  name: getKnowledgeRetrievalSetName(item),
+  description: item.description,
+  datasets: toKnowledgeDatasetRefs(item),
+  query: {
+    mode: item.queryMode === 'custom' ? ('user_query' as const) : ('generated_query' as const),
+    value: item.queryMode === 'custom' ? (item.customQuery?.trim() || undefined) : undefined,
+  },
+  retrieval: toRetrievalConfig(item),
+  metadata_filtering: toMetadataFilteringConfig(item),
+}))
+
 const toKnowledgeRetrievalFormState = (config?: AgentSoulConfig): AgentKnowledgeRetrievalItem[] => {
-  const knowledge = config?.knowledge
-  const datasets = knowledge?.datasets ?? []
-
-  if (datasets.length === 0)
-    return []
-
-  return [{
-    id: datasets[0]?.id ?? 'knowledge-retrieval',
-    name: datasets[0]?.name ?? 'Knowledge Retrieval',
-    queryMode: knowledge?.query_mode === 'user_query' ? 'custom' : 'agent',
-    customQuery: knowledge?.query_config?.query ?? undefined,
-    datasetRefs: datasets,
-    multipleRetrievalConfig: {
-      top_k: knowledge?.query_config?.top_k ?? 4,
-      score_threshold: knowledge?.query_config?.score_threshold ?? null,
-      reranking_enable: false,
-    },
-  }]
+  return (config?.knowledge?.sets ?? []).map(knowledgeSet => ({
+    id: knowledgeSet.id,
+    name: knowledgeSet.name,
+    description: knowledgeSet.description ?? undefined,
+    queryMode: knowledgeSet.query.mode === 'user_query' ? 'custom' : 'agent',
+    customQuery: knowledgeSet.query.value ?? undefined,
+    datasetRefs: knowledgeSet.datasets,
+    retrievalMode: knowledgeSet.retrieval.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
+    multipleRetrievalConfig: toMultipleRetrievalFormState(knowledgeSet.retrieval),
+    singleRetrievalConfig: toSingleRetrievalFormState(knowledgeSet.retrieval),
+    metadataFilterMode: (knowledgeSet.metadata_filtering?.mode ?? MetadataFilteringModeEnum.disabled) as MetadataFilteringModeEnum,
+    metadataFilteringConditions: knowledgeSet.metadata_filtering?.conditions as MetadataFilteringConditions | undefined,
+    metadataModelConfig: toModelFormState(knowledgeSet.metadata_filtering?.model_config),
+  }))
 }
 
 const toKnowledgeConfig = (
-  baseKnowledge: AgentSoulConfig['knowledge'],
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[],
-): AgentSoulConfig['knowledge'] => {
-  const primaryRetrieval = knowledgeRetrievals.find(retrieval =>
-    retrieval.queryMode === 'custom'
-    || retrieval.customQuery
-    || retrieval.multipleRetrievalConfig
-    || retrieval.selectedDatasets?.length,
-  ) ?? knowledgeRetrievals[0]
-  const multipleRetrievalConfig = primaryRetrieval?.multipleRetrievalConfig
-  const scoreThreshold = multipleRetrievalConfig?.score_threshold
-
-  return {
-    ...baseKnowledge,
-    datasets: toKnowledgeDatasets(knowledgeRetrievals),
-    query_mode: primaryRetrieval?.queryMode === 'custom' ? 'user_query' : 'generated_query',
-    query_config: {
-      ...baseKnowledge?.query_config,
-      query: primaryRetrieval?.queryMode === 'custom' ? primaryRetrieval.customQuery : null,
-      score_threshold: scoreThreshold,
-      score_threshold_enabled: scoreThreshold !== undefined && scoreThreshold !== null,
-      top_k: multipleRetrievalConfig?.top_k ?? baseKnowledge?.query_config?.top_k,
-    },
-  }
-}
+): AgentSoulConfig['knowledge'] => ({
+  sets: toKnowledgeSets(knowledgeRetrievals),
+})
 
 const isToolRuntimeParameterValue = (value: unknown): value is AgentSoulToolRuntimeParameterValue => {
   if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean')
@@ -411,6 +424,79 @@ const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
     })),
 })
 
+const toSkillConfigs = (skills: AgentSkill[]): AgentSoulSkillRefConfig[] => skills.map(skill => ({
+  id: skill.path ?? skill.id,
+  name: skill.name,
+  description: skill.description,
+  path: skill.path,
+  skill_md_key: skill.skillMdKey,
+  full_archive_key: skill.archiveKey,
+}))
+
+const toFileConfigs = (files: AgentFileNode[]): AgentSoulFileRefConfig[] => files.flatMap((file) => {
+  if (file.children?.length)
+    return toFileConfigs(file.children)
+
+  return [{
+    id: file.id,
+    file_id: file.fileId,
+    name: file.name,
+    drive_key: file.driveKey,
+  }]
+})
+
+const toFilesConfig = (formState: AgentSoulConfigFormState): AgentSoulFilesConfig => ({
+  skills: toSkillConfigs(formState.skills),
+  files: toFileConfigs(formState.files),
+})
+
+const getAgentFileName = (file: AgentSoulFileRefConfig) => {
+  if (file.name)
+    return file.name
+
+  const driveKey = file.drive_key ?? file.id ?? file.file_id ?? ''
+  return driveKey.split('/').pop() || driveKey
+}
+
+const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => {
+  const filesConfig = (config as AgentSoulConfigWithFiles | undefined)?.files
+
+  return (filesConfig?.skills ?? []).flatMap((skill) => {
+    const id = skill.skill_md_key ?? skill.path ?? skill.id
+    const name = skill.name ?? skill.path ?? id
+    if (!id || !name)
+      return []
+
+    return [{
+      id,
+      name,
+      description: skill.description ?? undefined,
+      path: skill.path ?? undefined,
+      skillMdKey: skill.skill_md_key ?? undefined,
+      archiveKey: skill.full_archive_key ?? undefined,
+    }]
+  })
+}
+
+const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
+  const filesConfig = (config as AgentSoulConfigWithFiles | undefined)?.files
+
+  return (filesConfig?.files ?? []).flatMap((file) => {
+    const id = file.drive_key ?? file.file_id ?? file.id
+    const name = getAgentFileName(file)
+    if (!id || !name)
+      return []
+
+    return [{
+      id,
+      name,
+      icon: 'file' as const,
+      fileId: file.file_id ?? undefined,
+      driveKey: file.drive_key ?? undefined,
+    }]
+  })
+}
+
 const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
   const modelProvider = config?.model?.model_provider
   const model = config?.model?.model
@@ -448,34 +534,32 @@ export const formStateToAgentSoulConfig = ({
   baseConfig?: AgentSoulConfig
   formState: AgentSoulConfigFormState
   currentModel?: DefaultModel
-}): AgentSoulConfig => ({
-  ...baseConfig,
-  prompt: {
-    ...baseConfig?.prompt,
-    system_prompt: formState.prompt,
-  },
-  model: currentModel
-    ? {
-        ...baseConfig?.model,
-        model_provider: currentModel.provider,
-        model: currentModel.model,
-        plugin_id: getModelProviderPluginId(currentModel, baseConfig?.model),
-      }
-    : baseConfig?.model,
-  skills_files: {
-    ...baseConfig?.skills_files,
-    skills: toSkillRefs(formState.skills),
-    files: toFileRefs(formState.files),
-  },
-  tools: {
-    ...baseConfig?.tools,
-    dify_tools: toDifyToolConfigs(formState.tools, formState.toolSettings),
-    cli_tools: toCliToolConfigs(formState.tools),
-  },
-  app_features: formState.appFeatures ?? baseConfig?.app_features,
-  knowledge: toKnowledgeConfig(baseConfig?.knowledge, formState.knowledgeRetrievals),
-  env: toEnvConfig(formState.envVariables),
-})
+}): AgentSoulConfigWithFiles => {
+  return {
+    ...baseConfig,
+    prompt: {
+      ...baseConfig?.prompt,
+      system_prompt: formState.prompt,
+    },
+    model: currentModel
+      ? {
+          ...baseConfig?.model,
+          model_provider: currentModel.provider,
+          model: currentModel.model,
+          plugin_id: getModelProviderPluginId(currentModel, baseConfig?.model),
+        }
+      : baseConfig?.model,
+    tools: {
+      ...baseConfig?.tools,
+      dify_tools: toDifyToolConfigs(formState.tools, formState.toolSettings),
+      cli_tools: toCliToolConfigs(formState.tools),
+    },
+    app_features: formState.appFeatures ?? baseConfig?.app_features,
+    knowledge: toKnowledgeConfig(formState.knowledgeRetrievals),
+    env: toEnvConfig(formState.envVariables),
+    files: toFilesConfig(formState),
+  }
+}
 
 export const agentSoulConfigToFormState = (
   config?: AgentSoulConfig,

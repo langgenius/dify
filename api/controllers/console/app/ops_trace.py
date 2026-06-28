@@ -13,6 +13,7 @@ from controllers.console.wraps import (
     RBACPermission,
     RBACResourceScope,
     account_initialization_required,
+    edit_permission_required,
     rbac_permission_required,
     setup_required,
 )
@@ -70,7 +71,7 @@ class TraceAppConfigApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def get(self, app_model: App):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
@@ -95,9 +96,12 @@ class TraceAppConfigApi(Resource):
         console_ns.models[TraceAppConfigResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters or configuration already exists")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def post(self, app_model: App):
         """Create a new trace app configuration"""
@@ -125,9 +129,12 @@ class TraceAppConfigApi(Resource):
         console_ns.models[TraceAppConfigResponse.__name__],
     )
     @console_ns.response(400, "Invalid request parameters or configuration not found")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def patch(self, app_model: App):
         """Update an existing trace app configuration"""
@@ -149,9 +156,12 @@ class TraceAppConfigApi(Resource):
     @console_ns.doc(params=query_params_from_model(TraceProviderQuery))
     @console_ns.response(204, "Tracing configuration deleted successfully")
     @console_ns.response(400, "Invalid request parameters or configuration not found")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def delete(self, app_model: App):
         """Delete an existing trace app configuration"""

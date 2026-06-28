@@ -43,9 +43,11 @@ function CreateReleaseCloseButton() {
 
 export function CreateReleaseDialogContent() {
   return (
-    <ScopeProvider atoms={[createReleaseFormAtom]}>
-      <CreateReleaseDialogSurface />
-    </ScopeProvider>
+    <DialogContent className="top-[18dvh] w-140 max-w-[calc(100vw-32px)] translate-y-0 overflow-hidden p-0">
+      <ScopeProvider atoms={[createReleaseFormAtom]} name="CreateReleaseForm">
+        <CreateReleaseDialogSurface />
+      </ScopeProvider>
+    </DialogContent>
   )
 }
 
@@ -75,7 +77,7 @@ function CreateReleaseDialogSurface() {
   }
 
   return (
-    <DialogContent className="top-[18dvh] w-140 max-w-[calc(100vw-32px)] translate-y-0 overflow-hidden p-0">
+    <>
       <CreateReleaseCloseButton />
       <form
         noValidate
@@ -105,6 +107,6 @@ function CreateReleaseDialogSurface() {
 
         <CreateReleaseActions />
       </form>
-    </DialogContent>
+    </>
   )
 }

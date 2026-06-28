@@ -1,126 +1,39 @@
 'use client'
 
-import type { AgentDriveItemResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentFileNode, AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
+import type { AgentDriveApiContext } from '../drive-context'
+import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
 } from '@langgenius/dify-ui/dialog'
-import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
-import { getDriveFileIconType } from '../files/file-icon'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'
-
-const getSkillDrivePath = (skill: AgentSkill) => {
-  const skillMdKeySlug = skill.skillMdKey?.split('/', 1)[0]
-  return skill.path ?? skillMdKeySlug ?? skill.id
-}
-
-const getSkillFileName = (key: string, skillDrivePath: string) => key.startsWith(`${skillDrivePath}/`)
-  ? key.slice(skillDrivePath.length + 1)
-  : key
-
-const toSkillFileNode = (item: AgentDriveItemResponse, skillDrivePath: string) => ({
-  icon: getDriveFileIconType({
-    fileKind: item.file_kind,
-    fileName: getSkillFileName(item.key, skillDrivePath),
-    mimeType: item.mime_type,
-  }),
-  id: item.key,
-  name: getSkillFileName(item.key, skillDrivePath),
-})
-
-const getSkillMdFileId = (files: AgentFileNode[]): string | undefined => {
-  for (const file of files) {
-    if (file.icon !== 'folder' && file.name === 'SKILL.md')
-      return file.id
-
-    const childFileId = file.children ? getSkillMdFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
-  }
-}
-
-const getFirstSkillFileId = (files: AgentFileNode[]): string | undefined => {
-  for (const file of files) {
-    if (file.icon !== 'folder')
-      return file.id
-
-    const childFileId = file.children ? getFirstSkillFileId(file.children) : undefined
-    if (childFileId)
-      return childFileId
-  }
-}
+import { useAgentSkillDetail } from './use-skill-detail'
 
 export function AgentSkillItem({
-  agentId,
+  apiContext,
   skill,
   onRemove,
 }: {
-  agentId: string
+  apiContext: AgentDriveApiContext
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const [isPreviewOpen, setIsPreviewOpen] = useState(false)
-  const [selectedFileId, setSelectedFileId] = useState<string>()
   const handleRemove = useCallback(() => {
     onRemove(skill.id)
   }, [onRemove, skill.id])
   const handleOpenPreview = useCallback(() => {
-    setSelectedFileId(undefined)
     setIsPreviewOpen(true)
   }, [])
-  const skillDrivePath = getSkillDrivePath(skill)
-  const driveFilesQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-        },
-        query: {
-          prefix: `${skillDrivePath}/`,
-        },
-      },
-    }),
-    enabled: isPreviewOpen,
-  })
-  const detailFiles = driveFilesQuery.isSuccess
-    ? (driveFilesQuery.data.items ?? []).map(item => toSkillFileNode(item, skillDrivePath))
-    : []
-  const previewFileId = selectedFileId
-    ?? skill.skillMdKey
-    ?? (driveFilesQuery.isSuccess ? getSkillMdFileId(detailFiles) ?? getFirstSkillFileId(detailFiles) : undefined)
-  const previewQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.preview.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-        },
-        query: {
-          key: previewFileId ?? '',
-        },
-      },
-    }),
-    enabled: isPreviewOpen && !!previewFileId,
-  })
-  const selectedFile = detailFiles.find(file => file.id === previewFileId)
-  const isImagePreviewFile = selectedFile?.icon === 'image'
-  const downloadQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.download.get.queryOptions({
-      input: {
-        params: {
-          agent_id: agentId,
-        },
-        query: {
-          key: previewFileId ?? '',
-        },
-      },
-    }),
-    enabled: isPreviewOpen && !!previewFileId && (isImagePreviewFile || !!previewQuery.data?.binary),
+  const detail = useAgentSkillDetail({
+    apiContext,
+    description: skill.description ?? t('agentDetail.configure.skills.tip'),
+    isOpen: isPreviewOpen,
+    skill,
   })
 
   return (
@@ -158,24 +71,7 @@ export function AgentSkillItem({
       {isPreviewOpen && (
         <AgentSkillDetailDialog
           skillName={skill.name}
-          detail={{
-            description: skill.description ?? t('agentDetail.configure.skills.tip'),
-            files: detailFiles,
-            filePreview: {
-              binary: previewQuery.data?.binary,
-              content: previewQuery.data?.text ?? undefined,
-              downloadUrl: downloadQuery.data?.url,
-              fileName: selectedFile?.name,
-              isDownloadError: downloadQuery.isError,
-              isDownloadLoading: (isImagePreviewFile || !!previewQuery.data?.binary) && downloadQuery.isPending,
-              isError: previewQuery.isError,
-              isImage: isImagePreviewFile,
-              isLoading: previewQuery.isPending,
-            },
-            onSelectFile: file => setSelectedFileId(file.id),
-            selectedFileId: previewFileId,
-            sections: [],
-          }}
+          detail={detail}
         />
       )}
     </Dialog>

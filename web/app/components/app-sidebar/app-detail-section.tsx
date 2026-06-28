@@ -111,7 +111,7 @@ const AppDetailSection = ({
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
-      ...(appACLCapabilities.canMonitor
+      ...(appACLCapabilities.canAccessLogAndAnnotation
         ? [{
             name: t('appMenus.logs', { ns: 'common' }),
             href: `/app/${appId}/logs`,
@@ -120,7 +120,7 @@ const AppDetailSection = ({
           }]
         : []
       ),
-      ...(appACLCapabilities.canEdit && supportsAnnotations
+      ...(appACLCapabilities.canAccessLogAndAnnotation && supportsAnnotations
         ? [{
             name: t('appMenus.annotations', { ns: 'common' }),
             href: `/app/${appId}/annotations`,

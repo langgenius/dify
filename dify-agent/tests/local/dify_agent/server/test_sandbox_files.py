@@ -10,11 +10,16 @@ import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider
 from agenton.compositor.schemas import LayerSessionSnapshot
 from agenton.layers.base import LifecycleState
-from dify_agent.agent_stub.server.shell_agent_stub_env import AGENT_STUB_AUTH_JWE_ENV_VAR, AGENT_STUB_URL_ENV_VAR
+from dify_agent.agent_stub.server.shell_agent_stub_env import (
+    AGENT_STUB_AUTH_JWE_ENV_VAR,
+    AGENT_STUB_DRIVE_BASE_ENV_VAR,
+    AGENT_STUB_API_BASE_URL_ENV_VAR,
+)
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
+from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
 from dify_agent.protocol import (
     CreateRunRequest,
     RunComposition,
@@ -34,7 +39,7 @@ from dify_agent.server.sandbox_files import (
 )
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName
+from shell_session_manager.shellctl.shared import JobResult, JobStatusName
 
 
 @dataclass(slots=True)
@@ -67,7 +72,7 @@ class FakeShellctlClient:
         return self.run_handler(script, cwd, env, timeout)
 
     async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
-        raise AssertionError(f"Unexpected wait() call for {job_id} offset={offset} timeout={timeout}")
+        return self.run_handler("", None, None, timeout)
 
     async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> JobResult:
         raise AssertionError(f"Unexpected input() call for {job_id} text={text!r}")
@@ -80,11 +85,10 @@ class FakeShellctlClient:
         job_id: str,
         *,
         force: bool = False,
-        grace_seconds: float | None = None,
-    ) -> DeleteJobResponse:
-        del force, grace_seconds
+    ) -> object:
+        del force
         self.delete_calls.append(job_id)
-        return DeleteJobResponse(job_id=job_id)
+        return None
 
     async def close(self) -> None:
         return None
@@ -187,9 +191,8 @@ def _service(
         layer_type=DifyShellLayer,
         create=lambda config: DifyShellLayer.from_config_with_settings(
             DifyShellLayerConfig.model_validate(config),
-            shellctl_entrypoint="http://shellctl",
-            shellctl_client_factory=lambda _entrypoint: client,
-            agent_stub_url="https://agent.example.com/agent-stub",
+            shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
+            agent_stub_api_base_url="https://agent.example.com/agent-stub",
             agent_stub_token_factory=lambda execution_context, *, session_id: (
                 f"token-for:{execution_context.tenant_id}:{session_id}"
             ),
@@ -335,8 +338,9 @@ def test_upload_file_injects_agent_stub_env_and_returns_mapping() -> None:
         assert cwd == "~/workspace/abc12ff"
         assert timeout == 30.0
         assert env == {
-            AGENT_STUB_URL_ENV_VAR: "https://agent.example.com/agent-stub",
+            AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
             AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
+            AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive",
         }
         assert 'dify-agent", "file", "upload"' in script
         return _job_result(

@@ -80,6 +80,7 @@ export type AppSiteResponse = {
   icon_background?: string | null
   icon_type?: string | null
   icon_url?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   prompt_public?: boolean | null
   show_workflow_steps?: boolean | null
@@ -556,6 +557,7 @@ export type SystemFeatureModel = {
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_explore_banner: boolean
+  enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_trial_app: boolean
