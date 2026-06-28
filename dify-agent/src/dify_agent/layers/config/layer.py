@@ -129,8 +129,9 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
             raise DifyConfigLayerError(
                 f"config mentioned pull failed in shell: {result.status} exit_code={result.exit_code}\n{result.output}"
             )
-        if result.truncated:
-            raise DifyConfigLayerError("config mentioned pull output was truncated before the payload finished")
+        if not result.output_complete:
+            reason = result.incomplete_reason or "unknown"
+            raise DifyConfigLayerError(f"config mentioned pull output was incomplete before the payload finished: {reason}")
 
         skill_items, file_items = self._parse_shell_pull_output(result.output)
         self._loaded_skill_bodies = {item["name"]: item["skill_md"] for item in skill_items}

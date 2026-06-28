@@ -2,23 +2,25 @@
 
 from __future__ import annotations
 
+from typing import Literal, cast
+
 import pytest
 
-from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
 from dify_agent.layers.config import DifyConfigFileConfig, DifyConfigLayerConfig, DifyConfigSkillConfig
 from dify_agent.layers.config.layer import DifyConfigLayer, DifyConfigLayerError
 from dify_agent.layers.shell import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import DifyShellLayer, RemoteCommandResult
+from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer, ShellctlClientFactory
 
 
-def _unused_client_factory():
+def _unused_client_factory(_entrypoint: str):
     raise AssertionError("shellctl client should not be used by these config-layer tests")
 
 
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shell_provisioner=ShellctlProvisioner(client_factory=_unused_client_factory),
+        shellctl_entrypoint="http://shellctl",
+        shellctl_client_factory=cast(ShellctlClientFactory, _unused_client_factory),
     )
 
 
@@ -41,8 +43,24 @@ def _build_layer(*, writable: bool = True) -> DifyConfigLayer:
     return layer
 
 
-def _remote_result(output: str, *, exit_code: int | None = 0, truncated: bool = False) -> RemoteCommandResult:
-    return RemoteCommandResult(status="exited", exit_code=exit_code, output=output, truncated=truncated)
+def _remote_result(
+    output: str,
+    *,
+    exit_code: int | None = 0,
+    output_complete: bool = True,
+    incomplete_reason: Literal["output_limit", "timeout"] | None = None,
+) -> CompleteRemoteCommandResult:
+    return CompleteRemoteCommandResult(
+        job_id="remote-config-pull",
+        status="exited",
+        done=True,
+        exit_code=exit_code,
+        output=output,
+        output_complete=output_complete,
+        incomplete_reason=incomplete_reason,
+        offset=len(output),
+        output_path="/tmp/config-pull-output.log",
+    )
 
 
 def _pull_output(*, include_file: bool = True, include_skill: bool = True) -> str:
@@ -165,11 +183,11 @@ async def test_on_context_create_raises_when_shell_output_is_truncated(
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
         del self, script, inject_agent_stub_env, timeout
-        return _remote_result(_pull_output(), truncated=True)
+        return _remote_result(_pull_output(), output_complete=False, incomplete_reason="output_limit")
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
 
-    with pytest.raises(DifyConfigLayerError, match="output was truncated"):
+    with pytest.raises(DifyConfigLayerError, match="output was incomplete"):
         await layer.on_context_create()
 
 
