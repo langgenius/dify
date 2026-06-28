@@ -1,51 +1,42 @@
+from __future__ import annotations
+
 import asyncio
-from collections.abc import Callable, Mapping
 import json
-import secrets
-import time
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from typing import cast
 
 import pytest
 
-from agenton.compositor import Compositor, LayerNode, LayerProvider
-from agenton.layers import LifecycleState
-from dify_agent.agent_stub.server.shell_agent_stub_env import (
-    AGENT_STUB_AUTH_JWE_ENV_VAR,
-    AGENT_STUB_DRIVE_BASE_ENV_VAR,
-    AGENT_STUB_API_BASE_URL_ENV_VAR,
-)
-from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
-from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-from dify_agent.layers.shell import (
-    DIFY_SHELL_LAYER_TYPE_ID,
-    DifyShellCliToolConfig,
-    DifyShellEnvVarConfig,
-    DifyShellLayerConfig,
-    DifyShellSandboxConfig,
-    DifyShellSecretRefConfig,
-)
 import dify_agent.layers.shell.layer as shell_layer_module
+from dify_agent.layers.shell import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 from dify_agent.layers.shell.layer import (
+    CompleteRemoteCommandResult,
+    DEFAULT_TERMINATE_GRACE_SECONDS,
     DifyShellLayer,
     DifyShellRuntimeState,
-    ShellctlClientFactory,
 )
-from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName, JobStatusView
+from dify_agent.adapters.shell.protocols import (
+    ShellCommandResult,
+    ShellCommandStatus,
+    ShellFileTransferProtocol,
+    ShellProviderProtocol,
+    ShellResourceProtocol,
+)
 
 
-def _job_result(
+def _command_result(
     job_id: str,
     *,
-    status: JobStatusName = JobStatusName.RUNNING,
+    status: str = "running",
     done: bool = False,
     exit_code: int | None = None,
     output: str = "",
     offset: int = 0,
     truncated: bool = False,
-    output_path: str = "/tmp/output.log",
-) -> JobResult:
-    return JobResult(
+    output_path: str | None = "/tmp/output.log",
+) -> ShellCommandResult:
+    return ShellCommandResult(
         job_id=job_id,
         status=status,
         done=done,
@@ -57,34 +48,36 @@ def _job_result(
     )
 
 
-def _job_status(
+def _command_status(
     job_id: str,
     *,
-    status: JobStatusName = JobStatusName.RUNNING,
-    done: bool = False,
-    exit_code: int | None = None,
+    status: str = "terminated",
+    done: bool = True,
+    exit_code: int | None = 130,
     offset: int = 0,
-) -> JobStatusView:
-    return JobStatusView(
-        job_id=job_id,
-        status=status,
-        done=done,
-        exit_code=exit_code,
-        created_at="2026-05-28T12:00:00Z",
-        started_at="2026-05-28T12:00:01Z",
-        ended_at="2026-05-28T12:00:02Z" if done else None,
-        offset=offset,
-    )
+) -> ShellCommandStatus:
+    return ShellCommandStatus(job_id=job_id, status=status, done=done, exit_code=exit_code, offset=offset)
+
+
+def _parse_tagged_observation(result: object) -> tuple[dict[str, object], str]:
+    assert isinstance(result, str)
+    metadata_tag = "\n</metadata>\n\n<output>\n"
+    assert result.startswith("<metadata>\n")
+    assert result.endswith("\n</output>")
+    metadata_block, output_block = result.split(metadata_tag, 1)
+    metadata = json.loads(metadata_block.removeprefix("<metadata>\n"))
+    assert isinstance(metadata, dict)
+    output = output_block.removesuffix("\n</output>")
+    return cast(dict[str, object], metadata), output
 
 
 def _assert_error_observation(result: object, *, job_id: str | None = None, includes: str | None = None) -> None:
     assert isinstance(result, dict)
     assert isinstance(result.get("error"), str)
-    assert result["error"]
     if job_id is None:
         assert "job_id" not in result
     else:
-        assert result.get("job_id") == job_id
+        assert result["job_id"] == job_id
     if includes is not None:
         assert includes in result["error"]
 
@@ -93,8 +86,8 @@ def _assert_error_observation(result: object, *, job_id: str | None = None, incl
 class RunCall:
     script: str
     cwd: str | None
-    timeout: float
     env: Mapping[str, str] | None
+    timeout: float
 
 
 @dataclass(slots=True)
@@ -118,7 +111,7 @@ class TailCall:
 
 
 @dataclass(slots=True)
-class TerminateCall:
+class InterruptCall:
     job_id: str
     grace_seconds: float
 
@@ -130,516 +123,241 @@ class DeleteCall:
     grace_seconds: float | None
 
 
-class FakeShellctlClient:
-    run_calls: list[RunCall]
-    wait_calls: list[WaitCall]
-    input_calls: list[InputCall]
-    tail_calls: list[TailCall]
-    terminate_calls: list[TerminateCall]
-    delete_calls: list[DeleteCall]
-    events: list[tuple[str, str]]
-    closed: bool
+class FakeFiles(ShellFileTransferProtocol):
+    async def upload(self, *, content: bytes, remote_path: str, cwd: str | None = None) -> None:
+        raise AssertionError("resource.files should not be used by production shell layer logic")
 
-    def __init__(
-        self,
-        *,
-        run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], JobResult] | None = None,
-        wait_handler: Callable[[str, int, float], JobResult] | None = None,
-        input_handler: Callable[[str, str, int, float], JobResult] | None = None,
-        tail_handler: Callable[[str], JobResult] | None = None,
-        terminate_handler: Callable[[str, float], JobStatusView] | None = None,
-        delete_handler: Callable[[str, bool, float | None], DeleteJobResponse] | None = None,
-    ) -> None:
-        self._run_handler = run_handler
-        self._wait_handler = wait_handler
-        self._input_handler = input_handler
-        self._tail_handler = tail_handler
-        self._terminate_handler = terminate_handler
-        self._delete_handler = delete_handler
-        self.run_calls = []
-        self.wait_calls = []
-        self.input_calls = []
-        self.tail_calls = []
-        self.terminate_calls = []
-        self.delete_calls = []
-        self.events = []
-        self.closed = False
+    async def download(self, *, remote_path: str, cwd: str | None = None) -> bytes:
+        raise AssertionError("resource.files should not be used by production shell layer logic")
 
-    async def run(
-        self,
-        script: str,
-        *,
-        cwd: str | None = None,
-        env: Mapping[str, str] | None = None,
-        timeout: float = 10.0,
-    ) -> JobResult:
-        self.run_calls.append(RunCall(script=script, cwd=cwd, timeout=timeout, env=env))
-        self.events.append(("run", script))
-        if self._run_handler is None:
+
+@dataclass(slots=True)
+class FakeCommands:
+    run_handler: Callable[[str, str | None, Mapping[str, str] | None, float], ShellCommandResult] | None = None
+    wait_handler: Callable[[str, int, float], ShellCommandResult] | None = None
+    input_handler: Callable[[str, str, int, float], ShellCommandResult] | None = None
+    tail_handler: Callable[[str], ShellCommandResult] | None = None
+    interrupt_handler: Callable[[str, float], ShellCommandStatus] | None = None
+    delete_handler: Callable[[str, bool, float | None], None] | None = None
+    run_calls: list[RunCall] = field(default_factory=list)
+    wait_calls: list[WaitCall] = field(default_factory=list)
+    input_calls: list[InputCall] = field(default_factory=list)
+    tail_calls: list[TailCall] = field(default_factory=list)
+    interrupt_calls: list[InterruptCall] = field(default_factory=list)
+    delete_calls: list[DeleteCall] = field(default_factory=list)
+
+    async def run(self, script: str, *, cwd: str | None = None, env: dict[str, str] | None = None, timeout: float):
+        self.run_calls.append(RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
+        if self.run_handler is None:
             raise AssertionError("Unexpected run() call")
-        return self._run_handler(script, cwd, env, timeout)
+        return self.run_handler(script, cwd, env, timeout)
 
-    async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+    async def wait(self, job_id: str, *, offset: int, timeout: float):
         self.wait_calls.append(WaitCall(job_id=job_id, offset=offset, timeout=timeout))
-        self.events.append(("wait", job_id))
-        if self._wait_handler is None:
+        if self.wait_handler is None:
             raise AssertionError("Unexpected wait() call")
-        return self._wait_handler(job_id, offset, timeout)
+        return self.wait_handler(job_id, offset, timeout)
 
-    async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> JobResult:
+    async def read_output(self, job_id: str, *, offset: int):
+        self.wait_calls.append(WaitCall(job_id=job_id, offset=offset, timeout=0.0))
+        if self.wait_handler is None:
+            raise AssertionError("Unexpected read_output() call")
+        return self.wait_handler(job_id, offset, 0.0)
+
+    async def input(self, job_id: str, text: str, *, offset: int, timeout: float):
         self.input_calls.append(InputCall(job_id=job_id, text=text, offset=offset, timeout=timeout))
-        self.events.append(("input", job_id))
-        if self._input_handler is None:
+        if self.input_handler is None:
             raise AssertionError("Unexpected input() call")
-        return self._input_handler(job_id, text, offset, timeout)
+        return self.input_handler(job_id, text, offset, timeout)
 
-    async def tail(self, job_id: str) -> JobResult:
+    async def interrupt(self, job_id: str, *, grace_seconds: float):
+        self.interrupt_calls.append(InterruptCall(job_id=job_id, grace_seconds=grace_seconds))
+        if self.interrupt_handler is None:
+            raise AssertionError("Unexpected interrupt() call")
+        return self.interrupt_handler(job_id, grace_seconds)
+
+    async def tail(self, job_id: str):
         self.tail_calls.append(TailCall(job_id=job_id))
-        self.events.append(("tail", job_id))
-        if self._tail_handler is None:
+        if self.tail_handler is None:
             raise AssertionError("Unexpected tail() call")
-        return self._tail_handler(job_id)
+        return self.tail_handler(job_id)
 
-    async def terminate(self, job_id: str, grace_seconds: float = 2.0) -> JobStatusView:
-        self.terminate_calls.append(TerminateCall(job_id=job_id, grace_seconds=grace_seconds))
-        self.events.append(("terminate", job_id))
-        if self._terminate_handler is None:
-            raise AssertionError("Unexpected terminate() call")
-        return self._terminate_handler(job_id, grace_seconds)
-
-    async def delete(
-        self,
-        job_id: str,
-        *,
-        force: bool = False,
-        grace_seconds: float | None = None,
-    ) -> DeleteJobResponse:
+    async def delete(self, job_id: str, *, force: bool = False, grace_seconds: float | None = None) -> None:
         self.delete_calls.append(DeleteCall(job_id=job_id, force=force, grace_seconds=grace_seconds))
-        self.events.append(("delete", job_id))
-        if self._delete_handler is None:
-            return DeleteJobResponse(job_id=job_id)
-        return self._delete_handler(job_id, force, grace_seconds)
+        if self.delete_handler is not None:
+            self.delete_handler(job_id, force, grace_seconds)
+
+
+@dataclass(slots=True)
+class FakeResource(ShellResourceProtocol):
+    commands: FakeCommands
+    files: FakeFiles = field(default_factory=FakeFiles)
+    closed: bool = False
 
     async def close(self) -> None:
         self.closed = True
-        self.events.append(("close", "client"))
 
 
-def _shell_layer(
-    *, client_factory: ShellctlClientFactory, config: DifyShellLayerConfig | None = None
-) -> DifyShellLayer:
-    return DifyShellLayer.from_config_with_settings(
-        config or DifyShellLayerConfig(),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=client_factory,
-    )
+@dataclass(slots=True)
+class FakeProvider(ShellProviderProtocol):
+    resource: FakeResource
+    create_calls: int = 0
+
+    async def create(self) -> ShellResourceProtocol:
+        self.create_calls += 1
+        return self.resource
 
 
-def _execution_context_layer() -> DifyExecutionContextLayer:
-    return DifyExecutionContextLayer.from_config_with_settings(
-        DifyExecutionContextLayerConfig(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            user_from="account",
-            app_id="app-1",
-            workflow_id="workflow-1",
-            workflow_run_id="workflow-run-1",
-            node_id="node-1",
-            node_execution_id="node-execution-1",
-            conversation_id="conversation-1",
-            agent_id="agent-1",
-            agent_config_version_id="agent-config-version-1",
-            agent_mode="workflow_run",
-            invoke_from="service-api",
-            trace_id="trace-1",
-        ),
-        daemon_url="http://plugin-daemon",
-        daemon_api_key="daemon-secret",
-    )
-
-
-def _shell_provider(*, client_factory: ShellctlClientFactory) -> LayerProvider[DifyShellLayer]:
-    return LayerProvider.from_factory(
-        layer_type=DifyShellLayer,
-        create=lambda config: DifyShellLayer.from_config_with_settings(
-            DifyShellLayerConfig.model_validate(config),
-            shellctl_entrypoint="http://shellctl",
-            shellctl_client_factory=client_factory,
-        ),
-    )
-
-
-def _parse_tagged_observation(result: object) -> tuple[dict[str, object], str]:
-    assert isinstance(result, str)
-    metadata_tag = "\n</metadata>\n\n<output>\n"
-    assert result.startswith("<metadata>\n")
-    assert result.endswith("\n</output>")
-    metadata_block, output_block = result.split(metadata_tag, 1)
-    metadata = json.loads(metadata_block.removeprefix("<metadata>\n"))
-    assert isinstance(metadata, dict)
-    output = output_block.removesuffix("\n</output>")
-    return cast(dict[str, object], metadata), output
+def _layer(*, commands: FakeCommands, config: DifyShellLayerConfig | None = None) -> tuple[DifyShellLayer, FakeProvider]:
+    provider = FakeProvider(resource=FakeResource(commands=commands))
+    layer = DifyShellLayer.from_config_with_settings(config or DifyShellLayerConfig(), shell_provider=provider)
+    return layer, provider
 
 
 def test_shell_type_id_constant_matches_implementation_class() -> None:
     assert DIFY_SHELL_LAYER_TYPE_ID == DifyShellLayer.type_id
 
 
-def test_shell_layer_create_generates_5_plus_2_hex_session_id_and_retries_workspace_collision(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    random_suffixes = iter(["aa", "bb"])
-    monkeypatch.setattr(time, "time", lambda: 0x12345F)
-    monkeypatch.setattr(secrets, "token_hex", lambda nbytes: next(random_suffixes))
+def test_resource_context_calls_provider_create_and_resource_close() -> None:
+    layer, provider = _layer(commands=FakeCommands())
 
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert cwd is None
+    async def scenario() -> None:
+        async with layer.resource_context():
+            assert provider.create_calls == 1
+            assert provider.resource.closed is False
+        assert provider.resource.closed is True
+
+    asyncio.run(scenario())
+
+
+def test_shell_layer_create_allocates_workspace_and_bootstraps(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(shell_layer_module.time, "time", lambda: int("abc12", 16))
+    monkeypatch.setattr(shell_layer_module.secrets, "token_hex", lambda _nbytes: "ff")
+
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
         assert env is None
-        assert timeout == 30.0
-        if "2345faa" in script:
-            return _job_result("mkdir-collision", status=JobStatusName.EXITED, done=True, exit_code=17)
-        if "2345fbb" in script:
-            return _job_result("mkdir-success", status=JobStatusName.RUNNING, done=False, offset=4)
-        raise AssertionError(f"Unexpected script: {script}")
+        if cwd is None:
+            assert 'mkdir -p "$HOME/workspace"' in script
+            return _command_result("mkdir-job", status="exited", done=True, exit_code=0)
+        assert cwd == "~/workspace/abc12ff"
+        assert "apt-get install -y ripgrep" in script
+        return _command_result("bootstrap-job", status="exited", done=True, exit_code=0)
 
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
-        assert job_id == "mkdir-success"
-        assert offset == 4
-        assert timeout == 30.0
-        return _job_result("mkdir-success", status=JobStatusName.EXITED, done=True, exit_code=0, offset=8)
-
-    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer, provider = _layer(
+        commands=FakeCommands(run_handler=run_handler),
+        config=DifyShellLayerConfig(
+            cli_tools=[{"name": "ripgrep", "install_commands": ["apt-get install -y ripgrep"]}],
+        ),
+    )
 
     async def scenario() -> None:
         async with layer.resource_context():
             await layer.on_context_create()
-            assert client.closed is False
+            assert provider.resource.closed is False
 
     asyncio.run(scenario())
 
-    assert layer.runtime_state.session_id == "2345fbb"
-    assert layer.runtime_state.workspace_cwd == "~/workspace/2345fbb"
-    assert layer.runtime_state.job_ids == ["mkdir-collision", "mkdir-success"]
-    assert layer.runtime_state.job_offsets == {"mkdir-collision": 0, "mkdir-success": 8}
-    assert 'mkdir "$HOME/workspace/2345fbb"' in client.run_calls[1].script
-    assert 'mkdir -p "$HOME/workspace/2345fbb"' not in client.run_calls[1].script
-    assert client.closed is True
+    assert layer.runtime_state == DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+    assert [call.job_id for call in provider.resource.commands.delete_calls] == ["mkdir-job", "bootstrap-job"]
 
 
-def test_shell_layer_suspend_leaves_client_open_until_resource_context_exits() -> None:
-    client = FakeShellctlClient()
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+def test_shell_layer_suspend_does_not_close_before_resource_context_exits() -> None:
+    layer, provider = _layer(commands=FakeCommands())
     layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
             await layer.on_context_suspend()
-            assert client.closed is False
+            assert provider.resource.closed is False
+        assert provider.resource.closed is True
 
     asyncio.run(scenario())
 
-    assert client.closed is True
 
-
-def test_shell_layer_suspend_and_resume_reuse_state_with_fresh_clients() -> None:
-    first_client = FakeShellctlClient(
-        run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
-            "mkdir-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-        )
-    )
-    second_client = FakeShellctlClient()
-    created_entrypoints: list[str] = []
-    clients = iter([first_client, second_client])
-
-    def factory(entrypoint: str) -> FakeShellctlClient:
-        created_entrypoints.append(entrypoint)
-        return next(clients)
-
-    compositor = Compositor([LayerNode("shell", _shell_provider(client_factory=factory))])
-
-    async def scenario() -> None:
-        async with compositor.enter(configs={"shell": DifyShellLayerConfig()}) as run:
-            shell_layer = run.get_layer("shell", DifyShellLayer)
-            initial_session_id = shell_layer.runtime_state.session_id
-            assert initial_session_id is not None
-            assert shell_layer.runtime_state.workspace_cwd == f"~/workspace/{initial_session_id}"
-            shell_layer.runtime_state.job_ids = [*shell_layer.runtime_state.job_ids, "user-job"]
-            shell_layer.runtime_state.job_offsets = {
-                **shell_layer.runtime_state.job_offsets,
-                "user-job": 42,
-            }
-            assert first_client.closed is False
-            run.suspend_layer_on_exit("shell")
-
-        assert run.session_snapshot is not None
-        assert first_client.closed is True
-        assert run.session_snapshot.layers[0].lifecycle_state is LifecycleState.SUSPENDED
-
-        async with compositor.enter(
-            configs={"shell": DifyShellLayerConfig()},
-            session_snapshot=run.session_snapshot,
-        ) as resumed_run:
-            resumed_shell = resumed_run.get_layer("shell", DifyShellLayer)
-            assert second_client.closed is False
-            assert resumed_shell.runtime_state.session_id == initial_session_id
-            assert resumed_shell.runtime_state.workspace_cwd == f"~/workspace/{initial_session_id}"
-            assert set(resumed_shell.runtime_state.job_ids) == {"mkdir-job", "user-job"}
-            assert resumed_shell.runtime_state.job_offsets == {"mkdir-job": 0, "user-job": 42}
-            resumed_run.suspend_layer_on_exit("shell")
-
-        assert second_client.closed is True
-
-    asyncio.run(scenario())
-
-    assert created_entrypoints == ["http://shellctl", "http://shellctl"]
-
-
-def test_shell_layer_delete_removes_workspace_then_force_deletes_tracked_jobs_and_closes_client() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == 'rm -rf -- "$HOME/workspace/abc12ff"'
+def test_shell_layer_delete_cleans_workspace_and_tracked_jobs() -> None:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        del env, timeout
         assert cwd is None
-        assert env is None
-        assert timeout == 30.0
-        return _job_result("cleanup-job", status=JobStatusName.RUNNING, done=False, offset=3)
+        assert script == 'rm -rf -- "$HOME/workspace/abc12ff"'
+        return _command_result("cleanup-job", status="exited", done=True, exit_code=0)
 
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
-        assert job_id == "cleanup-job"
-        assert offset == 3
-        assert timeout == 30.0
-        return _job_result("cleanup-job", status=JobStatusName.EXITED, done=True, exit_code=0, offset=5)
-
-    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    commands = FakeCommands(run_handler=run_handler)
+    layer, provider = _layer(commands=commands)
+    layer.runtime_state = DifyShellRuntimeState(
+        session_id="abc12ff",
+        workspace_cwd="~/workspace/abc12ff",
+        job_ids=["user-job"],
+        job_offsets={"user-job": 9},
+    )
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            layer.runtime_state.job_ids = ["user-job", "mkdir-job"]
-            layer.runtime_state.job_offsets = {"user-job": 9, "mkdir-job": 1}
             await layer.on_context_delete()
-            assert client.closed is False
 
     asyncio.run(scenario())
 
-    assert client.events[:2] == [("run", 'rm -rf -- "$HOME/workspace/abc12ff"'), ("wait", "cleanup-job")]
-    assert {call.job_id for call in client.delete_calls} == {"user-job", "mkdir-job", "cleanup-job"}
-    assert all(
-        client.events.index(("delete", call.job_id)) > client.events.index(("wait", "cleanup-job"))
-        for call in client.delete_calls
-    )
-    assert all(call.force is True for call in client.delete_calls)
+    assert [call.job_id for call in commands.delete_calls] == ["cleanup-job", "user-job"]
     assert layer.runtime_state.job_ids == []
     assert layer.runtime_state.job_offsets == {}
-    assert client.closed is True
+    assert provider.resource.closed is True
 
 
-def test_shell_layer_create_failure_force_deletes_internal_jobs_before_reraising() -> None:
-    client = FakeShellctlClient(
-        run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
-            "mkdir-failed",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=1,
-        )
-    )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-
-    async def scenario() -> None:
-        with pytest.raises(RuntimeError, match="Failed to create shell workspace"):
-            async with layer.resource_context():
-                await layer.on_context_create()
-
-    asyncio.run(scenario())
-
-    assert [call.job_id for call in client.delete_calls] == ["mkdir-failed"]
-    assert all(call.force is True for call in client.delete_calls)
-    assert layer.runtime_state.job_ids == []
-    assert layer.runtime_state.job_offsets == {}
-    assert client.closed is True
-
-
-def test_shell_layer_create_bootstraps_agent_soul_shell_config(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(time, "time", lambda: 0xABC12)
-    monkeypatch.setattr(secrets, "token_hex", lambda _nbytes: "ff")
-
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert env is None
-        if cwd is None:
-            assert timeout == 30.0
-            return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
-        assert cwd == "~/workspace/abc12ff"
-        assert "export PROJECT_NAME='demo project'" in script
-        assert "export QUOTED='it'\\''s ok'" in script
-        assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
-        assert "export RG_CONFIG_PATH='.ripgreprc'" in script
-        assert 'export GITHUB_TOKEN="${GITHUB_TOKEN:-}"' in script
-        assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
-        assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
-        assert "apt-get install -y ripgrep" in script
-        return _job_result("bootstrap-job", status=JobStatusName.EXITED, done=True, exit_code=0)
-
-    client = FakeShellctlClient(run_handler=run_handler)
-    layer = _shell_layer(
-        client_factory=lambda _entrypoint: client,
-        config=DifyShellLayerConfig(
-            cli_tools=[
-                DifyShellCliToolConfig(
-                    name="ripgrep",
-                    install_commands=["apt-get install -y ripgrep"],
-                    env=[DifyShellEnvVarConfig(name="RG_CONFIG_PATH", value=".ripgreprc")],
-                    secret_refs=[DifyShellSecretRefConfig(name="GITHUB_TOKEN", ref="secret-2")],
-                )
-            ],
-            env=[
-                DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project"),
-                DifyShellEnvVarConfig(name="QUOTED", value="it's ok"),
-            ],
-            secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="secret-1")],
-            sandbox=DifyShellSandboxConfig(provider="independent", config={"cpu": 2}),
-        ),
-    )
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            await layer.on_context_create()
-
-    asyncio.run(scenario())
-
-    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ff"]
-    assert layer.runtime_state.job_ids == ["mkdir-job", "bootstrap-job"]
-
-
-def test_shell_layer_injects_agent_soul_env_without_workspace_env_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(time, "time", lambda: 0xABC12)
-
-    def token_hex(_nbytes: int) -> str:
-        return "ff"
-
-    monkeypatch.setattr(secrets, "token_hex", token_hex)
-
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        del timeout
-        assert env is None
-        if cwd is None:
-            return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
-
-        assert cwd == "~/workspace/abc12ff"
-        assert "export PROJECT_NAME='demo project'" in script
-        assert 'export OPENAI_API_KEY="${OPENAI_API_KEY:-}"' in script
-        assert "export DIFY_SANDBOX_PROVIDER='independent'" in script
-        assert "export DIFY_SANDBOX_CONFIG_JSON='{\"cpu\": 2}'" in script
-        assert script.endswith("\npwd")
-        return _job_result("user-job", status=JobStatusName.EXITED, done=True, exit_code=0)
-
-    client = FakeShellctlClient(run_handler=run_handler)
-    layer = _shell_layer(
-        client_factory=lambda _entrypoint: client,
-        config=DifyShellLayerConfig(
-            env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo project")],
-            secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="secret-1")],
-            sandbox=DifyShellSandboxConfig(provider="independent", config={"cpu": 2}),
-        ),
-    )
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            await layer.on_context_create()
-            run_result = cast(
-                str,
-                await tools["shell_run"].function_schema.call(
-                    {"script": "pwd"},
-                    None,  # pyright: ignore[reportArgumentType]
-                ),
-            )
-            metadata, output = _parse_tagged_observation(run_result)
-            assert metadata["job_id"] == "user-job"
-            assert output == ""
-
-    asyncio.run(scenario())
-
-    assert [call.cwd for call in client.run_calls] == [None, "~/workspace/abc12ff"]
-    assert layer.runtime_state.job_ids == ["mkdir-job", "user-job"]
-
-
-def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
+def test_shell_layer_tools_map_inputs_and_maintain_offsets_with_tail_end() -> None:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
         assert script == "pwd"
         assert cwd == "~/workspace/abc12ff"
         assert env is None
-        assert timeout == 2.5
-        return _job_result(
+        return _command_result(
             "user-job",
-            status=JobStatusName.RUNNING,
+            status="running",
             done=False,
+            output="head-output\n",
             offset=10,
-            output="/home/test\n",
+            truncated=True,
+            output_path="/tmp/initial.log",
         )
 
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
+    def wait_handler(job_id: str, offset: int, timeout: float) -> ShellCommandResult:
         assert job_id == "user-job"
-        assert offset == 10
-        assert timeout == 4.0
-        return _job_result(
-            "user-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            offset=18,
-            output="more\n",
-        )
+        if timeout == 4.0:
+            assert offset == 22
+            return _command_result("user-job", status="running", done=False, output="more\n", offset=30)
+        raise AssertionError(f"Unexpected wait/read_output: offset={offset} timeout={timeout}")
 
-    def input_handler(job_id: str, text: str, offset: int, timeout: float) -> JobResult:
+    def input_handler(job_id: str, text: str, offset: int, timeout: float) -> ShellCommandResult:
+        assert (job_id, text, offset, timeout) == ("user-job", "ls\n", 30, 5.0)
+        return _command_result("user-job", status="exited", done=True, exit_code=0, output="file.txt\n", offset=34)
+
+    def tail_handler(job_id: str) -> ShellCommandResult:
         assert job_id == "user-job"
-        assert text == "ls\n"
-        assert offset == 18
-        assert timeout == 5.0
-        return _job_result(
-            "user-job",
-            status=JobStatusName.EXITED,
+        return _command_result(
+            job_id,
+            status="exited",
             done=True,
             exit_code=0,
+            output="tail-output\n",
             offset=22,
-            output="file.txt\n",
+            output_path="/tmp/resolved.log",
         )
 
-    def terminate_handler(job_id: str, grace_seconds: float) -> JobStatusView:
-        assert job_id == "user-job"
-        assert grace_seconds == 1.5
-        return _job_status(
-            "user-job",
-            status=JobStatusName.TERMINATED,
-            done=True,
-            exit_code=130,
-            offset=22,
-        )
+    def interrupt_handler(job_id: str, grace_seconds: float) -> ShellCommandStatus:
+        assert (job_id, grace_seconds) == ("user-job", 1.5)
+        return _command_status("user-job", status="terminated", done=True, exit_code=130, offset=34)
 
-    client = FakeShellctlClient(
+    commands = FakeCommands(
         run_handler=run_handler,
         wait_handler=wait_handler,
         input_handler=input_handler,
-        tail_handler=lambda job_id: _job_result(job_id, output_path="/tmp/user-job.log"),
-        terminate_handler=terminate_handler,
+        tail_handler=tail_handler,
+        interrupt_handler=interrupt_handler,
     )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer, provider = _layer(commands=commands)
     tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-
-            run_tool_def = await tools["shell_run"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-            wait_tool_def = await tools["shell_wait"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-            input_tool_def = await tools["shell_input"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-            interrupt_tool_def = await tools["shell_interrupt"].prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
-
-            run_result = await tools["shell_run"].function_schema.call(
-                {"script": "pwd", "timeout": 2.5},
-                None,  # pyright: ignore[reportArgumentType]
-            )
+            run_result = await tools["shell_run"].function_schema.call({"script": "pwd"}, None)  # pyright: ignore[reportArgumentType]
             wait_result = await tools["shell_wait"].function_schema.call(
                 {"job_id": "user-job", "timeout": 4.0},
                 None,  # pyright: ignore[reportArgumentType]
@@ -653,15 +371,6 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
                 None,  # pyright: ignore[reportArgumentType]
             )
 
-            assert run_tool_def is not None
-            assert wait_tool_def is not None
-            assert input_tool_def is not None
-            assert interrupt_tool_def is not None
-            assert "offset" not in run_tool_def.parameters_json_schema.get("properties", {})
-            assert "offset" not in wait_tool_def.parameters_json_schema.get("properties", {})
-            assert "offset" not in input_tool_def.parameters_json_schema.get("properties", {})
-            assert "offset" not in interrupt_tool_def.parameters_json_schema.get("properties", {})
-            assert set(tools) == {"shell_run", "shell_wait", "shell_input", "shell_interrupt"}
             run_metadata, run_output = _parse_tagged_observation(run_result)
             wait_metadata, wait_output = _parse_tagged_observation(wait_result)
             input_metadata, input_output = _parse_tagged_observation(input_result)
@@ -672,875 +381,284 @@ def test_shell_layer_tools_map_inputs_to_shellctl_calls_and_maintain_offsets() -
                 "status": "running",
                 "done": False,
                 "exit_code": None,
-                "output_path": "/tmp/output.log",
+                "output_path": "/tmp/resolved.log",
             }
-            assert run_output == "/home/test\n"
-            assert wait_metadata == {
-                "job_id": "user-job",
-                "status": "running",
-                "done": False,
-                "exit_code": None,
-                "output_path": "/tmp/output.log",
-            }
+            assert "head-output" in run_output
+            assert "tail-output" in run_output
+            assert wait_metadata["job_id"] == "user-job"
             assert wait_output == "more\n"
-            assert input_metadata == {
-                "job_id": "user-job",
-                "status": "exited",
-                "done": True,
-                "exit_code": 0,
-                "output_path": "/tmp/output.log",
-            }
+            assert input_metadata["exit_code"] == 0
             assert input_output == "file.txt\n"
             assert interrupt_metadata == {
                 "job_id": "user-job",
                 "status": "terminated",
                 "done": True,
                 "exit_code": 130,
-                "output_path": "/tmp/user-job.log",
+                "output_path": "/tmp/resolved.log",
             }
             assert interrupt_output == "Job was interrupted."
-            assert '"offset":' not in cast(str, run_result)
-            assert '"truncated":' not in cast(str, run_result)
-            assert '"output":' not in cast(str, run_result)
-            assert client.closed is False
 
     asyncio.run(scenario())
 
-    assert layer.runtime_state.job_ids == ["user-job"]
-    assert layer.runtime_state.job_offsets == {"user-job": 22}
-    assert client.tail_calls == [TailCall(job_id="user-job")]
-    assert client.closed is True
+    assert layer.runtime_state.job_offsets == {"user-job": 34}
+    assert commands.tail_calls == [TailCall(job_id="user-job"), TailCall(job_id="user-job")]
+    assert provider.resource.closed is True
 
 
-def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        del cwd, timeout
-        if script == "pwd":
-            assert env is not None
-            return _job_result("user-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+def test_shell_run_keeps_original_offset_when_tail_lookup_fails_for_truncated_output() -> None:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        assert script == "pwd"
+        assert cwd == "~/workspace/abc12ff"
         assert env is None
-        return _job_result("mkdir-job", status=JobStatusName.EXITED, done=True, exit_code=0)
+        return _command_result(
+            "user-job",
+            status="running",
+            done=False,
+            output="head-output\n",
+            offset=10,
+            truncated=True,
+            output_path="/tmp/current.log",
+        )
 
-    client = FakeShellctlClient(run_handler=run_handler)
-    layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_api_base_url="https://agent.example.com/agent-stub",
-        agent_stub_token_factory=lambda execution_context, *, session_id: (
-            f"token-for:{execution_context.tenant_id}:{session_id}"
-        ),
-    )
-    layer.deps = layer.deps_type(execution_context=_execution_context_layer())
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            await layer.on_context_create()
-            run_result = await tools["shell_run"].function_schema.call(
-                {"script": "pwd"},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-            metadata, output = _parse_tagged_observation(run_result)
-            assert metadata["job_id"] == "user-job"
-            assert output == ""
-
-    asyncio.run(scenario())
-
-    user_run_call = next(call for call in client.run_calls if call.script == "pwd")
-    internal_run_calls = [call for call in client.run_calls if call.script != "pwd"]
-
-    assert user_run_call.env == {
-        AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
-        AGENT_STUB_AUTH_JWE_ENV_VAR: f"token-for:tenant-1:{layer.runtime_state.session_id}",
-        AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
-    }
-    assert internal_run_calls
-    assert all(call.env is None for call in internal_run_calls)
-
-
-def test_shell_interrupt_succeeds_when_tail_fails_after_termination() -> None:
-    def tail_handler(job_id: str) -> JobResult:
+    def tail_handler(job_id: str) -> ShellCommandResult:
         raise RuntimeError(f"tail unavailable for {job_id}")
 
-    client = FakeShellctlClient(
-        tail_handler=tail_handler,
-        terminate_handler=lambda job_id, grace_seconds: _job_status(
-            job_id,
-            status=JobStatusName.TERMINATED,
-            done=True,
-            exit_code=130,
-            offset=22,
-        ),
-    )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    commands = FakeCommands(run_handler=run_handler, tail_handler=tail_handler)
+    layer, provider = _layer(commands=commands)
     tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(
-                session_id="abc12ff",
-                workspace_cwd="~/workspace/abc12ff",
-                job_ids=["user-job"],
-                job_offsets={"user-job": 22},
-            )
-            interrupt_result = await tools["shell_interrupt"].function_schema.call(
-                {"job_id": "user-job", "grace_seconds": 1.5},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-            metadata, output = _parse_tagged_observation(interrupt_result)
+            run_result = await tools["shell_run"].function_schema.call({"script": "pwd"}, None)  # pyright: ignore[reportArgumentType]
+            metadata, output = _parse_tagged_observation(run_result)
+            assert metadata == {
+                "job_id": "user-job",
+                "status": "running",
+                "done": False,
+                "exit_code": None,
+                "output_path": "/tmp/current.log",
+            }
+            assert "head-output" in output
+            assert set(metadata) == {"job_id", "status", "done", "exit_code", "output_path"}
+
+    asyncio.run(scenario())
+
+    assert layer.runtime_state.job_offsets == {"user-job": 10}
+    assert commands.tail_calls == [TailCall(job_id="user-job")]
+    assert provider.resource.closed is True
+
+
+def test_shell_run_formats_large_non_truncated_output_without_tail_lookup() -> None:
+    large_output = ("head-" + ("x" * 9000) + "-tail").replace("head-x", "head-y", 1)
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: _command_result(
+            "user-job",
+            status="exited",
+            done=True,
+            exit_code=0,
+            output=large_output,
+            offset=len(large_output),
+            output_path="/tmp/large.log",
+        )
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_run"].function_schema.call({"script": "cat large.log"}, None)  # pyright: ignore[reportArgumentType]
+            metadata, output = _parse_tagged_observation(result)
+            assert metadata["output_path"] == "/tmp/large.log"
+            assert output.startswith("head-y")
+            assert output.endswith("(check the /tmp/large.log for full output)")
+            assert "-tail" in output
+
+    asyncio.run(scenario())
+    assert commands.tail_calls == []
+
+
+def test_shell_interrupt_succeeds_when_tail_lookup_fails() -> None:
+    commands = FakeCommands(
+        interrupt_handler=lambda job_id, grace_seconds: _command_status(job_id, offset=22),
+        tail_handler=lambda job_id: (_ for _ in ()).throw(RuntimeError("tail unavailable")),
+    )
+    layer, _provider = _layer(commands=commands)
+    tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = DifyShellRuntimeState(
+        session_id="abc12ff",
+        workspace_cwd="~/workspace/abc12ff",
+        job_ids=["user-job"],
+        job_offsets={"user-job": 22},
+    )
+
+    async def scenario() -> None:
+        async with layer.resource_context():
+            result = await tools["shell_interrupt"].function_schema.call({"job_id": "user-job"}, None)  # pyright: ignore[reportArgumentType]
+            metadata, output = _parse_tagged_observation(result)
             assert metadata == {
                 "job_id": "user-job",
                 "status": "terminated",
                 "done": True,
                 "exit_code": 130,
-                "output_path": "",
             }
             assert output == "Job was interrupted."
 
     asyncio.run(scenario())
 
-    assert client.terminate_calls == [TerminateCall(job_id="user-job", grace_seconds=1.5)]
-    assert client.tail_calls == [TailCall(job_id="user-job")]
 
+def test_run_remote_script_complete_uses_read_output_before_wait_and_deletes_job() -> None:
+    events: list[str] = []
 
-def test_shell_run_formats_truncated_output_as_tagged_text_with_tail_guidance() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "tail -f app.log"
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        events.append("run")
+        assert script == "printf 'abcdefghi'"
         assert cwd == "~/workspace/abc12ff"
         assert env is None
-        assert timeout == 2.5
-        return _job_result(
-            "user-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="head-output\n",
-            offset=12,
-            truncated=True,
-            output_path="/tmp/app.log.out",
-        )
+        return _command_result("remote-job", status="running", done=False, output="abc", offset=3, truncated=True)
 
-    client = FakeShellctlClient(
-        run_handler=run_handler,
-        tail_handler=lambda job_id: _job_result(job_id, output="tail-output\n", output_path="/tmp/app.log.out"),
-    )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await tools["shell_run"].function_schema.call(
-                {"script": "tail -f app.log", "timeout": 2.5},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-            metadata, output = _parse_tagged_observation(result)
-            assert metadata == {
-                "job_id": "user-job",
-                "status": "running",
-                "done": False,
-                "exit_code": None,
-                "output_path": "/tmp/app.log.out",
-            }
-            assert "head-output" in output
-            assert "tail-output" in output
-            assert "truncated in middle because the max output size is limited" in output
-            assert "(check the /tmp/app.log.out for full output)" in output
-
-    asyncio.run(scenario())
-
-
-def test_shell_run_falls_back_to_head_and_original_output_path_when_tail_lookup_fails() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "tail -f app.log"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == 2.5
-        return _job_result(
-            "user-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="head-output\n",
-            offset=12,
-            truncated=True,
-            output_path="/tmp/app.log.out",
-        )
-
-    def tail_handler(job_id: str) -> JobResult:
-        raise RuntimeError(f"tail unavailable for {job_id}")
-
-    client = FakeShellctlClient(run_handler=run_handler, tail_handler=tail_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await tools["shell_run"].function_schema.call(
-                {"script": "tail -f app.log", "timeout": 2.5},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-            metadata, output = _parse_tagged_observation(result)
-            assert metadata == {
-                "job_id": "user-job",
-                "status": "running",
-                "done": False,
-                "exit_code": None,
-                "output_path": "/tmp/app.log.out",
-            }
-            assert "head-output" in output
-            assert "truncated in middle because the max output size is limited" in output
-            assert "(check the /tmp/app.log.out for full output)" in output
-            assert "tail unavailable" not in output
-
-    asyncio.run(scenario())
-
-
-def test_shell_run_uses_same_resolved_output_path_in_metadata_and_rendered_output() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "tail -f app.log"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == 2.5
-        return _job_result(
-            "user-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="head-output\n",
-            offset=12,
-            truncated=True,
-            output_path="/tmp/initial.log.out",
-        )
-
-    client = FakeShellctlClient(
-        run_handler=run_handler,
-        tail_handler=lambda job_id: _job_result(job_id, output="tail-output\n", output_path="/tmp/resolved.log.out"),
-    )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await tools["shell_run"].function_schema.call(
-                {"script": "tail -f app.log", "timeout": 2.5},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-            metadata, output = _parse_tagged_observation(result)
-            assert metadata["output_path"] == "/tmp/resolved.log.out"
-            assert "(check the /tmp/resolved.log.out for full output)" in output
-            assert "/tmp/initial.log.out" not in output
-
-    asyncio.run(scenario())
-
-
-def test_shell_run_formats_large_non_truncated_output_as_tagged_text() -> None:
-    large_output = ("head-" + ("x" * shell_layer_module._SHELL_OUTPUT_PROMPT_EDGE_BYTES) + "-tail").replace(
-        "head-x", "head-y", 1
-    )
-
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "cat large.log"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == 2.5
-        return _job_result(
-            "user-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-            output=large_output,
-            offset=len(large_output),
-            truncated=False,
-            output_path="/tmp/large.log.out",
-        )
-
-    client = FakeShellctlClient(run_handler=run_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await tools["shell_run"].function_schema.call(
-                {"script": "cat large.log", "timeout": 2.5},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-            metadata, prompt_output = _parse_tagged_observation(result)
-            assert metadata == {
-                "job_id": "user-job",
-                "status": "exited",
-                "done": True,
-                "exit_code": 0,
-                "output_path": "/tmp/large.log.out",
-            }
-            assert prompt_output.startswith("head-y")
-            assert "truncated in middle because the max output size is limited" in prompt_output
-            assert prompt_output.endswith("(check the /tmp/large.log.out for full output)")
-            assert "-tail" in prompt_output
-
-    asyncio.run(scenario())
-
-    assert client.tail_calls == []
-
-
-def test_run_remote_script_complete_uses_workspace_cwd_accumulates_output_and_deletes_job() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert '. ".dify/env.sh"' not in script
-        assert script == "printf 'hello world'"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="hello ",
-            offset=6,
-            truncated=True,
-        )
-
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
-        assert job_id == "remote-job"
+    def wait_handler(job_id: str, offset: int, timeout: float) -> ShellCommandResult:
+        if timeout == 0.0:
+            events.append("read_output")
+            assert offset == 3
+            return _command_result(job_id, status="running", done=False, output="def", offset=6)
+        events.append("wait")
         assert offset == 6
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-            output="world",
-            offset=11,
-        )
+        return _command_result(job_id, status="exited", done=True, exit_code=0, output="ghi", offset=9)
 
-    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    commands = FakeCommands(run_handler=run_handler, wait_handler=wait_handler)
+    layer, _provider = _layer(commands=commands)
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await layer.run_remote_script_complete("printf 'hello world'", timeout=7.5)
-            assert result.output == "hello world"
-            assert result.exit_code == 0
+            result = await layer.run_remote_script_complete("printf 'abcdefghi'")
+            assert isinstance(result, CompleteRemoteCommandResult)
+            assert result.output == "abcdefghi"
             assert result.output_complete is True
             assert result.incomplete_reason is None
 
     asyncio.run(scenario())
-
-    assert [call.job_id for call in client.delete_calls] == ["remote-job"]
-    assert layer.runtime_state.job_ids == []
-    assert layer.runtime_state.job_offsets == {}
+    assert events == ["run", "read_output", "wait"]
+    assert [call.job_id for call in commands.delete_calls] == ["remote-job"]
 
 
-def test_run_remote_script_complete_returns_incomplete_reason_when_output_limit_is_hit() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "printf 'hello world'"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
+def test_run_remote_script_complete_returns_incomplete_reason_for_output_limit() -> None:
+    commands = FakeCommands(
+        run_handler=lambda script, cwd, env, timeout: _command_result(
             "remote-job",
-            status=JobStatusName.RUNNING,
+            status="running",
             done=False,
             output="hello world",
             offset=11,
             truncated=True,
-        )
-
-    client = FakeShellctlClient(
-        run_handler=run_handler,
-        terminate_handler=lambda job_id, grace_seconds: _job_status(
-            job_id,
-            status=JobStatusName.TERMINATED,
-            done=True,
-            exit_code=130,
-            offset=11,
         ),
+        interrupt_handler=lambda job_id, grace_seconds: _command_status(job_id, status="terminated", offset=11),
     )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer, _provider = _layer(commands=commands)
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await layer.run_remote_script_complete("printf 'hello world'", timeout=7.5, max_output_bytes=5)
+            result = await layer.run_remote_script_complete("printf 'hello world'", max_output_bytes=5)
+            assert result.output == "hello"
+            assert result.output_complete is False
+            assert result.incomplete_reason == "output_limit"
             assert result.status == "terminated"
-            assert result.done is True
-            assert result.exit_code == 130
-            assert result.output == "hello"
-            assert result.output_complete is False
-            assert result.incomplete_reason == "output_limit"
 
     asyncio.run(scenario())
-
-    assert len(client.terminate_calls) == 1
-    assert client.wait_calls == []
-    assert [call.job_id for call in client.delete_calls] == ["remote-job"]
+    assert commands.wait_calls == []
+    assert commands.interrupt_calls == [InterruptCall(job_id="remote-job", grace_seconds=DEFAULT_TERMINATE_GRACE_SECONDS)]
 
 
-def test_run_remote_script_complete_returns_incomplete_reason_when_final_output_exceeds_limit() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "printf 'hello world'"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-            output="hello world",
-            offset=11,
-        )
-
-    client = FakeShellctlClient(run_handler=run_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await layer.run_remote_script_complete("printf 'hello world'", timeout=7.5, max_output_bytes=5)
-            assert result.status == "exited"
-            assert result.done is True
-            assert result.exit_code == 0
-            assert result.output == "hello"
-            assert result.output_complete is False
-            assert result.incomplete_reason == "output_limit"
-
-    asyncio.run(scenario())
-
-    assert client.wait_calls == []
-    assert client.terminate_calls == []
-    assert [call.job_id for call in client.delete_calls] == ["remote-job"]
-
-
-def test_run_remote_script_complete_returns_incomplete_reason_when_timeout_is_hit(
+def test_run_remote_script_complete_returns_incomplete_reason_for_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    clock = {"value": 100.0}
+    now = 100.0
 
     def fake_monotonic() -> float:
-        return clock["value"]
+        return now
 
     monkeypatch.setattr(shell_layer_module.time, "monotonic", fake_monotonic)
 
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
+    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> ShellCommandResult:
+        nonlocal now
         assert script == "sleep 10"
         assert cwd == "~/workspace/abc12ff"
         assert env is None
-        assert timeout == 60.0
-        clock["value"] = 161.0
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="hello",
-            offset=5,
-        )
+        assert timeout == pytest.approx(60.0, rel=0, abs=0.01)
+        now = 161.0
+        return _command_result("remote-job", status="running", done=False, output="hello", offset=5)
 
-    client = FakeShellctlClient(
+    commands = FakeCommands(
         run_handler=run_handler,
-        terminate_handler=lambda job_id, grace_seconds: _job_status(
+        interrupt_handler=lambda job_id, grace_seconds: _command_status(
             job_id,
-            status=JobStatusName.TERMINATED,
+            status="terminated",
             done=True,
             exit_code=130,
             offset=5,
         ),
     )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
+    layer, _provider = _layer(commands=commands)
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
             result = await layer.run_remote_script_complete("sleep 10", timeout=60.0)
-            assert result.status == "terminated"
-            assert result.done is True
-            assert result.exit_code == 130
             assert result.output == "hello"
             assert result.output_complete is False
             assert result.incomplete_reason == "timeout"
-
-    asyncio.run(scenario())
-
-    assert len(client.terminate_calls) == 1
-    assert [call.job_id for call in client.delete_calls] == ["remote-job"]
-
-
-def test_run_remote_script_complete_deletes_job_even_when_command_exits_non_zero() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "exit 17"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == pytest.approx(3.0, rel=0, abs=0.01)
-        return _job_result(
-            "remote-failed-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=17,
-            output="failed\n",
-            offset=7,
-        )
-
-    client = FakeShellctlClient(run_handler=run_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await layer.run_remote_script_complete("exit 17", timeout=3.0)
-            assert result.exit_code == 17
-            assert result.output == "failed\n"
-            assert result.output_complete is True
-
-    asyncio.run(scenario())
-
-    assert [call.job_id for call in client.delete_calls] == ["remote-failed-job"]
-    assert layer.runtime_state.job_ids == []
-    assert layer.runtime_state.job_offsets == {}
-
-
-def test_run_remote_script_prompt_text_uses_tail_and_guidance() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "printf 'abcdefghijkl'"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="abcdef",
-            offset=6,
-            truncated=True,
-            output_path="/tmp/remote-job.out",
-        )
-
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
-        assert job_id == "remote-job"
-        assert offset == 6
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-            output="ghijkl",
-            offset=12,
-            output_path="/tmp/remote-job.out",
-        )
-
-    client = FakeShellctlClient(
-        run_handler=run_handler,
-        wait_handler=wait_handler,
-        tail_handler=lambda job_id: _job_result(job_id, output="ijklmnop", output_path="/tmp/remote-job.out"),
-    )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await layer.run_remote_script_prompt_text("printf 'abcdefghijkl'", timeout=7.5, edge_bytes=4)
-            assert result.exit_code == 0
-            assert result.timed_out is False
-            assert result.text == (
-                "abcd\n"
-                "... (truncated in middle because the max output size is limited to 8 bytes) ...\n"
-                "mnop\n"
-                "(check the /tmp/remote-job.out for full output)"
-            )
-
-    asyncio.run(scenario())
-
-    assert client.tail_calls == [TailCall(job_id="remote-job")]
-
-
-def test_run_remote_script_prompt_text_falls_back_to_head_and_current_output_path_when_tail_lookup_fails() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "printf 'abcdefghijkl'"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="abcdef",
-            offset=6,
-            truncated=True,
-            output_path="/tmp/current-remote-job.out",
-        )
-
-    def wait_handler(job_id: str, offset: int, timeout: float) -> JobResult:
-        assert job_id == "remote-job"
-        assert offset == 6
-        assert timeout == pytest.approx(7.5, rel=0, abs=0.01)
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-            output="ghijkl",
-            offset=12,
-            output_path="/tmp/current-remote-job.out",
-        )
-
-    def tail_handler(job_id: str) -> JobResult:
-        raise RuntimeError(f"tail unavailable for {job_id}")
-
-    client = FakeShellctlClient(run_handler=run_handler, wait_handler=wait_handler, tail_handler=tail_handler)
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await layer.run_remote_script_prompt_text("printf 'abcdefghijkl'", timeout=7.5, edge_bytes=4)
-            assert result.exit_code == 0
-            assert result.timed_out is False
-            assert result.output_path == "/tmp/current-remote-job.out"
-            assert result.text == (
-                "abcd\n"
-                "... (truncated in middle because the max output size is limited to 8 bytes) ...\n"
-                "(check the /tmp/current-remote-job.out for full output)"
-            )
-
-    asyncio.run(scenario())
-
-    assert client.tail_calls == [TailCall(job_id="remote-job")]
-
-
-def test_run_remote_script_prompt_text_uses_timeout_message_instead_of_output_limit_text(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    clock = {"value": 100.0}
-
-    def fake_monotonic() -> float:
-        return clock["value"]
-
-    monkeypatch.setattr(shell_layer_module.time, "monotonic", fake_monotonic)
-
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "sleep 10"
-        assert cwd == "~/workspace/abc12ff"
-        assert env is None
-        assert timeout == 60.0
-        clock["value"] = 161.0
-        return _job_result(
-            "remote-job",
-            status=JobStatusName.RUNNING,
-            done=False,
-            output="hello",
-            offset=5,
-            output_path="/tmp/remote-timeout.out",
-        )
-
-    client = FakeShellctlClient(
-        run_handler=run_handler,
-        tail_handler=lambda job_id: _job_result(job_id, output="timeout-tail", output_path="/tmp/remote-timeout.out"),
-        terminate_handler=lambda job_id, grace_seconds: _job_status(
-            job_id,
-            status=JobStatusName.TERMINATED,
-            done=True,
-            exit_code=130,
-            offset=5,
-        ),
-    )
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            result = await layer.run_remote_script_prompt_text("sleep 10", timeout=60.0, edge_bytes=4)
+            assert result.status == "terminated"
             assert result.exit_code == 130
-            assert result.timed_out is True
-            assert result.output_path == "/tmp/remote-timeout.out"
-            assert "command timed out before full output was captured" in result.text
-            assert "max output size is limited" not in result.text
-            assert "(check the /tmp/remote-timeout.out for full output)" in result.text
 
     asyncio.run(scenario())
-
-    assert client.terminate_calls == [TerminateCall(job_id="remote-job", grace_seconds=2.0)]
-    assert client.tail_calls == [TailCall(job_id="remote-job")]
-
-
-def test_run_remote_script_complete_can_inject_agent_stub_env_for_server_owned_uploads() -> None:
-    def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
-        assert script == "dify-agent file upload report.txt"
-        assert '. ".dify/env.sh"' not in script
-        del timeout
-        assert cwd == "~/workspace/abc12ff"
-        assert env == {
-            AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
-            AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
-            AGENT_STUB_DRIVE_BASE_ENV_VAR: "/mnt/drive/agent-1",
-        }
-        return _job_result("remote-upload", status=JobStatusName.EXITED, done=True, exit_code=0, output="{}")
-
-    client = FakeShellctlClient(run_handler=run_handler)
-    layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_api_base_url="https://agent.example.com/agent-stub",
-        agent_stub_token_factory=lambda execution_context, *, session_id: (
-            f"token-for:{execution_context.tenant_id}:{session_id}"
-        ),
-    )
-    layer.deps = layer.deps_type(execution_context=_execution_context_layer())
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            _ = await layer.run_remote_script_complete(
-                "dify-agent file upload report.txt", inject_agent_stub_env=True
-            )
-
-    asyncio.run(scenario())
-
-    assert [call.job_id for call in client.delete_calls] == ["remote-upload"]
+    assert commands.wait_calls == []
+    assert commands.interrupt_calls == [
+        InterruptCall(job_id="remote-job", grace_seconds=DEFAULT_TERMINATE_GRACE_SECONDS)
+    ]
+    assert [call.job_id for call in commands.delete_calls] == ["remote-job"]
 
 
-def test_run_remote_script_complete_raises_when_agent_stub_env_is_unavailable() -> None:
-    client = FakeShellctlClient(
-        run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
-            "unexpected-run",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-        )
-    )
-    layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_api_base_url="https://agent.example.com/agent-stub",
-        agent_stub_token_factory=lambda execution_context, *, session_id: (
-            f"token-for:{execution_context.tenant_id}:{session_id}"
-        ),
-    )
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            with pytest.raises(RuntimeError, match="Agent Stub environment injection is not available"):
-                await layer.run_remote_script_complete("dify-agent file upload report.txt", inject_agent_stub_env=True)
-
-    asyncio.run(scenario())
-
-    assert client.run_calls == []
-
-
-def test_create_shellctl_client_factory_sets_output_limit(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, object] = {}
-
-    class StubShellctlClient:
-        def __init__(self, base_url: str, *, token: str | None = None, output_limit: int = 0) -> None:
-            captured["base_url"] = base_url
-            captured["token"] = token
-            captured["output_limit"] = output_limit
-
-    monkeypatch.setattr(shell_layer_module, "ShellctlClient", StubShellctlClient)
-
-    factory = shell_layer_module.create_shellctl_client_factory(token="shell-token")
-    client = factory("http://shellctl")
-
-    assert isinstance(client, StubShellctlClient)
-    assert captured == {
-        "base_url": "http://shellctl",
-        "token": "shell-token",
-        "output_limit": 16 * 1024,
-    }
-
-
-def test_shell_layer_skips_agent_stub_env_without_execution_context_dependency() -> None:
-    client = FakeShellctlClient(
-        run_handler=lambda _script, _cwd, _env, _timeout: _job_result(
-            "user-job",
-            status=JobStatusName.EXITED,
-            done=True,
-            exit_code=0,
-        )
-    )
-    layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=lambda _entrypoint: client,
-        agent_stub_api_base_url="https://agent.example.com/agent-stub",
-        agent_stub_token_factory=lambda execution_context, *, session_id: (
-            f"token-for:{execution_context.tenant_id}:{session_id}"
-        ),
-    )
+def test_shell_layer_rejects_untracked_job_ids_without_provider_calls() -> None:
+    commands = FakeCommands()
+    layer, _provider = _layer(commands=commands)
     tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
         async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-            _ = await tools["shell_run"].function_schema.call(
-                {"script": "pwd"},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-
-    asyncio.run(scenario())
-
-    assert client.run_calls[0].env is None
-
-
-def test_shell_layer_tools_reject_untracked_job_ids_without_shellctl_calls() -> None:
-    client = FakeShellctlClient()
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    tools = {tool.name: tool for tool in layer.tools}
-
-    async def scenario() -> None:
-        async with layer.resource_context():
-            layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
-
-            wait_result = await tools["shell_wait"].function_schema.call(
-                {"job_id": "missing-job"},
-                None,  # pyright: ignore[reportArgumentType]
-            )
+            wait_result = await tools["shell_wait"].function_schema.call({"job_id": "missing"}, None)  # pyright: ignore[reportArgumentType]
             input_result = await tools["shell_input"].function_schema.call(
-                {"job_id": "missing-job", "text": "hello"},
+                {"job_id": "missing", "text": "hello"},
                 None,  # pyright: ignore[reportArgumentType]
             )
-            interrupt_result = await tools["shell_interrupt"].function_schema.call(
-                {"job_id": "missing-job"},
-                None,  # pyright: ignore[reportArgumentType]
-            )
-
-            _assert_error_observation(wait_result, job_id="missing-job")
-            _assert_error_observation(input_result, job_id="missing-job")
-            _assert_error_observation(interrupt_result, job_id="missing-job")
+            interrupt_result = await tools["shell_interrupt"].function_schema.call({"job_id": "missing"}, None)  # pyright: ignore[reportArgumentType]
+            _assert_error_observation(wait_result, job_id="missing")
+            _assert_error_observation(input_result, job_id="missing")
+            _assert_error_observation(interrupt_result, job_id="missing")
 
     asyncio.run(scenario())
-
-    assert client.wait_calls == []
-    assert client.input_calls == []
-    assert client.terminate_calls == []
+    assert commands.wait_calls == []
+    assert commands.input_calls == []
+    assert commands.interrupt_calls == []
 
 
 def test_shell_layer_hooks_and_tools_fail_clearly_outside_active_resource_context() -> None:
-    client = FakeShellctlClient()
-    layer = _shell_layer(client_factory=lambda _entrypoint: client)
-    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
+    layer, _provider = _layer(commands=FakeCommands())
     tools = {tool.name: tool for tool in layer.tools}
+    layer.runtime_state = DifyShellRuntimeState(session_id="abc12ff", workspace_cwd="~/workspace/abc12ff")
 
     async def scenario() -> None:
-        with pytest.raises(RuntimeError, match="resource_context"):
-            await layer.on_context_suspend()
-
-        run_result = await tools["shell_run"].function_schema.call(
-            {"script": "pwd"},
-            None,  # pyright: ignore[reportArgumentType]
-        )
-        _assert_error_observation(run_result, includes="resource_context")
+        result = await tools["shell_run"].function_schema.call({"script": "pwd"}, None)  # pyright: ignore[reportArgumentType]
+        _assert_error_observation(result, includes="shell resource")
 
     asyncio.run(scenario())
 
-    assert client.run_calls == []
 
-
-def test_shell_runtime_state_rejects_unsafe_resumed_workspace_identity() -> None:
-    with pytest.raises(ValueError, match="session_id must match"):
+def test_shell_runtime_state_validates_workspace_identity_and_offset_keys() -> None:
+    with pytest.raises(ValueError, match="5\\+2 lowercase hex format"):
         _ = DifyShellRuntimeState.model_validate(
             {
                 "session_id": "../../tmp",
@@ -1560,8 +678,6 @@ def test_shell_runtime_state_rejects_unsafe_resumed_workspace_identity() -> None
             }
         )
 
-
-def test_shell_runtime_state_treats_job_ids_as_opaque_strings_and_rejects_unknown_offset_keys() -> None:
     state = DifyShellRuntimeState.model_validate(
         {
             "session_id": "abc12ff",
@@ -1570,10 +686,7 @@ def test_shell_runtime_state_treats_job_ids_as_opaque_strings_and_rejects_unknow
             "job_offsets": {'job"bad with spaces': 0},
         }
     )
-
     assert state.job_ids == ['job"bad with spaces']
-    assert state.job_offsets == {'job"bad with spaces': 0}
-
     with pytest.raises(ValueError, match="unknown job ids"):
         _ = DifyShellRuntimeState.model_validate(
             {

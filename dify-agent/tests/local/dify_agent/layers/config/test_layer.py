@@ -2,25 +2,25 @@
 
 from __future__ import annotations
 
-from typing import Literal, cast
+from typing import Literal
 
 import pytest
 
+from dify_agent.adapters.shell.shellctl import ShellctlProvider
 from dify_agent.layers.config import DifyConfigFileConfig, DifyConfigLayerConfig, DifyConfigSkillConfig
 from dify_agent.layers.config.layer import DifyConfigLayer, DifyConfigLayerError
 from dify_agent.layers.shell import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer, ShellctlClientFactory
+from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 
 
-def _unused_client_factory(_entrypoint: str):
+def _unused_client_factory():
     raise AssertionError("shellctl client should not be used by these config-layer tests")
 
 
 def _shell_layer() -> DifyShellLayer:
     return DifyShellLayer.from_config_with_settings(
         DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
-        shellctl_entrypoint="http://shellctl",
-        shellctl_client_factory=cast(ShellctlClientFactory, _unused_client_factory),
+        shell_provider=ShellctlProvider(entrypoint="http://shellctl", token="", client_factory=_unused_client_factory),
     )
 
 
