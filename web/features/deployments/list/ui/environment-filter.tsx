@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { DeploymentsListEnvironmentFilterOption } from '../state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   DropdownMenu,
@@ -8,21 +8,26 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { consoleQuery } from '@/service/client'
-import { envFilterQueryState } from '../state'
-
-type EnvironmentFilterOption = {
-  value: string | null
-  text: string
-  icon: ReactNode
-}
+import {
+  deploymentsListEnvironmentFilterOptionsAtom,
+  deploymentsListSelectedEnvironmentFilterOptionAtom,
+  envFilterQueryState,
+} from '../state'
 
 function EnvironmentOptionIcon() {
   return <span className="i-ri-server-line size-[14px]" />
+}
+
+function EnvironmentFilterOptionIcon({ option }: {
+  option: DeploymentsListEnvironmentFilterOption
+}) {
+  return option.kind === 'all'
+    ? <span className="i-ri-apps-2-line size-[14px]" />
+    : <EnvironmentOptionIcon />
 }
 
 export function EnvironmentFilter({ className }: {
@@ -30,40 +35,14 @@ export function EnvironmentFilter({ className }: {
 }) {
   const { t } = useTranslation('deployments')
   const [open, setOpen] = useState(false)
-  const [envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
-  const environmentsQuery = useQuery(consoleQuery.enterprise.environmentService.listEnvironments.queryOptions({
-    input: {
-      query: {
-        // The filter lists every deployable environment; environment count is
-        // capped well below the 100-per-page maximum.
-        pageNumber: 1,
-        resultsPerPage: 100,
-      },
-    },
-  }))
-  const environmentOptions: EnvironmentFilterOption[] = environmentsQuery.data?.environments
-    ?.map(environment => ({
-      value: environment.id,
-      text: environment.displayName,
-      icon: <EnvironmentOptionIcon />,
-    })) ?? []
-  const filterOptions: EnvironmentFilterOption[] = [
-    {
-      value: null,
-      text: t('filter.allEnvs'),
-      icon: <span className="i-ri-apps-2-line size-[14px]" />,
-    },
-    ...environmentOptions,
-  ]
-  const selectedOption = filterOptions.find(option => option.value === envFilter)
-    ?? (envFilter
-      ? {
-          value: envFilter,
-          text: envFilter,
-          icon: <EnvironmentOptionIcon />,
-        }
-      : filterOptions[0])
-  const activeFilter = selectedOption?.value ?? null
+  const [_envFilter, setEnvFilter] = useQueryState('env', envFilterQueryState)
+  const filterOptions = useAtomValue(deploymentsListEnvironmentFilterOptionsAtom)
+  const selectedOption = useAtomValue(deploymentsListSelectedEnvironmentFilterOptionAtom)
+  const activeFilter = selectedOption.value
+
+  function optionText(option: DeploymentsListEnvironmentFilterOption) {
+    return option.kind === 'all' ? t('filter.allEnvs') : option.displayName ?? option.value ?? ''
+  }
 
   return (
     <DropdownMenu modal={false} open={open} onOpenChange={setOpen}>
@@ -75,10 +54,10 @@ export function EnvironmentFilter({ className }: {
         )}
       >
         <div className="p-px text-text-tertiary">
-          {selectedOption?.icon}
+          <EnvironmentFilterOptionIcon option={selectedOption} />
         </div>
         <div className="max-w-40 min-w-0 truncate system-sm-regular text-text-secondary">
-          {selectedOption?.text}
+          {optionText(selectedOption)}
         </div>
         <div className="shrink-0 p-px">
           <span className={cn('i-ri-arrow-down-s-line size-3.5 text-text-tertiary transition-transform', open && 'rotate-180')} />
@@ -103,8 +82,10 @@ export function EnvironmentFilter({ className }: {
                   'cursor-pointer hover:bg-state-base-hover',
                 )}
               >
-                <span className="shrink-0 text-text-tertiary">{option.icon}</span>
-                <span className="grow truncate text-sm/5 text-text-tertiary">{option.text}</span>
+                <span className="shrink-0 text-text-tertiary">
+                  <EnvironmentFilterOptionIcon option={option} />
+                </span>
+                <span className="grow truncate text-sm/5 text-text-tertiary">{optionText(option)}</span>
                 {option.value === activeFilter && (
                   <span className="i-custom-vender-line-general-check size-4 shrink-0 text-text-secondary" />
                 )}
