@@ -358,6 +358,7 @@ class TestDatasetOperatorMemberListApi:
         member.avatar = "avatar.png"
         member.role = "operator"
         member.status = "active"
+        member.membership_status = "joined"
         members = [member]
 
         with (
@@ -370,6 +371,7 @@ class TestDatasetOperatorMemberListApi:
 
         assert status == 200
         assert len(result["accounts"]) == 1
+        assert result["accounts"][0]["membership_status"] == "joined"
 
     def test_get_no_tenant(self, app: Flask):
         api = DatasetOperatorMemberListApi()
