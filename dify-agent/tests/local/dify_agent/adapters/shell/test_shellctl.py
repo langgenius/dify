@@ -221,7 +221,7 @@ def test_commands_forward_parameters_and_map_metadata() -> None:
     assert client.run_calls == [_RunCall(script="pwd", cwd="~/workspace/abc12ff", env={"FOO": "bar"}, timeout=2.5)]
     assert client.wait_calls == [
         ("run-job", 3, 4.0),
-        ("run-job", 6, 0.001),
+        ("run-job", 6, 0.0),
     ]
     assert client.input_calls == [("run-job", "ls\n", 6, 5.0)]
     assert client.terminate_calls == [("run-job", 1.5)]

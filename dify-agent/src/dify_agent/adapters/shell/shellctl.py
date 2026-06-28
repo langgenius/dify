@@ -25,10 +25,7 @@ logger = logging.getLogger(__name__)
 ResultT = TypeVar("ResultT")
 
 _DEFAULT_TIMEOUT_SECONDS = 30.0
-# ``shell-session-manager==2.2.1`` still validates wait timeout with ``gt=0``.
-# Use the smallest practical positive timeout so ``read_output()`` remains
-# reproducible from this repo state until the pinned package is updated.
-_READ_OUTPUT_TIMEOUT_SECONDS = 0.001
+_READ_OUTPUT_TIMEOUT_SECONDS = 0.0
 _DEFAULT_TERMINATE_GRACE_SECONDS = 10.0
 _FILE_TRANSFER_TIMEOUT_SECONDS = 60.0
 _SHELLCTL_OUTPUT_LIMIT_BYTES = 16 * 1024
