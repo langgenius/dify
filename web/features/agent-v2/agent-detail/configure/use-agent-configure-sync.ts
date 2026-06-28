@@ -52,6 +52,7 @@ export function useAgentConfigureSync({
   const currentModelRef = useRef(currentModel)
   const enabledRef = useRef(enabled)
   const lastAutosavedDraftKeyRef = useRef<string | undefined>(undefined)
+  const pageCloseSavingDraftKeyRef = useRef<string | undefined>(undefined)
   const publishInFlightRef = useRef(false)
 
   baseConfigRef.current = baseConfig
@@ -139,6 +140,42 @@ export function useAgentConfigureSync({
     latestDraftSaveRef.current()
   }, DRAFT_AUTOSAVE_WAIT), [])
 
+  const saveDirtyDraftOnPageClose = useCallback(() => {
+    if (
+      !enabledRef.current
+      || publishInFlightRef.current
+    ) {
+      return
+    }
+
+    const draft = store.get(agentComposerDraftAtom)
+    if (
+      !store.get(isAgentComposerDirtyAtom)
+      || !validateKnowledgeRetrievals(draft.knowledgeRetrievals).isValid
+    ) {
+      return
+    }
+
+    const configSnapshot = getAgentSoulDraft()
+    const draftKey = JSON.stringify(configSnapshot)
+    if (
+      lastAutosavedDraftKeyRef.current === draftKey
+      || pageCloseSavingDraftKeyRef.current === draftKey
+    ) {
+      return
+    }
+
+    debouncedSaveDraft.cancel?.()
+    pageCloseSavingDraftKeyRef.current = draftKey
+    void saveComposer({
+      configSnapshot,
+      draftBaseline: draft,
+    }).finally(() => {
+      if (pageCloseSavingDraftKeyRef.current === draftKey)
+        pageCloseSavingDraftKeyRef.current = undefined
+    })
+  }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
+
   const saveDraft = useCallback(async () => {
     if (!enabledRef.current)
       return
@@ -186,6 +223,24 @@ export function useAgentConfigureSync({
       debouncedSaveDraft.flush?.()
     }
   }, [debouncedSaveDraft])
+
+  useEffect(() => {
+    const saveDraftWhenPageHidden = () => {
+      if (document.visibilityState === 'hidden')
+        saveDirtyDraftOnPageClose()
+    }
+    const saveDraftBeforeUnload = () => {
+      saveDirtyDraftOnPageClose()
+    }
+
+    document.addEventListener('visibilitychange', saveDraftWhenPageHidden)
+    window.addEventListener('beforeunload', saveDraftBeforeUnload)
+
+    return () => {
+      document.removeEventListener('visibilitychange', saveDraftWhenPageHidden)
+      window.removeEventListener('beforeunload', saveDraftBeforeUnload)
+    }
+  }, [saveDirtyDraftOnPageClose])
 
   const publishDraft = useCallback(async () => {
     if (publishInFlightRef.current)

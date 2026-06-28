@@ -82,6 +82,13 @@ function createDeferredPromise<T>() {
   return { promise, resolve }
 }
 
+function setDocumentVisibilityState(visibilityState: DocumentVisibilityState) {
+  Object.defineProperty(document, 'visibilityState', {
+    configurable: true,
+    value: visibilityState,
+  })
+}
+
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: toastMock,
 }))
@@ -163,6 +170,7 @@ describe('useAgentConfigureSync', () => {
   })
 
   afterEach(() => {
+    setDocumentVisibilityState('visible')
     vi.useRealTimers()
   })
 
@@ -213,6 +221,49 @@ describe('useAgentConfigureSync', () => {
       name: 'Agent',
     })
     expect(result.current.draftSavedAt).toBe(1710000105000)
+  })
+
+  it('should save dirty draft once when the page is closing', async () => {
+    const saveDeferred = createDeferredPromise<{ agent_soul: Record<string, unknown> }>()
+    composerPutMutationFn.mockReturnValueOnce(saveDeferred.promise)
+    const { store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Closing prompt',
+      })
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+
+    await act(async () => {
+      setDocumentVisibilityState('hidden')
+      document.dispatchEvent(new Event('visibilitychange'))
+      window.dispatchEvent(new Event('beforeunload'))
+      await Promise.resolve()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      params: {
+        agent_id: 'agent-1',
+      },
+      body: expect.objectContaining({
+        variant: 'agent_app',
+        save_strategy: 'save_to_current_version',
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Closing prompt',
+          }),
+        }),
+      }),
+    }))
+
+    await act(async () => {
+      saveDeferred.resolve({ agent_soul: {} })
+      await Promise.resolve()
+    })
   })
 
   it('should include Agent Soul files when autosaving file changes', async () => {
