@@ -2,6 +2,7 @@
 
 import type { PostAgentByAgentIdSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { PostAppsByAppIdAgentSkillsUploadResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { ChangeEvent, DragEvent } from 'react'
 import type { AgentDriveApiContext } from '../drive-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
@@ -47,6 +48,10 @@ function isSupportedSkillPackage(file: File) {
   return skillPackageExtensions.some(extension => fileName.endsWith(extension))
 }
 
+function hasDraggedFiles(event: DragEvent<HTMLDivElement>) {
+  return Array.from(event.dataTransfer.types).includes('Files')
+}
+
 function AgentSkillPackageUploader({
   file,
   onChange,
@@ -56,6 +61,7 @@ function AgentSkillPackageUploader({
 }) {
   const { t } = useTranslation('agentV2')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const dragDepthRef = useRef(0)
   const [dragging, setDragging] = useState(false)
 
   const setUploadFiles = (files: File[]) => {
@@ -68,22 +74,63 @@ function AgentSkillPackageUploader({
     onChange(uploadFile)
   }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
     setUploadFiles(files)
   }
 
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragEnter = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
     event.preventDefault()
     event.stopPropagation()
+    dragDepthRef.current += 1
+    setDragging(true)
+  }
+
+  const handleDragOver = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'copy'
+  }
+
+  const handleDragLeave = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
+    event.preventDefault()
+    event.stopPropagation()
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1)
+    if (dragDepthRef.current === 0)
+      setDragging(false)
+  }
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    if (!hasDraggedFiles(event))
+      return
+
+    event.preventDefault()
+    event.stopPropagation()
+    dragDepthRef.current = 0
     setDragging(false)
 
     setUploadFiles(Array.from(event.dataTransfer.files))
   }
 
   return (
-    <div className="mt-6">
+    <div
+      className="mt-6"
+      role="group"
+      aria-label={t('agentDetail.configure.skills.upload.title')}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <input
         ref={fileInputRef}
         className="hidden"
@@ -97,13 +144,6 @@ function AgentSkillPackageUploader({
             'relative flex h-16 items-center rounded-[10px] border border-dashed border-components-dropzone-border bg-components-dropzone-bg text-sm font-normal',
             dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
           )}
-          onDragEnter={(event) => {
-            event.preventDefault()
-            setDragging(true)
-          }}
-          onDragOver={event => event.preventDefault()}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
         >
           <div className="flex w-full items-center justify-center space-x-2">
             <span aria-hidden className="i-ri-upload-cloud-2-line size-6 text-text-tertiary" />

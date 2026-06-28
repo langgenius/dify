@@ -64,7 +64,7 @@ class DatasetMetadataCreateApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata = MetadataService.create_metadata(
             db.session(), dataset_id_str, metadata_args, current_user, current_tenant_id
@@ -108,7 +108,7 @@ class DatasetMetadataApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata = MetadataService.update_metadata_name(
             db.session(), dataset_id_str, metadata_id_str, name, current_user, current_tenant_id
@@ -128,7 +128,7 @@ class DatasetMetadataApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         MetadataService.delete_metadata(db.session(), dataset_id_str, metadata_id_str)
         # Frontend callers only await success and invalidate metadata caches; no response body is consumed.
@@ -165,7 +165,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         match action:
             case "enable":
@@ -194,7 +194,7 @@ class DocumentMetadataEditApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         metadata_args = MetadataOperationData.model_validate(console_ns.payload or {})
 

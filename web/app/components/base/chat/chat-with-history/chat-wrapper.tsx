@@ -60,6 +60,9 @@ const ChatWrapper = () => {
   } = useChatWithHistoryContext()
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
+  const timezone = appSourceType === AppSourceType.webApp
+    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    : undefined
 
   // Semantic variable for better code readability
   const isHistoryConversation = !!currentConversationId
@@ -94,6 +97,8 @@ const ChatWrapper = () => {
     taskId => stopChatMessageResponding('', taskId, appSourceType, appId),
     clearChatList,
     setClearChatList,
+    undefined,
+    { timezone },
   )
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {

@@ -361,7 +361,7 @@ const precheckReleaseQueryAtom = atomWithQuery((get) => {
   const canCheck = canCheckReleaseContent(get)
 
   return consoleQuery.enterprise.releaseService.precheckRelease.queryOptions({
-    input: appInstanceId
+    input: canCheck && appInstanceId
       ? releaseSourceMode === 'dsl'
         ? {
             body: {
@@ -424,14 +424,20 @@ const resetCreateReleaseDslFileAtom = atom(null, (get, set) => {
   set(createReleaseDslFileReadVersionAtom, get(createReleaseDslFileReadVersionAtom) + 1)
 })
 
+const resetCreateReleaseSourceAppSearchAtom = atom(null, (_get, set) => {
+  set(createReleaseSourceAppSearchTextAtom, '')
+})
+
 export const openCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(resetCreateReleaseDslFileAtom)
+  set(resetCreateReleaseSourceAppSearchAtom)
   set(createReleaseDialogOpenAtom, true)
 })
 
 export const closeCreateReleaseDialogAtom = atom(null, (_get, set) => {
   set(createReleaseDialogOpenAtom, false)
   set(resetCreateReleaseDslFileAtom)
+  set(resetCreateReleaseSourceAppSearchAtom)
 })
 
 export const requestCloseCreateReleaseDialogAtom = atom(null, (get, set) => {

@@ -291,7 +291,7 @@ describe('AgentTools', () => {
 
       expect(screen.queryByText('DuckDuckGo')).not.toBeInTheDocument()
       expect(screen.queryByText('DuckDuckGo Search')).not.toBeInTheDocument()
-      expect(screen.getByText('Lark CLI')).toBeInTheDocument()
+      expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
     })
 
     it('should keep the add trigger mounted while the tool picker is open', async () => {
@@ -301,6 +301,9 @@ describe('AgentTools', () => {
       await user.click(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.add',
       }))
+      expect(screen.queryByRole('button', {
+        name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.cliTool\.label/,
+      })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', {
         name: /agentV2\.agentDetail\.configure\.tools\.addMenu\.tool\.label/,
       }))
@@ -340,30 +343,16 @@ describe('AgentTools', () => {
       })).not.toBeInTheDocument()
     })
 
-    it('should keep CLI tool row actions out of layout until hover or focus', () => {
+    it('should hide CLI tool rows while CLI tools are disabled', () => {
       renderAgentTools()
 
-      const editButton = screen.getByRole('button', {
+      expect(screen.queryByText('Lark CLI')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.editAction:{"name":"Lark CLI"}',
-      })
-      const removeButton = screen.getByRole('button', {
+      })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', {
         name: 'agentV2.agentDetail.configure.tools.removeAction:{"name":"Lark CLI"}',
-      })
-      const actionGroup = editButton.parentElement
-
-      expect(actionGroup).toHaveClass('hidden')
-      expect(actionGroup).toHaveClass(
-        'group-focus-within:flex',
-        'group-hover:flex',
-      )
-      expect(removeButton).toHaveClass(
-        'hover:bg-state-destructive-hover',
-        'hover:text-text-destructive',
-      )
-      expect(screen.getByText('agentV2.agentDetail.configure.tools.cliTool')).toHaveClass(
-        'group-focus-within:hidden',
-        'group-hover:hidden',
-      )
+      })).not.toBeInTheDocument()
     })
   })
 

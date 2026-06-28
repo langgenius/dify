@@ -565,7 +565,7 @@ class DatasetApi(DatasetApiResource):
         if dataset is None:
             raise NotFound("Dataset not found.")
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         data = _dump_service_dataset_detail(dataset)
@@ -819,7 +819,7 @@ class DocumentStatusApi(DatasetApiResource):
 
         # Check user's permission
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 

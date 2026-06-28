@@ -149,3 +149,55 @@ def test_generate_specs_is_idempotent(tmp_path):
     assert [path.name for path in first_paths] == [path.name for path in second_paths]
     for first_path, second_path in zip(first_paths, second_paths):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
+
+
+def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    console_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_path.read_text(encoding="utf-8"))
+    schemas = payload["components"]["schemas"]
+
+    assert "AgentKnowledgeSetConfig" in schemas
+    assert schemas["AgentSoulKnowledgeConfig"]["properties"]["sets"]["items"]["$ref"] == (
+        "#/components/schemas/AgentKnowledgeSetConfig"
+    )
+    assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
+
+
+def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():
+    api_dir = Path(__file__).resolve().parents[3]
+    repo_root = api_dir.parent
+
+    markdown = (api_dir / "openapi" / "markdown" / "console-openapi.md").read_text(encoding="utf-8")
+    agent_types = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "agent" / "types.gen.ts"
+    ).read_text(encoding="utf-8")
+    apps_types = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "apps" / "types.gen.ts"
+    ).read_text(encoding="utf-8")
+    agent_zod = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "agent" / "zod.gen.ts"
+    ).read_text(encoding="utf-8")
+    apps_zod = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "apps" / "zod.gen.ts"
+    ).read_text(encoding="utf-8")
+
+    assert "#### AgentKnowledgeSetConfig" in markdown
+    assert "#### AgentSoulKnowledgeConfig" in markdown
+    assert "#### AgentKnowledgeQueryMode" in markdown
+
+    for content in (agent_types, apps_types):
+        assert "export type AgentKnowledgeSetConfig = {" in content
+        assert "export type AgentSoulKnowledgeConfig = {" in content
+        assert "AgentKnowledgeQueryMode" in content
+        assert "generated_query" in content
+        assert "user_query" in content
+
+    for content in (agent_zod, apps_zod):
+        assert "export const zAgentKnowledgeSetConfig = z.object({" in content
+        assert "export const zAgentSoulKnowledgeConfig = z.object({" in content
+        assert "zAgentKnowledgeQueryMode = z.enum([" in content
+        assert "generated_query" in content
+        assert "user_query" in content
