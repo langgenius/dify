@@ -1693,6 +1693,7 @@ export type AccountWithRole = {
   id: string
   last_active_at?: number | null
   last_login_at?: number | null
+  membership_status?: string
   name: string
   role: string
   roles?: Array<{

@@ -1565,6 +1565,7 @@ export const zAccountWithRole = z.object({
   id: z.string(),
   last_active_at: z.int().nullish(),
   last_login_at: z.int().nullish(),
+  membership_status: z.string().optional().default('joined'),
   name: z.string(),
   role: z.string(),
   roles: z.array(z.record(z.string(), z.string())).optional(),
