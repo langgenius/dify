@@ -4,7 +4,7 @@ Unlike the removed workspace inspector, this service never talks to shellctl
 directly and never reads sandbox files outside the shell layer. It rebuilds a
 minimal compositor from ``SandboxLocator``, enters the saved
 ``execution_context`` + ``shell`` layers, and executes fixed scripts through
-``DifyShellLayer.run_remote_script()``.
+``DifyShellLayer.run_remote_script_complete()``.
 
 The scripts still frame their structured payloads with a PTY-safe
 base64-between-sentinels envelope. shellctl jobs are tmux-backed, so raw JSON can
@@ -22,7 +22,8 @@ import textwrap
 from dataclasses import dataclass
 from typing import TypeVar, cast
 
-from dify_agent.layers.shell.layer import DifyShellLayer, RemoteCommandResult
+from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
+from dify_agent.layers.shell.output_text import utf8_suffix
 from dify_agent.protocol import (
     SandboxListRequest,
     SandboxListResponse,
@@ -42,6 +43,7 @@ _READ_TIMEOUT_SECONDS = 15.0
 _UPLOAD_TIMEOUT_SECONDS = 30.0
 _OUTPUT_BEGIN = "<<<DIFY_SANDBOX_BEGIN>>>"
 _OUTPUT_END = "<<<DIFY_SANDBOX_END>>>"
+_SHELL_RESULT_OUTPUT_TAIL_BYTES = 8 * 1024
 ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
 
 _LIST_SCRIPT = """
@@ -294,7 +296,7 @@ class SandboxFileService:
             async with compositor.enter(configs=layer_configs, session_snapshot=locator.session_snapshot) as run:
                 run.suspend_on_exit()
                 shell_layer = run.get_layer("shell", DifyShellLayer)
-                result = await shell_layer.run_remote_script(
+                result = await shell_layer.run_remote_script_complete(
                     _build_python_script_command(script_source=script_source, args=args),
                     timeout=timeout,
                     inject_agent_stub_env=inject_agent_stub_env,
@@ -328,16 +330,24 @@ def _build_python_script_command(*, script_source: str, args: list[str]) -> str:
     return f"python3 - {quoted_args} <<'PY'\n{script}\nPY"
 
 
-def _decode_sandbox_payload(result: RemoteCommandResult) -> dict[str, object]:
+def _decode_sandbox_payload(result: CompleteRemoteCommandResult) -> dict[str, object]:
     if result.exit_code not in (0, None):
         raise SandboxFileError(
             "sandbox_command_failed",
-            f"sandbox command exited with code {result.exit_code}: {_output_tail(result.output)!r}",
+            "sandbox command exited with code "
+            + f"{result.exit_code}: {_shell_result_details(result)}",
             status_code=502,
         )
     begin = result.output.find(_OUTPUT_BEGIN)
     end = result.output.find(_OUTPUT_END, begin + len(_OUTPUT_BEGIN)) if begin != -1 else -1
     if begin == -1 or end == -1:
+        if not result.output_complete:
+            raise SandboxFileError(
+                "sandbox_command_failed",
+                "sandbox command output incomplete before framed payload was captured: "
+                + _shell_result_details(result),
+                status_code=502,
+            )
         raise SandboxFileError(
             "sandbox_command_failed",
             "sandbox command returned no framed payload",
@@ -349,12 +359,25 @@ def _decode_sandbox_payload(result: RemoteCommandResult) -> dict[str, object]:
         decoded = base64.b64decode(compact, validate=True)
         loaded = cast(object, json.loads(decoded.decode("utf-8")))
     except (binascii.Error, ValueError) as exc:
+        if not result.output_complete:
+            raise SandboxFileError(
+                "sandbox_command_failed",
+                "sandbox command output incomplete while decoding framed payload: " + _shell_result_details(result),
+                status_code=502,
+            ) from exc
         raise SandboxFileError(
             "sandbox_command_failed",
             f"sandbox command returned invalid framed payload: {exc}",
             status_code=502,
         ) from exc
     if not isinstance(loaded, dict):
+        if not result.output_complete:
+            raise SandboxFileError(
+                "sandbox_command_failed",
+                "sandbox command output incomplete while validating framed payload object: "
+                + _shell_result_details(result),
+                status_code=502,
+            )
         raise SandboxFileError(
             "sandbox_command_failed", "sandbox command returned a non-object payload", status_code=502
         )
@@ -379,9 +402,22 @@ def _decode_sandbox_payload(result: RemoteCommandResult) -> dict[str, object]:
     return payload
 
 
-def _output_tail(output: str) -> str:
-    stripped = output.strip()
-    return stripped[-200:]
+def _shell_result_details(result: CompleteRemoteCommandResult) -> str:
+    details = (
+        f"output_complete={result.output_complete} "
+        + f"incomplete_reason={result.incomplete_reason} "
+        + f"output_path={result.output_path}"
+    )
+    if not result.output:
+        return details
+    return details + "\n" + _bounded_output_tail(result.output)
+
+
+def _bounded_output_tail(output: str) -> str:
+    tail = utf8_suffix(output, _SHELL_RESULT_OUTPUT_TAIL_BYTES)
+    if tail == output:
+        return output
+    return f"... (showing last {_SHELL_RESULT_OUTPUT_TAIL_BYTES} bytes of raw output) ...\n{tail}"
 
 
 def _validate_response_model(

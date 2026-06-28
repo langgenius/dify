@@ -42,9 +42,9 @@ type AgentOrchestratePanelProps = {
   headerAction?: ReactNode
   bottomAction?: ReactNode
   onSelectModel: (model: DefaultModel) => void
-  onPublish: () => void | Promise<void>
+  onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
-  onOpenVersions: () => void
+  onOpenVersions?: () => void
 }
 
 export function AgentOrchestratePanel({

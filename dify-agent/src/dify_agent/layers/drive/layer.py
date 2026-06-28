@@ -149,21 +149,30 @@ class DifyDriveLayer(PlainLayer[DifyDriveDeps, DifyDriveLayerConfig, EmptyRuntim
             return
 
         script = self._build_shell_pull_script(targets=targets)
-        result = await self.deps.shell.run_remote_script(script, inject_agent_stub_env=True)
+        result = await self.deps.shell.run_remote_script_complete(script, inject_agent_stub_env=True)
         if result.exit_code != 0:
             raise DifyDriveLayerError(
-                f"drive mentioned pull failed in shell: {result.status} exit_code={result.exit_code}\n{result.output}"
+                "drive mentioned pull failed in shell: "
+                + f"{result.status} exit_code={result.exit_code} "
+                + f"output_complete={result.output_complete} "
+                + f"incomplete_reason={result.incomplete_reason} "
+                + f"output_path={result.output_path}\n{result.output}"
             )
-        if result.truncated:
-            raise DifyDriveLayerError("drive mentioned pull output was truncated before SKILL.md content was loaded")
-
-        written_paths, skill_bodies = self._parse_shell_pull_output(result.output)
-        self._record_pulled_paths(written_paths)
-        for skill_key in self.config.mentioned_skill_keys:
-            body = skill_bodies.get(skill_key)
-            if body is None:
-                raise DifyDriveLayerError(f"missing pulled SKILL.md content for mentioned skill {skill_key}")
-            self._loaded_skill_bodies[skill_key] = body
+        try:
+            written_paths, skill_bodies = self._parse_shell_pull_output(result.output)
+            self._record_pulled_paths(written_paths)
+            for skill_key in self.config.mentioned_skill_keys:
+                body = skill_bodies.get(skill_key)
+                if body is None:
+                    raise DifyDriveLayerError(f"missing pulled SKILL.md content for mentioned skill {skill_key}")
+                self._loaded_skill_bodies[skill_key] = body
+        except DifyDriveLayerError:
+            if result.output_complete:
+                raise
+            raise DifyDriveLayerError(
+                "drive mentioned pull output incomplete before required SKILL.md content was captured: "
+                + f"reason={result.incomplete_reason} output_path={result.output_path}\n{result.output}"
+            ) from None
 
     def _build_shell_pull_script(self, *, targets: list[tuple[str, bool]]) -> str:
         pull_targets = list(dict.fromkeys(prefix for prefix, _exact in targets))

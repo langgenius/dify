@@ -5,6 +5,7 @@ import base64
 import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from typing import Literal
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot, LayerProvider
@@ -18,8 +19,7 @@ from dify_agent.agent_stub.server.shell_agent_stub_env import (
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
-from dify_agent.layers.shell.layer import DifyShellLayer
-from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
+from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
 from dify_agent.protocol import (
     CreateRunRequest,
     RunComposition,
@@ -36,10 +36,13 @@ from dify_agent.server.sandbox_files import (
     SandboxFileService,
     _OUTPUT_BEGIN,
     _OUTPUT_END,
+    _SHELL_RESULT_OUTPUT_TAIL_BYTES,
+    _decode_sandbox_payload,
+    _shell_result_details,
 )
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from shell_session_manager.shellctl.shared import JobResult, JobStatusName
+from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName
 
 
 @dataclass(slots=True)
@@ -72,10 +75,13 @@ class FakeShellctlClient:
         return self.run_handler(script, cwd, env, timeout)
 
     async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
-        return self.run_handler("", None, None, timeout)
+        raise AssertionError(f"Unexpected wait() call for {job_id} offset={offset} timeout={timeout}")
 
     async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> JobResult:
         raise AssertionError(f"Unexpected input() call for {job_id} text={text!r}")
+
+    async def tail(self, job_id: str) -> JobResult:
+        raise AssertionError(f"Unexpected tail() call for {job_id}")
 
     async def terminate(self, job_id: str, grace_seconds: float = 2.0):
         raise AssertionError(f"Unexpected terminate() call for {job_id} grace={grace_seconds}")
@@ -85,10 +91,11 @@ class FakeShellctlClient:
         job_id: str,
         *,
         force: bool = False,
-    ) -> object:
-        del force
+        grace_seconds: float | None = None,
+    ) -> DeleteJobResponse:
+        del force, grace_seconds
         self.delete_calls.append(job_id)
-        return None
+        return DeleteJobResponse(job_id=job_id)
 
     async def close(self) -> None:
         return None
@@ -126,6 +133,27 @@ def _failed_job_result(*, output: str, exit_code: int, job_id: str = "sandbox-jo
         output=output,
         offset=0,
         truncated=False,
+        output_path="/tmp/sandbox-job.out",
+    )
+
+
+def _complete_result(
+    *,
+    output: str,
+    exit_code: int | None = 0,
+    output_complete: bool = True,
+    incomplete_reason: Literal["output_limit", "timeout"] | None = None,
+    job_id: str = "sandbox-job",
+) -> CompleteRemoteCommandResult:
+    return CompleteRemoteCommandResult(
+        job_id=job_id,
+        status="exited",
+        done=True,
+        exit_code=exit_code,
+        output=output,
+        output_complete=output_complete,
+        incomplete_reason=incomplete_reason,
+        offset=len(output),
         output_path="/tmp/sandbox-job.out",
     )
 
@@ -191,7 +219,8 @@ def _service(
         layer_type=DifyShellLayer,
         create=lambda config: DifyShellLayer.from_config_with_settings(
             DifyShellLayerConfig.model_validate(config),
-            shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
+            shellctl_entrypoint="http://shellctl",
+            shellctl_client_factory=lambda _entrypoint: client,
             agent_stub_api_base_url="https://agent.example.com/agent-stub",
             agent_stub_token_factory=lambda execution_context, *, session_id: (
                 f"token-for:{execution_context.tenant_id}:{session_id}"
@@ -336,7 +365,7 @@ def test_read_file_preserves_truncated_flag_for_large_text() -> None:
 def test_upload_file_injects_agent_stub_env_and_returns_mapping() -> None:
     def run_handler(script: str, cwd: str | None, env: Mapping[str, str] | None, timeout: float) -> JobResult:
         assert cwd == "~/workspace/abc12ff"
-        assert timeout == 30.0
+        assert timeout == pytest.approx(30.0, rel=0, abs=0.01)
         assert env == {
             AGENT_STUB_API_BASE_URL_ENV_VAR: "https://agent.example.com/agent-stub",
             AGENT_STUB_AUTH_JWE_ENV_VAR: "token-for:tenant-1:abc12ff",
@@ -390,6 +419,131 @@ def test_read_file_maps_non_zero_command_exit_to_sandbox_command_failed() -> Non
 
     assert exc_info.value.code == "sandbox_command_failed"
     assert exc_info.value.status_code == 502
+    assert "output_complete=True" in exc_info.value.message
+    assert "incomplete_reason=None" in exc_info.value.message
+    assert "output_path=/tmp/sandbox-job.out" in exc_info.value.message
+    assert "python traceback or stderr tail" in exc_info.value.message
+
+
+def test_shell_result_details_bounds_raw_output_to_tail() -> None:
+    output = ("head-" + ("a" * _SHELL_RESULT_OUTPUT_TAIL_BYTES) + "-tail").replace("a-tail", "b-tail", 1)
+
+    details = _shell_result_details(
+        _complete_result(
+            output=output,
+            exit_code=17,
+            output_complete=False,
+            incomplete_reason="timeout",
+        )
+    )
+
+    assert "output_complete=False" in details
+    assert "incomplete_reason=timeout" in details
+    assert "output_path=/tmp/sandbox-job.out" in details
+    assert "showing last 8192 bytes of raw output" in details
+    assert "head-" not in details
+    assert details.endswith("b-tail")
+
+
+def test_decode_sandbox_payload_accepts_complete_frame_even_when_capture_is_incomplete() -> None:
+    payload = _decode_sandbox_payload(
+        _complete_result(
+            output=_wrap(
+                {
+                    "path": "note.txt",
+                    "size": 10,
+                    "truncated": False,
+                    "binary": False,
+                    "text": "hello",
+                }
+            ),
+            output_complete=False,
+            incomplete_reason="output_limit",
+        )
+    )
+
+    assert payload["path"] == "note.txt"
+    assert payload["text"] == "hello"
+
+
+def test_decode_sandbox_payload_raises_incomplete_capture_when_frame_is_missing() -> None:
+    with pytest.raises(SandboxFileError, match="output incomplete before framed payload was captured") as exc_info:
+        _decode_sandbox_payload(
+            _complete_result(
+                output="plain output without sentinel framing",
+                output_complete=False,
+                incomplete_reason="output_limit",
+            )
+        )
+
+    assert "output_complete=False" in exc_info.value.message
+    assert "incomplete_reason=output_limit" in exc_info.value.message
+    assert "output_path=/tmp/sandbox-job.out" in exc_info.value.message
+    assert "plain output without sentinel framing" in exc_info.value.message
+
+
+@pytest.mark.parametrize(
+    ("output", "expected_message"),
+    [
+        (
+            f"{_OUTPUT_BEGIN}not-base64!!{_OUTPUT_END}",
+            "output incomplete while decoding framed payload",
+        ),
+        (
+            f"{_OUTPUT_BEGIN}{base64.b64encode(b'{').decode('ascii')}{_OUTPUT_END}",
+            "output incomplete while decoding framed payload",
+        ),
+        (
+            f"{_OUTPUT_BEGIN}{base64.b64encode(json.dumps(['partial']).encode('utf-8')).decode('ascii')}{_OUTPUT_END}",
+            "output incomplete while validating framed payload object",
+        ),
+    ],
+)
+def test_decode_sandbox_payload_raises_incomplete_capture_when_framed_payload_validation_fails(
+    output: str,
+    expected_message: str,
+) -> None:
+    with pytest.raises(SandboxFileError, match=expected_message) as exc_info:
+        _decode_sandbox_payload(
+            _complete_result(
+                output=output,
+                output_complete=False,
+                incomplete_reason="timeout",
+            )
+        )
+
+    assert "output_complete=False" in exc_info.value.message
+    assert "incomplete_reason=timeout" in exc_info.value.message
+    assert "output_path=/tmp/sandbox-job.out" in exc_info.value.message
+
+
+@pytest.mark.parametrize(
+    ("output", "expected_message"),
+    [
+        (
+            f"{_OUTPUT_BEGIN}not-base64!!{_OUTPUT_END}",
+            "sandbox command returned invalid framed payload:",
+        ),
+        (
+            f"{_OUTPUT_BEGIN}{base64.b64encode(b'{').decode('ascii')}{_OUTPUT_END}",
+            "sandbox command returned invalid framed payload:",
+        ),
+        (
+            f"{_OUTPUT_BEGIN}{base64.b64encode(json.dumps(['partial']).encode('utf-8')).decode('ascii')}{_OUTPUT_END}",
+            "sandbox command returned a non-object payload",
+        ),
+    ],
+)
+def test_decode_sandbox_payload_raises_business_failure_when_complete_framed_payload_validation_fails(
+    output: str,
+    expected_message: str,
+) -> None:
+    with pytest.raises(SandboxFileError) as exc_info:
+        _decode_sandbox_payload(_complete_result(output=output))
+
+    assert exc_info.value.code == "sandbox_command_failed"
+    assert exc_info.value.status_code == 502
+    assert expected_message in exc_info.value.message
 
 
 def test_upload_file_maps_missing_framed_payload_to_sandbox_command_failed() -> None:

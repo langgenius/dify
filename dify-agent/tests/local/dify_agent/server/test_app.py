@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import base64
 import time
 from typing import ClassVar
@@ -7,8 +8,7 @@ from typing import ClassVar
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-
-from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
+from shell_session_manager.shellctl.client import ShellctlClient
 
 import dify_agent.server.app as app_module
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -246,8 +246,12 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
         assert knowledge_layer.inner_api_url == "http://dify-api"
         assert knowledge_layer.inner_api_key == "inner-secret"
-        assert isinstance(shell_layer.shell_provisioner, ShellctlProvisioner)
+        assert shell_layer.shellctl_entrypoint == "http://shellctl"
         assert shell_layer.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
+        shellctl_client = shell_layer.shellctl_client_factory("http://shellctl")
+        assert isinstance(shellctl_client, ShellctlClient)
+        assert shellctl_client.token == "shell-secret"
+        asyncio.run(shellctl_client.close())
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client
         assert http_client.is_closed is False
