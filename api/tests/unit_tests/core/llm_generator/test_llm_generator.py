@@ -102,6 +102,17 @@ class TestLLMGenerator:
             "temperature": 0.0,
         }
 
+    def test_generate_suggested_questions_after_answer_strips_reasoning_blocks(self, mock_model_instance):
+        mock_response = MagicMock()
+        mock_response.message.get_text_content.return_value = (
+            "<think>\nReasoning about follow-ups.\n</think>\n"
+            '["Follow-up one?", "Follow-up two?"]'
+        )
+        mock_model_instance.invoke_llm.return_value = mock_response
+
+        questions = LLMGenerator.generate_suggested_questions_after_answer("tenant_id", "histories")
+        assert questions == ["Follow-up one?", "Follow-up two?"]
+
     def test_generate_suggested_questions_after_answer_auth_error(self, mock_model_instance):
         with patch("core.llm_generator.llm_generator.ModelManager.for_tenant") as mock_manager:
             mock_manager.return_value.get_default_model_instance.side_effect = InvokeAuthorizationError("Auth failed")
