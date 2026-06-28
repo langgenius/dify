@@ -99,7 +99,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-const activeVersionSnapshot: AgentConfigSnapshotSummaryResponse = {
+const activeConfigSnapshot: AgentConfigSnapshotSummaryResponse = {
   id: 'snapshot-1',
   agent_id: 'agent-1',
   version: 1,
@@ -117,27 +117,6 @@ const originalDraftWithFile = {
     },
   ],
 } satisfies typeof defaultAgentSoulConfigFormState
-
-function createConfigureData({
-  activeConfigIsPublished,
-  activeVersionSnapshot,
-  selectedVersionSnapshot,
-}: {
-  activeConfigIsPublished?: boolean
-  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-}): NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['configureData']> {
-  return {
-    activeVersionSnapshot: selectedVersionSnapshot ?? activeVersionSnapshot,
-    agentQuery: {
-      data: {
-        active_config_is_published: activeConfigIsPublished,
-        name: 'Iris',
-      },
-    },
-    selectedVersionId: selectedVersionSnapshot?.id ?? null,
-  } as unknown as NonNullable<ComponentProps<typeof AgentConfigurePublishBar>['configureData']>
-}
 
 const publishedReferences: AgentReferencingWorkflowResponse[] = [
   {
@@ -174,8 +153,7 @@ function createDeferredPromise() {
 
 function renderPublishBar({
   activeConfigIsPublished,
-  activeVersionSnapshot,
-  configureData,
+  activeConfigSnapshot,
   draftSavedAt,
   isPublishing,
   onPublish = vi.fn<PublishHandler>(),
@@ -186,8 +164,7 @@ function renderPublishBar({
   usedByAppReferences = [],
 }: {
   activeConfigIsPublished?: boolean
-  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  configureData?: ComponentProps<typeof AgentConfigurePublishBar>['configureData']
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   draftSavedAt?: number
   isPublishing?: boolean
   onPublish?: PublishMock
@@ -210,16 +187,15 @@ function renderPublishBar({
 
   const renderPublishBarTree = (nextProps?: {
     activeConfigIsPublished?: boolean
-    activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+    activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
     isPublishing?: boolean
   }) => (
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
         <AgentConfigurePublishBar
           agentId="agent-1"
-          configureData={configureData}
           activeConfigIsPublished={nextProps && 'activeConfigIsPublished' in nextProps ? nextProps.activeConfigIsPublished : activeConfigIsPublished}
-          activeVersionSnapshot={nextProps && 'activeVersionSnapshot' in nextProps ? nextProps.activeVersionSnapshot : activeVersionSnapshot}
+          activeConfigSnapshot={nextProps && 'activeConfigSnapshot' in nextProps ? nextProps.activeConfigSnapshot : activeConfigSnapshot}
           draftSavedAt={draftSavedAt}
           agentName="Iris"
           isPublishing={nextProps?.isPublishing ?? isPublishing}
@@ -303,7 +279,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should restore the selected version from view-only mode', async () => {
     const selectedVersionSnapshot = {
-      ...activeVersionSnapshot,
+      ...activeConfigSnapshot,
       id: 'snapshot-2',
       version: 2,
       version_note: 'Stable version',
@@ -342,7 +318,7 @@ describe('AgentConfigurePublishBar', () => {
   it('should render published state from the active snapshot and disable publish logic', () => {
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: true,
-      activeVersionSnapshot,
+      activeConfigSnapshot,
     })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
@@ -359,91 +335,28 @@ describe('AgentConfigurePublishBar', () => {
     expect(onPublish).not.toHaveBeenCalled()
   })
 
-  it('should derive publish state from configure data when provided', () => {
-    renderPublishBar({
-      activeConfigIsPublished: false,
-      activeVersionSnapshot: null,
-      configureData: createConfigureData({
-        activeConfigIsPublished: true,
-        activeVersionSnapshot,
-      }),
-    })
-
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
-  })
-
   it('should keep published state when the published detail updates before the active snapshot is refreshed', () => {
-    renderPublishBar({
-      activeConfigIsPublished: true,
-      activeVersionSnapshot: null,
-    })
-
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
-  })
-
-  it('should keep published state during a transient published query gap', () => {
     const { rerender, rerenderPublishBar } = renderPublishBar({
       activeConfigIsPublished: true,
-      activeVersionSnapshot: null,
+      activeConfigSnapshot: null,
     })
 
     rerender(rerenderPublishBar({
       activeConfigIsPublished: undefined,
-      activeVersionSnapshot: undefined,
+      activeConfigSnapshot: undefined,
     }))
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
-  })
-
-  it('should not show unpublished state while active published status is still loading', () => {
-    renderPublishBar({
-      activeVersionSnapshot,
-    })
-
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
   })
 
-  it('should keep published state on entry when the saved draft differs from the published snapshot', () => {
-    const publishedDraft = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Published prompt',
-    }
-    const savedDraft = {
-      ...defaultAgentSoulConfigFormState,
-      prompt: 'Saved draft prompt',
-    }
-
+  it('should show unpublished state from local draft changes even when active config is published', () => {
     renderPublishBar({
       activeConfigIsPublished: true,
-      activeVersionSnapshot: null,
-      setupStore: (store) => {
-        store.set(agentComposerPublishedDraftAtom, publishedDraft)
-        store.set(agentComposerOriginalDraftAtom, savedDraft)
-        store.set(agentComposerDraftAtom, savedDraft)
-      },
-    })
-
-    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
-    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
-      expect.objectContaining({ enabled: false, ignoreInputs: false }),
-    )
-  })
-
-  it('should render unpublished state when local draft changes after entry', () => {
-    renderPublishBar({
-      activeConfigIsPublished: true,
-      activeVersionSnapshot: null,
+      activeConfigSnapshot: null,
       prompt: 'Updated system prompt',
     })
 
@@ -457,7 +370,7 @@ describe('AgentConfigurePublishBar', () => {
   it('should initialize unpublished state when active config is not published', async () => {
     const { onPublish } = renderPublishBar({
       activeConfigIsPublished: false,
-      activeVersionSnapshot,
+      activeConfigSnapshot,
     })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
@@ -479,7 +392,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should publish the current draft payload from the unpublished changes state', async () => {
     const { onPublish } = renderPublishBar({
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       prompt: 'Updated system prompt',
     })
 
@@ -494,8 +407,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should mark non-prompt draft changes as unpublished', () => {
     renderPublishBar({
-      activeConfigIsPublished: false,
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       setupStore: (store) => {
         store.set(agentComposerPublishedDraftAtom, originalDraftWithFile)
         store.set(agentComposerOriginalDraftAtom, originalDraftWithFile)
@@ -520,8 +432,7 @@ describe('AgentConfigurePublishBar', () => {
     }
 
     renderPublishBar({
-      activeConfigIsPublished: false,
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       setupStore: (store) => {
         store.set(agentComposerPublishedDraftAtom, publishedDraft)
         store.set(agentComposerOriginalDraftAtom, savedDraft)
@@ -531,6 +442,31 @@ describe('AgentConfigurePublishBar', () => {
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
+  })
+
+  it('should trust backend published state after autosave confirms the draft matches the active snapshot', () => {
+    const stalePublishedDraftBaseline = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Old unpublished normal draft',
+    }
+    const savedDraftMatchingActiveSnapshot = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Published prompt',
+    }
+
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot,
+      setupStore: (store) => {
+        store.set(agentComposerPublishedDraftAtom, stalePublishedDraftBaseline)
+        store.set(agentComposerOriginalDraftAtom, savedDraftMatchingActiveSnapshot)
+        store.set(agentComposerDraftAtom, savedDraftMatchingActiveSnapshot)
+      },
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).not.toBeInTheDocument()
   })
 
   it('should render publishing as a single disabled action state', () => {
@@ -547,7 +483,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should expand affected workflow details above the publish toolbar when clicking a publishable agent in use', async () => {
     const { onPublish } = renderPublishBar({
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
@@ -589,7 +525,7 @@ describe('AgentConfigurePublishBar', () => {
     const publishDeferred = createDeferredPromise()
     const onPublish = vi.fn<PublishHandler>(() => publishDeferred.promise)
     const { rerender, rerenderPublishBar } = renderPublishBar({
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       onPublish,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
@@ -624,7 +560,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should collapse affected workflow details from the expanded footer cancel action', async () => {
     const { onPublish } = renderPublishBar({
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
@@ -646,7 +582,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should show affected workflow details from the publish shortcut before publishing', async () => {
     const { onPublish } = renderPublishBar({
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       prompt: 'Updated system prompt',
       usedByAppReferences: publishedReferences,
     })
@@ -670,7 +606,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should publish directly from the publish shortcut when no workflows reference the agent', async () => {
     const { onPublish } = renderPublishBar({
-      activeVersionSnapshot,
+      activeConfigSnapshot,
       prompt: 'Updated system prompt',
     })
     const publishShortcut = hotkeyRegistrations.get('Mod+Shift+P')

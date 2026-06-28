@@ -4,12 +4,12 @@ import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
-import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
 const toastMock = vi.hoisted(() => ({
+  error: vi.fn(),
   success: vi.fn(),
 }))
 
@@ -96,6 +96,9 @@ vi.mock('@langgenius/dify-ui/toast', () => ({
 vi.mock('@/service/client', () => ({
   consoleQuery: {
     agent: {
+      get: {
+        key: () => ['agents'],
+      },
       byAgentId: {
         get: {
           queryKey: ({ input }: { input: { params: { agent_id: string } } }) => [
@@ -177,6 +180,7 @@ describe('useAgentConfigureSync', () => {
   it('should automatically save configure page changes to draft', async () => {
     vi.setSystemTime(1710000100000)
     const { queryClient, result, store } = renderUseAgentConfigureSync()
+    const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
       active_config_is_published: true,
       name: 'Agent',
@@ -192,7 +196,7 @@ describe('useAgentConfigureSync', () => {
     })
 
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: false,
+      active_config_is_published: true,
       name: 'Agent',
     })
     expect(composerPutMutationFn).not.toHaveBeenCalled()
@@ -215,12 +219,50 @@ describe('useAgentConfigureSync', () => {
         }),
       }),
     }))
-    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toBeUndefined()
+    expect(queryClient.getQueryData(['agent-composer', 'agent-1'])).toEqual({
+      agent_soul: expect.objectContaining({
+        prompt: expect.objectContaining({
+          system_prompt: 'Draft only prompt',
+        }),
+      }),
+    })
     expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: false,
+      active_config_is_published: true,
       name: 'Agent',
     })
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: ['agent-detail', 'agent-1'],
+    })
     expect(result.current.draftSavedAt).toBe(1710000105000)
+  })
+
+  it('should cancel pending autosave when the draft returns to the saved baseline', async () => {
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Temporary prompt',
+      })
+    })
+    act(() => {
+      store.set(agentComposerDraftAtom, defaultAgentSoulConfigFormState)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+    expect(result.current.draftSavedAt).toBeUndefined()
   })
 
   it('should save dirty draft once when the page is closing', async () => {
@@ -373,6 +415,27 @@ describe('useAgentConfigureSync', () => {
     expect(result.current.draftSavedAt).toBeUndefined()
   })
 
+  it('should keep autosave failures silent and leave the local draft dirty', async () => {
+    composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Unsaved autosave prompt',
+      })
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(result.current.draftSavedAt).toBeUndefined()
+    expect(store.get(agentComposerDraftAtom).prompt).toBe('Unsaved autosave prompt')
+    expect(toastMock.error).not.toHaveBeenCalled()
+  })
+
   it('should save the latest draft immediately when requested', async () => {
     vi.setSystemTime(1710000200000)
     const { result, store } = renderUseAgentConfigureSync()
@@ -404,6 +467,73 @@ describe('useAgentConfigureSync', () => {
       }),
     }))
     expect(result.current.draftSavedAt).toBe(1710000200000)
+  })
+
+  it('should reject explicit save requests when the draft cannot be saved', async () => {
+    composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    const { result, store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Run prompt',
+      })
+    })
+
+    await expect(result.current.saveDraft()).rejects.toThrow('Failed to save agent composer draft.')
+    expect(result.current.draftSavedAt).toBeUndefined()
+    expect(store.get(agentComposerDraftAtom).prompt).toBe('Run prompt')
+    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
+  })
+
+  it('should not save the draft immediately when the composer draft is unchanged', async () => {
+    const { queryClient, result } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(composerPutMutationFn).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+    expect(result.current.draftSavedAt).toBeUndefined()
+  })
+
+  it('should save the effective model before run when the form draft is unchanged', async () => {
+    const { result } = renderUseAgentConfigureSync({
+      baseConfig: {
+        schema_version: 1,
+        prompt: {
+          system_prompt: '',
+        },
+      },
+      currentModel: {
+        provider: 'langgenius/openai/openai',
+        model: 'gpt-4o-mini',
+      },
+    })
+
+    await act(async () => {
+      await result.current.saveDraft()
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          model: expect.objectContaining({
+            model_provider: 'langgenius/openai/openai',
+            model: 'gpt-4o-mini',
+            plugin_id: 'langgenius/openai',
+          }),
+        }),
+      }),
+    }))
   })
 
   it('should reject manual save when knowledge retrieval validation fails', async () => {
@@ -472,89 +602,6 @@ describe('useAgentConfigureSync', () => {
       name: 'Agent',
     })
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
-  })
-
-  it('should not mark the active config unpublished while publishing saves the draft first', async () => {
-    const publishDeferred = createDeferredPromise<PublishAgentResponse>()
-    publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
-    const { queryClient, result, store } = renderUseAgentConfigureSync()
-    act(() => {
-      store.set(agentComposerDraftAtom, {
-        ...defaultAgentSoulConfigFormState,
-        prompt: 'Published prompt',
-      })
-    })
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: true,
-      name: 'Agent',
-    })
-
-    let publishPromise!: Promise<void>
-    act(() => {
-      publishPromise = result.current.publishDraft()
-    })
-
-    await act(async () => {
-      await Promise.resolve()
-      await vi.advanceTimersByTimeAsync(0)
-    })
-
-    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-    })
-
-    await act(async () => {
-      publishDeferred.resolve({
-        active_config_snapshot: {},
-        active_config_snapshot_id: 'snapshot-1',
-        result: 'success',
-      })
-      await publishPromise
-      await vi.advanceTimersByTimeAsync(0)
-    })
-
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-    })
-  })
-
-  it('should mark the active config as unpublished after changing a published draft', async () => {
-    const { queryClient, result, store } = renderUseAgentConfigureSync()
-    queryClient.setQueryData(['agent-detail', 'agent-1'], {
-      active_config_is_published: false,
-      name: 'Agent',
-    })
-    act(() => {
-      store.set(agentComposerDraftAtom, {
-        ...defaultAgentSoulConfigFormState,
-        prompt: 'Published prompt',
-      })
-    })
-
-    await act(async () => {
-      await result.current.publishDraft()
-    })
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: true,
-      name: 'Agent',
-    })
-
-    act(() => {
-      store.set(agentComposerAppFeaturesAtom, {
-        suggested_questions_after_answer: {
-          enabled: true,
-        },
-      })
-    })
-
-    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
-      active_config_is_published: false,
-      name: 'Agent',
-    })
-    expect(store.get(agentComposerPublishedDraftAtom)?.appFeatures).toBeUndefined()
   })
 
   it('should keep default model fallback from creating unpublished changes after publish', async () => {
@@ -635,6 +682,31 @@ describe('useAgentConfigureSync', () => {
       }),
     }))
     expect(publishAgentMutationFn).toHaveBeenCalledTimes(1)
+  })
+
+  it('should reject publish and keep the publish mutation untouched when saving the draft fails', async () => {
+    composerPutMutationFn.mockRejectedValueOnce(new Error('save failed'))
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: false,
+      name: 'Agent',
+    })
+
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Unpublished prompt',
+      })
+    })
+
+    await expect(result.current.publishDraft()).rejects.toThrow('Failed to save agent composer draft.')
+
+    expect(publishAgentMutationFn).not.toHaveBeenCalled()
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: false,
+      name: 'Agent',
+    })
+    expect(toastMock.error).toHaveBeenCalledWith('common.api.actionFailed')
   })
 
   it('should reject publish when knowledge retrieval validation fails', async () => {

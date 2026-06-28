@@ -2,7 +2,6 @@
 
 import type { AgentConfigSnapshotSummaryResponse, AgentReferencingWorkflowResponse, AgentReferencingWorkflowsResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
-import type { useAgentConfigureData } from '../../../hooks'
 import { Button } from '@langgenius/dify-ui/button'
 import { CollapsiblePanel, CollapsibleRoot } from '@langgenius/dify-ui/collapsible'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
@@ -14,7 +13,7 @@ import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
+import { hasAgentComposerUnpublishedChangesAtom, isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -30,9 +29,8 @@ type PublishBarMode = { status: 'compact' }
 
 type AgentConfigurePublishBarProps = {
   agentId: string
-  configureData?: ReturnType<typeof useAgentConfigureData>
   activeConfigIsPublished?: boolean
-  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentName?: string | null
   draftSavedAt?: number
   isPublishing?: boolean
@@ -44,28 +42,33 @@ type AgentConfigurePublishBarProps = {
 
 function getPublishState({
   activeConfigIsPublished,
-  activeVersionSnapshot,
-  isDirty,
+  activeConfigSnapshot,
+  hasLocalChanges,
+  hasUnpublishedChanges,
   isPublishing,
 }: {
   activeConfigIsPublished?: boolean
-  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  isDirty: boolean
+  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  hasLocalChanges: boolean
+  hasUnpublishedChanges: boolean
   isPublishing: boolean
 }): AgentConfigurePublishState {
   if (isPublishing)
     return 'publishing'
 
-  if (isDirty)
+  if (hasLocalChanges)
     return 'unpublished'
 
   if (activeConfigIsPublished)
     return 'published'
 
-  if (!activeVersionSnapshot)
+  if (hasUnpublishedChanges)
+    return 'unpublished'
+
+  if (!activeConfigSnapshot)
     return 'draft'
 
-  if (activeConfigIsPublished === false)
+  if (!activeConfigIsPublished)
     return 'unpublished'
 
   return 'published'
@@ -83,13 +86,12 @@ function PublishShortcut() {
 
 export function AgentConfigurePublishBar({
   agentId,
-  configureData,
-  activeConfigIsPublished: activeConfigIsPublishedProp,
-  activeVersionSnapshot: activeVersionSnapshotProp,
-  agentName: agentNameProp,
+  activeConfigIsPublished,
+  activeConfigSnapshot,
+  agentName,
   draftSavedAt,
   isPublishing = false,
-  selectedVersionSnapshot: selectedVersionSnapshotProp,
+  selectedVersionSnapshot,
   onPublish,
   onExitVersions,
   onOpenVersions,
@@ -99,32 +101,29 @@ export function AgentConfigurePublishBar({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
-  const activeConfigIsPublished = configureData?.agentQuery.data?.active_config_is_published ?? activeConfigIsPublishedProp
   const lastKnownPublishedRef = useRef(false)
   if (activeConfigIsPublished === true)
     lastKnownPublishedRef.current = true
   if (activeConfigIsPublished === false)
     lastKnownPublishedRef.current = false
   const stableActiveConfigIsPublished = activeConfigIsPublished ?? (lastKnownPublishedRef.current ? true : undefined)
-  const activeVersionSnapshot = configureData?.activeVersionSnapshot ?? activeVersionSnapshotProp
-  const agentName = configureData?.agentQuery.data?.name ?? agentNameProp
-  const selectedVersionSnapshot = configureData?.selectedVersionId
-    ? configureData.activeVersionSnapshot
-    : selectedVersionSnapshotProp
-  const isDirty = useAtomValue(isAgentComposerDirtyAtom)
+  const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
+  const hasLocalChanges = useAtomValue(isAgentComposerDirtyAtom)
   const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
   const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
     activeConfigIsPublished: stableActiveConfigIsPublished,
-    activeVersionSnapshot,
-    isDirty,
+    activeConfigSnapshot,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing: false,
   })
   const publishState = getPublishState({
     activeConfigIsPublished: stableActiveConfigIsPublished,
-    activeVersionSnapshot,
-    isDirty,
+    activeConfigSnapshot,
+    hasLocalChanges,
+    hasUnpublishedChanges,
     isPublishing,
   })
   const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')
@@ -231,9 +230,9 @@ export function AgentConfigurePublishBar({
     )
   }
 
-  const publishedMeta = activeVersionSnapshot?.created_at
+  const publishedMeta = activeConfigSnapshot?.created_at
     ? t('agentDetail.configure.publishBar.publishedAt', {
-        time: formatTimeFromNow(activeVersionSnapshot.created_at * 1000),
+        time: formatTimeFromNow(activeConfigSnapshot.created_at * 1000),
       })
     : t('agentDetail.configure.publishBar.published')
   const savedMeta = draftSavedAt
@@ -311,7 +310,7 @@ export function AgentConfigurePublishBar({
         statusLabel={currentStateMeta.statusLabel}
         canPublish={canPublish}
         onCancelImpact={() => setPublishBarMode({ status: 'compact' })}
-        onOpenVersions={onOpenVersions ?? (() => undefined)}
+        onOpenVersions={() => onOpenVersions?.()}
         onPublishRequest={handlePublishRequest}
       />
     </CollapsibleRoot>

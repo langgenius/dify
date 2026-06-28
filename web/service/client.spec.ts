@@ -519,7 +519,7 @@ describe('consoleQuery agent mutation defaults', () => {
     expect(queryClient.getQueryData(inviteOptionsQueryKey)).toBeUndefined()
   })
 
-  it('should keep roster and invite option lists stable after saving an agent draft', async () => {
+  it('should invalidate roster list but keep invite options stable after saving an agent draft', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = new QueryClient()
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries')
@@ -543,7 +543,7 @@ describe('consoleQuery agent mutation defaults', () => {
       createMutationContext(queryClient),
     )
 
-    expect(invalidateQueries).not.toHaveBeenCalledWith({
+    expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: consoleQuery.agent.get.key(),
     })
     expect(invalidateQueries).not.toHaveBeenCalledWith({
