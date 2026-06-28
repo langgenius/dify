@@ -8,10 +8,7 @@ from typing import Any, Literal, Protocol, assert_never, cast
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
 from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
-from dify_agent.layers.drive import (
-    DifyDriveLayerConfig,
-    DifyDriveSkillConfig,
-)
+from dify_agent.layers.config import DifyConfigFileConfig, DifyConfigLayerConfig, DifyConfigSkillConfig
 from dify_agent.layers.execution_context import (
     DifyExecutionContextInvokeFrom,
     DifyExecutionContextLayerConfig,
@@ -76,8 +73,6 @@ from services.agent.prompt_mentions import (
     parse_prompt_mentions,
     workflow_previous_node_output_refs_from_selectors,
 )
-from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
-
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
 from .runtime_feature_manifest import build_runtime_feature_manifest
@@ -204,20 +199,12 @@ class WorkflowAgentRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        drive_config: DifyDriveLayerConfig | None = None
+        config_layer_config: DifyConfigLayerConfig | None = None
         soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            drive_config, drive_warnings = build_drive_layer_config(
-                agent_soul,
-                tenant_id=context.dify_context.tenant_id,
-                agent_id=context.agent.id,
-            )
-            append_runtime_warnings(metadata, drive_warnings)
-            soul_prompt_resolver = build_drive_aware_soul_mention_resolver(
-                agent_soul,
-                tenant_id=context.dify_context.tenant_id,
-                agent_id=context.agent.id,
-            )
+            config_layer_config, config_warnings = build_config_layer_config(agent_soul, writable=False)
+            append_runtime_warnings(metadata, config_warnings)
+            soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
@@ -251,6 +238,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                     conversation_id=get_system_text(context.variable_pool, SystemVariableKey.CONVERSATION_ID),
                     agent_id=context.agent.id,
                     agent_config_version_id=context.snapshot.id,
+                    agent_config_version_kind="snapshot",
                     agent_mode=self._agent_backend_agent_mode(context.dify_context.invoke_from),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
                 ),
@@ -260,7 +248,7 @@ class WorkflowAgentRuntimeRequestBuilder:
                 output=self._build_output_config(node_job.declared_outputs),
                 tools=tools_layer,
                 knowledge=knowledge_config,
-                drive_config=drive_config,
+                config_layer_config=config_layer_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),
@@ -753,19 +741,12 @@ def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, s
             existing.extend(warnings)
 
 
-def build_drive_aware_soul_mention_resolver(
-    agent_soul: AgentSoulConfig,
-    *,
-    tenant_id: str,
-    agent_id: str,
-):
-    """Resolve skill/file mentions against the agent drive and everything else via Agent Soul."""
+def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
+    """Resolve config skill/file mentions and delegate the rest to Agent Soul."""
 
     base_resolver = build_soul_mention_resolver(agent_soul)
-    drive_service = AgentDriveService()
-    skill_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
-    skill_names_by_key = {skill["skill_md_key"]: skill["name"] for skill in skill_catalog}
-    drive_keys = {item["key"] for item in drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)}
+    skill_names = {item.name for item in agent_soul.config_skills}
+    file_names = {item.name for item in agent_soul.config_files}
 
     def _resolve(mention: object) -> str | None:
         if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
@@ -774,83 +755,65 @@ def build_drive_aware_soul_mention_resolver(
         ref_id = cast(str, mention.ref_id)
         label = cast(str | None, getattr(mention, "label", None))
         if kind == MentionKind.SKILL:
-            decoded_key = decode_drive_mention_ref(ref_id)
-            return skill_names_by_key.get(decoded_key) or label or decoded_key
+            return ref_id if ref_id in skill_names else label or ref_id
         if kind == MentionKind.FILE:
-            decoded_key = decode_drive_mention_ref(ref_id)
-            if decoded_key in drive_keys:
-                return decoded_key.rsplit("/", 1)[-1]
-            return label or decoded_key
+            return ref_id if ref_id in file_names else label or ref_id
         return base_resolver(cast(Any, mention))
 
     return _resolve
 
 
-def build_drive_layer_config(
-    agent_soul: AgentSoulConfig,
-    *,
-    tenant_id: str,
-    agent_id: str | None,
-) -> tuple[DifyDriveLayerConfig | None, list[dict[str, str]]]:
-    """Derive drive runtime catalog + prompt-mentioned eager-pull keys from the drive."""
+def build_config_layer_config(
+    agent_soul: AgentSoulConfig, *, writable: bool = False
+) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
+    """Derive config runtime catalog + prompt-mentioned eager-pull names from Agent Soul."""
 
-    mentioned_drive_refs = [
-        decode_drive_mention_ref(mention.ref_id)
-        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt)
-        if mention.kind in {MentionKind.SKILL, MentionKind.FILE}
-    ]
-    ordered_mentions = list(dict.fromkeys(ref for ref in mentioned_drive_refs if ref))
-    if not agent_id:
-        if not ordered_mentions:
-            return None, []
-        return None, [
-            {
-                "section": "agent_soul.prompt.system_prompt",
-                "code": "drive_ref_dangling",
-                "message": "drive mentions are configured but the run has no bound agent to address a drive by.",
-            }
-        ]
+    ordered_mentions = list(
+        dict.fromkeys(
+            mention.ref_id
+            for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt)
+            if mention.kind in {MentionKind.SKILL, MentionKind.FILE} and mention.ref_id
+        )
+    )
+    if not agent_soul.config_skills and not agent_soul.config_files and not agent_soul.config_note and not ordered_mentions:
+        return None, []
 
-    drive_service = AgentDriveService()
-    skills_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
-    manifest_items = drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)
-    manifest_by_key = {item["key"]: item for item in manifest_items}
-    skill_keys = {skill["skill_md_key"] for skill in skills_catalog}
+    skill_names = {skill.name for skill in agent_soul.config_skills}
+    file_names = {file_ref.name for file_ref in agent_soul.config_files}
     warnings: list[dict[str, str]] = []
-    mentioned_skill_keys: list[str] = []
-    mentioned_file_keys: list[str] = []
-    for drive_key in ordered_mentions:
-        if drive_key in skill_keys:
-            mentioned_skill_keys.append(drive_key)
+    mentioned_skill_names: list[str] = []
+    mentioned_file_names: list[str] = []
+    for name in ordered_mentions:
+        if name in skill_names:
+            mentioned_skill_names.append(name)
             continue
-        if drive_key in manifest_by_key:
-            mentioned_file_keys.append(drive_key)
+        if name in file_names:
+            mentioned_file_names.append(name)
             continue
         warnings.append(
             {
                 "section": "agent_soul.prompt.system_prompt",
                 "code": "mention_target_missing",
-                "message": f"drive mention '{drive_key}' has no matching drive entry.",
+                "message": f"config mention '{name}' has no matching config asset.",
             }
         )
 
-    skills = [
-        DifyDriveSkillConfig(
-            path=skill["path"],
-            name=skill["name"],
-            description=skill["description"],
-            skill_md_key=skill["skill_md_key"],
-            archive_key=skill["archive_key"],
-        )
-        for skill in skills_catalog
-    ]
-
     return (
-        DifyDriveLayerConfig(
-            drive_ref=f"agent-{agent_id}",
-            skills=skills,
-            mentioned_skill_keys=mentioned_skill_keys,
-            mentioned_file_keys=mentioned_file_keys,
+        DifyConfigLayerConfig(
+            skills=[
+                DifyConfigSkillConfig(name=skill.name, description=skill.description)
+                for skill in agent_soul.config_skills
+            ],
+            files=[DifyConfigFileConfig(name=file_ref.name) for file_ref in agent_soul.config_files],
+            env_keys=[
+                key
+                for key in (item.key or item.name or item.env_name or item.variable for item in agent_soul.env.variables)
+                if key
+            ],
+            note=agent_soul.config_note,
+            mentioned_skill_names=mentioned_skill_names,
+            mentioned_file_names=mentioned_file_names,
+            writable=writable,
         ),
         warnings,
     )

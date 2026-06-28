@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -220,10 +220,18 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
     accepted-entity union. The answer is produced by the dify-agent backend
     rather than an in-process LLM call; ``model_conf`` is synthesized from the
     bound Agent Soul model so the chat task pipeline can persist usage.
+
+    ``agent_config_version_kind`` selects which Agent config surface the
+    backend should read from: immutable snapshot, shared draft, or per-user
+    build draft.
+
+    ``agent_runtime_session_snapshot_id`` carries the runtime session scope
+    used to resume or suspend within the same editable config surface.
     """
 
     agent_id: str
     agent_config_snapshot_id: str
+    agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     agent_runtime_session_snapshot_id: str | None = None
 
 

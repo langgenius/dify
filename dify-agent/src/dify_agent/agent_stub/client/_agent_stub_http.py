@@ -8,6 +8,7 @@ must stay safe to import in default installations, so these helpers live under
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from typing import BinaryIO
 from typing import cast
@@ -24,6 +25,11 @@ from dify_agent.agent_stub.client._errors import (
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConnectRequest,
     AgentStubConnectResponse,
+    AgentStubConfigEnvUpdateRequest,
+    AgentStubConfigManifestResponse,
+    AgentStubConfigNoteUpdateRequest,
+    AgentStubConfigPushRequest,
+    AgentStubConfigPushResponse,
     AgentStubDriveCommitRequest,
     AgentStubDriveCommitResponse,
     AgentStubDriveManifestResponse,
@@ -32,6 +38,13 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubFileMapping,
     AgentStubFileUploadRequest,
     AgentStubFileUploadResponse,
+    agent_stub_config_env_url,
+    agent_stub_config_file_pull_url,
+    agent_stub_config_manifest_url,
+    agent_stub_config_note_url,
+    agent_stub_config_push_url,
+    agent_stub_config_skill_inspect_url,
+    agent_stub_config_skill_pull_url,
     agent_stub_connections_url,
     agent_stub_drive_commit_url,
     agent_stub_drive_manifest_url,
@@ -172,11 +185,201 @@ def request_agent_stub_drive_commit_http_sync(
         auth_jwe=auth_jwe,
         endpoint_name="drive commit request",
         endpoint_url_factory=agent_stub_drive_commit_url,
-        request_body=request.model_dump_json(exclude_none=True),
+        request_body=_dump_drive_commit_request(request),
         timeout=timeout,
         sync_http_client=sync_http_client,
     )
     return _parse_success_response(response=response, response_model=AgentStubDriveCommitResponse, label="drive commit")
+
+
+def request_agent_stub_config_manifest_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> AgentStubConfigManifestResponse:
+    """Fetch the current config manifest from the HTTP Agent Stub endpoint."""
+    response = _get_agent_stub_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="config manifest request",
+        endpoint_url_factory=agent_stub_config_manifest_url,
+        params={},
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    return _parse_success_response(
+        response=response,
+        response_model=AgentStubConfigManifestResponse,
+        label="config manifest",
+    )
+
+
+def request_agent_stub_config_skill_pull_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    name: str,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> bytes:
+    """Download one config skill archive from the HTTP Agent Stub endpoint."""
+    response = _get_agent_stub_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="config skill pull request",
+        endpoint_url_factory=lambda resolved_base_url: agent_stub_config_skill_pull_url(resolved_base_url, name),
+        params={},
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    if response.is_error:
+        payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config skill pull")
+        detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
+        raise AgentStubHTTPError(response.status_code, detail)
+    return response.content
+
+
+def request_agent_stub_config_skill_inspect_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    name: str,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> dict[str, object]:
+    """Fetch the JSON inspect view for one config skill."""
+    response = _get_agent_stub_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="config skill inspect request",
+        endpoint_url_factory=lambda resolved_base_url: agent_stub_config_skill_inspect_url(resolved_base_url, name),
+        params={},
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config skill inspect")
+    if response.is_error:
+        detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
+        raise AgentStubHTTPError(response.status_code, detail)
+    if not isinstance(payload, dict):
+        raise AgentStubValidationError("invalid Agent Stub config skill inspect response")
+    return cast(dict[str, object], payload)
+
+
+def request_agent_stub_config_file_pull_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    name: str,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> bytes:
+    """Download one config file payload from the HTTP Agent Stub endpoint."""
+    response = _get_agent_stub_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="config file pull request",
+        endpoint_url_factory=lambda resolved_base_url: agent_stub_config_file_pull_url(resolved_base_url, name),
+        params={},
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    if response.is_error:
+        payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config file pull")
+        detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
+        raise AgentStubHTTPError(response.status_code, detail)
+    return response.content
+
+
+def request_agent_stub_config_push_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    request: AgentStubConfigPushRequest,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> AgentStubConfigPushResponse:
+    """Push config file/skill/env/note mutations to the HTTP Agent Stub endpoint."""
+    response = _post_agent_stub_json(
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="config push request",
+        endpoint_url_factory=agent_stub_config_push_url,
+        request_body=request.model_dump_json(exclude_none=True, exclude_defaults=True),
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    return _parse_success_response(response=response, response_model=AgentStubConfigPushResponse, label="config push")
+
+
+def _dump_drive_commit_request(request: AgentStubDriveCommitRequest) -> str:
+    payload = cast(dict[str, object], request.model_dump(mode="json", exclude_none=True))
+    items = payload.get("items")
+    if isinstance(items, list):
+        for item in items:
+            if isinstance(item, dict) and item.get("is_skill") is False:
+                item.pop("is_skill")
+    return json.dumps(payload, separators=(",", ":"))
+
+
+def request_agent_stub_config_env_update_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    env_text: str,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> dict[str, object]:
+    """Replace or delete config env entries through the HTTP Agent Stub endpoint."""
+    request_model = AgentStubConfigEnvUpdateRequest(env_text=env_text)
+    response = _send_agent_stub_json(
+        method="PATCH",
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="config env update request",
+        endpoint_url_factory=agent_stub_config_env_url,
+        request_body=request_model.model_dump_json(),
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config env update")
+    if response.is_error:
+        detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
+        raise AgentStubHTTPError(response.status_code, detail)
+    if not isinstance(payload, dict):
+        raise AgentStubValidationError("invalid Agent Stub config env update response")
+    return cast(dict[str, object], payload)
+
+
+def request_agent_stub_config_note_update_http_sync(
+    *,
+    base_url: str,
+    auth_jwe: str,
+    note: str,
+    timeout: float | httpx.Timeout = 30.0,
+    sync_http_client: httpx.Client | None = None,
+) -> dict[str, object]:
+    """Update the config note text through the HTTP Agent Stub endpoint."""
+    request_model = AgentStubConfigNoteUpdateRequest(note=note)
+    response = _send_agent_stub_json(
+        method="PUT",
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name="config note update request",
+        endpoint_url_factory=agent_stub_config_note_url,
+        request_body=request_model.model_dump_json(),
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+    payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config note update")
+    if response.is_error:
+        detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
+        raise AgentStubHTTPError(response.status_code, detail)
+    if not isinstance(payload, dict):
+        raise AgentStubValidationError("invalid Agent Stub config note update response")
+    return cast(dict[str, object], payload)
 
 
 def upload_file_to_signed_url_sync(
@@ -259,6 +462,29 @@ def _post_agent_stub_json(
     timeout: float | httpx.Timeout,
     sync_http_client: httpx.Client | None,
 ) -> httpx.Response:
+    return _send_agent_stub_json(
+        method="POST",
+        base_url=base_url,
+        auth_jwe=auth_jwe,
+        endpoint_name=endpoint_name,
+        endpoint_url_factory=endpoint_url_factory,
+        request_body=request_body,
+        timeout=timeout,
+        sync_http_client=sync_http_client,
+    )
+
+
+def _send_agent_stub_json(
+    *,
+    method: str,
+    base_url: str,
+    auth_jwe: str,
+    endpoint_name: str,
+    endpoint_url_factory: Callable[[str], str],
+    request_body: str,
+    timeout: float | httpx.Timeout,
+    sync_http_client: httpx.Client | None,
+) -> httpx.Response:
     try:
         endpoint_url = endpoint_url_factory(base_url)
     except ValueError as exc:
@@ -266,7 +492,8 @@ def _post_agent_stub_json(
     owns_client = sync_http_client is None
     client = sync_http_client or httpx.Client(timeout=timeout, follow_redirects=True)
     try:
-        return client.post(
+        return client.request(
+            method,
             endpoint_url,
             content=request_body,
             headers={
@@ -344,6 +571,13 @@ def _parse_json_payload(response: httpx.Response, *, invalid_json_message: str) 
 __all__ = [
     "connect_agent_stub_http_sync",
     "download_file_bytes_from_signed_url_sync",
+    "request_agent_stub_config_env_update_http_sync",
+    "request_agent_stub_config_file_pull_http_sync",
+    "request_agent_stub_config_manifest_http_sync",
+    "request_agent_stub_config_note_update_http_sync",
+    "request_agent_stub_config_push_http_sync",
+    "request_agent_stub_config_skill_inspect_http_sync",
+    "request_agent_stub_config_skill_pull_http_sync",
     "request_agent_stub_drive_commit_http_sync",
     "request_agent_stub_drive_manifest_http_sync",
     "request_agent_stub_file_download_http_sync",

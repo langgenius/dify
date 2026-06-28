@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.execution_context import (
@@ -37,8 +37,8 @@ from core.workflow.nodes.agent_v2.plugin_tools_builder import (
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     append_runtime_warnings,
     build_ask_human_layer_config,
-    build_drive_aware_soul_mention_resolver,
-    build_drive_layer_config,
+    build_config_aware_soul_mention_resolver,
+    build_config_layer_config,
     build_knowledge_layer_config,
     build_shell_layer_config,
 )
@@ -68,6 +68,7 @@ class AgentAppRuntimeBuildContext:
     conversation_id: str
     user_query: str
     idempotency_key: str
+    agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: CompositorSessionSnapshot | None = None
     # ENG-638: set when resuming a chat turn after a submitted ask_human form.
     deferred_tool_results: DeferredToolResultsPayload | None = None
@@ -123,20 +124,15 @@ class AgentAppRuntimeRequestBuilder:
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
-        drive_config = None
+        config_layer_config = None
         soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            drive_config, drive_warnings = build_drive_layer_config(
+            config_layer_config, config_warnings = build_config_layer_config(
                 agent_soul,
-                tenant_id=context.dify_context.tenant_id,
-                agent_id=context.agent_id,
+                writable=context.agent_config_version_kind == "build_draft",
             )
-            append_runtime_warnings(metadata, drive_warnings)
-            soul_prompt_resolver = build_drive_aware_soul_mention_resolver(
-                agent_soul,
-                tenant_id=context.dify_context.tenant_id,
-                agent_id=context.agent_id,
-            )
+            append_runtime_warnings(metadata, config_warnings)
+            soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_agent_app(
@@ -158,6 +154,7 @@ class AgentAppRuntimeRequestBuilder:
                     conversation_id=context.conversation_id,
                     agent_id=context.agent_id,
                     agent_config_version_id=context.agent_config_snapshot_id,
+                    agent_config_version_kind=context.agent_config_version_kind,
                     # Agent Files §1.3: real Dify access context + agent run mode.
                     user_from=cast(DifyExecutionContextUserFrom, context.dify_context.user_from.value),
                     invoke_from=cast(DifyExecutionContextInvokeFrom, context.dify_context.invoke_from.value),
@@ -170,7 +167,7 @@ class AgentAppRuntimeRequestBuilder:
                 user_prompt=context.user_query,
                 tools=tools_layer,
                 knowledge=knowledge_config,
-                drive_config=drive_config,
+                config_layer_config=config_layer_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
                 shell_config=build_shell_layer_config(agent_soul),

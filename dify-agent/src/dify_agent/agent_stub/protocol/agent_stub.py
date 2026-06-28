@@ -142,6 +142,35 @@ def agent_stub_drive_commit_url(base_url: str) -> str:
     return f"{_require_http_base_url(base_url)}/drive/commit"
 
 
+def agent_stub_config_manifest_url(base_url: str) -> str:
+    """Return the stable HTTP config-manifest endpoint URL for one base URL."""
+    return f"{_require_http_base_url(base_url)}/config/manifest"
+
+
+def agent_stub_config_skill_pull_url(base_url: str, name: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/skills/{name}/pull"
+
+
+def agent_stub_config_skill_inspect_url(base_url: str, name: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/skills/{name}/inspect"
+
+
+def agent_stub_config_file_pull_url(base_url: str, name: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/files/{name}/pull"
+
+
+def agent_stub_config_push_url(base_url: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/push"
+
+
+def agent_stub_config_env_url(base_url: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/env"
+
+
+def agent_stub_config_note_url(base_url: str) -> str:
+    return f"{_require_http_base_url(base_url)}/config/note"
+
+
 def is_canonical_dify_file_reference(reference: str) -> bool:
     """Return whether one string matches Dify's opaque file reference format."""
     prefix = "dify-file-ref:"
@@ -305,6 +334,90 @@ class AgentStubDriveCommitResponse(BaseModel):
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
+class AgentStubConfigVersionInfo(BaseModel):
+    id: str
+    kind: Literal["snapshot", "draft", "build_draft"]
+    writable: bool
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigSkillItem(BaseModel):
+    name: str
+    description: str
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigFileItem(BaseModel):
+    name: str
+    size: int | None = None
+    hash: str | None = None
+    mime_type: str | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigManifestResponse(BaseModel):
+    agent_id: str
+    config_version: AgentStubConfigVersionInfo
+    skills: list[AgentStubConfigSkillItem] = Field(default_factory=list)
+    files: list[AgentStubConfigFileItem] = Field(default_factory=list)
+    env_keys: list[str] = Field(default_factory=list)
+    note: str = ""
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigFileRef(BaseModel):
+    kind: Literal["upload_file", "tool_file"]
+    id: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigPushFileItem(BaseModel):
+    name: str
+    file_ref: AgentStubConfigFileRef | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigPushSkillItem(BaseModel):
+    name: str
+    file_ref: AgentStubConfigFileRef | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigPushRequest(BaseModel):
+    files: list[AgentStubConfigPushFileItem] = Field(default_factory=list)
+    skills: list[AgentStubConfigPushSkillItem] = Field(default_factory=list)
+    env_text: str | None = None
+    note: str | None = None
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigPushResponse(AgentStubConfigManifestResponse):
+    """Updated config manifest returned after one config push."""
+
+
+class AgentStubConfigEnvUpdateRequest(BaseModel):
+    env_text: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
+class AgentStubConfigNoteUpdateRequest(BaseModel):
+    note: str
+
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+
 def _require_http_base_url(base_url: str) -> str:
     endpoint = parse_agent_stub_endpoint(base_url)
     if not endpoint.is_http:
@@ -325,6 +438,17 @@ __all__ = [
     "AgentStubConnectRequest",
     "AgentStubConnectResponse",
     "AgentStubEndpoint",
+    "AgentStubConfigEnvUpdateRequest",
+    "AgentStubConfigFileItem",
+    "AgentStubConfigFileRef",
+    "AgentStubConfigManifestResponse",
+    "AgentStubConfigNoteUpdateRequest",
+    "AgentStubConfigPushFileItem",
+    "AgentStubConfigPushRequest",
+    "AgentStubConfigPushResponse",
+    "AgentStubConfigPushSkillItem",
+    "AgentStubConfigSkillItem",
+    "AgentStubConfigVersionInfo",
     "AgentStubDriveCommitItem",
     "AgentStubDriveCommitRequest",
     "AgentStubDriveCommitResponse",
@@ -337,6 +461,13 @@ __all__ = [
     "AgentStubFileUploadRequest",
     "AgentStubFileUploadResponse",
     "AgentStubURLScheme",
+    "agent_stub_config_env_url",
+    "agent_stub_config_file_pull_url",
+    "agent_stub_config_manifest_url",
+    "agent_stub_config_note_url",
+    "agent_stub_config_push_url",
+    "agent_stub_config_skill_inspect_url",
+    "agent_stub_config_skill_pull_url",
     "agent_stub_connections_url",
     "agent_stub_drive_base_for_ref",
     "agent_stub_drive_commit_url",

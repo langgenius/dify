@@ -1,10 +1,41 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentSoulConfigWithFiles } from '../conversions'
+import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'
+import {
+  agentComposerDraftAtom,
+  agentComposerOriginalConfigAtom,
+  agentComposerOriginalDraftAtom,
+  agentComposerPublishedDraftAtom,
+  rebaseAgentComposerDraftAtom,
+} from '../store'
 
 describe('agent composer store conversions', () => {
+  it('rebases draft baselines through the composer state action', () => {
+    const store = createStore()
+    const nextDraft = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Build draft prompt',
+    }
+    const originalConfig = {
+      prompt: {
+        system_prompt: 'Build draft prompt',
+      },
+    } satisfies AgentSoulConfig
+
+    store.set(rebaseAgentComposerDraftAtom, {
+      draft: nextDraft,
+      originalConfig,
+    })
+
+    expect(store.get(agentComposerDraftAtom).prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalDraftAtom)?.prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerPublishedDraftAtom)?.prompt).toBe('Build draft prompt')
+    expect(store.get(agentComposerOriginalConfigAtom)?.prompt?.system_prompt).toBe('Build draft prompt')
+  })
+
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
     const baseConfig: AgentSoulConfigWithFiles = {
       app_features: {

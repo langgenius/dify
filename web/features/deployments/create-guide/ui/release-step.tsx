@@ -5,22 +5,24 @@ import { Input } from '@langgenius/dify-ui/input'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import {
-  continueFromReleaseAtom,
-  dslDefaultAppNameAtom,
   effectiveMethodAtom,
-  hasInstanceNameConflictAtom,
   instanceDescriptionAtom,
   instanceNameAtom,
-  releaseCanGoNextAtom,
   releaseDescriptionAtom,
   releaseNameAtom,
   selectedAppAtom,
+  stepAtom,
+} from '@/features/deployments/create-guide/state/primitives'
+import {
+  continueFromReleaseAtom,
+  hasInstanceNameConflictAtom,
+  releaseCanGoNextAtom,
   setInstanceDescriptionAtom,
   setInstanceNameAtom,
   setReleaseDescriptionAtom,
   setReleaseNameAtom,
-  stepAtom,
-} from '@/features/deployments/create-guide/state'
+} from '@/features/deployments/create-guide/state/release'
+import { dslDefaultAppNameAtom } from '@/features/deployments/create-guide/state/source'
 import { StepShell } from './layout'
 
 const releaseTextareaClassName = 'min-h-16 w-full resize-none appearance-none rounded-md border border-transparent bg-components-input-bg-normal p-2 px-3 system-sm-regular text-components-input-text-filled caret-primary-600 outline-hidden placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs'

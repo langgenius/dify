@@ -51,7 +51,7 @@ def resume_agent_app_execution(*, conversation_id: str, form_id: str) -> None:
             app_model=app_model,
             user=user,
             conversation_id=conversation_id,
-            invoke_from=InvokeFrom.WEB_APP,
+            invoke_from=conversation.invoke_from or InvokeFrom.WEB_APP,
         )
     except Exception:
         logger.exception("Agent App resume failed for conversation %s form %s", conversation_id, form_id)

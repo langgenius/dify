@@ -1,12 +1,10 @@
 'use client'
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentConfigureConversationIds, AgentConfigureRightPanelMode } from '../../state'
 import { useAgentPreviewSoulConfig } from '../../hooks'
 import { AgentBuildChat } from './build-chat'
 import { AgentPreviewChat } from './preview-chat'
-
-export type AgentConfigureRightPanelMode = 'build' | 'preview'
-export type AgentConfigureConversationIds = Record<AgentConfigureRightPanelMode, string | null>
 
 export function AgentConfigureRightPanelChat({
   agentSoulConfig,

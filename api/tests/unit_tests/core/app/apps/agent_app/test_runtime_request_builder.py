@@ -13,6 +13,7 @@ from clients.agent_backend import (
     AgentBackendAgentAppRunInput,
     AgentBackendModelConfig,
     AgentBackendRunRequestBuilder,
+    DIFY_CONFIG_LAYER_ID,
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.apps.agent_app.runtime_request_builder import (
@@ -85,50 +86,12 @@ class _NoToolsBuilder:
         del kwargs
 
 
-def _mock_empty_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
-    )
-
-
-def _mock_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [
-            {
-                "path": "tender-analyzer",
-                "skill_md_key": "tender-analyzer/SKILL.md",
-                "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                "name": "Tender Analyzer",
-                "description": "Parses RFPs.",
-                "size": 123,
-                "mime_type": "text/markdown",
-                "hash": "hash-1",
-                "created_at": 1,
-            }
-        ],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
-            {"key": "tender-analyzer/SKILL.md", "is_skill": True},
-            {"key": "tender-analyzer/.DIFY-SKILL-FULL.zip", "is_skill": False},
-            {"key": "files/sample.pdf", "is_skill": False},
-        ],
-    )
-
-
-@pytest.fixture(autouse=True)
-def _mock_default_agent_app_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    _mock_empty_drive_catalog(monkeypatch)
-
-
-def _ctx(soul: AgentSoulConfig, *, query: str = "hello") -> AgentAppRuntimeBuildContext:
+def _ctx(
+    soul: AgentSoulConfig,
+    *,
+    query: str = "hello",
+    agent_config_version_kind: str = "snapshot",
+) -> AgentAppRuntimeBuildContext:
     dify_context = SimpleNamespace(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -144,6 +107,7 @@ def _ctx(soul: AgentSoulConfig, *, query: str = "hello") -> AgentAppRuntimeBuild
         conversation_id="conv-1",
         user_query=query,
         idempotency_key="msg-1",
+        agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
     )
 
 
@@ -175,8 +139,6 @@ class TestAgentAppRuntimeRequestBuilder:
             "agent_soul_prompt",
             "agent_app_user_prompt",
             "execution_context",
-            "shell",
-            "drive",
             "history",
             "llm",
         ]
@@ -298,7 +260,7 @@ class TestAgentAppRuntimeRequestBuilder:
         }
 
 
-# ── ENG-623: drive declaration on the Agent App surface ──────────────────────
+# ── Agent config layer declaration on the Agent App surface ──────────────────
 
 
 def _soul_with_model_and_skill() -> AgentSoulConfig:
@@ -309,27 +271,19 @@ def _soul_with_model_and_skill() -> AgentSoulConfig:
                 "model_provider": "langgenius/openai/openai",
                 "model": "gpt-4o-mini",
             },
-            "prompt": {"system_prompt": "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§]"},
-            "files": {
-                "skills": [
-                    {
-                        "path": "tender-analyzer",
-                        "skill_md_key": "tender-analyzer/SKILL.md",
-                        "name": "Tender Analyzer",
-                        "description": "Parses RFPs.",
-                    }
-                ]
-            },
+            "prompt": {"system_prompt": "Use [§skill:tender-analyzer:Tender Analyzer§]"},
+            "config_skills": [{"name": "tender-analyzer", "description": "Parses RFPs.", "file_id": "tool-file-1"}],
+            "config_files": [{"name": "sample.pdf", "file_kind": "upload_file", "file_id": "upload-file-1"}],
+            "config_note": "Read the proposal first.",
         }
     )
 
 
-class TestAgentAppDriveLayer:
-    def test_drive_layer_injected_when_flag_enabled(self, monkeypatch: pytest.MonkeyPatch):
+class TestAgentAppConfigLayer:
+    def test_config_layer_injected_when_flag_enabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
-        _mock_drive_catalog(monkeypatch)
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -337,18 +291,22 @@ class TestAgentAppDriveLayer:
 
         result = builder.build(_ctx(_soul_with_model_and_skill()))
 
-        drive = next(layer for layer in result.request.composition.layers if layer.name == "drive")
-        assert drive.type == "dify.drive"
-        assert drive.deps == {"shell": DIFY_SHELL_LAYER_ID}
-        assert drive.config.drive_ref == "agent-agent-1"
-        assert [skill.skill_md_key for skill in drive.config.skills] == ["tender-analyzer/SKILL.md"]
-        assert drive.config.mentioned_skill_keys == ["tender-analyzer/SKILL.md"]
-        # shell enters first; drive uses that shell to materialize mentioned targets.
+        config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+        assert config.type == "dify.config"
+        assert config.deps == {"shell": DIFY_SHELL_LAYER_ID}
+        assert [skill.name for skill in config.config.skills] == ["tender-analyzer"]
+        assert [skill.description for skill in config.config.skills] == ["Parses RFPs."]
+        assert [file_ref.name for file_ref in config.config.files] == ["sample.pdf"]
+        assert config.config.note == "Read the proposal first."
+        assert config.config.mentioned_skill_names == ["tender-analyzer"]
+        assert config.config.mentioned_file_names == []
+        assert config.config.writable is False
+        # shell enters first; config uses that shell to materialize mentioned targets.
         names = [layer.name for layer in result.request.composition.layers]
         assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 1
-        assert names.index("drive") == names.index(DIFY_SHELL_LAYER_ID) + 1
+        assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
 
-    def test_drive_layer_injected_with_empty_catalog_and_drive_depends_on_shell(self, monkeypatch: pytest.MonkeyPatch):
+    def test_no_config_layer_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
@@ -361,13 +319,25 @@ class TestAgentAppDriveLayer:
         result = builder.build(_ctx(_soul_with_model()))
 
         layers = {layer.name: layer for layer in result.request.composition.layers}
-        assert layers["drive"].config.drive_ref == "agent-agent-1"
-        assert layers["drive"].config.skills == []
+        assert DIFY_CONFIG_LAYER_ID not in layers
         assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": "execution_context"}
-        assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref == "agent-agent-1"
-        assert layers["drive"].deps == {"shell": DIFY_SHELL_LAYER_ID}
+        assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 
-    def test_no_drive_layer_when_flag_disabled(self, monkeypatch: pytest.MonkeyPatch):
+    def test_config_layer_is_writable_for_build_draft(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model_and_skill(), agent_config_version_kind="build_draft"))
+
+        config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+        assert config.config.writable is True
+
+    def test_no_config_layer_when_flag_disabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
         )
@@ -376,20 +346,32 @@ class TestAgentAppDriveLayer:
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
         result = builder.build(_ctx(_soul_with_model_and_skill()))
-        assert all(layer.name != "drive" for layer in result.request.composition.layers)
+        assert all(layer.name != DIFY_CONFIG_LAYER_ID for layer in result.request.composition.layers)
 
-    def test_agent_app_runtime_expands_skill_and_file_mentions_in_agent_soul_prompt(
+    @pytest.mark.parametrize(
+        ("system_prompt", "expected_prefix"),
+        [
+            (
+                "Use [§skill:tender-analyzer:Tender Analyzer§] and [§file:sample.pdf:sample.pdf§].",
+                "Use tender-analyzer and sample.pdf.",
+            ),
+            (
+                "Use [§skill:tender-analyzer:Tender Analyzer§] and [§file:sample.pdf:sample.pdf§]",
+                "Use tender-analyzer and sample.pdf",
+            ),
+        ],
+    )
+    def test_agent_app_runtime_expands_config_mentions_in_agent_soul_prompt(
         self,
         monkeypatch: pytest.MonkeyPatch,
+        system_prompt: str,
+        expected_prefix: str,
     ):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
-        _mock_drive_catalog(monkeypatch)
-        soul = _soul_with_model()
-        soul.prompt.system_prompt = (
-            "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]."
-        )
+        soul = _soul_with_model_and_skill()
+        soul.prompt.system_prompt = system_prompt
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
             plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
@@ -398,54 +380,10 @@ class TestAgentAppDriveLayer:
         result = builder.build(_ctx(soul))
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == "Use Tender Analyzer and sample.pdf."
+        assert prompt_layer.config.prefix == expected_prefix
         assert "[§" not in prompt_layer.config.prefix
 
-    def test_agent_app_runtime_missing_drive_mentions_fall_back_to_label_then_decoded_key(
-        self,
-        monkeypatch: pytest.MonkeyPatch,
-    ):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
-        _mock_drive_catalog(monkeypatch)
-        soul = _soul_with_model()
-        soul.prompt.system_prompt = (
-            "Use [§skill:ghost%2FSKILL.md:Ghost Skill§], [§file:files%2Fghost.txt:Ghost File§], "
-            "and [§file:files%2Fmissing.txt§]."
-        )
-        builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
-        )
-
-        result = builder.build(_ctx(soul))
-
-        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == "Use Ghost Skill, Ghost File, and files/missing.txt."
-        assert "[§" not in prompt_layer.config.prefix
-
-    def test_agent_app_runtime_expands_drive_mentions_in_agent_soul_prompt(self, monkeypatch: pytest.MonkeyPatch):
-        monkeypatch.setattr(
-            "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-        )
-        _mock_drive_catalog(monkeypatch)
-        soul = _soul_with_model()
-        soul.prompt.system_prompt = (
-            "Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] and [§file:files%2Fsample.pdf:sample.pdf§]"
-        )
-        builder = AgentAppRuntimeRequestBuilder(
-            credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
-        )
-
-        result = builder.build(_ctx(soul))
-
-        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == "Use Tender Analyzer and sample.pdf"
-        assert "[§" not in prompt_layer.config.prefix
-
-    def test_agent_app_runtime_missing_drive_mentions_fall_back_without_marker_leak(
+    def test_agent_app_runtime_missing_config_mentions_fall_back_without_marker_leak(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ):
@@ -454,8 +392,7 @@ class TestAgentAppDriveLayer:
         )
         soul = _soul_with_model()
         soul.prompt.system_prompt = (
-            "Use [§skill:ghost%2FSKILL.md:Ghost Skill§], [§file:files%2Fghost.txt:Ghost File§], "
-            "and [§file:files%2Fno-label.txt§]."
+            "Use [§skill:ghost-skill:Ghost Skill§], [§file:ghost.txt:Ghost File§], and [§file:no-label.txt§]."
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
@@ -465,5 +402,5 @@ class TestAgentAppDriveLayer:
         result = builder.build(_ctx(soul))
 
         prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-        assert prompt_layer.config.prefix == "Use Ghost Skill, Ghost File, and files/no-label.txt."
+        assert prompt_layer.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
         assert "[§" not in prompt_layer.config.prefix

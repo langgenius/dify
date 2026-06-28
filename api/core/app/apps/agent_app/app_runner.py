@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any
+from typing import Any, Literal
 
 from dify_agent.layers.ask_human import AskHumanToolArgs
 from dify_agent.protocol import DeferredToolResultsPayload
@@ -156,6 +156,7 @@ class AgentAppRunner:
         dify_context: DifyRunContext,
         agent_id: str,
         agent_config_snapshot_id: str,
+        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
         agent_soul: AgentSoulConfig,
         conversation_id: str,
         query: str,
@@ -188,6 +189,7 @@ class AgentAppRunner:
                 dify_context=dify_context,
                 agent_id=agent_id,
                 agent_config_snapshot_id=agent_config_snapshot_id,
+                agent_config_version_kind=agent_config_version_kind,
                 agent_soul=agent_soul,
                 conversation_id=conversation_id,
                 user_query=query,
