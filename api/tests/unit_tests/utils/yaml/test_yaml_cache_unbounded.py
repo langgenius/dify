@@ -9,6 +9,7 @@ file descriptors during high-concurrency benchmarks.
 Fix: switch to functools.cache (equivalent to lru_cache(maxsize=None)) so that
 static config files are read exactly once per process lifetime.
 """
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -17,11 +18,8 @@ from pathlib import Path
 from textwrap import dedent
 from unittest.mock import patch
 
-import pytest
-
 from core.helper.position_helper import get_position_map, get_tool_position_map
 from core.tools.utils.yaml_utils import _load_yaml_file, load_yaml_file_cached
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -255,13 +253,16 @@ class TestCacheCorrectnessAfterFix:
         load_yaml_file_cached.cache_clear()
 
         f = tmp_path / "data.yaml"
-        f.write_text(dedent("""\
+        f.write_text(
+            dedent("""\
             name: dify
             version: 1
             tags:
               - ai
               - llm
-        """), encoding="utf-8")
+        """),
+            encoding="utf-8",
+        )
 
         cached = load_yaml_file_cached(str(f))
         direct = _load_yaml_file(file_path=str(f))
@@ -286,13 +287,16 @@ class TestCacheCorrectnessAfterFix:
         f = folder / "_position.yaml"
         folder.mkdir()
         # Includes a numeric entry (9999) and blank lines — must be ignored.
-        f.write_text(dedent("""\
+        f.write_text(
+            dedent("""\
             - valid_one
             - 9999
             -
             - valid_two
             -
-        """), encoding="utf-8")
+        """),
+            encoding="utf-8",
+        )
 
         result = get_position_map(str(folder))
         assert "9999" not in result  # numeric entries stripped by isinstance check
@@ -316,9 +320,9 @@ class TestCacheCorrectnessAfterFix:
 
         info_before = load_yaml_file_cached.cache_info()
 
-        load_yaml_file_cached(str(f))          # miss
-        load_yaml_file_cached(str(f))          # hit
-        load_yaml_file_cached(str(f))          # hit
+        load_yaml_file_cached(str(f))  # miss
+        load_yaml_file_cached(str(f))  # hit
+        load_yaml_file_cached(str(f))  # hit
 
         info_after = load_yaml_file_cached.cache_info()
         assert info_after.misses == info_before.misses + 1

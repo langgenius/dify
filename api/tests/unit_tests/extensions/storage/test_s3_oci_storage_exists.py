@@ -15,10 +15,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _client_error(code: str) -> ClientError:
     return ClientError({"Error": {"Code": code, "Message": "test"}}, "HeadObject")
@@ -27,6 +27,7 @@ def _client_error(code: str) -> ClientError:
 # ---------------------------------------------------------------------------
 # AwsS3Storage
 # ---------------------------------------------------------------------------
+
 
 class TestAwsS3StorageExists:
     """exists() on AwsS3Storage should distinguish 'not found' from real errors."""
@@ -49,6 +50,7 @@ class TestAwsS3StorageExists:
                 mock_client.head_bucket.return_value = {}
 
                 from extensions.storage.aws_s3_storage import AwsS3Storage
+
                 self.storage = AwsS3Storage()
                 self.mock_client = mock_client
 
@@ -95,6 +97,7 @@ class TestAwsS3StorageExists:
 # OracleOCIStorage
 # ---------------------------------------------------------------------------
 
+
 class TestOracleOCIStorageExists:
     """exists() on OracleOCIStorage should distinguish 'not found' from real errors."""
 
@@ -112,6 +115,7 @@ class TestOracleOCIStorageExists:
                 mock_boto3.client.return_value = mock_client
 
                 from extensions.storage.oracle_oci_storage import OracleOCIStorage
+
                 self.storage = OracleOCIStorage()
                 self.mock_client = mock_client
 
