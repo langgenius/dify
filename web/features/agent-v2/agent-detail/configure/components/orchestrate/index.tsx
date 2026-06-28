@@ -26,7 +26,7 @@ type AgentOrchestratePanelProps = {
   appId?: string
   nodeId?: string
   activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
   currentModel?: DefaultModel
@@ -52,7 +52,7 @@ export function AgentOrchestratePanel({
   appId,
   nodeId,
   activeConfigIsPublished,
-  activeConfigSnapshot,
+  activeVersionSnapshot,
   agentSoulConfig: _agentSoulConfig,
   agentName,
   currentModel,
@@ -80,7 +80,7 @@ export function AgentOrchestratePanel({
         <AgentConfigurePublishBar
           agentId={agentId}
           activeConfigIsPublished={activeConfigIsPublished}
-          activeConfigSnapshot={activeConfigSnapshot}
+          activeVersionSnapshot={activeVersionSnapshot}
           agentName={agentName}
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}

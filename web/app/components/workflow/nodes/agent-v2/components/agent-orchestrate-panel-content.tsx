@@ -63,7 +63,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRoster
   }))
   const composerState = rosterComposerQuery.data
   const agentSoulConfig = composerState?.agent_soul
-  const activeConfigSnapshot = ('active_config_snapshot' in (composerState ?? {}))
+  const activeVersionSnapshot = ('active_config_snapshot' in (composerState ?? {}))
     ? composerState?.active_config_snapshot as AgentConfigSnapshotSummaryResponse | null | undefined
     : undefined
 
@@ -76,7 +76,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRoster
   }
 
   const initialAgentSoulConfig = agentSoulConfig as AgentSoulConfig
-  const composerSessionKey = `${agentId ?? nodeId}:${activeConfigSnapshot?.id ?? 'draft'}`
+  const composerSessionKey = `${agentId ?? nodeId}:${activeVersionSnapshot?.id ?? 'draft'}`
 
   return (
     <AgentComposerProvider
@@ -85,7 +85,7 @@ export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRoster
       initialOriginalConfig={initialAgentSoulConfig}
     >
       <WorkflowRosterAgentOrchestratePanelContentInner
-        activeConfigSnapshot={activeConfigSnapshot}
+        activeVersionSnapshot={activeVersionSnapshot}
         agentId={agentId}
         agentSoulConfig={initialAgentSoulConfig}
         composerState={composerState}
@@ -95,12 +95,12 @@ export function WorkflowRosterAgentOrchestratePanelContent(props: WorkflowRoster
 }
 
 function WorkflowRosterAgentOrchestratePanelContentInner({
-  activeConfigSnapshot,
+  activeVersionSnapshot,
   agentId,
   agentSoulConfig,
   composerState,
 }: {
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig: AgentSoulConfig
   composerState?: {
@@ -114,7 +114,7 @@ function WorkflowRosterAgentOrchestratePanelContentInner({
   return (
     <AgentOrchestratePanel
       agentId={agentId}
-      activeConfigSnapshot={activeConfigSnapshot}
+      activeVersionSnapshot={activeVersionSnapshot}
       agentSoulConfig={agentSoulConfig}
       agentName={composerState?.agent?.name}
       currentModel={currentModel}
@@ -138,7 +138,7 @@ export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgent
   } = props
   const composerState = inlineComposerState
   const agentSoulConfig = composerState?.agent_soul as AgentSoulConfig | undefined
-  const activeConfigSnapshot = ('active_config_snapshot' in (composerState ?? {}))
+  const activeVersionSnapshot = ('active_config_snapshot' in (composerState ?? {}))
     ? composerState?.active_config_snapshot as AgentConfigSnapshotSummaryResponse | null | undefined
     : undefined
 
@@ -150,7 +150,7 @@ export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgent
     )
   }
 
-  const composerSessionKey = `${nodeId}:${agentId}:${activeConfigSnapshot?.id ?? 'draft'}`
+  const composerSessionKey = `${nodeId}:${agentId}:${activeVersionSnapshot?.id ?? 'draft'}`
 
   return (
     <AgentComposerProvider
@@ -160,7 +160,7 @@ export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgent
     >
       <WorkflowInlineAgentConfigureWorkspaceContent
         {...props}
-        activeConfigSnapshot={activeConfigSnapshot}
+        activeVersionSnapshot={activeVersionSnapshot}
         agentId={agentId}
         agentSoulConfig={agentSoulConfig}
       />
@@ -169,7 +169,7 @@ export function WorkflowInlineAgentConfigureWorkspace(props: WorkflowInlineAgent
 }
 
 function WorkflowInlineAgentConfigureWorkspaceContent({
-  activeConfigSnapshot,
+  activeVersionSnapshot,
   agentId,
   agentSoulConfig,
   appId,
@@ -180,7 +180,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   onSaveInlineToRoster,
   open,
 }: Omit<WorkflowInlineAgentConfigureWorkspaceProps, 'agentId'> & {
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentId: string
   agentSoulConfig: AgentSoulConfig
 }) {
@@ -223,7 +223,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           agentId={agentId}
           appId={appId}
           nodeId={nodeId}
-          activeConfigSnapshot={activeConfigSnapshot}
+          activeVersionSnapshot={activeVersionSnapshot}
           agentSoulConfig={agentSoulConfig}
           agentName={composerState?.agent?.name}
           currentModel={currentModel}

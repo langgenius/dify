@@ -37,7 +37,7 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
   }))
   const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
   const activeVersionId = selectedVersionId
-  const activeConfigSnapshot = selectedVersionId ? versionDetail : composerQuery.data?.active_config_snapshot
+  const activeVersionSnapshot = selectedVersionId ? versionDetail : composerQuery.data?.active_config_snapshot
   const agentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : composerQuery.data?.agent_soul
 
   return {
@@ -47,7 +47,7 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
     shouldLoadVersion,
     selectedVersionId,
     activeVersionId,
-    activeConfigSnapshot,
+    activeVersionSnapshot,
     agentSoulConfig,
   }
 }

@@ -30,7 +30,7 @@ type PublishBarMode = { status: 'compact' }
 type AgentConfigurePublishBarProps = {
   agentId: string
   activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentName?: string | null
   draftSavedAt?: number
   isPublishing?: boolean
@@ -42,12 +42,12 @@ type AgentConfigurePublishBarProps = {
 
 function getPublishState({
   activeConfigIsPublished,
-  activeConfigSnapshot,
+  activeVersionSnapshot,
   isDirty,
   isPublishing,
 }: {
   activeConfigIsPublished?: boolean
-  activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
+  activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isDirty: boolean
   isPublishing: boolean
 }): AgentConfigurePublishState {
@@ -60,7 +60,7 @@ function getPublishState({
   if (activeConfigIsPublished)
     return 'published'
 
-  if (!activeConfigSnapshot)
+  if (!activeVersionSnapshot)
     return 'draft'
 
   if (activeConfigIsPublished === false)
@@ -82,7 +82,7 @@ function PublishShortcut() {
 export function AgentConfigurePublishBar({
   agentId,
   activeConfigIsPublished,
-  activeConfigSnapshot,
+  activeVersionSnapshot,
   agentName,
   draftSavedAt,
   isPublishing = false,
@@ -102,13 +102,13 @@ export function AgentConfigurePublishBar({
   const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
     activeConfigIsPublished,
-    activeConfigSnapshot,
+    activeVersionSnapshot,
     isDirty,
     isPublishing: false,
   })
   const publishState = getPublishState({
     activeConfigIsPublished,
-    activeConfigSnapshot,
+    activeVersionSnapshot,
     isDirty,
     isPublishing,
   })
@@ -216,9 +216,9 @@ export function AgentConfigurePublishBar({
     )
   }
 
-  const publishedMeta = activeConfigSnapshot?.created_at
+  const publishedMeta = activeVersionSnapshot?.created_at
     ? t('agentDetail.configure.publishBar.publishedAt', {
-        time: formatTimeFromNow(activeConfigSnapshot.created_at * 1000),
+        time: formatTimeFromNow(activeVersionSnapshot.created_at * 1000),
       })
     : t('agentDetail.configure.publishBar.published')
   const savedMeta = draftSavedAt

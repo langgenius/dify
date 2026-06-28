@@ -263,7 +263,7 @@ function AgentConfigurePageComposerContent({
     versionQuery,
     selectedVersionId,
     activeVersionId,
-    activeConfigSnapshot,
+    activeVersionSnapshot,
     agentSoulConfig,
   } = configureData
   const rightPanelChatMode: AgentConfigureRightPanelMode = rightPanelMode === 'preview' ? 'build' : rightPanelMode
@@ -321,7 +321,7 @@ function AgentConfigurePageComposerContent({
         <AgentOrchestratePanel
           agentId={agentId}
           activeConfigIsPublished={agentQuery.data?.active_config_is_published}
-          activeConfigSnapshot={activeConfigSnapshot}
+          activeVersionSnapshot={activeVersionSnapshot}
           agentSoulConfig={buildDraft.agentSoulConfig}
           agentName={agentQuery.data?.name}
           currentModel={currentModel}
@@ -329,7 +329,7 @@ function AgentConfigurePageComposerContent({
           draftSavedAt={draftSavedAt}
           isPublishing={isPublishing}
           readOnly={isViewingVersion || buildDraft.isActive}
-          selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
+          selectedVersionSnapshot={isViewingVersion ? activeVersionSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
           showPublishBar={!buildDraft.isActive}
           bottomAction={showBuildDraftBar
