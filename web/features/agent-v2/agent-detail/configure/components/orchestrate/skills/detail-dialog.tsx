@@ -43,6 +43,8 @@ export type AgentSkillDetail = {
   sections: AgentSkillDetailSection[]
 }
 
+const keepSkillFoldersClosed = () => false
+
 function AgentSkillFileList({
   files,
   fileCount,
@@ -61,7 +63,8 @@ function AgentSkillFileList({
       files={files}
       selectedFileId={selectedFileId}
       labelledBy="agent-skill-detail-files-heading"
-      className="h-[258px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+      className="h-64.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
+      folderOpenStrategy={keepSkillFoldersClosed}
       renderFile={onSelectFile
         ? ({ file, selected, children }) => (
             <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
@@ -158,7 +161,7 @@ function AgentFilePreviewContent({
         <img
           src={downloadUrl}
           alt={fileName ?? ''}
-          className="max-h-[560px] max-w-full rounded-lg object-contain"
+          className="max-h-140 max-w-full rounded-lg object-contain"
         />
       </div>
     )
@@ -200,7 +203,7 @@ function AgentFilePreviewContent({
   }
 
   return (
-    <pre className="m-0 pb-4 font-mono text-xs leading-5 break-words whitespace-pre-wrap text-text-secondary">
+    <pre className="m-0 pb-4 font-mono text-xs leading-5 wrap-break-word whitespace-pre-wrap text-text-secondary">
       {content}
     </pre>
   )

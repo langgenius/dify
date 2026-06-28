@@ -352,10 +352,10 @@ describe('AgentSkills', () => {
     expect(mocks.driveFilesQueryOptions).not.toHaveBeenCalled()
     expect(within(dialog).getByText('Tender Analyzer')).toBeInTheDocument()
     expect(within(dialog).getByText('Extracts tender requirements and scoring criteria.')).toBeInTheDocument()
-    expect(await within(dialog).findByText('references')).toBeInTheDocument()
-    expect(within(dialog).getByText('guide.md')).toBeInTheDocument()
-    expect(within(dialog).getByText('scripts')).toBeInTheDocument()
-    expect(within(dialog).getByText('extract.py')).toBeInTheDocument()
+    expect(await within(dialog).findByRole('button', { name: 'references' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(dialog).getByRole('button', { name: 'scripts' })).toHaveAttribute('aria-expanded', 'false')
+    expect(within(dialog).queryByRole('button', { name: 'guide.md' })).not.toBeInTheDocument()
+    expect(within(dialog).queryByRole('button', { name: 'extract.py' })).not.toBeInTheDocument()
     expect(within(dialog).queryByText('.DIFY-SKILL-FULL.zip')).not.toBeInTheDocument()
   })
 
@@ -378,6 +378,7 @@ describe('AgentSkills', () => {
     }))
 
     const dialog = screen.getByRole('dialog')
+    await user.click(await within(dialog).findByRole('button', { name: 'references' }))
     await user.click(await within(dialog).findByText('guide.md'))
 
     expect(await within(dialog).findByText('Preview content for tender-analyzer/references/guide.md')).toBeInTheDocument()
@@ -437,6 +438,7 @@ describe('AgentSkills', () => {
     }))
 
     const dialog = screen.getByRole('dialog')
+    await user.click(await within(dialog).findByRole('button', { name: 'references' }))
     await user.click(await within(dialog).findByText('animation-rows.md'))
 
     expect(mocks.driveFilePreviewQueryOptions).not.toHaveBeenCalledWith({
@@ -531,7 +533,9 @@ describe('AgentSkills', () => {
         },
       })
     })
-    fireEvent.click(await screen.findByText('guide.md'))
+    const dialog = screen.getByRole('dialog')
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'references' }))
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'guide.md' }))
 
     await waitFor(() => {
       expect(mocks.driveFilePreviewQueryOptions).toHaveBeenCalledWith({
