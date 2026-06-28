@@ -235,6 +235,7 @@
   "members.invite": "Додати",
   "members.inviteTeamMember": "Додати учасника команди",
   "members.inviteTeamMemberTip": "Вони зможуть отримати доступ до даних вашої команди безпосередньо після входу.",
+  "members.invited": "Запрошено",
   "members.invitedAsRole": "Запрошено як {{role}}",
   "members.lastActive": "ОСТАННЯ АКТИВНІСТЬ",
   "members.memberActions": "Дії учасника",

@@ -235,6 +235,7 @@
   "members.invite": "Dodaj",
   "members.inviteTeamMember": "Dodaj członka zespołu",
   "members.inviteTeamMemberTip": "Mogą uzyskać bezpośredni dostęp do danych Twojego zespołu po zalogowaniu.",
+  "members.invited": "Zaproszono",
   "members.invitedAsRole": "Zaproszony jako {{role}}",
   "members.lastActive": "OSTATNIA AKTYWNOŚĆ",
   "members.memberActions": "Akcje członka",

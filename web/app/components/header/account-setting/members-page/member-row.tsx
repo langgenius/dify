@@ -34,12 +34,15 @@ const MemberRow = ({
 }: MemberRowProps) => {
   const { t } = useTranslation()
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const isInvited = member.membership_status === 'invited'
 
   const roleNames = roles.map(role => role.name)
 
   const openDetails = useCallback(() => {
+    if (isInvited)
+      return
     onOpenDetails(member)
-  }, [member, onOpenDetails])
+  }, [isInvited, member, onOpenDetails])
 
   return (
     <div
@@ -48,14 +51,21 @@ const MemberRow = ({
     >
       <button
         type="button"
-        aria-label={t('members.memberDetails.openAria', {
-          ns: 'common',
-          name: member.name,
-          defaultValue: 'Open member details for {{name}}',
-        })}
+        aria-disabled={isInvited}
+        tabIndex={isInvited ? -1 : 0}
+        aria-label={isInvited
+          ? undefined
+          : t('members.memberDetails.openAria', {
+              ns: 'common',
+              name: member.name,
+              defaultValue: 'Open member details for {{name}}',
+            })}
         className={cn(
-          'flex w-full min-w-0 cursor-pointer bg-transparent text-left hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:outline-hidden',
-          canManage && 'pr-12',
+          'flex w-full min-w-0 bg-transparent text-left focus-visible:outline-hidden',
+          isInvited
+            ? 'cursor-default bg-background-section'
+            : 'cursor-pointer hover:bg-state-base-hover focus-visible:bg-state-base-hover',
+          canManage && !isInvited && 'pr-12',
         )}
         onClick={openDetails}
       >
@@ -64,7 +74,12 @@ const MemberRow = ({
           <span className="min-w-0">
             <span className="block system-sm-medium text-text-secondary">
               {member.name}
-              {member.status === 'pending' && (
+              {isInvited && (
+                <span className="ml-1 system-xs-medium text-text-warning">
+                  {t('members.invited', { ns: 'common' })}
+                </span>
+              )}
+              {!isInvited && member.status === 'pending' && (
                 <span className="ml-1 system-xs-medium text-text-warning">
                   {t('members.pending', { ns: 'common' })}
                 </span>
@@ -79,7 +94,7 @@ const MemberRow = ({
           </span>
         </span>
         <span className="flex w-30 shrink-0 items-center py-2 system-sm-regular text-text-secondary">
-          {formatTimeFromNow(Number((member.last_active_at || member.created_at)) * 1000)}
+          {isInvited ? '-' : formatTimeFromNow(Number((member.last_active_at || member.created_at)) * 1000)}
         </span>
         <span
           className="flex min-w-0 grow items-center gap-2 px-3"
@@ -95,7 +110,7 @@ const MemberRow = ({
         className="absolute inset-y-0 right-0 flex items-center px-3"
         role="presentation"
       >
-        {canManage && (
+        {canManage && !isInvited && (
           <MemberMenu
             member={member}
             isCurrentUser={isCurrentUser}

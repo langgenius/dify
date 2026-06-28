@@ -235,6 +235,7 @@
   "members.invite": "Tambah",
   "members.inviteTeamMember": "Tambahkan anggota tim",
   "members.inviteTeamMemberTip": "Mereka dapat mengakses data tim Anda langsung setelah masuk.",
+  "members.invited": "Diundang",
   "members.invitedAsRole": "Diundang sebagai {{role}}",
   "members.lastActive": "TERAKHIR AKTIF",
   "members.memberActions": "Tindakan anggota",

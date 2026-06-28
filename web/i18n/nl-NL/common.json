@@ -235,6 +235,7 @@
   "members.invite": "Add",
   "members.inviteTeamMember": "Add team member",
   "members.inviteTeamMemberTip": "They can access your team data directly after signing in.",
+  "members.invited": "Uitgenodigd",
   "members.invitedAsRole": "Uitgenodigd als {{role}}",
   "members.lastActive": "LAST ACTIVE",
   "members.memberActions": "Ledenacties",

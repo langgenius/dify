@@ -235,6 +235,7 @@
   "members.invite": "添加",
   "members.inviteTeamMember": "添加团队成员",
   "members.inviteTeamMemberTip": "对方在登录后可以访问你的团队数据。",
+  "members.invited": "已邀请",
   "members.invitedAsRole": "邀请为{{role}}",
   "members.lastActive": "上次活动时间",
   "members.memberActions": "成员操作",

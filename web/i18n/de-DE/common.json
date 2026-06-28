@@ -235,6 +235,7 @@
   "members.invite": "Hinzufügen",
   "members.inviteTeamMember": "Teammitglied hinzufügen",
   "members.inviteTeamMemberTip": "Sie können direkt nach der Anmeldung auf Ihre Teamdaten zugreifen.",
+  "members.invited": "Eingeladen",
   "members.invitedAsRole": "Eingeladen als {{role}}",
   "members.lastActive": "ZULETZT AKTIV",
   "members.memberActions": "Mitgliederaktionen",

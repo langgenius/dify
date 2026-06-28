@@ -58,6 +58,7 @@ class AccountWithRole(_AccountAvatar):
     role: str
     roles: list[dict[str, str]] = Field(default_factory=list)
     status: str
+    membership_status: str = "joined"
 
     @field_validator("last_login_at", "last_active_at", "created_at", mode="before")
     @classmethod

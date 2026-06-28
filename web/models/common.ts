@@ -32,6 +32,7 @@ export type Member = Pick<GetAccountProfileResponse, 'id' | 'name' | 'email' | '
   last_active_at?: string
   created_at?: string
   status: 'pending' | 'active' | 'banned' | 'closed'
+  membership_status?: 'joined' | 'invited'
   role: 'owner' | 'admin' | 'editor' | 'normal' | 'dataset_operator'
   roles: Role[]
 }

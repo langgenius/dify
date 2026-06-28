@@ -95,6 +95,7 @@ class InvitationData(TypedDict):
     workspace_id: str
     role: NotRequired[str]
     requires_setup: NotRequired[bool]
+    expires_at: NotRequired[int]
 
 
 _invitation_adapter: TypeAdapter[InvitationData] = TypeAdapter(InvitationData)
@@ -108,6 +109,11 @@ class InvitationDetailDict(TypedDict):
     account: Account
     data: InvitationData
     tenant: Tenant
+
+
+class PendingWorkspaceInvitation(TypedDict):
+    account: Account
+    data: InvitationData
 
 
 def _try_join_enterprise_default_workspace(account_id: str) -> None:
@@ -1878,6 +1884,10 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
+    def _get_workspace_invitation_index_key(cls, workspace_id: str) -> str:
+        return f"member_invite:workspace:{workspace_id}"
+
+    @classmethod
     def setup(
         cls,
         email: str,
@@ -2085,15 +2095,18 @@ class RegisterService:
         cls, tenant: Tenant, account: Account, role: str = "normal", *, requires_setup: bool = False
     ) -> str:
         token = str(uuid.uuid4())
+        expiry_seconds = int(dify_config.INVITE_EXPIRY_HOURS * 60 * 60)
+        expires_at = int(datetime.now(UTC).timestamp()) + expiry_seconds
         invitation_data = {
-            "account_id": account.id,
+            "account_id": str(account.id),
             "email": account.email,
-            "workspace_id": tenant.id,
+            "workspace_id": str(tenant.id),
             "role": str(role),
             "requires_setup": requires_setup,
+            "expires_at": expires_at,
         }
-        expiry_hours = dify_config.INVITE_EXPIRY_HOURS
-        redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
+        redis_client.setex(cls._get_invitation_token_key(token), expiry_seconds, json.dumps(invitation_data))
+        redis_client.zadd(cls._get_workspace_invitation_index_key(str(tenant.id)), {token: expires_at})
         return token
 
     @classmethod
@@ -2107,8 +2120,63 @@ class RegisterService:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
             redis_client.delete(cache_key)
+            redis_client.zrem(cls._get_workspace_invitation_index_key(workspace_id), token)
         else:
+            invitation_data = cls.get_invitation_by_token(token)
             redis_client.delete(cls._get_invitation_token_key(token))
+            if invitation_data:
+                redis_client.zrem(cls._get_workspace_invitation_index_key(invitation_data["workspace_id"]), token)
+
+    @classmethod
+    def get_pending_workspace_invitations(
+        cls,
+        workspace_id: str,
+        joined_account_ids: set[str],
+        *,
+        session: scoped_session | Session,
+    ) -> list[PendingWorkspaceInvitation]:
+        """Return active invite tokens indexed for a workspace.
+
+        The Redis workspace index is an eventually consistent display aid for member lists; the invite token itself
+        remains the source of truth and accepted memberships are still created only by account activation.
+        """
+        now = int(datetime.now(UTC).timestamp())
+        index_key = cls._get_workspace_invitation_index_key(workspace_id)
+        redis_client.zremrangebyscore(index_key, "-inf", now)
+        raw_tokens = redis_client.zrangebyscore(index_key, now + 1, "+inf")
+
+        pending_by_account_id: dict[str, InvitationData] = {}
+        stale_tokens: list[str] = []
+        joined_tokens: list[str] = []
+
+        for raw_token in raw_tokens:
+            token = raw_token.decode("utf-8") if isinstance(raw_token, bytes) else str(raw_token)
+            invitation_data = cls.get_invitation_by_token(token)
+            if not invitation_data or invitation_data["workspace_id"] != workspace_id:
+                stale_tokens.append(token)
+                continue
+            account_id = invitation_data["account_id"]
+            if account_id in joined_account_ids:
+                joined_tokens.append(token)
+                continue
+            pending_by_account_id[account_id] = invitation_data
+
+        tokens_to_remove = stale_tokens + joined_tokens
+        if tokens_to_remove:
+            redis_client.zrem(index_key, *tokens_to_remove)
+
+        pending_invitations: list[PendingWorkspaceInvitation] = []
+        for invitation_data in pending_by_account_id.values():
+            account = session.scalar(
+                select(Account)
+                .where(Account.id == invitation_data["account_id"], Account.email == invitation_data["email"])
+                .limit(1)
+            )
+            if not account:
+                continue
+            pending_invitations.append({"account": account, "data": invitation_data})
+
+        return pending_invitations
 
     @classmethod
     def get_invitation_if_token_valid(

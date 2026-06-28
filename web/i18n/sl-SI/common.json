@@ -235,6 +235,7 @@
   "members.invite": "Dodaj",
   "members.inviteTeamMember": "Dodaj člana ekipe",
   "members.inviteTeamMemberTip": "Do vaših podatkov bo lahko dostopal takoj po prijavi.",
+  "members.invited": "Povabljeno",
   "members.invitedAsRole": "Povabljen kot {{role}}",
   "members.lastActive": "NAZADNJE AKTIVEN",
   "members.memberActions": "Dejanja člana",

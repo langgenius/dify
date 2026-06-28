@@ -53,6 +53,52 @@ class TestMemberListApi:
         assert len(result["accounts"]) == 1
         assert result["accounts"][0]["role"] == "admin"
         assert result["accounts"][0]["roles"] == [{"id": "admin", "name": "admin"}]
+        assert result["accounts"][0]["membership_status"] == "joined"
+
+    def test_get_includes_pending_workspace_invitations(self, app: Flask):
+        api = MemberListApi()
+        method = unwrap(api.get)
+
+        tenant = MagicMock(id="tenant-1")
+        user = MagicMock(current_tenant=tenant)
+        member = MagicMock()
+        member.id = "m1"
+        member.name = "Member"
+        member.email = "member@test.com"
+        member.avatar = None
+        member.current_role = SimpleNamespace(value="admin")
+        member.status = SimpleNamespace(value="active")
+        invited_account = SimpleNamespace(
+            id="m2",
+            name="Invited User",
+            email="invited@test.com",
+            avatar=None,
+            last_login_at=None,
+            last_active_at=None,
+            created_at=1,
+            status=SimpleNamespace(value="active"),
+        )
+
+        with (
+            app.test_request_context("/?include_pending_invites=true"),
+            patch("controllers.console.workspace.members.TenantService.get_tenant_members", return_value=[member]),
+            patch(
+                "controllers.console.workspace.members.RegisterService.get_pending_workspace_invitations",
+                return_value=[{"account": invited_account, "data": {"role": "editor"}}],
+            ) as mock_get_pending,
+        ):
+            result, status = method(api, user)
+
+        assert status == 200
+        assert [account["email"] for account in result["accounts"]] == ["member@test.com", "invited@test.com"]
+        assert result["accounts"][1]["role"] == "editor"
+        assert result["accounts"][1]["roles"] == [{"id": "editor", "name": "editor"}]
+        assert result["accounts"][1]["membership_status"] == "invited"
+        mock_get_pending.assert_called_once_with(
+            "tenant-1",
+            {"m1"},
+            session=mock_get_pending.call_args.kwargs["session"],
+        )
 
     def test_get_with_rbac_enabled_fetches_roles_in_batch(self, app):
         api = MemberListApi()

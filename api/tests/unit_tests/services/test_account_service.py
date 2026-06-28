@@ -2334,6 +2334,7 @@ class TestRegisterService:
             # Verify results
             assert result == "test-uuid-123"
             mock_redis_dependencies.setex.assert_called_once()
+            mock_redis_dependencies.zadd.assert_called_once()
 
             # Verify the stored data
             call_args = mock_redis_dependencies.setex.call_args
@@ -2344,6 +2345,10 @@ class TestRegisterService:
             assert stored_data["workspace_id"] == "tenant-456"
             assert stored_data["role"] == "admin"
             assert stored_data["requires_setup"] is True
+            assert stored_data["expires_at"] > 0
+            mock_redis_dependencies.zadd.assert_called_once_with(
+                "member_invite:workspace:tenant-456", {"test-uuid-123": stored_data["expires_at"]}
+            )
 
     def test_is_valid_invite_token_valid(self, mock_redis_dependencies):
         """Test checking valid invite token."""
@@ -2383,11 +2388,86 @@ class TestRegisterService:
 
     def test_revoke_token_without_workspace_and_email(self, mock_redis_dependencies):
         """Test revoking token without workspace ID and email."""
+        mock_redis_dependencies.get.return_value = None
+
         # Execute test
         RegisterService.revoke_token("", "", "token-123")
 
         # Verify results
         mock_redis_dependencies.delete.assert_called_once_with("member_invite:token:token-123")
+
+    def test_revoke_token_removes_workspace_index_for_token_invite(self, mock_redis_dependencies):
+        """Token-only revocation removes the workspace invite index entry."""
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+        }
+        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+
+        RegisterService.revoke_token(None, None, "token-123")
+
+        mock_redis_dependencies.delete.assert_called_once_with("member_invite:token:token-123")
+        mock_redis_dependencies.zrem.assert_called_once_with("member_invite:workspace:tenant-456", "token-123")
+
+    def test_get_pending_workspace_invitations_returns_latest_active_invites(
+        self, mock_db_dependencies, mock_redis_dependencies
+    ):
+        """Workspace invitation index should expose pending active-account invites for member lists."""
+        account = TestAccountAssociatedDataFactory.create_account_mock(
+            account_id="user-123", email="test@example.com", name="Test User", status="active"
+        )
+        older_invitation = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+            "role": "normal",
+            "requires_setup": False,
+        }
+        latest_invitation = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+            "role": "admin",
+            "requires_setup": False,
+        }
+        mock_redis_dependencies.zrangebyscore.return_value = [b"older-token", "latest-token", "stale-token"]
+        mock_redis_dependencies.get.side_effect = [
+            json.dumps(older_invitation).encode(),
+            json.dumps(latest_invitation).encode(),
+            None,
+        ]
+        mock_db_dependencies["db"].session.scalar.return_value = account
+
+        result = RegisterService.get_pending_workspace_invitations(
+            "tenant-456", set(), session=mock_db_dependencies["db"].session
+        )
+
+        assert result == [{"account": account, "data": latest_invitation}]
+        mock_redis_dependencies.zremrangebyscore.assert_called_once()
+        mock_redis_dependencies.zrem.assert_called_once_with("member_invite:workspace:tenant-456", "stale-token")
+
+    def test_get_pending_workspace_invitations_filters_joined_accounts(
+        self, mock_db_dependencies, mock_redis_dependencies
+    ):
+        """Accepted invitations should be hidden from the Redis-backed pending invite list."""
+        invitation_data = {
+            "account_id": "user-123",
+            "email": "test@example.com",
+            "workspace_id": "tenant-456",
+            "role": "admin",
+            "requires_setup": False,
+        }
+        mock_redis_dependencies.zrangebyscore.return_value = ["token-123"]
+        mock_redis_dependencies.get.return_value = json.dumps(invitation_data).encode()
+
+        result = RegisterService.get_pending_workspace_invitations(
+            "tenant-456", {"user-123"}, session=mock_db_dependencies["db"].session
+        )
+
+        assert result == []
+        mock_db_dependencies["db"].session.scalar.assert_not_called()
+        mock_redis_dependencies.zrem.assert_called_once_with("member_invite:workspace:tenant-456", "token-123")
 
     # ==================== Invitation Validation Tests ====================
 

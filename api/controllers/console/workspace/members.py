@@ -9,7 +9,12 @@ from sqlalchemy import func, select
 import services
 from configs import dify_config
 from controllers.common.fields import SimpleResultDataResponse, SimpleResultResponse, VerificationTokenResponse
-from controllers.common.schema import register_enum_models, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    register_enum_models,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
@@ -44,6 +49,10 @@ class MemberInvitePayload(BaseModel):
     emails: list[str] = Field(default_factory=list)
     role: str
     language: str | None = None
+
+
+class MemberListQuery(BaseModel):
+    include_pending_invites: bool = Field(default=False)
 
 
 class MemberRoleUpdatePayload(BaseModel):
@@ -86,6 +95,7 @@ register_schema_models(
     console_ns,
     AccountWithRole,
     AccountWithRoleList,
+    MemberListQuery,
     MemberInvitePayload,
     MemberRoleUpdatePayload,
     OwnerTransferEmailPayload,
@@ -179,9 +189,11 @@ class MemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.doc(params=query_params_from_model(MemberListQuery))
     @console_ns.response(200, "Success", console_ns.models[AccountWithRoleList.__name__])
     @with_current_user
     def get(self, current_user: Account | None = None):
+        args = MemberListQuery.model_validate(request.args.to_dict(flat=True))
         if current_user is None:
             current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
@@ -213,8 +225,34 @@ class MemberListApi(Resource):
                     "role": current_role,
                     "roles": _serialize_member_roles(current_role, roles_map.get(member.id, [])),
                     "status": _normalize_enum_value(member.status),
+                    "membership_status": "joined",
                 }
             )
+        if args.include_pending_invites:
+            joined_account_ids = {str(member.id) for member in members}
+            pending_invitations = RegisterService.get_pending_workspace_invitations(
+                str(current_user.current_tenant.id),
+                joined_account_ids,
+                session=db.session,
+            )
+            for pending_invitation in pending_invitations:
+                member = pending_invitation["account"]
+                invite_role = pending_invitation["data"].get("role") or TenantAccountRole.NORMAL.value
+                serialized_members.append(
+                    {
+                        "id": str(member.id),
+                        "name": member.name,
+                        "email": member.email,
+                        "avatar": member.avatar,
+                        "last_login_at": member.last_login_at,
+                        "last_active_at": member.last_active_at,
+                        "created_at": member.created_at,
+                        "role": invite_role,
+                        "roles": _serialize_member_roles(invite_role, []),
+                        "status": _normalize_enum_value(member.status),
+                        "membership_status": "invited",
+                    }
+                )
 
         member_models = TypeAdapter(list[AccountWithRole]).validate_python(serialized_members)
         response = AccountWithRoleList(accounts=member_models)

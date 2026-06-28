@@ -235,6 +235,7 @@
   "members.invite": "Mời",
   "members.inviteTeamMember": "Mời thành viên nhóm",
   "members.inviteTeamMemberTip": "Sau khi đăng nhập, họ có thể truy cập trực tiếp vào dữ liệu nhóm của bạn.",
+  "members.invited": "Đã mời",
   "members.invitedAsRole": "Được mời với vai trò {{role}}",
   "members.lastActive": "HOẠT ĐỘNG GẦN ĐÂY",
   "members.memberActions": "Hành động của thành viên",
