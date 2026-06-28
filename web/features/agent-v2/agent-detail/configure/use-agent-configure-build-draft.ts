@@ -16,16 +16,12 @@ const isNotFoundResponse = (error: unknown) => error instanceof Response && erro
 
 export function useAgentConfigureBuildDraftData({
   agentId,
-  activeVersionId,
   composerAgentSoulConfig,
   isViewingVersion,
-  normalAgentSoulConfig,
 }: {
   agentId: string
-  activeVersionId: string | null | undefined
   composerAgentSoulConfig?: AgentSoulConfig
   isViewingVersion: boolean
-  normalAgentSoulConfig?: AgentSoulConfig
 }) {
   const shouldSilenceBuildDraftCheckRef = useRef(true)
   const [soulSourceOverride, setSoulSourceOverride] = useState<AgentConfigureSoulSource | null>(null)
@@ -83,7 +79,6 @@ export function useAgentConfigureBuildDraftData({
     : soulSourceOverride ?? (!buildDraftNotFound && !!buildDraftData && !isBuildDraftError ? 'build-draft' : 'draft')
   const isBuildDraftActive = soulSource === 'build-draft'
   const buildDraftAgentSoulConfig = buildDraftData?.agent_soul as AgentSoulConfig | undefined
-  const visibleAgentSoulConfig = isBuildDraftActive ? buildDraftAgentSoulConfig : normalAgentSoulConfig
   const buildDraftChangesCount = useMemo(() => {
     if (!buildDraftAgentSoulConfig || !composerAgentSoulConfig)
       return 0
@@ -97,8 +92,8 @@ export function useAgentConfigureBuildDraftData({
   }, [buildDraftAgentSoulConfig, composerAgentSoulConfig])
 
   return {
-    activeVersionId: isBuildDraftActive ? `build-draft:${buildDraftDataUpdatedAt}` : activeVersionId,
-    agentSoulConfig: visibleAgentSoulConfig,
+    agentSoulConfig: buildDraftAgentSoulConfig,
+    dataUpdatedAt: buildDraftDataUpdatedAt,
     changesCount: buildDraftChangesCount,
     isActive: isBuildDraftActive,
     isPending: !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version' && isBuildDraftPending,

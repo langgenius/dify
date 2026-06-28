@@ -35,13 +35,14 @@ export function AgentConfigureComposerScope({
 }) {
   const {
     selectedVersionId,
+    activeVersionId,
     buildDraft,
   } = configureData
   const isViewingVersion = !!selectedVersionId
 
   const composerSessionKey = buildDraft.isActive
-    ? `${agentId}:${buildDraft.activeVersionId ?? 'build-draft'}`
-    : `${agentId}:${buildDraft.activeVersionId ?? 'draft'}:${composerRebaseRevision}`
+    ? `${agentId}:${activeVersionId ?? 'build-draft'}`
+    : `${agentId}:${activeVersionId ?? 'draft'}:${composerRebaseRevision}`
 
   return (
     <AgentConfigurePageComposerSession
@@ -75,6 +76,7 @@ function AgentConfigurePageComposerSession({
 }) {
   const {
     agentQuery,
+    agentSoulConfig,
   } = configureData
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
   const chatConversations = useAgentConfigureChat({
@@ -85,8 +87,8 @@ function AgentConfigurePageComposerSession({
   return (
     <AgentComposerProvider
       key={composerSessionKey}
-      initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
-      initialOriginalConfig={buildDraft.agentSoulConfig}
+      initialDraft={agentSoulConfigToFormState(agentSoulConfig)}
+      initialOriginalConfig={agentSoulConfig}
     >
       <AgentConfigurePageComposerContent
         agentId={agentId}
@@ -191,7 +193,7 @@ function AgentConfigurePageComposerContent({
           agentId={agentId}
           activeConfigIsPublished={agentQuery.data?.active_config_is_published}
           activeVersionSnapshot={activeVersionSnapshot}
-          agentSoulConfig={buildDraft.agentSoulConfig}
+          agentSoulConfig={agentSoulConfig}
           agentName={agentQuery.data?.name}
           currentModel={currentModel}
           textGenerationModelList={textGenerationModelList}
@@ -250,7 +252,7 @@ function AgentConfigurePageComposerContent({
               agentIconBackground={agentQuery.data?.icon_background}
               agentIconType={agentIconType}
               agentName={agentQuery.data?.name}
-              agentSoulConfig={buildDraft.agentSoulConfig}
+              agentSoulConfig={agentSoulConfig}
               clearChatList={chatConversations.clearPreviewChat}
               conversationIds={chatConversations.conversationIds}
               draftType={rightPanelChatMode === 'build' ? 'debug_build' : undefined}

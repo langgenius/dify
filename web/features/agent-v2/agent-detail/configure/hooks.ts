@@ -37,17 +37,20 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
       : skipToken,
   }))
   const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
-  const activeVersionId = selectedVersionId
   const activeVersionSnapshot = selectedVersionId ? versionDetail : composerQuery.data?.active_config_snapshot
-  const agentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : composerQuery.data?.agent_soul
+  const normalAgentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : composerQuery.data?.agent_soul
   const isViewingVersion = !!selectedVersionId
   const buildDraft = useAgentConfigureBuildDraftData({
     agentId,
-    activeVersionId,
     composerAgentSoulConfig: composerQuery.data?.agent_soul,
     isViewingVersion,
-    normalAgentSoulConfig: agentSoulConfig,
   })
+  const activeVersionId = buildDraft.isActive
+    ? `build-draft:${buildDraft.dataUpdatedAt}`
+    : selectedVersionId
+  const agentSoulConfig = buildDraft.isActive
+    ? buildDraft.agentSoulConfig
+    : normalAgentSoulConfig
   const isPending = agentQuery.isPending
     || composerQuery.isPending
     || (shouldLoadVersion && versionQuery.isPending)
