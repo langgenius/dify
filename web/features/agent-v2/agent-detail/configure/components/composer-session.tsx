@@ -4,15 +4,13 @@ import type { AgentIconType } from '@dify/contracts/api/console/agent/types.gen'
 import type { useAgentConfigureData } from '../hooks'
 import type { AgentConfigureRightPanelMode } from './preview/right-panel-chat'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { useAgentConfigureModelOptions } from '../hooks'
-import { useAgentConfigureBuildDraftActions, useAgentConfigureBuildDraftData } from '../use-agent-configure-build-draft'
+import { useAgentConfigureBuildDraftActions } from '../use-agent-configure-build-draft'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 import { AgentOrchestratePanel } from './orchestrate'
 import { AgentBuildDraftBar } from './orchestrate/build-draft-bar'
-import { AgentConfigurePageLoading } from './page-loading'
 import { AgentBuildPanelBackground } from './preview/build-background'
 import { AgentChatFeaturesPanel } from './preview/chat-features-panel'
 import { AgentPreviewHeader } from './preview/header'
@@ -35,27 +33,11 @@ export function AgentConfigureComposerScope({
   onComposerRebase: () => void
   onSelectVersion: (versionId: string | null) => void
 }) {
-  const { t } = useTranslation('agentV2')
   const {
-    composerQuery,
     selectedVersionId,
-    activeVersionId,
-    agentSoulConfig,
+    buildDraft,
   } = configureData
   const isViewingVersion = !!selectedVersionId
-  const buildDraft = useAgentConfigureBuildDraftData({
-    agentId,
-    activeVersionId,
-    composerAgentSoulConfig: composerQuery.data?.agent_soul,
-    isViewingVersion,
-    normalAgentSoulConfig: agentSoulConfig,
-  })
-
-  if (buildDraft.isPending) {
-    return (
-      <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
-    )
-  }
 
   const composerSessionKey = buildDraft.isActive
     ? `${agentId}:${buildDraft.activeVersionId ?? 'build-draft'}`
@@ -84,7 +66,7 @@ function AgentConfigurePageComposerSession({
   onSelectVersion,
 }: {
   agentId: string
-  buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
+  buildDraft: ReturnType<typeof useAgentConfigureData>['buildDraft']
   composerSessionKey: string
   configureData: ReturnType<typeof useAgentConfigureData>
   isViewingVersion: boolean
@@ -132,7 +114,7 @@ function AgentConfigurePageComposerContent({
 }: {
   agentId: string
   agentIconType: AgentIconType | null | undefined
-  buildDraft: ReturnType<typeof useAgentConfigureBuildDraftData>
+  buildDraft: ReturnType<typeof useAgentConfigureData>['buildDraft']
   chatConversations: ReturnType<typeof useAgentConfigureChat>
   configureData: ReturnType<typeof useAgentConfigureData>
   isViewingVersion: boolean

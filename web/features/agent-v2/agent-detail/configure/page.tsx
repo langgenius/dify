@@ -25,11 +25,8 @@ function AgentConfigurePageContent({
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null)
   const [composerRebaseRevision, setComposerRebaseRevision] = useState(0)
   const configureData = useAgentConfigureData(agentId, selectedVersionId)
-  const isConfigureDataPending = configureData.agentQuery.isPending
-    || configureData.composerQuery.isPending
-    || (configureData.shouldLoadVersion && configureData.versionQuery.isPending)
 
-  if (isConfigureDataPending) {
+  if (configureData.isPending) {
     return (
       <AgentConfigurePageLoading label={t('agentDetail.sections.configure')} />
     )

@@ -8,6 +8,7 @@ import { useDefaultModel, useTextGenerationCurrentProviderAndModelAndModelList }
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { consoleQuery } from '@/service/client'
+import { useAgentConfigureBuildDraftData } from './use-agent-configure-build-draft'
 
 export function useAgentConfigureData(agentId: string, selectedVersionId: string | null) {
   const agentQuery = useQuery(consoleQuery.agent.byAgentId.get.queryOptions({
@@ -39,6 +40,18 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
   const activeVersionId = selectedVersionId
   const activeVersionSnapshot = selectedVersionId ? versionDetail : composerQuery.data?.active_config_snapshot
   const agentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : composerQuery.data?.agent_soul
+  const isViewingVersion = !!selectedVersionId
+  const buildDraft = useAgentConfigureBuildDraftData({
+    agentId,
+    activeVersionId,
+    composerAgentSoulConfig: composerQuery.data?.agent_soul,
+    isViewingVersion,
+    normalAgentSoulConfig: agentSoulConfig,
+  })
+  const isPending = agentQuery.isPending
+    || composerQuery.isPending
+    || (shouldLoadVersion && versionQuery.isPending)
+    || buildDraft.isPending
 
   return {
     agentQuery,
@@ -49,6 +62,8 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
     activeVersionId,
     activeVersionSnapshot,
     agentSoulConfig,
+    buildDraft,
+    isPending,
   }
 }
 
