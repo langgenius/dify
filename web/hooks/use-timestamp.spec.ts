@@ -6,6 +6,14 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import useTimestamp from './use-timestamp'
 
+const navigationMocks = vi.hoisted(() => ({
+  usePathname: vi.fn(() => '/apps'),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: navigationMocks.usePathname,
+}))
+
 vi.mock('@/context/app-context', () => ({
   useAppContext: vi.fn(() => ({
     userProfile: {
@@ -40,6 +48,10 @@ const createEmptyQueryWrapper = () => {
 
   return { queryClient, wrapper: EmptyQueryWrapper }
 }
+
+beforeEach(() => {
+  navigationMocks.usePathname.mockReturnValue('/apps')
+})
 
 describe('useTimestamp', () => {
   describe('formatTime', () => {
@@ -90,6 +102,17 @@ describe('useTimestamp', () => {
     const { result } = renderHook(() => useTimestamp({ timezone: 'UTC' }), { wrapper })
 
     expect(result.current.formatTime(1704132000, 'YYYY-MM-DD HH:mm')).toBe('2024-01-01 18:00')
+    expect(queryClient.isFetching({ queryKey: userProfileQueryOptions().queryKey })).toBe(0)
+    expect(queryClient.getQueryState(userProfileQueryOptions().queryKey)?.fetchStatus).toBe('idle')
+  })
+
+  it('should not request account profile on public web app routes', () => {
+    navigationMocks.usePathname.mockReturnValue('/chat/app-code')
+    const { queryClient, wrapper } = createEmptyQueryWrapper()
+
+    const { result } = renderHook(() => useTimestamp(), { wrapper })
+
+    expect(result.current.formatTime(1704132000, 'YYYY-MM-DD HH:mm')).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}/)
     expect(queryClient.isFetching({ queryKey: userProfileQueryOptions().queryKey })).toBe(0)
     expect(queryClient.getQueryState(userProfileQueryOptions().queryKey)?.fetchStatus).toBe('idle')
   })

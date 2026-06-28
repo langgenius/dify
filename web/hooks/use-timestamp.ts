@@ -5,6 +5,9 @@ import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
 import { useCallback } from 'react'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { usePathname } from '@/next/navigation'
+import { isPublicWebAppRoute } from '@/utils/is-public-webapp-route'
+import { getBrowserTimezone } from '@/utils/timezone'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -13,17 +16,18 @@ type UseTimestampOptions = {
   timezone?: string
 }
 
-const getBrowserTimezone = () => {
-  return Intl.DateTimeFormat().resolvedOptions().timeZone
-}
-
 const useTimestamp = ({ timezone: timezoneOverride }: UseTimestampOptions = {}) => {
+  const pathname = usePathname()
+  const isPublicWebApp = isPublicWebAppRoute(pathname)
+  const shouldFetchAccountTimezone = timezoneOverride === undefined && !isPublicWebApp
   const { data: accountTimezone } = useQuery({
     ...userProfileQueryOptions(),
     select: data => data.profile.timezone ?? undefined,
-    enabled: timezoneOverride === undefined,
+    enabled: shouldFetchAccountTimezone,
   })
-  const resolvedTimezone = timezoneOverride ?? accountTimezone ?? getBrowserTimezone()
+  const resolvedTimezone = timezoneOverride
+    ?? (isPublicWebApp ? getBrowserTimezone() : accountTimezone)
+    ?? getBrowserTimezone()
 
   const formatTime = useCallback((value: number, format: string) => {
     return dayjs.unix(value).tz(resolvedTimezone).format(format)
