@@ -8,6 +8,7 @@ from flask import Flask
 from werkzeug.exceptions import BadRequest, Forbidden, NotFound
 
 import controllers.console.explore.installed_app as module
+from models.account import TenantAccountRole
 
 type Payload = dict[str, object]
 type PayloadPatch = Callable[[Payload], AbstractContextManager[object]]
@@ -26,6 +27,7 @@ def current_user(tenant_id: str) -> MagicMock:
     user = MagicMock()
     user.id = "u1"
     user.current_tenant = MagicMock(id=tenant_id)
+    user.current_role = TenantAccountRole.OWNER
     return user
 
 
@@ -388,13 +390,16 @@ class TestInstalledAppApi:
         with pytest.raises(BadRequest):
             method(api, tenant_id, installed_app)
 
-    def test_patch_update_pin(self, app: Flask, payload_patch: PayloadPatch, installed_app: MagicMock) -> None:
+    def test_patch_update_pin(
+        self, app: Flask, current_user: MagicMock, tenant_id: str, payload_patch: PayloadPatch, installed_app: MagicMock
+    ) -> None:
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 
         with (
             app.test_request_context("/", json={"is_pinned": True}),
             payload_patch({"is_pinned": True}),
+            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id), create=True),
             patch.object(module.db, "session"),
         ):
             result = method(installed_app)
@@ -402,11 +407,38 @@ class TestInstalledAppApi:
         assert installed_app.is_pinned is True
         assert result["result"] == "success"
 
-    def test_patch_no_change(self, app: Flask, payload_patch: PayloadPatch, installed_app: MagicMock) -> None:
+    def test_patch_forbids_normal_member_pin_change(
+        self, app: Flask, current_user: MagicMock, tenant_id: str, payload_patch: PayloadPatch, installed_app: MagicMock
+    ) -> None:
+        api = module.InstalledAppApi()
+        method = unwrap(api.patch)
+        current_user.current_role = TenantAccountRole.NORMAL
+        session = MagicMock()
+
+        with (
+            app.test_request_context("/", json={"is_pinned": True}),
+            payload_patch({"is_pinned": True}),
+            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id), create=True),
+            patch.object(module.db, "session", session),
+        ):
+            with pytest.raises(Forbidden):
+                method(installed_app)
+
+        assert installed_app.is_pinned is False
+        session.commit.assert_not_called()
+
+    def test_patch_no_change(
+        self, app: Flask, current_user: MagicMock, tenant_id: str, payload_patch: PayloadPatch, installed_app: MagicMock
+    ) -> None:
         api = module.InstalledAppApi()
         method = unwrap(api.patch)
 
-        with app.test_request_context("/", json={}), payload_patch({}), patch.object(module.db, "session"):
+        with (
+            app.test_request_context("/", json={}),
+            payload_patch({}),
+            patch.object(module, "current_account_with_tenant", return_value=(current_user, tenant_id), create=True),
+            patch.object(module.db, "session"),
+        ):
             result = method(installed_app)
 
         assert result["result"] == "success"

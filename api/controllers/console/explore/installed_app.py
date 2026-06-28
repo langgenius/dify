@@ -23,8 +23,8 @@ from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import to_timestamp
-from libs.login import login_required
-from models import Account, App, AppModelConfig, InstalledApp, RecommendedApp, Workflow
+from libs.login import current_account_with_tenant, login_required
+from models import Account, App, AppModelConfig, InstalledApp, RecommendedApp, TenantAccountRole, Workflow
 from models.model import AppMode, IconType
 from services.account_service import TenantService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -44,6 +44,12 @@ class InstalledAppsListQuery(BaseModel):
 
 
 logger = logging.getLogger(__name__)
+
+
+def _require_current_workspace_manager() -> None:
+    current_user, _ = current_account_with_tenant()
+    if not TenantAccountRole.is_privileged_role(current_user.current_role):
+        raise Forbidden()
 
 
 def _build_icon_url(icon_type: str | IconType | None, icon: str | None) -> str | None:
@@ -304,6 +310,7 @@ class InstalledAppApi(InstalledAppResource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultMessageResponse.__name__])
     @console_ns.expect(console_ns.models[InstalledAppUpdatePayload.__name__])
     def patch(self, installed_app: InstalledApp):
+        _require_current_workspace_manager()
         payload = InstalledAppUpdatePayload.model_validate(console_ns.payload or {})
 
         commit_args = False
