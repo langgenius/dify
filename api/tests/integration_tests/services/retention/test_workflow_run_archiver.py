@@ -431,6 +431,7 @@ class TestArchiveRunIdempotency:
         assert archived_bundle.workflow_run_count == 1
         assert archived_bundle.row_count == 2
         session.commit.assert_called_once()
+
     def test_index_skips_all_already_archived_runs(self):
         archiver = WorkflowRunArchiver(days=90)
         run = MagicMock()
