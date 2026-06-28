@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
-import { TitleTooltip } from '../../components/title-tooltip'
+import { TitleTooltip } from '../../shared/components/title-tooltip'
 import {
   createReleaseSourceAppSearchTextAtom,
   createReleaseSourceAppsQueryAtom,

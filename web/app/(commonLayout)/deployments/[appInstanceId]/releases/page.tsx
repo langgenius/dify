@@ -1,5 +1,5 @@
-import { VersionsTab } from '@/features/deployments/detail/versions-tab'
+import { DeploymentReleases } from '@/features/deployments/detail/releases'
 
 export default function InstanceDetailReleasesPage() {
-  return <VersionsTab />
+  return <DeploymentReleases />
 }
