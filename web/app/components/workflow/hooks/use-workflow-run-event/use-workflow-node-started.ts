@@ -33,7 +33,7 @@ export const useWorkflowNodeStarted = () => {
       transform,
     } = store.getState()
     const nodes = getNodes()
-    const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id)
+    const currentIndex = workflowRunningData?.tracing?.findIndex(item => item.node_id === data.node_id) ?? -1
     if (currentIndex >= 0) {
       setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
         draft.tracing![currentIndex] = {
