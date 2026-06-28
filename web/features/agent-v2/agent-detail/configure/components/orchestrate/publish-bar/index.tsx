@@ -11,7 +11,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { formatForDisplay, useHotkey } from '@tanstack/react-hotkeys'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
 import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
@@ -100,6 +100,12 @@ export function AgentConfigurePublishBar({
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
   const activeConfigIsPublished = configureData?.agentQuery.data?.active_config_is_published ?? activeConfigIsPublishedProp
+  const lastKnownPublishedRef = useRef(false)
+  if (activeConfigIsPublished === true)
+    lastKnownPublishedRef.current = true
+  if (activeConfigIsPublished === false)
+    lastKnownPublishedRef.current = false
+  const stableActiveConfigIsPublished = activeConfigIsPublished ?? (lastKnownPublishedRef.current ? true : undefined)
   const activeVersionSnapshot = configureData?.activeVersionSnapshot ?? activeVersionSnapshotProp
   const agentName = configureData?.agentQuery.data?.name ?? agentNameProp
   const selectedVersionSnapshot = configureData?.selectedVersionId
@@ -110,13 +116,13 @@ export function AgentConfigurePublishBar({
   const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
   const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
-    activeConfigIsPublished,
+    activeConfigIsPublished: stableActiveConfigIsPublished,
     activeVersionSnapshot,
     isDirty,
     isPublishing: false,
   })
   const publishState = getPublishState({
-    activeConfigIsPublished,
+    activeConfigIsPublished: stableActiveConfigIsPublished,
     activeVersionSnapshot,
     isDirty,
     isPublishing,

@@ -66,6 +66,9 @@ export function useAgentConfigureSync({
   }), [store])
 
   const markActiveConfigUnpublished = useCallback(() => {
+    if (publishInFlightRef.current)
+      return
+
     queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
       consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
       (agentDetail) => {

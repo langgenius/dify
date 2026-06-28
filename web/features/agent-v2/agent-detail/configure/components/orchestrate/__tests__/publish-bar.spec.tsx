@@ -209,6 +209,8 @@ function renderPublishBar({
   setupStore?.(store)
 
   const renderPublishBarTree = (nextProps?: {
+    activeConfigIsPublished?: boolean
+    activeVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
     isPublishing?: boolean
   }) => (
     <QueryClientProvider client={queryClient}>
@@ -216,8 +218,8 @@ function renderPublishBar({
         <AgentConfigurePublishBar
           agentId="agent-1"
           configureData={configureData}
-          activeConfigIsPublished={activeConfigIsPublished}
-          activeVersionSnapshot={activeVersionSnapshot}
+          activeConfigIsPublished={nextProps && 'activeConfigIsPublished' in nextProps ? nextProps.activeConfigIsPublished : activeConfigIsPublished}
+          activeVersionSnapshot={nextProps && 'activeVersionSnapshot' in nextProps ? nextProps.activeVersionSnapshot : activeVersionSnapshot}
           draftSavedAt={draftSavedAt}
           agentName="Iris"
           isPublishing={nextProps?.isPublishing ?? isPublishing}
@@ -382,6 +384,21 @@ describe('AgentConfigurePublishBar', () => {
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
     )
+  })
+
+  it('should keep published state during a transient published query gap', () => {
+    const { rerender, rerenderPublishBar } = renderPublishBar({
+      activeConfigIsPublished: true,
+      activeVersionSnapshot: null,
+    })
+
+    rerender(rerenderPublishBar({
+      activeConfigIsPublished: undefined,
+      activeVersionSnapshot: undefined,
+    }))
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
   })
 
   it('should not show unpublished state while active published status is still loading', () => {

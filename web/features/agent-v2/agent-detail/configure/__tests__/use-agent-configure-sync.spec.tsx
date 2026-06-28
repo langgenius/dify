@@ -474,6 +474,53 @@ describe('useAgentConfigureSync', () => {
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
   })
 
+  it('should not mark the active config unpublished while publishing saves the draft first', async () => {
+    const publishDeferred = createDeferredPromise<PublishAgentResponse>()
+    publishAgentMutationFn.mockReturnValueOnce(publishDeferred.promise)
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Published prompt',
+      })
+    })
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+
+    let publishPromise!: Promise<void>
+    act(() => {
+      publishPromise = result.current.publishDraft()
+    })
+
+    await act(async () => {
+      await Promise.resolve()
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledTimes(1)
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+
+    await act(async () => {
+      publishDeferred.resolve({
+        active_config_snapshot: {},
+        active_config_snapshot_id: 'snapshot-1',
+        result: 'success',
+      })
+      await publishPromise
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+  })
+
   it('should mark the active config as unpublished after changing a published draft', async () => {
     const { queryClient, result, store } = renderUseAgentConfigureSync()
     queryClient.setQueryData(['agent-detail', 'agent-1'], {
