@@ -10,7 +10,6 @@ if not hasattr(builtins, "MethodView"):
 from controllers.common.fields import Parameters, Site
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from models.model import IconType
-from models.model import Site as SiteModel
 
 
 def test_parameters_model_round_trip():
