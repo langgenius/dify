@@ -24,24 +24,21 @@ export function useAgentConfigureData(agentId: string, selectedVersionId: string
       },
     },
   }))
-  const publishedVersionId = composerQuery.data?.active_config_snapshot?.id
-  const shouldLoadPublishedVersion = !selectedVersionId && !composerQuery.data?.agent_soul
-  const versionIdToLoad = selectedVersionId ?? (shouldLoadPublishedVersion ? publishedVersionId : undefined)
-  const shouldLoadVersion = !!versionIdToLoad
+  const shouldLoadVersion = !!selectedVersionId
   const versionQuery = useQuery(consoleQuery.agent.byAgentId.versions.byVersionId.get.queryOptions({
-    input: versionIdToLoad
+    input: selectedVersionId
       ? {
           params: {
             agent_id: agentId,
-            version_id: versionIdToLoad,
+            version_id: selectedVersionId,
           },
         }
       : skipToken,
   }))
   const versionDetail = versionQuery.data as AgentConfigSnapshotDetailResponse | undefined
-  const activeVersionId = selectedVersionId ?? (shouldLoadPublishedVersion ? publishedVersionId : null)
-  const activeConfigSnapshot = selectedVersionId ? versionDetail : (composerQuery.data?.active_config_snapshot ?? versionDetail)
-  const agentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : (composerQuery.data?.agent_soul ?? versionDetail?.config_snapshot)
+  const activeVersionId = selectedVersionId
+  const activeConfigSnapshot = selectedVersionId ? versionDetail : composerQuery.data?.active_config_snapshot
+  const agentSoulConfig = selectedVersionId ? versionDetail?.config_snapshot : composerQuery.data?.agent_soul
 
   return {
     agentQuery,
