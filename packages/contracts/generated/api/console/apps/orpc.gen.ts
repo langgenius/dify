@@ -185,6 +185,7 @@ import {
   zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesPath,
   zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerCandidatesResponse,
   zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath,
+  zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerQuery,
   zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse,
   zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunPath,
   zGetAppsByAppIdWorkflowsDraftNodesByNodeIdLastRunResponse,
@@ -3569,7 +3570,12 @@ export const get62 = oc
     path: '/apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer',
     tags: ['console'],
   })
-  .input(z.object({ params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath }))
+  .input(
+    z.object({
+      params: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerPath,
+      query: zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerQuery.optional(),
+    }),
+  )
   .output(zGetAppsByAppIdWorkflowsDraftNodesByNodeIdAgentComposerResponse)
 
 export const put4 = oc

@@ -3,14 +3,17 @@
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { useMutation } from '@tanstack/react-query'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { consoleQuery } from '@/service/client'
 import { useRegisterAgentOrchestrateAddAction } from '../add-actions-context'
 import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
-import { useAgentDriveApiContext, useAgentDriveSkills } from '../drive-context'
+import { AgentConfigureTipContent } from '../common/tip-content'
+import { useAgentDriveApiContext } from '../drive-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
 
@@ -21,7 +24,8 @@ export function AgentSkills() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
   const apiContext = useAgentDriveApiContext()
-  const { query: skillsQuery, skills } = useAgentDriveSkills()
+  const skills = useAtomValue(agentComposerSkillsAtom)
+  const setSkills = useSetAtom(agentComposerSkillsAtom)
   const { mutate: deleteAgentSkill } = useMutation(consoleQuery.agent.byAgentId.skills.bySlug.delete.mutationOptions())
   const { mutate: deleteAppSkill } = useMutation(consoleQuery.apps.byAppId.agent.skills.bySlug.delete.mutationOptions())
 
@@ -32,10 +36,13 @@ export function AgentSkills() {
   useRegisterAgentOrchestrateAddAction('skills', handleOpenUpload)
 
   const handleUploaded = useCallback((skill: AgentSkill) => {
-    void skillsQuery.refetch()
+    setSkills(skills => [
+      ...skills.filter(item => item.id !== skill.id),
+      skill,
+    ])
     promptAddCallbackRef.current?.(skill)
     promptAddCallbackRef.current = undefined
-  }, [skillsQuery])
+  }, [setSkills])
 
   const handleUploadOpenChange = useCallback((open: boolean) => {
     if (!open)
@@ -50,7 +57,7 @@ export function AgentSkills() {
       return
 
     const onSuccess = () => {
-      void skillsQuery.refetch()
+      setSkills(skills => skills.filter(item => item.id !== skillId))
     }
     if (apiContext.workflow) {
       deleteAppSkill({
@@ -71,7 +78,7 @@ export function AgentSkills() {
         slug: skillSlug,
       },
     }, { onSuccess })
-  }, [apiContext, deleteAgentSkill, deleteAppSkill, skills, skillsQuery])
+  }, [apiContext, deleteAgentSkill, deleteAppSkill, setSkills, skills])
 
   return (
     <>
@@ -79,7 +86,7 @@ export function AgentSkills() {
         label={t('agentDetail.configure.skills.label')}
         labelId="agent-configure-skills-label"
         panelId={skillsListId}
-        tip={skillsTip}
+        tip={<AgentConfigureTipContent type="skills" />}
         tipAriaLabel={skillsTip}
         rootClassName="border-b border-divider-subtle pt-4"
         panelContentClassName="flex flex-col gap-1 pb-4"

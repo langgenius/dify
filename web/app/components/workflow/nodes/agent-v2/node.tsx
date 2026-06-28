@@ -24,7 +24,7 @@ function AgentNodeAvatar({
   if (isInlineAgent) {
     return (
       <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-background-default-burn text-text-tertiary">
-        <span aria-hidden className="i-custom-vender-agent-v2-robot-3 size-5" />
+        <span aria-hidden className="i-custom-vender-agent-v2-configure h-3.5 w-3" />
       </span>
     )
   }

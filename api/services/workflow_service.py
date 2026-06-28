@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -142,7 +142,7 @@ class WorkflowService:
         return db.session.execute(stmt).scalar_one()
 
     def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, session: Session | None = None
+        self, app_model: App, workflow_id: str | None = None, session: Session | scoped_session | None = None
     ) -> Workflow | None:
         """
         Get draft workflow
@@ -169,7 +169,7 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(
-        self, app_model: App, workflow_id: str, session: Session | None = None
+        self, app_model: App, workflow_id: str, session: Session | scoped_session | None = None
     ) -> Workflow | None:
         """
         fetch published workflow by workflow_id

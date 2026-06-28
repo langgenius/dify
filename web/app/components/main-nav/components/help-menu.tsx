@@ -56,6 +56,7 @@ const HelpMenu = ({
   const setLearnDifyHidden = useSetLearnDifyHidden()
   const [aboutVisible, setAboutVisible] = useState(false)
   const [open, setOpen] = useState(false)
+  const shouldShowLearnDifySwitch = systemFeatures.enable_learn_app
 
   if (systemFeatures.branding.enabled)
     return null
@@ -95,31 +96,33 @@ const HelpMenu = ({
                   trailing={<ExternalLinkIndicator />}
                 />
               </DropdownMenuLinkItem>
-              <DropdownMenuCheckboxItem
-                checked={!learnDifyHidden}
-                closeOnClick={false}
-                className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
-                onCheckedChange={checked => setLearnDifyHidden(!checked)}
-              >
-                <span aria-hidden className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary" />
-                <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
-                  {t('mainNav.help.learnDify', { ns: 'common' })}
-                </span>
-                <span
-                  aria-hidden
-                  className={cn(
-                    'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
-                    !learnDifyHidden ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
-                  )}
+              {shouldShowLearnDifySwitch && (
+                <DropdownMenuCheckboxItem
+                  checked={!learnDifyHidden}
+                  closeOnClick={false}
+                  className="mx-0 h-8 gap-1 px-0 py-1 pr-2 pl-3"
+                  onCheckedChange={checked => setLearnDifyHidden(!checked)}
                 >
+                  <span aria-hidden className="i-custom-vender-workflow-docs-extractor size-4 shrink-0 text-text-tertiary" />
+                  <span className="min-w-0 flex-1 truncate px-1 py-0.5 system-md-regular text-text-secondary">
+                    {t('mainNav.help.learnDify', { ns: 'common' })}
+                  </span>
                   <span
+                    aria-hidden
                     className={cn(
-                      'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
-                      !learnDifyHidden && 'translate-x-3.5',
+                      'relative inline-flex h-4 w-7 shrink-0 items-center rounded-[5px] p-0.5 transition-colors',
+                      !learnDifyHidden ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
                     )}
-                  />
-                </span>
-              </DropdownMenuCheckboxItem>
+                  >
+                    <span
+                      className={cn(
+                        'block h-3 w-2.5 rounded-[3px] bg-components-toggle-knob shadow-sm transition-transform',
+                        !learnDifyHidden && 'translate-x-3.5',
+                      )}
+                    />
+                  </span>
+                </DropdownMenuCheckboxItem>
+              )}
               {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="my-0!" />

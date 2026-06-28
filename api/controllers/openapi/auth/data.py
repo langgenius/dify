@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import uuid
 from enum import StrEnum
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import InternalServerError
@@ -19,6 +18,11 @@ class Edition(StrEnum):
     CE = "ce"
     EE = "ee"
     SAAS = "saas"
+
+
+class CallerKind(StrEnum):
+    ACCOUNT = "account"
+    END_USER = "end_user"
 
 
 def current_edition() -> Edition:
@@ -78,9 +82,9 @@ class AuthData(BaseModel):
     tenant_role: TenantAccountRole | None = None
 
     caller: Account | EndUser | None = None
-    caller_kind: Literal["account", "end_user"] | None = None
+    caller_kind: CallerKind | None = None
 
-    def require_app_context(self) -> tuple[App, Account | EndUser, Literal["account", "end_user"]]:
+    def require_app_context(self) -> tuple[App, Account | EndUser, CallerKind]:
         if self.app is None or self.caller is None or self.caller_kind is None:
             raise InternalServerError("pipeline_invariant_violated: app context missing")
         return self.app, self.caller, self.caller_kind

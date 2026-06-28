@@ -222,7 +222,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
     )
 
     def mock_get_features(tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
-        features = FeatureModel(can_replace_logo=True)
+        features = FeatureModel(can_replace_logo=True, webapp_copyright_enabled=True)
         return features
 
     monkeypatch.setattr(

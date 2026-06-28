@@ -57,7 +57,7 @@ function IntegrationsToolProviderCard({
         data-org={collection.plugin_id ? org : ''}
         className={cn(
           'group/tool-provider relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-md',
-          current && 'outline-[1.5px] outline-components-option-card-option-selected-border',
+          current && 'after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:ring-[1.5px] after:ring-components-option-card-option-selected-border after:content-[\'\'] after:ring-inset',
         )}
       >
         <div className="flex w-full shrink-0 items-center gap-3 px-4 pt-4 pb-2">
@@ -97,10 +97,9 @@ function IntegrationsToolProviderCard({
       data-org={collection.plugin_id ? org : ''}
       className={cn(
         'group/tool-provider relative flex min-w-[min(100%,496px)] flex-1 cursor-pointer flex-col overflow-hidden rounded-xl bg-background-section-burn p-[3px]',
-        current && 'outline-[1.5px] outline-components-option-card-option-selected-border',
+        current && 'after:pointer-events-none after:absolute after:inset-0 after:rounded-xl after:ring-[1.5px] after:ring-components-option-card-option-selected-border after:content-[\'\'] after:ring-inset',
       )}
     >
-      {shouldShowBuiltInBadge && <CornerMark className="z-20" text={builtInLabel} />}
       <div className="relative flex w-full items-center gap-3 overflow-hidden rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 group-hover/tool-provider:bg-components-panel-on-panel-item-bg-hover">
         <Icon src={collection.icon} size="large" />
         <div className="flex min-w-0 flex-1 flex-col gap-0.5 py-px">
@@ -136,6 +135,7 @@ function IntegrationsToolProviderCard({
           </>
         )}
       </div>
+      {shouldShowBuiltInBadge && <CornerMark text={builtInLabel} />}
     </div>
   )
 }

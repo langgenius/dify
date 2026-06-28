@@ -30,6 +30,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from models import App, AppMode
@@ -142,6 +143,7 @@ class ChatMessageTextApi(Resource):
 
             response = AudioService.transcript_tts(
                 app_model=app_model,
+                session=db.session,
                 text=payload.text,
                 voice=payload.voice,
                 message_id=payload.message_id,
