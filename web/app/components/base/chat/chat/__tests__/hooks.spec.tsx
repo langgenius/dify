@@ -1034,6 +1034,46 @@ describe('useChat', () => {
       expect(lastResponse!.content).toBe('replaced resume')
     })
 
+    it('should clear responding state when resume ends with annotation reply', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-1',
+          content: 'initial',
+          isAnswer: true,
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onMessageEnd({
+          id: 'm-1',
+          metadata: { annotation_reply: { id: 'anno-resume', account: { name: 'admin' } } },
+        })
+      })
+
+      expect(result.current.isResponding).toBe(false)
+      expect(result.current.chatList[1]!.annotation).toEqual({
+        id: 'anno-resume',
+        authorName: 'admin',
+      })
+    })
+
     it('should handle non-agent mode resume', async () => {
       let callbacks: HookCallbacks
 
