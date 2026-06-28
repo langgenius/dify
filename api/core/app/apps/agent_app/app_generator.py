@@ -13,7 +13,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping
-from typing import Any
+from typing import Any, Literal
 
 from flask import Flask, current_app
 from sqlalchemy import and_, or_, select
@@ -81,7 +81,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         inputs = args["inputs"]
 
         # Resolve the bound roster Agent + its current Agent Soul snapshot.
-        agent, agent_config_id, agent_soul = self._resolve_agent(
+        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
             app_model,
             invoke_from=invoke_from,
             draft_type=args.get("draft_type"),
@@ -137,6 +137,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             trace_manager=trace_manager,
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
+            agent_config_version_kind=agent_config_version_kind,
             agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
         )
 
@@ -192,14 +193,14 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         persisted to the conversation. Live streaming to a reconnected client is
         out of scope here — the message is persisted and can be re-fetched.
         """
-        agent, agent_config_id, agent_soul = self._resolve_agent(
-            app_model,
-            invoke_from=invoke_from,
-            draft_type="draft",
-            user=user,
-        )
         conversation = ConversationService.get_conversation(
             app_model=app_model, conversation_id=conversation_id, user=user
+        )
+        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
+            app_model,
+            invoke_from=invoke_from,
+            draft_type=self._resume_draft_type(app_model=app_model, conversation=conversation, user=user),
+            user=user,
         )
 
         app_config = AgentAppConfigManager.get_app_config(
@@ -245,6 +246,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             trace_manager=trace_manager,
             agent_id=agent.id,
             agent_config_snapshot_id=agent_config_id,
+            agent_config_version_kind=agent_config_version_kind,
         )
 
         conversation, message = self._init_generate_records(application_generate_entity, conversation)
@@ -284,6 +286,30 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             user=user,
             stream=False,
         )
+
+    @staticmethod
+    def _resume_draft_type(*, app_model: App, conversation: Any, user: Account | EndUser) -> str | None:
+        if conversation.invoke_from != InvokeFrom.DEBUGGER:
+            return None
+        active_session = AgentAppRuntimeSessionStore().load_active_session_for_conversation(
+            tenant_id=app_model.tenant_id,
+            app_id=app_model.id,
+            conversation_id=conversation.id,
+        )
+        snapshot_id = active_session.scope.agent_config_snapshot_id if active_session is not None else None
+        if snapshot_id and isinstance(user, Account):
+            draft = db.session.scalar(
+                select(AgentConfigDraft).where(
+                    AgentConfigDraft.tenant_id == app_model.tenant_id,
+                    AgentConfigDraft.id == snapshot_id,
+                )
+            )
+            if draft is not None:
+                if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD and draft.account_id == user.id:
+                    return AgentConfigDraftType.DEBUG_BUILD.value
+                if draft.draft_type == AgentConfigDraftType.DRAFT and draft.account_id is None:
+                    return AgentConfigDraftType.DRAFT.value
+        return AgentConfigDraftType.DRAFT.value
 
     def _generate_worker(
         self,
@@ -358,6 +384,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     dify_context=dify_context,
                     agent_id=application_generate_entity.agent_id,
                     agent_config_snapshot_id=application_generate_entity.agent_config_snapshot_id,
+                    agent_config_version_kind=application_generate_entity.agent_config_version_kind,
                     agent_soul=agent_soul,
                     conversation_id=conversation.id,
                     query=query,
@@ -446,7 +473,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         invoke_from: InvokeFrom,
         draft_type: Any,
         user: Account | EndUser,
-    ) -> tuple[Agent, str, AgentSoulConfig]:
+    ) -> tuple[Agent, str, Literal["snapshot", "draft", "build_draft"], AgentSoulConfig]:
         agent = db.session.scalar(
             select(Agent)
             .where(
@@ -474,13 +501,16 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 account_id=user.id if isinstance(user, Account) else None,
             )
             agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-            return agent, draft.id, agent_soul
+            config_version_kind: Literal["snapshot", "draft", "build_draft"] = (
+                "build_draft" if draft.draft_type == AgentConfigDraftType.DEBUG_BUILD else "draft"
+            )
+            return agent, draft.id, config_version_kind, agent_soul
         _, snapshot, agent_soul = self._resolve_agent_by_id(
             tenant_id=app_model.tenant_id,
             agent_id=agent.id,
             snapshot_id=agent.active_config_snapshot_id,
         )
-        return agent, snapshot.id, agent_soul
+        return agent, snapshot.id, "snapshot", agent_soul
 
     @staticmethod
     def _runtime_session_snapshot_id(*, invoke_from: InvokeFrom, snapshot_id: str) -> str | None:

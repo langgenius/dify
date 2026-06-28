@@ -187,38 +187,22 @@ class WorkflowAgentPublishService:
         agent_soul: AgentSoulConfig,
     ) -> None:
         from services.agent.prompt_mentions import MentionKind, parse_prompt_mentions
-        from services.agent_drive_service import decode_drive_mention_ref
 
-        wanted_keys: dict[str, tuple[str, str]] = {}
+        del session
+        configured_skill_names = {item.name for item in agent_soul.config_skills}
+        configured_file_names = {item.name for item in agent_soul.config_files}
+        missing_refs: list[str] = []
         for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt):
             if mention.kind not in {MentionKind.SKILL, MentionKind.FILE}:
                 continue
-            drive_key = decode_drive_mention_ref(mention.ref_id)
-            if not drive_key:
-                continue
-            code = "skill_ref_dangling" if mention.kind == MentionKind.SKILL else "file_ref_dangling"
-            wanted_keys[drive_key] = (code, mention.label or drive_key)
-        if not wanted_keys or not binding.agent_id:
-            return
-
-        existing_keys = set(
-            session.scalars(
-                select(AgentDriveFile.key).where(
-                    AgentDriveFile.tenant_id == binding.tenant_id,
-                    AgentDriveFile.agent_id == binding.agent_id,
-                    AgentDriveFile.key.in_(sorted(wanted_keys)),
-                )
-            ).all()
-        )
-        messages: list[str] = []
-        for key, (code, display) in wanted_keys.items():
-            if key in existing_keys:
-                continue
-            kind = "skill" if code == "skill_ref_dangling" else "file"
-            messages.append(f"{code}: {kind} '{display}' has no drive entry for key '{key}'.")
-        if messages:
+            ref_name = mention.ref_id
+            if mention.kind == MentionKind.SKILL and ref_name not in configured_skill_names:
+                missing_refs.append(f"skill_ref_dangling: skill '{mention.label or ref_name}' is not configured.")
+            if mention.kind == MentionKind.FILE and ref_name not in configured_file_names:
+                missing_refs.append(f"file_ref_dangling: file '{mention.label or ref_name}' is not configured.")
+        if missing_refs:
             raise WorkflowAgentNodeValidationError(
-                f"Workflow Agent node {binding.node_id} has invalid Agent Soul drive refs: {'; '.join(messages)}"
+                f"Workflow Agent node {binding.node_id} has invalid Agent Soul config refs: {'; '.join(missing_refs)}"
             )
 
     @classmethod

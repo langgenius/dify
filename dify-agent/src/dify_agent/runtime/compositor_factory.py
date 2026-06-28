@@ -6,7 +6,7 @@ state-free Dify structured output layer, the optional Dify ask-human layer, the
 Dify execution-context layer, the stateful Dify shell layer, and the Dify
 plugin/knowledge business-layer family:
 
-- ``dify.drive`` for drive-backed skill catalog + eager pull,
+- ``dify.config`` for Agent Soul-backed config assets + eager pull,
 - ``dify.execution_context`` for shared tenant/user/run daemon context,
 - ``dify.shell`` for shellctl-backed shell job control,
 - ``dify.plugin.llm`` for plugin-backed model selection,
@@ -36,6 +36,7 @@ from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMER
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
+from dify_agent.layers.config.layer import DifyConfigLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.drive.layer import DifyDriveLayer
@@ -89,6 +90,7 @@ def create_default_layer_providers(
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),
+        LayerProvider.from_layer_type(DifyConfigLayer),
         LayerProvider.from_layer_type(DifyDriveLayer),
         LayerProvider.from_factory(
             layer_type=DifyExecutionContextLayer,

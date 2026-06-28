@@ -7,7 +7,7 @@ from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
 
-from clients.agent_backend import DIFY_EXECUTION_CONTEXT_LAYER_ID, DIFY_PLUGIN_TOOLS_LAYER_ID
+from clients.agent_backend import DIFY_CONFIG_LAYER_ID, DIFY_EXECUTION_CONTEXT_LAYER_ID, DIFY_PLUGIN_TOOLS_LAYER_ID
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
@@ -1123,196 +1123,135 @@ def test_previous_node_remote_url_file_mapping_is_not_truncated_in_workflow_cont
     assert "...[truncated]" not in _workflow_user_prompt(result)
 
 
-# ── ENG-623: dify.drive declaration layer ─────────────────────────────────────
+# ── Agent config declaration layer ────────────────────────────────────────────
 
 
-def _soul_with_drive_skill() -> AgentSoulConfig:
+def _soul_with_config_assets() -> AgentSoulConfig:
     return AgentSoulConfig(
         prompt={
             "system_prompt": (
-                "You are careful. Use [§skill:tender-analyzer%2FSKILL.md:Tender Analyzer§] "
-                "and [§file:files%2Fsample.pdf:sample.pdf§]."
+                "You are careful. Use [§skill:tender-analyzer:Tender Analyzer§] "
+                "and [§file:sample.pdf:sample.pdf§]."
             )
         },
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+        config_skills=[{"name": "tender-analyzer", "description": "Parses RFPs.", "file_id": "tool-file-1"}],
+        config_files=[{"name": "sample.pdf", "file_kind": "upload_file", "file_id": "upload-file-1"}],
+        config_note="Read the proposal first.",
     )
 
 
-def _mock_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [
-            {
-                "path": "tender-analyzer",
-                "skill_md_key": "tender-analyzer/SKILL.md",
-                "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-                "name": "Tender Analyzer",
-                "description": "Parses RFPs.",
-                "size": 123,
-                "mime_type": "text/markdown",
-                "hash": "hash-1",
-                "created_at": 1,
-            }
-        ],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [
-            {"key": "tender-analyzer/SKILL.md", "is_skill": True},
-            {"key": "tender-analyzer/.DIFY-SKILL-FULL.zip", "is_skill": False},
-            {"key": "files/sample.pdf", "is_skill": False},
-        ],
-    )
+def test_build_config_layer_config_catalogs_assets_and_mentions():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
-
-def _mock_empty_drive_catalog(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
-    )
-
-
-def test_build_drive_layer_config_catalogs_drive_skills_and_mentions(monkeypatch: pytest.MonkeyPatch):
-    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
-
-    _mock_drive_catalog(monkeypatch)
-    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), tenant_id="tenant-1", agent_id="agent-1")
+    config, warnings = build_config_layer_config(_soul_with_config_assets())
 
     assert config is not None
-    assert config.drive_ref == "agent-agent-1"
-    assert [skill.skill_md_key for skill in config.skills] == ["tender-analyzer/SKILL.md"]
-    assert config.skills[0].archive_key == "tender-analyzer/.DIFY-SKILL-FULL.zip"
-    assert config.mentioned_skill_keys == ["tender-analyzer/SKILL.md"]
-    assert config.mentioned_file_keys == ["files/sample.pdf"]
+    assert [skill.name for skill in config.skills] == ["tender-analyzer"]
+    assert [skill.description for skill in config.skills] == ["Parses RFPs."]
+    assert [file_ref.name for file_ref in config.files] == ["sample.pdf"]
+    assert config.note == "Read the proposal first."
+    assert config.mentioned_skill_names == ["tender-analyzer"]
+    assert config.mentioned_file_names == ["sample.pdf"]
+    assert config.writable is False
     assert warnings == []
 
 
-def test_build_drive_layer_config_emits_drive_ref_when_catalog_is_empty(monkeypatch: pytest.MonkeyPatch):
-    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+def test_build_config_layer_config_marks_build_draft_writable():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
-    _mock_empty_drive_catalog(monkeypatch)
+    config, warnings = build_config_layer_config(_soul_with_config_assets(), writable=True)
+
+    assert config is not None
+    assert config.writable is True
+    assert warnings == []
+
+
+def test_build_config_layer_config_returns_none_for_empty_agent_soul():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
+
     soul = AgentSoulConfig(
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test")
     )
-    config, warnings = build_drive_layer_config(soul, tenant_id="tenant-1", agent_id="agent-1")
+    config, warnings = build_config_layer_config(soul)
 
-    assert config is not None
-    assert config.drive_ref == "agent-agent-1"
-    assert config.skills == []
-    assert config.mentioned_skill_keys == []
-    assert config.mentioned_file_keys == []
+    assert config is None
     assert warnings == []
 
 
-def test_workflow_run_request_contains_drive_layer_with_empty_catalog(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_run_request_has_no_config_layer_with_empty_agent_soul(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
     )
     monkeypatch.setattr("core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
-    _mock_empty_drive_catalog(monkeypatch)
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(_context())
 
     dumped = result.request.model_dump(mode="json")
     layers = {layer["name"]: layer for layer in dumped["composition"]["layers"]}
-    assert layers["drive"]["config"] == {
-        "drive_ref": "agent-agent-1",
-        "skills": [],
-        "mentioned_skill_keys": [],
-        "mentioned_file_keys": [],
-    }
+    assert DIFY_CONFIG_LAYER_ID not in layers
     assert layers[DIFY_SHELL_LAYER_ID]["deps"] == {"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID}
-    assert layers[DIFY_SHELL_LAYER_ID]["config"]["agent_stub_drive_ref"] == "agent-agent-1"
-    assert layers["drive"]["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
+    assert layers[DIFY_SHELL_LAYER_ID]["config"]["agent_stub_drive_ref"] is None
 
 
-def test_build_drive_layer_config_requires_agent_identity():
-    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
-
-    config, warnings = build_drive_layer_config(_soul_with_drive_skill(), tenant_id="tenant-1", agent_id=None)
-
-    assert config is None
-    assert [w["code"] for w in warnings] == ["drive_ref_dangling"]
-
-
-def test_workflow_run_request_contains_drive_layer_when_flag_enabled(monkeypatch: pytest.MonkeyPatch):
-    """Contract test: locks the dify.drive composition shape against cross-package drift."""
+def test_workflow_run_request_contains_config_layer_when_flag_enabled(monkeypatch: pytest.MonkeyPatch):
+    """Contract test: locks the dify.config composition shape against cross-package drift."""
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
     )
-    _mock_drive_catalog(monkeypatch)
     context = _context()
-    context.snapshot.config_snapshot = _soul_with_drive_skill()
+    context.snapshot.config_snapshot = _soul_with_config_assets()
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     dumped = result.request.model_dump(mode="json")
     layer_names = [layer["name"] for layer in dumped["composition"]["layers"]]
-    assert "drive" in layer_names
-    # shell enters first; drive uses that shell to materialize mentioned targets.
+    assert DIFY_CONFIG_LAYER_ID in layer_names
+    # shell enters first; config uses that shell to materialize mentioned targets.
     assert layer_names.index(DIFY_SHELL_LAYER_ID) == layer_names.index("execution_context") + 1
-    assert layer_names.index("drive") == layer_names.index(DIFY_SHELL_LAYER_ID) + 1
-    drive = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == "drive")
-    assert drive["type"] == "dify.drive"
-    assert drive["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
-    assert drive["config"]["drive_ref"] == "agent-agent-1"
-    assert drive["config"]["skills"] == [
-        {
-            "path": "tender-analyzer",
-            "name": "Tender Analyzer",
-            "description": "Parses RFPs.",
-            "skill_md_key": "tender-analyzer/SKILL.md",
-            "archive_key": "tender-analyzer/.DIFY-SKILL-FULL.zip",
-        }
-    ]
-    assert drive["config"]["mentioned_skill_keys"] == ["tender-analyzer/SKILL.md"]
-    assert drive["config"]["mentioned_file_keys"] == ["files/sample.pdf"]
+    assert layer_names.index(DIFY_CONFIG_LAYER_ID) == layer_names.index(DIFY_SHELL_LAYER_ID) + 1
+    config = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == DIFY_CONFIG_LAYER_ID)
+    assert config["type"] == "dify.config"
+    assert config["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
+    assert config["config"]["skills"] == [{"name": "tender-analyzer", "description": "Parses RFPs."}]
+    assert config["config"]["files"] == [{"name": "sample.pdf"}]
+    assert config["config"]["env_keys"] == []
+    assert config["config"]["note"] == "Read the proposal first."
+    assert config["config"]["mentioned_skill_names"] == ["tender-analyzer"]
+    assert config["config"]["mentioned_file_names"] == ["sample.pdf"]
+    assert config["config"]["writable"] is False
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
     assert warnings == []
-    # the drive layer is non-sensitive and must survive into persistable specs
+    # the config layer is non-sensitive and must survive into persistable specs
     from dify_agent.protocol import extract_runtime_layer_specs
 
     specs = extract_runtime_layer_specs(result.request.composition)
-    assert any(spec.name == "drive" and spec.type == "dify.drive" for spec in specs)
+    assert any(spec.name == DIFY_CONFIG_LAYER_ID and spec.type == "dify.config" for spec in specs)
 
 
-def test_workflow_runtime_expands_drive_mentions_in_agent_soul_prompt(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_runtime_expands_config_mentions_in_agent_soul_prompt(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
     )
-    _mock_drive_catalog(monkeypatch)
     context = _context()
-    context.snapshot.config_snapshot = _soul_with_drive_skill()
+    context.snapshot.config_snapshot = _soul_with_config_assets()
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-    assert soul_prompt.config.prefix == "You are careful. Use Tender Analyzer and sample.pdf."
+    assert soul_prompt.config.prefix == "You are careful. Use tender-analyzer and sample.pdf."
     assert "[§" not in soul_prompt.config.prefix
 
 
-def test_workflow_runtime_missing_drive_mentions_fall_back_to_label_then_decoded_key(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_runtime_missing_config_mentions_fall_back_to_label_then_name(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.list_skills",
-        lambda self, *, tenant_id, agent_id: [],
-    )
-    monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.AgentDriveService.manifest",
-        lambda self, *, tenant_id, agent_id, prefix="", include_download_url=False: [],
     )
     context = _context()
     context.snapshot.config_snapshot = AgentSoulConfig(
         prompt={
             "system_prompt": (
-                "Use [§skill:ghost%2FSKILL.md:Ghost Skill§], [§file:files%2Fghost.txt:Ghost File§], "
-                "and [§file:files%2Fno-label.txt§]."
+                "Use [§skill:ghost-skill:Ghost Skill§], [§file:ghost.txt:Ghost File§], and [§file:no-label.txt§]."
             )
         },
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
@@ -1321,34 +1260,35 @@ def test_workflow_runtime_missing_drive_mentions_fall_back_to_label_then_decoded
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     soul_prompt = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
-    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and files/no-label.txt."
+    assert soul_prompt.config.prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
     assert "[§" not in soul_prompt.config.prefix
 
 
-def test_workflow_run_request_has_no_drive_layer_when_flag_disabled(monkeypatch: pytest.MonkeyPatch):
+def test_workflow_run_request_has_no_config_layer_when_flag_disabled(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         "core.workflow.nodes.agent_v2.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
     )
     context = _context()
-    context.snapshot.config_snapshot = _soul_with_drive_skill()
+    context.snapshot.config_snapshot = _soul_with_config_assets()
 
     result = WorkflowAgentRuntimeRequestBuilder(credentials_provider=FakeCredentialsProvider()).build(context)
 
     dumped = result.request.model_dump(mode="json")
-    assert all(layer["name"] != "drive" for layer in dumped["composition"]["layers"])
+    assert all(layer["name"] != DIFY_CONFIG_LAYER_ID for layer in dumped["composition"]["layers"])
     assert result.metadata["runtime_support"]["unsupported_runtime_warnings"] == []
 
 
-def test_build_drive_layer_config_missing_mentions_warn_but_keep_skill_catalog(monkeypatch: pytest.MonkeyPatch):
-    from core.workflow.nodes.agent_v2.runtime_request_builder import build_drive_layer_config
+def test_build_config_layer_config_missing_mentions_warn_but_keep_catalog():
+    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
-    _mock_drive_catalog(monkeypatch)
     soul = AgentSoulConfig(
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
-        prompt={"system_prompt": "Use [§skill:ghost%2FSKILL.md:Ghost§]"},
+        config_skills=[{"name": "tender-analyzer", "description": "Parses RFPs.", "file_id": "tool-file-1"}],
+        prompt={"system_prompt": "Use [§skill:ghost-skill:Ghost§]"},
     )
-    config, warnings = build_drive_layer_config(soul, tenant_id="tenant-1", agent_id="agent-1")
+    config, warnings = build_config_layer_config(soul)
     assert config is not None
+    assert [skill.name for skill in config.skills] == ["tender-analyzer"]
     assert [w["code"] for w in warnings] == ["mention_target_missing"]
 
 

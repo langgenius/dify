@@ -17,6 +17,14 @@ import typer
 from typer.main import get_command
 
 from dify_agent.agent_stub.cli._agent_stub import connect_from_environment
+from dify_agent.agent_stub.cli._config import (
+    manifest_from_environment,
+    pull_config_env_from_environment,
+    pull_config_files_from_environment,
+    pull_config_note_from_environment,
+    pull_config_skills_from_environment,
+    push_config_from_environment,
+)
 from dify_agent.agent_stub.cli._drive import (
     DrivePushKind,
     format_drive_manifest,
@@ -40,10 +48,20 @@ app = typer.Typer(
     no_args_is_help=True,
 )
 file_app = typer.Typer(help="Upload or download workflow files through the Agent Stub.")
+config_app = typer.Typer(help="Inspect or update Agent Soul-backed config assets through the Agent Stub.")
+config_skill_app = typer.Typer(help="Pull config skills through the Agent Stub.")
+config_file_app = typer.Typer(help="Pull config files through the Agent Stub.")
+config_env_app = typer.Typer(help="Export config env variables visible to the current run.")
+config_note_app = typer.Typer(help="Export the current config note.")
 drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.")
 app.add_typer(file_app, name="file")
+app.add_typer(config_app, name="config")
+config_app.add_typer(config_skill_app, name="skill")
+config_app.add_typer(config_file_app, name="file")
+config_app.add_typer(config_env_app, name="env")
+config_app.add_typer(config_note_app, name="note")
 app.add_typer(drive_app, name="drive")
-_KNOWN_ROOT_COMMANDS = frozenset({"connect", "drive", "file"})
+_KNOWN_ROOT_COMMANDS = frozenset({"config", "connect", "drive", "file"})
 
 
 @app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
@@ -75,6 +93,55 @@ def download(
         mapping=mapping,
         local_dir=local_dir,
     )
+
+
+@config_app.command("manifest")
+def config_manifest() -> None:
+    """Show the current visible Agent config manifest as JSON."""
+    _run_config_manifest()
+
+
+@config_app.command("push")
+def config_push(
+    from_path: str | None = typer.Option(
+        None,
+        "--from",
+        help="JSON spec file path. Omit or pass - to read the spec from stdin.",
+    ),
+) -> None:
+    """Update the current build-draft Agent config from one local spec."""
+    _run_config_push(from_path=from_path)
+
+@config_skill_app.command("pull")
+def config_skill_pull(
+    names: list[str] = typer.Argument(None, metavar="NAME"),
+    local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config skills."),
+    json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
+) -> None:
+    _run_config_skill_pull(names=names or None, local_dir=local_dir, json_output=json_output)
+
+
+@config_file_app.command("pull")
+def config_file_pull(
+    names: list[str] = typer.Argument(None, metavar="NAME"),
+    local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config files."),
+    json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
+) -> None:
+    _run_config_file_pull(names=names or None, local_dir=local_dir, json_output=json_output)
+
+
+@config_env_app.command("pull")
+def config_env_pull(
+    local_path: str | None = typer.Option(None, "--to", help="Local dotenv file path."),
+) -> None:
+    _run_config_env_pull(local_path=local_path)
+
+
+@config_note_app.command("pull")
+def config_note_pull(
+    local_path: str | None = typer.Option(None, "--to", help="Local markdown file path."),
+) -> None:
+    _run_config_note_pull(local_path=local_path)
 
 
 @drive_app.command("list")
@@ -223,6 +290,89 @@ def _run_file_download(
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
     typer.echo(str(response.path))
+
+
+def _run_config_manifest() -> None:
+    try:
+        response = manifest_from_environment()
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
+
+
+def _run_config_skill_pull(*, names: list[str] | None, local_dir: str | None, json_output: bool) -> None:
+    try:
+        response = pull_config_skills_from_environment(names=names, local_dir=local_dir)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    if json_output:
+        typer.echo(response.model_dump_json())
+        return
+    for index, item in enumerate(response.items):
+        if index:
+            typer.echo("")
+        typer.echo(item.directory_path)
+        typer.echo(item.skill_md, nl=False)
+
+
+def _run_config_file_pull(*, names: list[str] | None, local_dir: str | None, json_output: bool) -> None:
+    try:
+        response = pull_config_files_from_environment(names=names, local_dir=local_dir)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    if json_output:
+        typer.echo(response.model_dump_json())
+        return
+    for item in response.items:
+        typer.echo(item.path)
+
+
+def _run_config_env_pull(*, local_path: str | None) -> None:
+    try:
+        path = pull_config_env_from_environment(local_path=local_path)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(str(path))
+
+
+def _run_config_note_pull(*, local_path: str | None) -> None:
+    try:
+        path = pull_config_note_from_environment(local_path=local_path)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(str(path))
+
+
+def _run_config_push(*, from_path: str | None) -> None:
+    try:
+        response = push_config_from_environment(spec_path=from_path)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
 
 
 def _run_drive_list(*, path_prefix: str, json_output: bool) -> None:
