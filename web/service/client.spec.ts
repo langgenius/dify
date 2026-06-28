@@ -1,5 +1,5 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
-import type { MutationFunctionContext } from '@tanstack/react-query'
+import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/react-query'
 import type { consoleQuery as ConsoleQuery } from './client'
 import type { Tag } from '@/contract/console/tags'
 import { QueryClient } from '@tanstack/react-query'
@@ -17,6 +17,16 @@ const loadGetBaseURL = async (isClientValue: boolean) => {
 const loadConsoleQuery = async () => {
   vi.resetModules()
   vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const module = await import('./client')
+  warnSpy.mockRestore()
+  return module.consoleQuery
+}
+
+const loadConsoleQueryWithRequest = async (request: ReturnType<typeof vi.fn>) => {
+  vi.resetModules()
+  vi.doMock('@/utils/client', () => ({ isClient: true, isServer: false }))
+  vi.doMock('./base', () => ({ request }))
   const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
   const module = await import('./client')
   warnSpy.mockRestore()
@@ -198,6 +208,46 @@ describe('getBaseURL', () => {
     // Assert
     expect(url.href).toBe('https://api.example.com/console/api')
     expect(warnSpy).not.toHaveBeenCalled()
+  })
+})
+
+// Scenario: oRPC operation context controls transport behavior without handwritten REST helpers.
+describe('consoleQuery transport context', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('should forward silent context to the base request transport', async () => {
+    const request = vi.fn().mockResolvedValue(new Response(JSON.stringify({}), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    }))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryOptions = consoleQuery.agent.byAgentId.buildDraft.get.queryOptions({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+      },
+      context: {
+        silent: true,
+      },
+    })
+
+    await Promise
+      .resolve(queryOptions.queryFn({ signal: new AbortController().signal } as QueryFunctionContext))
+      .catch(() => undefined)
+
+    expect(request).toHaveBeenCalledWith(
+      expect.stringContaining('/agent/agent-1/build-draft'),
+      expect.any(Object),
+      expect.objectContaining({
+        fetchCompat: true,
+        silent: true,
+      }),
+    )
   })
 })
 
