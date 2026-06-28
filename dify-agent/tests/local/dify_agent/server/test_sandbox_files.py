@@ -19,7 +19,6 @@ from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
-from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
 from dify_agent.protocol import (
     CreateRunRequest,
     RunComposition,
@@ -39,7 +38,7 @@ from dify_agent.server.sandbox_files import (
 )
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from shell_session_manager.shellctl.shared import JobResult, JobStatusName
+from shell_session_manager.shellctl.shared import DeleteJobResponse, JobResult, JobStatusName
 
 
 @dataclass(slots=True)
@@ -72,7 +71,7 @@ class FakeShellctlClient:
         return self.run_handler(script, cwd, env, timeout)
 
     async def wait(self, job_id: str, *, offset: int, timeout: float = 10.0) -> JobResult:
-        return self.run_handler("", None, None, timeout)
+        raise AssertionError(f"Unexpected wait() call for {job_id} offset={offset} timeout={timeout}")
 
     async def input(self, job_id: str, text: str, *, offset: int, timeout: float = 10.0) -> JobResult:
         raise AssertionError(f"Unexpected input() call for {job_id} text={text!r}")
@@ -85,10 +84,11 @@ class FakeShellctlClient:
         job_id: str,
         *,
         force: bool = False,
-    ) -> object:
-        del force
+        grace_seconds: float | None = None,
+    ) -> DeleteJobResponse:
+        del force, grace_seconds
         self.delete_calls.append(job_id)
-        return None
+        return DeleteJobResponse(job_id=job_id)
 
     async def close(self) -> None:
         return None
@@ -191,7 +191,8 @@ def _service(
         layer_type=DifyShellLayer,
         create=lambda config: DifyShellLayer.from_config_with_settings(
             DifyShellLayerConfig.model_validate(config),
-            shell_provisioner=ShellctlProvisioner(client_factory=lambda: client),
+            shellctl_entrypoint="http://shellctl",
+            shellctl_client_factory=lambda _entrypoint: client,
             agent_stub_api_base_url="https://agent.example.com/agent-stub",
             agent_stub_token_factory=lambda execution_context, *, session_id: (
                 f"token-for:{execution_context.tenant_id}:{session_id}"
