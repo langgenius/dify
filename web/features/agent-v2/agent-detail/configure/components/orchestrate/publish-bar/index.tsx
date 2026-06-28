@@ -13,7 +13,7 @@ import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { hasAgentComposerUnpublishedChangesAtom } from '@/features/agent-v2/agent-composer/store'
+import { isAgentComposerDirtyAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -54,16 +54,16 @@ function getPublishState({
   if (isPublishing)
     return 'publishing'
 
-  if (activeConfigIsPublished)
-    return 'published'
-
   if (isDirty)
     return 'unpublished'
+
+  if (activeConfigIsPublished)
+    return 'published'
 
   if (!activeConfigSnapshot)
     return 'draft'
 
-  if (!activeConfigIsPublished)
+  if (activeConfigIsPublished === false)
     return 'unpublished'
 
   return 'published'
@@ -96,20 +96,20 @@ export function AgentConfigurePublishBar({
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const queryClient = useQueryClient()
   const [publishBarMode, setPublishBarMode] = useState<PublishBarMode>({ status: 'compact' })
-  const hasUnpublishedChanges = useAtomValue(hasAgentComposerUnpublishedChangesAtom)
+  const isDirty = useAtomValue(isAgentComposerDirtyAtom)
   const knowledgeRetrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const knowledgeValidation = validateKnowledgeRetrievals(knowledgeRetrievals)
   const getValidationMessage = useKnowledgeValidationMessage()
   const publishableState = getPublishState({
     activeConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    isDirty,
     isPublishing: false,
   })
   const publishState = getPublishState({
     activeConfigIsPublished,
     activeConfigSnapshot,
-    isDirty: hasUnpublishedChanges,
+    isDirty,
     isPublishing,
   })
   const publishIsAvailable = !isPublishing && (publishableState === 'draft' || publishableState === 'unpublished')

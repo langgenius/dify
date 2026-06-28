@@ -170,7 +170,8 @@ export function useAgentConfigureSync({
       markActiveConfigUnpublished()
 
       if (
-        !validateKnowledgeRetrievals(store.get(agentComposerDraftAtom).knowledgeRetrievals).isValid
+        publishInFlightRef.current
+        || !validateKnowledgeRetrievals(store.get(agentComposerDraftAtom).knowledgeRetrievals).isValid
         || lastAutosavedDraftKeyRef.current === agentSoulDraftKey
       ) {
         return

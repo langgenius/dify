@@ -346,17 +346,56 @@ describe('AgentConfigurePublishBar', () => {
     )
   })
 
-  it('should keep published state from active config status even when local draft differs', () => {
+  it('should not show unpublished state while active published status is still loading', () => {
     renderPublishBar({
-      activeConfigIsPublished: true,
-      activeConfigSnapshot: null,
-      prompt: 'Updated system prompt',
+      activeConfigSnapshot,
     })
 
     expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
     expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
       expect.objectContaining({ enabled: false, ignoreInputs: false }),
+    )
+  })
+
+  it('should keep published state on entry when the saved draft differs from the published snapshot', () => {
+    const publishedDraft = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Published prompt',
+    }
+    const savedDraft = {
+      ...defaultAgentSoulConfigFormState,
+      prompt: 'Saved draft prompt',
+    }
+
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot: null,
+      setupStore: (store) => {
+        store.set(agentComposerPublishedDraftAtom, publishedDraft)
+        store.set(agentComposerOriginalDraftAtom, savedDraft)
+        store.set(agentComposerDraftAtom, savedDraft)
+      },
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.upToDate')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.publishBar.published' })).toBeDisabled()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: false, ignoreInputs: false }),
+    )
+  })
+
+  it('should render unpublished state when local draft changes after entry', () => {
+    renderPublishBar({
+      activeConfigIsPublished: true,
+      activeConfigSnapshot: null,
+      prompt: 'Updated system prompt',
+    })
+
+    expect(screen.getByText('agentV2.agentDetail.configure.publishBar.unpublishedChanges')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /agentV2\.agentDetail\.configure\.publishBar\.publishUpdate/ })).toBeInTheDocument()
+    expect(hotkeyRegistrations.get('Mod+Shift+P')?.options).toEqual(
+      expect.objectContaining({ enabled: true, ignoreInputs: false }),
     )
   })
 
@@ -400,6 +439,7 @@ describe('AgentConfigurePublishBar', () => {
 
   it('should mark non-prompt draft changes as unpublished', () => {
     renderPublishBar({
+      activeConfigIsPublished: false,
       activeConfigSnapshot,
       setupStore: (store) => {
         store.set(agentComposerPublishedDraftAtom, originalDraftWithFile)
@@ -425,6 +465,7 @@ describe('AgentConfigurePublishBar', () => {
     }
 
     renderPublishBar({
+      activeConfigIsPublished: false,
       activeConfigSnapshot,
       setupStore: (store) => {
         store.set(agentComposerPublishedDraftAtom, publishedDraft)

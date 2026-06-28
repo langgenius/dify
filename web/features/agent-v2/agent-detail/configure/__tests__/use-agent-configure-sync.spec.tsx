@@ -4,6 +4,7 @@ import { act, renderHook } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
@@ -420,6 +421,42 @@ describe('useAgentConfigureSync', () => {
       name: 'Agent',
     })
     expect(toastMock.success).toHaveBeenCalledWith('common.api.actionSuccess')
+  })
+
+  it('should mark the active config as unpublished after changing a published draft', async () => {
+    const { queryClient, result, store } = renderUseAgentConfigureSync()
+    queryClient.setQueryData(['agent-detail', 'agent-1'], {
+      active_config_is_published: false,
+      name: 'Agent',
+    })
+    act(() => {
+      store.set(agentComposerDraftAtom, {
+        ...defaultAgentSoulConfigFormState,
+        prompt: 'Published prompt',
+      })
+    })
+
+    await act(async () => {
+      await result.current.publishDraft()
+    })
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: true,
+      name: 'Agent',
+    })
+
+    act(() => {
+      store.set(agentComposerAppFeaturesAtom, {
+        suggested_questions_after_answer: {
+          enabled: true,
+        },
+      })
+    })
+
+    expect(queryClient.getQueryData(['agent-detail', 'agent-1'])).toEqual({
+      active_config_is_published: false,
+      name: 'Agent',
+    })
+    expect(store.get(agentComposerPublishedDraftAtom)?.appFeatures).toBeUndefined()
   })
 
   it('should keep default model fallback from creating unpublished changes after publish', async () => {
