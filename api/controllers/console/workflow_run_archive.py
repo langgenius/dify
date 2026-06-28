@@ -19,7 +19,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from libs.archive_storage import get_archive_storage
+from libs.archive_storage import get_export_storage
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant, login_required
 from services.retention.workflow_run.archive_download_preparation import ARCHIVE_DOWNLOAD_MIME_TYPE
@@ -207,7 +207,7 @@ class WorkflowRunArchiveDownloadFileApi(Resource):
         except WorkflowRunArchiveDownloadNotReadyError as exc:
             raise Conflict(str(exc)) from exc
 
-        storage = get_archive_storage()
+        storage = get_export_storage()
         presigned_url = storage.generate_presigned_url(
             task.storage_key,
             expires_in=_presigned_url_expires_in(task.expires_at),

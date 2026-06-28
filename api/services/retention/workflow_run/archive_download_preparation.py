@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
-from libs.archive_storage import ArchiveStorage, get_archive_storage
+from libs.archive_storage import ArchiveStorage, get_archive_storage, get_export_storage
 from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_bundle_index import (
     ARCHIVE_BUNDLE_ROOT_PREFIX,
@@ -51,10 +51,13 @@ class WorkflowRunArchiveDownloadPreparer:
     Build one ready-to-download CSV ZIP for a Redis archive download task.
 
     The output object is deterministic for a given `download_id`, so retrying a failed task overwrites the same
-    temporary object instead of creating unbounded duplicate files.
+    temporary object instead of creating unbounded duplicate files. Source archive bundles are read from the archive
+    bucket, while the prepared ZIP is written to the export bucket so object lifecycle policies can expire downloads
+    without touching long-lived archives.
     """
 
-    storage: ArchiveStorage | None
+    archive_storage: ArchiveStorage | None
+    download_storage: ArchiveStorage | None
     cache: WorkflowRunArchiveDownloadTaskCache
     session_factory: sessionmaker[Session]
 
@@ -62,10 +65,13 @@ class WorkflowRunArchiveDownloadPreparer:
         self,
         *,
         storage: ArchiveStorage | None = None,
+        archive_storage: ArchiveStorage | None = None,
+        download_storage: ArchiveStorage | None = None,
         cache: WorkflowRunArchiveDownloadTaskCache | None = None,
         session_factory: sessionmaker[Session] | None = None,
     ) -> None:
-        self.storage = storage
+        self.archive_storage = archive_storage or storage
+        self.download_storage = download_storage or storage
         self.cache = cache or WorkflowRunArchiveDownloadTaskCache()
         self.session_factory = session_factory or sessionmaker(bind=db.engine, expire_on_commit=False)
 
@@ -83,11 +89,12 @@ class WorkflowRunArchiveDownloadPreparer:
 
         processing_task = self._mark_processing(task)
         try:
-            storage = self.storage or get_archive_storage()
+            archive_storage = self.archive_storage or get_archive_storage()
+            download_storage = self.download_storage or get_export_storage()
             bundles = self._get_task_bundles(processing_task)
-            payload = self._build_zip_payload(storage, processing_task, bundles)
+            payload = self._build_zip_payload(archive_storage, processing_task, bundles)
             storage_key = build_archive_download_storage_key(processing_task)
-            storage.put_object(storage_key, payload)
+            download_storage.put_object(storage_key, payload)
             return self._mark_ready(processing_task, storage_key=storage_key, file_size_bytes=len(payload))
         except Exception as exc:
             logger.exception("Failed to prepare workflow run archive download %s", download_id)

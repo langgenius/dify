@@ -163,12 +163,19 @@ def _manifest_bytes(table_payloads: dict[str, bytes], *, bundle_id: str = BUNDLE
 def _preparer(
     *,
     task: WorkflowRunArchiveDownloadTask,
-    storage: FakeArchiveStorage,
+    storage: FakeArchiveStorage | None = None,
+    archive_storage: FakeArchiveStorage | None = None,
+    download_storage: FakeArchiveStorage | None = None,
     cache: FakeTaskCache,
     bundles: list[WorkflowRunArchiveBundle] | None = None,
 ) -> WorkflowRunArchiveDownloadPreparer:
+    source_storage = archive_storage or storage
+    target_storage = download_storage or storage
+    assert source_storage is not None
+    assert target_storage is not None
     return WorkflowRunArchiveDownloadPreparer(
-        storage=cast(ArchiveStorage, storage),
+        archive_storage=cast(ArchiveStorage, source_storage),
+        download_storage=cast(ArchiveStorage, target_storage),
         cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
         session_factory=cast(sessionmaker[Session], FakeSessionFactory(bundles or [_bundle()])),
     )
@@ -191,7 +198,7 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
         "workflow_app_logs": _parquet_bytes([{"id": "log-b", "workflow_run_id": "run-b"}]),
         "workflow_runs": _parquet_bytes([{"id": "run-b", "status": "failed"}]),
     }
-    storage = FakeArchiveStorage(
+    archive_storage = FakeArchiveStorage(
         {
             f"{_object_prefix('bundle-a')}/manifest.json": _manifest_bytes(
                 first_bundle_payloads,
@@ -211,10 +218,12 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
             },
         }
     )
+    download_storage = FakeArchiveStorage({})
     cache = FakeTaskCache(task)
     preparer = _preparer(
         task=task,
-        storage=storage,
+        archive_storage=archive_storage,
+        download_storage=download_storage,
         cache=cache,
         bundles=[_bundle("bundle-a"), _bundle("bundle-b")],
     )
@@ -227,8 +236,9 @@ def test_prepare_workflow_run_archive_download_builds_csv_zip_and_marks_ready() 
     assert result.file_name == "workflow-run-logs-2025-03.zip"
     assert cache.saved_tasks[0].status == WorkflowRunArchiveDownloadStatus.PROCESSING
     assert cache.saved_tasks[-1].status == WorkflowRunArchiveDownloadStatus.READY
+    assert archive_storage.put_objects == {}
 
-    archive_payload = storage.put_objects[result.storage_key]
+    archive_payload = download_storage.put_objects[result.storage_key]
     with zipfile.ZipFile(io.BytesIO(archive_payload)) as archive:
         names = set(archive.namelist())
         assert names == {
