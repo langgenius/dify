@@ -82,9 +82,9 @@ const isSnippetDetailPathname = (pathname: string) => {
   return section === 'snippets' && !!snippetId
 }
 
-const MainNav = ({
+export function MainNav({
   className,
-}: MainNavProps) => {
+}: MainNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
   const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
@@ -222,7 +222,7 @@ const MainNav = ({
         isDetailNavigationHoverPreviewOpen ? 'overflow-visible' : 'overflow-hidden',
         showDetailNavigation
           ? detailNavigationExpanded
-            ? 'w-[248px] bg-background-body p-1'
+            ? 'w-62 bg-background-body p-1'
             : 'w-16 bg-background-body p-1'
           : showSnippetDetailBottomNavigation
             ? 'w-16 bg-background-body p-1'
@@ -356,5 +356,3 @@ const MainNav = ({
     </aside>
   )
 }
-
-export default MainNav

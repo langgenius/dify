@@ -1,5 +1,5 @@
 import type { RefCallback } from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 
 type FetchNextPageOptions = {
   cancelRefetch?: boolean
@@ -24,10 +24,16 @@ export type UseInfiniteScrollOptions = {
 }
 
 type UseInfiniteScrollResult<TRoot extends Element, TTarget extends Element> = {
-  rootEl: TRoot | null
   rootRef: RefCallback<TRoot>
-  sentinelEl: TTarget | null
   sentinelRef: RefCallback<TTarget>
+}
+
+type ObservedTarget<TRoot extends Element, TTarget extends Element> = {
+  rootEl: TRoot | null
+  rootMargin: string
+  sentinelEl: TTarget
+  threshold: number | number[]
+  useWindow: boolean
 }
 
 export function useInfiniteScroll<
@@ -46,8 +52,10 @@ export function useInfiniteScroll<
     useWindow = false,
   } = options
 
-  const [rootEl, setRootEl] = useState<TRoot | null>(null)
-  const [sentinelEl, setSentinelEl] = useState<TTarget | null>(null)
+  const observerRef = useRef<IntersectionObserver | null>(null)
+  const observedTargetRef = useRef<ObservedTarget<TRoot, TTarget> | null>(null)
+  const rootElRef = useRef<TRoot | null>(null)
+  const sentinelElRef = useRef<TTarget | null>(null)
   const loadingLockRef = useRef(false)
 
   const latestRef = useRef({
@@ -74,14 +82,6 @@ export function useInfiniteScroll<
     isLoading: query.isLoading ?? false,
   }
 
-  const rootRef = useCallback((node: TRoot | null) => {
-    setRootEl(node)
-  }, [])
-
-  const sentinelRef = useCallback((node: TTarget | null) => {
-    setSentinelEl(node)
-  }, [])
-
   const canLoad = enabled
     && Boolean(query.hasNextPage)
     && !query.isFetchingNextPage
@@ -89,18 +89,47 @@ export function useInfiniteScroll<
     && !query.error
     && !(guardOnFetching && (query.isFetching ?? false))
 
-  useEffect(() => {
-    if (!canLoad)
-      return
+  const disconnectObserver = useCallback(() => {
+    observerRef.current?.disconnect()
+    observerRef.current = null
+    observedTargetRef.current = null
+  }, [])
 
-    if (!sentinelEl)
+  const connectObserver = useCallback(() => {
+    if (!canLoad) {
+      disconnectObserver()
       return
+    }
 
-    if (!useWindow && !rootEl)
-      return
+    const rootEl = rootElRef.current
+    const sentinelEl = sentinelElRef.current
 
-    if (typeof IntersectionObserver === 'undefined')
+    if (!sentinelEl) {
+      disconnectObserver()
       return
+    }
+
+    if (!useWindow && !rootEl) {
+      disconnectObserver()
+      return
+    }
+
+    if (typeof IntersectionObserver === 'undefined') {
+      disconnectObserver()
+      return
+    }
+
+    const observedTarget = observedTargetRef.current
+    if (observerRef.current
+      && observedTarget?.rootEl === rootEl
+      && observedTarget.sentinelEl === sentinelEl
+      && observedTarget.rootMargin === rootMargin
+      && observedTarget.threshold === threshold
+      && observedTarget.useWindow === useWindow) {
+      return
+    }
+
+    disconnectObserver()
 
     const observer = new IntersectionObserver(([entry]) => {
       const latest = latestRef.current
@@ -134,14 +163,32 @@ export function useInfiniteScroll<
     })
 
     observer.observe(sentinelEl)
+    observerRef.current = observer
+    observedTargetRef.current = {
+      rootEl,
+      rootMargin,
+      sentinelEl,
+      threshold,
+      useWindow,
+    }
+  }, [canLoad, disconnectObserver, rootMargin, threshold, useWindow])
 
-    return () => observer.disconnect()
-  }, [canLoad, rootEl, rootMargin, sentinelEl, threshold, useWindow])
+  const rootRef = useCallback((node: TRoot | null) => {
+    rootElRef.current = node
+    connectObserver()
+  }, [connectObserver])
+
+  const sentinelRef = useCallback((node: TTarget | null) => {
+    sentinelElRef.current = node
+    connectObserver()
+  }, [connectObserver])
+
+  useEffect(() => {
+    connectObserver()
+  }, [connectObserver])
 
   return {
-    rootEl,
     rootRef,
-    sentinelEl,
     sentinelRef,
   }
 }
