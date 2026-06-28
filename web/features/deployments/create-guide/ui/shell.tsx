@@ -1,7 +1,7 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { stepAtom } from '@/features/deployments/create-guide/state'
+import { stepAtom } from '@/features/deployments/create-guide/state/primitives'
 import { GuideCard, GuideFrame } from './layout'
 import {
   ReleaseActionButtons,

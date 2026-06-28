@@ -241,7 +241,7 @@ describe('AccountSetting', () => {
       expect(screen.queryByText('common.settings.provider'))!.not.toBeInTheDocument()
       expect(screen.getAllByText('common.settings.members').length).toBeGreaterThan(0)
       expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.permissionSet' })).toBeInTheDocument()
       expect(screen.getByText('common.settings.billing'))!.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.queryByText('common.settings.dataSource'))!.not.toBeInTheDocument()
@@ -359,7 +359,7 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'common.settings.resourceAccess' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.settings.permissionSet' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'common.settings.billing' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'appLog.archives.title' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'custom.custom' })).toBeInTheDocument()
@@ -404,7 +404,7 @@ describe('AccountSetting', () => {
       expect(screen.getByText('common.settings.preferences'))!.toBeInTheDocument()
     })
 
-    it('should hide role and resource access entries when role management permission is missing', () => {
+    it('should hide role and permission set entries when role management permission is missing', () => {
       // Arrange
       const contextWithoutRoleManagePermission = {
         ...baseAppContextValue,
@@ -419,22 +419,22 @@ describe('AccountSetting', () => {
       // Assert
       expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.permissionSet' })).not.toBeInTheDocument()
     })
 
-    it('should hide role and resource access entries when RBAC is disabled', () => {
+    it('should hide role and permission set entries when RBAC is disabled', () => {
       // Act
       renderAccountSetting({ rbacEnabled: false })
 
       // Assert
       expect(screen.getByRole('button', { name: 'common.settings.members' })).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'common.settings.rolesAndPermissions' })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: 'common.settings.resourceAccess' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'common.settings.permissionSet' })).not.toBeInTheDocument()
     })
 
     it('should not render direct role pages when RBAC is disabled', () => {
       // Act
-      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.ACCESS_RULES, rbacEnabled: false })
+      renderAccountSetting({ initialTab: ACCOUNT_SETTING_TAB.PERMISSION_SET, rbacEnabled: false })
 
       // Assert
       expect(screen.queryByTestId('access-rules-page')).not.toBeInTheDocument()
@@ -562,9 +562,9 @@ describe('AccountSetting', () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.settings.rolesAndPermissions' }))
       expect(screen.getByTestId('permissions-page')).toBeInTheDocument()
 
-      // Resource Access
-      fireEvent.click(screen.getByRole('button', { name: 'common.settings.resourceAccess' }))
-      expect(screen.getByText('common.settings.resourceAccessDescription')).toBeInTheDocument()
+      // Permission Set
+      fireEvent.click(screen.getByRole('button', { name: 'common.settings.permissionSet' }))
+      expect(screen.getByText('common.settings.permissionSetDescription')).toBeInTheDocument()
       expect(screen.getByTestId('access-rules-page')).toBeInTheDocument()
 
       // Language

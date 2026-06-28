@@ -32,7 +32,7 @@ const mockInvalidateDefaultModel = vi.hoisted(() => vi.fn())
 const mockUpdateDefaultModel = vi.hoisted(() => vi.fn(() => Promise.resolve({ result: 'success' })))
 const mockModelSelectorProps = vi.hoisted(() => [] as Array<{ hideProviderSettingsFooter?: boolean, onConfigureEmptyState?: () => void, showModelMeta?: boolean }>)
 
-let mockWorkspacePermissionKeys = ['plugin.manage']
+let mockWorkspacePermissionKeys = ['plugin.model_config']
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
@@ -108,7 +108,7 @@ describe('SystemModel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockModelSelectorProps.length = 0
-    mockWorkspacePermissionKeys = ['plugin.manage']
+    mockWorkspacePermissionKeys = ['plugin.model_config']
   })
 
   it('should render settings button', () => {
@@ -184,7 +184,7 @@ describe('SystemModel', () => {
     expect(mockUpdateModelList).not.toHaveBeenCalled()
   })
 
-  it('should disable save without plugin manage permission', async () => {
+  it('should disable save without model config permission', async () => {
     mockWorkspacePermissionKeys = []
     render(<SystemModel {...defaultProps} />)
 

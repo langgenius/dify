@@ -186,7 +186,7 @@ class DocumentResource(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -206,7 +206,7 @@ class DocumentResource(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -247,7 +247,7 @@ class GetProcessRuleApi(Resource):
                 raise NotFound("Dataset not found.")
 
             try:
-                DatasetService.check_dataset_permission(dataset, current_user)
+                DatasetService.check_dataset_permission(dataset, current_user, db.session)
             except services.errors.account.NoPermissionError as e:
                 raise Forbidden(str(e))
 
@@ -322,7 +322,7 @@ class DatasetDocumentListApi(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -431,7 +431,7 @@ class DatasetDocumentListApi(Resource):
             raise Forbidden()
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -1173,7 +1173,7 @@ class DocumentStatusApi(DocumentResource):
         DatasetService.check_dataset_model_setting(dataset)
 
         # check user's permission
-        DatasetService.check_dataset_permission(dataset, current_user)
+        DatasetService.check_dataset_permission(dataset, current_user, db.session)
 
         document_ids = request.args.getlist("document_id")
 
@@ -1440,7 +1440,7 @@ class DocumentGenerateSummaryApi(Resource):
             raise Forbidden()
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -1537,7 +1537,7 @@ class DocumentSummaryStatusApi(DocumentResource):
 
         # Check permissions
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 

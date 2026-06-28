@@ -13,8 +13,8 @@ describe('AccountSetting Constants', () => {
   it('should have correct ACCOUNT_SETTING_TAB values', () => {
     expect(ACCOUNT_SETTING_TAB.PROVIDER).toBe('provider')
     expect(ACCOUNT_SETTING_TAB.MEMBERS).toBe('members')
-    expect(ACCOUNT_SETTING_TAB.PERMISSIONS).toBe('permissions')
-    expect(ACCOUNT_SETTING_TAB.ACCESS_RULES).toBe('access-rules')
+    expect(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS).toBe('roles-and-permissions')
+    expect(ACCOUNT_SETTING_TAB.PERMISSION_SET).toBe('permission-set')
     expect(ACCOUNT_SETTING_TAB.BILLING).toBe('billing')
     expect(ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES).toBe('workflow-log-archives')
     expect(ACCOUNT_SETTING_TAB.DATA_SOURCE).toBe('data-source')
@@ -29,8 +29,8 @@ describe('AccountSetting Constants', () => {
   })
 
   it('isValidSettingsTab should include integrations tabs', () => {
-    expect(isValidSettingsTab('permissions')).toBe(true)
-    expect(isValidSettingsTab('access-rules')).toBe(true)
+    expect(isValidSettingsTab('roles-and-permissions')).toBe(true)
+    expect(isValidSettingsTab('permission-set')).toBe(true)
     expect(isValidSettingsTab('billing')).toBe(true)
     expect(isValidSettingsTab('workflow-log-archives')).toBe(true)
     expect(isValidSettingsTab('preferences')).toBe(true)

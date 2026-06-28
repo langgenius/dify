@@ -8,6 +8,11 @@ Archive V2 writes bundle-level Parquet objects. A bundle contains many workflow 
 Bundle metadata lives in the object-store manifest as the recoverable source of truth. Completed bundles are also
 mirrored into a small database index so console listing and download jobs do not list object storage online.
 
+Archive campaigns should use fixed absolute UTC windows for every tenant-prefix/shard execution. Relative windows are
+evaluated at process start and are not safe for multi-day rollout because each command would scan a different window.
+Per-shard `index.json` objects are derived from bundle manifests and provide run-level idempotency without adding a
+database claim table; bundle manifests remain the source of truth when an index must be rebuilt.
+
 Archived tables:
 - workflow_runs
 - workflow_app_logs
@@ -25,9 +30,11 @@ import json
 import logging
 import time
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from threading import Lock
+from typing import Any, NotRequired, TypedDict, cast
 
 import click
 import pyarrow as pa
@@ -65,11 +72,54 @@ from services.retention.workflow_run.archive_bundle_index import (
 )
 from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_FORMAT,
+    ARCHIVE_BUNDLE_INDEX_NAME,
     ARCHIVE_BUNDLE_MANIFEST_NAME,
     ARCHIVE_BUNDLE_SCHEMA_VERSION,
 )
 
 logger = logging.getLogger(__name__)
+
+
+class TableStatsManifestEntry(TypedDict):
+    row_count: int
+    checksum: str
+    size_bytes: int
+    object_key: str
+
+
+class ArchiveManifestDict(TypedDict):
+    schema_version: str
+    archive_format: str
+    tenant_id: str
+    tenant_prefix: str
+    year: int
+    month: int
+    shard: str
+    bundle_id: str
+    object_prefix: str
+    workflow_run_count: int
+    workflow_node_execution_count: int
+    min_created_at: str
+    max_created_at: str
+    min_run_id: str
+    max_run_id: str
+    archived_at: str
+    campaign_id: str
+    archive_window_start: str | None
+    archive_window_end: str
+    run_shard: str
+    tables: dict[str, TableStatsManifestEntry]
+    run_ids: list[str]
+
+
+class ArchiveBundleIndexDict(TypedDict):
+    schema_version: str
+    archive_format: str
+    object_prefix: str
+    updated_at: str
+    manifest_keys: list[str]
+    run_ids: list[str]
+    campaign_ids: NotRequired[list[str]]
 
 
 @dataclass(frozen=True)
@@ -105,6 +155,7 @@ class ArchiveResult:
     object_prefix: str
     success: bool
     run_count: int = 0
+    skipped_run_count: int = 0
     tables: list[TableStats] = field(default_factory=list)
     object_size_bytes: int = 0
     skipped: bool = False
@@ -170,11 +221,14 @@ class WorkflowRunArchiver:
     tenant_prefixes: list[str]
     run_shard_index: int | None
     run_shard_total: int | None
+    campaign_id: str
+    _archive_index_cache: dict[str, set[str]]
+    _archive_index_cache_lock: Lock
 
     def __init__(
         self,
         days: int = 90,
-        batch_size: int = 100,
+        batch_size: int = 10000,
         start_from: datetime.datetime | None = None,
         end_before: datetime.datetime | None = None,
         workers: int = 1,
@@ -216,10 +270,10 @@ class WorkflowRunArchiver:
         if start_from or end_before:
             if start_from is None or end_before is None:
                 raise ValueError("start_from and end_before must be provided together")
-            if start_from >= end_before:
+            self.start_from = self._normalize_utc_datetime(start_from)
+            self.end_before = self._normalize_utc_datetime(end_before)
+            if self.start_from >= self.end_before:
                 raise ValueError("start_from must be earlier than end_before")
-            self.start_from = start_from.replace(tzinfo=datetime.UTC)
-            self.end_before = end_before.replace(tzinfo=datetime.UTC)
         else:
             self.start_from = None
             self.end_before = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
@@ -237,6 +291,9 @@ class WorkflowRunArchiver:
             raise ValueError("run_shard_index must be between 0 and run_shard_total - 1")
         self.run_shard_index = run_shard_index
         self.run_shard_total = run_shard_total
+        self.campaign_id = self._build_campaign_id()
+        self._archive_index_cache = {}
+        self._archive_index_cache_lock = Lock()
         self.limit = limit
         self.dry_run = dry_run
         self.delete_after_archive = delete_after_archive
@@ -300,24 +357,23 @@ class WorkflowRunArchiver:
                 if not runs_to_process:
                     continue
 
-                for bundle_runs in self._group_runs_for_bundles(runs_to_process):
-                    summary.total_bundles_processed += 1
-                    with session_maker() as session:
-                        result = self._archive_bundle(session, storage, bundle_runs)
-
+                bundle_groups = self._group_runs_for_bundles(runs_to_process)
+                summary.total_bundles_processed += len(bundle_groups)
+                for result in self._archive_bundle_groups(session_maker, storage, bundle_groups):
+                    attempted_count += result.run_count + result.skipped_run_count
+                    summary.runs_skipped += result.skipped_run_count
                     if result.skipped:
-                        attempted_count += result.run_count
                         summary.bundles_skipped += 1
                         summary.runs_skipped += result.run_count
                         click.echo(
                             click.style(
                                 f"Skipped bundle {result.bundle_id} (tenant={result.tenant_id}, "
-                                f"runs={result.run_count}, reason={result.error or 'already handled'})",
+                                f"runs={result.run_count}, skipped_runs={result.skipped_run_count}, "
+                                f"reason={result.error or 'already handled'})",
                                 fg="yellow",
                             )
                         )
                     elif result.success:
-                        attempted_count += result.run_count
                         summary.bundles_archived += 1
                         summary.runs_archived += result.run_count
                         self._merge_result_stats(summary, result)
@@ -325,15 +381,14 @@ class WorkflowRunArchiver:
                             click.style(
                                 f"{'[DRY RUN] Would archive' if self.dry_run else 'Archived'} "
                                 f"bundle {result.bundle_id} (tenant={result.tenant_id}, runs={result.run_count}, "
-                                f"tables={len(result.tables)}, object_size_bytes={result.object_size_bytes}, "
-                                f"time={result.elapsed_time:.2f}s)",
+                                f"skipped_runs={result.skipped_run_count}, tables={len(result.tables)}, "
+                                f"object_size_bytes={result.object_size_bytes}, time={result.elapsed_time:.2f}s)",
                                 fg="green",
                             )
                         )
                         if self.dry_run:
                             self._echo_table_estimates(result.tables)
                     else:
-                        attempted_count += result.run_count
                         summary.bundles_failed += 1
                         summary.runs_failed += result.run_count
                         click.echo(
@@ -471,6 +526,35 @@ class WorkflowRunArchiver:
 
         return paid
 
+    def _archive_bundle_groups(
+        self,
+        session_maker: sessionmaker[Session],
+        storage: ArchiveStorage | None,
+        bundle_groups: Sequence[Sequence[WorkflowRun]],
+    ) -> list[ArchiveResult]:
+        """Archive grouped bundles, optionally in parallel."""
+        if not bundle_groups:
+            return []
+        if self.workers == 1 or len(bundle_groups) == 1:
+            results: list[ArchiveResult] = []
+            for bundle_runs in bundle_groups:
+                with session_maker() as session:
+                    results.append(self._archive_bundle(session, storage, bundle_runs))
+            return results
+
+        results = []
+        max_workers = min(self.workers, len(bundle_groups))
+
+        def archive_in_worker(bundle_runs: Sequence[WorkflowRun]) -> ArchiveResult:
+            with session_maker() as session:
+                return self._archive_bundle(session, storage, bundle_runs)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = [executor.submit(archive_in_worker, bundle_runs) for bundle_runs in bundle_groups]
+            for future in as_completed(futures):
+                results.append(future.result())
+        return results
+
     def _archive_bundle(
         self,
         session: Session,
@@ -481,6 +565,7 @@ class WorkflowRunArchiver:
         if not runs:
             raise ValueError("runs must not be empty")
         start_time = time.time()
+        original_run_count = len(runs)
         identity = self._build_bundle_identity(runs)
         result = ArchiveResult(
             bundle_id=identity.bundle_id,
@@ -495,10 +580,33 @@ class WorkflowRunArchiver:
                 if storage is None:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
                 if storage.object_exists(self._get_manifest_object_key(identity)):
-                    self._sync_existing_bundle_index(session, storage, identity)
+                    self._write_bundle_index(storage, identity)
                     result.success = True
                     result.skipped = True
                     result.error = "bundle already archived"
+                    result.elapsed_time = time.time() - start_time
+                    return result
+
+                archived_run_ids = self._load_archived_run_ids_for_identity(storage, identity)
+                runs = [run for run in runs if run.id not in archived_run_ids]
+                result.skipped_run_count = original_run_count - len(runs)
+                if not runs:
+                    result.run_count = 0
+                    result.success = True
+                    result.skipped = True
+                    result.error = "all runs already archived in shard index"
+                    result.elapsed_time = time.time() - start_time
+                    return result
+
+                identity = self._build_bundle_identity(runs)
+                result.bundle_id = identity.bundle_id
+                result.object_prefix = identity.object_prefix
+                result.run_count = len(runs)
+                if storage.object_exists(self._get_manifest_object_key(identity)):
+                    self._write_bundle_index(storage, identity)
+                    result.success = True
+                    result.skipped = True
+                    result.error = "filtered bundle already archived"
                     result.elapsed_time = time.time() - start_time
                     return result
 
@@ -526,8 +634,7 @@ class WorkflowRunArchiver:
                 for table_name, payload in table_payloads.items():
                     storage.put_object(self._get_table_object_key(identity, table_name), payload)
                 storage.put_object(self._get_manifest_object_key(identity), manifest_data)
-                manifest = decode_archive_bundle_manifest(manifest_data)
-                upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
+                self._merge_bundle_manifest_into_index(storage, identity, [run.id for run in runs])
                 session.commit()
 
                 logger.info(
@@ -594,48 +701,67 @@ class WorkflowRunArchiver:
         session: Session,
         runs: Sequence[WorkflowRun],
     ) -> dict[str, list[dict[str, Any]]]:
-        """Extract all archived table rows for a bundle."""
+        """Extract archived rows using Core mappings to avoid ORM hydration on large retention batches."""
         run_ids = [run.id for run in runs]
         table_data: dict[str, list[dict[str, Any]]] = {}
         table_data["workflow_runs"] = [self._row_to_dict(run) for run in runs]
 
-        app_logs = list(session.scalars(select(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids))))
-        table_data["workflow_app_logs"] = [self._row_to_dict(row) for row in app_logs]
-
-        node_exec_records = list(
-            session.scalars(
-                select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids))
-            )
+        table_data["workflow_app_logs"] = self._select_rows_by_column(
+            session,
+            WorkflowAppLog,
+            WorkflowAppLog.workflow_run_id,
+            run_ids,
         )
-        node_exec_ids = [record.id for record in node_exec_records]
-        offload_records = []
-        if node_exec_ids:
-            offload_records = list(
-                session.scalars(
-                    select(WorkflowNodeExecutionOffload).where(
-                        WorkflowNodeExecutionOffload.node_execution_id.in_(node_exec_ids)
-                    )
-                )
-            )
-        table_data["workflow_node_executions"] = [self._row_to_dict(row) for row in node_exec_records]
-        table_data["workflow_node_execution_offload"] = [self._row_to_dict(row) for row in offload_records]
 
-        pause_records = list(session.scalars(select(WorkflowPause).where(WorkflowPause.workflow_run_id.in_(run_ids))))
-        pause_ids = [pause.id for pause in pause_records]
-        pause_reason_records = []
-        if pause_ids:
-            pause_reason_records = list(
-                session.scalars(select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids)))
-            )
-        table_data["workflow_pauses"] = [self._row_to_dict(row) for row in pause_records]
-        table_data["workflow_pause_reasons"] = [self._row_to_dict(row) for row in pause_reason_records]
+        node_exec_records = self._select_rows_by_column(
+            session,
+            WorkflowNodeExecutionModel,
+            WorkflowNodeExecutionModel.workflow_run_id,
+            run_ids,
+        )
+        node_exec_ids = [str(record["id"]) for record in node_exec_records]
+        table_data["workflow_node_executions"] = node_exec_records
+        table_data["workflow_node_execution_offload"] = self._select_rows_by_column(
+            session,
+            WorkflowNodeExecutionOffload,
+            WorkflowNodeExecutionOffload.node_execution_id,
+            node_exec_ids,
+        )
 
-        trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
-        trigger_records: list[WorkflowTriggerLog] = []
-        for run_id in run_ids:
-            trigger_records.extend(trigger_repo.list_by_run_id(run_id))
-        table_data["workflow_trigger_logs"] = [self._row_to_dict(row) for row in trigger_records]
+        pause_records = self._select_rows_by_column(
+            session,
+            WorkflowPause,
+            WorkflowPause.workflow_run_id,
+            run_ids,
+        )
+        pause_ids = [str(record["id"]) for record in pause_records]
+        table_data["workflow_pauses"] = pause_records
+        table_data["workflow_pause_reasons"] = self._select_rows_by_column(
+            session,
+            WorkflowPauseReason,
+            WorkflowPauseReason.pause_id,
+            pause_ids,
+        )
+
+        table_data["workflow_trigger_logs"] = self._select_rows_by_column(
+            session,
+            WorkflowTriggerLog,
+            WorkflowTriggerLog.workflow_run_id,
+            run_ids,
+        )
         return table_data
+
+    @staticmethod
+    def _select_rows_by_column(
+        session: Session,
+        model: Any,
+        column: Any,
+        values: Sequence[str],
+    ) -> list[dict[str, Any]]:
+        if not values:
+            return []
+        stmt = select(*model.__table__.columns).where(column.in_(values))
+        return [dict(row) for row in session.execute(stmt).mappings().all()]
 
     @staticmethod
     def _row_to_dict(row: Any) -> dict[str, Any]:
@@ -688,7 +814,10 @@ class WorkflowRunArchiver:
             for stat in table_stats
         }
         sorted_runs = sorted(runs, key=lambda run: (run.created_at, run.id))
-        return ArchiveBundleManifest(
+        end_before = self.end_before
+        if end_before is None:
+            raise ValueError("archive window end must be set")
+        return ArchiveManifestDict(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
             archive_format=ARCHIVE_BUNDLE_FORMAT,
             tenant_id=identity.tenant_id,
@@ -705,6 +834,10 @@ class WorkflowRunArchiver:
             min_run_id=min(run.id for run in runs),
             max_run_id=max(run.id for run in runs),
             archived_at=datetime.datetime.now(datetime.UTC).isoformat(),
+            campaign_id=self.campaign_id,
+            archive_window_start=self._format_window_datetime(self.start_from),
+            archive_window_end=end_before.isoformat(),
+            run_shard=identity.shard,
             tables=tables,
             run_ids=[run.id for run in sorted_runs],
         )
@@ -770,6 +903,158 @@ class WorkflowRunArchiver:
         if self.run_shard_index is None or self.run_shard_total is None:
             return "00-of-01"
         return f"{self.run_shard_index:02d}-of-{self.run_shard_total:02d}"
+
+    def _load_archived_run_ids_for_identity(
+        self,
+        storage: ArchiveStorage,
+        identity: ArchiveBundleIdentity,
+    ) -> set[str]:
+        index_key = self._get_index_object_key(identity)
+        with self._archive_index_cache_lock:
+            cached_run_ids = self._archive_index_cache.get(index_key)
+            if cached_run_ids is not None:
+                return set(cached_run_ids)
+
+        if storage.object_exists(index_key):
+            index = self._load_bundle_index(storage, identity)
+        else:
+            index = self._write_bundle_index(storage, identity)
+        run_ids = set(index["run_ids"])
+        with self._archive_index_cache_lock:
+            self._archive_index_cache[index_key] = set(run_ids)
+        return run_ids
+
+    def _load_bundle_index(
+        self,
+        storage: ArchiveStorage,
+        identity: ArchiveBundleIdentity,
+    ) -> ArchiveBundleIndexDict:
+        index_key = self._get_index_object_key(identity)
+        payload = storage.get_object(index_key)
+        loaded = json.loads(payload)
+        if not isinstance(loaded, dict):
+            raise ValueError(f"archive index must be an object: {index_key}")
+        index = cast(ArchiveBundleIndexDict, loaded)
+        expected_prefix = self._get_shard_object_prefix(identity)
+        if index["schema_version"] != ARCHIVE_BUNDLE_SCHEMA_VERSION:
+            raise ValueError(f"unsupported archive index schema_version: {index['schema_version']}")
+        if index["archive_format"] != ARCHIVE_BUNDLE_FORMAT:
+            raise ValueError(f"unsupported archive index archive_format: {index['archive_format']}")
+        if index["object_prefix"] != expected_prefix:
+            raise ValueError("archive index object_prefix does not match shard prefix")
+        return index
+
+    def _write_bundle_index(
+        self,
+        storage: ArchiveStorage,
+        identity: ArchiveBundleIdentity,
+    ) -> ArchiveBundleIndexDict:
+        index = self._build_bundle_index(storage, identity)
+        storage.put_object(self._get_index_object_key(identity), json.dumps(index, indent=2).encode("utf-8"))
+        with self._archive_index_cache_lock:
+            self._archive_index_cache[self._get_index_object_key(identity)] = set(index["run_ids"])
+        return index
+
+    def _merge_bundle_manifest_into_index(
+        self,
+        storage: ArchiveStorage,
+        identity: ArchiveBundleIdentity,
+        run_ids: Sequence[str],
+    ) -> ArchiveBundleIndexDict:
+        index_key = self._get_index_object_key(identity)
+        if storage.object_exists(index_key):
+            index = self._load_bundle_index(storage, identity)
+        else:
+            index = self._build_bundle_index(storage, identity)
+
+        manifest_keys = sorted(set(index["manifest_keys"]) | {self._get_manifest_object_key(identity)})
+        indexed_run_ids = sorted(set(index["run_ids"]) | set(run_ids))
+        campaign_id_set: set[str] = set(index.get("campaign_ids", []))
+        campaign_id_set.add(self.campaign_id)
+        campaign_ids = sorted(campaign_id_set)
+        updated_index = ArchiveBundleIndexDict(
+            schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
+            archive_format=ARCHIVE_BUNDLE_FORMAT,
+            object_prefix=self._get_shard_object_prefix(identity),
+            updated_at=datetime.datetime.now(datetime.UTC).isoformat(),
+            manifest_keys=manifest_keys,
+            run_ids=indexed_run_ids,
+            campaign_ids=campaign_ids,
+        )
+        storage.put_object(index_key, json.dumps(updated_index, indent=2).encode("utf-8"))
+        with self._archive_index_cache_lock:
+            self._archive_index_cache[index_key] = set(indexed_run_ids)
+        return updated_index
+
+    def _build_bundle_index(
+        self,
+        storage: ArchiveStorage,
+        identity: ArchiveBundleIdentity,
+    ) -> ArchiveBundleIndexDict:
+        shard_prefix = self._get_shard_object_prefix(identity)
+        manifest_keys = sorted(
+            key for key in storage.list_objects(shard_prefix) if key.endswith(f"/{ARCHIVE_BUNDLE_MANIFEST_NAME}")
+        )
+        run_ids: set[str] = set()
+        campaign_ids: set[str] = set()
+        for manifest_key in manifest_keys:
+            manifest_payload = storage.get_object(manifest_key)
+            manifest = json.loads(manifest_payload)
+            if not isinstance(manifest, dict):
+                raise ValueError(f"archive manifest must be an object: {manifest_key}")
+            if manifest.get("schema_version") != ARCHIVE_BUNDLE_SCHEMA_VERSION:
+                raise ValueError(
+                    f"unsupported bundle schema_version in {manifest_key}: {manifest.get('schema_version')}"
+                )
+            if manifest.get("archive_format") != ARCHIVE_BUNDLE_FORMAT:
+                raise ValueError(
+                    f"unsupported bundle archive_format in {manifest_key}: {manifest.get('archive_format')}"
+                )
+            manifest_run_ids = manifest.get("run_ids")
+            if not isinstance(manifest_run_ids, list):
+                raise ValueError(f"manifest run_ids must be a list: {manifest_key}")
+            run_ids.update(str(run_id) for run_id in manifest_run_ids)
+            campaign_id = manifest.get("campaign_id")
+            if isinstance(campaign_id, str):
+                campaign_ids.add(campaign_id)
+        return ArchiveBundleIndexDict(
+            schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
+            archive_format=ARCHIVE_BUNDLE_FORMAT,
+            object_prefix=shard_prefix,
+            updated_at=datetime.datetime.now(datetime.UTC).isoformat(),
+            manifest_keys=manifest_keys,
+            run_ids=sorted(run_ids),
+            campaign_ids=sorted(campaign_ids),
+        )
+
+    @staticmethod
+    def _normalize_utc_datetime(value: datetime.datetime) -> datetime.datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=datetime.UTC)
+        return value.astimezone(datetime.UTC)
+
+    def _build_campaign_id(self) -> str:
+        start = self._format_window_datetime(self.start_from) or "unbounded"
+        end = self._format_window_datetime(self.end_before)
+        return f"{start}_{end}"
+
+    @staticmethod
+    def _format_window_datetime(value: datetime.datetime | None) -> str | None:
+        if value is None:
+            return None
+        normalized = WorkflowRunArchiver._normalize_utc_datetime(value)
+        return normalized.isoformat().replace("+00:00", "Z")
+
+    @staticmethod
+    def _get_shard_object_prefix(identity: ArchiveBundleIdentity) -> str:
+        return (
+            f"workflow-runs/v2/tenant_prefix={identity.tenant_prefix}/tenant_id={identity.tenant_id}/"
+            f"year={identity.year:04d}/month={identity.month:02d}/shard={identity.shard}"
+        )
+
+    @classmethod
+    def _get_index_object_key(cls, identity: ArchiveBundleIdentity) -> str:
+        return f"{cls._get_shard_object_prefix(identity)}/{ARCHIVE_BUNDLE_INDEX_NAME}"
 
     @staticmethod
     def _get_table_object_key(identity: ArchiveBundleIdentity, table_name: str) -> str:

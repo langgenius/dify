@@ -33,15 +33,15 @@ function PluginTaskList({
 
   return (
     <div
-      className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
+      className="w-[360px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
       data-testid="plugin-task-list"
     >
       <ScrollArea
         className="max-h-[420px] overflow-hidden"
         label={t('task.installing', { ns: 'plugin' })}
         slotClassNames={{
-          viewport: 'overscroll-contain',
-          content: 'min-w-0',
+          viewport: 'max-h-[420px] overscroll-contain',
+          content: 'w-full! max-w-full! min-w-0! overflow-x-hidden!',
         }}
       >
         {runningPlugins.length > 0 && (
@@ -103,13 +103,10 @@ function PluginTaskList({
                 {t('task.clearAll', { ns: 'plugin' })}
               </Button>
             </div>
-            <ScrollArea
-              className="overflow-hidden"
-              label={errorSectionTitle}
-              slotClassNames={{
-                viewport: 'overscroll-contain',
-                content: 'min-w-0',
-              }}
+            <div
+              aria-label={errorSectionTitle}
+              className="w-full max-w-full min-w-0 overflow-hidden"
+              role="region"
             >
               {errorPlugins.map(plugin => (
                 <ErrorPluginItem
@@ -120,7 +117,7 @@ function PluginTaskList({
                   onClear={() => onClearSingle(plugin.taskId, plugin.plugin_unique_identifier)}
                 />
               ))}
-            </ScrollArea>
+            </div>
           </>
         )}
       </ScrollArea>

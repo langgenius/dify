@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Numero di parole chiave",
   "form.onSearchResults": "Nessun membro corrisponde alla query di ricerca.\nRiprova la ricerca.",
   "form.permissions": "Permessi",
+  "form.permissionsAccessConfig": "Vai alla configurazione dell'accesso",
   "form.permissionsAllMember": "Tutti i membri del team",
   "form.permissionsInvitedMembers": "Membri del team parziali",
   "form.permissionsOnlyMe": "Solo io",

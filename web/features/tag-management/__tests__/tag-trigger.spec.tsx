@@ -8,8 +8,15 @@ describe('Trigger', () => {
 
   // Rendering behavior for empty and populated states.
   describe('Rendering', () => {
-    it('should render add-tag placeholder when tags are empty', () => {
+    it('should render no-tag placeholder when tags are empty without binding permission', () => {
       render(<TagTrigger tags={[]} />)
+
+      expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
+      expect(screen.queryByText('common.tag.addTag')).not.toBeInTheDocument()
+    })
+
+    it('should render add-tag placeholder when tags are empty with binding permission', () => {
+      render(<TagTrigger tags={[]} canBindOrUnbindTags />)
 
       expect(screen.getByText('common.tag.addTag')).toBeInTheDocument()
     })
@@ -27,11 +34,12 @@ describe('Trigger', () => {
   describe('Props', () => {
     it('should update from placeholder to tag badges when tags prop changes', () => {
       const { rerender } = render(<TagTrigger tags={[]} />)
-      expect(screen.getByText('common.tag.addTag')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.noTag')).toBeInTheDocument()
 
       rerender(<TagTrigger tags={['Database']} />)
 
       expect(screen.getByText('Database')).toBeInTheDocument()
+      expect(screen.queryByText('common.tag.noTag')).not.toBeInTheDocument()
       expect(screen.queryByText('common.tag.addTag')).not.toBeInTheDocument()
     })
   })

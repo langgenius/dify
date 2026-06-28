@@ -23,6 +23,7 @@
   "form.numberOfKeywords": "Số lượng từ khóa",
   "form.onSearchResults": "Không có thành viên nào khớp với truy vấn tìm kiếm của bạn.\nHãy thử tìm kiếm lại.",
   "form.permissions": "Quyền hạn",
+  "form.permissionsAccessConfig": "Đi đến cấu hình truy cập",
   "form.permissionsAllMember": "Tất cả thành viên nhóm",
   "form.permissionsInvitedMembers": "Thành viên một phần trong nhóm",
   "form.permissionsOnlyMe": "Chỉ mình tôi",
