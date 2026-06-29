@@ -59,9 +59,15 @@ class FileService:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
 
-        # Only reject path separators here. The original filename is stored as metadata,
-        # while the storage key is UUID-based.
-        if any(c in filename for c in ["/", "\\"]):
+        # Reject path separators, NUL bytes, control characters, and bare dot-names.
+        # The original filename is stored as display metadata (and may surface in ZIP
+        # entries, response headers, or logs), while the storage key is UUID-based.
+        if (
+            not filename
+            or filename in {".", ".."}
+            or any(c in filename for c in ("/", "\\"))
+            or any(ord(c) < 0x20 or ord(c) == 0x7F for c in filename)
+        ):
             raise ValueError("Filename contains invalid characters")
 
         if len(filename) > 200:
