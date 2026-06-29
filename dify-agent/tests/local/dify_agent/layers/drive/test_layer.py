@@ -85,20 +85,49 @@ def _pulled_output() -> str:
     )
 
 
+def _file_help_output(command: str) -> str:
+    return f"Usage: {command.removesuffix(' --help')} [OPTIONS]\n\nAgent Stub file command help.\n"
+
+
+def _patch_file_help(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    captured_scripts: list[str] = []
+
+    async def fake_run_remote_script(
+        self: DifyShellLayer,
+        script: str,
+        *,
+        timeout: float = 10.0,
+        inject_agent_stub_env: bool = False,
+    ) -> CompleteRemoteCommandResult:
+        del self, timeout, inject_agent_stub_env
+        captured_scripts.append(script)
+        return _remote_result(_file_help_output(script))
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+    return captured_scripts
+
+
 def test_drive_layer_exposes_agent_stub_cli_usage_suffix_prompt() -> None:
     layer = _build_layer()
+    layer._agent_stub_cli_help = {
+        "dify-agent file --help": _file_help_output("dify-agent file --help"),
+        "dify-agent file upload --help": _file_help_output("dify-agent file upload --help"),
+    }
 
     assert len(layer.suffix_prompts) == 1
     prompt = layer.suffix_prompts[0]
     assert "Other available skills" in prompt
     assert "other-skill: Other Skill" in prompt
-    assert "dify-agent file upload PATH" in prompt
+    assert "Agent Stub file CLI help" in prompt
+    assert "$ dify-agent file upload --help" in prompt
+    assert "dify-agent drive" not in prompt
 
 
 @pytest.mark.anyio
 async def test_on_context_create_pulls_mentioned_targets_through_shell(monkeypatch: pytest.MonkeyPatch) -> None:
     layer = _build_layer()
     captured: dict[str, object] = {}
+    help_scripts = _patch_file_help(monkeypatch)
 
     async def fake_run_remote_script_complete(
         self: DifyShellLayer,
@@ -116,6 +145,12 @@ async def test_on_context_create_pulls_mentioned_targets_through_shell(monkeypat
 
     await layer.on_context_create()
 
+    assert help_scripts == [
+        "dify-agent file --help",
+        "dify-agent file upload --help",
+        "dify-agent file download --help",
+    ]
+    assert "dify-agent file download --help" in layer._agent_stub_cli_help
     script = captured["script"]
     assert isinstance(script, str)
     assert captured["inject_agent_stub_env"] is True
@@ -128,6 +163,7 @@ async def test_on_context_create_pulls_mentioned_targets_through_shell(monkeypat
 @pytest.mark.anyio
 async def test_on_context_create_raises_when_shell_pull_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     layer = _build_layer()
+    _patch_file_help(monkeypatch)
 
     async def fake_run_remote_script_complete(
         self: DifyShellLayer,
@@ -155,6 +191,7 @@ async def test_on_context_create_raises_when_required_skill_marker_is_missing_fr
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layer = _build_layer()
+    _patch_file_help(monkeypatch)
 
     async def fake_run_remote_script_complete(
         self: DifyShellLayer,
@@ -177,6 +214,7 @@ async def test_on_context_create_reports_incomplete_capture_when_required_marker
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     layer = _build_layer()
+    _patch_file_help(monkeypatch)
 
     async def fake_run_remote_script_complete(
         self: DifyShellLayer,

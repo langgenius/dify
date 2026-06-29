@@ -8,7 +8,7 @@ from typing import Any, Literal, Protocol, assert_never, cast
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
 from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
-from dify_agent.layers.config import DifyConfigFileConfig, DifyConfigLayerConfig, DifyConfigSkillConfig
+from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.execution_context import (
     DifyExecutionContextInvokeFrom,
     DifyExecutionContextLayerConfig,
@@ -203,7 +203,7 @@ class WorkflowAgentRuntimeRequestBuilder:
         config_layer_config: DifyConfigLayerConfig | None = None
         soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(agent_soul, writable=False)
+            config_layer_config, config_warnings = build_config_layer_config(agent_soul)
             append_runtime_warnings(metadata, config_warnings)
             soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
@@ -764,10 +764,8 @@ def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
     return _resolve
 
 
-def build_config_layer_config(
-    agent_soul: AgentSoulConfig, *, writable: bool = False
-) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
-    """Derive config runtime catalog + prompt-mentioned eager-pull names from Agent Soul."""
+def build_config_layer_config(agent_soul: AgentSoulConfig) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
+    """Derive prompt-mentioned eager-pull names from Agent Soul."""
 
     ordered_mentions = list(
         dict.fromkeys(
@@ -806,22 +804,8 @@ def build_config_layer_config(
 
     return (
         DifyConfigLayerConfig(
-            skills=[
-                DifyConfigSkillConfig(name=skill.name, description=skill.description)
-                for skill in agent_soul.config_skills
-            ],
-            files=[DifyConfigFileConfig(name=file_ref.name) for file_ref in agent_soul.config_files],
-            env_keys=[
-                key
-                for key in (
-                    item.key or item.name or item.env_name or item.variable for item in agent_soul.env.variables
-                )
-                if key
-            ],
-            note=agent_soul.config_note,
             mentioned_skill_names=mentioned_skill_names,
             mentioned_file_names=mentioned_file_names,
-            writable=writable,
         ),
         warnings,
     )
