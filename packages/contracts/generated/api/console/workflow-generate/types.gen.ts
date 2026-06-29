@@ -10,11 +10,17 @@ export type WorkflowGeneratePayload = {
   } | null
   ideal_output?: string
   instruction: string
-  mode: 'advanced-chat' | 'workflow'
+  mode: 'advanced-chat' | 'auto' | 'workflow'
   model_config: ModelConfig
 }
 
 export type GeneratorResponse = unknown
+
+export type WorkflowInstructionSuggestionsPayload = {
+  count?: number
+  language?: string | null
+  mode: 'advanced-chat' | 'workflow'
+}
 
 export type ModelConfig = {
   completion_params?: {
@@ -45,3 +51,21 @@ export type PostWorkflowGenerateResponses = {
 
 export type PostWorkflowGenerateResponse
   = PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
+
+export type PostWorkflowGenerateSuggestionsData = {
+  body: WorkflowInstructionSuggestionsPayload
+  path?: never
+  query?: never
+  url: '/workflow-generate/suggestions'
+}
+
+export type PostWorkflowGenerateSuggestionsErrors = {
+  400: unknown
+}
+
+export type PostWorkflowGenerateSuggestionsResponses = {
+  200: GeneratorResponse
+}
+
+export type PostWorkflowGenerateSuggestionsResponse
+  = PostWorkflowGenerateSuggestionsResponses[keyof PostWorkflowGenerateSuggestionsResponses]
