@@ -7449,11 +7449,6 @@
       "count": 1
     }
   },
-  "web/types/lamejs.d.ts": {
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/types/pipeline.tsx": {
     "ts/no-explicit-any": {
       "count": 3

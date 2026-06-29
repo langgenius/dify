@@ -84,6 +84,9 @@ catalogs:
     '@mdx-js/rollup':
       specifier: 3.1.1
       version: 3.1.1
+    '@mediabunny/mp3-encoder':
+      specifier: 1.49.0
+      version: 1.49.0
     '@monaco-editor/react':
       specifier: 4.7.0
       version: 4.7.0
@@ -429,9 +432,6 @@ catalogs:
     ky:
       specifier: 2.0.2
       version: 2.0.2
-    lamejs:
-      specifier: 1.2.1
-      version: 1.2.1
     lexical:
       specifier: 0.46.0
       version: 0.46.0
@@ -441,6 +441,9 @@ catalogs:
     loro-crdt:
       specifier: 1.13.6
       version: 1.13.6
+    mediabunny:
+      specifier: 1.49.0
+      version: 1.49.0
     mermaid:
       specifier: 11.16.0
       version: 11.16.0
@@ -1108,6 +1111,9 @@ importers:
       '@lexical/utils':
         specifier: 'catalog:'
         version: 0.46.0(typescript@6.0.3)
+      '@mediabunny/mp3-encoder':
+        specifier: 'catalog:'
+        version: 1.49.0(mediabunny@1.49.0)
       '@monaco-editor/react':
         specifier: 'catalog:'
         version: 4.7.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1267,15 +1273,15 @@ importers:
       ky:
         specifier: 'catalog:'
         version: 2.0.2
-      lamejs:
-        specifier: 'catalog:'
-        version: 1.2.1
       lexical:
         specifier: 'catalog:'
         version: 0.46.0(typescript@6.0.3)
       loro-crdt:
         specifier: 'catalog:'
         version: 1.13.6
+      mediabunny:
+        specifier: 'catalog:'
+        version: 1.49.0
       mermaid:
         specifier: 'catalog:'
         version: 11.16.0
@@ -2982,6 +2988,11 @@ packages:
     resolution: {integrity: sha512-v8satFmBB+DqDzYohnm1u2JOvxx6Hl3pUvqzJvfs2Zk/ngZ1aRUhsWpXvwPkNeGN9c2NCm/38H29ZqXQUjf8dw==}
     peerDependencies:
       rollup: 4.62.2
+
+  '@mediabunny/mp3-encoder@1.49.0':
+    resolution: {integrity: sha512-b2US4tYGGou3Yo4nZnCU3NoIu8DPW6UO6WFz5KE7gbVH3iCQRT8hSg6nTAVHtO+isvm9Vtl0fsF0KnSVpAPwRQ==}
+    peerDependencies:
+      mediabunny: ^1.0.0
 
   '@mermaid-js/parser@1.2.0':
     resolution: {integrity: sha512-oYPyv8A4As1yH5Bx+04iQEQxXuIQDe0GKCNSRgao6z8AM9jixXIfP0vsppRLvGf+nKIOb9/LdpWA4YuJiVvESA==}
@@ -4885,6 +4896,12 @@ packages:
 
   '@types/doctrine@0.0.9':
     resolution: {integrity: sha512-eOIHzCUSH7SMfonMG1LsC2f8vxBFtho6NGBznK41R84YzPuvSBzrhEps33IsQiOW9+VL6NQ9DbjQJznk/S4uRA==}
+
+  '@types/dom-mediacapture-transform@0.1.11':
+    resolution: {integrity: sha512-Y2p+nGf1bF2XMttBnsVPHUWzRRZzqUoJAKmiP10b5umnO6DDrWI0BrGDJy1pOHoOULVmGSfFNkQrAlC5dcj6nQ==}
+
+  '@types/dom-webcodecs@0.1.13':
+    resolution: {integrity: sha512-O5hkiFIcjjszPIYyUSyvScyvrBoV3NOEEZx/pMlsu44TKzWNkLVBBxnxJz42in5n3QIolYOcBYFCPZZ0h8SkwQ==}
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -7492,9 +7509,6 @@ packages:
     resolution: {integrity: sha512-/GmXpo9F9W+f8n4Ivr2iH+7h7wL7jLbLKWkMlpflcCRb6kGjBfTlASEXaZ9qUgNTn4VgS0P2pwxxzQ4EM6Ulgg==}
     engines: {node: '>=22'}
 
-  lamejs@1.2.1:
-    resolution: {integrity: sha512-s7bxvjvYthw6oPLCm5pFxvA84wUROODB8jEO2+CE1adhKgrIvVOlmMgY8zyugxGrvRaDHNJanOiS21/emty6dQ==}
-
   language-subtag-registry@0.3.23:
     resolution: {integrity: sha512-0K65Lea881pHotoGEa5gDlMxt3pctLi2RplBb7Ezh4rRdLEOtgi7n4EwK9lamnUCkKBqaeKRVebTq6BAxSkpXQ==}
 
@@ -7763,6 +7777,9 @@ packages:
 
   mdn-data@2.28.1:
     resolution: {integrity: sha512-U9w+PzSZ00Z5m9rZ5ARVFL5xOfuCHdKYi/1RRwDCJsboFgJDNT3zT6PIPD7mZQYaQLhsZM3GfDRgSMRHhSmVng==}
+
+  mediabunny@1.49.0:
+    resolution: {integrity: sha512-hDMtS/q22GFjyB3Yum+a6NHhDtVnye6hgaYTjx3DPUfnckRjzxFmXmCc3UQXdvo7d6PUCl7KM6Y9MRWzlvnAJQ==}
 
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
@@ -9575,9 +9592,6 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
-
-  use-strict@1.0.1:
-    resolution: {integrity: sha512-IeiWvvEXfW5ltKVMkxq6FvNf2LojMKvB2OCeja6+ct24S1XOmQw2dGr2JyndwACWAGJva9B7yPHwAmeA9QCqAQ==}
 
   use-sync-external-store@1.6.0:
     resolution: {integrity: sha512-Pp6GSwGP/NrPIrxVFAIkOQeyw8lFenOHijQWkUTrDvrF4ALqylP2C/KCkeS9dpUM3KvYRQhna5vt7IL95+ZQ9w==}
@@ -11709,6 +11723,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@mediabunny/mp3-encoder@1.49.0(mediabunny@1.49.0)':
+    dependencies:
+      mediabunny: 1.49.0
+
   '@mermaid-js/parser@1.2.0':
     dependencies:
       '@chevrotain/types': 11.1.2
@@ -13339,6 +13357,12 @@ snapshots:
   '@types/deep-eql@4.0.2': {}
 
   '@types/doctrine@0.0.9': {}
+
+  '@types/dom-mediacapture-transform@0.1.11':
+    dependencies:
+      '@types/dom-webcodecs': 0.1.13
+
+  '@types/dom-webcodecs@0.1.13': {}
 
   '@types/esrecurse@4.3.1': {}
 
@@ -16768,10 +16792,6 @@ snapshots:
 
   ky@2.0.2: {}
 
-  lamejs@1.2.1:
-    dependencies:
-      use-strict: 1.0.1
-
   language-subtag-registry@0.3.23: {}
 
   language-tags@1.0.9:
@@ -17140,6 +17160,11 @@ snapshots:
   mdn-data@2.0.30: {}
 
   mdn-data@2.28.1: {}
+
+  mediabunny@1.49.0:
+    dependencies:
+      '@types/dom-mediacapture-transform': 0.1.11
+      '@types/dom-webcodecs': 0.1.13
 
   merge2@1.4.1: {}
 
@@ -19426,8 +19451,6 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.17
 
-  use-strict@1.0.1: {}
-
   use-sync-external-store@1.6.0(react@19.2.7):
     dependencies:
       react: 19.2.7
@@ -20066,6 +20089,7 @@ time:
   '@mdx-js/loader@3.1.1': '2025-08-29T18:03:05.606Z'
   '@mdx-js/react@3.1.1': '2025-08-29T18:02:56.462Z'
   '@mdx-js/rollup@3.1.1': '2025-08-29T18:03:10.680Z'
+  '@mediabunny/mp3-encoder@1.49.0': '2026-06-18T17:50:53.396Z'
   '@monaco-editor/react@4.7.0': '2025-02-13T16:13:41.390Z'
   '@napi-rs/keyring@1.3.0': '2026-04-30T09:56:44.246Z'
   '@next/eslint-plugin-next@16.2.9': '2026-06-09T23:01:50.881Z'
@@ -20182,11 +20206,11 @@ time:
   katex@0.17.0: '2026-05-22T08:06:26.967Z'
   knip@6.22.0: '2026-06-27T13:30:51.275Z'
   ky@2.0.2: '2026-04-21T08:58:46.923Z'
-  lamejs@1.2.1: '2021-12-02T15:44:40.036Z'
   lexical-code-no-prism@0.41.0: '2026-03-08T16:50:40.266Z'
   lexical@0.46.0: '2026-06-26T04:53:00.532Z'
   lockfile@1.0.4: '2018-04-17T00:36:12.565Z'
   loro-crdt@1.13.6: '2026-06-21T15:40:04.671Z'
+  mediabunny@1.49.0: '2026-06-18T17:50:36.336Z'
   mermaid@11.16.0: '2026-06-25T11:30:40.280Z'
   mime@4.1.0: '2025-09-12T17:53:01.376Z'
   mitt@3.0.1: '2023-07-04T17:31:47.638Z'
