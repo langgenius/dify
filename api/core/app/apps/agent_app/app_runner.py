@@ -164,7 +164,7 @@ class _AgentProcessRecorder:
         event_kind = data.get("event_kind")
         if event_kind == "part_delta":
             self._handle_part_delta(data)
-        elif event_kind in {"part_start", "part_end"}:
+        elif event_kind == "part_start":
             self._handle_part(data)
         elif event_kind in {"function_tool_call", "output_tool_call"}:
             self._handle_tool_call_event(data)
