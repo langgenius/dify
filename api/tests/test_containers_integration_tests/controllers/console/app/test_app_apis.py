@@ -464,7 +464,7 @@ class TestWorkflowAppLogEndpoints:
                 return False
 
         class DummySessionMaker:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def begin(self):
@@ -510,7 +510,7 @@ class TestWorkflowDraftVariableEndpoints:
                 return False
 
         class DummySessionMaker:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def begin(self):
@@ -631,7 +631,7 @@ class TestWorkflowTriggerEndpoints:
                 return False
 
         class DummySessionMaker:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 pass
 
             def begin(self):

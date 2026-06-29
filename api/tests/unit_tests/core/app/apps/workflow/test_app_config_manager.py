@@ -27,7 +27,7 @@ class TestWorkflowAppConfigManager:
 
     def test_config_validate_filters_keys(self):
         def _add_key(key, value):
-            def _inner(*args, **kwargs):
+            def _inner[**P](*args: P.args, **kwargs: P.kwargs):
                 # Support both positional and keyword arguments for config
                 if "config" in kwargs:
                     config = kwargs["config"]

@@ -17,7 +17,7 @@ class _FakeToolFileManager:
 
     last_call: dict[str, Any] | None = None
 
-    def __init__(self, *args, **kwargs):
+    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
         pass
 
     def create_file_by_raw(

@@ -2386,7 +2386,7 @@ class TestWorkflowGeneratorFileVariables:
         # carries the planned node types' schemas (dynamic assembly).
         captured: list[str] = []
 
-        def _capture(*args, **kwargs):
+        def _capture[**P](*args: P.args, **kwargs: P.kwargs):
             prompt_messages = kwargs.get("prompt_messages") or (args[1] if len(args) > 1 else [])
             captured.append("\n".join(getattr(m, "content", "") or "" for m in prompt_messages))
             # Return planner then builder responses in order.

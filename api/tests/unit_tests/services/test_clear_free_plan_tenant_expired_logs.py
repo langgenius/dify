@@ -57,7 +57,7 @@ class TestClearFreePlanTenantExpiredLogs:
             mock_session.scalars.assert_not_called()
             mock_storage.save.assert_not_called()
 
-    def test_clear_message_related_tables_no_records_found(self, mock_session, sample_message_ids):
+    def test_clear_message_related_tables_no_records_found(self, mock_session, sample_message_ids: list[str]):
         """Test when no related records are found."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
             mock_session.scalars.return_value.all.return_value = []
@@ -84,7 +84,7 @@ class TestClearFreePlanTenantExpiredLogs:
             # Should save backup data
             assert mock_storage.save.call_count > 0
 
-    def test_clear_message_related_tables_with_records_no_to_dict(self, mock_session, sample_message_ids):
+    def test_clear_message_related_tables_with_records_no_to_dict(self, mock_session, sample_message_ids: list[str]):
         """Test when records are found but don't have to_dict method."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
             # Create records without to_dict method
@@ -134,7 +134,9 @@ class TestClearFreePlanTenantExpiredLogs:
             # Should still delete records even if backup fails
             assert mock_session.execute.called
 
-    def test_clear_message_related_tables_serialization_error_continues(self, mock_session, sample_message_ids):
+    def test_clear_message_related_tables_serialization_error_continues(
+        self, mock_session, sample_message_ids: list[str]
+    ):
         """Test that method continues even when record serialization fails."""
         with patch("services.clear_free_plan_tenant_expired_logs.storage") as mock_storage:
             record = Mock()
@@ -284,14 +286,14 @@ def test_process_tenant_processes_all_batches(monkeypatch: pytest.MonkeyPatch) -
         _sessionmaker_wrapper_for_begin(wal_session_2),
     ]
 
-    def fake_sessionmaker(*args, **kwargs):
+    def fake_sessionmaker[**P](*args: P.args, **kwargs: P.kwargs):
         if kwargs.get("autoflush") is False:
             return session_wrappers.pop(0)
         return object()
 
     monkeypatch.setattr(service_module, "sessionmaker", fake_sessionmaker)
 
-    def fake_select(*_args, **_kwargs):
+    def fake_select[**P](*_args: P.args, **_kwargs: P.kwargs):
         stmt = MagicMock()
         stmt.where.return_value = stmt
         return stmt
@@ -546,14 +548,14 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(monkeypatch: pyte
         _sessionmaker_wrapper_for_begin(empty_session),
     ]
 
-    def fake_sessionmaker(*args, **kwargs):
+    def fake_sessionmaker[**P](*args: P.args, **kwargs: P.kwargs):
         if kwargs.get("autoflush") is False:
             return session_wrappers.pop(0)
         return object()
 
     monkeypatch.setattr(service_module, "sessionmaker", fake_sessionmaker)
 
-    def fake_select(*_args, **_kwargs):
+    def fake_select[**P](*_args: P.args, **_kwargs: P.kwargs):
         stmt = MagicMock()
         stmt.where.return_value = stmt
         return stmt

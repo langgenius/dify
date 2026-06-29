@@ -9,7 +9,7 @@ from celery import shared_task
 from sqlalchemy import delete, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -100,7 +100,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
 
 
 def _delete_app_model_configs(tenant_id: str, app_id: str):
-    def del_model_config(session, model_config_id: str):
+    def del_model_config(session: Session, model_config_id: str):
         session.execute(
             delete(AppModelConfig)
             .where(AppModelConfig.id == model_config_id)
@@ -116,7 +116,7 @@ def _delete_app_model_configs(tenant_id: str, app_id: str):
 
 
 def _delete_app_site(tenant_id: str, app_id: str):
-    def del_site(session, site_id: str):
+    def del_site(session: Session, site_id: str):
         session.execute(delete(Site).where(Site.id == site_id).execution_options(synchronize_session=False))
 
     _delete_records(
@@ -128,7 +128,7 @@ def _delete_app_site(tenant_id: str, app_id: str):
 
 
 def _delete_app_mcp_servers(tenant_id: str, app_id: str):
-    def del_mcp_server(session, mcp_server_id: str):
+    def del_mcp_server(session: Session, mcp_server_id: str):
         session.execute(
             delete(AppMCPServer).where(AppMCPServer.id == mcp_server_id).execution_options(synchronize_session=False)
         )
@@ -142,7 +142,7 @@ def _delete_app_mcp_servers(tenant_id: str, app_id: str):
 
 
 def _delete_app_api_tokens(tenant_id: str, app_id: str):
-    def del_api_token(session, api_token_id: str):
+    def del_api_token(session: Session, api_token_id: str):
         # Fetch token details for cache invalidation
         token_obj = session.scalar(select(ApiToken).where(ApiToken.id == api_token_id).limit(1))
         if token_obj:
@@ -162,7 +162,7 @@ def _delete_app_api_tokens(tenant_id: str, app_id: str):
 
 
 def _delete_installed_apps(tenant_id: str, app_id: str):
-    def del_installed_app(session, installed_app_id: str):
+    def del_installed_app(session: Session, installed_app_id: str):
         session.execute(
             delete(InstalledApp).where(InstalledApp.id == installed_app_id).execution_options(synchronize_session=False)
         )
@@ -188,7 +188,7 @@ def _delete_app_stars(tenant_id: str, app_id: str):
 
 
 def _delete_recommended_apps(tenant_id: str, app_id: str):
-    def del_recommended_app(session, recommended_app_id: str):
+    def del_recommended_app(session: Session, recommended_app_id: str):
         session.execute(
             delete(RecommendedApp)
             .where(RecommendedApp.id == recommended_app_id)
@@ -204,7 +204,7 @@ def _delete_recommended_apps(tenant_id: str, app_id: str):
 
 
 def _delete_app_annotation_data(tenant_id: str, app_id: str):
-    def del_annotation_hit_history(session, annotation_hit_history_id: str):
+    def del_annotation_hit_history(session: Session, annotation_hit_history_id: str):
         session.execute(
             delete(AppAnnotationHitHistory)
             .where(AppAnnotationHitHistory.id == annotation_hit_history_id)
@@ -218,7 +218,7 @@ def _delete_app_annotation_data(tenant_id: str, app_id: str):
         "annotation hit history",
     )
 
-    def del_annotation_setting(session, annotation_setting_id: str):
+    def del_annotation_setting(session: Session, annotation_setting_id: str):
         session.execute(
             delete(AppAnnotationSetting)
             .where(AppAnnotationSetting.id == annotation_setting_id)
@@ -234,7 +234,7 @@ def _delete_app_annotation_data(tenant_id: str, app_id: str):
 
 
 def _delete_app_dataset_joins(tenant_id: str, app_id: str):
-    def del_dataset_join(session, dataset_join_id: str):
+    def del_dataset_join(session: Session, dataset_join_id: str):
         session.execute(
             delete(AppDatasetJoin)
             .where(AppDatasetJoin.id == dataset_join_id)
@@ -250,7 +250,7 @@ def _delete_app_dataset_joins(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflows(tenant_id: str, app_id: str):
-    def del_workflow(session, workflow_id: str):
+    def del_workflow(session: Session, workflow_id: str):
         session.execute(delete(Workflow).where(Workflow.id == workflow_id).execution_options(synchronize_session=False))
 
     _delete_records(
@@ -290,7 +290,7 @@ def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
-    def del_workflow_app_log(session, workflow_app_log_id: str):
+    def del_workflow_app_log(session: Session, workflow_app_log_id: str):
         session.execute(
             delete(WorkflowAppLog)
             .where(WorkflowAppLog.id == workflow_app_log_id)
@@ -306,7 +306,7 @@ def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
 
 
 def _delete_app_workflow_archive_logs(tenant_id: str, app_id: str):
-    def del_workflow_archive_log(session, workflow_archive_log_id: str):
+    def del_workflow_archive_log(session: Session, workflow_archive_log_id: str):
         session.execute(
             delete(WorkflowArchiveLog)
             .where(WorkflowArchiveLog.id == workflow_archive_log_id)
@@ -347,7 +347,7 @@ def _delete_archived_workflow_run_files(tenant_id: str, app_id: str):
 
 
 def _delete_app_conversations(tenant_id: str, app_id: str):
-    def del_conversation(session, conversation_id: str):
+    def del_conversation(session: Session, conversation_id: str):
         session.execute(
             delete(PinnedConversation)
             .where(PinnedConversation.conversation_id == conversation_id)
@@ -374,7 +374,7 @@ def _delete_conversation_variables(*, app_id: str):
 
 
 def _delete_app_messages(tenant_id: str, app_id: str):
-    def del_message(session, message_id: str):
+    def del_message(session: Session, message_id: str):
         session.execute(
             delete(MessageFeedback)
             .where(MessageFeedback.message_id == message_id)
@@ -414,7 +414,7 @@ def _delete_app_messages(tenant_id: str, app_id: str):
 
 
 def _delete_workflow_tool_providers(tenant_id: str, app_id: str):
-    def del_tool_provider(session, tool_provider_id: str):
+    def del_tool_provider(session: Session, tool_provider_id: str):
         session.execute(
             delete(WorkflowToolProvider)
             .where(WorkflowToolProvider.id == tool_provider_id)
@@ -430,7 +430,7 @@ def _delete_workflow_tool_providers(tenant_id: str, app_id: str):
 
 
 def _delete_app_tag_bindings(tenant_id: str, app_id: str):
-    def del_tag_binding(session, tag_binding_id: str):
+    def del_tag_binding(session: Session, tag_binding_id: str):
         session.execute(
             delete(TagBinding).where(TagBinding.id == tag_binding_id).execution_options(synchronize_session=False)
         )
@@ -444,7 +444,7 @@ def _delete_app_tag_bindings(tenant_id: str, app_id: str):
 
 
 def _delete_end_users(tenant_id: str, app_id: str):
-    def del_end_user(session, end_user_id: str):
+    def del_end_user(session: Session, end_user_id: str):
         session.execute(delete(EndUser).where(EndUser.id == end_user_id).execution_options(synchronize_session=False))
 
     _delete_records(
@@ -456,7 +456,7 @@ def _delete_end_users(tenant_id: str, app_id: str):
 
 
 def _delete_trace_app_configs(tenant_id: str, app_id: str):
-    def del_trace_app_config(session, trace_app_config_id: str):
+    def del_trace_app_config(session: Session, trace_app_config_id: str):
         session.execute(
             delete(TraceAppConfig)
             .where(TraceAppConfig.id == trace_app_config_id)
@@ -544,7 +544,7 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
     return total_deleted
 
 
-def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
+def _delete_draft_variable_offload_data(session: Session, file_ids: list[str]) -> int:
     """
     Delete Offload data associated with WorkflowDraftVariable file_ids.
 
@@ -616,7 +616,7 @@ def _delete_draft_variable_offload_data(session, file_ids: list[str]) -> int:
 
 
 def _delete_app_triggers(tenant_id: str, app_id: str):
-    def del_app_trigger(session, trigger_id: str):
+    def del_app_trigger(session: Session, trigger_id: str):
         session.execute(
             delete(AppTrigger).where(AppTrigger.id == trigger_id).execution_options(synchronize_session=False)
         )
@@ -630,7 +630,7 @@ def _delete_app_triggers(tenant_id: str, app_id: str):
 
 
 def _delete_workflow_plugin_triggers(tenant_id: str, app_id: str):
-    def del_plugin_trigger(session, trigger_id: str):
+    def del_plugin_trigger(session: Session, trigger_id: str):
         session.execute(
             delete(WorkflowPluginTrigger)
             .where(WorkflowPluginTrigger.id == trigger_id)
@@ -646,7 +646,7 @@ def _delete_workflow_plugin_triggers(tenant_id: str, app_id: str):
 
 
 def _delete_workflow_webhook_triggers(tenant_id: str, app_id: str):
-    def del_webhook_trigger(session, trigger_id: str):
+    def del_webhook_trigger(session: Session, trigger_id: str):
         session.execute(
             delete(WorkflowWebhookTrigger)
             .where(WorkflowWebhookTrigger.id == trigger_id)
@@ -662,7 +662,7 @@ def _delete_workflow_webhook_triggers(tenant_id: str, app_id: str):
 
 
 def _delete_workflow_schedule_plans(tenant_id: str, app_id: str):
-    def del_schedule_plan(session, plan_id: str):
+    def del_schedule_plan(session: Session, plan_id: str):
         session.execute(
             delete(WorkflowSchedulePlan)
             .where(WorkflowSchedulePlan.id == plan_id)
@@ -678,7 +678,7 @@ def _delete_workflow_schedule_plans(tenant_id: str, app_id: str):
 
 
 def _delete_workflow_trigger_logs(tenant_id: str, app_id: str):
-    def del_trigger_log(session, log_id: str):
+    def del_trigger_log(session: Session, log_id: str):
         session.execute(
             delete(WorkflowTriggerLog)
             .where(WorkflowTriggerLog.id == log_id)
@@ -693,7 +693,9 @@ def _delete_workflow_trigger_logs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_records(query_sql: str, params: dict[str, Any], delete_func: Callable, name: str) -> None:
+def _delete_records(
+    query_sql: str, params: dict[str, Any], delete_func: Callable[[Session, str], None], name: str
+) -> None:
     while True:
         with session_factory.create_session() as session:
             rs = session.execute(sa.text(query_sql), params)

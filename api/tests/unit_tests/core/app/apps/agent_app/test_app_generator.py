@@ -192,7 +192,7 @@ class TestGenerateWorker:
     @pytest.fixture(autouse=True)
     def patch_context(self, mocker: MockerFixture):
         @contextlib.contextmanager
-        def ctx_manager(*args, **kwargs):
+        def ctx_manager[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         mocker.patch("libs.flask_utils.preserve_flask_contexts", ctx_manager)

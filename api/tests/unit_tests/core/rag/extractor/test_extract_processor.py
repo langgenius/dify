@@ -17,7 +17,7 @@ class _ExtractorFactory:
         calls = self.calls
 
         class DummyExtractor:
-            def __init__(self, *args, **kwargs):
+            def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
                 calls.append((name, args, kwargs))
 
             def extract(self):

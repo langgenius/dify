@@ -219,7 +219,7 @@ class TestAgentChatAppGeneratorWorker:
     @pytest.fixture(autouse=True)
     def patch_context(self, mocker: MockerFixture):
         @contextlib.contextmanager
-        def ctx_manager(*args, **kwargs):
+        def ctx_manager[**P](*args: P.args, **kwargs: P.kwargs):
             yield
 
         mocker.patch("core.app.apps.agent_chat.app_generator.preserve_flask_contexts", ctx_manager)

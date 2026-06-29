@@ -1434,7 +1434,7 @@ class TestBillingServiceSubscriptionOperations:
         }
 
         # Second chunk fails - need to create a mock that raises when called
-        def side_effect_func(*args, **kwargs):
+        def side_effect_func[**P](*args: P.args, **kwargs: P.kwargs):
             if mock_send_request.call_count == 1:
                 return first_chunk_response
             else:
@@ -1458,7 +1458,7 @@ class TestBillingServiceSubscriptionOperations:
         tenant_ids = [f"tenant-{i}" for i in range(250)]
 
         # All chunks fail
-        def side_effect_func(*args, **kwargs):
+        def side_effect_func[**P](*args: P.args, **kwargs: P.kwargs):
             raise ValueError("API error")
 
         mock_send_request.side_effect = side_effect_func

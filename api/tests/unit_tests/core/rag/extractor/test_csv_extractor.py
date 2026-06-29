@@ -45,7 +45,7 @@ class TestCSVExtractor:
     def test_extract_wraps_unicode_error_when_autodetect_disabled(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=False)
 
-        def raise_decode(*args, **kwargs):
+        def raise_decode[**P](*args: P.args, **kwargs: P.kwargs):
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode error")
 
         monkeypatch.setattr("builtins.open", raise_decode)
@@ -81,7 +81,7 @@ class TestCSVExtractor:
     def test_extract_autodetect_encoding_all_attempts_fail_returns_empty(self, monkeypatch: pytest.MonkeyPatch):
         extractor = CSVExtractor("dummy.csv", autodetect_encoding=True)
 
-        def always_raise(*args, **kwargs):
+        def always_raise[**P](*args: P.args, **kwargs: P.kwargs):
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "decode error")
 
         monkeypatch.setattr("builtins.open", always_raise)

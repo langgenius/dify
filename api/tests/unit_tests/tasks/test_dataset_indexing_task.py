@@ -158,7 +158,7 @@ def mock_db_session():
         bm = MagicMock()
         bm.__enter__.return_value = session
 
-        def _bm_exit_side_effect(*args, **kwargs):
+        def _bm_exit_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
             session.commit()
 
         bm.__exit__.side_effect = _bm_exit_side_effect
@@ -169,7 +169,7 @@ def mock_db_session():
         cm = MagicMock()
         cm.__enter__.return_value = session
 
-        def _exit_side_effect(*args, **kwargs):
+        def _exit_side_effect[**P](*args: P.args, **kwargs: P.kwargs):
             session.close()
 
         cm.__exit__.side_effect = _exit_side_effect
