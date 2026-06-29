@@ -2430,11 +2430,6 @@
       "count": 2
     }
   },
-  "web/app/components/base/voice-input/utils.ts": {
-    "ts/no-explicit-any": {
-      "count": 4
-    }
-  },
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 4
