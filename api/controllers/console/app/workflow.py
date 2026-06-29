@@ -1143,9 +1143,12 @@ class PublishedWorkflowApi(Resource):
 
             workflow_created_at = TimestampField().format(workflow.created_at)
 
+            warning = workflow_service.get_variable_reference_warning(workflow.graph_dict)
+
         return {
             "result": "success",
             "created_at": workflow_created_at,
+            "warning": warning,
         }
 
 
