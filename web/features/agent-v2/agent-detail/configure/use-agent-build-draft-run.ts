@@ -8,12 +8,14 @@ import { consoleQuery } from '@/service/client'
 
 export function usePrepareAgentBuildDraftBeforeRun({
   agentId,
+  buildDraftAgentSoulConfig,
   isBuildDraftActive,
   rebaseComposerDraft,
   saveDraft,
   setSoulSourceOverride,
 }: {
   agentId?: string
+  buildDraftAgentSoulConfig?: AgentSoulConfig
   isBuildDraftActive: boolean
   rebaseComposerDraft?: (agentSoulConfig?: AgentSoulConfig) => void
   saveDraft: () => Promise<unknown>
@@ -34,8 +36,10 @@ export function usePrepareAgentBuildDraftBeforeRun({
     if (!agentId)
       return
 
-    if (!isBuildDraftActive)
-      await saveDraft()
+    if (isBuildDraftActive)
+      return buildDraftAgentSoulConfig
+
+    await saveDraft()
 
     const buildDraft = await checkoutBuildDraft({
       params: {
@@ -49,7 +53,7 @@ export function usePrepareAgentBuildDraftBeforeRun({
     rebaseComposerDraft?.(buildDraft.agent_soul as AgentSoulConfig | undefined)
     setSoulSourceOverride?.('build-draft')
     return buildDraft.agent_soul as AgentSoulConfig | undefined
-  }, [agentId, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isBuildDraftActive, queryClient, rebaseComposerDraft, saveDraft, setSoulSourceOverride])
+  }, [agentId, buildDraftAgentSoulConfig, buildDraftQueryOptions.queryKey, checkoutBuildDraft, isBuildDraftActive, queryClient, rebaseComposerDraft, saveDraft, setSoulSourceOverride])
 
   return {
     isCheckingOutBuildDraft,

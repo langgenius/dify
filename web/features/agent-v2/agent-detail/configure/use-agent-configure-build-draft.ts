@@ -116,6 +116,7 @@ export function useAgentConfigureBuildDraftData({
 
 export function useAgentConfigureBuildDraftActions({
   agentId,
+  buildDraftAgentSoulConfig,
   isActive,
   normalAgentSoulConfig,
   rebaseComposerDraft,
@@ -127,6 +128,7 @@ export function useAgentConfigureBuildDraftActions({
   setSoulSourceOverride,
 }: {
   agentId: string
+  buildDraftAgentSoulConfig?: AgentSoulConfig
   isActive: boolean
   normalAgentSoulConfig?: AgentSoulConfig
   rebaseComposerDraft: (agentSoulConfig?: AgentSoulConfig) => void
@@ -155,6 +157,7 @@ export function useAgentConfigureBuildDraftActions({
   const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } = discardBuildDraftMutation
   const { prepareBuildDraftBeforeRun } = usePrepareAgentBuildDraftBeforeRun({
     agentId,
+    buildDraftAgentSoulConfig,
     isBuildDraftActive: isActive,
     rebaseComposerDraft,
     saveDraft,

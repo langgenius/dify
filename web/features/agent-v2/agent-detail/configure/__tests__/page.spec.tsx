@@ -713,6 +713,57 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
     })
 
+    it('should not checkout again when sending build chat from active build draft mode', async () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'orchestrate-panel' })).toHaveTextContent('buildDraft:yes')
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+
+      await waitFor(() => {
+        expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('sent:yes')
+      })
+      expect(mocks.checkoutBuildDraft).not.toHaveBeenCalled()
+    })
+
     it('should show chat features from the active build draft source as read-only', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
