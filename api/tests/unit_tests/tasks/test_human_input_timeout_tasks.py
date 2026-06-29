@@ -3,10 +3,18 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from typing import Any
+import sys
+import types
 
 import pytest
 
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.human_input import HumanInputFormKind, HumanInputFormStatus
+
+_graphon_enums_module = types.ModuleType("graphon.nodes.human_input.enums")
+_graphon_enums_module.HumanInputFormKind = HumanInputFormKind
+_graphon_enums_module.HumanInputFormStatus = HumanInputFormStatus
+sys.modules.setdefault("graphon.nodes.human_input.enums", _graphon_enums_module)
+
 from tasks import human_input_timeout_tasks as task_module
 
 

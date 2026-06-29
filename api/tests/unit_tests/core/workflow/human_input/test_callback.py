@@ -204,6 +204,26 @@ def test_hitl_callback_creates_form_and_returns_pause_requested_on_first_pause()
     assert params.resolved_default_values == {"note": "Need review"}
 
 
+def test_hitl_callback_preserves_constant_paragraph_defaults_in_resolved_default_values() -> None:
+    repository = _FakeRepository()
+    node_data = HumanInputNodeData(
+        title="Human Review",
+        form_content="Question for {{#start.user#}}: {{#$output.note#}}",
+        inputs=[
+            ParagraphInputConfig(
+                output_variable_name="note",
+                default=StringSource(type=ValueSourceType.CONSTANT, value="Need review"),
+            )
+        ],
+        user_actions=[UserActionConfig(id="approve", title="Approve")],
+    )
+    callback = _construct_callback(node_data=node_data, repository=repository)
+
+    callback(_build_context())
+
+    assert repository.created_params[0].resolved_default_values == {"note": "Need review"}
+
+
 def test_hitl_callback_returns_completed_with_restored_inputs_outputs_and_selected_handle() -> None:
     repository = _FakeRepository(
         _FakeForm(
