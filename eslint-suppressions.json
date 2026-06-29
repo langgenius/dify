@@ -6299,9 +6299,6 @@
     },
     "ts/no-explicit-any": {
       "count": 5
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {

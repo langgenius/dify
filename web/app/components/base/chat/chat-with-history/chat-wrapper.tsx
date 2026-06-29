@@ -61,7 +61,7 @@ const ChatWrapper = () => {
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const timezone = appSourceType === AppSourceType.webApp
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    ? new Intl.DateTimeFormat().resolvedOptions().timeZone
     : undefined
 
   // Semantic variable for better code readability
