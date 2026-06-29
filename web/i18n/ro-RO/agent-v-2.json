@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "Scrieți instrucțiunile aici,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} nu există",
   "agentDetail.configure.prompt.tip": "Definiți rolul agentului și descrieți sarcina sa tipică. Folosiți / pentru a face referire explicită la abilități, fișiere, instrumente și recuperări de cunoștințe.",
   "agentDetail.configure.publishBar.draft": "Ciornă",
   "agentDetail.configure.publishBar.publishUpdate": "Publică actualizarea",

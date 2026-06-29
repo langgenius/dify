@@ -232,9 +232,10 @@ function Popup({
           {scopeFeatures.length > 0 && (
             <CompatibleModelsNotice />
           )}
-          {shouldShowModelPredicateReveal && !showIncompatibleModels && (
+          {shouldShowModelPredicateReveal && (
             <ShowIncompatibleModelsButton
-              onClick={() => setShowIncompatibleModels(true)}
+              showIncompatibleModels={showIncompatibleModels}
+              onClick={() => setShowIncompatibleModels(value => !value)}
             />
           )}
           {enableMarketplace && (

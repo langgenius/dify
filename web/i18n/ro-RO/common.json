@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "Dezactivat",
   "modelProvider.selector.discoverMoreInMarketplace": "Descoperiți mai multe în Marketplace",
   "modelProvider.selector.fromMarketplace": "Din Marketplace",
+  "modelProvider.selector.hideIncompatibleModels": "Ascunde modelele incompatibile",
   "modelProvider.selector.incompatible": "Incompatibil",
   "modelProvider.selector.incompatibleTip": "Acest model nu este disponibil în versiunea curentă. Vă rugăm să selectați alt model disponibil.",
   "modelProvider.selector.install": "Instalare",

@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "Désactivé",
   "modelProvider.selector.discoverMoreInMarketplace": "Découvrir plus sur le Marketplace",
   "modelProvider.selector.fromMarketplace": "Depuis le Marketplace",
+  "modelProvider.selector.hideIncompatibleModels": "Masquer les modèles incompatibles",
   "modelProvider.selector.incompatible": "Incompatible",
   "modelProvider.selector.incompatibleTip": "Ce modèle n'est pas disponible dans la version actuelle. Veuillez sélectionner un autre modèle disponible.",
   "modelProvider.selector.install": "Installer",

@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "已禁用",
   "modelProvider.selector.discoverMoreInMarketplace": "在 Marketplace 发现更多",
   "modelProvider.selector.fromMarketplace": "从 Marketplace 安装",
+  "modelProvider.selector.hideIncompatibleModels": "隐藏不兼容模型",
   "modelProvider.selector.incompatible": "不兼容",
   "modelProvider.selector.incompatibleTip": "该模型在当前版本中不可用，请选择其他可用模型。",
   "modelProvider.selector.install": "安装",

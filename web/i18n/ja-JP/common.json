@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "無効",
   "modelProvider.selector.discoverMoreInMarketplace": "マーケットプレイスでもっと探す",
   "modelProvider.selector.fromMarketplace": "マーケットプレイスから",
+  "modelProvider.selector.hideIncompatibleModels": "互換性のないモデルを非表示",
   "modelProvider.selector.incompatible": "非互換",
   "modelProvider.selector.incompatibleTip": "このモデルは現在のバージョンでは利用できません。別の利用可能なモデルを選択してください。",
   "modelProvider.selector.install": "インストール",

@@ -114,10 +114,12 @@ export function CompatibleModelsNotice() {
 }
 
 type ShowIncompatibleModelsButtonProps = {
+  showIncompatibleModels: boolean
   onClick: () => void
 }
 
 export function ShowIncompatibleModelsButton({
+  showIncompatibleModels,
   onClick,
 }: ShowIncompatibleModelsButtonProps) {
   const { t } = useTranslation()
@@ -129,7 +131,9 @@ export function ShowIncompatibleModelsButton({
       onClick={onClick}
     >
       <span className="min-w-0 truncate">
-        {t('modelProvider.selector.showIncompatibleModels', { ns: 'common' })}
+        {showIncompatibleModels
+          ? t('modelProvider.selector.hideIncompatibleModels', { ns: 'common' })
+          : t('modelProvider.selector.showIncompatibleModels', { ns: 'common' })}
       </span>
     </button>
   )

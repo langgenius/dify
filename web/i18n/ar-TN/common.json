@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "معطل",
   "modelProvider.selector.discoverMoreInMarketplace": "اكتشف المزيد في السوق",
   "modelProvider.selector.fromMarketplace": "من السوق",
+  "modelProvider.selector.hideIncompatibleModels": "إخفاء النماذج غير المتوافقة",
   "modelProvider.selector.incompatible": "غير متوافق",
   "modelProvider.selector.incompatibleTip": "هذا النموذج غير متاح في الإصدار الحالي. يرجى تحديد نموذج متاح آخر.",
   "modelProvider.selector.install": "تثبيت",

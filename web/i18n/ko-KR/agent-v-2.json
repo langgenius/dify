@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "여기에 지시 사항을 작성하세요,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}}이(가) 존재하지 않습니다",
   "agentDetail.configure.prompt.tip": "에이전트의 역할을 정의하고 일반적인 작업을 설명합니다. /를 사용해 스킬, 파일, 도구, 지식 검색을 명시적으로 참조하세요.",
   "agentDetail.configure.publishBar.draft": "초안",
   "agentDetail.configure.publishBar.publishUpdate": "업데이트 게시",

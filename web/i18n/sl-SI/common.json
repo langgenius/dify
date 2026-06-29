@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "Onemogočeno",
   "modelProvider.selector.discoverMoreInMarketplace": "Odkrijte več v Tržnici",
   "modelProvider.selector.fromMarketplace": "Iz Tržnice",
+  "modelProvider.selector.hideIncompatibleModels": "Skrij nezdružljive modele",
   "modelProvider.selector.incompatible": "Nezdružljivo",
   "modelProvider.selector.incompatibleTip": "Ta model ni na voljo v trenutni različici. Izberite drug razpoložljiv model.",
   "modelProvider.selector.install": "Namesti",

@@ -584,7 +584,7 @@ describe('Popup', () => {
     expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
   })
 
-  it('should hide incompatible models until the reveal action is clicked', async () => {
+  it('should toggle incompatible models from the reveal action', async () => {
     const user = userEvent.setup()
 
     renderPopup(
@@ -612,6 +612,13 @@ describe('Popup', () => {
     expect(screen.getByText('gpt-4o')).toBeInTheDocument()
     expect(screen.getByText('gpt-4')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.modelProvider.selector.hideIncompatibleModels' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.modelProvider.selector.hideIncompatibleModels' }))
+
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' })).toBeInTheDocument()
   })
 
   it('should show matching models when searching by model name', () => {

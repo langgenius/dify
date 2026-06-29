@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "अक्षम",
   "modelProvider.selector.discoverMoreInMarketplace": "Marketplace में और खोजें",
   "modelProvider.selector.fromMarketplace": "Marketplace से",
+  "modelProvider.selector.hideIncompatibleModels": "असंगत मॉडल छिपाएं",
   "modelProvider.selector.incompatible": "असंगत",
   "modelProvider.selector.incompatibleTip": "यह मॉडल वर्तमान संस्करण में उपलब्ध नहीं है। कृपया कोई अन्य उपलब्ध मॉडल चुनें।",
   "modelProvider.selector.install": "इंस्टॉल करें",

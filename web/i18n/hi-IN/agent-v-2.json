@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "यहाँ निर्देश लिखें,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} मौजूद नहीं है",
   "agentDetail.configure.prompt.tip": "एजेंट की भूमिका परिभाषित करें और उसके सामान्य कार्य का वर्णन करें। Skills, Files, Tools और Knowledge Retrievals का स्पष्ट संदर्भ देने के लिए / का उपयोग करें।",
   "agentDetail.configure.publishBar.draft": "ड्राफ्ट",
   "agentDetail.configure.publishBar.publishUpdate": "अपडेट प्रकाशित करें",

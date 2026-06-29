@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "Đã tắt",
   "modelProvider.selector.discoverMoreInMarketplace": "Khám phá thêm trên Marketplace",
   "modelProvider.selector.fromMarketplace": "Từ Marketplace",
+  "modelProvider.selector.hideIncompatibleModels": "Ẩn mô hình không tương thích",
   "modelProvider.selector.incompatible": "Không tương thích",
   "modelProvider.selector.incompatibleTip": "Mô hình này không khả dụng trong phiên bản hiện tại. Vui lòng chọn mô hình khả dụng khác.",
   "modelProvider.selector.install": "Cài đặt",

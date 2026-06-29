@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "Напишіть інструкції тут,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} не існує",
   "agentDetail.configure.prompt.tip": "Визначте роль агента й опишіть його типове завдання. Використовуйте /, щоб явно посилатися на навички, файли, інструменти та пошук знань.",
   "agentDetail.configure.publishBar.draft": "Чернетка",
   "agentDetail.configure.publishBar.publishUpdate": "Опублікувати оновлення",

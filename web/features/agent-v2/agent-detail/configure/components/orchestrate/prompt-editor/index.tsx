@@ -3,14 +3,14 @@
 import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
-import type { AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import type { AgentFileNode, AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useClipboard } from 'foxact/use-clipboard'
 import { useAtom, useAtomValue } from 'jotai'
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
@@ -63,11 +63,16 @@ function getProviderToolFromToken(token: RosterReferenceToken, tools: AgentTool[
   return tools.find(tool =>
     tool.kind === 'provider'
     && (
-      token.id === `${tool.id}/*`
+      token.id === tool.id
+      || token.id === `${tool.id}/*`
       || tool.actions.some(action => token.id === `${tool.id}/${action.toolName}`)
     ),
   )
 }
+
+const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => (
+  file.children?.length ? flattenFileNodes(file.children) : [file]
+))
 
 function AgentPromptRosterReferenceIcon({
   token,
@@ -174,6 +179,34 @@ export function AgentPromptEditor() {
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
+  const configuredReferenceIds = useMemo(() => {
+    const skillIds = new Set<string>()
+    skills.forEach((skill) => {
+      skillIds.add(skill.id)
+      skillIds.add(encodeURIComponent(skill.id))
+      if (skill.skillMdKey) {
+        skillIds.add(skill.skillMdKey)
+        skillIds.add(encodeURIComponent(skill.skillMdKey))
+      }
+    })
+
+    const fileIds = new Set<string>()
+    flattenFileNodes(files).forEach((file) => {
+      fileIds.add(file.id)
+      fileIds.add(encodeURIComponent(file.id))
+      if (file.driveKey) {
+        fileIds.add(file.driveKey)
+        fileIds.add(encodeURIComponent(file.driveKey))
+      }
+    })
+
+    return {
+      skills: skillIds,
+      files: fileIds,
+      knowledge: new Set(retrievals.map(retrieval => retrieval.id)),
+      cliTools: new Set(tools.flatMap(tool => tool.kind === 'cli' ? [tool.id] : [])),
+    }
+  }, [files, retrievals, skills, tools])
 
   const handleCopyPrompt = useCallback(() => {
     void copy(value)
@@ -277,6 +310,25 @@ export function AgentPromptEditor() {
       />
     )
   }, [getConfiguredToolIcon, tools])
+
+  const getRosterReferenceWarning = useCallback((token: RosterReferenceToken) => {
+    const warning = t('agentDetail.configure.prompt.referenceMissing', { name: token.label })
+
+    if (token.kind === 'skill')
+      return configuredReferenceIds.skills.has(token.id) ? undefined : warning
+
+    if (token.kind === 'file')
+      return configuredReferenceIds.files.has(token.id) ? undefined : warning
+
+    if (token.kind === 'knowledge')
+      return configuredReferenceIds.knowledge.has(token.id) ? undefined : warning
+
+    if (token.kind === 'cli_tool')
+      return ENABLE_AGENT_CLI_TOOLS && configuredReferenceIds.cliTools.has(token.id) ? undefined : warning
+
+    if (token.kind === 'tool' || token.kind === 'tool-all')
+      return getProviderToolFromToken(token, tools) ? undefined : warning
+  }, [configuredReferenceIds, t, tools])
 
   useEffect(() => {
     if (!isSlashMenuOpen)
@@ -382,6 +434,7 @@ export function AgentPromptEditor() {
               rosterReferenceBlock={{
                 show: true,
                 renderIcon: renderRosterReferenceIcon,
+                getWarning: getRosterReferenceWarning,
               }}
               disableSlashPicker
               disableBracePicker

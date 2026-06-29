@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "เขียนคำสั่งที่นี่,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} ไม่มีอยู่",
   "agentDetail.configure.prompt.tip": "กำหนดบทบาทของตัวแทนและอธิบายงานทั่วไป ใช้ / เพื่ออ้างอิง Skills, Files, Tools และ Knowledge Retrievals อย่างชัดเจน",
   "agentDetail.configure.publishBar.draft": "ฉบับร่าง",
   "agentDetail.configure.publishBar.publishUpdate": "เผยแพร่อัปเดต",

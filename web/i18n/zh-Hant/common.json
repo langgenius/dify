@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "已停用",
   "modelProvider.selector.discoverMoreInMarketplace": "在 Marketplace 探索更多",
   "modelProvider.selector.fromMarketplace": "從 Marketplace 安裝",
+  "modelProvider.selector.hideIncompatibleModels": "隱藏不相容模型",
   "modelProvider.selector.incompatible": "不相容",
   "modelProvider.selector.incompatibleTip": "此模型在目前版本中不可用，請選擇其他可用模型。",
   "modelProvider.selector.install": "安裝",

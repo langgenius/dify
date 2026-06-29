@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "Devre Dışı",
   "modelProvider.selector.discoverMoreInMarketplace": "Pazar Yeri'nde daha fazlasını keşfedin",
   "modelProvider.selector.fromMarketplace": "Pazar Yeri'nden",
+  "modelProvider.selector.hideIncompatibleModels": "Uyumsuz modelleri gizle",
   "modelProvider.selector.incompatible": "Uyumsuz",
   "modelProvider.selector.incompatibleTip": "Bu model mevcut sürümde kullanılamıyor. Lütfen başka bir kullanılabilir model seçin.",
   "modelProvider.selector.install": "Yükle",

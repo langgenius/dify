@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "在此编写指令，",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} 不存在",
   "agentDetail.configure.prompt.tip": "定义 Agent 的角色，并描述它的典型任务。使用 / 显式引用 Skill、文件、工具和知识检索。",
   "agentDetail.configure.publishBar.draft": "草稿",
   "agentDetail.configure.publishBar.publishUpdate": "发布更新",

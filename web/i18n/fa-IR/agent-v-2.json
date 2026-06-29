@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "دستورالعمل‌ها را اینجا بنویسید،",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} وجود ندارد",
   "agentDetail.configure.prompt.tip": "نقش عامل را تعریف کنید و وظیفه معمول آن را شرح دهید. برای ارجاع صریح به مهارت‌ها، فایل‌ها، ابزارها و بازیابی‌های دانش از / استفاده کنید.",
   "agentDetail.configure.publishBar.draft": "پیش‌نویس",
   "agentDetail.configure.publishBar.publishUpdate": "انتشار به‌روزرسانی",

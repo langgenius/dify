@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "비활성화됨",
   "modelProvider.selector.discoverMoreInMarketplace": "마켓플레이스에서 더 찾아보기",
   "modelProvider.selector.fromMarketplace": "마켓플레이스에서",
+  "modelProvider.selector.hideIncompatibleModels": "호환되지 않는 모델 숨기기",
   "modelProvider.selector.incompatible": "호환되지 않음",
   "modelProvider.selector.incompatibleTip": "이 모델은 현재 버전에서 사용할 수 없습니다. 다른 사용 가능한 모델을 선택하세요.",
   "modelProvider.selector.install": "설치",

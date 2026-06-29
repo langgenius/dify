@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "Отключено",
   "modelProvider.selector.discoverMoreInMarketplace": "Найти больше в Marketplace",
   "modelProvider.selector.fromMarketplace": "Из Marketplace",
+  "modelProvider.selector.hideIncompatibleModels": "Скрыть несовместимые модели",
   "modelProvider.selector.incompatible": "Несовместимо",
   "modelProvider.selector.incompatibleTip": "Эта модель недоступна в текущей версии. Пожалуйста, выберите другую доступную модель.",
   "modelProvider.selector.install": "Установить",

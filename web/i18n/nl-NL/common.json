@@ -396,6 +396,7 @@
   "modelProvider.selector.disabled": "Uitgeschakeld",
   "modelProvider.selector.discoverMoreInMarketplace": "Ontdek meer in de Marketplace",
   "modelProvider.selector.fromMarketplace": "Vanuit de Marketplace",
+  "modelProvider.selector.hideIncompatibleModels": "Incompatibele modellen verbergen",
   "modelProvider.selector.incompatible": "Incompatibel",
   "modelProvider.selector.incompatibleTip": "Dit model is niet beschikbaar in de huidige versie. Selecteer een ander beschikbaar model.",
   "modelProvider.selector.install": "Installeren",

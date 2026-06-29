@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "Viết hướng dẫn tại đây,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} không tồn tại",
   "agentDetail.configure.prompt.tip": "Xác định vai trò của tác nhân và mô tả nhiệm vụ điển hình của nó. Dùng / để tham chiếu rõ ràng đến Skills, Files, Tools và Knowledge Retrievals.",
   "agentDetail.configure.publishBar.draft": "Bản nháp",
   "agentDetail.configure.publishBar.publishUpdate": "Xuất bản cập nhật",
