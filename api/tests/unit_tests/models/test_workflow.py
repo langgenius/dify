@@ -5,14 +5,17 @@ from uuid import uuid4
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
+from core.workflow.human_input import session_binding
 from core.workflow.file_reference import build_file_reference
 from factories.variable_factory import build_segment
+from graphon.entities.pause_reason import HumanInputRequired
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from graphon.variables.segments import IntegerSegment, Segment
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
+    WorkflowPauseReason,
     WorkflowNodeExecutionModel,
     is_system_variable_editable,
 )
@@ -132,6 +135,33 @@ def test_to_dict():
         workflow_dict = workflow.to_dict(include_secret=True)
         assert workflow_dict["environment_variables"][0]["value"] == "secret"
         assert workflow_dict["environment_variables"][1]["value"] == "text"
+
+
+def test_workflow_pause_reason_uses_session_binding_for_human_input_round_trip(monkeypatch):
+    monkeypatch.setattr(
+        session_binding,
+        "issue_session_id_for_form",
+        lambda *, form_id: f"session::{form_id}",
+    )
+    monkeypatch.setattr(
+        session_binding,
+        "resolve_form_id_from_session_id",
+        lambda *, session_id: session_id.removeprefix("session::"),
+    )
+
+    reason = HumanInputRequired(
+        form_id="form-123",
+        form_content="content",
+        node_id="node-1",
+        node_title="Ask Name",
+    )
+
+    model = WorkflowPauseReason.from_entity(pause_id="pause-1", pause_reason=reason)
+    assert model.form_id == "session::form-123"
+
+    restored = model.to_entity()
+    assert isinstance(restored, HumanInputRequired)
+    assert restored.form_id == "form-123"
 
 
 def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():

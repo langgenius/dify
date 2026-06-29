@@ -10,6 +10,7 @@ from flask import Flask
 
 from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
+from core.workflow.human_input import session_binding
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
@@ -25,7 +26,7 @@ class _PauseEntity:
         return self._reasons
 
 
-def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_pause_details_resolves_session_id_before_loading_tokens(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(workflow_run_module.dify_config, "APP_WEB_URL", "https://web.example.com")
 
     workflow_run = Mock(spec=WorkflowRun)
@@ -36,7 +37,7 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
     monkeypatch.setattr(workflow_run_module, "db", fake_db)
 
     reason = HumanInputRequired(
-        form_id="form-1",
+        form_id="session-1",
         form_content="content",
         inputs=[ParagraphInputConfig(output_variable_name="name")],
         actions=[UserActionConfig(id="approve", title="Approve")],
@@ -53,9 +54,18 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         lambda *_, **__: repo,
     )
     monkeypatch.setattr(
+        session_binding,
+        "resolve_form_id_from_session_id",
+        lambda *, session_id: "form-1" if session_id == "session-1" else pytest.fail(f"unexpected session_id: {session_id}"),
+    )
+    monkeypatch.setattr(
         workflow_run_module,
         "_load_form_tokens_by_form_id",
-        lambda _form_ids: {"form-1": "backstage-token"},
+        lambda form_ids: (
+            pytest.fail(f"expected resolved form id, got: {form_ids}")
+            if form_ids != ["form-1"]
+            else {"form-1": "backstage-token"}
+        ),
     )
 
     with app.test_request_context("/console/api/workflow/run-1/pause-details", method="GET"):
@@ -74,6 +84,7 @@ def test_pause_details_returns_backstage_input_url(app: Flask, monkeypatch: pyte
         response["paused_nodes"][0]["pause_type"]["backstage_input_url"]
         == "https://web.example.com/form/backstage-token"
     )
+    assert response["paused_nodes"][0]["pause_type"]["form_id"] == "session-1"
     assert "pending_human_inputs" not in response
 
 
