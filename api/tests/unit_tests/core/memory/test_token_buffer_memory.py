@@ -9,6 +9,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
+    PromptMessageContentType,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -490,6 +491,56 @@ class TestBuildPromptMessageWithFiles:
                 app_record=MagicMock(),
                 is_user_message=True,
             )
+
+    def test_unsupported_content_type_filtered_out(self):
+        """When model doesn't support the file content type (e.g. vision),
+        non-text content is filtered out and only text remains."""
+        conv = _make_conversation(AppMode.CHAT)
+
+        mock_schema = MagicMock()
+        mock_schema.supports_prompt_content_type.return_value = False
+        mi = _make_model_instance()
+        mi.get_model_schema.return_value = mock_schema
+
+        mem = TokenBufferMemory(conversation=conv, model_instance=mi)
+
+        mock_file_extra_config = MagicMock()
+        mock_file_extra_config.image_config = None
+
+        mock_app_record = MagicMock()
+        mock_app_record.tenant_id = "tenant-1"
+
+        real_image_content = ImagePromptMessageContent(
+            url="http://example.com/img.png", format="png", mime_type="image/png"
+        )
+
+        with (
+            patch(
+                "core.memory.token_buffer_memory.FileUploadConfigManager.convert",
+                return_value=mock_file_extra_config,
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_factory.build_from_message_file",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "core.memory.token_buffer_memory.file_manager.to_prompt_message_content",
+                return_value=real_image_content,
+            ),
+        ):
+            result = mem._build_prompt_message_with_files(
+                message_files=[MagicMock()],
+                text_content="user text",
+                message=_make_message(),
+                app_record=mock_app_record,
+                is_user_message=True,
+            )
+
+        assert isinstance(result, UserPromptMessage)
+        assert isinstance(result.content, list)
+        assert len(result.content) == 1
+        assert isinstance(result.content[0], TextPromptMessageContent)
+        assert result.content[0].data == "user text"
 
 
 # ===========================================================================

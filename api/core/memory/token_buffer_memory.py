@@ -18,7 +18,7 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
-from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from graphon.model_runtime.entities.message_entities import PromptMessageContentType, PromptMessageContentUnionTypes
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
@@ -113,6 +113,16 @@ class TokenBufferMemory:
                 )
                 prompt_message_contents.append(prompt_message)
             prompt_message_contents.append(TextPromptMessageContent(data=text_content))
+
+            # Filter out content types the current model doesn't support
+            # (e.g., skip image content when model is not a vision model)
+            model_schema = self.model_instance.get_model_schema()
+            prompt_message_contents = [
+                c
+                for c in prompt_message_contents
+                if c.type == PromptMessageContentType.TEXT
+                or model_schema.supports_prompt_content_type(c.type)
+            ]
 
             if is_user_message:
                 return UserPromptMessage(content=prompt_message_contents)
