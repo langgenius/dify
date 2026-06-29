@@ -82,7 +82,11 @@ class ConversationService:
                 reference_conversation=last_conversation,
             )
             stmt = stmt.where(filter_condition)
-        query_stmt = stmt.order_by(sort_direction(getattr(Conversation, sort_field))).limit(limit)
+        sort_column = {
+            "created_at": Conversation.created_at,
+            "updated_at": Conversation.updated_at,
+        }[sort_field]
+        query_stmt = stmt.order_by(sort_direction(sort_column)).limit(limit)
         conversations = session.scalars(query_stmt).all()
 
         has_more = False
@@ -108,11 +112,15 @@ class ConversationService:
 
     @classmethod
     def _build_filter_condition(cls, sort_field: str, sort_direction: Callable, reference_conversation: Conversation):
+        sort_column = {
+            "created_at": Conversation.created_at,
+            "updated_at": Conversation.updated_at,
+        }[sort_field]
         field_value = getattr(reference_conversation, sort_field)
         if sort_direction is desc:
-            return getattr(Conversation, sort_field) < field_value
+            return sort_column < field_value
 
-        return getattr(Conversation, sort_field) > field_value
+        return sort_column > field_value
 
     @classmethod
     def rename(
