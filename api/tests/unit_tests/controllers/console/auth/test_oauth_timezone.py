@@ -30,7 +30,7 @@ def test_oauth_login_passes_language_and_timezone_to_authorization_url(
         OAuthLogin().get("github")
 
     oauth_provider.get_authorization_url.assert_called_once_with(
-        invite_token=None,
+        invite_token="",
         timezone="Asia/Shanghai",
         language="zh-Hans",
     )

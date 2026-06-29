@@ -106,7 +106,7 @@ class OAuthLogin(Resource):
     @console_ns.response(302, "Redirect to OAuth authorization URL", console_ns.models[RedirectResponse.__name__])
     @console_ns.response(400, "Invalid provider")
     def get(self, provider: str):
-        invite_token = request.args.get("invite_token") or None
+        invite_token = request.args.get("invite_token") or ""
         timezone = _validated_timezone(request.args.get("timezone") or None)
         language = _validated_language(request.args.get("language") or None)
         OAUTH_PROVIDERS = get_oauth_providers()
@@ -117,8 +117,8 @@ class OAuthLogin(Resource):
 
         auth_url = oauth_provider.get_authorization_url(
             invite_token=invite_token,
-            timezone=timezone,
-            language=language,
+            timezone=timezone or "",
+            language=language or "",
         )
         return redirect(auth_url)
 
