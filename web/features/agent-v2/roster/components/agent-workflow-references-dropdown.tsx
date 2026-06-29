@@ -57,7 +57,7 @@ export function AgentWorkflowReferencesDropdown({
         {publishedReferences.map(reference => (
           <DropdownMenuLinkItem
             key={reference.app_id}
-            render={<Link href={getWorkflowReferenceHref(reference)} />}
+            render={<Link href={getWorkflowReferenceHref(reference)} target="_blank" rel="noopener noreferrer" />}
             className="mx-0 h-8 gap-2 px-2 py-1 pr-2.5 system-md-regular text-text-secondary"
           >
             <span aria-hidden className="shrink-0">
