@@ -42,6 +42,7 @@ export function AgentSkillItem({
       <div className="group relative h-8 overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg shadow-xs shadow-shadow-shadow-3 focus-within:bg-components-panel-on-panel-item-bg-hover focus-within:shadow-sm hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm has-[[data-agent-skill-remove-button]:focus-visible]:border-state-destructive-border! has-[[data-agent-skill-remove-button]:focus-visible]:bg-state-destructive-hover! has-[[data-agent-skill-remove-button]:focus-visible]:shadow-xs! has-[[data-agent-skill-remove-button]:hover]:border-state-destructive-border! has-[[data-agent-skill-remove-button]:hover]:bg-state-destructive-hover! has-[[data-agent-skill-remove-button]:hover]:shadow-xs!">
         <button
           type="button"
+          aria-label={skill.name}
           className="flex h-full w-full min-w-0 cursor-pointer items-center gap-1 rounded-lg py-1 pr-2.5 pl-2 text-left outline-hidden select-none focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset"
           onClick={handleOpenPreview}
         >
