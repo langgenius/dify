@@ -302,6 +302,9 @@ export function AgentPromptEditor() {
     if (token.kind !== 'tool' && token.kind !== 'tool-all' && token.kind !== 'cli_tool')
       return null
 
+    if ((token.kind === 'tool' || token.kind === 'tool-all') && !getProviderToolFromToken(token, tools))
+      return null
+
     return (
       <AgentPromptRosterReferenceIcon
         token={token}
