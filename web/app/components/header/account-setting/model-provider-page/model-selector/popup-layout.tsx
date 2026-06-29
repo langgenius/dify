@@ -113,6 +113,28 @@ export function CompatibleModelsNotice() {
   )
 }
 
+type ShowIncompatibleModelsButtonProps = {
+  onClick: () => void
+}
+
+export function ShowIncompatibleModelsButton({
+  onClick,
+}: ShowIncompatibleModelsButtonProps) {
+  const { t } = useTranslation()
+
+  return (
+    <button
+      type="button"
+      className="flex h-10 w-full cursor-pointer items-center px-4 text-left system-xs-regular text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+      onClick={onClick}
+    >
+      <span className="min-w-0 truncate">
+        {t('modelProvider.selector.showIncompatibleModels', { ns: 'common' })}
+      </span>
+    </button>
+  )
+}
+
 type ModelProviderSettingsFooterProps = {
   onOpenSettings: () => void
 }

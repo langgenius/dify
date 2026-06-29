@@ -404,6 +404,7 @@
   "modelProvider.selector.noProviderConfigured": "Kein Modellanbieter konfiguriert",
   "modelProvider.selector.noProviderConfiguredDesc": "Durchsuchen Sie den Marketplace, um einen zu installieren, oder konfigurieren Sie Anbieter in den Einstellungen.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Es werden nur kompatible Modelle angezeigt",
+  "modelProvider.selector.showIncompatibleModels": "Inkompatible Modelle anzeigen",
   "modelProvider.showModels": "Modelle anzeigen",
   "modelProvider.speechToTextModel.key": "Sprach-zu-Text-Modell",
   "modelProvider.speechToTextModel.tip": "Legen Sie das Standardmodell für die Spracheingabe in Konversationen fest.",

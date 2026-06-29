@@ -404,6 +404,7 @@
   "modelProvider.selector.noProviderConfigured": "هیچ ارائه‌دهنده مدلی پیکربندی نشده است",
   "modelProvider.selector.noProviderConfiguredDesc": "در Marketplace جستجو کنید تا یکی نصب کنید، یا ارائه‌دهندگان را در تنظیمات پیکربندی کنید.",
   "modelProvider.selector.onlyCompatibleModelsShown": "فقط مدل‌های سازگار نمایش داده می‌شوند",
+  "modelProvider.selector.showIncompatibleModels": "نمایش مدل‌های ناسازگار",
   "modelProvider.showModels": "نمایش مدل‌ها",
   "modelProvider.speechToTextModel.key": "مدل تبدیل گفتار به متن",
   "modelProvider.speechToTextModel.tip": "مدل پیش‌فرض را برای ورودی گفتار به متن در مکالمه تنظیم کنید.",

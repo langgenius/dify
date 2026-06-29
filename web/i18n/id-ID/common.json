@@ -404,6 +404,7 @@
   "modelProvider.selector.noProviderConfigured": "Belum ada penyedia model yang dikonfigurasi",
   "modelProvider.selector.noProviderConfiguredDesc": "Jelajahi Marketplace untuk menginstal, atau konfigurasikan penyedia di pengaturan.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Hanya model yang kompatibel yang ditampilkan",
+  "modelProvider.selector.showIncompatibleModels": "Tampilkan model yang tidak kompatibel",
   "modelProvider.showModels": "Tampilkan Model",
   "modelProvider.speechToTextModel.key": "Model Ucapan-ke-Teks",
   "modelProvider.speechToTextModel.tip": "Atur model default untuk input ucapan-ke-teks dalam percakapan.",

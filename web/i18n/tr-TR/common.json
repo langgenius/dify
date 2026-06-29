@@ -404,6 +404,7 @@
   "modelProvider.selector.noProviderConfigured": "Yapılandırılmış model sağlayıcı yok",
   "modelProvider.selector.noProviderConfiguredDesc": "Yüklemek için Pazar Yeri'ne göz atın veya ayarlardan sağlayıcıları yapılandırın.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Yalnızca uyumlu modeller gösterilir",
+  "modelProvider.selector.showIncompatibleModels": "Uyumsuz modelleri göster",
   "modelProvider.showModels": "Modelleri Göster",
   "modelProvider.speechToTextModel.key": "Konuşmadan Metne Modeli",
   "modelProvider.speechToTextModel.tip": "Konuşmada konuşmadan metne giriş için varsayılan modeli ayarlayın.",

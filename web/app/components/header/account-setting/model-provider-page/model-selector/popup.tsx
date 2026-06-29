@@ -1,5 +1,6 @@
 import type { DefaultModel, Model } from '../declarations'
 import type { ModelSelectorPreviewPayload } from './popup-item'
+import type { ModelSelectorModelPredicate } from './types'
 import type { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { ComboboxList } from '@langgenius/dify-ui/combobox'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent } from '@langgenius/dify-ui/preview-card'
@@ -31,7 +32,7 @@ import MarketplaceSection from './marketplace-section'
 import { createModelSelectorSearchIndex, filterModelSelectorModels } from './model-search'
 import ModelSelectorEmptyState from './popup-empty-state'
 import PopupItem from './popup-item'
-import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader } from './popup-layout'
+import { CompatibleModelsNotice, ModelProviderSettingsFooter, ModelSelectorPopupFrame, ModelSelectorScrollBody, ModelSelectorSearchHeader, ShowIncompatibleModelsButton } from './popup-layout'
 
 export type PopupProps = {
   defaultModel?: DefaultModel
@@ -40,6 +41,7 @@ export type PopupProps = {
   scopeFeatures?: ModelFeatureEnum[]
   hideProviderSettingsFooter?: boolean
   providerSettingsSource?: 'agent'
+  modelPredicate?: ModelSelectorModelPredicate
   onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
   onHide: () => void
@@ -51,6 +53,7 @@ function Popup({
   scopeFeatures = [],
   hideProviderSettingsFooter,
   providerSettingsSource,
+  modelPredicate,
   onConfigureEmptyState,
   onInputValueChange,
   onHide,
@@ -61,6 +64,7 @@ function Popup({
   const language = useLanguage()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
+  const [showIncompatibleModels, setShowIncompatibleModels] = useState(false)
   const openIntegrationsSetting = useIntegrationsSetting()
   const { modelProviders } = useProviderContext()
   const { data: enableMarketplace } = useSuspenseQuery({
@@ -163,9 +167,11 @@ function Popup({
     defaultModel,
     inputValue,
     installedModelList,
+    modelPredicate: showIncompatibleModels ? undefined : modelPredicate,
     scopeFeatures,
     searchIndex,
-  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, scopeFeatures, searchIndex])
+  }), [aiCreditVisibleProviders, defaultModel, inputValue, installedModelList, modelPredicate, scopeFeatures, searchIndex, showIncompatibleModels])
+  const shouldShowModelPredicateReveal = !!modelPredicate
 
   const marketplaceProviders = useMemo(() => {
     if (!enableMarketplace)
@@ -225,6 +231,11 @@ function Popup({
           )}
           {scopeFeatures.length > 0 && (
             <CompatibleModelsNotice />
+          )}
+          {shouldShowModelPredicateReveal && !showIncompatibleModels && (
+            <ShowIncompatibleModelsButton
+              onClick={() => setShowIncompatibleModels(true)}
+            />
           )}
           {enableMarketplace && (
             <MarketplaceSection

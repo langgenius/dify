@@ -404,6 +404,7 @@
   "modelProvider.selector.noProviderConfigured": "Noben ponudnik modelov ni konfiguriran",
   "modelProvider.selector.noProviderConfiguredDesc": "Poiščite v Tržnici za namestitev ali konfigurirajte ponudnike v nastavitvah.",
   "modelProvider.selector.onlyCompatibleModelsShown": "Prikazani so samo združljivi modeli",
+  "modelProvider.selector.showIncompatibleModels": "Prikaži nezdružljive modele",
   "modelProvider.showModels": "Prikaži modele",
   "modelProvider.speechToTextModel.key": "Model za pretvorbo govora v besedilo",
   "modelProvider.speechToTextModel.tip": "Nastavite privzeti model za vnos govora v besedilo v pogovoru.",

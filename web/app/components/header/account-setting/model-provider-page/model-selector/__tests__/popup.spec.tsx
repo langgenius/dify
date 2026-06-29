@@ -584,6 +584,36 @@ describe('Popup', () => {
     expect(screen.queryByText('gpt-4-tool')).not.toBeInTheDocument()
   })
 
+  it('should hide incompatible models until the reveal action is clicked', async () => {
+    const user = userEvent.setup()
+
+    renderPopup(
+      <PopupHarness
+        modelList={[
+          makeModel({
+            provider: 'openai',
+            models: [
+              makeModelItem({ model: 'gpt-4o', label: { en_US: 'GPT-4o', zh_Hans: 'GPT-4o' } }),
+              makeModelItem({ model: 'gpt-4', label: { en_US: 'GPT-4', zh_Hans: 'GPT-4' } }),
+            ],
+          }),
+        ]}
+        modelPredicate={(_provider, modelItem) => modelItem.model !== 'gpt-4'}
+        onHide={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
+    expect(screen.queryByText('gpt-4')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' }))
+
+    expect(screen.getByText('gpt-4o')).toBeInTheDocument()
+    expect(screen.getByText('gpt-4')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.modelProvider.selector.showIncompatibleModels' })).not.toBeInTheDocument()
+  })
+
   it('should show matching models when searching by model name', () => {
     renderPopup(
       <PopupHarness
