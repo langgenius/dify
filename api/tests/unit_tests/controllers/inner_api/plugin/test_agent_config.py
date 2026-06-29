@@ -166,11 +166,11 @@ def test_file_pull_returns_send_file_response() -> None:
     assert service.return_value.pull_file.call_args.kwargs["user_id"] == "user-1"
 
 
-def test_push_happy_path_validates_body_and_canonicalizes_user() -> None:
+def test_push_happy_path_validates_body_and_preserves_execution_user() -> None:
     raw = _raw(AgentConfigPushApi.post)
     payload = {
         "tenant_id": "tenant-1",
-        "user_id": "session-user-1",
+        "user_id": "account-user-1",
         "config_version_id": "cfg-1",
         "config_version_kind": "build_draft",
         "files": [{"name": "guide.txt", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}],
@@ -180,10 +180,7 @@ def test_push_happy_path_validates_body_and_canonicalizes_user() -> None:
     }
 
     with app.test_request_context("/", method="POST", json=payload):
-        with (
-            patch(f"{MODULE}.get_user", return_value=SimpleNamespace(id="user-1")) as get_user,
-            patch(f"{MODULE}.AgentConfigService") as service,
-        ):
+        with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.push.return_value = {
                 "agent_id": "agent-1",
                 "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
@@ -202,8 +199,7 @@ def test_push_happy_path_validates_body_and_canonicalizes_user() -> None:
         "env_keys": ["KEY"],
         "note": "hello",
     }
-    assert get_user.call_args.args == ("tenant-1", "session-user-1")
-    assert service.return_value.push.call_args.kwargs["user_id"] == "user-1"
+    assert service.return_value.push.call_args.kwargs["user_id"] == "account-user-1"
     assert service.return_value.push.call_args.kwargs["config_version_kind"].value == "build_draft"
 
 
@@ -211,21 +207,19 @@ def test_env_happy_path_calls_service() -> None:
     raw = _raw(AgentConfigEnvApi.patch)
     payload = {
         "tenant_id": "tenant-1",
-        "user_id": "session-user-1",
+        "user_id": "account-user-1",
         "config_version_id": "cfg-1",
         "config_version_kind": "build_draft",
         "env_text": "KEY=value\n",
     }
 
     with app.test_request_context("/", method="PATCH", json=payload):
-        with (
-            patch(f"{MODULE}.get_user", return_value=SimpleNamespace(id="user-1")),
-            patch(f"{MODULE}.AgentConfigService") as service,
-        ):
+        with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.update_env.return_value = {"env_keys": ["KEY"]}
             body = raw(AgentConfigEnvApi(), "agent-1")
 
     assert body == {"env_keys": ["KEY"]}
+    assert service.return_value.update_env.call_args.kwargs["user_id"] == "account-user-1"
     assert service.return_value.update_env.call_args.kwargs["env_text"] == "KEY=value\n"
 
 
@@ -233,21 +227,19 @@ def test_note_happy_path_calls_service() -> None:
     raw = _raw(AgentConfigNoteApi.put)
     payload = {
         "tenant_id": "tenant-1",
-        "user_id": "session-user-1",
+        "user_id": "account-user-1",
         "config_version_id": "cfg-1",
         "config_version_kind": "build_draft",
         "note": "hello",
     }
 
     with app.test_request_context("/", method="PUT", json=payload):
-        with (
-            patch(f"{MODULE}.get_user", return_value=SimpleNamespace(id="user-1")),
-            patch(f"{MODULE}.AgentConfigService") as service,
-        ):
+        with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.update_note.return_value = {"note": "hello"}
             body = raw(AgentConfigNoteApi(), "agent-1")
 
     assert body == {"note": "hello"}
+    assert service.return_value.update_note.call_args.kwargs["user_id"] == "account-user-1"
     assert service.return_value.update_note.call_args.kwargs["note"] == "hello"
 
 
@@ -293,7 +285,7 @@ def test_push_maps_service_errors() -> None:
     raw = _raw(AgentConfigPushApi.post)
     payload = {
         "tenant_id": "tenant-1",
-        "user_id": "session-user-1",
+        "user_id": "account-user-1",
         "config_version_id": "cfg-1",
         "config_version_kind": "build_draft",
         "files": [],
@@ -301,10 +293,7 @@ def test_push_maps_service_errors() -> None:
     }
 
     with app.test_request_context("/", method="POST", json=payload):
-        with (
-            patch(f"{MODULE}.get_user", return_value=SimpleNamespace(id="user-1")),
-            patch(f"{MODULE}.AgentConfigService") as service,
-        ):
+        with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.push.side_effect = AgentConfigServiceError(
                 "config_not_writable",
                 "denied",

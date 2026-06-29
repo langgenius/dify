@@ -15,7 +15,6 @@ from pydantic import BaseModel, ValidationError
 
 from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
 from services.agent_config_service import (
     AgentConfigService,
@@ -182,11 +181,10 @@ class AgentConfigPushApi(Resource):
     def post(self, agent_id: str):
         try:
             body = _ConfigPushRequest.model_validate(request.get_json(silent=True) or {})
-            user = get_user(body.tenant_id, body.user_id)
             return AgentConfigService().push(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
-                user_id=user.id,
+                user_id=body.user_id,
                 config_version_id=body.config_version_id,
                 config_version_kind=body.config_version_kind,
                 payload=body.to_payload(),
@@ -205,11 +203,10 @@ class AgentConfigEnvApi(Resource):
     def patch(self, agent_id: str):
         try:
             body = _ConfigEnvUpdateRequest.model_validate(request.get_json(silent=True) or {})
-            user = get_user(body.tenant_id, body.user_id)
             return AgentConfigService().update_env(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
-                user_id=user.id,
+                user_id=body.user_id,
                 config_version_id=body.config_version_id,
                 config_version_kind=body.config_version_kind,
                 env_text=body.env_text,
@@ -228,11 +225,10 @@ class AgentConfigNoteApi(Resource):
     def put(self, agent_id: str):
         try:
             body = _ConfigNoteUpdateRequest.model_validate(request.get_json(silent=True) or {})
-            user = get_user(body.tenant_id, body.user_id)
             return AgentConfigService().update_note(
                 tenant_id=body.tenant_id,
                 agent_id=agent_id,
-                user_id=user.id,
+                user_id=body.user_id,
                 config_version_id=body.config_version_id,
                 config_version_kind=body.config_version_kind,
                 note=body.note,
