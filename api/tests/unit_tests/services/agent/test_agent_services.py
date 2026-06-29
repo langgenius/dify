@@ -236,6 +236,62 @@ def test_load_workflow_composer_uses_inline_preview_snapshot(monkeypatch: pytest
     assert result == {"agent": "inline-agent-1", "version": "inline-preview-version"}
 
 
+def test_workflow_inline_debug_conversation_seed(monkeypatch: pytest.MonkeyPatch):
+    captured: dict[str, object] = {}
+
+    class FakeRosterService:
+        def __init__(self, session):
+            captured["session"] = session
+
+        def get_or_create_agent_app_debug_conversation_id(self, **kwargs):
+            captured.update(kwargs)
+            return "debug-conversation-1"
+
+    monkeypatch.setattr(roster_service, "AgentRosterService", FakeRosterService)
+
+    binding = SimpleNamespace(binding_type=WorkflowAgentBindingType.INLINE_AGENT)
+    agent = SimpleNamespace(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY)
+
+    debug_conversation_id = AgentComposerService._workflow_inline_debug_conversation_id(
+        tenant_id="tenant-1",
+        binding=binding,
+        agent=agent,
+        account_id="account-1",
+    )
+
+    assert debug_conversation_id == "debug-conversation-1"
+    assert captured["tenant_id"] == "tenant-1"
+    assert captured["agent_id"] == "inline-agent-1"
+    assert captured["account_id"] == "account-1"
+
+
+def test_workflow_inline_debug_conversation_seed_skips_non_inline(monkeypatch: pytest.MonkeyPatch):
+    class UnexpectedRosterService:
+        def __init__(self, session):
+            raise AssertionError("roster service should not be used")
+
+    monkeypatch.setattr(roster_service, "AgentRosterService", UnexpectedRosterService)
+
+    assert (
+        AgentComposerService._workflow_inline_debug_conversation_id(
+            tenant_id="tenant-1",
+            binding=SimpleNamespace(binding_type=WorkflowAgentBindingType.ROSTER_AGENT),
+            agent=SimpleNamespace(id="agent-1", scope=AgentScope.ROSTER),
+            account_id="account-1",
+        )
+        is None
+    )
+    assert (
+        AgentComposerService._workflow_inline_debug_conversation_id(
+            tenant_id="tenant-1",
+            binding=SimpleNamespace(binding_type=WorkflowAgentBindingType.INLINE_AGENT),
+            agent=SimpleNamespace(id="inline-agent-1", scope=AgentScope.WORKFLOW_ONLY),
+            account_id=None,
+        )
+        is None
+    )
+
+
 def test_load_workflow_composer_rejects_preview_without_binding(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: None)

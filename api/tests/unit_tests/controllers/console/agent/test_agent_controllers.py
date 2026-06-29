@@ -1154,9 +1154,10 @@ def test_workflow_composer_get_put_validate_candidates_impact_and_save(
 
     with app.test_request_context("?snapshot_id=preview-version"):
         workflow_state = unwrap(WorkflowAgentComposerApi.get)(
-            WorkflowAgentComposerApi(), "tenant-1", app_model, "node-1"
+            WorkflowAgentComposerApi(), "tenant-1", account_id, app_model, "node-1"
         )
     assert workflow_state["node_id"] == "node-1"
+    assert captured_load["account_id"] == account_id
     assert captured_load["snapshot_id"] == "preview-version"
     with app.test_request_context(json=payload):
         saved_state = unwrap(WorkflowAgentComposerApi.put)(
