@@ -3,7 +3,7 @@ import type {
   CommonNodeType,
   Node,
 } from '@/app/components/workflow/types'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import {
   Collapse,

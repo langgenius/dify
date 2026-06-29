@@ -18,7 +18,7 @@ import {
   useState,
 } from 'react'
 import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Textarea from 'react-textarea-autosize'
 import EnterKey from '@/app/components/base/icons/src/public/common/EnterKey'
 import { useParams } from '@/next/navigation'

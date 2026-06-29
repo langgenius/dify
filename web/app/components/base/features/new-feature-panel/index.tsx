@@ -3,7 +3,7 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { DrawerCloseButton } from '@langgenius/dify-ui/drawer'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 
 import Citation from '@/app/components/base/features/new-feature-panel/citation'

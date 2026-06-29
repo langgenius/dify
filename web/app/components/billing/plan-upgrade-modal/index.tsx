@@ -2,7 +2,7 @@
 import type { ComponentType, ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { UpgradeModal } from '@/app/components/base/upgrade-modal'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useModalContext } from '@/context/modal-context'

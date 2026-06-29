@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiArrowRightSLine } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import FileImageRender from './file-image-render'
 import FileTypeIcon from './file-type-icon'

@@ -5,7 +5,7 @@ import type { Area, CropperProps } from 'react-easy-crop'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createRef, useEffect, useState } from 'react'
 import Cropper from 'react-easy-crop'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 import { ImagePlus } from '../icons/src/vender/line/images'

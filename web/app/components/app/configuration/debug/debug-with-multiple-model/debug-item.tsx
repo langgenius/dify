@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'

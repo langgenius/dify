@@ -7,7 +7,7 @@ import { Input } from '@langgenius/dify-ui/input'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useKeyPress } from 'ahooks'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 export type CreateSnippetDialogPayload = {
   name: string

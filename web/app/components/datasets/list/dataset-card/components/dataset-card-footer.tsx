@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { RiFileTextFill, RiRobot2Fill } from '@remixicon/react'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const EXTERNAL_PROVIDER = 'external'

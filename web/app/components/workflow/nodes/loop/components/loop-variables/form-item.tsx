@@ -9,7 +9,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'

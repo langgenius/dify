@@ -1,7 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { RiUserAddLine } from '@remixicon/react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'

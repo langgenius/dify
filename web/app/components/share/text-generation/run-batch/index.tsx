@@ -7,7 +7,7 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import CSVDownload from './csv-download'
 import CSVReader from './csv-reader'

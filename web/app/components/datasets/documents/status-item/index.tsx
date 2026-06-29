@@ -10,7 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'

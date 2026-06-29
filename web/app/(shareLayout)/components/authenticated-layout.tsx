@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import { useCallback, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import { useWebAppStore } from '@/context/web-app-context'

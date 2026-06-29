@@ -21,7 +21,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CheckboxList } from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import { Infotip } from '@/app/components/base/infotip'

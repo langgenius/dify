@@ -15,7 +15,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'

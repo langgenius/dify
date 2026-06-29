@@ -1,7 +1,7 @@
 'use client'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiStickyNoteAddLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 
 export enum AppCategories {

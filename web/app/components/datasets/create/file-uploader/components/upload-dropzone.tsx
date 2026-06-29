@@ -2,7 +2,7 @@
 import type { RefObject } from 'react'
 import type { FileUploadConfig } from '../hooks/use-file-upload'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 
 export type UploadDropzoneProps = {

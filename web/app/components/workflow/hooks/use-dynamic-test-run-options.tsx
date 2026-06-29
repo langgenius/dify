@@ -1,7 +1,7 @@
 import type { TestRunOptions, TriggerOption } from '../header/test-run-menu'
 import type { CommonNodeType } from '../types'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useAllTriggerPlugins } from '@/service/use-triggers'

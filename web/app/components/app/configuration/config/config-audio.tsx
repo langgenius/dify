@@ -4,7 +4,7 @@ import { Switch } from '@langgenius/dify-ui/switch'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 import { useContext } from 'use-context-selector'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'

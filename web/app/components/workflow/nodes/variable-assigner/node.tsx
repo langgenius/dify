@@ -6,7 +6,7 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import NodeGroupItem from './components/node-group-item'
 
 const i18nPrefix = 'nodes.variableAssigner'

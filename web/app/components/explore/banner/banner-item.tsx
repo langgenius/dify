@@ -1,7 +1,7 @@
 /* eslint-disable react/set-state-in-effect */
 import type { Banner } from '@/models/app'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useCarousel } from '@/app/components/base/carousel'
 import { IndicatorButton } from './indicator-button'

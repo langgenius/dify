@@ -4,7 +4,7 @@ import {
   memo,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
 

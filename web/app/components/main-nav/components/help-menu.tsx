@@ -14,7 +14,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useLearnDifyHiddenValue, useSetLearnDifyHidden } from '@/app/components/explore/learn-dify/storage'
 import AccountAbout from '@/app/components/header/account-about'
 import Compliance from '@/app/components/header/account-dropdown/compliance'

@@ -1,7 +1,7 @@
 import type { LabelProps } from '../label'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { TransferMethod } from '@/types/app'
 import { useFieldContext } from '../..'

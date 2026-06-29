@@ -12,7 +12,7 @@ import {
   AlertDialogDescription,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { useGetLanguage } from '@/context/i18n'

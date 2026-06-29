@@ -4,7 +4,7 @@ import type { Permissions } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { PluginSidecarPanel } from '@/app/components/plugins/plugin-page/plugin-sidecar-panel'
 import { PermissionType } from '@/app/components/plugins/types'
 

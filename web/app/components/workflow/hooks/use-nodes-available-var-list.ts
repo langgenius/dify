@@ -1,6 +1,6 @@
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import {
   useIsChatMode,

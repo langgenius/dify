@@ -4,7 +4,7 @@ import type {
 } from '@/types/workflow'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowRightSLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 

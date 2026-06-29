@@ -1,5 +1,5 @@
 import { RiBookOpenLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 
 const InfoPanel = () => {

@@ -8,7 +8,7 @@ import {
 } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useContext } from 'use-context-selector'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'

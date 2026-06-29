@@ -1,5 +1,5 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   NODE_WIDTH_X_OFFSET,

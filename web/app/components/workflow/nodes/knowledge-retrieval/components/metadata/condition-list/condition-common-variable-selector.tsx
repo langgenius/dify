@@ -5,7 +5,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionCommonVariableSelectorProps = {

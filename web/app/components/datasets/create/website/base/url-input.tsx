@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDocLink } from '@/context/i18n'
 import Input from './text-input'
 

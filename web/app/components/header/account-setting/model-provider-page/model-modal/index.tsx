@@ -30,7 +30,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'

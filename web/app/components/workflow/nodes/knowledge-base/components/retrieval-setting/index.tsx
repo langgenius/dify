@@ -15,7 +15,7 @@ import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import {
   memo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import { useDocLink } from '@/context/i18n'
 import { useRetrievalSetting } from './hooks'

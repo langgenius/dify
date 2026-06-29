@@ -7,7 +7,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { getButtonConfig } from './button-config'
 import DropdownContent from './dropdown-content'
 

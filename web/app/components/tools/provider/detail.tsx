@@ -26,7 +26,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'

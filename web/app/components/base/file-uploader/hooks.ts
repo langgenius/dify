@@ -9,7 +9,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { v4 as uuid4 } from 'uuid'
 import {
   AUDIO_SIZE_LIMIT,

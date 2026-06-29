@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useId, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import useTimestamp from '@/hooks/use-timestamp'

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import Item from './item'
 

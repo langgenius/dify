@@ -1,5 +1,5 @@
 import { RiAddLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ManageInputFieldProps = {
   onManage: () => void

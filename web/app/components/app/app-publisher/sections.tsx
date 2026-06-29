@@ -10,7 +10,7 @@ import {
   TooltipTrigger,
 } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'

@@ -4,7 +4,7 @@ import type { AccessChannels, ApiKeySummary } from '@dify/contracts/enterprise/t
 import { RuntimeInstanceStatus } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import Link from '@/next/link'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'

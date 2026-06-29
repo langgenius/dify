@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import { useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
 import PremiumBadge from '@/app/components/base/premium-badge'

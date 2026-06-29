@@ -14,7 +14,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useEdges } from 'reactflow'
 import { AppPublisher } from '@/app/components/app/app-publisher'
 import { useStore as useAppStore } from '@/app/components/app/store'

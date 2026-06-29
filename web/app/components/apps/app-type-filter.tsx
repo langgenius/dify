@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { AppModeEnum } from '@/types/app'
 import { isAppListCategory } from './app-type-filter-shared'
 

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Dependency, Plugin, PluginDeclaration } from '../../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { uploadFile } from '@/service/plugins'
 import Card from '../../../card'
 

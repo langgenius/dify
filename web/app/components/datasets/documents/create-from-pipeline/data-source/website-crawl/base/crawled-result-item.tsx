@@ -5,7 +5,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Radio } from '@langgenius/dify-ui/radio'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type CrawledResultItemProps = {
   payload: CrawlResultItemType

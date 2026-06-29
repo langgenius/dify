@@ -1,7 +1,7 @@
 import type { PluginPayload } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useModalContext } from '@/context/modal-context'
 import Authorize from './authorize'

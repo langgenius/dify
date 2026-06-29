@@ -7,7 +7,7 @@ import { FieldControl, FieldDescription, FieldLabel, FieldRoot } from '@langgeni
 import { Form } from '@langgenius/dify-ui/form'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { EnvVariablesTable } from '../../advanced/env'
 
 type CliToolFormValues = {

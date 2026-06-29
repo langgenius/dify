@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { SegmentDetailModel } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import TagInput from '@/app/components/base/tag-input'
 
 type IKeywordsProps = {

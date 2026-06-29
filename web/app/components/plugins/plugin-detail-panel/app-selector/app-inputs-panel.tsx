@@ -2,7 +2,7 @@
 import type { App } from '@/types/app'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import AppInputsForm from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-form'
 import { useAppInputsFormSchema } from '@/app/components/plugins/plugin-detail-panel/app-selector/hooks/use-app-inputs-form-schema'

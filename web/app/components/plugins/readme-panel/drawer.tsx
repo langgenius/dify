@@ -11,7 +11,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ReadmePanelContent } from './content'
 
 type ReadmeDrawerProps = {

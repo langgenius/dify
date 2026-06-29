@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type Props = Readonly<{
   onClear: () => void

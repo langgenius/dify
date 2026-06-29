@@ -6,7 +6,7 @@ import {
   RiDownloadLine,
 } from '@remixicon/react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { downloadUrl } from '@/utils/download'

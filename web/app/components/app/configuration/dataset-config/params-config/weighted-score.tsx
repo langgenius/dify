@@ -1,7 +1,7 @@
 import { Slider } from '@langgenius/dify-ui/slider'
 import { noop } from 'es-toolkit/function'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 const weightedScoreSliderSlotClassNames = {
   track: 'bg-util-colors-teal-teal-500',

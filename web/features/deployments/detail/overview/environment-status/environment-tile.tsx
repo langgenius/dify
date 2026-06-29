@@ -8,7 +8,7 @@ import type {
 import type { TileConfig } from './environment-tile-utils'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 import { openDeployDrawerAtom } from '../../../deploy-drawer/state'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'

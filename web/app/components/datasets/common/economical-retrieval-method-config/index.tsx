@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'

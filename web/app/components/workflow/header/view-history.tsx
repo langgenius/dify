@@ -13,7 +13,7 @@ import {
   memo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import {

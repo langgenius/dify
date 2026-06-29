@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ChatContextProvider } from '@/app/components/base/chat/chat/context-provider'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'

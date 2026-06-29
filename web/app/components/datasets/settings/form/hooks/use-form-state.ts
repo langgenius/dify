@@ -6,7 +6,7 @@ import type { IconInfo, SummaryIndexSetting as SummaryIndexSettingType } from '@
 import type { RetrievalConfig } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'

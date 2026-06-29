@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 const i18nPrefix = 'metadata.checkName'
 

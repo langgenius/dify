@@ -1,7 +1,7 @@
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useStore } from '@tanstack/react-form'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { withForm } from '@/app/components/base/form'
 import { useHiddenFieldNames } from './hooks'
 

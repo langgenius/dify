@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ConfigureSection } from '../common/section'
 import { AgentContentModerationSettings } from './content-moderation'
 import { AgentEnvEditor } from './env'

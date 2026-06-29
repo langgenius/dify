@@ -5,7 +5,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
 import { useUpload } from '../hooks/use-upload'
 import {

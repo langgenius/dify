@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
 

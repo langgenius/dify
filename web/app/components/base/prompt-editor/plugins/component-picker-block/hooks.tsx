@@ -14,7 +14,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { RiGlobalLine } from '@remixicon/react'
 import { $insertNodes } from 'lexical'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'

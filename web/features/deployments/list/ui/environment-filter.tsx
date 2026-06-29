@@ -11,7 +11,7 @@ import {
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   deploymentsListEnvironmentFilterOptionsAtom,
   deploymentsListSelectedEnvironmentFilterOptionAtom,

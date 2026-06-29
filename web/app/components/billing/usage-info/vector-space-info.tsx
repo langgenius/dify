@@ -5,7 +5,7 @@ import {
   RiHardDrive3Line,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useCurrentPlanVectorSpace } from '@/service/use-billing'
 import { Plan } from '../type'

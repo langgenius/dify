@@ -5,7 +5,7 @@ import { Editor } from '@monaco-editor/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 

@@ -8,7 +8,7 @@ import type {
 } from '@/models/access-control'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 
 type AccessSubjectSelectionListProps = AccessSubjectSelectionProps & {

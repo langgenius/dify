@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 const McpToolNotSupportTooltip: FC = () => {
   const { t } = useTranslation()

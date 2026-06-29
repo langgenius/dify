@@ -1,5 +1,5 @@
 import { DropdownMenuItem, DropdownMenuLinkItem } from '@langgenius/dify-ui/dropdown-menu'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { openZendeskWindow } from '@/app/components/base/zendesk/utils'
 import { Plan } from '@/app/components/billing/type'
 import { ExternalLinkIndicator, MenuItemContent } from '@/app/components/header/account-dropdown/menu-item-content'

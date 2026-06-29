@@ -1,6 +1,6 @@
 import type { ChunkingMode, IconInfo } from '@/models/datasets'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { General } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'

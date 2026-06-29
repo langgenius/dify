@@ -5,7 +5,7 @@ import type {
 } from '@dify/contracts/enterprise/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import Link from '@/next/link'
 import { CreateReleaseControl } from '../../create-release'

@@ -3,7 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { hasPermission } from '@/utils/permission'

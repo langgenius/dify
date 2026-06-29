@@ -2,7 +2,7 @@ import type { DataSourceCredential } from '../../header/account-setting/data-sou
 import type { NotionCredential } from './credential-selector'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/service/knowledge/use-import'

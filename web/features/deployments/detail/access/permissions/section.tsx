@@ -2,7 +2,7 @@
 
 import type { EnvironmentAccessPolicy } from '@dify/contracts/enterprise/types.gen'
 import { useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
 import { deploymentRouteAppInstanceIdAtom } from '../../../route-state'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../shared/components/empty-state'

@@ -5,7 +5,7 @@ import {
   memo,
   useRef,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
 import {
   NoteEditor,

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 export enum PlanRange {
   monthly = 'monthly',

@@ -8,7 +8,7 @@ import type { ToolFormSchema } from '@/app/components/tools/utils/to-form-schema
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type { NodeOutPutVar, ToolWithProvider } from '@/app/components/workflow/types'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'

@@ -8,7 +8,7 @@ import {
   SelectItemText,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ItemValue = number | string
 

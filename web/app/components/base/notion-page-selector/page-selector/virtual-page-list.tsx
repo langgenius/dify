@@ -4,7 +4,7 @@ import type { NotionPageRow, NotionPageSelectionMode } from './types'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import PageRow from './page-row'
 
 type VirtualPageListProps = {

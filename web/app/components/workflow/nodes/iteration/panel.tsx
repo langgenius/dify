@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText,
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { ErrorHandleMode } from '@/app/components/workflow/types'

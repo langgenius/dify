@@ -8,7 +8,7 @@ import type { AgentCliTool, AgentProviderTool, AgentTool } from '@/features/agen
 import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ToolPickerContent } from '@/app/components/workflow/block-selector/tool-picker'
 import { useGetLanguage } from '@/context/i18n'
 import { useSetProviderToolCredential } from '@/features/agent-v2/agent-composer/store-modules/tools'

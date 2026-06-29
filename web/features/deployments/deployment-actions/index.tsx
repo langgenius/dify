@@ -12,7 +12,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { DeleteDeploymentDialog } from './delete-dialog'
 import { EditDeploymentDialog } from './edit-dialog'
 import {

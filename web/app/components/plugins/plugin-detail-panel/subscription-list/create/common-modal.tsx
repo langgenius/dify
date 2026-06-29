@@ -8,7 +8,7 @@ import {
   DialogContent,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import {

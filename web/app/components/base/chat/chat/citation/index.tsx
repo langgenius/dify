@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { CitationItem } from '../type'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Popup from './popup'
 
 export type Resources = {

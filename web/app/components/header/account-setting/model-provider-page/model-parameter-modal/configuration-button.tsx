@@ -1,6 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ConfigurationMethodEnum } from '../declarations'
 
 type ConfigurationButtonProps = {

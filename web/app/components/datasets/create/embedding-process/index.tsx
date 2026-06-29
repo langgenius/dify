@@ -8,7 +8,7 @@ import {
   RiTerminalBoxLine,
 } from '@remixicon/react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import { Plan } from '@/app/components/billing/type'
 import { useProviderContext } from '@/context/provider-context'

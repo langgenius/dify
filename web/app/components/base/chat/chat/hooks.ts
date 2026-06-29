@@ -24,7 +24,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { v4 as uuidV4 } from 'uuid'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import { enrichSubmittedHumanInputFormData } from '@/app/components/base/chat/chat/answer/human-input-content/submitted-utils'

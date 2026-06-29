@@ -1,5 +1,5 @@
 import type { StatusDotStatus } from '@langgenius/dify-ui/status-dot'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 export const useIndexStatus = () => {
   const { t } = useTranslation()

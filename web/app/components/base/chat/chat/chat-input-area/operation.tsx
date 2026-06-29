@@ -7,7 +7,7 @@ import type { FileUpload } from '@/app/components/base/features/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 

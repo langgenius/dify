@@ -10,7 +10,7 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodes } from 'reactflow'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'

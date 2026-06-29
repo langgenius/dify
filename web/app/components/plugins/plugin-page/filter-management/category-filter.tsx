@@ -13,7 +13,7 @@ import {
   RiCloseCircleFill,
 } from '@remixicon/react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { useCategories } from '../../hooks'
 

@@ -10,7 +10,7 @@ import {
   DrawerTitle,
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type IFloatRightContainerProps = {
   isMobile: boolean

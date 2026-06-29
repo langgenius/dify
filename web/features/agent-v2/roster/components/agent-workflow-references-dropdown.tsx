@@ -7,7 +7,7 @@ import {
   DropdownMenuLinkItem,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import Link from '@/next/link'
 

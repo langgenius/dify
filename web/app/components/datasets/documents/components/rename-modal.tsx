@@ -6,7 +6,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { renameDocumentName } from '@/service/datasets'
 

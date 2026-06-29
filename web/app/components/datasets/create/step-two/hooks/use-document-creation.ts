@@ -4,7 +4,7 @@ import type { ChunkingMode, CrawlOptions, CrawlResultItem, CreateDocumentReq, cr
 import type { RetrievalConfig, RETRIEVE_METHOD } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { DataSourceProvider } from '@/models/common'

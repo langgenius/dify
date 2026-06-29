@@ -3,7 +3,7 @@ import type { ModerationContentConfig } from '@/models/debug'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ModerationContentProps = {
   title: string

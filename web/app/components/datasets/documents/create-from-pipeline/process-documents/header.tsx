@@ -1,7 +1,7 @@
 import { Button } from '@langgenius/dify-ui/button'
 import { RiSearchEyeLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type HeaderProps = {
   onReset: () => void

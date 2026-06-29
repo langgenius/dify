@@ -18,7 +18,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import TabSlider from '@/app/components/base/tab-slider-plain'

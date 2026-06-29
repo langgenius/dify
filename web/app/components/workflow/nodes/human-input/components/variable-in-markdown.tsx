@@ -3,7 +3,7 @@ import type { FormInputItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { TransferMethod } from '@/types/app'
 import { isFileFormInput, isFileListFormInput, isSelectFormInput } from '../types'
 

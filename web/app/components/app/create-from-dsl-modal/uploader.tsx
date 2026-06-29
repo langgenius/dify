@@ -8,7 +8,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { Yaml as YamlIcon } from '@/app/components/base/icons/src/public/files'
 import { formatFileSize } from '@/utils/format'

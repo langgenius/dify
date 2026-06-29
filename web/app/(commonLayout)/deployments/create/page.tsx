@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CreateDeploymentGuide } from '@/features/deployments/create-guide'
 import useDocumentTitle from '@/hooks/use-document-title'
 

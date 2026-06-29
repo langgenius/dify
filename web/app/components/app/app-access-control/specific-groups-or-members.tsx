@@ -3,7 +3,7 @@ import type { AccessControlAccount, AccessControlGroup } from '@/models/access-c
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { RiCloseCircleFill, RiLockLine, RiOrganizationChart } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects } from '@/service/access-control'
 import useAccessControlStore from '../../../../context/access-control-store'

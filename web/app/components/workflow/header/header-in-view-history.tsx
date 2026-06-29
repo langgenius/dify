@@ -3,7 +3,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   useCallback,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import Divider from '../../base/divider'
 import {

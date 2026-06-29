@@ -3,7 +3,7 @@ import type { FormRefObject, FormSchema } from '@/app/components/base/form/types
 import type { TriggerLogEntity, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { RiLoader2Line } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { BaseForm } from '@/app/components/base/form/components/base'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'

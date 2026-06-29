@@ -6,7 +6,7 @@ import {
   RiCloseLine,
 } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'

@@ -8,7 +8,7 @@ import {
   RiAlertFill,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import { Infotip } from '@/app/components/base/infotip'
 import SummaryIndexSetting from '@/app/components/datasets/settings/summary-index-setting'

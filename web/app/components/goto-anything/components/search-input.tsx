@@ -4,7 +4,7 @@ import type { FC, KeyboardEvent, RefObject } from 'react'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { RiSearchLine } from '@remixicon/react'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 
 type SearchInputProps = {

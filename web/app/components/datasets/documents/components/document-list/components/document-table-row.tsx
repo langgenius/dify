@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import { pick } from 'es-toolkit/object'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ChunkingModeLabel from '@/app/components/datasets/common/chunking-mode-label'
 import Operations from '@/app/components/datasets/documents/components/operations'
 import SummaryStatus from '@/app/components/datasets/documents/detail/completed/common/summary-status'

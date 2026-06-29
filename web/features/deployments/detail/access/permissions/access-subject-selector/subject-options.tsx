@@ -15,7 +15,7 @@ import {
   ComboboxItem,
   ComboboxItemText,
 } from '@langgenius/dify-ui/combobox'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useSelector } from '@/context/app-context'
 import { SubjectType } from '@/models/access-control'
 

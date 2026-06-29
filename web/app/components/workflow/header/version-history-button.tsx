@@ -9,7 +9,7 @@ import {
 import { useHotkey } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useTheme from '@/hooks/use-theme'
 import { ShortcutKbd } from '../shortcuts/shortcut-kbd'
 

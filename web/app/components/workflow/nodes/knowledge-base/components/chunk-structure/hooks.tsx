@@ -1,6 +1,6 @@
 import type { Option } from './type'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   GeneralChunk,
   ParentChildChunk,

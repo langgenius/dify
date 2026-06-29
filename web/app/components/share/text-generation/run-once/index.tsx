@@ -14,7 +14,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'

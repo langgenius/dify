@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import KeyValueItem from '../base/key-value-item'
 import { convertRepoToUrl } from '../install-plugin/utils'
 

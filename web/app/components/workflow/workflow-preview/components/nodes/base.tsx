@@ -11,7 +11,7 @@ import {
   cloneElement,
   memo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   BlockEnum,

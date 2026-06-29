@@ -1,7 +1,7 @@
 import type { AgentIconSelection } from './agent-form'
 import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { Textarea } from '@langgenius/dify-ui/textarea'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 
 type AgentFormFieldsProps = {

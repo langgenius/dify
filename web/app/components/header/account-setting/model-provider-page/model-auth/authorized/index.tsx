@@ -29,7 +29,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'

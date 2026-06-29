@@ -3,7 +3,7 @@
 import type { AgentMonitoringChartRow, AgentMonitoringChartType } from './chart-utils'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import ReactECharts from 'echarts-for-react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import {
   buildChartOptions,

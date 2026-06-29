@@ -4,7 +4,7 @@ import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@r
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'

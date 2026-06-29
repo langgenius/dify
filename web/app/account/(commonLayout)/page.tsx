@@ -1,5 +1,5 @@
 'use client'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import AccountPage from './account-page'
 

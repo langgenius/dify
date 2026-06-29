@@ -9,7 +9,7 @@ import {
 import {
   memo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Comment } from '@/app/components/base/icons/src/public/other'
 import Divider from '../../base/divider'
 import {

@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { Input } from '@langgenius/dify-ui/input'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAppContext } from '@/context/app-context'
 import { useMembers } from '@/service/use-common'
 

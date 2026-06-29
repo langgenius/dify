@@ -3,7 +3,7 @@
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import SidebarLeftArrowIcon from '@/app/components/base/icons/src/vender/SidebarLeftArrowIcon'
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'

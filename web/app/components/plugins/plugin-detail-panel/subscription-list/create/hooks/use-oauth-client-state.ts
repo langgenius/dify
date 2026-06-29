@@ -4,7 +4,7 @@ import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionB
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useConfigureTriggerOAuth,

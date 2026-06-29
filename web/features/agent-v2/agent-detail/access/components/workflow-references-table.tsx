@@ -4,7 +4,7 @@ import type { AgentIconType, AgentReferencingWorkflowResponse } from '@dify/cont
 import type { ReactNode } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { useQuery } from '@tanstack/react-query'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'

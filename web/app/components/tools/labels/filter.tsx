@@ -8,7 +8,7 @@ import {
 } from '@langgenius/dify-ui/popover'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'

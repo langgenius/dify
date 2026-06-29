@@ -10,7 +10,7 @@ import {
   SelectLabel,
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type FrequencyOption = {
   value: ScheduleFrequency

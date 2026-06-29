@@ -15,7 +15,7 @@ import { Textarea } from '@langgenius/dify-ui/textarea'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation } from '@tanstack/react-query'
 import { useAtom, useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { consoleQuery } from '@/service/client'
 import {
   editReleaseDialogOpenAtom,

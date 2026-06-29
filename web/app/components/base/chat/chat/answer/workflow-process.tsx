@@ -5,7 +5,7 @@ import {
   useEffect,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 

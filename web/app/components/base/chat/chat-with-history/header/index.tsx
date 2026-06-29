@@ -16,7 +16,7 @@ import {
   RiResetLeftLine,
 } from '@remixicon/react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
 import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'

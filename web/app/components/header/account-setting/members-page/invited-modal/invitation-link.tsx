@@ -4,7 +4,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import s from './index.module.css'
 
 type IInvitationLinkProps = {

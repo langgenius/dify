@@ -5,7 +5,7 @@ import { RiResetLeftLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import * as React from 'react'
 import { useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type Props = Readonly<{
   onReset: () => void

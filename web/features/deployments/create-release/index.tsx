@@ -5,7 +5,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   createReleaseAppInstanceIdAtom,
   createReleaseDialogOpenAtom,

@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiArrowLeftLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type StepTwoFooterProps = {
   isSetting?: boolean

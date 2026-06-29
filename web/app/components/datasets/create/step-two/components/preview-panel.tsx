@@ -6,7 +6,7 @@ import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/data
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/function'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'

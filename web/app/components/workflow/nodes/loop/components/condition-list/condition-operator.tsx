@@ -13,7 +13,7 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
 
 const i18nPrefix = 'nodes.ifElse'

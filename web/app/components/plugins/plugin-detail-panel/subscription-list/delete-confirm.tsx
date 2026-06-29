@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
 import { useSubscriptionList } from './use-subscription-list'

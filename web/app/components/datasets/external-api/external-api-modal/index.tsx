@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiBook2Line, RiCloseLine, RiInformation2Line, RiLock2Fill } from '@remixicon/react'
 import { memo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { createExternalAPI } from '@/service/datasets'
 import Form from './Form'

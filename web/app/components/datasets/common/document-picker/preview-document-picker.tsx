@@ -11,7 +11,7 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import FileIcon from '../document-file-icon'
 

@@ -4,7 +4,7 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
 import { noop } from 'es-toolkit/function'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import useConfigVision from '../../hooks/use-config-vision'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'

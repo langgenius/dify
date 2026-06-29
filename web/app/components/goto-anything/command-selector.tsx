@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { ActionItem } from './actions/types'
 import { Command } from 'cmdk'
 import { useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { slashCommandRegistry } from './actions/commands/registry'
 
 type Props = Readonly<{

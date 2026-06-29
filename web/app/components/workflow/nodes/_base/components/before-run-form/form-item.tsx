@@ -11,7 +11,7 @@ import {
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'

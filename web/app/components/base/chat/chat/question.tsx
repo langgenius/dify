@@ -15,7 +15,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Textarea from 'react-textarea-autosize'
 import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'

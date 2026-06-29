@@ -7,7 +7,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import formatNodeList from '@/app/components/workflow/run/utils/format-log'
 import { getHoveredParallelId } from './get-hovered-parallel-id'
 import { useLogs } from './hooks'

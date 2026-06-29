@@ -1,7 +1,7 @@
 'use client'
 import { Button } from '@langgenius/dify-ui/button'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { useAppContext } from '@/context/app-context'
 import Link from '@/next/link'

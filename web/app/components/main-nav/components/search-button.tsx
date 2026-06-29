@@ -2,7 +2,7 @@
 
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 
 const searchShortcut = ['Mod', 'K']

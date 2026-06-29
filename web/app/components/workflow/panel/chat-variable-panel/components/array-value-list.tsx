@@ -5,7 +5,7 @@ import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 

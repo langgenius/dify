@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Field from '../../_base/components/field'
 import OptionCard from '../../_base/components/option-card'
 import { ReasoningModeType } from '../types'

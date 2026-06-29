@@ -2,7 +2,7 @@
 import { useCountDown } from 'ahooks'
 import { useIsClient } from 'foxact/use-is-client'
 import { Suspense, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { COUNT_DOWN_TIME_MS, useCountdownLeftTimeValue, useSetCountdownLeftTime } from './storage'
 
 type CountdownProps = {

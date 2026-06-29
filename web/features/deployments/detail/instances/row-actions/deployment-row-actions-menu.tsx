@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { DETAIL_TABLE_ACTION_TRIGGER_CLASS_NAME } from '../../../shared/components/detail-table-styles'
 
 export function DeploymentActionsDropdown({

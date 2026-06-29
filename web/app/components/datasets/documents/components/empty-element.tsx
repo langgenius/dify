@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import { Button } from '@langgenius/dify-ui/button'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import s from '../style.module.css'
 import { FolderPlusIcon, NotionIcon, ThreeDotsIcon } from './icons'
 

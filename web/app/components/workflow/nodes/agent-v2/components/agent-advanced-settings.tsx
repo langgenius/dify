@@ -3,7 +3,7 @@ import {
   CollapsibleRoot,
   CollapsibleTrigger,
 } from '@langgenius/dify-ui/collapsible'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 export function AgentAdvancedSettings() {
   const { t } = useTranslation()

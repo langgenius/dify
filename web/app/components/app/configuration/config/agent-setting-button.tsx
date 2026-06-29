@@ -4,7 +4,7 @@ import type { AgentConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AgentSetting from './agent/agent-setting'
 
 type Props = Readonly<{

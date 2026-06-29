@@ -1,7 +1,7 @@
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiLock2Fill } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Link from '@/next/link'
 
 type EncryptedKey = I18nKeysWithPrefix<'common', 'provider.encrypted.'>

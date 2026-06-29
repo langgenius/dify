@@ -2,7 +2,7 @@ import type { CategoryKey, TagKey } from './constants'
 import type { PluginDetail } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { consoleQuery } from '@/service/client'
 import {
   categoryKeys,

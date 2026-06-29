@@ -5,7 +5,7 @@ import type {
   VarType,
 } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodes, useReactFlow, useStoreApi } from 'reactflow'
 import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import {

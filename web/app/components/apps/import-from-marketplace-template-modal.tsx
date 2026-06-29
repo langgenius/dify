@@ -5,7 +5,7 @@ import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiCloseLine } from '@remixicon/react'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import {

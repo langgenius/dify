@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 export enum StartNodeTypeEnum {
   Start = 'start',

@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CreateDeploymentGuideLink } from '../../create-guide/link'
 
 export function CreateDeploymentButton({ className }: {

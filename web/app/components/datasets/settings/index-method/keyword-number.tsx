@@ -10,7 +10,7 @@ import {
 import { Slider } from '@langgenius/dify-ui/slider'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 
 const MIN_KEYWORD_NUMBER = 0

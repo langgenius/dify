@@ -12,7 +12,7 @@ import {
   memo,
   useCallback,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 

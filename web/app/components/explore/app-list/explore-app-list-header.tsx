@@ -1,6 +1,6 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SearchInput } from '@/app/components/base/search-input'
 import Category from '@/app/components/explore/category'
 

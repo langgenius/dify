@@ -1,7 +1,7 @@
 'use client'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import FileListItem from './components/file-list-item'
 import UploadDropzone from './components/upload-dropzone'
 import { useFileUpload } from './hooks/use-file-upload'

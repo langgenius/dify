@@ -4,7 +4,7 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { getProcessedHumanInputFormInputs } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 import { fetchHumanInputNodeStepRunForm, submitHumanInputNodeStepRunForm } from '@/service/workflow'

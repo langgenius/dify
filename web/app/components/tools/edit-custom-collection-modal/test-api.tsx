@@ -16,7 +16,7 @@ import {
 import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 import { AuthType } from '@/app/components/tools/types'
 import { useLocale } from '@/context/i18n'

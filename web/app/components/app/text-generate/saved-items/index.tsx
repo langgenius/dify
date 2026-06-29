@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'

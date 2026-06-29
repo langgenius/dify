@@ -17,7 +17,7 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   getConnectedEdges,
   getOutgoers,

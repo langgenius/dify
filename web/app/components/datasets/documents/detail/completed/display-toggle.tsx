@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiLineHeight } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Collapse } from '@/app/components/base/icons/src/vender/knowledge'
 
 type DisplayToggleProps = {

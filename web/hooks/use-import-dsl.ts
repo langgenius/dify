@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useSetNeedRefreshAppList } from '@/app/components/apps/storage'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'

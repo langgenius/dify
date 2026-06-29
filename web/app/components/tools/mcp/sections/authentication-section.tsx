@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { API_PREFIX } from '@/config'
 

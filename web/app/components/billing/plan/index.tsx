@@ -9,7 +9,7 @@ import {
 import { useUnmountedRef } from 'ahooks'
 import * as React from 'react'
 import { useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ApiAggregate, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import { useSetEducationVerifying } from '@/app/education-apply/storage'

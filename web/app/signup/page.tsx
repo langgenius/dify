@@ -1,6 +1,6 @@
 'use client'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import MailForm from './components/input-mail'
 

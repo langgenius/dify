@@ -1,6 +1,6 @@
 import { Button } from '@langgenius/dify-ui/button'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Notion } from '../icons/src/public/common'
 import { Icon3Dots } from '../icons/src/vender/line/others'
 

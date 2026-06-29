@@ -2,7 +2,7 @@
 import type { EnvironmentMode } from '@dify/contracts/enterprise/types.gen'
 import { EnvironmentMode as EnvironmentModeEnum } from '@dify/contracts/enterprise/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 const baseBadge = 'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 system-xs-medium whitespace-nowrap'
 

@@ -10,7 +10,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DatasetPermission } from '@/models/datasets'

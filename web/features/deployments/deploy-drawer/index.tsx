@@ -10,7 +10,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   closeDeployDrawerAtom,
   deployDrawerAppInstanceIdAtom,

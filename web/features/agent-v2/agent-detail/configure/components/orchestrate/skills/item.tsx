@@ -6,7 +6,7 @@ import {
   Dialog,
 } from '@langgenius/dify-ui/dialog'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from './detail-dialog'
 import { useAgentSkillDetail } from './use-skill-detail'

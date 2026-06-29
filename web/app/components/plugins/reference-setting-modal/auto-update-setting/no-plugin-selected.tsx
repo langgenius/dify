@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { AUTO_UPDATE_MODE } from './types'
 
 type Props = Readonly<{

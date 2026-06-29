@@ -3,7 +3,7 @@
 import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { Features } from '@/app/components/base/features/types'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'

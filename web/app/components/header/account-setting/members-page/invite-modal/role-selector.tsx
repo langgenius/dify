@@ -9,7 +9,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useLocale } from '@/context/i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n-config/language'
 import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'

@@ -10,7 +10,7 @@ import {
 import { useMutation } from '@tanstack/react-query'
 import { useTheme } from 'next-themes'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { marketplaceQuery } from '@/service/client'
 import { downloadBlob } from '@/utils/download'

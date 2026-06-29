@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import type { SearchResult } from '../actions/types'
 import { Command } from 'cmdk'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ResultItem from './result-item'
 
 type ResultListProps = {

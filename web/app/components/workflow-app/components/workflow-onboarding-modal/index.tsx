@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { BlockDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { Dialog, DialogCloseButton, DialogContent, DialogDescription, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { BlockEnum } from '@/app/components/workflow/types'
 import StartNodeSelectionPanel from './start-node-selection-panel'
 

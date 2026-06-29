@@ -1,5 +1,5 @@
 import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   START_INITIAL_POSITION,
 } from '@/app/components/workflow/constants'

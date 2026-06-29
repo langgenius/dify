@@ -2,7 +2,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { RiAddCircleFill } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'
 

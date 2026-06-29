@@ -6,7 +6,7 @@ import { useStore } from '@tanstack/react-form'
 
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import * as z from 'zod'
 import { formContext, useAppForm } from '@/app/components/base/form'
 import { zodSubmitValidator } from '@/app/components/base/form/utils/zod-submit-validator'

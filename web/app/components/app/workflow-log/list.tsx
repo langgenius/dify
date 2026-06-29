@@ -15,7 +15,7 @@ import {
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'

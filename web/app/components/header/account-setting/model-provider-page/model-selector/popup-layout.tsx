@@ -8,7 +8,7 @@ import {
   ScrollAreaThumb,
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type ModelSelectorPopupFrameProps = {
   children: ReactNode

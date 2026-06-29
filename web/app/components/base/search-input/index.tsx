@@ -2,7 +2,7 @@ import type { InputProps } from '@langgenius/dify-ui/input'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
 import { useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type SearchInputProps = {
   value: string

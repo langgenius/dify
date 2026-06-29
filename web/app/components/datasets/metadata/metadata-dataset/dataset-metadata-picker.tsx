@@ -16,7 +16,7 @@ import {
 } from '@langgenius/dify-ui/combobox'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 import { getIconClassName } from '../utils/get-icon'
 import { CreateContent } from './create-content'

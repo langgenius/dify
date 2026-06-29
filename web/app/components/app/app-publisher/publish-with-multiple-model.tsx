@@ -10,7 +10,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useProviderContext } from '@/context/provider-context'
 import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'

@@ -3,7 +3,7 @@
 import type { ReleaseDeployment } from './release-deployments'
 import { cn } from '@langgenius/dify-ui/cn'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { isRuntimeDeploymentInProgress } from '../../../shared/domain/runtime-status'
 import {
   deploymentStatusDotStatus,

@@ -2,7 +2,7 @@
 import { toast } from '@langgenius/dify-ui/toast'
 import { useDebounceFn } from 'ahooks'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { DSLImportMode, DSLImportStatus } from '@/models/app'
 import { useRouter } from '@/next/navigation'

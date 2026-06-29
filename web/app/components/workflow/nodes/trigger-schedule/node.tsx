@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { ScheduleTriggerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { getNextExecutionTime } from './utils/execution-time-calculator'
 
 const i18nPrefix = 'nodes.triggerSchedule'

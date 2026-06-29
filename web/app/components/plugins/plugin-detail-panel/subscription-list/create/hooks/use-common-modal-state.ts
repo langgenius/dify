@@ -6,7 +6,7 @@ import type { TriggerLogEntity, TriggerSubscriptionBuilder } from '@/app/compone
 import { toast } from '@langgenius/dify-ui/toast'
 import { debounce } from 'es-toolkit/compat'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
 import {

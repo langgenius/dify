@@ -16,7 +16,7 @@ import {
 } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SearchInput } from '@/app/components/base/search-input'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useMarketplacePlugins } from '@/app/components/plugins/marketplace/hooks'

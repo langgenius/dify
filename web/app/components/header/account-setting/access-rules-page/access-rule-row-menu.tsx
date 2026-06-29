@@ -19,7 +19,7 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { useCopyAccessRule, useDeleteAccessRule } from '@/service/access-control/use-workspace-access-rules'
 

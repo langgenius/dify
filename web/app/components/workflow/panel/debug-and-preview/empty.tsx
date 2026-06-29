@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ChatBotSlim } from '@/app/components/base/icons/src/vender/line/communication'
 
 const Empty = () => {

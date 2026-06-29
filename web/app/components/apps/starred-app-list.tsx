@@ -1,7 +1,7 @@
 'use client'
 
 import type { App } from '@/types/app'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { APP_LIST_GRID_CLASS_NAME } from './constants'
 import { StarredAppCard } from './starred-app-card'
 

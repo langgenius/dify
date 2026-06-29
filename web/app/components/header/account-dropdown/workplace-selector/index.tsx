@@ -8,7 +8,7 @@ import {
   SelectItemText,
 } from '@langgenius/dify-ui/select'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { PlanBadge } from '@/app/components/header/plan-badge'
 
 type WorkplaceSelectorContentProps = {

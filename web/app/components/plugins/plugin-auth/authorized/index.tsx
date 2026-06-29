@@ -26,7 +26,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import Authorize from '../authorize'
 import ApiKeyModal from '../authorize/api-key-modal'

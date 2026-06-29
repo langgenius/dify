@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ObjectValueItem from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
 
 type Props = Readonly<{

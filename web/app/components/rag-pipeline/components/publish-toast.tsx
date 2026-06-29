@@ -6,7 +6,7 @@ import {
   memo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore } from '@/app/components/workflow/store'
 
 const PublishToast = () => {

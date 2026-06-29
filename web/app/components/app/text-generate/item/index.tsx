@@ -13,7 +13,7 @@ import {
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Loading from '@/app/components/base/loading'

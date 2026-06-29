@@ -20,7 +20,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import { useUpdateRolesOfMember } from '@/service/access-control/use-member-roles'
 import { deleteMemberOrCancelInvitation } from '@/service/common'

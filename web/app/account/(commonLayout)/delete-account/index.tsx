@@ -1,7 +1,7 @@
 'use client'
 import { Dialog, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import CheckEmail from './components/check-email'
 import FeedBack from './components/feed-back'

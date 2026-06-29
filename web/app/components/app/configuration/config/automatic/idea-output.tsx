@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
 const i18nPrefix = 'generate'

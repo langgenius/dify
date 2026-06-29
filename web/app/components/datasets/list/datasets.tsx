@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react'
 import type { useDatasetList } from '@/service/knowledge/use-dataset'
 import { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import DatasetCard from './dataset-card'

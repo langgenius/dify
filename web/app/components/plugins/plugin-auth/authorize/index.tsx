@@ -7,7 +7,7 @@ import {
   memo,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import AddApiKeyButton from './add-api-key-button'
 import AddOAuthButton from './add-oauth-button'

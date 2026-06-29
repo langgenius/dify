@@ -1,7 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useLatest } from 'ahooks'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 
 type CooldownTimerProps = {

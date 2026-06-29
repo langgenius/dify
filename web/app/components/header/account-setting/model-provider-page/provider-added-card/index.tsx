@@ -8,7 +8,7 @@ import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,

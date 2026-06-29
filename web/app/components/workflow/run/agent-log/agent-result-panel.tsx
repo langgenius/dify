@@ -1,5 +1,5 @@
 import type { AgentLogItemWithChildren } from '@/types/workflow'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AgentLogItem from './agent-log-item'
 import { AgentLogNav } from './agent-log-nav'
 

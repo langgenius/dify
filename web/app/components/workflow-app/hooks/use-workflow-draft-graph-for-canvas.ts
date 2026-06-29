@@ -3,7 +3,7 @@ import type {
   WorkflowDataUpdater,
 } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import { BlockEnum } from '@/app/components/workflow/types'

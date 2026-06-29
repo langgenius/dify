@@ -4,7 +4,7 @@ import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-
 import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { trackEvent } from '@/app/components/base/amplitude'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
 import { useRouter } from '@/next/navigation'

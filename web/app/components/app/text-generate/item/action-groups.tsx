@@ -14,7 +14,7 @@ import {
   RiThumbUpLine,
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
 import { AppSourceType as AppSourceTypeEnum } from '@/service/share'

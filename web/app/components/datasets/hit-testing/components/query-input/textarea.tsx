@@ -2,7 +2,7 @@ import type { ChangeEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Corner } from '@/app/components/base/icons/src/vender/solid/shapes'
 
 type TextareaProps = {

@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { CreditsCoin } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'

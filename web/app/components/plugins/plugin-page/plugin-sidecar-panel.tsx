@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { PopoverClose } from '@langgenius/dify-ui/popover'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type PluginSidecarPanelProps = {
   children: ReactNode

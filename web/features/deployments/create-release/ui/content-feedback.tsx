@@ -1,7 +1,7 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { UnsupportedDslNodesAlert } from '../../shared/components/unsupported-dsl-nodes-alert'
 import {
   createReleaseContentCheckFailedAtom,

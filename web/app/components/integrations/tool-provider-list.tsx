@@ -13,7 +13,7 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { isSearchResultEmpty } from '@/app/components/base/search-input/search-state'
 import { useTags } from '@/app/components/plugins/hooks'
 import Empty from '@/app/components/plugins/marketplace/empty'

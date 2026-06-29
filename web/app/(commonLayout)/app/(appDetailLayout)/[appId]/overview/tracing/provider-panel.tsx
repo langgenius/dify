@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { AliyunIconBig, ArizeIconBig, DatabricksIconBig, LangfuseIconBig, LangsmithIconBig, MlflowIconBig, OpikIconBig, PhoenixIconBig, TencentIconBig, WeaveIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 import { TracingProvider } from './type'

@@ -17,7 +17,7 @@ import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { RadioControl, RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import Badge from '@/app/components/base/badge'
 import {

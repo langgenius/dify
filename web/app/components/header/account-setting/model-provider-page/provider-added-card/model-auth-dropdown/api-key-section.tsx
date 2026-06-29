@@ -1,7 +1,7 @@
 import type { Credential, CustomModel, ModelProvider } from '../../declarations'
 import { Button } from '@langgenius/dify-ui/button'
 import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import CredentialItem from '../../model-auth/authorized/credential-item'
 

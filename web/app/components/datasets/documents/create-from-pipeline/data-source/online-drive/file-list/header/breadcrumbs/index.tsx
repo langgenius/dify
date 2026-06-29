@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../../../store'
 import Bucket from './bucket'
 import Drive from './drive'

@@ -2,7 +2,7 @@
 
 import type { RosterFilterValue } from './roster-filter'
 import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { SearchInput } from '@/app/components/base/search-input'
 import { CreateAgentDialog } from './create-agent-dialog'
 

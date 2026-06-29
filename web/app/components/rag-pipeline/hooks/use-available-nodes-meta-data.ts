@@ -1,7 +1,7 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
 import dataSourceEmptyDefault from '@/app/components/workflow/nodes/data-source-empty/default'
 import dataSourceDefault from '@/app/components/workflow/nodes/data-source/default'

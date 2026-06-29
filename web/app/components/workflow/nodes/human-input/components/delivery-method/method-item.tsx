@@ -17,7 +17,7 @@ import {
   RiSendPlane2Line,
 } from '@remixicon/react'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge/index'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'

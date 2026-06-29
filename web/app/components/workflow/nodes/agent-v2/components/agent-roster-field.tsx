@@ -27,7 +27,7 @@ import {
   PopoverTrigger,
 } from '@langgenius/dify-ui/popover'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AppIcon from '@/app/components/base/app-icon'
 import { AgentSelectorContent } from '@/app/components/workflow/block-selector/agent-selector'
 import { getAgentDetailPath } from '@/features/agent-v2/agent-detail/routes'

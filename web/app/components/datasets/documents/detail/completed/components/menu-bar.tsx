@@ -1,7 +1,7 @@
 'use client'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import DisplayToggle from '../display-toggle'

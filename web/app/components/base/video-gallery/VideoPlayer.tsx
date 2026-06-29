@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import styles from './VideoPlayer.module.css'
 
 type VideoPlayerProps = {

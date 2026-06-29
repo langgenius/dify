@@ -2,7 +2,7 @@
 
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { DeploymentEmptyState, DeploymentStateMessage } from '../../../shared/components/empty-state'
 import {
   adjustReleaseHistoryPageAfterDeleteAtom,

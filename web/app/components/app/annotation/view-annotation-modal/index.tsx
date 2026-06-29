@@ -23,7 +23,7 @@ import {
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Badge from '@/app/components/base/badge'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import TabSlider from '@/app/components/base/tab-slider-plain'

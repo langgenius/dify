@@ -1,7 +1,7 @@
 import type { ImageFile } from '@/types/app'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useParams } from '@/next/navigation'
 import { ALLOW_FILE_EXTENSIONS, TransferMethod } from '@/types/app'
 import { getImageUploadErrorMessage, imageUpload } from './utils'

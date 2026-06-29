@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type StatusHeaderProps = {
   isEmbedding: boolean

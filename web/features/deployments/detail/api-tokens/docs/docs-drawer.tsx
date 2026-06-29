@@ -14,7 +14,7 @@ import {
   DrawerViewport,
 } from '@langgenius/dify-ui/drawer'
 import { useAtomValue } from 'jotai'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import TemplateWorkflowEn from '@/app/components/develop/template/template_workflow.en.mdx'
 import TemplateWorkflowJa from '@/app/components/develop/template/template_workflow.ja.mdx'
 import TemplateWorkflowZh from '@/app/components/develop/template/template_workflow.zh.mdx'

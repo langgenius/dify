@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { HeaderItem } from '../headers-input'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import HeadersInput from '../headers-input'
 
 type HeadersSectionProps = {

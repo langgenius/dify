@@ -4,7 +4,7 @@ import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/c
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
 import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'

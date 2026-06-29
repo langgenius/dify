@@ -8,7 +8,7 @@ import {
 import {
   memo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ConditionWrap from './components/condition-wrap'
 import useConfig from './use-config'

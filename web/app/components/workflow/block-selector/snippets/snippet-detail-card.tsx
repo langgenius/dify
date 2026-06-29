@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { SnippetListItem } from '@/types/snippet'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useMembers } from '@/service/use-common'
 import { useSnippetPublishedWorkflow } from '@/service/use-snippet-workflows'
 import BlockIcon from '../../block-icon'

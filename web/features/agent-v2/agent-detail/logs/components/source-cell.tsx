@@ -1,5 +1,5 @@
 import type { AgentLogConversationItemResponse } from '@dify/contracts/api/console/agent/types.gen'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { LogSourceIcon } from './source-icon'
 
 export function LogSourceCell({

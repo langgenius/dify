@@ -8,7 +8,7 @@ import { RiArrowLeftLine } from '@remixicon/react'
 
 import * as React from 'react'
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { getButtonStyle, getRenderedFormInputs, hasInvalidSelectOrFileInput, initializeInputs, splitByOutputVar } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
 

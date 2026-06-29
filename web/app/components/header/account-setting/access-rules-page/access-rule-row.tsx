@@ -3,7 +3,7 @@
 import type { AccessPolicyWithBindings } from '@/models/access-control'
 import { cn } from '@langgenius/dify-ui/cn'
 import { memo, useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import AccessRuleRowMenu from './access-rule-row-menu'
 
 type AccessRuleRowProps = {

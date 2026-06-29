@@ -15,7 +15,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/too
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import InputWithCopy from '@/app/components/base/input-with-copy'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'

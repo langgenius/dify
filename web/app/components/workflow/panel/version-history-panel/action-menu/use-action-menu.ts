@@ -1,6 +1,6 @@
 import type { ActionMenuProps } from './index'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Plan } from '@/app/components/billing/type'
 import { useStore } from '@/app/components/workflow/store'
 import { useProviderContext } from '@/context/provider-context'

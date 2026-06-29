@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { NodeActionsDropdownContent } from './dropdown-content'
 import { NODE_ACTIONS_MENU_WIDTH_CLASS_NAME } from './shared'
 

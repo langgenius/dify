@@ -15,7 +15,7 @@ import {
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { VarType } from '@/app/components/workflow/types'
 import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'

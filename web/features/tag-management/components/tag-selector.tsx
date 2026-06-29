@@ -7,7 +7,7 @@ import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { consoleQuery } from '@/service/client'
 import { hasPermission } from '@/utils/permission'

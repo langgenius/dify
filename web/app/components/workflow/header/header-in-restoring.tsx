@@ -6,7 +6,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
 import { useSelector as useAppContextSelector } from '@/context/app-context'

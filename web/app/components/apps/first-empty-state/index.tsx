@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import LearnDify from '@/app/components/explore/learn-dify'
 import FirstEmptyActionCard from './action-card'
 

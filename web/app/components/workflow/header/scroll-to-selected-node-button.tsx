@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { CommonNodeType } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useNodes } from 'reactflow'
 import { scrollToWorkflowNode } from '../utils/node-navigation'
 

@@ -26,7 +26,7 @@ import { useBoolean, useGetState } from 'ahooks'
 import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useShallow } from 'zustand/react/shallow'
 import {
   useDebugWithSingleOrMultipleModel,

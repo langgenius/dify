@@ -1,7 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiImageAddLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { ACCEPT_TYPES } from '../constants'
 import { useUpload } from '../hooks/use-upload'
 import { useFileStoreWithSelector } from '../store'

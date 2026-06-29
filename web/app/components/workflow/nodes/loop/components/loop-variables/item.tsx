@@ -5,7 +5,7 @@ import type {
 import { toast } from '@langgenius/dify-ui/toast'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import ActionButton from '@/app/components/base/action-button'
 import Input from '@/app/components/base/input'
 import { ValueType, VarType } from '@/app/components/workflow/types'

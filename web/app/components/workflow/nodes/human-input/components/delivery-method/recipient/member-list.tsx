@@ -5,7 +5,7 @@ import type { Member } from '@/models/common'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'nodes.humanInput'

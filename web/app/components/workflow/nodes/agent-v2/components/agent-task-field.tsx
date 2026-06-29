@@ -7,7 +7,7 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import { useBoolean } from 'ahooks'
 import { $insertNodes } from 'lexical'
 import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { Infotip } from '@/app/components/base/infotip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { $createCustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'

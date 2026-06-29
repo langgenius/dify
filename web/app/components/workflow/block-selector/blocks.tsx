@@ -12,7 +12,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useStoreApi } from 'reactflow'
 import Badge from '@/app/components/base/badge'
 import BlockIcon from '../block-icon'

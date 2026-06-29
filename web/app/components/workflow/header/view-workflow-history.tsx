@@ -16,7 +16,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Divider from '../../base/divider'

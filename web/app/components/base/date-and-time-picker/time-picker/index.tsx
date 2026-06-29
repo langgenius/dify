@@ -4,7 +4,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import TimezoneLabel from '@/app/components/base/timezone-label'
 import { Period } from '../types'
 import dayjs, {

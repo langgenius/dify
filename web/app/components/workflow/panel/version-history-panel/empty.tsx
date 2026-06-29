@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiHistoryLine } from '@remixicon/react'
 import * as React from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 
 type EmptyProps = {
   onResetFilter: () => void

@@ -21,7 +21,7 @@ import {
 import { toast } from '@langgenius/dify-ui/toast'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import { Fragment, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import Divider from '@/app/components/base/divider'
 import { SearchInput } from '@/app/components/base/search-input'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'

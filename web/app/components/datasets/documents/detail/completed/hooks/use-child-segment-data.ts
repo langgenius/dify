@@ -2,7 +2,7 @@ import type { ChildChunkDetail, ChildSegmentsResponse, SegmentDetailModel, Segme
 import { toast } from '@langgenius/dify-ui/toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useChildSegmentList, useChildSegmentListKey, useDeleteChildSegment, useUpdateChildSegment } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'

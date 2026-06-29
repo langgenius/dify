@@ -1,7 +1,7 @@
 'use client'
 import type { DocType } from '@/models/datasets'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { useTranslation } from 'react-i18next'
+import { useTranslation } from '#i18n'
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode } from '@/models/datasets'
 import { formatFileSize, formatNumber, formatTime } from '@/utils/format'
