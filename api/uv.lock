@@ -1632,7 +1632,7 @@ requires-dist = [
     { name = "flask-login", specifier = "==0.6.3" },
     { name = "flask-migrate", specifier = ">=4.1.0,<5.0.0" },
     { name = "flask-orjson", specifier = ">=2.0.0,<3.0.0" },
-    { name = "flask-restx", git = "https://github.com/asukaminato0721/flask-restx?rev=27758e26f8f740d7525d5039c51a9e524b6e2b68" },
+    { name = "flask-restx", git = "https://github.com/asukaminato0721/flask-restx?rev=e44a2861b854" },
     { name = "gevent", specifier = ">=26.4.0,<26.5.0" },
     { name = "gevent-websocket", specifier = "==0.10.1" },
     { name = "gmpy2", specifier = ">=2.3.0,<3.0.0" },
@@ -2573,7 +2573,7 @@ wheels = [
 [[package]]
 name = "flask-restx"
 version = "1.3.3.dev0"
-source = { git = "https://github.com/asukaminato0721/flask-restx?rev=27758e26f8f740d7525d5039c51a9e524b6e2b68#27758e26f8f740d7525d5039c51a9e524b6e2b68" }
+source = { git = "https://github.com/asukaminato0721/flask-restx?rev=e44a2861b854#e44a2861b854e672625c196f79debb257d3c846d" }
 dependencies = [
     { name = "aniso8601" },
     { name = "flask" },

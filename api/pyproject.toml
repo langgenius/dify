@@ -60,7 +60,7 @@ exclude = ["providers/vdb/__pycache__", "providers/trace/__pycache__"]
 
 [tool.uv.sources]
 dify-agent = { path = "../dify-agent", editable = true }
-flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "27758e26f8f740d7525d5039c51a9e524b6e2b68" }
+flask-restx = { git = "https://github.com/asukaminato0721/flask-restx", rev = "e44a2861b854" }
 dify-vdb-alibabacloud-mysql = { workspace = true }
 dify-vdb-analyticdb = { workspace = true }
 dify-vdb-baidu = { workspace = true }
