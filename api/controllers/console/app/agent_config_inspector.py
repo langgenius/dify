@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Literal
 from uuid import UUID
 
-from flask import Response, request, send_file
+from flask import Response, request, send_file, url_for
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
@@ -68,36 +68,153 @@ class AgentConfigFileUploadPayload(BaseModel):
     upload_file_id: str = Field(..., description="UploadFile UUID from POST /console/api/files/upload")
 
 
+class AgentConfigSkillFileQuery(AgentConfigQuery):
+    path: str = Field(..., description="Normalized zip member path inside the skill package")
+
+
+class AgentConfigSkillFileByAgentQuery(AgentConfigByAgentQuery):
+    path: str = Field(..., description="Normalized zip member path inside the skill package")
+
+
+class AgentConfigVersionResponse(ResponseModel):
+    id: str
+    kind: Literal["snapshot", "draft", "build_draft"]
+    writable: bool
+
+
+class AgentConfigSkillItemResponse(ResponseModel):
+    id: str
+    name: str
+    file_id: str | None = None
+    description: str = ""
+    size: int | None = None
+    mime_type: str | None = None
+    hash: str | None = None
+
+
+class AgentConfigFileItemResponse(ResponseModel):
+    id: str
+    name: str
+    file_id: str | None = None
+    size: int | None = None
+    mime_type: str | None = None
+    hash: str | None = None
+
+
+class AgentConfigSkillItemsResponse(ResponseModel):
+    items: list[AgentConfigSkillItemResponse] = Field(default_factory=list)
+
+
+class AgentConfigFileItemsResponse(ResponseModel):
+    items: list[AgentConfigFileItemResponse] = Field(default_factory=list)
+
+
+class AgentConfigSkillUploadResponse(ResponseModel):
+    skill: AgentConfigSkillItemResponse
+    config_version: AgentConfigVersionResponse
+
+
+class AgentConfigFileUploadResponse(ResponseModel):
+    file: AgentConfigFileItemResponse
+    config_version: AgentConfigVersionResponse
+
+
 class AgentConfigManifestResponse(ResponseModel):
     agent_id: str
-    config_version: dict[str, Any]
-    skills: list[dict[str, Any]] = Field(default_factory=list)
-    files: list[dict[str, Any]] = Field(default_factory=list)
+    config_version: AgentConfigVersionResponse
+    skills: AgentConfigSkillItemsResponse = Field(default_factory=AgentConfigSkillItemsResponse)
+    files: AgentConfigFileItemsResponse = Field(default_factory=AgentConfigFileItemsResponse)
     env_keys: list[str] = Field(default_factory=list)
     note: str = ""
 
 
+class AgentConfigSkillListResponse(ResponseModel):
+    agent_id: str
+    config_version: AgentConfigVersionResponse
+    items: list[AgentConfigSkillItemResponse] = Field(default_factory=list)
+
+
+class AgentConfigFileListResponse(ResponseModel):
+    agent_id: str
+    config_version: AgentConfigVersionResponse
+    items: list[AgentConfigFileItemResponse] = Field(default_factory=list)
+
+
+class AgentConfigSkillFileResponse(ResponseModel):
+    path: str
+    name: str
+    type: Literal["file", "directory"]
+    previewable: bool
+    downloadable: bool
+
+
+class AgentConfigSkillMarkdownResponse(ResponseModel):
+    path: Literal["SKILL.md"]
+    size: int | None = None
+    truncated: bool
+    binary: Literal[False]
+    text: str
+
+
 class AgentConfigSkillInspectResponse(ResponseModel):
+    id: str
     name: str
     description: str = ""
-    files: list[str] = Field(default_factory=list)
-    skill_md: str
+    size: int | None = None
+    mime_type: str | None = None
+    hash: str | None = None
+    source: Literal["config_skill_zip"]
+    files: list[AgentConfigSkillFileResponse] = Field(default_factory=list)
+    file_tree: list[dict[str, Any]] | None = None
+    skill_md: AgentConfigSkillMarkdownResponse
+    warnings: list[str] = Field(default_factory=list)
 
 
-class AgentConfigPreviewResponse(ResponseModel):
-    key: str
+class AgentConfigFilePreviewResponse(ResponseModel):
+    name: str
     size: int | None = None
     truncated: bool
     binary: bool
     text: str | None = None
 
 
+class AgentConfigSkillFilePreviewResponse(ResponseModel):
+    path: str
+    size: int | None = None
+    truncated: bool
+    binary: bool
+    text: str | None = None
+
+
+class AgentConfigDownloadResponse(ResponseModel):
+    url: str
+
+
+class AgentConfigDeleteResponse(ResponseModel):
+    result: Literal["success"]
+    removed_names: list[str] = Field(default_factory=list)
+
+
 register_schema_models(console_ns, AgentConfigFileUploadPayload)
 register_response_schema_models(
     console_ns,
+    AgentConfigDeleteResponse,
+    AgentConfigDownloadResponse,
+    AgentConfigFileItemResponse,
+    AgentConfigFileItemsResponse,
+    AgentConfigFileListResponse,
+    AgentConfigFilePreviewResponse,
+    AgentConfigFileUploadResponse,
     AgentConfigManifestResponse,
-    AgentConfigPreviewResponse,
+    AgentConfigSkillFilePreviewResponse,
+    AgentConfigSkillFileResponse,
     AgentConfigSkillInspectResponse,
+    AgentConfigSkillItemResponse,
+    AgentConfigSkillItemsResponse,
+    AgentConfigSkillListResponse,
+    AgentConfigSkillMarkdownResponse,
+    AgentConfigSkillUploadResponse,
+    AgentConfigVersionResponse,
 )
 
 
@@ -287,6 +404,26 @@ def _manifest_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
     )
 
 
+def _skill_list_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
+    return _service().list_skills(
+        tenant_id=target.tenant_id,
+        agent_id=target.agent_id,
+        config_version_id=target.version_id,
+        config_version_kind=target.version_kind,
+        user_id=target.account_id,
+    )
+
+
+def _file_list_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
+    return _service().list_files(
+        tenant_id=target.tenant_id,
+        agent_id=target.agent_id,
+        config_version_id=target.version_id,
+        config_version_kind=target.version_kind,
+        user_id=target.account_id,
+    )
+
+
 def _read_single_upload() -> tuple[bytes, str]:
     if "file" not in request.files:
         raise AgentConfigServiceError("no_file", "no skill file uploaded", status_code=400)
@@ -358,12 +495,69 @@ def _skill_inspect_response(target: _ResolvedConsoleTarget, name: str) -> Respon
 
 
 def _skill_download_response(target: _ResolvedConsoleTarget, name: str) -> Response:
-    download = _service().pull_skill(
+    return _json_response(
+        {
+            "url": _service().download_skill_url(
+                tenant_id=target.tenant_id,
+                agent_id=target.agent_id,
+                config_version_id=target.version_id,
+                config_version_kind=target.version_kind,
+                name=name,
+                user_id=target.account_id,
+            )
+        }
+    )
+
+
+def _skill_file_preview_response(target: _ResolvedConsoleTarget, name: str, path: str) -> dict[str, object]:
+    return _service().preview_skill_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
         config_version_kind=target.version_kind,
         name=name,
+        path=path,
+        user_id=target.account_id,
+    )
+
+
+def _skill_file_download_response(
+    target: _ResolvedConsoleTarget,
+    *,
+    name: str,
+    path: str,
+    raw_endpoint: str,
+    route_params: dict[str, str],
+    extra_query_params: dict[str, str] | None = None,
+) -> Response:
+    member_path = _service().resolve_skill_file_member_path(
+        tenant_id=target.tenant_id,
+        agent_id=target.agent_id,
+        config_version_id=target.version_id,
+        config_version_kind=target.version_kind,
+        name=name,
+        path=path,
+        user_id=target.account_id,
+    )
+    query_args: dict[str, str] = {"path": member_path}
+    if extra_query_params:
+        query_args.update(extra_query_params)
+    if target.version_kind == AgentConfigVersionKind.SNAPSHOT:
+        query_args["version_id"] = target.version_id
+    elif target.version_kind == AgentConfigVersionKind.BUILD_DRAFT:
+        query_args["draft_type"] = "debug_build"
+    url = url_for(raw_endpoint, _external=False, name=name, **route_params, **query_args)
+    return _json_response({"url": url})
+
+
+def _skill_file_raw_download_response(target: _ResolvedConsoleTarget, name: str, path: str) -> Response:
+    download = _service().pull_skill_file(
+        tenant_id=target.tenant_id,
+        agent_id=target.agent_id,
+        config_version_id=target.version_id,
+        config_version_kind=target.version_kind,
+        name=name,
+        path=path,
         user_id=target.account_id,
     )
     return send_file(
@@ -375,7 +569,7 @@ def _skill_download_response(target: _ResolvedConsoleTarget, name: str) -> Respo
 
 
 def _skill_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[str, object]:
-    return _service().push_for_console(
+    _service().push_for_console(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         user_id=target.account_id,
@@ -383,6 +577,7 @@ def _skill_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[st
         config_version_kind=target.version_kind,
         payload=ConfigPushPayload(skills=[{"name": name, "file_ref": None}]),
     )
+    return {"result": "success", "removed_names": [name]}
 
 
 def _file_preview_response(target: _ResolvedConsoleTarget, name: str) -> dict[str, object]:
@@ -397,24 +592,22 @@ def _file_preview_response(target: _ResolvedConsoleTarget, name: str) -> dict[st
 
 
 def _file_download_response(target: _ResolvedConsoleTarget, name: str) -> Response:
-    download = _service().pull_file(
-        tenant_id=target.tenant_id,
-        agent_id=target.agent_id,
-        config_version_id=target.version_id,
-        config_version_kind=target.version_kind,
-        name=name,
-        user_id=target.account_id,
-    )
-    return send_file(
-        io.BytesIO(download.payload),
-        mimetype=download.mime_type,
-        as_attachment=True,
-        download_name=download.filename,
+    return _json_response(
+        {
+            "url": _service().download_file_url(
+                tenant_id=target.tenant_id,
+                agent_id=target.agent_id,
+                config_version_id=target.version_id,
+                config_version_kind=target.version_kind,
+                name=name,
+                user_id=target.account_id,
+            )
+        }
     )
 
 
 def _file_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[str, object]:
-    return _service().push_for_console(
+    _service().push_for_console(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         user_id=target.account_id,
@@ -422,6 +615,7 @@ def _file_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[str
         config_version_kind=target.version_kind,
         payload=ConfigPushPayload(files=[{"name": name, "file_ref": None}]),
     )
+    return {"result": "success", "removed_names": [name]}
 
 
 @console_ns.route("/agent/<uuid:agent_id>/config/manifest")
@@ -461,7 +655,7 @@ class AgentConfigManifestApi(Resource):
 class AgentConfigSkillUploadByAgentApi(Resource):
     @console_ns.doc("upload_agent_config_skill_by_agent")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
-    @console_ns.response(201, "Updated config manifest", console_ns.models[AgentConfigManifestResponse.__name__])
+    @console_ns.response(201, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -480,7 +674,7 @@ class AgentConfigSkillUploadByAgentApi(Resource):
 class AgentConfigSkillUploadApi(Resource):
     @console_ns.doc("upload_agent_config_skill")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
-    @console_ns.response(201, "Updated config manifest", console_ns.models[AgentConfigManifestResponse.__name__])
+    @console_ns.response(201, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -492,12 +686,61 @@ class AgentConfigSkillUploadApi(Resource):
         return _with_app_route_target(app_model=app_model, current_user=current_user, action=_skill_upload_response)
 
 
+@console_ns.route("/agent/<uuid:agent_id>/config/skills")
+class AgentConfigSkillsByAgentApi(Resource):
+    @console_ns.doc("get_agent_config_skills_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.response(200, "Config skills", console_ns.models[AgentConfigSkillListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return _with_agent_route_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            current_user=current_user,
+            action=_skill_list_response,
+        )
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/config/skills")
+class AgentConfigSkillsApi(Resource):
+    @console_ns.doc("get_agent_config_skills")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.response(200, "Config skills", console_ns.models[AgentConfigSkillListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    @with_current_user
+    def get(self, current_user: Account, app_model: App):
+        return _with_app_route_target(app_model=app_model, current_user=current_user, action=_skill_list_response)
+
+
 @console_ns.route("/agent/<uuid:agent_id>/config/files")
 class AgentConfigFilesByAgentApi(Resource):
+    @console_ns.doc("get_agent_config_files_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.response(200, "Config files", console_ns.models[AgentConfigFileListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID):
+        return _with_agent_route_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            current_user=current_user,
+            action=_file_list_response,
+        )
+
     @console_ns.doc("upload_agent_config_file_by_agent")
     @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
     @console_ns.expect(console_ns.models[AgentConfigFileUploadPayload.__name__])
-    @console_ns.response(201, "Updated config manifest", console_ns.models[AgentConfigManifestResponse.__name__])
+    @console_ns.response(201, "Uploaded config file", console_ns.models[AgentConfigFileUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -515,10 +758,21 @@ class AgentConfigFilesByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files")
 class AgentConfigFilesApi(Resource):
+    @console_ns.doc("get_agent_config_files")
+    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.response(200, "Config files", console_ns.models[AgentConfigFileListResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    @with_current_user
+    def get(self, current_user: Account, app_model: App):
+        return _with_app_route_target(app_model=app_model, current_user=current_user, action=_file_list_response)
+
     @console_ns.doc("upload_agent_config_file")
     @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
     @console_ns.expect(console_ns.models[AgentConfigFileUploadPayload.__name__])
-    @console_ns.response(201, "Updated config manifest", console_ns.models[AgentConfigManifestResponse.__name__])
+    @console_ns.response(201, "Uploaded config file", console_ns.models[AgentConfigFileUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -576,8 +830,56 @@ class AgentConfigSkillInspectApi(Resource):
         )
 
 
+@console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/files/preview")
+class AgentConfigSkillFilePreviewByAgentApi(Resource):
+    @console_ns.doc("preview_agent_config_skill_file_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileByAgentQuery)})
+    @console_ns.response(200, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+        query = query_params_from_request(AgentConfigSkillFileByAgentQuery)
+        try:
+            target = _resolve_agent_route_target(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                current_user=current_user,
+                query=query,
+            )
+            return _skill_file_preview_response(target, name, query.path)
+        except AgentConfigServiceError as exc:
+            return _handle(exc)
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/preview")
+class AgentConfigSkillFilePreviewApi(Resource):
+    @console_ns.doc("preview_agent_config_skill_file")
+    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileQuery)})
+    @console_ns.response(200, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    @with_current_user
+    def get(self, current_user: Account, app_model: App, name: str):
+        query = query_params_from_request(AgentConfigSkillFileQuery)
+        try:
+            target = _resolve_app_route_target(app_model=app_model, current_user=current_user, query=query)
+            if isinstance(target, tuple):
+                return target
+            return _skill_file_preview_response(target, name, query.path)
+        except AgentConfigServiceError as exc:
+            return _handle(exc)
+
+
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/download")
 class AgentConfigSkillDownloadByAgentApi(Resource):
+    @console_ns.doc("download_agent_config_skill_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.response(200, "Config skill download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -594,6 +896,9 @@ class AgentConfigSkillDownloadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/download")
 class AgentConfigSkillDownloadApi(Resource):
+    @console_ns.doc("download_agent_config_skill")
+    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.response(200, "Config skill download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -607,8 +912,114 @@ class AgentConfigSkillDownloadApi(Resource):
         )
 
 
+@console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/files/download")
+class AgentConfigSkillFileDownloadByAgentApi(Resource):
+    @console_ns.doc("download_agent_config_skill_file_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileByAgentQuery)})
+    @console_ns.response(200, "Config skill file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+        query = query_params_from_request(AgentConfigSkillFileByAgentQuery)
+        try:
+            target = _resolve_agent_route_target(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                current_user=current_user,
+                query=query,
+            )
+            return _skill_file_download_response(
+                target,
+                name=name,
+                path=query.path,
+                raw_endpoint="console.agent_config_skill_file_download_content_by_agent_api",
+                route_params={"agent_id": str(agent_id)},
+            )
+        except AgentConfigServiceError as exc:
+            return _handle(exc)
+
+
+@console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/download")
+class AgentConfigSkillFileDownloadApi(Resource):
+    @console_ns.doc("download_agent_config_skill_file")
+    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileQuery)})
+    @console_ns.response(200, "Config skill file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    @with_current_user
+    def get(self, current_user: Account, app_model: App, name: str):
+        query = query_params_from_request(AgentConfigSkillFileQuery)
+        try:
+            target = _resolve_app_route_target(app_model=app_model, current_user=current_user, query=query)
+            if isinstance(target, tuple):
+                return target
+            return _skill_file_download_response(
+                target,
+                name=name,
+                path=query.path,
+                raw_endpoint="console.agent_config_skill_file_download_content_api",
+                route_params={"app_id": str(app_model.id)},
+                extra_query_params={"node_id": query.node_id} if query.node_id else None,
+            )
+        except AgentConfigServiceError as exc:
+            return _handle(exc)
+
+
+@console_ns.route(
+    "/agent/<uuid:agent_id>/config/skills/<string:name>/files/content",
+    endpoint="agent_config_skill_file_download_content_by_agent_api",
+)
+class AgentConfigSkillFileDownloadContentByAgentApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account, agent_id: UUID, name: str):
+        query = query_params_from_request(AgentConfigSkillFileByAgentQuery)
+        try:
+            target = _resolve_agent_route_target(
+                tenant_id=tenant_id,
+                agent_id=agent_id,
+                current_user=current_user,
+                query=query,
+            )
+            return _skill_file_raw_download_response(target, name, query.path)
+        except AgentConfigServiceError as exc:
+            return _handle(exc)
+
+
+@console_ns.route(
+    "/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/content",
+    endpoint="agent_config_skill_file_download_content_api",
+)
+class AgentConfigSkillFileDownloadContentApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=_WORKFLOW_APP_MODES)
+    @with_current_user
+    def get(self, current_user: Account, app_model: App, name: str):
+        query = query_params_from_request(AgentConfigSkillFileQuery)
+        try:
+            target = _resolve_app_route_target(app_model=app_model, current_user=current_user, query=query)
+            if isinstance(target, tuple):
+                return target
+            return _skill_file_raw_download_response(target, name, query.path)
+        except AgentConfigServiceError as exc:
+            return _handle(exc)
+
+
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>")
 class AgentConfigSkillByAgentApi(Resource):
+    @console_ns.doc("delete_agent_config_skill_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.response(200, "Config skill deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -625,6 +1036,9 @@ class AgentConfigSkillByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>")
 class AgentConfigSkillApi(Resource):
+    @console_ns.doc("delete_agent_config_skill")
+    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.response(200, "Config skill deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -642,7 +1056,9 @@ class AgentConfigSkillApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>/preview")
 class AgentConfigFilePreviewByAgentApi(Resource):
-    @console_ns.response(200, "Preview", console_ns.models[AgentConfigPreviewResponse.__name__])
+    @console_ns.doc("preview_agent_config_file_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.response(200, "Preview", console_ns.models[AgentConfigFilePreviewResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -659,7 +1075,9 @@ class AgentConfigFilePreviewByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/preview")
 class AgentConfigFilePreviewApi(Resource):
-    @console_ns.response(200, "Preview", console_ns.models[AgentConfigPreviewResponse.__name__])
+    @console_ns.doc("preview_agent_config_file")
+    @console_ns.doc(params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.response(200, "Preview", console_ns.models[AgentConfigFilePreviewResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -675,6 +1093,9 @@ class AgentConfigFilePreviewApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>/download")
 class AgentConfigFileDownloadByAgentApi(Resource):
+    @console_ns.doc("download_agent_config_file_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.response(200, "Config file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -691,6 +1112,9 @@ class AgentConfigFileDownloadByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/download")
 class AgentConfigFileDownloadApi(Resource):
+    @console_ns.doc("download_agent_config_file")
+    @console_ns.doc(params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.response(200, "Config file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -706,6 +1130,9 @@ class AgentConfigFileDownloadApi(Resource):
 
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>")
 class AgentConfigFileByAgentApi(Resource):
+    @console_ns.doc("delete_agent_config_file_by_agent")
+    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.response(200, "Config file deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -722,6 +1149,9 @@ class AgentConfigFileByAgentApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>")
 class AgentConfigFileApi(Resource):
+    @console_ns.doc("delete_agent_config_file")
+    @console_ns.doc(params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.response(200, "Config file deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
