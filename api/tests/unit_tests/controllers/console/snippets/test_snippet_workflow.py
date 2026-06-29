@@ -438,9 +438,7 @@ def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask
     assert response == {"message": "No valid fields to update"}
 
 
-def test_update_published_snippet_workflow_raises_not_found(
-    app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_update_published_snippet_workflow_raises_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     user = _account("account-1")
     snippet = _snippet()
 
