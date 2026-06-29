@@ -917,7 +917,21 @@ Chat applications support session persistence, allowing previous chat history to
     ### Response
     - `form_content` (string) Rendered form content (markdown/plain text)
     - `inputs` (array[object]) Form input definitions
-    - `resolved_default_values` (object) Default values resolved to strings
+      - `paragraph` (object) Multi-line text input
+        - `output_variable_name` (string) Key used in submit `inputs`
+        - `required` (bool) Whether the field is required
+      - `select` (object) Single-choice dropdown
+        - `output_variable_name` (string) Key used in submit `inputs`
+        - `options` (array[string]) Allowed option values
+        - `required` (bool) Whether the field is required
+      - `file` (object) Single file input
+        - `output_variable_name` (string) Key used in submit `inputs`
+        - `allowed_file_types` (array[string]) Allowed categories such as `document`, `image`, `audio`, `video`, or `custom`
+        - `allowed_file_upload_methods` (array[string]) Allowed transfer methods: `local_file`, `remote_url`
+        - `required` (bool) Whether the field is required
+      - `file-list` (object) Multiple file input
+        - Same fields as `file`, plus `number_limits` (int) Maximum number of files
+    - `resolved_default_values` (object) Default values resolved to strings (file defaults are JSON-encoded file mappings)
     - `user_actions` (array[object]) Action buttons
     - `expiration_time` (timestamp) Form expiration time (Unix seconds)
 
@@ -941,14 +955,39 @@ Chat applications support session persistence, allowing previous chat history to
       "form_content": "Please confirm the final answer: {{#$output.answer#}}",
       "inputs": [
         {
-          "label": "Answer",
-          "type": "text-input",
+          "label": "Decision",
+          "type": "select",
           "required": true,
-          "output_variable_name": "answer"
+          "output_variable_name": "decision",
+          "options": ["approve", "reject"]
+        },
+        {
+          "label": "Notes",
+          "type": "paragraph",
+          "required": false,
+          "output_variable_name": "summary"
+        },
+        {
+          "label": "Attachment",
+          "type": "file",
+          "required": true,
+          "output_variable_name": "attachment",
+          "allowed_file_types": ["document"],
+          "allowed_file_upload_methods": ["local_file", "remote_url"]
+        },
+        {
+          "label": "Attachments",
+          "type": "file-list",
+          "required": false,
+          "output_variable_name": "attachments",
+          "allowed_file_types": ["document"],
+          "allowed_file_upload_methods": ["local_file", "remote_url"],
+          "number_limits": 3
         }
       ],
       "resolved_default_values": {
-        "answer": "Initial value"
+        "decision": "approve",
+        "summary": "Initial notes"
       },
       "user_actions": [
         { "id": "approve", "title": "Approve", "button_style": "primary" },
@@ -977,7 +1016,15 @@ Chat applications support session persistence, allowing previous chat history to
     - `form_token` (string) Required, token returned by the pause event.
 
     ### Request Body
-    - `inputs` (object) Required, key/value pairs for form fields.
+    - `inputs` (object) Required, key/value pairs for form fields keyed by each input's `output_variable_name`.
+      - `paragraph` / `select`: submit a string value.
+      - `file`: submit one file mapping object.
+      - `file-list`: submit an array of file mapping objects.
+      - File mapping for local uploads: `{"transfer_method": "local_file", "upload_file_id": "<id>", "type": "<allowed_file_type>"}`.
+        Obtain `upload_file_id` from the [File Upload](#file-upload) API response field `id`.
+      - File mapping for remote URLs: `{"transfer_method": "remote_url", "url": "https://...", "type": "<allowed_file_type>"}`.
+        `remote_url` is also accepted instead of `url`.
+      - The `type` value must match one of the field's `allowed_file_types`.
     - `action` (string) Required, selected action ID from `user_actions`.
     - `user` (string) Required, end-user identifier.
 
@@ -999,7 +1046,27 @@ Chat applications support session persistence, allowing previous chat history to
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
-  "inputs": {"answer": "Approved answer"},
+  "inputs": {
+    "decision": "approve",
+    "summary": "Looks good",
+    "attachment": {
+      "transfer_method": "local_file",
+      "upload_file_id": "4e0d1b87-52f2-49f6-b8c6-95cd9c954b3e",
+      "type": "document"
+    },
+    "attachments": [
+      {
+        "transfer_method": "local_file",
+        "upload_file_id": "1a77f0df-c0e6-461c-987c-e72526f341ee",
+        "type": "document"
+      },
+      {
+        "transfer_method": "remote_url",
+        "url": "https://example.com/report.pdf",
+        "type": "document"
+      }
+    ]
+  },
   "action": "approve",
   "user": "abc-123"
 }'`}
