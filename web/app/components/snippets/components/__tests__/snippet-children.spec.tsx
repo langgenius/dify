@@ -49,6 +49,7 @@ describe('SnippetChildren', () => {
         snippetId="snippet-1"
         fields={fields}
         canSave
+        canEdit
         isPublishing={false}
         {...callbacks}
       />,
@@ -59,6 +60,7 @@ describe('SnippetChildren', () => {
     expect(capturedHeaderProps).toEqual(expect.objectContaining({
       snippetId: 'snippet-1',
       canSave: true,
+      canEdit: true,
       isPublishing: false,
       ...callbacks,
     }))
