@@ -1,5 +1,15 @@
+"""WaterCrawl domain exceptions.
+
+These exceptions are constructed from upstream HTTP responses, which may be
+JSON API errors or plain text/HTML proxy errors. Keep the exception type stable
+even when the body is not JSON so callers can handle WaterCrawl failures by
+domain type instead of low-level parser errors.
+"""
+
 import json
-from typing import override
+from typing import Any, override
+
+from httpx import Response
 
 
 class WaterCrawlError(Exception):
@@ -7,11 +17,16 @@ class WaterCrawlError(Exception):
 
 
 class WaterCrawlBadRequestError(WaterCrawlError):
-    def __init__(self, response):
+    def __init__(self, response: Response):
         self.status_code = response.status_code
         self.response = response
-        data = response.json()
-        self.message = data.get("message", "Unknown error occurred")
+        try:
+            data: Any = response.json()
+        except ValueError:
+            data = {}
+        if not isinstance(data, dict):
+            data = {}
+        self.message = data.get("message") or response.text or "Unknown error occurred"
         self.errors = data.get("errors", {})
         super().__init__(self.message)
 
