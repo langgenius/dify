@@ -108,6 +108,15 @@ def _segment_response_dict():
     }
 
 
+def _bind_dataset_document(dataset, document, dataset_id: str = "ds-1", document_id: str = "doc-1"):
+    dataset.id = dataset_id
+    dataset.tenant_id = "tenant-1"
+    document.id = document_id
+    document.dataset_id = dataset_id
+    document.tenant_id = "tenant-1"
+    return document
+
+
 def test_segment_response_with_summary():
     segment = _segment()
 
@@ -380,6 +389,7 @@ class TestDatasetDocumentSegmentAddApi:
 
         document = MagicMock()
         document.doc_form = IndexStructureType.PARAGRAPH_INDEX
+        _bind_dataset_document(dataset, document)
 
         segment = _segment()
 
@@ -504,6 +514,7 @@ class TestDatasetDocumentSegmentUpdateApi:
 
         document = MagicMock()
         document.doc_form = IndexStructureType.PARAGRAPH_INDEX
+        _bind_dataset_document(dataset, document)
 
         segment = _segment()
 
@@ -519,8 +530,8 @@ class TestDatasetDocumentSegmentUpdateApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                side_effect=[segment, None],
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=segment,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -538,6 +549,7 @@ class TestDatasetDocumentSegmentUpdateApi:
                 "controllers.console.datasets.datasets_segments.SummaryIndexService.get_segment_summary",
                 return_value=None,
             ),
+            patch("models.dataset.db.session.scalar", return_value=None),
             patch("models.dataset.db.session.execute", return_value=MagicMock(all=MagicMock(return_value=[]))),
         ):
             response, status = method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
@@ -574,6 +586,10 @@ class TestDatasetDocumentSegmentUpdateApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
                 return_value=None,
             ),
             patch(
@@ -781,13 +797,15 @@ class TestChildChunkAddApi:
         api = ChildChunkAddApi()
         method = inspect.unwrap(api.get)
 
+        dataset = MagicMock()
+        document = _bind_dataset_document(dataset, MagicMock())
         pagination = MagicMock(items=[], total=0, pages=0)
 
         with (
             app.test_request_context("/?page=bad&limit="),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
-                return_value=MagicMock(),
+                return_value=dataset,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
@@ -795,10 +813,10 @@ class TestChildChunkAddApi:
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DocumentService.get_document",
-                return_value=MagicMock(),
+                return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
                 return_value=MagicMock(),
             ),
             patch(
@@ -826,6 +844,7 @@ class TestChildChunkAddApi:
         dataset.indexing_technique = "economy"
 
         document = MagicMock()
+        _bind_dataset_document(dataset, document)
         segment = MagicMock()
         child_chunk = _child_chunk()
 
@@ -841,7 +860,7 @@ class TestChildChunkAddApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
                 return_value=segment,
             ),
             patch(
@@ -868,6 +887,7 @@ class TestChildChunkAddApi:
 
         dataset = MagicMock(indexing_technique="economy")
         document = MagicMock()
+        _bind_dataset_document(dataset, document)
         segment = MagicMock()
 
         with (
@@ -882,7 +902,7 @@ class TestChildChunkAddApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
                 return_value=segment,
             ),
             patch(
@@ -908,6 +928,7 @@ class TestChildChunkUpdateApi:
 
         dataset = MagicMock()
         document = MagicMock()
+        _bind_dataset_document(dataset, document)
         segment = MagicMock()
         child_chunk = MagicMock()
 
@@ -922,8 +943,12 @@ class TestChildChunkUpdateApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                side_effect=[segment, child_chunk],
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=segment,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_child_chunk_by_segment_ref",
+                return_value=child_chunk,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
@@ -947,6 +972,7 @@ class TestChildChunkUpdateApi:
 
         dataset = MagicMock()
         document = MagicMock()
+        _bind_dataset_document(dataset, document)
         segment = MagicMock()
         child_chunk = MagicMock()
 
@@ -961,8 +987,12 @@ class TestChildChunkUpdateApi:
                 return_value=document,
             ),
             patch(
-                "controllers.console.datasets.datasets_segments.db.session.scalar",
-                side_effect=[segment, child_chunk],
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=segment,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_child_chunk_by_segment_ref",
+                return_value=child_chunk,
             ),
             patch(
                 "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",

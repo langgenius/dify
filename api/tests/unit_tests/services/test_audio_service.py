@@ -523,7 +523,7 @@ class TestAudioServiceTTS:
         message_id = "00000000-0000-0000-0000-000000000001"
         message = factory.create_message_mock(message_id=message_id, answer="Message answer")
         session = MagicMock()
-        session.get.return_value = message
+        session.scalar.return_value = message
 
         mock_model_manager = mock_model_manager_class.return_value
         mock_model_instance = MagicMock()
@@ -536,11 +536,25 @@ class TestAudioServiceTTS:
             session=session,
             message_id=message_id,
             voice="message-voice",
+            message_end_user_id="end-user-1",
+            message_account_id="account-1",
         )
 
         # Assert
         assert result == b"message audio"
-        session.get.assert_called_once_with(Message, message_id)
+        session.scalar.assert_called_once()
+        session.get.assert_not_called()
+        stmt = session.scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "messages.id" in statement
+        assert "messages.app_id" in statement
+        assert "messages.from_end_user_id" in statement
+        assert "messages.from_account_id" in statement
+        assert message_id in compiled.params.values()
+        assert app.id in compiled.params.values()
+        assert "end-user-1" in compiled.params.values()
+        assert "account-1" in compiled.params.values()
         mock_model_instance.invoke_tts.assert_called_once_with(
             content_text="Message answer",
             voice="message-voice",

@@ -12,6 +12,7 @@ from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate, Pipeli
 from models.workflow import Workflow
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_ref_service import WorkflowRefService
 
 
 @pytest.fixture
@@ -367,6 +368,38 @@ def test_update_workflow_returns_none_when_not_found(
     )
 
     assert result is None
+
+
+def test_update_workflow_with_ref_scopes_lookup_to_pipeline(
+    mocker: MockerFixture, rag_pipeline_service: RagPipelineService
+) -> None:
+    workflow = SimpleNamespace(
+        id="wf-1", marked_name="", marked_comment="", updated_by=None, updated_at=None, disallowed="original"
+    )
+    pipeline = SimpleNamespace(id="pipeline-1", tenant_id="t1")
+    workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, "wf-1")
+    session = mocker.Mock()
+    session.scalar.return_value = workflow
+
+    result = rag_pipeline_service.update_workflow(
+        session=session,
+        workflow_id="wf-1",
+        tenant_id="t1",
+        account_id="u1",
+        data={"marked_name": "v1"},
+        workflow_ref=workflow_ref,
+    )
+
+    stmt = session.scalar.call_args.args[0]
+    compiled = stmt.compile()
+    statement = str(compiled)
+    assert "workflows.id" in statement
+    assert "workflows.tenant_id" in statement
+    assert "workflows.app_id" in statement
+    assert "wf-1" in compiled.params.values()
+    assert "t1" in compiled.params.values()
+    assert "pipeline-1" in compiled.params.values()
+    assert result is workflow
 
 
 # --- get_rag_pipeline_paginate_workflow_runs ---
@@ -1627,6 +1660,8 @@ def test_handle_node_run_result_marks_document_error_for_published_invoke(
         def __init__(self):
             self._values = {
                 ("sys", "invoke_from"): SimpleNamespace(value=InvokeFrom.PUBLISHED_PIPELINE),
+                ("sys", "app_id"): SimpleNamespace(value="pipeline-1"),
+                ("sys", "dataset_id"): SimpleNamespace(value="dataset-1"),
                 ("sys", "document_id"): SimpleNamespace(value="doc-1"),
             }
 
@@ -1660,7 +1695,8 @@ def test_handle_node_run_result_marks_document_error_for_published_invoke(
         )
 
     document = SimpleNamespace(indexing_status="waiting", error=None)
-    mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get", return_value=document)
+    scalar_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.scalar", return_value=document)
+    get_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.get")
     add_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.add")
     commit_mock = mocker.patch("services.rag_pipeline.rag_pipeline.db.session.commit")
 
@@ -1672,6 +1708,19 @@ def test_handle_node_run_result_marks_document_error_for_published_invoke(
     )
 
     assert result.status == WorkflowNodeExecutionStatus.FAILED
+    stmt = scalar_mock.call_args.args[0]
+    compiled = stmt.compile()
+    statement = str(compiled)
+    assert "documents.id" in statement
+    assert "documents.tenant_id" in statement
+    assert "documents.dataset_id" in statement
+    assert "datasets.tenant_id" in statement
+    assert "datasets.pipeline_id" in statement
+    assert "doc-1" in compiled.params.values()
+    assert "t1" in compiled.params.values()
+    assert "dataset-1" in compiled.params.values()
+    assert "pipeline-1" in compiled.params.values()
+    get_mock.assert_not_called()
     assert document.indexing_status == "error"
     assert document.error == "boom"
     add_mock.assert_called_once_with(document)

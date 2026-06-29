@@ -65,6 +65,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from services.dataset_ref_service import DatasetRefService, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -1926,7 +1927,15 @@ class DocumentService:
         # Check if document_ids is not empty to avoid WHERE false condition
         if not document_ids or len(document_ids) == 0:
             return
-        documents = db.session.scalars(select(Document).where(Document.id.in_(document_ids))).all()
+        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+        documents = db.session.scalars(
+            select(Document).where(
+                Document.id.in_(document_ids),
+                Document.tenant_id == dataset_ref.tenant_id,
+                Document.dataset_id == dataset_ref.dataset_id,
+            )
+        ).all()
+        deleted_document_ids = [document.id for document in documents]
         file_ids = [
             document.data_source_info_dict.get("upload_file_id", "")
             for document in documents
@@ -1941,8 +1950,8 @@ class DocumentService:
 
         # Dispatch cleanup task after commit to avoid lock contention
         # Task cleans up segments, files, and vector indexes
-        if dataset.doc_form is not None:
-            batch_clean_document_task.delay(document_ids, dataset.id, dataset.doc_form, file_ids)
+        if deleted_document_ids and dataset.doc_form is not None:
+            batch_clean_document_task.delay(deleted_document_ids, dataset.id, dataset.doc_form, file_ids)
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:
@@ -4029,6 +4038,22 @@ class SegmentService:
         return result if isinstance(result, ChildChunk) else None
 
     @classmethod
+    def get_child_chunk_by_segment_ref(cls, child_chunk_id: str, segment_ref: SegmentRef) -> ChildChunk | None:
+        """Get a child chunk through the full tenant/dataset/document/segment chain."""
+        result = db.session.scalar(
+            select(ChildChunk)
+            .where(
+                ChildChunk.id == child_chunk_id,
+                ChildChunk.tenant_id == segment_ref.tenant_id,
+                ChildChunk.dataset_id == segment_ref.dataset_id,
+                ChildChunk.document_id == segment_ref.document_id,
+                ChildChunk.segment_id == segment_ref.segment_id,
+            )
+            .limit(1)
+        )
+        return result if isinstance(result, ChildChunk) else None
+
+    @classmethod
     def get_segments(
         cls,
         document_id: str,
@@ -4062,6 +4087,21 @@ class SegmentService:
         result = db.session.scalar(
             select(DocumentSegment)
             .where(DocumentSegment.id == segment_id, DocumentSegment.tenant_id == tenant_id)
+            .limit(1)
+        )
+        return result if isinstance(result, DocumentSegment) else None
+
+    @classmethod
+    def get_segment_by_ref(cls, segment_ref: SegmentRef) -> DocumentSegment | None:
+        """Get a segment through the full tenant/dataset/document ownership chain."""
+        result = db.session.scalar(
+            select(DocumentSegment)
+            .where(
+                DocumentSegment.id == segment_ref.segment_id,
+                DocumentSegment.tenant_id == segment_ref.tenant_id,
+                DocumentSegment.dataset_id == segment_ref.dataset_id,
+                DocumentSegment.document_id == segment_ref.document_id,
+            )
             .limit(1)
         )
         return result if isinstance(result, DocumentSegment) else None

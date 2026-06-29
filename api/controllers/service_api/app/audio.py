@@ -184,6 +184,7 @@ class TextApi(Resource):
                 voice=voice,
                 end_user=end_user.external_user_id,
                 message_id=message_id,
+                message_end_user_id=end_user.id,
             )
 
             return response

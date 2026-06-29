@@ -425,6 +425,7 @@ class TrialChatTextApi(TrialAppResource):
                 text=text,
                 voice=voice,
                 message_id=message_id,
+                message_account_id=current_user.id,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return response

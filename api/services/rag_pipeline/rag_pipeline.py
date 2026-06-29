@@ -82,6 +82,7 @@ from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError,
 from services.rag_pipeline.pipeline_template.pipeline_template_factory import PipelineTemplateRetrievalFactory
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 from services.workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_restore import apply_published_workflow_snapshot_to_draft
 
 logger = logging.getLogger(__name__)
@@ -984,8 +985,21 @@ class RagPipelineService:
             if invoke_from:
                 if invoke_from.value == InvokeFrom.PUBLISHED_PIPELINE:
                     document_id = get_system_segment(variable_pool, SystemVariableKey.DOCUMENT_ID)
-                    if document_id:
-                        document = db.session.get(Document, document_id.value)
+                    dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
+                    pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
+                    if document_id and dataset_id and pipeline_id:
+                        document = db.session.scalar(
+                            select(Document)
+                            .join(Dataset, Dataset.id == Document.dataset_id)
+                            .where(
+                                Document.id == document_id.value,
+                                Document.tenant_id == tenant_id,
+                                Document.dataset_id == dataset_id.value,
+                                Dataset.tenant_id == tenant_id,
+                                Dataset.pipeline_id == pipeline_id.value,
+                            )
+                            .limit(1)
+                        )
                         if document:
                             document.indexing_status = IndexingStatus.ERROR
                             document.error = error
@@ -995,7 +1009,14 @@ class RagPipelineService:
         return workflow_node_execution
 
     def update_workflow(
-        self, *, session: Session, workflow_id: str, tenant_id: str, account_id: str, data: dict[str, Any]
+        self,
+        *,
+        session: Session,
+        workflow_id: str,
+        tenant_id: str,
+        account_id: str,
+        data: dict[str, Any],
+        workflow_ref: WorkflowRef | None = None,
     ) -> Workflow | None:
         """
         Update workflow attributes
@@ -1005,9 +1026,14 @@ class RagPipelineService:
         :param tenant_id: Tenant ID
         :param account_id: Account ID (for permission check)
         :param data: Dictionary containing fields to update
+        :param workflow_ref: Optional trusted owner-bound workflow reference
         :return: Updated workflow or None if not found
         """
-        stmt = select(Workflow).where(Workflow.id == workflow_id, Workflow.tenant_id == tenant_id)
+        lookup_workflow_id = workflow_ref.workflow_id if workflow_ref else workflow_id
+        lookup_tenant_id = workflow_ref.tenant_id if workflow_ref else tenant_id
+        stmt = select(Workflow).where(Workflow.id == lookup_workflow_id, Workflow.tenant_id == lookup_tenant_id)
+        if workflow_ref is not None:
+            stmt = stmt.where(Workflow.app_id == workflow_ref.app_id)
         workflow = session.scalar(stmt)
 
         if not workflow:

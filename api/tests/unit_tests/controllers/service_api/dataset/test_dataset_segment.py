@@ -90,6 +90,19 @@ def _child_chunk() -> ChildChunk:
     return child_chunk
 
 
+def _document_for_dataset(
+    dataset: Dataset, document_id: str = "doc-id", doc_form: str = IndexStructureType.PARAGRAPH_INDEX
+):
+    document = Mock()
+    document.id = document_id
+    document.dataset_id = dataset.id
+    document.tenant_id = dataset.tenant_id
+    document.indexing_status = "completed"
+    document.enabled = True
+    document.doc_form = doc_form
+    return document
+
+
 class TestSegmentCreatePayload:
     """Test suite for SegmentCreatePayload Pydantic model."""
 
@@ -868,7 +881,9 @@ class TestSegmentApiGet:
         # Arrange
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
         mock_seg_svc.get_segments.return_value = ([mock_segment], 1)
         mock_get_summaries.return_value = {}
         mock_dump_segments.return_value = [_segment_response_dict()]
@@ -988,7 +1003,7 @@ class TestSegmentApiPost:
         mock_dataset.indexing_technique = "economy"
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_doc = Mock()
+        mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "completed"
         mock_doc.enabled = True
         mock_doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
@@ -1040,7 +1055,7 @@ class TestSegmentApiPost:
         mock_dataset.indexing_technique = "economy"
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_doc = Mock()
+        mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "completed"
         mock_doc.enabled = True
         mock_doc_svc.get_document.return_value = mock_doc
@@ -1082,7 +1097,7 @@ class TestSegmentApiPost:
 
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_doc = Mock()
+        mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "indexing"  # Not completed
         mock_doc_svc.get_document.return_value = mock_doc
 
@@ -1134,10 +1149,10 @@ class TestDatasetSegmentApiDelete:
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
 
-        mock_doc = Mock()
+        mock_doc = _document_for_dataset(mock_dataset)
         mock_doc_svc.get_document.return_value = mock_doc
 
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
         mock_seg_svc.delete_segment.return_value = None
 
         # Act
@@ -1177,13 +1192,13 @@ class TestDatasetSegmentApiDelete:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_doc = Mock()
+        mock_doc = _document_for_dataset(mock_dataset)
         mock_doc.indexing_status = "completed"
         mock_doc.enabled = True
         mock_doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         mock_doc_svc.get_document.return_value = mock_doc
 
-        mock_seg_svc.get_segment_by_id.return_value = None  # Segment not found
+        mock_seg_svc.get_segment_by_ref.return_value = None  # Segment not found
 
         # Act & Assert
         with app.test_request_context(
@@ -1329,8 +1344,10 @@ class TestDatasetSegmentApiUpdate:
         mock_dataset.indexing_technique = "economy"
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc_svc.get_document.return_value = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_doc_svc.get_document.return_value = _document_for_dataset(
+            mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX
+        )
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
         updated = Mock()
         updated.id = "updated-seg"
         mock_seg_svc.update_segment.return_value = updated
@@ -1419,8 +1436,8 @@ class TestDatasetSegmentApiUpdate:
         mock_dataset.indexing_technique = "economy"
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc_svc.get_document.return_value = Mock()
-        mock_seg_svc.get_segment_by_id.return_value = None
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
+        mock_seg_svc.get_segment_by_ref.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
@@ -1470,9 +1487,9 @@ class TestDatasetSegmentApiGetSingle:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        mock_doc = _document_for_dataset(mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
         mock_get_summary.return_value = None
         mock_dump_segment.return_value = _segment_response_dict()
 
@@ -1517,9 +1534,9 @@ class TestDatasetSegmentApiGetSingle:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc = Mock(doc_form=IndexStructureType.PARAGRAPH_INDEX)
+        mock_doc = _document_for_dataset(mock_dataset, doc_form=IndexStructureType.PARAGRAPH_INDEX)
         mock_doc_svc.get_document.return_value = mock_doc
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
         mock_summary_record = Mock(summary_content="This is the segment summary")
         mock_get_summary.return_value = mock_summary_record
         mock_dump_segment.return_value = _segment_response_dict("This is the segment summary")
@@ -1619,8 +1636,8 @@ class TestDatasetSegmentApiGetSingle:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
         mock_dataset_svc.check_dataset_model_setting.return_value = None
-        mock_doc_svc.get_document.return_value = Mock()
-        mock_seg_svc.get_segment_by_id.return_value = None
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
+        mock_seg_svc.get_segment_by_ref.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id",
@@ -1660,8 +1677,8 @@ class TestChildChunkApiGet:
         """Test successful child chunk list retrieval."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
-        mock_seg_svc.get_segment_by_id.return_value = Mock()
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
+        mock_seg_svc.get_segment_by_ref.return_value = Mock()
 
         mock_pagination = Mock()
         mock_pagination.items = [_child_chunk(), _child_chunk()]
@@ -1759,8 +1776,8 @@ class TestChildChunkApiGet:
         """Test 404 when segment not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
-        mock_seg_svc.get_segment_by_id.return_value = None
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
+        mock_seg_svc.get_segment_by_ref.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
@@ -1822,8 +1839,8 @@ class TestChildChunkApiPost:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_dataset.indexing_technique = "economy"
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
-        mock_seg_svc.get_segment_by_id.return_value = Mock()
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
+        mock_seg_svc.get_segment_by_ref.return_value = Mock()
         mock_child = _child_chunk()
         mock_seg_svc.create_child_chunk.return_value = mock_child
 
@@ -1900,8 +1917,8 @@ class TestChildChunkApiPost:
         self._setup_billing_mocks(mock_validate_token, mock_feature_svc, mock_tenant.id)
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
-        mock_seg_svc.get_segment_by_id.return_value = None
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
+        mock_seg_svc.get_segment_by_ref.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/seg-id/child_chunks",
@@ -1954,19 +1971,19 @@ class TestDatasetChildChunkApiDelete:
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
 
-        mock_doc = Mock()
+        mock_doc = _document_for_dataset(mock_dataset)
         mock_doc_svc.get_document.return_value = mock_doc
 
         segment_id = str(uuid.uuid4())
         mock_segment = Mock()
         mock_segment.id = segment_id
         mock_segment.document_id = "doc-id"
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
 
         child_chunk_id = str(uuid.uuid4())
         mock_child = Mock()
         mock_child.segment_id = segment_id
-        mock_seg_svc.get_child_chunk_by_id.return_value = mock_child
+        mock_seg_svc.get_child_chunk_by_segment_ref.return_value = mock_child
         mock_seg_svc.delete_child_chunk.return_value = None
 
         with app.test_request_context(
@@ -2003,14 +2020,14 @@ class TestDatasetChildChunkApiDelete:
         """Test 404 when child chunk not found."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
 
         segment_id = str(uuid.uuid4())
         mock_segment = Mock()
         mock_segment.id = segment_id
         mock_segment.document_id = "doc-id"
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
-        mock_seg_svc.get_child_chunk_by_id.return_value = None
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
+        mock_seg_svc.get_child_chunk_by_segment_ref.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/cc-id",
@@ -2044,13 +2061,10 @@ class TestDatasetChildChunkApiDelete:
         """Test 404 when segment does not belong to the document."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
 
         segment_id = str(uuid.uuid4())
-        mock_segment = Mock()
-        mock_segment.id = segment_id
-        mock_segment.document_id = "different-doc-id"
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_seg_svc.get_segment_by_ref.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/cc-id",
@@ -2084,17 +2098,15 @@ class TestDatasetChildChunkApiDelete:
         """Test 404 when child chunk does not belong to the segment."""
         mock_account_fn.return_value = (Mock(), mock_tenant.id)
         mock_db.session.scalar.return_value = mock_dataset
-        mock_doc_svc.get_document.return_value = Mock()
+        mock_doc_svc.get_document.return_value = _document_for_dataset(mock_dataset)
 
         segment_id = str(uuid.uuid4())
         mock_segment = Mock()
         mock_segment.id = segment_id
         mock_segment.document_id = "doc-id"
-        mock_seg_svc.get_segment_by_id.return_value = mock_segment
+        mock_seg_svc.get_segment_by_ref.return_value = mock_segment
 
-        mock_child = Mock()
-        mock_child.segment_id = "different-segment-id"
-        mock_seg_svc.get_child_chunk_by_id.return_value = mock_child
+        mock_seg_svc.get_child_chunk_by_segment_ref.return_value = None
 
         with app.test_request_context(
             f"/datasets/{mock_dataset.id}/documents/doc-id/segments/{segment_id}/child_chunks/cc-id",

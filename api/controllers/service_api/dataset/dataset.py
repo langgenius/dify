@@ -939,9 +939,11 @@ class DatasetTagsApi(DatasetApiResource):
 
         payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
         tag_id = payload.tag_id
-        tag = TagService.update_tags(UpdateTagServicePayload(name=payload.name), tag_id, db.session)
+        tag = TagService.update_tags(
+            UpdateTagServicePayload(name=payload.name), tag_id, db.session, tag_type=TagType.KNOWLEDGE
+        )
 
-        binding_count = TagService.get_tag_binding_count(tag_id, db.session)
+        binding_count = TagService.get_tag_binding_count(tag_id, db.session, tag_type=TagType.KNOWLEDGE)
 
         response = dump_response(
             KnowledgeTagResponse,
@@ -971,7 +973,7 @@ class DatasetTagsApi(DatasetApiResource):
     def delete(self, _):
         """Delete a knowledge type tag."""
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
-        TagService.delete_tag(payload.tag_id, db.session)
+        TagService.delete_tag(payload.tag_id, db.session, tag_type=TagType.KNOWLEDGE)
 
         return "", 204
 

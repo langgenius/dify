@@ -64,6 +64,7 @@ from services.rag_pipeline.pipeline_generate_service import PipelineGenerateServ
 from services.rag_pipeline.rag_pipeline import RagPipelineService
 from services.rag_pipeline.rag_pipeline_manage_service import RagPipelineManageService
 from services.rag_pipeline.rag_pipeline_transform_service import RagPipelineTransformService
+from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
@@ -738,6 +739,7 @@ class RagPipelineByIdApi(Resource):
             return {"message": "No valid fields to update"}, 400
 
         rag_pipeline_service = RagPipelineService()
+        workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, workflow_id)
 
         # Create a session and manage the transaction
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
@@ -747,6 +749,7 @@ class RagPipelineByIdApi(Resource):
                 tenant_id=pipeline.tenant_id,
                 account_id=current_user.id,
                 data=update_data,
+                workflow_ref=workflow_ref,
             )
 
             if not workflow:
@@ -769,6 +772,7 @@ class RagPipelineByIdApi(Resource):
             abort(400, description=f"Cannot delete workflow that is currently in use by pipeline '{pipeline.id}'")
 
         workflow_service = WorkflowService()
+        workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, workflow_id)
 
         with sessionmaker(db.engine).begin() as session:
             try:
@@ -776,6 +780,7 @@ class RagPipelineByIdApi(Resource):
                     session=session,
                     workflow_id=workflow_id,
                     tenant_id=pipeline.tenant_id,
+                    workflow_ref=workflow_ref,
                 )
             except WorkflowInUseError as e:
                 abort(400, description=str(e))

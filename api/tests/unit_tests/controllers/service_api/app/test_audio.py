@@ -245,7 +245,7 @@ class TestTextApi:
         api = TextApi()
         handler = unwrap(api.post)
         app_model = SimpleNamespace(id="a1")
-        end_user = SimpleNamespace(external_user_id="ext")
+        end_user = SimpleNamespace(id="end-user-1", external_user_id="ext")
 
         with app.test_request_context(
             "/text-to-audio",
@@ -264,7 +264,7 @@ class TestTextApi:
         api = TextApi()
         handler = unwrap(api.post)
         app_model = SimpleNamespace(id="a1")
-        end_user = SimpleNamespace(external_user_id="ext")
+        end_user = SimpleNamespace(id="end-user-1", external_user_id="ext")
 
         with app.test_request_context("/text-to-audio", method="POST", json={"text": "hello"}):
             with pytest.raises(ProviderQuotaExceededError):

@@ -14,6 +14,7 @@ from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
+from services.app_ref_service import AnnotationRef, AppRefService
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
@@ -88,6 +89,17 @@ class UpdateAnnotationSettingArgs(TypedDict):
 
 
 class AppAnnotationService:
+    @staticmethod
+    def _get_annotation_by_ref(annotation_ref: AnnotationRef, session: scoped_session) -> MessageAnnotation | None:
+        return session.scalar(
+            select(MessageAnnotation)
+            .where(
+                MessageAnnotation.id == annotation_ref.annotation_id,
+                MessageAnnotation.app_id == annotation_ref.app_id,
+            )
+            .limit(1)
+        )
+
     @classmethod
     def up_insert_app_annotation_from_message(cls, args: UpsertAnnotationArgs, app_id: str) -> MessageAnnotation:
         # get app info
@@ -313,7 +325,9 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        annotation = session.get(MessageAnnotation, annotation_id)
+        app_ref = AppRefService.create_app_ref(app)
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, annotation_id)
+        annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -357,7 +371,9 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        annotation = session.get(MessageAnnotation, annotation_id)
+        app_ref = AppRefService.create_app_ref(app)
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, annotation_id)
+        annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
         if not annotation:
             raise NotFound("Annotation not found")
@@ -393,11 +409,13 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
+        app_ref = AppRefService.create_app_ref(app)
+
         # Fetch annotations and their settings in a single query
         annotations_to_delete = db.session.execute(
             select(MessageAnnotation, AppAnnotationSetting)
             .outerjoin(AppAnnotationSetting, MessageAnnotation.app_id == AppAnnotationSetting.app_id)
-            .where(MessageAnnotation.id.in_(annotation_ids))
+            .where(MessageAnnotation.id.in_(annotation_ids), MessageAnnotation.app_id == app_ref.app_id)
         ).all()
 
         if not annotations_to_delete:
@@ -420,7 +438,10 @@ class AppAnnotationService:
 
         # Step 4: Bulk delete annotations in a single query
         delete_result = db.session.execute(
-            delete(MessageAnnotation).where(MessageAnnotation.id.in_(annotation_ids_to_delete))
+            delete(MessageAnnotation).where(
+                MessageAnnotation.id.in_(annotation_ids_to_delete),
+                MessageAnnotation.app_id == app_ref.app_id,
+            )
         )
         deleted_count = getattr(delete_result, "rowcount", 0)
 
@@ -572,7 +593,9 @@ class AppAnnotationService:
         if not app:
             raise NotFound("App not found")
 
-        annotation = db.session.get(MessageAnnotation, annotation_id)
+        app_ref = AppRefService.create_app_ref(app)
+        annotation_ref = AppRefService.create_annotation_ref(app_ref, annotation_id)
+        annotation = cls._get_annotation_by_ref(annotation_ref, db.session)
 
         if not annotation:
             raise NotFound("Annotation not found")

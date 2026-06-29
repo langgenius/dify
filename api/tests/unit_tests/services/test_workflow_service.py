@@ -36,6 +36,7 @@ from models.model import App, AppMode
 from models.workflow import Workflow, WorkflowType
 from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
+from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import (
     WorkflowService,
     _rebuild_file_for_user_inputs_in_start_node,
@@ -1052,6 +1053,39 @@ class TestWorkflowService:
 
             assert result is None
 
+    def test_update_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test update_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        account_id = "user-123"
+        workflow_ref = WorkflowRefService.create_app_workflow_ref(
+            SimpleNamespace(id=app_id, tenant_id=tenant_id), workflow_id
+        )
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id)
+        mock_session = MagicMock()
+        mock_session.scalar.return_value = mock_workflow
+
+        result = workflow_service.update_workflow(
+            session=mock_session,
+            workflow_id=workflow_id,
+            tenant_id=tenant_id,
+            account_id=account_id,
+            data={"marked_name": "Updated Name"},
+            workflow_ref=workflow_ref,
+        )
+
+        stmt = mock_session.scalar.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result == mock_workflow
+
     # ==================== Delete Workflow Tests ====================
     # These tests verify workflow deletion with safety checks
 
@@ -1084,6 +1118,34 @@ class TestWorkflowService:
 
             assert result is True
             mock_session.delete.assert_called_once_with(mock_workflow)
+
+    def test_delete_workflow_with_ref_scopes_lookup_to_app(self, workflow_service: WorkflowService):
+        """Test delete_workflow includes the trusted app owner in the lookup."""
+        workflow_id = "workflow-123"
+        tenant_id = "tenant-456"
+        app_id = "app-789"
+        workflow_ref = WorkflowRefService.create_app_workflow_ref(
+            SimpleNamespace(id=app_id, tenant_id=tenant_id), workflow_id
+        )
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
+        mock_session = MagicMock()
+        mock_session.scalar.side_effect = [mock_workflow, None, None]
+
+        result = workflow_service.delete_workflow(
+            session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id, workflow_ref=workflow_ref
+        )
+
+        stmt = mock_session.scalar.call_args_list[0].args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "workflows.id" in statement
+        assert "workflows.tenant_id" in statement
+        assert "workflows.app_id" in statement
+        assert workflow_id in compiled.params.values()
+        assert tenant_id in compiled.params.values()
+        assert app_id in compiled.params.values()
+        assert result is True
+        mock_session.delete.assert_called_once_with(mock_workflow)
 
     def test_delete_workflow_draft_raises_error(self, workflow_service: WorkflowService):
         """

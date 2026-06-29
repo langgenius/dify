@@ -5,6 +5,7 @@ from collections.abc import Generator
 from typing import cast
 
 from flask import Response, stream_with_context
+from sqlalchemy import select
 from sqlalchemy.orm import Session, scoped_session
 from werkzeug.datastructures import FileStorage
 
@@ -13,6 +14,7 @@ from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
+from services.app_ref_service import AppRefService, MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -29,6 +31,15 @@ logger = logging.getLogger(__name__)
 
 
 class AudioService:
+    @staticmethod
+    def _get_message_by_ref(session: Session | scoped_session, message_ref: MessageRef) -> Message | None:
+        stmt = select(Message).where(Message.id == message_ref.message_id, Message.app_id == message_ref.app_id)
+        if message_ref.end_user_id is not None:
+            stmt = stmt.where(Message.from_end_user_id == message_ref.end_user_id)
+        if message_ref.account_id is not None:
+            stmt = stmt.where(Message.from_account_id == message_ref.account_id)
+        return session.scalar(stmt.limit(1))
+
     @classmethod
     def transcript_asr(cls, app_model: App, file: FileStorage | None, end_user: str | None = None):
         if app_model.mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
@@ -83,6 +94,8 @@ class AudioService:
         voice: str | None = None,
         end_user: str | None = None,
         message_id: str | None = None,
+        message_end_user_id: str | None = None,
+        message_account_id: str | None = None,
         is_draft: bool = False,
     ):
         def invoke_tts(text_content: str, app_model: App, voice: str | None = None, is_draft: bool = False):
@@ -134,7 +147,14 @@ class AudioService:
                 uuid.UUID(message_id)
             except ValueError:
                 return None
-            message = session.get(Message, message_id)
+            app_ref = AppRefService.create_app_ref(app_model)
+            message_ref = AppRefService.create_message_ref(
+                app_ref,
+                message_id,
+                end_user_id=message_end_user_id,
+                account_id=message_account_id,
+            )
+            message = cls._get_message_by_ref(session, message_ref)
             if message is None:
                 return None
             if message.answer == "" and message.status in {MessageStatus.NORMAL, MessageStatus.PAUSED}:

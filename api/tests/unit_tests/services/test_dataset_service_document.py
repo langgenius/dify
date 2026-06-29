@@ -103,6 +103,33 @@ class TestDocumentServiceMutations:
 
         assert DocumentService.check_archived(document) is expected
 
+    def test_delete_documents_limits_query_and_cleanup_to_dataset_ref(self):
+        dataset = _make_dataset(dataset_id="dataset-1", tenant_id="tenant-1")
+        dataset.doc_form = "paragraph_index"
+        document = _make_document(document_id="doc-1", dataset_id=dataset.id, tenant_id=dataset.tenant_id)
+        document.data_source_info_dict = {}
+
+        with (
+            patch("services.dataset_service.db") as mock_db,
+            patch("services.dataset_service.batch_clean_document_task") as clean_task,
+        ):
+            mock_db.session.scalars.return_value.all.return_value = [document]
+
+            DocumentService.delete_documents(dataset, ["doc-1", "other-doc"])
+
+        stmt = mock_db.session.scalars.call_args.args[0]
+        compiled = stmt.compile()
+        statement = str(compiled)
+        assert "documents.id IN" in statement
+        assert "documents.tenant_id" in statement
+        assert "documents.dataset_id" in statement
+        assert ["doc-1", "other-doc"] in compiled.params.values()
+        assert dataset.tenant_id in compiled.params.values()
+        assert dataset.id in compiled.params.values()
+        mock_db.session.delete.assert_called_once_with(document)
+        mock_db.session.commit.assert_called_once()
+        clean_task.delay.assert_called_once_with(["doc-1"], dataset.id, dataset.doc_form, [])
+
     def test_rename_document_raises_when_dataset_is_missing(self, rename_account_context):
         with patch.object(DatasetService, "get_dataset", return_value=None):
             with pytest.raises(ValueError, match="Dataset not found"):

@@ -41,9 +41,10 @@ def _make_message(message_id: str = "msg-1", app_id: str = "app-1") -> MagicMock
     return message
 
 
-def _make_annotation(annotation_id: str = "ann-1") -> MagicMock:
+def _make_annotation(annotation_id: str = "ann-1", app_id: str = "app-1") -> MagicMock:
     annotation = MagicMock(spec=MessageAnnotation)
     annotation.id = annotation_id
+    annotation.app_id = app_id
     annotation.content = ""
     annotation.question = ""
     annotation.question_text = ""
@@ -64,6 +65,15 @@ def _make_setting(setting_id: str = "setting-1", with_detail: bool = True) -> Ma
 
 def _make_file(content: bytes) -> FileStorage:
     return FileStorage(stream=BytesIO(content))
+
+
+def _assert_statement_binds_annotation(stmt: Any, annotation_id: str, app_id: str) -> None:
+    compiled = stmt.compile()
+    statement = str(compiled)
+    assert "message_annotations.id" in statement
+    assert "message_annotations.app_id" in statement
+    assert annotation_id in compiled.params.values()
+    assert app_id in compiled.params.values()
 
 
 class TestAppAnnotationServiceUpInsert:
@@ -541,8 +551,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = None
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -576,8 +585,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = annotation
+            mock_db.session.scalar.side_effect = [app, annotation]
 
             # Act & Assert
             with pytest.raises(ValueError):
@@ -598,8 +606,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.update_annotation_to_index_task") as mock_task,
         ):
-            mock_db.session.scalar.side_effect = [app, setting]
-            mock_db.session.get.return_value = annotation
+            mock_db.session.scalar.side_effect = [app, annotation, setting]
 
             # Act
             result = AppAnnotationService.update_app_annotation_directly(args, app.id, annotation.id, mock_db.session)
@@ -608,6 +615,8 @@ class TestAppAnnotationServiceDirectManipulation:
             assert result == annotation
             assert annotation.content == "hello"
             assert annotation.question == "q1"
+            _assert_statement_binds_annotation(mock_db.session.scalar.call_args_list[1].args[0], annotation.id, app.id)
+            mock_db.session.get.assert_not_called()
             mock_db.session.commit.assert_called_once()
             mock_task.delay.assert_called_once_with(
                 annotation.id,
@@ -632,8 +641,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.db") as mock_db,
             patch("services.annotation_service.delete_annotation_index_task") as mock_task,
         ):
-            mock_db.session.scalar.side_effect = [app, setting]
-            mock_db.session.get.return_value = annotation
+            mock_db.session.scalar.side_effect = [app, annotation, setting]
 
             scalars_result = MagicMock()
             scalars_result.all.return_value = [history1, history2]
@@ -643,6 +651,8 @@ class TestAppAnnotationServiceDirectManipulation:
             AppAnnotationService.delete_app_annotation(app.id, annotation.id, mock_db.session)
 
             # Assert
+            _assert_statement_binds_annotation(mock_db.session.scalar.call_args_list[1].args[0], annotation.id, app.id)
+            mock_db.session.get.assert_not_called()
             mock_db.session.delete.assert_any_call(annotation)
             mock_db.session.delete.assert_any_call(history1)
             mock_db.session.delete.assert_any_call(history2)
@@ -679,8 +689,7 @@ class TestAppAnnotationServiceDirectManipulation:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = None
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
@@ -748,6 +757,13 @@ class TestAppAnnotationServiceDirectManipulation:
 
             # Assert
             assert result == {"deleted_count": 2}
+            fetch_stmt = mock_db.session.execute.call_args_list[0].args[0]
+            compiled = fetch_stmt.compile()
+            statement = str(compiled)
+            assert "message_annotations.id IN" in statement
+            assert "message_annotations.app_id" in statement
+            assert ["ann-1", "ann-2"] in compiled.params.values()
+            assert app.id in compiled.params.values()
             mock_task.delay.assert_called_once_with(annotation1.id, app.id, tenant_id, setting.collection_binding_id)
             mock_db.session.commit.assert_called_once()
 
@@ -1121,8 +1137,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = annotation
+            mock_db.session.scalar.side_effect = [app, annotation]
             mock_db.paginate.return_value = pagination
 
             # Act
@@ -1131,6 +1146,8 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             # Assert
             assert items == ["h1"]
             assert total == 2
+            _assert_statement_binds_annotation(mock_db.session.scalar.call_args_list[1].args[0], annotation.id, app.id)
+            mock_db.session.get.assert_not_called()
 
     def test_get_annotation_hit_histories_should_raise_not_found_when_annotation_missing(self) -> None:
         """Test missing annotation raises NotFound."""
@@ -1142,8 +1159,7 @@ class TestAppAnnotationServiceHitHistoryAndSettings:
             patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
             patch("services.annotation_service.db") as mock_db,
         ):
-            mock_db.session.scalar.return_value = app
-            mock_db.session.get.return_value = None
+            mock_db.session.scalar.side_effect = [app, None]
 
             # Act & Assert
             with pytest.raises(NotFound):
