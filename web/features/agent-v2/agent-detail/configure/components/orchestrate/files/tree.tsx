@@ -33,6 +33,11 @@ type AgentFileTreeRenderFolderPanel = (context: {
   file: AgentFileNode
 }) => ReactNode
 
+type AgentFileTreeRenderFolderSuffix = (context: {
+  depth: number
+  file: AgentFileNode
+}) => ReactNode
+
 type AgentFileTreeFolderOpenState = (context: {
   file: AgentFileNode
   depth: number
@@ -49,6 +54,7 @@ function AgentFileTreeRows({
   onFolderOpenChange,
   onFolderOpen,
   renderFile,
+  renderFolderSuffix,
   renderFolderPanel,
 }: {
   files: AgentFileNode[]
@@ -59,6 +65,7 @@ function AgentFileTreeRows({
   onFolderOpenChange?: (context: { file: AgentFileNode, depth: number, open: boolean }) => void
   onFolderOpen?: (file: AgentFileNode) => void
   renderFile: AgentFileTreeRenderFile
+  renderFolderSuffix?: AgentFileTreeRenderFolderSuffix
   renderFolderPanel?: AgentFileTreeRenderFolderPanel
 }) {
   return files.map((file) => {
@@ -80,6 +87,7 @@ function AgentFileTreeRows({
           <FileTreeFolderTrigger onClick={() => onFolderOpen?.(file)}>
             <FileTreeIcon type="folder" />
             <FileTreeLabel className="max-w-full" title={file.name}>{file.name}</FileTreeLabel>
+            {renderFolderSuffix?.({ depth, file })}
           </FileTreeFolderTrigger>
           <FileTreeFolderPanel>
             {renderFolderPanel?.({ depth, file })}
@@ -92,6 +100,7 @@ function AgentFileTreeRows({
               onFolderOpenChange={onFolderOpenChange}
               onFolderOpen={onFolderOpen}
               renderFile={renderFile}
+              renderFolderSuffix={renderFolderSuffix}
               renderFolderPanel={renderFolderPanel}
             />
           </FileTreeFolderPanel>
@@ -135,6 +144,7 @@ export function AgentFileTree({
   onFolderOpenChange,
   onFolderOpen,
   renderFile = defaultRenderFile,
+  renderFolderSuffix,
   renderFolderPanel,
 }: {
   files: AgentFileNode[]
@@ -153,6 +163,7 @@ export function AgentFileTree({
   onFolderOpenChange?: (context: { file: AgentFileNode, depth: number, open: boolean }) => void
   onFolderOpen?: (file: AgentFileNode) => void
   renderFile?: AgentFileTreeRenderFile
+  renderFolderSuffix?: AgentFileTreeRenderFolderSuffix
   renderFolderPanel?: AgentFileTreeRenderFolderPanel
 }) {
   return (
@@ -183,6 +194,7 @@ export function AgentFileTree({
               onFolderOpenChange={onFolderOpenChange}
               onFolderOpen={onFolderOpen}
               renderFile={renderFile}
+              renderFolderSuffix={renderFolderSuffix}
               renderFolderPanel={renderFolderPanel}
             />
           </FileTreeList>

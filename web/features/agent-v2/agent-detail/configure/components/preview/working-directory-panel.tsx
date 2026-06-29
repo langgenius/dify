@@ -155,6 +155,7 @@ export function AgentWorkingDirectoryPanel({
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])
+  const [pendingOpenFolderPaths, setPendingOpenFolderPaths] = useState<string[]>([])
   const getFileListQueryOptions = (path: string) => consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
     input: conversationId
       ? {
@@ -225,6 +226,7 @@ export function AgentWorkingDirectoryPanel({
     ?? findFirstReadableFile(workingDirectoryFiles)?.id
   const isFileListLoading = !!conversationId && fileListQuery.isPending
   const loadingFolderPaths = new Set(loadedFolderPaths.filter((path, index) => expandedFolderQueries[index]?.isPending))
+  const loadedFolderPathIndexes = new Map(loadedFolderPaths.map((path, index) => [path, index]))
   const fileReadQuery = useQuery(consoleQuery.agent.byAgentId.sandbox.files.read.get.queryOptions({
     input: conversationId && selectedWorkingDirectoryFileId
       ? {
@@ -283,16 +285,24 @@ export function AgentWorkingDirectoryPanel({
                             scrollAreaClassName="flex-1"
                             rootClassName="p-0"
                             listClassName="gap-px"
-                            folderOpenState={({ file }) => openFolderPaths.includes(file.id)}
+                            folderOpenState={({ file }) => {
+                              const queryIndex = loadedFolderPathIndexes.get(file.id)
+                              const folderLoaded = queryIndex !== undefined && expandedFolderQueries[queryIndex]?.isSuccess
+
+                              return openFolderPaths.includes(file.id)
+                                || (pendingOpenFolderPaths.includes(file.id) && !!folderLoaded)
+                            }}
                             onFolderOpenChange={({ file, open }) => {
                               if (loadingFolderPaths.has(file.id))
                                 return
 
                               if (open && !loadedFolderPaths.includes(file.id)) {
                                 setLoadedFolderPaths(paths => [...paths, file.id])
+                                setPendingOpenFolderPaths(paths => paths.includes(file.id) ? paths : [...paths, file.id])
                                 return
                               }
 
+                              setPendingOpenFolderPaths(paths => paths.filter(path => path !== file.id))
                               setOpenFolderPaths(paths => open
                                 ? (paths.includes(file.id) ? paths : [...paths, file.id])
                                 : paths.filter(path => path !== file.id))
@@ -309,11 +319,9 @@ export function AgentWorkingDirectoryPanel({
                                 )}
                               </FileTreeFile>
                             )}
-                            renderFolderPanel={({ file }) => loadingFolderPaths.has(file.id)
+                            renderFolderSuffix={({ file }) => loadingFolderPaths.has(file.id)
                               ? (
-                                  <div className="px-7 py-1 system-xs-regular text-text-tertiary">
-                                    {tCommon('loading')}
-                                  </div>
+                                  <span aria-label={tCommon('loading')} className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary" />
                                 )
                               : null}
                           />
