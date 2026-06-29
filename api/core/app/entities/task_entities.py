@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.human_input import FormInputConfig, UserActionConfig
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from graphon.nodes.human_input.entities import FormInputConfig, UserActionConfig
 
 
 class AnnotationReplyAccount(BaseModel):

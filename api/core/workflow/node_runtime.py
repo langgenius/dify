@@ -34,6 +34,13 @@ from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.file_reference import build_file_reference
+from core.workflow.human_input import (
+    FileInputConfig,
+    FileListInputConfig,
+    FormInputConfig,
+    HumanInputNodeData,
+    restore_submitted_data,
+)
 from extensions.ext_database import db
 from factories import file_factory
 from graphon.file import File, FileTransferMethod, FileType
@@ -49,12 +56,6 @@ from graphon.model_runtime.entities.llm_entities import (
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from graphon.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormInputConfig,
-    HumanInputNodeData,
-)
 from graphon.nodes.llm.runtime_protocols import (
     LLMPollingCapableProtocol,
     LLMProtocol,
@@ -834,16 +835,11 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         node_data: HumanInputNodeData,
         submitted_data: Mapping[str, Any],
     ) -> Mapping[str, Any]:
-        restored_data: dict[str, Any] = dict(submitted_data)
-        for input_config in node_data.inputs:
-            output_variable_name = input_config.output_variable_name
-            if output_variable_name not in submitted_data:
-                continue
-            restored_data[output_variable_name] = self._restore_submitted_value(
-                input_config=input_config,
-                value=submitted_data[output_variable_name],
-            )
-        return restored_data
+        return restore_submitted_data(
+            node_data=node_data,
+            submitted_data=submitted_data,
+            file_value_restorer=lambda mapping: self._file_reference_factory.build_from_mapping(mapping=mapping),
+        )
 
     @override
     def create_form(

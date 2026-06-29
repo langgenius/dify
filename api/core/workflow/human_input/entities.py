@@ -9,8 +9,10 @@ from typing import Annotated, Any, Literal, Self, assert_never
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
+from factories.file_factory.validation import is_file_valid_with_config
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
+from graphon.file import FileUploadConfig
 from graphon.file.enums import FileTransferMethod, FileType
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
@@ -104,7 +106,7 @@ class _FileInputCommonConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_extensions(self) -> Self:
-        if self.allowed_file_types != FileType.CUSTOM:
+        if FileType.CUSTOM not in self.allowed_file_types:
             return self
         if not self.allowed_file_extensions:
             raise ValueError("allowed_file_extensions must be set when allowed_file_types is custom")
@@ -213,7 +215,11 @@ class HumanInputNodeData(BaseNodeData):
         )
 
         for form_input in self.inputs:
-            _add_variable_selectors(form_input.extract_variable_selectors())
+            for selector in form_input.extract_variable_selectors():
+                if len(selector) < SELECTORS_LENGTH:
+                    continue
+                value_key = ".".join(selector)
+                variable_mappings[f"{node_id}.#{value_key}#"] = list(selector)
 
         return variable_mappings
 
@@ -272,8 +278,24 @@ def extract_output_field_names(form_content: str) -> list[str]:
     return [match.group("field_name") for match in _OUTPUT_VARIABLE_PATTERN.finditer(form_content)]
 
 
-def render_form_content_before_submission(rendered_content: str) -> str:
-    return rendered_content
+def render_form_content_before_submission(
+    *,
+    form_content: str,
+    variable_pool: ReadOnlyVariablePool | None,
+) -> str:
+    """Render runtime variables while leaving output placeholders intact."""
+    if variable_pool is None:
+        return form_content
+
+    rendered_content = variable_pool.convert_template(form_content)
+    markdown = getattr(rendered_content, "markdown", None)
+    if isinstance(markdown, str):
+        return markdown
+
+    text = getattr(rendered_content, "text", None)
+    if isinstance(text, str):
+        return text
+    return form_content
 
 
 def _render_output_placeholder_value(*, value: Any, form_input: FormInputConfig | None) -> str:
@@ -400,6 +422,7 @@ def _validate_submitted_input_value(*, form_input: FormInputConfig, value: Any) 
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file input '{form_input.output_variable_name}': expected mapping"
             )
+        _validate_submitted_file_mapping(form_input=form_input, value=value)
         return
 
     if _is_file_list_input(form_input):
@@ -411,10 +434,57 @@ def _validate_submitted_input_value(*, form_input: FormInputConfig, value: Any) 
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file list input '{form_input.output_variable_name}': expected list of mappings"
             )
+        for item in value:
+            _validate_submitted_file_mapping(form_input=form_input, value=item)
         if getattr(form_input, "number_limits", 0) > 0 and len(value) > form_input.number_limits:
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file list input '{form_input.output_variable_name}': exceeds number limit"
             )
+
+
+def _validate_submitted_file_mapping(
+    *,
+    form_input: FileInputConfig | FileListInputConfig,
+    value: Mapping[str, Any],
+) -> None:
+    file_type_value = value.get("type")
+    transfer_method_value = value.get("transfer_method")
+    extension = value.get("extension")
+
+    try:
+        file_type = FileType(file_type_value)
+    except ValueError as exc:
+        raise HumanInputSubmissionValidationError(
+            f"Invalid value for file input '{form_input.output_variable_name}': unsupported file type"
+        ) from exc
+
+    try:
+        transfer_method = FileTransferMethod(transfer_method_value)
+    except ValueError as exc:
+        raise HumanInputSubmissionValidationError(
+            f"Invalid value for file input '{form_input.output_variable_name}': unsupported transfer method"
+        ) from exc
+
+    if not isinstance(extension, str):
+        extension = ""
+
+    upload_config = FileUploadConfig(
+        allowed_file_types=list(form_input.allowed_file_types),
+        allowed_file_extensions=list(form_input.allowed_file_extensions),
+        allowed_file_upload_methods=list(form_input.allowed_file_upload_methods),
+        number_limits=1,
+    )
+    if is_file_valid_with_config(
+        input_file_type=file_type,
+        file_extension=extension,
+        file_transfer_method=transfer_method,
+        config=upload_config,
+    ):
+        return
+
+    raise HumanInputSubmissionValidationError(
+        f"Invalid value for file input '{form_input.output_variable_name}': file is not allowed by config"
+    )
 
 
 __all__ = [

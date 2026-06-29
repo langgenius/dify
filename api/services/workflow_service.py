@@ -18,6 +18,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly,
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
+from core.workflow.human_input import HumanInputFormKind, HumanInputNodeData
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,
@@ -59,8 +60,6 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from graphon.nodes.human_input.entities import HumanInputNodeData
-from graphon.nodes.human_input.enums import HumanInputFormKind
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -1585,8 +1584,6 @@ class WorkflowService:
         Raises:
             ValueError: If the node data format is invalid
         """
-        from graphon.nodes.human_input.entities import HumanInputNodeData
-
         try:
             HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))
         except Exception as e:
