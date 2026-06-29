@@ -47,28 +47,43 @@ def upgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        # PostgreSQL: Create uuidv7 functions
+        # PostgreSQL: Create uuidv7 functions.
+        # PostgreSQL 18 ships a built-in pg_catalog.uuidv7(). Creating
+        # public.uuidv7() is fine, but `COMMENT ON FUNCTION uuidv7` without an
+        # argument signature becomes ambiguous (public + pg_catalog) and fails
+        # with AmbiguousFunction. Create ours only if no 0-arg uuidv7 exists yet
+        # and qualify the COMMENT with the explicit signature.
         op.execute(sa.text(r"""
 /* Main function to generate a uuidv7 value with millisecond precision */
-CREATE FUNCTION uuidv7() RETURNS uuid
-AS
-$$
-    -- Replace the first 48 bits of a uuidv4 with the current
-    -- number of milliseconds since 1970-01-01 UTC
-    -- and set the "ver" field to 7 by setting additional bits
-SELECT encode(
-               set_bit(
+DO $do$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proname = 'uuidv7' AND p.pronargs = 0
+    ) THEN
+        CREATE FUNCTION uuidv7() RETURNS uuid
+        AS
+        $fn$
+            -- Replace the first 48 bits of a uuidv4 with the current
+            -- number of milliseconds since 1970-01-01 UTC
+            -- and set the "ver" field to 7 by setting additional bits
+        SELECT encode(
                        set_bit(
-                               overlay(uuid_send(gen_random_uuid()) placing
-                                       substring(int8send((extract(epoch from clock_timestamp()) * 1000)::bigint) from
-                                                 3)
-                                       from 1 for 6),
-                               52, 1),
-                       53, 1), 'hex')::uuid;
-$$ LANGUAGE SQL VOLATILE PARALLEL SAFE;
+                               set_bit(
+                                       overlay(uuid_send(gen_random_uuid()) placing
+                                               substring(int8send((extract(epoch from clock_timestamp()) * 1000)::bigint) from
+                                                         3)
+                                               from 1 for 6),
+                                       52, 1),
+                               53, 1), 'hex')::uuid;
+        $fn$ LANGUAGE SQL VOLATILE PARALLEL SAFE;
 
-COMMENT ON FUNCTION uuidv7 IS
-    'Generate a uuid-v7 value with a 48-bit timestamp (millisecond precision) and 74 bits of randomness';
+        COMMENT ON FUNCTION uuidv7() IS
+            'Generate a uuid-v7 value with a 48-bit timestamp (millisecond precision) and 74 bits of randomness';
+    END IF;
+END
+$do$;
 """))
 
         op.execute(sa.text(r"""
@@ -95,7 +110,10 @@ def downgrade():
     conn = op.get_bind()
     
     if _is_pg(conn):
-        op.execute(sa.text("DROP FUNCTION uuidv7"))
-        op.execute(sa.text("DROP FUNCTION uuidv7_boundary"))
+        # Qualify with schema + signature and use IF EXISTS so the drop is
+        # unambiguous on PostgreSQL 18 (built-in pg_catalog.uuidv7) and a no-op
+        # when ours was never created.
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7()"))
+        op.execute(sa.text("DROP FUNCTION IF EXISTS public.uuidv7_boundary(timestamptz)"))
     else:
         pass
