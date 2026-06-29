@@ -9,7 +9,7 @@ const resolveTimezone = (timezone?: string): string => {
     return timezone
 
   try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIMEZONE
+    return new Intl.DateTimeFormat().resolvedOptions().timeZone || DEFAULT_TIMEZONE
   }
   catch {
     return DEFAULT_TIMEZONE

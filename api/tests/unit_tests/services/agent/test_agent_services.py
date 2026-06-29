@@ -846,6 +846,53 @@ def test_serialize_workflow_state_passes_user_declared_outputs_through_effective
     assert effective[0]["required"] is True
 
 
+def test_serialize_workflow_state_includes_inline_debug_conversation_message_state(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    binding = WorkflowAgentNodeBinding(
+        id="binding-1",
+        tenant_id="tenant-1",
+        binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+        agent_id="agent-1",
+        current_snapshot_id="version-1",
+        workflow_id="workflow-1",
+        node_id="node-1",
+        node_job_config='{"workflow_prompt":"work"}',
+    )
+    agent = Agent(
+        id="agent-1",
+        name="Inline Agent",
+        description="",
+        scope=AgentScope.WORKFLOW_ONLY,
+        source=AgentSource.WORKFLOW,
+        status=AgentStatus.ACTIVE,
+        backing_app_id="backing-app-1",
+    )
+    version = AgentConfigSnapshot(id="version-1", version=1, config_snapshot='{"prompt":{"system_prompt":"x"}}')
+    monkeypatch.setattr(AgentComposerService, "calculate_impact", lambda **kwargs: {"workflow_node_count": 1})
+    monkeypatch.setattr(
+        AgentComposerService,
+        "_workflow_inline_debug_conversation_id",
+        lambda **kwargs: "debug-conversation-1",
+    )
+    monkeypatch.setattr(
+        roster_service.AgentRosterService,
+        "count_agent_app_debug_conversation_messages",
+        lambda self, *, conversation_id: 2,
+    )
+
+    state = AgentComposerService._serialize_workflow_state(
+        binding=binding,
+        agent=agent,
+        version=version,
+        account_id="account-1",
+    )
+
+    assert state["debug_conversation_id"] == "debug-conversation-1"
+    assert state["debug_conversation_has_messages"] is True
+    assert state["debug_conversation_message_count"] == 2
+
+
 def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.MonkeyPatch):
     fake_session = FakeSession()
     monkeypatch.setattr(composer_service.db, "session", fake_session)

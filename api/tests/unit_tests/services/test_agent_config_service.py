@@ -16,8 +16,8 @@ from services.agent_config_service import (
     AgentConfigServiceError,
     AgentConfigTarget,
     AgentConfigVersionKind,
-    ConfigPushSkillItem,
     ConfigPushPayload,
+    ConfigPushSkillItem,
 )
 
 MODULE = "services.agent_config_service"

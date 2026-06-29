@@ -177,6 +177,40 @@ export type AdvancedChatWorkflowRunPayload = {
   query?: string
 }
 
+export type AgentConfigFileUploadPayload = {
+  upload_file_id: string
+}
+
+export type AgentConfigManifestResponse = {
+  agent_id: string
+  config_version: {
+    [key: string]: unknown
+  }
+  env_keys?: Array<string>
+  files?: Array<{
+    [key: string]: unknown
+  }>
+  note?: string
+  skills?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type AgentConfigPreviewResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillInspectResponse = {
+  description?: string
+  files?: Array<string>
+  name: string
+  skill_md: string
+}
+
 export type AgentDriveListResponse = {
   items?: Array<AgentDriveItemResponse>
 }
@@ -975,7 +1009,9 @@ export type WorkflowAgentComposerResponse = {
   backing_app_id?: string | null
   binding?: AgentComposerBindingResponse | null
   chat_endpoint?: string | null
+  debug_conversation_has_messages?: boolean
   debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
   effective_declared_outputs?: Array<DeclaredOutputConfig>
   hidden_app_backed?: boolean
   impact_summary?: AgentComposerImpactResponse | null
@@ -1821,6 +1857,9 @@ export type AgentComposerAgentResponse = {
 export type AgentSoulConfig = {
   app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
+  config_files?: Array<AgentConfigFileRefConfig>
+  config_note?: string
+  config_skills?: Array<AgentConfigSkillRefConfig>
   env?: AgentSoulEnvConfig
   files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
@@ -2151,6 +2190,25 @@ export type AppVariableConfig = {
   name: string
   required?: boolean
   type: string
+}
+
+export type AgentConfigFileRefConfig = {
+  file_id: string
+  file_kind: 'tool_file' | 'upload_file'
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillRefConfig = {
+  description?: string
+  file_id: string
+  file_kind?: 'tool_file'
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  size?: number | null
 }
 
 export type AgentSoulEnvConfig = {
@@ -3227,6 +3285,104 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse
   = PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses]
+
+export type PostAppsByAppIdAgentConfigFilesData = {
+  body: AgentConfigFileUploadPayload
+  path: {
+    app_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    node_id?: string
+    version_id?: string
+  }
+  url: '/apps/{app_id}/agent/config/files'
+}
+
+export type PostAppsByAppIdAgentConfigFilesResponses = {
+  201: AgentConfigManifestResponse
+}
+
+export type PostAppsByAppIdAgentConfigFilesResponse
+  = PostAppsByAppIdAgentConfigFilesResponses[keyof PostAppsByAppIdAgentConfigFilesResponses]
+
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent/config/files/{name}/preview'
+}
+
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewResponses = {
+  200: AgentConfigPreviewResponse
+}
+
+export type GetAppsByAppIdAgentConfigFilesByNamePreviewResponse
+  = GetAppsByAppIdAgentConfigFilesByNamePreviewResponses[keyof GetAppsByAppIdAgentConfigFilesByNamePreviewResponses]
+
+export type GetAppsByAppIdAgentConfigManifestData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    node_id?: string
+    version_id?: string
+  }
+  url: '/apps/{app_id}/agent/config/manifest'
+}
+
+export type GetAppsByAppIdAgentConfigManifestResponses = {
+  200: AgentConfigManifestResponse
+}
+
+export type GetAppsByAppIdAgentConfigManifestResponse
+  = GetAppsByAppIdAgentConfigManifestResponses[keyof GetAppsByAppIdAgentConfigManifestResponses]
+
+export type PostAppsByAppIdAgentConfigSkillsUploadData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    node_id?: string
+    version_id?: string
+  }
+  url: '/apps/{app_id}/agent/config/skills/upload'
+}
+
+export type PostAppsByAppIdAgentConfigSkillsUploadResponses = {
+  201: AgentConfigManifestResponse
+}
+
+export type PostAppsByAppIdAgentConfigSkillsUploadResponse
+  = PostAppsByAppIdAgentConfigSkillsUploadResponses[keyof PostAppsByAppIdAgentConfigSkillsUploadResponses]
+
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    node_id?: string
+    version_id?: string
+  }
+  url: '/apps/{app_id}/agent/config/skills/{name}/inspect'
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponses = {
+  200: AgentConfigSkillInspectResponse
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameInspectResponse
+  = GetAppsByAppIdAgentConfigSkillsByNameInspectResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameInspectResponses]
 
 export type GetAppsByAppIdAgentDriveFilesData = {
   body?: never

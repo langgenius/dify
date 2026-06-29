@@ -13,8 +13,8 @@ from unittest.mock import PropertyMock, patch
 from flask import Flask
 
 from controllers.console.app.agent_config_inspector import (
-    AgentConfigFilesByAgentApi,
     AgentConfigFilePreviewApi,
+    AgentConfigFilesByAgentApi,
     AgentConfigManifestApi,
     AgentConfigManifestByAgentApi,
     AgentConfigSkillInspectByAgentApi,

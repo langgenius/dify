@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   DialogCloseButton,
@@ -27,6 +28,7 @@ export type AgentSkillDetail = {
   description: string
   fileCount?: number
   files: AgentSkillFileNode[]
+  folderOpenState?: (context: { file: AgentSkillFileNode, depth: number }) => boolean
   filePreview?: {
     binary?: boolean
     content?: string
@@ -38,7 +40,9 @@ export type AgentSkillDetail = {
     isImage?: boolean
     isLoading?: boolean
   }
+  onFolderOpenChange?: (context: { file: AgentSkillFileNode, depth: number, open: boolean }) => void
   onSelectFile?: (file: AgentSkillFileNode) => void
+  renderFolderSuffix?: (context: { file: AgentSkillFileNode, depth: number }) => ReactNode
   selectedFileId?: string
   sections: AgentSkillDetailSection[]
 }
@@ -48,12 +52,18 @@ const keepSkillFoldersClosed = () => false
 function AgentSkillFileList({
   files,
   fileCount,
+  folderOpenState,
+  onFolderOpenChange,
   onSelectFile,
+  renderFolderSuffix,
   selectedFileId,
 }: {
   files: AgentSkillFileNode[]
   fileCount: number
+  folderOpenState?: AgentSkillDetail['folderOpenState']
+  onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
   onSelectFile?: (file: AgentSkillFileNode) => void
+  renderFolderSuffix?: AgentSkillDetail['renderFolderSuffix']
   selectedFileId?: string
 }) {
   const { t } = useTranslation('agentV2')
@@ -65,6 +75,8 @@ function AgentSkillFileList({
       labelledBy="agent-skill-detail-files-heading"
       className="h-64.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-1 shadow-xs shadow-shadow-shadow-3"
       folderOpenStrategy={keepSkillFoldersClosed}
+      folderOpenState={folderOpenState}
+      onFolderOpenChange={onFolderOpenChange}
       renderFile={onSelectFile
         ? ({ file, selected, children }) => (
             <FileTreeFile selected={selected} onClick={() => onSelectFile(file)}>
@@ -72,6 +84,7 @@ function AgentSkillFileList({
             </FileTreeFile>
           )
         : undefined}
+      renderFolderSuffix={renderFolderSuffix}
       header={(
         <>
           <h3 id="agent-skill-detail-files-heading" className="sr-only">
@@ -238,7 +251,6 @@ export function AgentSkillDetailDialog({
           slotClassNames={{
             viewport: 'overscroll-contain outline-none focus-visible:outline-none mask-linear-[to_bottom,transparent_0,black_min(40px,var(--scroll-area-overflow-y-start)),black_calc(100%_-_min(40px,var(--scroll-area-overflow-y-end,40px))),transparent_100%] mask-no-repeat',
             content: 'flex min-h-full w-full max-w-full min-w-0 flex-col gap-2 px-6 pt-4 pb-0',
-            scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
           }}
         >
           {detail.filePreview && (
@@ -262,8 +274,11 @@ export function AgentSkillDetailDialog({
           <AgentSkillFileList
             files={detail.files}
             fileCount={fileCount}
+            folderOpenState={detail.folderOpenState}
+            onFolderOpenChange={detail.onFolderOpenChange}
             selectedFileId={detail.selectedFileId}
             onSelectFile={detail.onSelectFile}
+            renderFolderSuffix={detail.renderFolderSuffix}
           />
         </div>
       </div>

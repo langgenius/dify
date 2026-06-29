@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "छोड़ें",
   "agentDetail.configure.buildDraft.modeBadge": "बिल्ड मोड",
   "agentDetail.configure.buildDraft.modeDescription": "आप बिल्ड मोड में हैं। दाईं ओर की चैट से इस सेटअप को आकार दें, फिर लागू करें।",
-  "agentDetail.configure.buildDraft.noChanges": "लागू करने के लिए कोई बदलाव नहीं",
+  "agentDetail.configure.buildDraft.noChanges": "कोई बदलाव नहीं",
   "agentDetail.configure.buildDraft.title": "बिल्ड ड्राफ्ट",
   "agentDetail.configure.chatFeatures.description": "अपने Web app और चैट सतहों पर अंतिम-उपयोगकर्ता चैट अनुभव को आकार दें।",
   "agentDetail.configure.chatFeatures.title": "चैट सुविधाएँ",

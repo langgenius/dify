@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "Отменить",
   "agentDetail.configure.buildDraft.modeBadge": "Режим сборки",
   "agentDetail.configure.buildDraft.modeDescription": "Вы в режиме сборки. Настройте эту конфигурацию через чат справа, затем примените изменения.",
-  "agentDetail.configure.buildDraft.noChanges": "Нет изменений для применения",
+  "agentDetail.configure.buildDraft.noChanges": "Нет изменений",
   "agentDetail.configure.buildDraft.title": "Черновик сборки",
   "agentDetail.configure.chatFeatures.description": "Настройте чат-опыт конечного пользователя в вашем веб-приложении и чат-поверхностях.",
   "agentDetail.configure.chatFeatures.title": "Функции чата",

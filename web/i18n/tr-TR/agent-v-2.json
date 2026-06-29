@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "Vazgeç",
   "agentDetail.configure.buildDraft.modeBadge": "Build modu",
   "agentDetail.configure.buildDraft.modeDescription": "Build modundasınız. Bu kurulumu sağdaki sohbetle şekillendirin, ardından uygulayın.",
-  "agentDetail.configure.buildDraft.noChanges": "Uygulanacak değişiklik yok",
+  "agentDetail.configure.buildDraft.noChanges": "Değişiklik yok",
   "agentDetail.configure.buildDraft.title": "Build taslağı",
   "agentDetail.configure.chatFeatures.description": "Web app ve sohbet yüzeylerinizde son kullanıcı sohbet deneyimini şekillendirin.",
   "agentDetail.configure.chatFeatures.title": "Sohbet Özellikleri",

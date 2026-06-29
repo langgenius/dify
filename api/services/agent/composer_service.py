@@ -1869,6 +1869,13 @@ class AgentComposerService:
             agent=agent,
             account_id=account_id,
         )
+        debug_conversation_message_count = (
+            AgentRosterService(db.session).count_agent_app_debug_conversation_messages(
+                conversation_id=debug_conversation_id
+            )
+            if debug_conversation_id
+            else 0
+        )
         return {
             "variant": ComposerVariant.WORKFLOW.value,
             "agent": cls._serialize_agent(agent) if agent else None,
@@ -1904,6 +1911,8 @@ class AgentComposerService:
             "hidden_app_backed": bool(agent and agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
             "chat_endpoint": f"/console/api/agent/{agent.id}/chat-messages" if agent else None,
             "debug_conversation_id": debug_conversation_id,
+            "debug_conversation_has_messages": debug_conversation_message_count > 0,
+            "debug_conversation_message_count": debug_conversation_message_count,
             "workflow_id": binding.workflow_id,
             "node_id": binding.node_id,
         }

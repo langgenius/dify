@@ -160,7 +160,13 @@ vi.mock('@/service/client', () => ({
         debugConversation: {
           refresh: {
             post: {
-              mutationOptions: (options?: { onSuccess?: (data: { debug_conversation_id: string }) => void }) => ({
+              mutationOptions: (options?: {
+                onSuccess?: (data: {
+                  debug_conversation_has_messages: boolean
+                  debug_conversation_id: string
+                  debug_conversation_message_count: number
+                }) => void
+              }) => ({
                 mutationFn: mocks.refreshDebugConversation,
                 ...options,
               }),
@@ -174,7 +180,10 @@ vi.mock('@/service/client', () => ({
         },
         buildDraft: {
           get: {
-            queryOptions: () => ({ queryKey: ['build-draft'] }),
+            queryOptions: () => ({
+              queryKey: ['build-draft'],
+              queryFn: mocks.loadBuildDraft,
+            }),
           },
           delete: {
             mutationOptions: () => ({ mutationFn: mocks.deleteBuildDraft }),
@@ -193,15 +202,71 @@ vi.mock('@/service/client', () => ({
             },
           },
         },
+        sandbox: {
+          files: {
+            get: {
+              queryOptions: () => ({
+                queryKey: ['sandbox-files'],
+                queryFn: () => Promise.resolve({
+                  entries: [{
+                    name: 'result.txt',
+                    type: 'file',
+                  }],
+                  path: '.',
+                }),
+              }),
+            },
+            read: {
+              get: {
+                queryOptions: () => ({
+                  queryKey: ['sandbox-file'],
+                  queryFn: () => Promise.resolve({
+                    text: 'result',
+                  }),
+                }),
+              },
+            },
+          },
+        },
+      },
+    },
+    apps: {
+      byAppId: {
+        workflows: {
+          draft: {
+            nodes: {
+              byNodeId: {
+                agentComposer: {
+                  get: {
+                    queryKey: ({ input }: {
+                      input: {
+                        params: {
+                          app_id: string
+                          node_id: string
+                        }
+                      }
+                    }) => ['workflow-agent-composer', input.params.app_id, input.params.node_id],
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     },
   },
 }))
 
 function createInlineComposerState({
+  debugConversationHasMessages = false,
+  debugConversationId = null,
+  debugConversationMessageCount = 0,
   snapshotId = 'snapshot-1',
   systemPrompt = 'Help with workflow tasks.',
 }: {
+  debugConversationHasMessages?: boolean
+  debugConversationId?: string | null
+  debugConversationMessageCount?: number
   snapshotId?: string
   systemPrompt?: string
 } = {}): WorkflowAgentComposerResponse {
@@ -230,6 +295,9 @@ function createInlineComposerState({
       workflow_id: 'workflow-1',
       node_id: 'node-1',
     },
+    debug_conversation_has_messages: debugConversationHasMessages,
+    debug_conversation_id: debugConversationId,
+    debug_conversation_message_count: debugConversationMessageCount,
   } as WorkflowAgentComposerResponse
 }
 
@@ -249,7 +317,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       variant: 'agent_app',
     })
     mocks.refreshDebugConversation.mockResolvedValue({
+      debug_conversation_has_messages: false,
       debug_conversation_id: 'build-conversation-refreshed',
+      debug_conversation_message_count: 0,
     })
     mocks.saveBuildDraft.mockResolvedValue({
       agent_soul: {
@@ -301,7 +371,13 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
     })
 
     it('should show the working directory panel when the header action is clicked', async () => {
-      renderWorkspace()
+      renderWorkspace({
+        inlineComposerState: createInlineComposerState({
+          debugConversationHasMessages: true,
+          debugConversationId: 'inline-debug-conversation-1',
+          debugConversationMessageCount: 1,
+        }),
+      })
 
       fireEvent.click(await screen.findByRole('button', {
         name: 'agentV2.agentDetail.configure.workingDirectory.open',
@@ -310,9 +386,7 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(await screen.findByRole('dialog', {
         name: 'agentV2.agentDetail.configure.workingDirectory.title',
       })).toBeInTheDocument()
-      expect(screen.getByRole('region', {
-        name: 'agentV2.agentDetail.configure.workingDirectory.treeLabel',
-      })).toBeInTheDocument()
+      expect(await screen.findByText('result.txt')).toBeInTheDocument()
     })
   })
 
@@ -434,6 +508,68 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
       expect(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.preview.restart',
       })).toBeEnabled()
+    })
+
+    it('should seed inline build chat from the workflow composer debug conversation when reopening build draft', async () => {
+      mocks.loadBuildDraft.mockResolvedValue({
+        agent_soul: {
+          schema_version: 1,
+          prompt: {
+            system_prompt: 'Build draft prompt',
+          },
+        },
+        draft: {},
+        variant: 'agent_app',
+      })
+
+      renderWorkspace({
+        inlineComposerState: createInlineComposerState({
+          debugConversationId: 'inline-debug-conversation-1',
+        }),
+      })
+
+      expect(await screen.findByRole('region', { name: 'build-draft-bar' })).toBeInTheDocument()
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:inline-debug-conversation-1')
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      })).toBeEnabled()
+    })
+
+    it('should keep restart disabled when workflow composer debug conversation has no messages', async () => {
+      renderWorkspace({
+        inlineComposerState: createInlineComposerState({
+          debugConversationHasMessages: false,
+          debugConversationId: 'inline-debug-conversation-1',
+          debugConversationMessageCount: 0,
+        }),
+      })
+
+      expect(await screen.findByRole('region', { name: 'build-chat' })).toHaveTextContent('build:inline-debug-conversation-1')
+      expect(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      })).toBeDisabled()
+    })
+
+    it('should refresh inline debug conversation when restarting an existing debug chat', async () => {
+      renderWorkspace({
+        inlineComposerState: createInlineComposerState({
+          debugConversationHasMessages: true,
+          debugConversationId: 'inline-debug-conversation-1',
+          debugConversationMessageCount: 1,
+        }),
+      })
+
+      expect(await screen.findByRole('region', { name: 'build-chat' })).toHaveTextContent('build:inline-debug-conversation-1')
+      fireEvent.click(screen.getByRole('button', {
+        name: 'agentV2.agentDetail.configure.preview.restart',
+      }))
+
+      await waitFor(() => expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
+        params: {
+          agent_id: 'agent-1',
+        },
+      }, expect.any(Object)))
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
     })
 
     it('should re-enable inline build draft actions when build chat fails', async () => {

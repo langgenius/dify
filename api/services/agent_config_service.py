@@ -1021,9 +1021,9 @@ class AgentConfigService:
 
 
 __all__ = [
+    "AgentConfigMutationSurface",
     "AgentConfigService",
     "AgentConfigServiceError",
-    "AgentConfigMutationSurface",
     "AgentConfigTarget",
     "AgentConfigVersionKind",
     "ConfigDownload",

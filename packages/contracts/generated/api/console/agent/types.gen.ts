@@ -197,6 +197,40 @@ export type AgentComposerValidateResponse = {
   warnings?: Array<ComposerValidationWarningResponse>
 }
 
+export type AgentConfigFileUploadPayload = {
+  upload_file_id: string
+}
+
+export type AgentConfigManifestResponse = {
+  agent_id: string
+  config_version: {
+    [key: string]: unknown
+  }
+  env_keys?: Array<string>
+  files?: Array<{
+    [key: string]: unknown
+  }>
+  note?: string
+  skills?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type AgentConfigPreviewResponse = {
+  binary: boolean
+  key: string
+  size?: number | null
+  text?: string | null
+  truncated: boolean
+}
+
+export type AgentConfigSkillInspectResponse = {
+  description?: string
+  files?: Array<string>
+  name: string
+  skill_md: string
+}
+
 export type AgentAppCopyPayload = {
   description?: string | null
   icon?: string | null
@@ -558,6 +592,9 @@ export type AgentInviteOptionResponse = {
 export type AgentSoulConfig = {
   app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
+  config_files?: Array<AgentConfigFileRefConfig>
+  config_note?: string
+  config_skills?: Array<AgentConfigSkillRefConfig>
   env?: AgentSoulEnvConfig
   files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
@@ -1006,6 +1043,25 @@ export type AppVariableConfig = {
   name: string
   required?: boolean
   type: string
+}
+
+export type AgentConfigFileRefConfig = {
+  file_id: string
+  file_kind: 'tool_file' | 'upload_file'
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  size?: number | null
+}
+
+export type AgentConfigSkillRefConfig = {
+  description?: string
+  file_id: string
+  file_kind?: 'tool_file'
+  hash?: string | null
+  mime_type?: string | null
+  name: string
+  size?: number | null
 }
 
 export type AgentSoulEnvConfig = {
@@ -2200,6 +2256,100 @@ export type PostAgentByAgentIdComposerValidateResponses = {
 
 export type PostAgentByAgentIdComposerValidateResponse
   = PostAgentByAgentIdComposerValidateResponses[keyof PostAgentByAgentIdComposerValidateResponses]
+
+export type PostAgentByAgentIdConfigFilesData = {
+  body: AgentConfigFileUploadPayload
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files'
+}
+
+export type PostAgentByAgentIdConfigFilesResponses = {
+  201: AgentConfigManifestResponse
+}
+
+export type PostAgentByAgentIdConfigFilesResponse
+  = PostAgentByAgentIdConfigFilesResponses[keyof PostAgentByAgentIdConfigFilesResponses]
+
+export type GetAgentByAgentIdConfigFilesByNamePreviewData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/config/files/{name}/preview'
+}
+
+export type GetAgentByAgentIdConfigFilesByNamePreviewResponses = {
+  200: AgentConfigPreviewResponse
+}
+
+export type GetAgentByAgentIdConfigFilesByNamePreviewResponse
+  = GetAgentByAgentIdConfigFilesByNamePreviewResponses[keyof GetAgentByAgentIdConfigFilesByNamePreviewResponses]
+
+export type GetAgentByAgentIdConfigManifestData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/manifest'
+}
+
+export type GetAgentByAgentIdConfigManifestResponses = {
+  200: AgentConfigManifestResponse
+}
+
+export type GetAgentByAgentIdConfigManifestResponse
+  = GetAgentByAgentIdConfigManifestResponses[keyof GetAgentByAgentIdConfigManifestResponses]
+
+export type PostAgentByAgentIdConfigSkillsUploadData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/upload'
+}
+
+export type PostAgentByAgentIdConfigSkillsUploadResponses = {
+  201: AgentConfigManifestResponse
+}
+
+export type PostAgentByAgentIdConfigSkillsUploadResponse
+  = PostAgentByAgentIdConfigSkillsUploadResponses[keyof PostAgentByAgentIdConfigSkillsUploadResponses]
+
+export type GetAgentByAgentIdConfigSkillsByNameInspectData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/skills/{name}/inspect'
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameInspectResponses = {
+  200: AgentConfigSkillInspectResponse
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameInspectResponse
+  = GetAgentByAgentIdConfigSkillsByNameInspectResponses[keyof GetAgentByAgentIdConfigSkillsByNameInspectResponses]
 
 export type PostAgentByAgentIdCopyData = {
   body: AgentAppCopyPayload

@@ -99,6 +99,46 @@ export const zAdvancedChatWorkflowRunPayload = z.object({
 })
 
 /**
+ * AgentConfigFileUploadPayload
+ */
+export const zAgentConfigFileUploadPayload = z.object({
+  upload_file_id: z.string(),
+})
+
+/**
+ * AgentConfigManifestResponse
+ */
+export const zAgentConfigManifestResponse = z.object({
+  agent_id: z.string(),
+  config_version: z.record(z.string(), z.unknown()),
+  env_keys: z.array(z.string()).optional(),
+  files: z.array(z.record(z.string(), z.unknown())).optional(),
+  note: z.string().optional().default(''),
+  skills: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * AgentConfigPreviewResponse
+ */
+export const zAgentConfigPreviewResponse = z.object({
+  binary: z.boolean(),
+  key: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentConfigSkillInspectResponse
+ */
+export const zAgentConfigSkillInspectResponse = z.object({
+  description: z.string().optional().default(''),
+  files: z.array(z.string()).optional(),
+  name: z.string(),
+  skill_md: z.string(),
+})
+
+/**
  * AgentDriveDownloadResponse
  */
 export const zAgentDriveDownloadResponse = z.object({
@@ -2543,6 +2583,35 @@ export const zAppVariableConfig = z.object({
 })
 
 /**
+ * AgentConfigFileRefConfig
+ *
+ * Stable Agent Soul reference to one config file payload.
+ */
+export const zAgentConfigFileRefConfig = z.object({
+  file_id: z.string().min(1).max(255),
+  file_kind: z.enum(['tool_file', 'upload_file']),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string().min(1).max(255),
+  size: z.int().nullish(),
+})
+
+/**
+ * AgentConfigSkillRefConfig
+ *
+ * Stable Agent Soul reference to one normalized skill archive.
+ */
+export const zAgentConfigSkillRefConfig = z.object({
+  description: z.string().optional().default(''),
+  file_id: z.string().min(1).max(255),
+  file_kind: z.literal('tool_file').optional().default('tool_file'),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish().default('application/zip'),
+  name: z.string().min(1).max(255),
+  size: z.int().nullish(),
+})
+
+/**
  * AgentSoulPromptConfig
  */
 export const zAgentSoulPromptConfig = z.object({
@@ -3635,6 +3704,9 @@ export const zAgentSoulKnowledgeConfig = z.object({
 export const zAgentSoulConfig = z.object({
   app_features: zAgentSoulAppFeaturesConfig.optional(),
   app_variables: z.array(zAppVariableConfig).optional(),
+  config_files: z.array(zAgentConfigFileRefConfig).optional(),
+  config_note: z.string().optional().default(''),
+  config_skills: z.array(zAgentConfigSkillRefConfig).optional(),
   env: zAgentSoulEnvConfig.optional(),
   files: zAgentSoulFilesConfig.optional(),
   human: zAgentSoulHumanConfig.optional(),
@@ -3659,7 +3731,9 @@ export const zWorkflowAgentComposerResponse = z.object({
   backing_app_id: z.string().nullish(),
   binding: zAgentComposerBindingResponse.nullish(),
   chat_endpoint: z.string().nullish(),
+  debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string().nullish(),
+  debug_conversation_message_count: z.int().optional().default(0),
   effective_declared_outputs: z.array(zDeclaredOutputConfig).optional(),
   hidden_app_backed: z.boolean().optional().default(false),
   impact_summary: zAgentComposerImpactResponse.nullish(),
@@ -4110,6 +4184,80 @@ export const zPostAppsByAppIdAdvancedChatWorkflowsDraftRunPath = z.object({
  * Workflow run started successfully
  */
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse = zGeneratedAppResponse
+
+export const zPostAppsByAppIdAgentConfigFilesBody = zAgentConfigFileUploadPayload
+
+export const zPostAppsByAppIdAgentConfigFilesPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zPostAppsByAppIdAgentConfigFilesQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  node_id: z.string().optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Updated config manifest
+ */
+export const zPostAppsByAppIdAgentConfigFilesResponse = zAgentConfigManifestResponse
+
+export const zGetAppsByAppIdAgentConfigFilesByNamePreviewPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+/**
+ * Preview
+ */
+export const zGetAppsByAppIdAgentConfigFilesByNamePreviewResponse = zAgentConfigPreviewResponse
+
+export const zGetAppsByAppIdAgentConfigManifestPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zGetAppsByAppIdAgentConfigManifestQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  node_id: z.string().optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Agent config manifest
+ */
+export const zGetAppsByAppIdAgentConfigManifestResponse = zAgentConfigManifestResponse
+
+export const zPostAppsByAppIdAgentConfigSkillsUploadPath = z.object({
+  app_id: z.uuid(),
+})
+
+export const zPostAppsByAppIdAgentConfigSkillsUploadQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  node_id: z.string().optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Updated config manifest
+ */
+export const zPostAppsByAppIdAgentConfigSkillsUploadResponse = zAgentConfigManifestResponse
+
+export const zGetAppsByAppIdAgentConfigSkillsByNameInspectPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetAppsByAppIdAgentConfigSkillsByNameInspectQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  node_id: z.string().optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Config skill inspect view
+ */
+export const zGetAppsByAppIdAgentConfigSkillsByNameInspectResponse
+  = zAgentConfigSkillInspectResponse
 
 export const zGetAppsByAppIdAgentDriveFilesPath = z.object({
   app_id: z.uuid(),

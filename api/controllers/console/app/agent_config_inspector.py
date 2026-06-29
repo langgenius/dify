@@ -5,9 +5,9 @@ from __future__ import annotations
 import inspect
 import io
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from flask import Response, request, send_file
