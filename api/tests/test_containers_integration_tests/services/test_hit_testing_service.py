@@ -125,6 +125,7 @@ def _build_segment(
     tenant_id: str | None = None,
     dataset_id: str | None = None,
     created_by: str | None = None,
+    content: str = "segment content",
 ) -> DocumentSegment:
     return DocumentSegment(
         tenant_id=tenant_id or str(uuid4()),
@@ -132,7 +133,7 @@ def _build_segment(
         document_id=document_id,
         created_by=created_by or str(uuid4()),
         position=1,
-        content="segment content",
+        content=content,
         word_count=2,
         tokens=2,
         status=SegmentStatus.COMPLETED,
@@ -511,6 +512,18 @@ class TestHitTestingService:
         assert records[0].segment.id == segment.id
         assert records[0].segment.document_id == ""
         assert records[0].score == 0.95
+
+    def test_dump_retrieval_records_includes_signed_segment_content(self) -> None:
+        upload_file_id = str(uuid4())
+        segment = _build_segment(document_id="", content=f"![head](/files/{upload_file_id}/file-preview)")
+        record = RetrievalSegments.model_validate({"segment": segment, "score": 0.95})
+
+        [dumped_record] = HitTestingService._dump_retrieval_records([record])
+
+        sign_content = dumped_record["segment"]["sign_content"]
+        assert f"/files/{upload_file_id}/file-preview?timestamp=" in sign_content
+        assert "nonce=" in sign_content
+        assert "sign=" in sign_content
 
     def test_dump_retrieval_records_injects_documents(self, db_session_with_containers: Session) -> None:
         document = _create_dataset_document(db_session_with_containers)
