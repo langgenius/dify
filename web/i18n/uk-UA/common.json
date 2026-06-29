@@ -288,6 +288,7 @@
   "menus.exploreMarketplace": "Дізнайтеся більше про Marketplace",
   "menus.plugins": "Інтеграції",
   "menus.roster": "Список агентів",
+  "menus.status": "бета",
   "menus.tools": "Інструменти",
   "model.capabilities": "Можливості MultiModal",
   "model.params.stop_sequencesPlaceholder": "Введіть послідовність і натисніть Tab",

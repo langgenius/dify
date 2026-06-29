@@ -441,7 +441,7 @@ class TestWorkflowCollaborationService:
 
         error_records = [record for record in caplog.records if record.levelno == logging.ERROR]
         assert len(error_records) == 1
-        assert "Failed to emit leader status to session sid-1" in caplog.text
+        assert "Failed to emit leader status to session sid-1" in error_records[0].getMessage()
 
     def test_broadcast_online_users_sorts_and_emits(
         self, service: tuple[WorkflowCollaborationService, Mock, Mock]

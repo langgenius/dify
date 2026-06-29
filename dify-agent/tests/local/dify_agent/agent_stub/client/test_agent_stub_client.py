@@ -196,6 +196,7 @@ def test_request_agent_stub_drive_manifest_sync_gets_manifest_request() -> None:
                 "items": [
                     {
                         "key": "skills/example/SKILL.md",
+                        "name": "SKILL.md",
                         "size": 12,
                         "hash": "sha256:abc",
                         "mime_type": "text/markdown",
@@ -220,6 +221,7 @@ def test_request_agent_stub_drive_manifest_sync_gets_manifest_request() -> None:
         http_client.close()
 
     assert response.items[0].key == "skills/example/SKILL.md"
+    assert response.items[0].model_extra == {"name": "SKILL.md"}
 
 
 def test_request_agent_stub_drive_commit_sync_posts_commit_request() -> None:

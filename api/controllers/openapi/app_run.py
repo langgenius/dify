@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Any
 
@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def _translate_service_errors() -> Iterator[None]:
+def _translate_service_errors() -> Generator[None, None, None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
@@ -166,6 +166,7 @@ class AppRunApi(Resource):
             surface="apps",
         )
 
+        # response-contract:ignore compact_generate_response
         return helper.compact_generate_response(stream_obj)
 
 

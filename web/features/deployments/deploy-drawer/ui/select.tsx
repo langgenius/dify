@@ -6,7 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Select, SelectContent, SelectItem, SelectItemIndicator, SelectItemText, SelectTrigger } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
-import { TitleTooltip } from '../../components/title-tooltip'
+import { TitleTooltip } from '../../shared/components/title-tooltip'
 import { ModeBadge } from './status-badge'
 
 export function Field({ label, hint, children }: {

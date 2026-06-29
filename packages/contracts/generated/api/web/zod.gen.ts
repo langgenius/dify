@@ -73,6 +73,7 @@ export const zAppSiteResponse = z.object({
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   icon_url: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
   privacy_policy: z.string().nullish(),
   prompt_public: z.boolean().nullish(),
   show_workflow_steps: z.boolean().nullish(),

@@ -111,7 +111,7 @@ const ErrorPluginItem: FC<ErrorPluginItemProps> = ({ plugin, getIconUrl, languag
           </span>
         )}
         statusText={(
-          <span className="block max-w-full wrap-break-word whitespace-pre-line">
+          <span className="block max-w-full min-w-0 [overflow-wrap:anywhere] break-words whitespace-pre-wrap">
             {plugin.message || errorMsg}
           </span>
         )}

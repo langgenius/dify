@@ -10,6 +10,8 @@ from .account import (
 )
 from .agent import (
     Agent,
+    AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
@@ -156,6 +158,8 @@ __all__ = [
     "AccountStepByStepTourState",
     "AccountTrialAppRecord",
     "Agent",
+    "AgentConfigDraft",
+    "AgentConfigDraftType",
     "AgentConfigRevision",
     "AgentConfigRevisionOperation",
     "AgentConfigSnapshot",
