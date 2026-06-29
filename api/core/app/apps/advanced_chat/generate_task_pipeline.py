@@ -77,7 +77,7 @@ from core.workflow.file_reference import resolve_file_record_id
 from core.workflow.human_input import session_binding
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -704,9 +704,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
         )
         for reason in event.reasons:
-            if isinstance(reason, HumanInputRequired):
+            if isinstance(reason, HitlRequired):
                 self._persist_human_input_extra_content(
-                    form_id=session_binding.resolve_form_id_from_session_id(session_id=reason.form_id),
+                    form_id=session_binding.resolve_form_id_from_session_id(session_id=reason.session_id),
                     node_id=reason.node_id,
                 )
         yield from responses

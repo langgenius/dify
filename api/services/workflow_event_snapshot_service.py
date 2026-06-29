@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import logging
 import queue
 import threading
@@ -29,13 +28,15 @@ from core.workflow.human_input_forms import (
 )
 from core.workflow.human_input_policy import (
     FormDisposition,
+    HydratedHitlFormDefinition,
     HumanInputSurface,
     enrich_human_input_pause_reasons,
+    hydrate_hitl_form_definition,
+    iter_hitl_required_reasons,
     resolve_human_input_pause_reason_inputs,
-    resolve_variable_select_input_options,
 )
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
+from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
@@ -264,9 +265,8 @@ def _build_snapshot_events(
 
     if workflow_run.status == WorkflowExecutionStatus.PAUSED and pause_entity is not None:
         form_ids_by_session_id = {
-            reason.form_id: session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
-            for reason in pause_entity.get_pause_reasons()
-            if isinstance(reason, HumanInputRequired)
+            reason.session_id: session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+            for reason in iter_hitl_required_reasons(pause_entity.get_pause_reasons())
         }
         for human_input_event in _build_human_input_required_events(
             workflow_run_id=workflow_run.id,
@@ -369,14 +369,13 @@ def _build_human_input_required_events(
     reasons = pause_entity.get_pause_reasons()
     if form_ids_by_session_id is None:
         form_ids_by_session_id = {
-            reason.form_id: session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
-            for reason in reasons
-            if isinstance(reason, HumanInputRequired)
+            reason.session_id: session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+            for reason in iter_hitl_required_reasons(reasons)
         }
     human_input_form_ids = list(form_ids_by_session_id.values())
 
     expiration_times_by_form_id: dict[str, int] = {}
-    display_in_ui_by_form_id: dict[str, bool] = {}
+    hydrated_forms_by_form_id: dict[str, HydratedHitlFormDefinition] = {}
     dispositions_by_form_id: dict[str, FormDisposition] = {}
     if human_input_form_ids and session_maker is not None:
         stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
@@ -384,12 +383,14 @@ def _build_human_input_required_events(
         )
         with session_maker() as session:
             for form_id, expiration_time, form_definition in session.execute(stmt):
-                expiration_times_by_form_id[str(form_id)] = int(expiration_time.timestamp())
-                try:
-                    definition_payload = json.loads(form_definition) if form_definition else {}
-                except (TypeError, json.JSONDecodeError):
-                    definition_payload = {}
-                display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
+                form_id_str = str(form_id)
+                expiration_times_by_form_id[form_id_str] = int(expiration_time.timestamp())
+                hydrated_forms_by_form_id[form_id_str] = hydrate_hitl_form_definition(
+                    form_definition=form_definition,
+                    expiration_time=expiration_time,
+                    variable_pool=variable_pool,
+                    fallback_node_title="Human Input",
+                )
             dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
@@ -397,21 +398,22 @@ def _build_human_input_required_events(
             )
 
     events: list[dict[str, Any]] = []
-    for reason in reasons:
-        if not isinstance(reason, HumanInputRequired):
-            continue
-
-        session_id = reason.form_id
+    for reason in iter_hitl_required_reasons(reasons):
+        session_id = reason.session_id
         form_id = form_ids_by_session_id[session_id]
 
         expiration_time = expiration_times_by_form_id.get(form_id)
         if expiration_time is None:
             continue
 
-        resolved_inputs = resolve_variable_select_input_options(
-            reason.inputs,
-            variable_pool=variable_pool,
-        )
+        hydrated_form = hydrated_forms_by_form_id.get(form_id)
+        if hydrated_form is None:
+            hydrated_form = hydrate_hitl_form_definition(
+                form_definition=None,
+                expiration_time=None,
+                variable_pool=variable_pool,
+                fallback_node_title=reason.node_title or "Human Input",
+            )
         disposition = dispositions_by_form_id.get(form_id)
 
         response = HumanInputRequiredResponse(
@@ -420,14 +422,14 @@ def _build_human_input_required_events(
             data=HumanInputRequiredResponse.Data(
                 form_id=session_id,
                 node_id=reason.node_id,
-                node_title=reason.node_title,
-                form_content=reason.form_content,
-                inputs=[input_config.model_dump(mode="json") for input_config in resolved_inputs],
-                actions=[action.model_dump(mode="json") for action in reason.actions],
-                display_in_ui=display_in_ui_by_form_id.get(form_id, False),
+                node_title=hydrated_form.node_title or reason.node_title,
+                form_content=hydrated_form.form_content,
+                inputs=[input_config.model_dump(mode="json") for input_config in hydrated_form.inputs],
+                actions=[action.model_dump(mode="json") for action in hydrated_form.actions],
+                display_in_ui=hydrated_form.display_in_ui,
                 form_token=disposition.form_token if disposition else None,
                 approval_channels=list(disposition.approval_channels) if disposition else [],
-                resolved_default_values=reason.resolved_default_values,
+                resolved_default_values=hydrated_form.resolved_default_values,
                 expiration_time=expiration_time,
             ),
         )
@@ -510,11 +512,11 @@ def _build_pause_event(
     reasons = [reason.model_dump(mode="json") for reason in resolved_pause_reasons]
     if form_ids_by_session_id is None:
         form_ids_by_session_id = {
-            form_id: session_binding.resolve_form_id_from_session_id(session_id=form_id)
+            session_id: session_binding.resolve_form_id_from_session_id(session_id=session_id)
             for reason in reasons
-            if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
-            for form_id in [reason.get("form_id")]
-            if isinstance(form_id, str)
+            if reason.get("TYPE") == PauseReasonType.HITL_REQUIRED
+            for session_id in [reason.get("session_id")]
+            if isinstance(session_id, str)
         }
     human_input_form_ids = list(form_ids_by_session_id.values())
     dispositions_by_form_id: dict[str, FormDisposition] = {}

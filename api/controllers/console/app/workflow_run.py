@@ -34,7 +34,7 @@ from fields.workflow_run_fields import (
     WorkflowRunNodeExecutionResponse,
     WorkflowRunPaginationResponse,
 )
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from libs.custom_inputs import time_duration
@@ -478,29 +478,27 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
         pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
         resolved_form_id_by_session_id = {
-            reason.form_id: session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
+            reason.session_id: session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
             for reason in pause_reasons
-            if isinstance(reason, HumanInputRequired)
+            if isinstance(reason, HitlRequired)
         }
-        form_tokens_by_form_id = _load_form_tokens_by_form_id(
-            list(resolved_form_id_by_session_id.values())
-        )
+        form_tokens_by_form_id = _load_form_tokens_by_form_id(list(resolved_form_id_by_session_id.values()))
 
         # Build response
         paused_at = pause_entity.paused_at if pause_entity else None
         paused_nodes: list[PausedNodeResponse] = []
 
         for reason in pause_reasons:
-            if isinstance(reason, HumanInputRequired):
+            if isinstance(reason, HitlRequired):
                 paused_nodes.append(
                     PausedNodeResponse(
                         node_id=reason.node_id,
                         node_title=reason.node_title,
                         pause_type=HumanInputPauseTypeResponse(
                             type="human_input",
-                            form_id=reason.form_id,
+                            form_id=reason.session_id,
                             backstage_input_url=_build_backstage_input_url(
-                                form_tokens_by_form_id.get(resolved_form_id_by_session_id[reason.form_id])
+                                form_tokens_by_form_id.get(resolved_form_id_by_session_id[reason.session_id])
                             ),
                         ),
                     )

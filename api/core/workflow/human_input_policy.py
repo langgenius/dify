@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, NamedTuple
 
-from core.workflow.human_input import FormInputConfig, SelectInputConfig, ValueSourceType
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType
+from pydantic import ValidationError
+
+from core.workflow.human_input import FormDefinition, FormInputConfig, SelectInputConfig, UserActionConfig, ValueSourceType
+from graphon.entities.pause_reason import HitlRequired, PauseReason, PauseReasonType
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
 from models.human_input import ApprovalChannel, RecipientType
@@ -70,6 +73,17 @@ class FormDisposition(NamedTuple):
     approval_channels: list[ApprovalChannel]
 
 
+class HydratedHitlFormDefinition(NamedTuple):
+    """Pause-response fields rebuilt from Dify-owned form_definition storage."""
+
+    form_content: str
+    inputs: list[FormInputConfig]
+    actions: list[UserActionConfig]
+    resolved_default_values: dict[str, Any]
+    node_title: str
+    display_in_ui: bool
+
+
 def disposition_for_surface(
     recipients: Sequence[tuple[RecipientType, str]],
     *,
@@ -96,17 +110,82 @@ def enrich_human_input_pause_reasons(
     enriched: list[dict[str, Any]] = []
     for reason in reasons:
         updated = dict(reason)
-        if updated.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED:
+        reason_id: str | None = None
+        if updated.get("TYPE") == PauseReasonType.HITL_REQUIRED:
+            session_id = updated.get("session_id")
+            if isinstance(session_id, str):
+                reason_id = session_id
+        elif updated.get("TYPE") == PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED:
             form_id = updated.get("form_id")
             if isinstance(form_id, str):
-                disposition = dispositions_by_form_id.get(form_id)
-                updated["form_token"] = disposition.form_token if disposition else None
-                updated["approval_channels"] = list(disposition.approval_channels) if disposition else []
-                expiration_time = expiration_times_by_form_id.get(form_id)
-                if expiration_time is not None:
-                    updated["expiration_time"] = expiration_time
+                reason_id = form_id
+
+        if reason_id is not None:
+            disposition = dispositions_by_form_id.get(reason_id)
+            updated["form_token"] = disposition.form_token if disposition else None
+            updated["approval_channels"] = list(disposition.approval_channels) if disposition else []
+            expiration_time = expiration_times_by_form_id.get(reason_id)
+            if expiration_time is not None:
+                updated["expiration_time"] = expiration_time
         enriched.append(updated)
     return enriched
+
+
+def hydrate_hitl_form_definition(
+    *,
+    form_definition: str | None,
+    expiration_time: object | None,
+    variable_pool: ReadOnlyVariablePool | None,
+    fallback_node_title: str,
+) -> HydratedHitlFormDefinition:
+    """Rebuild rich HITL response fields from persisted Dify form definitions."""
+
+    definition_payload: dict[str, Any] = {}
+    if form_definition:
+        try:
+            parsed_definition = json.loads(form_definition)
+        except (TypeError, json.JSONDecodeError):
+            parsed_definition = {}
+        if isinstance(parsed_definition, dict):
+            definition_payload = parsed_definition
+    if "expiration_time" not in definition_payload and expiration_time is not None:
+        definition_payload["expiration_time"] = expiration_time
+
+    try:
+        definition = FormDefinition.model_validate(definition_payload)
+    except ValidationError:
+        return HydratedHitlFormDefinition(
+            form_content="",
+            inputs=[],
+            actions=[],
+            resolved_default_values={},
+            node_title=fallback_node_title,
+            display_in_ui=bool(definition_payload.get("display_in_ui")),
+        )
+
+    return HydratedHitlFormDefinition(
+        form_content=definition.form_content,
+        inputs=resolve_variable_select_input_options(definition.inputs, variable_pool=variable_pool),
+        actions=list(definition.user_actions),
+        resolved_default_values=dict(definition.default_values),
+        node_title=definition.node_title or fallback_node_title,
+        display_in_ui=bool(definition.display_in_ui),
+    )
+
+
+def resolve_human_input_pause_reason_inputs(
+    reasons: Sequence[PauseReason],
+    *,
+    variable_pool: ReadOnlyVariablePool | None,
+) -> list[PauseReason]:
+    """Minimal graphon HITL reasons carry no rich fields; callers rehydrate from form storage."""
+
+    _ = variable_pool
+    return list(reasons)
+
+
+def iter_hitl_required_reasons(reasons: Sequence[PauseReason]) -> list[HitlRequired]:
+    return [reason for reason in reasons if isinstance(reason, HitlRequired)]
 
 
 def resolve_variable_select_input_options(
@@ -152,24 +231,3 @@ def resolve_variable_select_input_options(
         )
     return resolved_inputs
 
-
-def resolve_human_input_pause_reason_inputs(
-    reasons: Sequence[PauseReason],
-    *,
-    variable_pool: ReadOnlyVariablePool | None,
-) -> list[PauseReason]:
-    if variable_pool is None:
-        return list(reasons)
-
-    resolved_reasons: list[PauseReason] = []
-    for reason in reasons:
-        if not isinstance(reason, HumanInputRequired):
-            resolved_reasons.append(reason)
-            continue
-
-        resolved_inputs = resolve_variable_select_input_options(
-            reason.inputs,
-            variable_pool=variable_pool,
-        )
-        resolved_reasons.append(reason.model_copy(update={"inputs": resolved_inputs}))
-    return resolved_reasons

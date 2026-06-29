@@ -46,7 +46,7 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import (
     ErrorStrategy,
     NodeType,
@@ -1036,16 +1036,16 @@ class WorkflowService:
         rendered_content = node.render_form_content_before_submission()
         resolved_default_values = node.resolve_default_values()
         node_data = node.node_data
-        human_input_required = HumanInputRequired(
-            form_id=node_id,
-            form_content=rendered_content,
-            inputs=node_data.inputs,
-            actions=node_data.user_actions,
-            node_id=node_id,
-            node_title=node.title,
-            resolved_default_values=resolved_default_values,
-        )
-        return human_input_required.model_dump(mode="json")
+        return {
+            "TYPE": PauseReasonType.HITL_REQUIRED,
+            "session_id": node_id,
+            "node_id": node_id,
+            "node_title": node.title,
+            "form_content": rendered_content,
+            "inputs": [form_input.model_dump(mode="json") for form_input in node_data.inputs],
+            "actions": [action.model_dump(mode="json") for action in node_data.user_actions],
+            "resolved_default_values": resolved_default_values,
+        }
 
     def submit_human_input_form_preview(
         self,

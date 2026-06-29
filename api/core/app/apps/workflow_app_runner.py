@@ -52,7 +52,7 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (
@@ -698,18 +698,18 @@ class WorkflowBasedAppRunner:
 
     def _enqueue_human_input_notifications(self, reasons: Sequence[object]) -> None:
         for reason in reasons:
-            if not isinstance(reason, HumanInputRequired):
+            if not isinstance(reason, HitlRequired):
                 continue
-            if not reason.form_id:
+            if not reason.session_id:
                 continue
             try:
-                resolved_form_id = session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
+                resolved_form_id = session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
                 dispatch_human_input_email_task.apply_async(
                     kwargs={"form_id": resolved_form_id, "node_title": reason.node_title},
                     queue="mail",
                 )
             except Exception:  # pragma: no cover - defensive logging
-                logger.exception("Failed to enqueue human input email task for form %s", reason.form_id)
+                logger.exception("Failed to enqueue human input email task for form %s", reason.session_id)
 
     def _publish_event(self, event: AppQueueEvent):
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)

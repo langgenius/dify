@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Mapping, Sequence
@@ -57,15 +56,17 @@ from core.workflow.human_input_forms import (
 from core.workflow.human_input import session_binding
 from core.workflow.human_input_policy import (
     FormDisposition,
+    HydratedHitlFormDefinition,
     HumanInputSurface,
     enrich_human_input_pause_reasons,
+    hydrate_hitl_form_definition,
+    iter_hitl_required_reasons,
     resolve_human_input_pause_reason_inputs,
 )
 from core.workflow.system_variables import SystemVariableKey, system_variables_to_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import (
     BuiltinNodeTypes,
     WorkflowExecutionStatus,
@@ -350,13 +351,12 @@ class WorkflowResponseConverter:
         )
         pause_reasons = [reason.model_dump(mode="json") for reason in resolved_reasons]
         form_ids_by_session_id = {
-            reason.form_id: session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
-            for reason in resolved_reasons
-            if isinstance(reason, HumanInputRequired)
+            reason.session_id: session_binding.resolve_form_id_from_session_id(session_id=reason.session_id)
+            for reason in iter_hitl_required_reasons(resolved_reasons)
         }
         human_input_form_ids = list(form_ids_by_session_id.values())
         expiration_times_by_form_id: dict[str, datetime] = {}
-        display_in_ui_by_form_id: dict[str, bool] = {}
+        hydrated_forms_by_form_id: dict[str, HydratedHitlFormDefinition] = {}
         dispositions_by_form_id: dict[str, FormDisposition] = {}
         if human_input_form_ids:
             stmt = select(
@@ -367,12 +367,14 @@ class WorkflowResponseConverter:
             hitl_surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
             with Session(bind=db.engine) as session:
                 for form_id, expiration_time, form_definition in session.execute(stmt):
-                    expiration_times_by_form_id[str(form_id)] = expiration_time
-                    try:
-                        definition_payload = json.loads(form_definition) if form_definition else {}
-                    except (TypeError, json.JSONDecodeError):
-                        definition_payload = {}
-                    display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
+                    form_id_str = str(form_id)
+                    expiration_times_by_form_id[form_id_str] = expiration_time
+                    hydrated_forms_by_form_id[form_id_str] = hydrate_hitl_form_definition(
+                        form_definition=form_definition,
+                        expiration_time=expiration_time,
+                        variable_pool=variable_pool,
+                        fallback_node_title="Human Input",
+                    )
                 dispositions_by_form_id = load_form_dispositions_by_form_id(
                     human_input_form_ids,
                     session=session,
@@ -396,32 +398,39 @@ class WorkflowResponseConverter:
 
         responses: list[StreamResponse] = []
 
-        for reason in resolved_reasons:
-            if isinstance(reason, HumanInputRequired):
-                resolved_form_id = form_ids_by_session_id[reason.form_id]
-                expiration_time = expiration_times_by_form_id.get(resolved_form_id)
-                if expiration_time is None:
-                    raise ValueError(f"HumanInputForm not found for pause reason, form_id={resolved_form_id}")
-                disposition = dispositions_by_form_id.get(resolved_form_id)
-                responses.append(
-                    HumanInputRequiredResponse(
-                        task_id=task_id,
-                        workflow_run_id=run_id,
-                        data=HumanInputRequiredResponse.Data(
-                            form_id=reason.form_id,
-                            node_id=reason.node_id,
-                            node_title=reason.node_title,
-                            form_content=reason.form_content,
-                            inputs=self._serialize_human_input_inputs(reason.inputs),
-                            actions=self._serialize_human_input_actions(reason.actions),
-                            display_in_ui=display_in_ui_by_form_id.get(resolved_form_id, False),
-                            form_token=disposition.form_token if disposition else None,
-                            approval_channels=list(disposition.approval_channels) if disposition else [],
-                            resolved_default_values=reason.resolved_default_values,
-                            expiration_time=int(expiration_time.timestamp()),
-                        ),
-                    )
+        for reason in iter_hitl_required_reasons(resolved_reasons):
+            resolved_form_id = form_ids_by_session_id[reason.session_id]
+            expiration_time = expiration_times_by_form_id.get(resolved_form_id)
+            if expiration_time is None:
+                raise ValueError(f"HumanInputForm not found for pause reason, form_id={resolved_form_id}")
+            hydrated_form = hydrated_forms_by_form_id.get(resolved_form_id)
+            if hydrated_form is None:
+                hydrated_form = hydrate_hitl_form_definition(
+                    form_definition=None,
+                    expiration_time=expiration_time,
+                    variable_pool=variable_pool,
+                    fallback_node_title=reason.node_title or "Human Input",
                 )
+            disposition = dispositions_by_form_id.get(resolved_form_id)
+            responses.append(
+                HumanInputRequiredResponse(
+                    task_id=task_id,
+                    workflow_run_id=run_id,
+                    data=HumanInputRequiredResponse.Data(
+                        form_id=reason.session_id,
+                        node_id=reason.node_id,
+                        node_title=hydrated_form.node_title or reason.node_title,
+                        form_content=hydrated_form.form_content,
+                        inputs=self._serialize_human_input_inputs(hydrated_form.inputs),
+                        actions=self._serialize_human_input_actions(hydrated_form.actions),
+                        display_in_ui=hydrated_form.display_in_ui,
+                        form_token=disposition.form_token if disposition else None,
+                        approval_channels=list(disposition.approval_channels) if disposition else [],
+                        resolved_default_values=hydrated_form.resolved_default_values,
+                        expiration_time=int(expiration_time.timestamp()),
+                    ),
+                )
+            )
 
         responses.append(
             WorkflowPauseStreamResponse(
