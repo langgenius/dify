@@ -150,6 +150,7 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
     push: vi.fn(),
   }),
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -415,6 +416,10 @@ vi.mock('../hooks', () => ({
 
 vi.mock('../hooks/use-workflow-search', () => ({
   useWorkflowSearch: workflowHookMocks.useWorkflowSearch,
+}))
+
+vi.mock('../hooks/use-locate-node', () => ({
+  useLocateNode: vi.fn(),
 }))
 
 vi.mock('../nodes/_base/components/variable/use-match-schema-type', () => ({
