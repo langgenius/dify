@@ -218,7 +218,9 @@ class AgentComposerService:
             agent_id=agent.id if agent else None,
             version_id=version_id,
         )
-        state = cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
+        state = cls._serialize_workflow_state(
+            binding=binding, agent=agent, version=version, account_id=account_id
+        )
         state["validation"] = cls.collect_validation_findings(
             tenant_id=tenant_id,
             payload=payload,
@@ -250,7 +252,9 @@ class AgentComposerService:
                 agent_id=agent.id if agent else None,
                 version_id=binding.current_snapshot_id,
             )
-            return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
+            return cls._serialize_workflow_state(
+                binding=binding, agent=agent, version=version, account_id=account_id
+            )
 
         if binding.binding_type != WorkflowAgentBindingType.ROSTER_AGENT:
             raise InvalidComposerConfigError("Workflow agent node must be bound to a roster agent.")
@@ -304,7 +308,9 @@ class AgentComposerService:
             agent_id=inline_agent.id,
             version_id=inline_agent.active_config_snapshot_id,
         )
-        return cls._serialize_workflow_state(binding=binding, agent=inline_agent, version=version)
+        return cls._serialize_workflow_state(
+            binding=binding, agent=inline_agent, version=version, account_id=account_id
+        )
 
     @classmethod
     def load_agent_app_composer(cls, *, tenant_id: str, app_id: str) -> dict[str, Any]:

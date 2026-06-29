@@ -323,6 +323,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
         current_snapshot_id="version-1",
     )
     calls = []
+    serialize_calls = []
 
     monkeypatch.setattr(composer_service.db, "session", fake_session)
     monkeypatch.setattr(composer_service.ComposerConfigValidator, "validate_draft_save_payload", lambda payload: None)
@@ -338,7 +339,12 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
         "_get_version_if_present",
         lambda **kwargs: SimpleNamespace(id="version-1"),
     )
-    monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", lambda **kwargs: {"state": "ok"})
+
+    def serialize_workflow_state(**kwargs):
+        serialize_calls.append(kwargs)
+        return {"state": "ok"}
+
+    monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", serialize_workflow_state)
 
     def save_helper(**kwargs):
         calls.append(kwargs)
@@ -360,6 +366,7 @@ def test_save_workflow_composer_dispatches_save_strategy(monkeypatch, strategy, 
     assert result.pop("validation") == {"warnings": [], "knowledge_retrieval_placeholder": []}
     assert result == {"state": "ok"}
     assert calls
+    assert serialize_calls[0]["account_id"] == "account-1"
     assert fake_session.commits == 1
 
 
@@ -1418,16 +1425,18 @@ def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(mo
         version=1,
         config_snapshot='{"prompt":{"system_prompt":"inline"}}',
     )
+    serialize_calls = []
     monkeypatch.setattr(composer_service.db, "session", FakeSession())
     monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", lambda **kwargs: SimpleNamespace(id="workflow-1"))
     monkeypatch.setattr(AgentComposerService, "_get_workflow_binding", lambda **kwargs: inline_binding)
     monkeypatch.setattr(AgentComposerService, "_get_agent_if_present", lambda **kwargs: inline_agent)
     monkeypatch.setattr(AgentComposerService, "_get_version_if_present", lambda **kwargs: inline_version)
-    monkeypatch.setattr(
-        AgentComposerService,
-        "_serialize_workflow_state",
-        lambda **kwargs: {"binding_type": kwargs["binding"].binding_type.value},
-    )
+
+    def serialize_workflow_state(**kwargs):
+        serialize_calls.append(kwargs)
+        return {"binding_type": kwargs["binding"].binding_type.value}
+
+    monkeypatch.setattr(AgentComposerService, "_serialize_workflow_state", serialize_workflow_state)
 
     state = AgentComposerService.copy_workflow_composer_from_roster(
         tenant_id="tenant-1",
@@ -1439,6 +1448,7 @@ def test_copy_workflow_composer_from_roster_is_idempotent_when_already_inline(mo
     )
 
     assert state == {"binding_type": WorkflowAgentBindingType.INLINE_AGENT.value}
+    assert serialize_calls[0]["account_id"] == "account-1"
 
 
 @pytest.mark.parametrize(
