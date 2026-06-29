@@ -2,7 +2,7 @@
 
 ENG-636. When an Agent backend run ends with a deferred ``dify.ask_human`` tool
 call, the workflow Agent node pauses the *outer* workflow through the very same
-``HumanInputRequired`` form mechanism the Human Input node uses — reusing the
+HITL form mechanism the Human Input node uses — reusing the
 form repository, delivery channels, and submission endpoints unchanged. This
 module is a pure translation layer: model-facing ask_human tool args become
 Dify-owned human-input entities (``HumanInputNodeData`` / ``FormInputConfig`` /
@@ -63,7 +63,7 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     InteractiveSurfaceDeliveryMethod,
 )
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from models.agent_config_entities import AgentHumanContactConfig
 
 # Default ask_human tool name (see ``DifyAskHumanLayerConfig.tool_name``). The
@@ -308,7 +308,7 @@ def build_ask_human_pause_reason(
     conversation_id: str | None = None,
     expected_tool_name: str = DEFAULT_ASK_HUMAN_TOOL_NAME,
     display_in_ui: bool = True,
-) -> HumanInputRequired | None:
+) -> HitlRequired | None:
     """Create a workflow HITL form for an ask_human call and return its pause reason.
 
     Returns ``None`` when the deferred call is *not* the ask_human tool, letting
@@ -334,16 +334,10 @@ def build_ask_human_pause_reason(
         conversation_id=conversation_id,
         display_in_ui=display_in_ui,
     )
-    return HumanInputRequired.model_validate(
-        {
-            "form_id": session_binding.issue_session_id_for_form(form_id=created.form_id),
-            "form_content": created.node_data.form_content,
-            "inputs": [form_input.model_dump(mode="json") for form_input in created.node_data.inputs],
-            "actions": [action.model_dump(mode="json") for action in created.node_data.user_actions],
-            "node_id": node_id,
-            "node_title": created.node_title,
-            "resolved_default_values": created.resolved_default_values,
-        }
+    return HitlRequired(
+        session_id=session_binding.issue_session_id_for_form(form_id=created.form_id),
+        node_id=node_id,
+        node_title=created.node_title,
     )
 
 

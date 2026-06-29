@@ -27,7 +27,7 @@ from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunC
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.human_input import session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.entities.pause_reason import HumanInputRequired, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
@@ -296,7 +296,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # form is built *before* the snapshot is saved so its id can be
                 # persisted as the pause correlation (ENG-637).
                 try:
-                    pause_reason: HumanInputRequired | SchedulingPause | None = build_ask_human_pause_reason(
+                    pause_reason: HitlRequired | SchedulingPause | None = build_ask_human_pause_reason(
                         deferred_tool_call=terminal_event.deferred_tool_call,
                         node_id=self._node_id,
                         default_node_title=bundle.agent.name or self._node_id,
@@ -322,8 +322,8 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 # deferred_tool_results from the submitted form.
                 pending_form_id: str | None = None
                 pending_tool_call_id: str | None = None
-                if isinstance(pause_reason, HumanInputRequired):
-                    pending_form_id = session_binding.resolve_form_id_from_session_id(session_id=pause_reason.form_id)
+                if isinstance(pause_reason, HitlRequired):
+                    pending_form_id = session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id)
                     pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
                 else:
                     pause_reason = SchedulingPause(

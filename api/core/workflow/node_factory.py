@@ -20,8 +20,20 @@ from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.trigger.constants import TRIGGER_NODE_TYPES
-from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.human_input import HumanInputNodeData
+from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
+from core.workflow.human_input_adapter import (
+    BoundRecipient,
+    DeliveryChannelConfig,
+    DeliveryMethodType,
+    EmailDeliveryMethod,
+    EmailRecipients,
+    adapt_node_config_for_graph,
+    is_human_input_webapp_enabled,
+    parse_human_input_delivery_methods,
+)
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -97,6 +109,29 @@ class DifyGraphInitContext:
             run_context=self.run_context,
             call_depth=self.call_depth,
         )
+
+
+def _apply_dify_debug_email_recipient(
+    method: DeliveryChannelConfig,
+    *,
+    enabled: bool,
+    actor_id: str | None,
+) -> DeliveryChannelConfig:
+    if not enabled:
+        return method
+    if not isinstance(method, EmailDeliveryMethod):
+        return method
+    if not method.config.debug_mode:
+        return method
+
+    if actor_id is None:
+        debug_recipients = EmailRecipients(include_bound_group=False, items=[])
+    else:
+        debug_recipients = EmailRecipients(
+            include_bound_group=False,
+            items=[BoundRecipient(reference_id=actor_id)],
+        )
+    return method.model_copy(update={"config": method.config.with_recipients(debug_recipients)})
 
 
 def _import_node_package(package_name: str, *, excluded_modules: frozenset[str] = frozenset()) -> None:
@@ -329,14 +364,6 @@ class DifyNodeFactory(NodeFactory):
             http_client=self._remote_file_http_client,
             conversation_id_getter=self._conversation_id,
         )
-        self._human_input_runtime = DifyHumanInputNodeRuntime(
-            self._dify_context,
-            workflow_execution_id_getter=lambda: get_system_text(
-                self.graph_runtime_state.variable_pool,
-                SystemVariableKey.WORKFLOW_EXECUTION_ID,
-            ),
-            conversation_id_getter=self._conversation_id,
-        )
         self._tool_runtime = DifyToolNodeRuntime(self._dify_context)
         self._http_request_file_manager = file_manager
         self._document_extractor_unstructured_api_config = UnstructuredApiConfig(
@@ -370,6 +397,51 @@ class DifyNodeFactory(NodeFactory):
 
     def _conversation_id(self) -> str | None:
         return get_system_text(self.graph_runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
+
+    def _human_input_invoke_source(self) -> str:
+        invoke_from = self._dify_context.invoke_from
+        if isinstance(invoke_from, str):
+            return invoke_from
+        return str(getattr(invoke_from, "value", invoke_from))
+
+    def _resolve_human_input_delivery_methods(self, *, node_data: HumanInputNodeData) -> list[DeliveryChannelConfig]:
+        invoke_source = self._human_input_invoke_source()
+        methods = [method for method in parse_human_input_delivery_methods(node_data) if method.enabled]
+        if invoke_source in {"debugger", "explore"}:
+            methods = [method for method in methods if method.type != DeliveryMethodType.WEBAPP]
+        return [
+            _apply_dify_debug_email_recipient(
+                method,
+                enabled=invoke_source == "debugger",
+                actor_id=self._dify_context.user_id,
+            )
+            for method in methods
+        ]
+
+    def _display_human_input_in_ui(self, *, node_data: HumanInputNodeData) -> bool:
+        if self._human_input_invoke_source() == "debugger":
+            return True
+        return is_human_input_webapp_enabled(node_data)
+
+    def _build_human_input_form_repository(self, workflow_execution_id: str) -> HumanInputFormRepositoryImpl:
+        invoke_source = self._human_input_invoke_source()
+        return HumanInputFormRepositoryImpl(
+            tenant_id=self._dify_context.tenant_id,
+            app_id=self._dify_context.app_id,
+            workflow_execution_id=workflow_execution_id,
+            invoke_source=invoke_source,
+            submission_actor_id=self._dify_context.user_id if invoke_source in {"debugger", "explore"} else None,
+        )
+
+    def _build_human_input_hitl_callback(self, *, node_data: HumanInputNodeData):
+        return build_dify_human_input_hitl_callback(
+            node_data=node_data,
+            repository_factory=self._build_human_input_form_repository,
+            file_value_restorer=lambda mapping: self._file_reference_factory.build_from_mapping(mapping=mapping),
+            delivery_methods=self._resolve_human_input_delivery_methods(node_data=node_data),
+            display_in_ui=self._display_human_input_in_ui(node_data=node_data),
+            conversation_id_getter=self._conversation_id,
+        )
 
     @override
     def create_node(self, node_config: dict[str, Any] | NodeConfigDict) -> Node:
@@ -409,9 +481,9 @@ class DifyNodeFactory(NodeFactory):
                 "file_reference_factory": self._file_reference_factory,
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "runtime": self._human_input_runtime,
-                "file_reference_factory": self._file_reference_factory,
-                "form_repository": self._human_input_runtime.build_form_repository(),
+                "hitl_callback": self._build_human_input_hitl_callback(
+                    node_data=cast(HumanInputNodeData, resolved_node_data)
+                ),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,

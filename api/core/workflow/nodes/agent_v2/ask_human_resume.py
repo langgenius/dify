@@ -9,7 +9,7 @@ that carries the human's answer:
 * submitted  -> AskHumanToolResult(status="submitted", action, values)
 * timeout / expired -> AskHumanToolResult(status="timeout")
 * still waiting (defensive: the host resumed us early) -> re-emit the same
-  HumanInputRequired pause rebuilt from the stored form definition.
+  HITL pause rebuilt from the stored form definition.
 
 It only *reads* existing HITL form state — it never mutates the form or the HITL
 submission flow. The DB read (``resolve_ask_human_form``) is kept thin so the
@@ -32,7 +32,7 @@ from sqlalchemy import select
 
 from core.db.session_factory import session_factory
 from core.workflow.human_input import FormDefinition, HumanInputFormStatus, session_binding
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from models.human_input import HumanInputForm
 
 # A WAITING form has not been answered yet; the other terminal states map onto
@@ -55,7 +55,7 @@ class AskHumanResumeOutcome:
     """
 
     deferred_result: AskHumanToolResult | None = None
-    repause: HumanInputRequired | None = None
+    repause: HitlRequired | None = None
 
 
 def resolve_ask_human_form(*, form_id: str, tenant_id: str, node_id: str) -> AskHumanResumeOutcome | None:
@@ -138,17 +138,11 @@ def _selected_action(*, selected_action_id: str | None, definition: FormDefiniti
     return AskHumanSelectedAction(id=selected_action_id, label=label)
 
 
-def _rebuild_pause(*, definition: FormDefinition, form_id: str, node_id: str) -> HumanInputRequired:
-    return HumanInputRequired.model_validate(
-        {
-            "form_id": session_binding.issue_session_id_for_form(form_id=form_id),
-            "form_content": definition.rendered_content or definition.form_content,
-            "inputs": [form_input.model_dump(mode="json") for form_input in definition.inputs],
-            "actions": [action.model_dump(mode="json") for action in definition.user_actions],
-            "node_id": node_id,
-            "node_title": definition.node_title or node_id,
-            "resolved_default_values": dict(definition.default_values),
-        }
+def _rebuild_pause(*, definition: FormDefinition, form_id: str, node_id: str) -> HitlRequired:
+    return HitlRequired(
+        session_id=session_binding.issue_session_id_for_form(form_id=form_id),
+        node_id=node_id,
+        node_title=definition.node_title or node_id,
     )
 
 

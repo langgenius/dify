@@ -32,7 +32,7 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, PauseReason, PauseReasonType, SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
@@ -2106,7 +2106,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
 
-    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    # form_id is not empty if and only if type_ is the current or legacy HITL pause type.
     #
     form_id: Mapped[str] = mapped_column(
         String(36),
@@ -2148,11 +2148,11 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
         from core.workflow.human_input import session_binding
 
         match pause_reason:
-            case HumanInputRequired():
+            case HitlRequired():
                 return cls(
                     pause_id=pause_id,
-                    type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
-                    form_id=session_binding.resolve_form_id_from_session_id(session_id=pause_reason.form_id),
+                    type_=PauseReasonType.HITL_REQUIRED,
+                    form_id=session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id),
                     node_id=pause_reason.node_id,
                 )
             case SchedulingPause():
@@ -2163,10 +2163,9 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     def to_entity(self) -> PauseReason:
         from core.workflow.human_input import session_binding
 
-        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
-            return HumanInputRequired(
-                form_id=session_binding.issue_session_id_for_form(form_id=self.form_id),
-                form_content="",
+        if self.type_ in {PauseReasonType.HITL_REQUIRED, PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED}:
+            return HitlRequired(
+                session_id=session_binding.issue_session_id_for_form(form_id=self.form_id),
                 node_id=self.node_id,
                 node_title="",
             )

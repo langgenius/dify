@@ -24,6 +24,7 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.repositories.human_input_repository import (
     FormCreateParams,
+    HumanInputFormEntity,
     HumanInputFormRepository,
     HumanInputFormRepositoryImpl,
 )
@@ -63,11 +64,7 @@ from graphon.nodes.llm.runtime_protocols import (
     RetrieverAttachmentLoaderProtocol,
 )
 from graphon.nodes.protocols import FileReferenceFactoryProtocol, HttpClientProtocol, ToolFileManagerProtocol
-from graphon.nodes.runtime import (
-    HumanInputFormStateProtocol,
-    HumanInputNodeRuntimeProtocol,
-    ToolNodeRuntimeProtocol,
-)
+from graphon.nodes.runtime import ToolNodeRuntimeProtocol
 from graphon.nodes.tool.exc import ToolNodeError, ToolRuntimeInvocationError, ToolRuntimeResolutionError
 from graphon.nodes.tool_runtime_entities import (
     ToolRuntimeHandle,
@@ -760,7 +757,7 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
                 return ToolRuntimeInvocationError(str(exc))
 
 
-class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
+class DifyHumanInputNodeRuntime:
     def __init__(
         self,
         run_context: Mapping[str, Any] | DifyRunContext,
@@ -824,8 +821,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             form_repository=form_repository,
         )
 
-    @override
-    def get_form(self, *, node_id: str) -> HumanInputFormStateProtocol | None:
+    def get_form(self, *, node_id: str) -> HumanInputFormEntity | None:
         repo = self.build_form_repository()
         return repo.get_form(node_id)
 
@@ -841,7 +837,6 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
             file_value_restorer=lambda mapping: self._file_reference_factory.build_from_mapping(mapping=mapping),
         )
 
-    @override
     def create_form(
         self,
         *,
@@ -849,7 +844,7 @@ class DifyHumanInputNodeRuntime(HumanInputNodeRuntimeProtocol):
         node_data: HumanInputNodeData,
         rendered_content: str,
         resolved_default_values: Mapping[str, Any],
-    ) -> HumanInputFormStateProtocol:
+    ) -> HumanInputFormEntity:
         repo = self.build_form_repository()
         params = FormCreateParams(
             workflow_execution_id=self._workflow_execution_id_getter() if self._workflow_execution_id_getter else None,
