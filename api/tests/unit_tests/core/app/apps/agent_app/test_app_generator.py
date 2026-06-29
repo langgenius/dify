@@ -10,6 +10,7 @@ manager is replaced with a no-op so the thread body can run inline.
 from __future__ import annotations
 
 import contextlib
+import json
 
 import pytest
 from pytest_mock import MockerFixture
@@ -97,16 +98,26 @@ class TestGenerateSuccess:
         )
         mocker.patch(f"{MODULE}.ModelConfigConverter.convert", return_value=mocker.MagicMock(model="gpt-4o-mini"))
         mocker.patch(f"{MODULE}.TraceQueueManager", return_value=mocker.MagicMock())
-        mocker.patch(f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user"))
+        generate_entity = mocker.patch(
+            f"{MODULE}.AgentAppGenerateEntity", return_value=mocker.MagicMock(task_id="t", user_id="user")
+        )
         mocker.patch(f"{MODULE}.MessageBasedAppQueueManager", return_value=mocker.MagicMock())
         thread_obj = mocker.MagicMock()
         mocker.patch(f"{MODULE}.threading.Thread", return_value=thread_obj)
         mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert", return_value={"result": "ok"})
+        file_mappings = [
+            {
+                "type": "image",
+                "transfer_method": "local_file",
+                "url": "",
+                "upload_file_id": "upload-file-1",
+            }
+        ]
 
         result = generator.generate(
             app_model=app_model,
             user=user,
-            args={"query": "hello", "inputs": {"name": "world"}},
+            args={"query": "hello", "inputs": {"name": "world"}, "files": file_mappings},
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
@@ -119,6 +130,7 @@ class TestGenerateSuccess:
             draft_type=None,
             user=user,
         )
+        assert generate_entity.call_args.kwargs["prompt_file_mappings"] == file_mappings
 
     def test_generate_loads_existing_conversation(self, generator: AgentAppGenerator, mocker: MockerFixture):
         app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
@@ -199,10 +211,18 @@ class TestGenerateWorker:
 
         mocker.patch("libs.flask_utils.preserve_flask_contexts", ctx_manager)
 
-    def _wire(self, generator: AgentAppGenerator, mocker: MockerFixture, *, run_side_effect=None, handled=False):
+    def _wire(
+        self,
+        generator: AgentAppGenerator,
+        mocker: MockerFixture,
+        *,
+        run_side_effect=None,
+        handled=False,
+        guard_query="query",
+    ):
         generator._get_conversation = mocker.MagicMock(return_value=mocker.MagicMock(id="conv"))
         generator._get_message = mocker.MagicMock(return_value=mocker.MagicMock(id="msg"))
-        generator._run_input_guards = mocker.MagicMock(return_value=(handled, "query"))
+        generator._run_input_guards = mocker.MagicMock(return_value=(handled, guard_query))
         generator._resolve_agent_by_id = mocker.MagicMock(
             return_value=(mocker.MagicMock(), mocker.MagicMock(), mocker.MagicMock())
         )
@@ -229,6 +249,7 @@ class TestGenerateWorker:
         is_resume=False,
         query="query",
         runtime_session_snapshot_id="s",
+        prompt_file_mappings=(),
     ):
         generator._generate_worker(
             flask_app=mocker.MagicMock(),
@@ -239,6 +260,7 @@ class TestGenerateWorker:
                 agent_runtime_session_snapshot_id=runtime_session_snapshot_id,
                 model_conf=mocker.MagicMock(model="m"),
                 query=query,
+                prompt_file_mappings=prompt_file_mappings,
             ),
             queue_manager=queue_manager,
             conversation_id="conv",
@@ -262,6 +284,30 @@ class TestGenerateWorker:
 
         assert runner.run.call_args.kwargs["agent_config_snapshot_id"] == "s"
         assert runner.run.call_args.kwargs["session_scope_snapshot_id"] is None
+
+    def test_worker_appends_prompt_files_to_backend_query(self, generator, mocker: MockerFixture):
+        runner = self._wire(generator, mocker, guard_query="你看得见这张图片吗")
+        queue_manager = mocker.MagicMock()
+        file_mappings = [
+            {
+                "type": "image",
+                "transfer_method": "local_file",
+                "url": "",
+                "upload_file_id": "upload-file-1",
+            }
+        ]
+
+        self._call(
+            generator,
+            mocker,
+            queue_manager,
+            query="你看得见这张图片吗",
+            prompt_file_mappings=file_mappings,
+        )
+
+        assert runner.run.call_args.kwargs["query"] == (
+            f"你看得见这张图片吗\n{json.dumps(file_mappings, ensure_ascii=False)}"
+        )
 
     def test_input_guard_short_circuit_skips_backend(self, generator, mocker: MockerFixture):
         runner = self._wire(generator, mocker, handled=True)
