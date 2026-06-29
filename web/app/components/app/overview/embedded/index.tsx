@@ -19,6 +19,7 @@ import {
   getEmbeddedIframeSnippet,
   getEmbeddedScriptSnippet,
   isWorkflowLaunchInputSupported,
+  normalizeAppBaseUrl,
 } from '../app-card-utils'
 import WorkflowHiddenInputFields from '../workflow-hidden-input-fields'
 import style from './style.module.css'

@@ -223,6 +223,33 @@ export const compressAndEncodeBase64 = async (input: string) => {
   return btoa(String.fromCharCode(...compressedUint8Array))
 }
 
+export const normalizeAppBaseUrl = (appBaseUrl: string): string => {
+  if (!appBaseUrl || typeof window === 'undefined')
+    return appBaseUrl
+
+  try {
+    const url = new URL(appBaseUrl)
+    const currentOrigin = new URL(window.location.origin)
+
+    // If the protocol and hostname match, but appBaseUrl has no explicit port
+    // while the current page has a non-standard port, use the current origin
+    // to ensure the port is included in generated URLs.
+    if (
+      url.protocol === currentOrigin.protocol
+      && url.hostname === currentOrigin.hostname
+      && !url.port
+      && currentOrigin.port
+    ) {
+      return currentOrigin.origin
+    }
+  }
+  catch {
+    // ignore invalid URL
+  }
+
+  return appBaseUrl
+}
+
 export const getAppCardDisplayState = ({
   appInfo,
   cardType,
@@ -246,7 +273,7 @@ export const getAppCardDisplayState = ({
   const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode || triggerModeDisabled
   const runningStatus = (appUnpublished || missingStartNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
   const appMode = getCardAppMode(appInfo.mode)
-  const appBaseUrl = appInfo.site?.app_base_url ?? ''
+  const appBaseUrl = normalizeAppBaseUrl(appInfo.site?.app_base_url ?? '')
   const accessToken = appInfo.site?.access_token ?? ''
 
   return {
