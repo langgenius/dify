@@ -209,19 +209,29 @@ function WorkflowInlineAgentConfigureWorkspaceComposerScope({
   }
 
   return (
-    <AgentComposerProvider
-      key={composerSessionKey}
-      initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
-      initialOriginalConfig={buildDraft.agentSoulConfig}
+    <ScopeProvider
+      atoms={[
+        [agentConfigureConversationIdsAtom, {
+          build: props.inlineComposerState?.debug_conversation_id ?? null,
+          preview: null,
+        }],
+      ]}
+      name="WorkflowInlineAgentConfigureConversation"
     >
-      <WorkflowInlineAgentConfigureWorkspaceContent
-        {...props}
-        activeConfigSnapshot={activeConfigSnapshot}
-        agentId={agentId}
-        agentSoulConfig={agentSoulConfig}
-        buildDraft={buildDraft}
-      />
-    </AgentComposerProvider>
+      <AgentComposerProvider
+        key={composerSessionKey}
+        initialDraft={agentSoulConfigToFormState(buildDraft.agentSoulConfig)}
+        initialOriginalConfig={buildDraft.agentSoulConfig}
+      >
+        <WorkflowInlineAgentConfigureWorkspaceContent
+          {...props}
+          activeConfigSnapshot={activeConfigSnapshot}
+          agentId={agentId}
+          agentSoulConfig={agentSoulConfig}
+          buildDraft={buildDraft}
+        />
+      </AgentComposerProvider>
+    </ScopeProvider>
   )
 }
 

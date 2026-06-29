@@ -62,6 +62,8 @@ type WorkflowAgentComposerMutationResponse = Parameters<NonNullable<ReturnType<t
 const createAgent = (overrides: Partial<AgentMutationResponse> = {}): AgentMutationResponse => ({
   ...overrides,
   active_config_is_published: overrides.active_config_is_published ?? false,
+  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
+  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   enable_api: overrides.enable_api ?? true,
   enable_site: overrides.enable_site ?? true,
   description: overrides.description ?? 'Agent description',
