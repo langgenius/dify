@@ -16,6 +16,7 @@ API_ROOT = Path(__file__).resolve().parents[5]
         "repositories/sqlalchemy_api_workflow_run_repository.py",
         "services/human_input_service.py",
         "services/human_input_file_upload_service.py",
+        "services/workflow_service.py",
     ],
 )
 def test_task1_human_input_semantics_move_off_graphon_imports(relative_path: str) -> None:
