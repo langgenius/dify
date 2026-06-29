@@ -40,14 +40,16 @@ class ExternalDatasetTestService:
             if response.get("retrievalResults"):
                 retrieval_results = response.get("retrievalResults")
                 for retrieval_result in retrieval_results:
-                    # filter out results with score less than threshold
-                    if retrieval_result.get("score") < retrieval_setting.score_threshold:
+                    score = retrieval_result.get("score") or 0.0
+                    if score < retrieval_setting.score_threshold:
                         continue
+                    metadata = retrieval_result.get("metadata") or {}
+                    content = retrieval_result.get("content") or {}
                     result = {
-                        "metadata": retrieval_result.get("metadata"),
-                        "score": retrieval_result.get("score"),
-                        "title": retrieval_result.get("metadata").get("x-amz-bedrock-kb-source-uri"),
-                        "content": retrieval_result.get("content").get("text"),
+                        "metadata": metadata,
+                        "score": score,
+                        "title": metadata.get("x-amz-bedrock-kb-source-uri"),
+                        "content": content.get("text"),
                     }
                     results.append(result)
         return {"records": results}
