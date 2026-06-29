@@ -1,5 +1,6 @@
 import importlib
 import pkgutil
+import re
 from collections.abc import Callable, Iterator, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass
 from functools import lru_cache
@@ -84,6 +85,7 @@ LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
     (BuiltinNodeTypes.START, BuiltinNodeTypes.DATASOURCE, *TRIGGER_NODE_TYPES)
 )
+_LEGACY_HUMAN_INPUT_OUTPUT_PATTERN = re.compile(r"\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}")
 
 
 @dataclass(frozen=True, slots=True)
@@ -463,6 +465,7 @@ class DifyNodeFactory(NodeFactory):
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
+        callback_node_data = self._build_dify_human_input_node_data_for_callback(resolved_node_data)
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
@@ -482,7 +485,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "hitl_callback": self._build_human_input_hitl_callback(
-                    node_data=cast(HumanInputNodeData, resolved_node_data)
+                    node_data=callback_node_data
                 ),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
@@ -544,6 +547,32 @@ class DifyNodeFactory(NodeFactory):
         if callable(validate_node_data):
             return cast("BaseNodeData", validate_node_data(node_data))
         return node_data
+
+    @staticmethod
+    def _build_dify_human_input_node_data_for_callback(node_data: BaseNodeData) -> HumanInputNodeData:
+        raw_node_data = node_data.model_dump(mode="python", by_alias=True)
+        raw_form_content = raw_node_data.get("form_content")
+        if isinstance(raw_form_content, str):
+            raw_node_data["form_content"] = _LEGACY_HUMAN_INPUT_OUTPUT_PATTERN.sub(
+                lambda match: f"{{{{#$output.{match.group(1)}#}}}}",
+                raw_form_content,
+            )
+        raw_inputs = raw_node_data.get("inputs")
+        if isinstance(raw_inputs, list):
+            normalized_inputs: list[dict[str, Any]] = []
+            for raw_input in raw_inputs:
+                if not isinstance(raw_input, Mapping):
+                    normalized_inputs.append(raw_input)
+                    continue
+                normalized_input = dict(raw_input)
+                if "output_variable_name" not in normalized_input and isinstance(normalized_input.get("variable"), str):
+                    normalized_input["output_variable_name"] = normalized_input["variable"]
+                normalized_input.pop("label", None)
+                normalized_input.pop("variable", None)
+                normalized_input.setdefault("type", "paragraph")
+                normalized_inputs.append(normalized_input)
+            raw_node_data["inputs"] = normalized_inputs
+        return HumanInputNodeData.model_validate(raw_node_data)
 
     @staticmethod
     def _resolve_node_class(*, node_type: NodeType, node_version: str) -> type[Node]:
