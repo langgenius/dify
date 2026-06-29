@@ -23,7 +23,17 @@ from dify_agent.protocol import (
     RunSucceededEventData,
     RuntimeLayerSpec,
 )
-from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
+from pydantic_ai.messages import (
+    FunctionToolCallEvent,
+    FunctionToolResultEvent,
+    PartDeltaEvent,
+    PartStartEvent,
+    TextPart,
+    TextPartDelta,
+    ThinkingPartDelta,
+    ToolCallPart,
+    ToolReturnPart,
+)
 
 from clients.agent_backend import (
     AgentBackendError,
@@ -31,14 +41,16 @@ from clients.agent_backend import (
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
+from core.app.apps.agent_app import app_runner as app_runner_module
 from core.app.apps.agent_app.app_runner import AgentAppRunner
 from core.app.apps.agent_app.runtime_request_builder import AgentAppRuntimeRequestBuilder
 from core.app.apps.agent_app.session_store import AgentAppSessionScope, StoredAgentAppSession
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from models.agent_config_entities import AgentSoulConfig
+from models.model import MessageAgentThought
 
 
 class _FakeCredentialsProvider:
@@ -136,6 +148,67 @@ class _StreamingPartStartFakeAgentBackendRunClient(FakeAgentBackendRunClient):
                 session_snapshot=CompositorSessionSnapshot(layers=[]),
             ),
         )
+
+
+class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del after
+        created_at = datetime(2026, 1, 1, tzinfo=UTC)
+        yield RunStartedEvent(id="1-0", run_id=run_id, created_at=created_at)
+        yield PydanticAIStreamRunEvent(
+            id="2-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=0, delta=ThinkingPartDelta(content_delta="I need to inspect the file.")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="3-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolCallEvent(
+                part=ToolCallPart(tool_name="bash", args={"cmd": "ls"}, tool_call_id="tool-1")
+            ),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="4-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=FunctionToolResultEvent(part=ToolReturnPart(tool_name="bash", content="ok", tool_call_id="tool-1")),
+        )
+        yield PydanticAIStreamRunEvent(
+            id="5-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=PartDeltaEvent(index=1, delta=TextPartDelta(content_delta="final answer")),
+        )
+        yield RunSucceededEvent(
+            id="6-0",
+            run_id=run_id,
+            created_at=created_at,
+            data=RunSucceededEventData(
+                output={"text": "final answer"},
+                session_snapshot=CompositorSessionSnapshot(layers=[]),
+            ),
+        )
+
+
+class _FakeDbSession:
+    def __init__(self) -> None:
+        self.rows: dict[str, MessageAgentThought] = {}
+        self.rollback_count = 0
+
+    def add(self, row: MessageAgentThought) -> None:
+        self.rows[str(row.id)] = row
+
+    def commit(self) -> None:
+        pass
+
+    def get(self, _model: type[MessageAgentThought], row_id: str) -> MessageAgentThought | None:
+        return self.rows.get(row_id)
+
+    def rollback(self) -> None:
+        self.rollback_count += 1
 
 
 class _FakeSessionStore:
@@ -309,6 +382,28 @@ def test_successful_turn_forwards_part_start_text_and_publishes_missing_terminal
     assert [event.chunk.delta.message.content for event in chunk_events] == ["hello", " agent"]
     assert len(end_events) == 1
     assert end_events[0].llm_result.message.content == "hello agent"
+
+
+def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    client = _ProcessStreamingFakeAgentBackendRunClient()
+    store = _FakeSessionStore()
+    qm = _FakeQueueManager()
+
+    _run(_runner(client, store), qm)
+
+    chunk_events = [e for e in qm.events if isinstance(e, QueueLLMChunkEvent)]
+    assert [event.chunk.delta.message.content for event in chunk_events] == ["final answer"]
+    thought_events = [e for e in qm.events if isinstance(e, QueueAgentThoughtEvent)]
+    assert len(thought_events) >= 3
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert rows[0].thought == "I need to inspect the file."
+    assert rows[0].tool is None
+    assert rows[1].tool == "bash"
+    assert rows[1].tool_input == '{"cmd": "ls"}'
+    assert rows[1].observation == "ok"
 
 
 def test_prior_session_snapshot_is_threaded_into_request():
