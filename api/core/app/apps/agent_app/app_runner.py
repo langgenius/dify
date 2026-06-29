@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 import logging
+from decimal import Decimal
 from typing import Any, Literal
 
 from dify_agent.layers.ask_human import AskHumanToolArgs
@@ -41,13 +42,16 @@ from core.app.apps.agent_app.session_store import (
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import DifyRunContext
-from core.app.entities.queue_entities import QueueLLMChunkEvent, QueueMessageEndEvent
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueLLMChunkEvent, QueueMessageEndEvent
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
 from core.workflow.nodes.agent_v2.ask_human_hitl import AskHumanFormBuildError, create_ask_human_form
 from core.workflow.nodes.agent_v2.ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
+from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from models.agent_config_entities import AgentSoulConfig
+from models.enums import CreatorUserRole
+from models.model import MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +138,256 @@ def publish_message_end(
     )
 
 
+class _AgentProcessRecorder:
+    """Persist Agent v2 thinking/tool process events through the legacy thought model."""
+
+    def __init__(
+        self,
+        *,
+        dify_context: DifyRunContext,
+        message_id: str,
+        queue_manager: AppQueueManager,
+    ) -> None:
+        self._dify_context = dify_context
+        self._message_id = message_id
+        self._queue_manager = queue_manager
+        self._next_position = 1
+        self._thinking_by_index: dict[int, str] = {}
+        self._tool_by_index: dict[int, str] = {}
+        self._tool_by_call_id: dict[str, str] = {}
+
+    def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
+        data = event.data
+        if not isinstance(data, dict):
+            return
+
+        event_kind = data.get("event_kind")
+        if event_kind == "part_delta":
+            self._handle_part_delta(data)
+        elif event_kind in {"part_start", "part_end"}:
+            self._handle_part(data)
+        elif event_kind in {"function_tool_call", "output_tool_call"}:
+            self._handle_tool_call_event(data)
+        elif event_kind in {"function_tool_result", "output_tool_result"}:
+            self._handle_tool_result_event(data)
+
+    def _handle_part_delta(self, data: dict[str, Any]) -> None:
+        delta = data.get("delta")
+        if not isinstance(delta, dict):
+            return
+
+        index = _event_index(data)
+        delta_kind = delta.get("part_delta_kind")
+        if delta_kind == "thinking":
+            content_delta = delta.get("content_delta")
+            if isinstance(content_delta, str) and content_delta:
+                self._append_thinking(index, content_delta)
+            return
+
+        if delta_kind == "tool_call":
+            self._record_tool_call_delta(index, delta)
+
+    def _handle_part(self, data: dict[str, Any]) -> None:
+        part = data.get("part")
+        if not isinstance(part, dict):
+            return
+
+        index = _event_index(data)
+        part_kind = part.get("part_kind")
+        if part_kind == "thinking":
+            content = part.get("content")
+            if isinstance(content, str) and content:
+                self._append_thinking(index, content)
+            return
+
+        if part_kind in {"tool-call", "builtin-tool-call"}:
+            self._record_tool_call_part(index, part)
+            return
+
+        if part_kind in {"tool-return", "builtin-tool-return"}:
+            self._record_tool_return_part(part)
+
+    def _handle_tool_call_event(self, data: dict[str, Any]) -> None:
+        part = data.get("part")
+        if isinstance(part, dict):
+            self._record_tool_call_part(_event_index(data), part)
+
+    def _handle_tool_result_event(self, data: dict[str, Any]) -> None:
+        part = data.get("part") or data.get("result")
+        if isinstance(part, dict):
+            self._record_tool_return_part(part)
+            return
+
+        content = data.get("content")
+        if content is not None:
+            self._record_tool_observation(None, content)
+
+    def _append_thinking(self, index: int, content_delta: str) -> None:
+        thought_id = self._thinking_by_index.get(index)
+        if thought_id is None:
+            thought_id = self._create_thought(thought=content_delta)
+            self._thinking_by_index[index] = thought_id
+            return
+        self._update_thought(thought_id, thought_delta=content_delta)
+
+    def _record_tool_call_delta(self, index: int, delta: dict[str, Any]) -> None:
+        tool_call_id = _string_or_none(delta.get("tool_call_id"))
+        tool_name = _string_or_none(delta.get("tool_name_delta"))
+        args_delta = delta.get("args_delta")
+        thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
+        if thought_id is None:
+            thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(args_delta))
+            self._remember_tool_thought(index=index, tool_call_id=tool_call_id, thought_id=thought_id)
+            return
+
+        self._update_thought(
+            thought_id,
+            tool=tool_name,
+            tool_input_delta=_json_or_text(args_delta),
+        )
+
+    def _record_tool_call_part(self, index: int, part: dict[str, Any]) -> None:
+        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_name = _string_or_none(part.get("tool_name"))
+        thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
+        if thought_id is None:
+            thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(part.get("args")))
+            self._remember_tool_thought(index=index, tool_call_id=tool_call_id, thought_id=thought_id)
+            return
+
+        self._update_thought(
+            thought_id,
+            tool=tool_name,
+            tool_input=_json_or_text(part.get("args")),
+        )
+
+    def _record_tool_return_part(self, part: dict[str, Any]) -> None:
+        tool_call_id = _string_or_none(part.get("tool_call_id"))
+        content = part.get("content")
+        if content is None:
+            content = part
+        self._record_tool_observation(tool_call_id, content)
+
+    def _record_tool_observation(self, tool_call_id: str | None, observation: Any) -> None:
+        thought_id = self._tool_by_call_id.get(tool_call_id) if tool_call_id else None
+        if thought_id is None and self._tool_by_index:
+            thought_id = next(reversed(self._tool_by_index.values()))
+        if thought_id is None:
+            thought_id = self._create_thought()
+        self._update_thought(thought_id, observation=_json_or_text(observation))
+
+    def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
+        if tool_call_id and tool_call_id in self._tool_by_call_id:
+            return self._tool_by_call_id[tool_call_id]
+        return self._tool_by_index.get(index)
+
+    def _remember_tool_thought(self, *, index: int, tool_call_id: str | None, thought_id: str) -> None:
+        self._tool_by_index[index] = thought_id
+        if tool_call_id:
+            self._tool_by_call_id[tool_call_id] = thought_id
+
+    def _create_thought(
+        self, *, thought: str | None = None, tool: str | None = None, tool_input: str | None = None
+    ) -> str:
+        row = MessageAgentThought(
+            message_id=self._message_id,
+            message_chain_id=None,
+            thought=thought,
+            tool=tool,
+            tool_labels_str=_tool_labels(tool),
+            tool_meta_str="{}",
+            tool_input=tool_input,
+            observation=None,
+            tool_process_data=None,
+            message=None,
+            message_token=0,
+            message_unit_price=Decimal(0),
+            message_price_unit=Decimal("0.001"),
+            message_files="",
+            answer="",
+            answer_token=0,
+            answer_unit_price=Decimal(0),
+            answer_price_unit=Decimal("0.001"),
+            tokens=0,
+            total_price=Decimal(0),
+            position=self._next_position,
+            currency="USD",
+            latency=0,
+            created_by_role=self._created_by_role(),
+            created_by=self._dify_context.user_id,
+        )
+        self._next_position += 1
+        db.session.add(row)
+        db.session.commit()
+        thought_id = str(row.id)
+        self._queue_manager.publish(
+            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
+        )
+        return thought_id
+
+    def _update_thought(
+        self,
+        thought_id: str,
+        *,
+        thought_delta: str | None = None,
+        tool: str | None = None,
+        tool_input: str | None = None,
+        tool_input_delta: str | None = None,
+        observation: str | None = None,
+    ) -> None:
+        row = db.session.get(MessageAgentThought, thought_id)
+        if row is None:
+            return
+
+        if thought_delta:
+            row.thought = f"{row.thought or ''}{thought_delta}"
+        if tool:
+            row.tool = tool
+            row.tool_labels_str = _tool_labels(tool)
+        if tool_input is not None:
+            row.tool_input = tool_input
+        if tool_input_delta:
+            row.tool_input = f"{row.tool_input or ''}{tool_input_delta}"
+        if observation is not None:
+            row.observation = observation
+
+        db.session.commit()
+        self._queue_manager.publish(
+            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
+        )
+
+    def _created_by_role(self) -> CreatorUserRole:
+        if self._dify_context.invoke_from.runs_as_account():
+            return CreatorUserRole.ACCOUNT
+        return CreatorUserRole.END_USER
+
+
+def _event_index(data: dict[str, Any]) -> int:
+    index = data.get("index")
+    return index if isinstance(index, int) else -1
+
+
+def _string_or_none(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
+
+
+def _json_or_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return value
+    try:
+        return json.dumps(value, ensure_ascii=False)
+    except Exception:
+        return str(value)
+
+
+def _tool_labels(tool: str | None) -> str:
+    if not tool:
+        return "{}"
+    return json.dumps({tool: {"en_US": tool, "zh_Hans": tool}}, ensure_ascii=False)
+
+
 class AgentAppRunner:
     """Runs one Agent App conversation turn against the Agent backend."""
 
@@ -202,6 +456,8 @@ class AgentAppRunner:
         create_response = self._agent_backend_client.create_run(runtime.request)
         terminal, streamed_answer = self._consume_stream(
             create_response.run_id,
+            dify_context=dify_context,
+            message_id=message_id,
             queue_manager=queue_manager,
             model_name=model_name,
             query=query,
@@ -336,12 +592,19 @@ class AgentAppRunner:
         self,
         run_id: str,
         *,
+        dify_context: DifyRunContext,
+        message_id: str,
         queue_manager: AppQueueManager,
         model_name: str,
         query: str | None,
     ):
         terminal = None
         streamed_answer_parts: list[str] = []
+        process_recorder = _AgentProcessRecorder(
+            dify_context=dify_context,
+            message_id=message_id,
+            queue_manager=queue_manager,
+        )
         for public_event in self._agent_backend_client.stream_events(run_id):
             if queue_manager.is_stopped():
                 self._cancel_run(run_id)
@@ -355,6 +618,17 @@ class AgentAppRunner:
                     AgentBackendInternalEventType.STREAM_EVENT,
                 ):
                     if isinstance(internal_event, AgentBackendStreamInternalEvent):
+                        try:
+                            process_recorder.handle_stream_event(internal_event)
+                        except Exception:
+                            db.session.rollback()
+                            logger.warning(
+                                "Failed to persist Agent App process event: run_id=%s message_id=%s event_kind=%s",
+                                run_id,
+                                message_id,
+                                internal_event.event_kind,
+                                exc_info=True,
+                            )
                         text_delta = self._extract_stream_text_delta(internal_event)
                         if text_delta:
                             streamed_answer_parts.append(text_delta)
