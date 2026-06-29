@@ -175,11 +175,14 @@ class DifyApiAgentStubConfigRequestHandler:
 
     @staticmethod
     def _config_query_params(execution_context: DifyExecutionContextLayerConfig) -> dict[str, str]:
-        return {
+        params = {
             "tenant_id": execution_context.tenant_id,
             "config_version_id": execution_context.agent_config_version_id or "",
             "config_version_kind": execution_context.agent_config_version_kind or "",
         }
+        if execution_context.user_id is not None:
+            params["user_id"] = execution_context.user_id
+        return params
 
     async def _get_inner_api_json(self, path: str, params: Mapping[str, str]) -> object:
         response = await self._request("GET", path, params=dict(params))

@@ -27,6 +27,7 @@ from services.agent_config_service import (
 
 class _ConfigTargetQuery(BaseModel):
     tenant_id: str
+    user_id: str | None = None
     config_version_id: str
     config_version_kind: AgentConfigVersionKind
 
@@ -63,6 +64,7 @@ def _target_query_from_request() -> _ConfigTargetQuery:
     return _ConfigTargetQuery.model_validate(
         {
             "tenant_id": request.args.get("tenant_id"),
+            "user_id": request.args.get("user_id"),
             "config_version_id": request.args.get("config_version_id"),
             "config_version_kind": request.args.get("config_version_kind"),
         }
@@ -84,6 +86,7 @@ class AgentConfigManifestApi(Resource):
             return AgentConfigService().manifest(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
+                user_id=query.user_id,
                 config_version_id=query.config_version_id,
                 config_version_kind=query.config_version_kind,
             )
@@ -104,6 +107,7 @@ class AgentConfigSkillPullApi(Resource):
             result = AgentConfigService().pull_skill(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
+                user_id=query.user_id,
                 config_version_id=query.config_version_id,
                 config_version_kind=query.config_version_kind,
                 name=name,
@@ -131,6 +135,7 @@ class AgentConfigSkillInspectApi(Resource):
             return AgentConfigService().inspect_skill(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
+                user_id=query.user_id,
                 config_version_id=query.config_version_id,
                 config_version_kind=query.config_version_kind,
                 name=name,
@@ -152,6 +157,7 @@ class AgentConfigFilePullApi(Resource):
             result = AgentConfigService().pull_file(
                 tenant_id=query.tenant_id,
                 agent_id=agent_id,
+                user_id=query.user_id,
                 config_version_id=query.config_version_id,
                 config_version_kind=query.config_version_kind,
                 name=name,
