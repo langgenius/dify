@@ -281,7 +281,13 @@ class TestApiKeyAuthService:
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
     def test_create_provider_auth_database_error_handling(
-        self, mock_encrypter, mock_factory, flask_app_with_containers: Flask, tenant_id, mock_args
+        self,
+        mock_encrypter,
+        mock_factory,
+        flask_app_with_containers: Flask,
+        db_session_with_containers: Session,
+        tenant_id,
+        mock_args,
     ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
@@ -301,7 +307,9 @@ class TestApiKeyAuthService:
 
     @patch("services.auth.api_key_auth_service.ApiKeyAuthFactory")
     @patch("services.auth.api_key_auth_service.encrypter")
-    def test_create_provider_auth_encryption_exception(self, mock_encrypter, mock_factory, tenant_id, mock_args):
+    def test_create_provider_auth_encryption_exception(
+        self, mock_encrypter, mock_factory, db_session_with_containers: Session, tenant_id, mock_args
+    ):
         mock_auth_instance = Mock()
         mock_auth_instance.validate_credentials.return_value = True
         mock_factory.return_value = mock_auth_instance
