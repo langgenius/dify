@@ -395,6 +395,66 @@ def test_load_resumption_context_should_parse_valid_state_into_context() -> None
     assert result.get_generate_entity().task_id == "task-ctx"
 
 
+def test_build_snapshot_events_resolves_session_id_before_pause_form_lookups(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[
+            HumanInputRequired(
+                form_id="session-1",
+                form_content="content",
+                node_id="node-1",
+                node_title="Human Input",
+                inputs=[],
+                actions=[],
+            )
+        ],
+    )
+    resolved_session_ids: list[str] = []
+
+    class _Binding:
+        @staticmethod
+        def resolve_form_id_from_session_id(*, session_id: str) -> str:
+            resolved_session_ids.append(session_id)
+            return "form-1"
+
+    def _load_form_dispositions(form_ids, session=None, surface=None):
+        assert list(form_ids) == ["form-1"]
+        return {"form-1": FormDisposition(form_token="token", approval_channels=[])}
+
+    session = SimpleNamespace(
+        execute=lambda _stmt: [
+            ("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}'),
+        ]
+    )
+
+    monkeypatch.setattr(service_module, "session_binding", _Binding(), raising=False)
+    monkeypatch.setattr(service_module, "load_form_dispositions_by_form_id", _load_form_dispositions)
+
+    events = _build_snapshot_events(
+        workflow_run=workflow_run,
+        node_snapshots=[snapshot],
+        task_id="task-1",
+        message_context=None,
+        pause_entity=pause_entity,
+        resumption_context=_build_resumption_context("task-1"),
+        session_maker=_SessionMaker(session),
+    )
+
+    assert resolved_session_ids == ["session-1"]
+    human_input_event = next(event for event in events if event["event"] == "human_input_required")
+    assert human_input_event["data"]["form_id"] == "session-1"
+    assert human_input_event["data"]["form_token"] == "token"
+    pause_event = next(event for event in events if event["event"] == "workflow_paused")
+    assert pause_event["data"]["reasons"][0]["form_id"] == "session-1"
+    assert pause_event["data"]["reasons"][0]["form_token"] == "token"
+
+
 def test_resolve_task_id_should_return_workflow_run_id_when_buffer_state_is_missing() -> None:
     # Arrange
 

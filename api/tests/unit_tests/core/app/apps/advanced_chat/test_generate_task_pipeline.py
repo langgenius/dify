@@ -147,6 +147,62 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content() -> No
     assert message.status == MessageStatus.PAUSED
 
 
+def test_handle_workflow_paused_event_resolves_session_id_before_persisting_extra_content(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    pipeline = _build_pipeline()
+    pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
+    pipeline._workflow_response_converter = mock.Mock()
+    pipeline._workflow_response_converter.workflow_pause_to_stream_response.return_value = []
+    pipeline._ensure_graph_runtime_initialized = mock.Mock(
+        return_value=SimpleNamespace(
+            total_tokens=0,
+            node_run_steps=0,
+        ),
+    )
+    pipeline._save_message = mock.Mock()
+    pipeline._get_message = mock.Mock(return_value=SimpleNamespace(status=MessageStatus.NORMAL))
+    pipeline._persist_human_input_extra_content = mock.Mock()
+    pipeline._base_task_pipeline = mock.Mock()
+    pipeline._base_task_pipeline.queue_manager = mock.Mock()
+    pipeline._message_saved_on_pause = False
+
+    class _Binding:
+        @staticmethod
+        def resolve_form_id_from_session_id(*, session_id: str) -> str:
+            assert session_id == "session-1"
+            return "form-1"
+
+    monkeypatch.setattr(pipeline_module, "session_binding", _Binding(), raising=False)
+
+    @contextmanager
+    def fake_session():
+        session = mock.Mock()
+        yield session
+
+    pipeline._database_session = fake_session  # type: ignore[method-assign]
+
+    event = QueueWorkflowPausedEvent(
+        reasons=[
+            HumanInputRequired(
+                form_id="session-1",
+                form_content="content",
+                inputs=[],
+                actions=[],
+                node_id="node-1",
+                node_title="Approval",
+                resolved_default_values={},
+            )
+        ],
+        outputs={},
+        paused_nodes=["node-1"],
+    )
+
+    list(pipeline._handle_workflow_paused_event(event))
+
+    pipeline._persist_human_input_extra_content.assert_called_once_with(form_id="form-1", node_id="node-1")
+
+
 def test_resume_appends_chunks_to_paused_answer() -> None:
     app_config = SimpleNamespace(app_id="app-1", tenant_id="tenant-1", sensitive_word_avoidance=None)
     application_generate_entity = SimpleNamespace(

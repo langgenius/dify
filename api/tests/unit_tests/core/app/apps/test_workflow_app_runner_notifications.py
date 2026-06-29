@@ -57,3 +57,36 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
     assert kwargs["node_title"] == "Review"
 
     assert any(isinstance(evt, QueueWorkflowPausedEvent) for evt in queue_manager.published)
+
+
+def test_handle_pause_event_resolves_session_id_before_enqueuing_email_task(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    queue_manager = _DummyQueueManager()
+    runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
+    workflow_entry = _DummyWorkflowEntry()
+
+    reason = HumanInputRequired(
+        form_id="session-123",
+        form_content="content",
+        inputs=[],
+        actions=[],
+        node_id="node-1",
+        node_title="Review",
+    )
+    event = GraphRunPausedEvent(reasons=[reason], outputs={})
+
+    class _Binding:
+        @staticmethod
+        def resolve_form_id_from_session_id(*, session_id: str) -> str:
+            assert session_id == "session-123"
+            return "form-123"
+
+    email_task = MagicMock()
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", email_task)
+    monkeypatch.setattr("core.app.apps.workflow_app_runner.session_binding", _Binding(), raising=False)
+
+    runner._handle_event(workflow_entry, event)
+
+    kwargs = email_task.apply_async.call_args.kwargs["kwargs"]
+    assert kwargs["form_id"] == "form-123"
