@@ -37,8 +37,6 @@ type AgentSoulCliToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>[
 type AgentSoulToolRuntimeParameterValue = NonNullable<AgentSoulDifyToolConfig['runtime_parameters']>[string]
 type AgentSoulEnvVariableConfig = NonNullable<NonNullable<AgentSoulConfig['env']>['variables']>[number]
 
-export type AgentSoulConfigWithFiles = AgentSoulConfig
-
 const toKnowledgeDatasetRefs = (item: AgentKnowledgeRetrievalItem) => {
   if (item.selectedDatasets !== undefined) {
     return item.selectedDatasets.map(dataset => ({
