@@ -16,11 +16,17 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import StreamEvent
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.workflow.human_input import (
+    FormDefinition,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+    ValueSourceType,
+)
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource
-from graphon.nodes.human_input.enums import ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
 from models.human_input import RecipientType
@@ -39,12 +45,23 @@ from services.workflow_event_snapshot_service import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _patch_service_module_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(service_module, "json", json, raising=False)
+    monkeypatch.setattr(
+        service_module,
+        "session_binding",
+        SimpleNamespace(resolve_form_id_from_session_id=lambda *, session_id: "form-1"),
+        raising=False,
+    )
+
+
 @dataclass(frozen=True)
 class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
     workflow_run_id: str
     paused_at_value: datetime
-    pause_reasons: Sequence[HumanInputRequired]
+    pause_reasons: Sequence[HitlRequired]
 
     @property
     @override
@@ -71,7 +88,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
         return self.paused_at_value
 
     @override
-    def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
+    def get_pause_reasons(self) -> Sequence[HitlRequired]:
         return self.pause_reasons
 
 
@@ -251,6 +268,25 @@ def _build_resumption_context_additional(task_id: str) -> WorkflowResumptionCont
     )
 
 
+def _build_form_definition_json(
+    *,
+    expiration_time: datetime,
+    inputs=None,
+    actions=None,
+    form_content: str = "Rendered",
+    node_title: str = "Human Input",
+) -> str:
+    return FormDefinition(
+        form_content=form_content,
+        inputs=list(inputs or []),
+        user_actions=list(actions or []),
+        rendered_content=form_content,
+        expiration_time=expiration_time,
+        node_title=node_title,
+        display_in_ui=True,
+    ).model_dump_json()
+
+
 class _SessionContext:
     def __init__(self, session: Any) -> None:
         self._session = session
@@ -404,16 +440,7 @@ def test_build_snapshot_events_resolves_session_id_before_pause_form_lookups(
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="session-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-                inputs=[],
-                actions=[],
-            )
-        ],
+        pause_reasons=[HitlRequired(session_id="session-1", node_id="node-1", node_title="Human Input")],
     )
     resolved_session_ids: list[str] = []
 
@@ -429,7 +456,15 @@ def test_build_snapshot_events_resolves_session_id_before_pause_form_lookups(
 
     session = SimpleNamespace(
         execute=lambda _stmt: [
-            ("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}'),
+            (
+                "form-1",
+                datetime(2024, 1, 1, tzinfo=UTC),
+                _build_form_definition_json(
+                    expiration_time=datetime(2024, 1, 1, tzinfo=UTC),
+                    inputs=[ParagraphInputConfig(output_variable_name="field")],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
+                ),
+            ),
         ]
     )
 
@@ -450,8 +485,9 @@ def test_build_snapshot_events_resolves_session_id_before_pause_form_lookups(
     human_input_event = next(event for event in events if event["event"] == "human_input_required")
     assert human_input_event["data"]["form_id"] == "session-1"
     assert human_input_event["data"]["form_token"] == "token"
+    assert human_input_event["data"]["inputs"][0]["output_variable_name"] == "field"
     pause_event = next(event for event in events if event["event"] == "workflow_paused")
-    assert pause_event["data"]["reasons"][0]["form_id"] == "session-1"
+    assert pause_event["data"]["reasons"][0]["session_id"] == "session-1"
     assert pause_event["data"]["reasons"][0]["form_token"] == "token"
 
 
@@ -833,22 +869,24 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
     )
     session_maker = _SessionMaker(
         SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+            execute=lambda _stmt: [
+                (
+                    "form-1",
+                    datetime(2024, 1, 1, tzinfo=UTC),
+                    _build_form_definition_json(
+                        expiration_time=datetime(2024, 1, 1, tzinfo=UTC),
+                        inputs=[ParagraphInputConfig(output_variable_name="field")],
+                        actions=[UserActionConfig(id="approve", title="Approve")],
+                    ),
+                )
+            ],
         )
     )
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-                form_token="wtok",
-            )
-        ],
+        pause_reasons=[HitlRequired(session_id="session-1", node_id="node-1", node_title="Human Input")],
     )
 
     events = _build_snapshot_events(
@@ -861,11 +899,13 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
         session_maker=cast(sessionmaker[Session], session_maker),
     )
 
-    assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
-    assert events[-2]["data"]["form_token"] == "wtok"
-    assert events[-2]["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
-    pause_data = events[-1]["data"]
+    human_input_event = next(event for event in events if event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED)
+    assert human_input_event["data"]["form_token"] == "wtok"
+    assert human_input_event["data"]["form_id"] == "session-1"
+    assert human_input_event["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
+    pause_data = next(event for event in events if event["event"] == StreamEvent.WORKFLOW_PAUSED)["data"]
     assert pause_data["reasons"][0]["form_token"] == "wtok"
+    assert pause_data["reasons"][0]["session_id"] == "session-1"
     assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
 
 
@@ -882,7 +922,17 @@ def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     session_maker = _SessionMaker(
         SimpleNamespace(
-            execute=lambda _stmt: [("form-1", expiration_time, '{"display_in_ui": true}')],
+            execute=lambda _stmt: [
+                (
+                    "form-1",
+                    expiration_time,
+                    _build_form_definition_json(
+                        expiration_time=expiration_time,
+                        inputs=[ParagraphInputConfig(output_variable_name="field")],
+                        actions=[UserActionConfig(id="approve", title="Approve")],
+                    ),
+                )
+            ],
             scalars=lambda _stmt: list(recipients),
         )
     )
@@ -890,14 +940,7 @@ def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=expiration_time,
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-            )
-        ],
+        pause_reasons=[HitlRequired(session_id="session-1", node_id="node-1", node_title="Human Input")],
     )
 
     return _build_snapshot_events(
@@ -920,12 +963,11 @@ def test_reconnect_pause_without_web_app_recipient_emits_approval_channels() -> 
         ],
     )
 
-    human_input_event = events[-2]
-    assert human_input_event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
+    human_input_event = next(event for event in events if event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED)
     assert human_input_event["data"]["form_token"] is None
     assert human_input_event["data"]["approval_channels"] == ["console", "email"]
 
-    pause_data = events[-1]["data"]
+    pause_data = next(event for event in events if event["event"] == StreamEvent.WORKFLOW_PAUSED)["data"]
     assert pause_data["reasons"][0]["form_token"] is None
     assert pause_data["reasons"][0]["approval_channels"] == ["console", "email"]
 
@@ -942,12 +984,11 @@ def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels() -> Non
         ],
     )
 
-    human_input_event = events[-2]
-    assert human_input_event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
+    human_input_event = next(event for event in events if event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED)
     assert human_input_event["data"]["form_token"] == "web-app-token"
     assert human_input_event["data"]["approval_channels"] == ["console"]
 
-    pause_data = events[-1]["data"]
+    pause_data = next(event for event in events if event["event"] == StreamEvent.WORKFLOW_PAUSED)["data"]
     assert pause_data["reasons"][0]["form_token"] == "web-app-token"
     assert pause_data["reasons"][0]["approval_channels"] == ["console"]
 
@@ -965,31 +1006,33 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
     )
     session_maker = _SessionMaker(
         SimpleNamespace(
-            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+            execute=lambda _stmt: [
+                (
+                    "form-1",
+                    datetime(2024, 1, 1, tzinfo=UTC),
+                    _build_form_definition_json(
+                        expiration_time=datetime(2024, 1, 1, tzinfo=UTC),
+                        inputs=[
+                            SelectInputConfig(
+                                output_variable_name="decision",
+                                option_source=StringListSource(
+                                    type=ValueSourceType.VARIABLE,
+                                    selector=["start", "options"],
+                                    value=[],
+                                ),
+                            )
+                        ],
+                        actions=[UserActionConfig(id="approve", title="Approve")],
+                    ),
+                )
+            ],
         )
     )
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                inputs=[
-                    SelectInputConfig(
-                        output_variable_name="decision",
-                        option_source=StringListSource(
-                            type=ValueSourceType.VARIABLE,
-                            selector=["start", "options"],
-                            value=[],
-                        ),
-                    )
-                ],
-                node_id="node-1",
-                node_title="Human Input",
-            )
-        ],
+        pause_reasons=[HitlRequired(session_id="session-1", node_id="node-1", node_title="Human Input")],
     )
 
     events = _build_snapshot_events(
@@ -1002,11 +1045,12 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
         session_maker=cast(sessionmaker[Session], session_maker),
     )
 
-    human_input_event = events[-2]
+    human_input_event = next(event for event in events if event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED)
     assert human_input_event["data"]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
 
-    pause_event = events[-1]
-    assert pause_event["data"]["reasons"][0]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
+    pause_event = next(event for event in events if event["event"] == StreamEvent.WORKFLOW_PAUSED)
+    assert pause_event["data"]["reasons"][0]["session_id"] == "session-1"
+    assert "inputs" not in pause_event["data"]["reasons"][0]
 
 
 def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_context(
@@ -1018,14 +1062,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-            )
-        ],
+        pause_reasons=[HitlRequired(session_id="session-1", node_id="node-1", node_title="Human Input")],
     )
     workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
     node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
@@ -1048,7 +1085,17 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
 
     session = SimpleNamespace(
         scalar=MagicMock(return_value=None),
-        execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+        execute=lambda _stmt: [
+            (
+                "form-1",
+                datetime(2024, 1, 1, tzinfo=UTC),
+                _build_form_definition_json(
+                    expiration_time=datetime(2024, 1, 1, tzinfo=UTC),
+                    inputs=[ParagraphInputConfig(output_variable_name="field")],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
+                ),
+            )
+        ],
     )
     session_maker = _SessionMaker(session)
 
@@ -1065,4 +1112,5 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
     pause_event = cast(Mapping[str, Any], events[-1])
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
+    assert pause_event["data"]["reasons"][0]["session_id"] == "session-1"
     assert pause_event["data"]["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())

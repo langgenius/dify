@@ -10,17 +10,18 @@ from core.app.apps.workflow.app_runner import WorkflowAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
-from core.workflow.system_variables import build_system_variables
-from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.graph_events import GraphRunPausedEvent
-from graphon.nodes.human_input.entities import (
+from core.workflow.human_input import (
+    FormDefinition,
     ParagraphInputConfig,
     SelectInputConfig,
     StringListSource,
     UserActionConfig,
+    ValueSourceType,
 )
-from graphon.nodes.human_input.enums import ValueSourceType
+from core.workflow.system_variables import build_system_variables
+from graphon.entities import WorkflowStartReason
+from graphon.entities.pause_reason import HitlRequired
+from graphon.graph_events import GraphRunPausedEvent
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.human_input import RecipientType
@@ -92,31 +93,6 @@ def _build_runner():
     )
 
 
-def test_graph_run_paused_event_emits_queue_pause_event():
-    runner = _build_runner()
-    reason = HumanInputRequired(
-        form_id="form-1",
-        form_content="content",
-        inputs=[],
-        actions=[],
-        node_id="node-human",
-        node_title="Human Step",
-    )
-    event = GraphRunPausedEvent(reasons=[reason], outputs={"foo": "bar"})
-    workflow_entry = SimpleNamespace(
-        graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
-    )
-
-    runner._handle_event(workflow_entry, event)
-
-    assert len(runner.published_events) == 1
-    queue_event = runner.published_events[0]
-    assert isinstance(queue_event, QueueWorkflowPausedEvent)
-    assert queue_event.reasons == [reason]
-    assert queue_event.outputs == {"foo": "bar"}
-    assert queue_event.paused_nodes == ["node-pause-1"]
-
-
 def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
     application_generate_entity = SimpleNamespace(
         inputs={},
@@ -141,6 +117,43 @@ def _build_converter(*, invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
     )
 
 
+def _build_form_definition_json(
+    *,
+    expiration_time: datetime,
+    inputs=None,
+    actions=None,
+    form_content: str = "Rendered",
+    node_title: str = "Human Step",
+):
+    return FormDefinition(
+        form_content=form_content,
+        inputs=list(inputs or []),
+        user_actions=list(actions or []),
+        rendered_content=form_content,
+        expiration_time=expiration_time,
+        node_title=node_title,
+        display_in_ui=True,
+    ).model_dump_json()
+
+
+def test_graph_run_paused_event_emits_queue_pause_event():
+    runner = _build_runner()
+    reason = HitlRequired(session_id="session-1", node_id="node-human", node_title="Human Step")
+    event = GraphRunPausedEvent(reasons=[reason], outputs={"foo": "bar"})
+    workflow_entry = SimpleNamespace(
+        graph_engine=SimpleNamespace(graph_runtime_state=_FakeRuntimeState()),
+    )
+
+    runner._handle_event(workflow_entry, event)
+
+    assert len(runner.published_events) == 1
+    queue_event = runner.published_events[0]
+    assert isinstance(queue_event, QueueWorkflowPausedEvent)
+    assert queue_event.reasons == [reason]
+    assert queue_event.outputs == {"foo": "bar"}
+    assert queue_event.paused_nodes == ["node-pause-1"]
+
+
 def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.MonkeyPatch):
     converter = _build_converter()
     converter.workflow_start_to_stream_response(
@@ -152,7 +165,17 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
 
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     session = _FakeSession(
-        execute_rows=[("form-1", expiration_time, '{"display_in_ui": true}')],
+        execute_rows=[
+            (
+                "form-1",
+                expiration_time,
+                _build_form_definition_json(
+                    expiration_time=expiration_time,
+                    inputs=[ParagraphInputConfig(output_variable_name="field")],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
+                ),
+            )
+        ],
         scalars_rows=[
             SimpleNamespace(form_id="form-1", recipient_type=RecipientType.CONSOLE, access_token="console-token"),
             SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
@@ -161,17 +184,15 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
 
     monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: session)
     monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
-
-    reason = HumanInputRequired(
-        form_id="form-1",
-        form_content="Rendered",
-        inputs=[ParagraphInputConfig(output_variable_name="field")],
-        actions=[UserActionConfig(id="approve", title="Approve")],
-        node_id="node-id",
-        node_title="Human Step",
+    monkeypatch.setattr(
+        workflow_response_converter,
+        "session_binding",
+        SimpleNamespace(resolve_form_id_from_session_id=lambda *, session_id: "form-1"),
+        raising=False,
     )
+
     queue_event = QueueWorkflowPausedEvent(
-        reasons=[reason],
+        reasons=[HitlRequired(session_id="session-1", node_id="node-id", node_title="Human Step")],
         outputs={"answer": "value"},
         paused_nodes=["node-id"],
     )
@@ -188,11 +209,12 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert pause_resp.workflow_run_id == "run-id"
     assert pause_resp.data.paused_nodes == ["node-id"]
     assert pause_resp.data.outputs == {}
-    assert pause_resp.data.reasons[0]["form_id"] == "form-1"
+    assert pause_resp.data.reasons[0]["session_id"] == "session-1"
+    assert pause_resp.data.reasons[0]["expiration_time"] == int(expiration_time.timestamp())
 
     assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]
-    assert hi_resp.data.form_id == "form-1"
+    assert hi_resp.data.form_id == "session-1"
     assert hi_resp.data.node_id == "node-id"
     assert hi_resp.data.node_title == "Human Step"
     assert hi_resp.data.inputs[0].output_variable_name == "field"
@@ -215,23 +237,31 @@ def _build_paused_human_input_response(monkeypatch, recipients):
 
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     session = _FakeSession(
-        execute_rows=[("form-1", expiration_time, '{"display_in_ui": true}')],
+        execute_rows=[
+            (
+                "form-1",
+                expiration_time,
+                _build_form_definition_json(
+                    expiration_time=expiration_time,
+                    inputs=[ParagraphInputConfig(output_variable_name="field")],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
+                ),
+            )
+        ],
         scalars_rows=list(recipients),
     )
 
     monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: session)
     monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
-
-    reason = HumanInputRequired(
-        form_id="form-1",
-        form_content="Rendered",
-        inputs=[ParagraphInputConfig(output_variable_name="field")],
-        actions=[UserActionConfig(id="approve", title="Approve")],
-        node_id="node-id",
-        node_title="Human Step",
+    monkeypatch.setattr(
+        workflow_response_converter,
+        "session_binding",
+        SimpleNamespace(resolve_form_id_from_session_id=lambda *, session_id: "form-1"),
+        raising=False,
     )
+
     queue_event = QueueWorkflowPausedEvent(
-        reasons=[reason],
+        reasons=[HitlRequired(session_id="session-1", node_id="node-id", node_title="Human Step")],
         outputs={},
         paused_nodes=["node-id"],
     )
@@ -294,30 +324,40 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(monkeypatc
     )
 
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-    session = _FakeSession(execute_rows=[("form-1", expiration_time, '{"display_in_ui": true}')])
+    session = _FakeSession(
+        execute_rows=[
+            (
+                "form-1",
+                expiration_time,
+                _build_form_definition_json(
+                    expiration_time=expiration_time,
+                    inputs=[
+                        SelectInputConfig(
+                            output_variable_name="decision",
+                            option_source=StringListSource(
+                                type=ValueSourceType.VARIABLE,
+                                selector=["start", "options"],
+                                value=[],
+                            ),
+                        )
+                    ],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
+                ),
+            )
+        ]
+    )
 
     monkeypatch.setattr(workflow_response_converter, "Session", lambda **_: session)
     monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
-
-    reason = HumanInputRequired(
-        form_id="form-1",
-        form_content="Rendered",
-        inputs=[
-            SelectInputConfig(
-                output_variable_name="decision",
-                option_source=StringListSource(
-                    type=ValueSourceType.VARIABLE,
-                    selector=["start", "options"],
-                    value=[],
-                ),
-            )
-        ],
-        actions=[UserActionConfig(id="approve", title="Approve")],
-        node_id="node-id",
-        node_title="Human Step",
+    monkeypatch.setattr(
+        workflow_response_converter,
+        "session_binding",
+        SimpleNamespace(resolve_form_id_from_session_id=lambda *, session_id: "form-1"),
+        raising=False,
     )
+
     queue_event = QueueWorkflowPausedEvent(
-        reasons=[reason],
+        reasons=[HitlRequired(session_id="session-1", node_id="node-id", node_title="Human Step")],
         outputs={},
         paused_nodes=["node-id"],
     )
@@ -336,7 +376,8 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(monkeypatc
 
     assert isinstance(responses[-1], WorkflowPauseStreamResponse)
     pause_resp = responses[-1]
-    assert pause_resp.data.reasons[0]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
+    assert pause_resp.data.reasons[0]["session_id"] == "session-1"
+    assert "inputs" not in pause_resp.data.reasons[0]
 
 
 def test_queue_workflow_paused_event_resolves_session_id_before_human_input_lookups(
@@ -351,7 +392,19 @@ def test_queue_workflow_paused_event_resolves_session_id_before_human_input_look
     )
 
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
-    session = _FakeSession(execute_rows=[("form-1", expiration_time, '{"display_in_ui": true}')])
+    session = _FakeSession(
+        execute_rows=[
+            (
+                "form-1",
+                expiration_time,
+                _build_form_definition_json(
+                    expiration_time=expiration_time,
+                    inputs=[ParagraphInputConfig(output_variable_name="field")],
+                    actions=[UserActionConfig(id="approve", title="Approve")],
+                ),
+            )
+        ]
+    )
     resolved_session_ids: list[str] = []
 
     class _Binding:
@@ -373,17 +426,12 @@ def test_queue_workflow_paused_event_resolves_session_id_before_human_input_look
         _load_form_dispositions,
     )
 
-    reason = HumanInputRequired(
-        form_id="session-1",
-        form_content="Rendered",
-        inputs=[ParagraphInputConfig(output_variable_name="field")],
-        actions=[UserActionConfig(id="approve", title="Approve")],
-        node_id="node-id",
-        node_title="Human Step",
-    )
-
     responses = converter.workflow_pause_to_stream_response(
-        event=QueueWorkflowPausedEvent(reasons=[reason], outputs={}, paused_nodes=["node-id"]),
+        event=QueueWorkflowPausedEvent(
+            reasons=[HitlRequired(session_id="session-1", node_id="node-id", node_title="Human Step")],
+            outputs={},
+            paused_nodes=["node-id"],
+        ),
         task_id="task",
         graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0),
     )
@@ -392,6 +440,7 @@ def test_queue_workflow_paused_event_resolves_session_id_before_human_input_look
     assert isinstance(responses[0], HumanInputRequiredResponse)
     assert responses[0].data.form_id == "session-1"
     assert responses[0].data.form_token == "token"
+    assert responses[0].data.inputs[0].output_variable_name == "field"
     assert isinstance(responses[-1], WorkflowPauseStreamResponse)
-    assert responses[-1].data.reasons[0]["form_id"] == "session-1"
+    assert responses[-1].data.reasons[0]["session_id"] == "session-1"
     assert responses[-1].data.reasons[0]["form_token"] == "token"
