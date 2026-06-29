@@ -25,20 +25,24 @@ export type EnvVariable = {
 
 export type AgentSkill = {
   description?: string
-  archiveKey?: string
+  fileId?: string
+  hash?: string
   id: string
+  mimeType?: string
   name: string
-  path?: string
-  skillMdKey?: string
+  size?: number
 }
 
 export type AgentFileNode = {
+  hash?: string
   id: string
-  name: string
   icon: FileTreeIconType
   fileId?: string
-  driveKey?: string
+  configName?: string
   children?: AgentFileNode[]
+  mimeType?: string
+  name: string
+  size?: number
 }
 
 export type AgentKnowledgeRetrievalItem = {

@@ -6,6 +6,7 @@ import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-compo
 import { agentComposerDraftAtom, agentComposerPublishedDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerFilesAtom } from '@/features/agent-v2/agent-composer/store-modules/files'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { agentComposerSkillsAtom } from '@/features/agent-v2/agent-composer/store-modules/skills'
 import { useAgentConfigureSync } from '../use-agent-configure-sync'
 
 const toastMock = vi.hoisted(() => ({
@@ -316,11 +317,11 @@ describe('useAgentConfigureSync', () => {
         ...defaultAgentSoulConfigFormState,
         files: [
           {
-            id: 'files/uploaded.md',
+            id: 'uploaded.md',
             name: 'uploaded.md',
             icon: 'markdown',
             fileId: 'drive-file-1',
-            driveKey: 'files/uploaded.md',
+            configName: 'uploaded.md',
           },
         ],
       })
@@ -333,17 +334,59 @@ describe('useAgentConfigureSync', () => {
     expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
       body: expect.objectContaining({
         agent_soul: expect.objectContaining({
-          files: {
-            skills: [],
-            files: [
-              {
-                id: 'files/uploaded.md',
-                file_id: 'drive-file-1',
-                name: 'uploaded.md',
-                drive_key: 'files/uploaded.md',
-              },
-            ],
-          },
+          config_files: [
+            {
+              file_id: 'drive-file-1',
+              file_kind: 'upload_file',
+              name: 'uploaded.md',
+            },
+          ],
+          config_skills: [],
+        }),
+      }),
+    }))
+  })
+
+  it('should preserve uploaded skills when prompt is updated immediately after upload', async () => {
+    const { store } = renderUseAgentConfigureSync()
+
+    act(() => {
+      store.set(agentComposerSkillsAtom, [
+        {
+          id: 'Tender Analyzer',
+          name: 'Tender Analyzer',
+          description: 'Extracts tender requirements.',
+          fileId: 'tool-file-1',
+          hash: 'sha256:skill-1',
+          mimeType: 'application/zip',
+          size: 42,
+        },
+      ])
+      store.set(agentComposerPromptAtom, 'Use [§skill:Tender Analyzer:Tender Analyzer§]')
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000)
+    })
+
+    expect(composerPutMutationFn).toHaveBeenCalledWith(expect.objectContaining({
+      body: expect.objectContaining({
+        agent_soul: expect.objectContaining({
+          prompt: expect.objectContaining({
+            system_prompt: 'Use [§skill:Tender Analyzer:Tender Analyzer§]',
+          }),
+          config_skills: [
+            {
+              description: 'Extracts tender requirements.',
+              file_id: 'tool-file-1',
+              file_kind: 'tool_file',
+              hash: 'sha256:skill-1',
+              mime_type: 'application/zip',
+              name: 'Tender Analyzer',
+              size: 42,
+            },
+          ],
+          config_files: [],
         }),
       }),
     }))
@@ -355,14 +398,17 @@ describe('useAgentConfigureSync', () => {
     act(() => {
       store.set(agentComposerFilesAtom, [
         {
-          id: 'files/uploaded.md',
+          id: 'uploaded.md',
           name: 'uploaded.md',
           icon: 'markdown',
           fileId: 'drive-file-1',
-          driveKey: 'files/uploaded.md',
+          configName: 'uploaded.md',
+          hash: 'sha256:file-1',
+          mimeType: 'text/markdown',
+          size: 5,
         },
       ])
-      store.set(agentComposerPromptAtom, 'Use [§file:files%2Fuploaded.md:uploaded.md§]')
+      store.set(agentComposerPromptAtom, 'Use [§file:uploaded.md:uploaded.md§]')
     })
 
     await act(async () => {
@@ -373,19 +419,19 @@ describe('useAgentConfigureSync', () => {
       body: expect.objectContaining({
         agent_soul: expect.objectContaining({
           prompt: expect.objectContaining({
-            system_prompt: 'Use [§file:files%2Fuploaded.md:uploaded.md§]',
+            system_prompt: 'Use [§file:uploaded.md:uploaded.md§]',
           }),
-          files: {
-            skills: [],
-            files: [
-              {
-                id: 'files/uploaded.md',
-                file_id: 'drive-file-1',
-                name: 'uploaded.md',
-                drive_key: 'files/uploaded.md',
-              },
-            ],
-          },
+          config_files: [
+            {
+              file_id: 'drive-file-1',
+              file_kind: 'upload_file',
+              hash: 'sha256:file-1',
+              mime_type: 'text/markdown',
+              name: 'uploaded.md',
+              size: 5,
+            },
+          ],
+          config_skills: [],
         }),
       }),
     }))

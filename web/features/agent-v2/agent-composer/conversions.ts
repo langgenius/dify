@@ -24,36 +24,11 @@ import type {
 import type { ModelConfig } from '@/app/components/workflow/types'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
+import { getFileIconType } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/files/file-icon'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { checkKey } from '@/utils/var'
 import { defaultAgentSoulConfigFormState } from './form-state'
 import { getKnowledgeRetrievalSetName } from './knowledge-validation'
-
-type AgentSoulFileRefConfig = {
-  id?: string | null
-  file_id?: string | null
-  name?: string | null
-  type?: string | null
-  drive_key?: string | null
-}
-
-type AgentSoulSkillRefConfig = {
-  id?: string | null
-  name?: string | null
-  description?: string | null
-  path?: string | null
-  skill_md_key?: string | null
-  full_archive_key?: string | null
-}
-
-type AgentSoulFilesConfig = {
-  skills?: AgentSoulSkillRefConfig[]
-  files?: AgentSoulFileRefConfig[]
-}
-
-export type AgentSoulConfigWithFiles = AgentSoulConfig & {
-  files?: AgentSoulFilesConfig
-}
 
 type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['dify_tools']>[number]
 type AgentSoulCliToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['cli_tools']>[number]
@@ -424,77 +399,74 @@ const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
     })),
 })
 
-const toSkillConfigs = (skills: AgentSkill[]): AgentSoulSkillRefConfig[] => skills.map(skill => ({
-  id: skill.path ?? skill.id,
-  name: skill.name,
-  description: skill.description,
-  path: skill.path,
-  skill_md_key: skill.skillMdKey,
-  full_archive_key: skill.archiveKey,
-}))
+const toConfigSkillConfigs = (skills: AgentSkill[], baseConfig?: AgentSoulConfig) => {
+  const existingByName = new Map((baseConfig?.config_skills ?? []).map(skill => [skill.name, skill]))
 
-const toFileConfigs = (files: AgentFileNode[]): AgentSoulFileRefConfig[] => files.flatMap((file) => {
-  if (file.children?.length)
-    return toFileConfigs(file.children)
+  return skills.flatMap((skill) => {
+    const existing = existingByName.get(skill.name)
+    const fileId = skill.fileId ?? existing?.file_id
+    if (!fileId)
+      return []
 
-  return [{
-    id: file.id,
-    file_id: file.fileId,
-    name: file.name,
-    drive_key: file.driveKey,
-  }]
-})
+    return [{
+      name: skill.name,
+      description: skill.description ?? existing?.description ?? '',
+      file_id: fileId,
+      file_kind: existing?.file_kind ?? 'tool_file',
+      size: skill.size ?? existing?.size,
+      hash: skill.hash ?? existing?.hash,
+      mime_type: skill.mimeType ?? existing?.mime_type,
+    }]
+  })
+}
 
-const toFilesConfig = (formState: AgentSoulConfigFormState): AgentSoulFilesConfig => ({
-  skills: toSkillConfigs(formState.skills),
-  files: toFileConfigs(formState.files),
-})
+const toConfigFileConfigs = (files: AgentFileNode[], baseConfig?: AgentSoulConfig) => {
+  const existingByName = new Map((baseConfig?.config_files ?? []).map(file => [file.name, file]))
 
-const getAgentFileName = (file: AgentSoulFileRefConfig) => {
-  if (file.name)
-    return file.name
+  return files.flatMap((file) => {
+    if (file.children?.length)
+      return toConfigFileConfigs(file.children, baseConfig)
 
-  const driveKey = file.drive_key ?? file.id ?? file.file_id ?? ''
-  return driveKey.split('/').pop() || driveKey
+    const configName = file.configName ?? file.name
+    const existing = existingByName.get(configName)
+    const fileId = file.fileId ?? existing?.file_id
+    if (!fileId)
+      return []
+
+    return [{
+      name: configName,
+      file_id: fileId,
+      file_kind: existing?.file_kind ?? 'upload_file',
+      size: file.size ?? existing?.size,
+      hash: file.hash ?? existing?.hash,
+      mime_type: file.mimeType ?? existing?.mime_type,
+    }]
+  })
 }
 
 const toSkillFormState = (config?: AgentSoulConfig): AgentSkill[] => {
-  const filesConfig = (config as AgentSoulConfigWithFiles | undefined)?.files
-
-  return (filesConfig?.skills ?? []).flatMap((skill) => {
-    const id = skill.skill_md_key ?? skill.path ?? skill.id
-    const name = skill.name ?? skill.path ?? id
-    if (!id || !name)
-      return []
-
-    return [{
-      id,
-      name,
-      description: skill.description ?? undefined,
-      path: skill.path ?? undefined,
-      skillMdKey: skill.skill_md_key ?? undefined,
-      archiveKey: skill.full_archive_key ?? undefined,
-    }]
-  })
+  return (config?.config_skills ?? []).map(skill => ({
+    id: skill.name,
+    name: skill.name,
+    description: skill.description ?? undefined,
+    fileId: skill.file_id,
+    size: skill.size ?? undefined,
+    hash: skill.hash ?? undefined,
+    mimeType: skill.mime_type ?? undefined,
+  }))
 }
 
 const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
-  const filesConfig = (config as AgentSoulConfigWithFiles | undefined)?.files
-
-  return (filesConfig?.files ?? []).flatMap((file) => {
-    const id = file.drive_key ?? file.file_id ?? file.id
-    const name = getAgentFileName(file)
-    if (!id || !name)
-      return []
-
-    return [{
-      id,
-      name,
-      icon: 'file' as const,
-      fileId: file.file_id ?? undefined,
-      driveKey: file.drive_key ?? undefined,
-    }]
-  })
+  return (config?.config_files ?? []).map(file => ({
+    id: file.name,
+    name: file.name,
+    icon: getFileIconType(file.name, file.mime_type ?? undefined),
+    fileId: file.file_id,
+    configName: file.name,
+    size: file.size ?? undefined,
+    hash: file.hash ?? undefined,
+    mimeType: file.mime_type ?? undefined,
+  }))
 }
 
 const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
@@ -534,7 +506,7 @@ export const formStateToAgentSoulConfig = ({
   baseConfig?: AgentSoulConfig
   formState: AgentSoulConfigFormState
   currentModel?: DefaultModel
-}): AgentSoulConfigWithFiles => {
+}): AgentSoulConfig => {
   return {
     ...baseConfig,
     prompt: {
@@ -557,7 +529,9 @@ export const formStateToAgentSoulConfig = ({
     app_features: formState.appFeatures ?? baseConfig?.app_features,
     knowledge: toKnowledgeConfig(formState.knowledgeRetrievals),
     env: toEnvConfig(formState.envVariables),
-    files: toFilesConfig(formState),
+    config_skills: toConfigSkillConfigs(formState.skills, baseConfig),
+    config_files: toConfigFileConfigs(formState.files, baseConfig),
+    config_note: baseConfig?.config_note ?? '',
   }
 }
 

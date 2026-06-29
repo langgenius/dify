@@ -57,8 +57,8 @@ const createReferenceToken = (kind: string, id: string, label?: string) => (
   `[§${kind}:${id}${label ? `:${label}` : ''}§]`
 )
 
-const createDriveReferenceToken = (kind: 'skill' | 'file', driveKey: string, label: string) => (
-  createReferenceToken(kind, encodeURIComponent(driveKey), label)
+const createConfigReferenceToken = (kind: 'skill' | 'file', name: string, label: string) => (
+  createReferenceToken(kind, name, label)
 )
 
 const isPromptReferenceItem = (item: AgentOrchestrateAddedItem): item is AgentFileNode | AgentSkill => (
@@ -95,8 +95,8 @@ export function AgentPromptSlashMenu({
     if (view === 'skills') {
       onAddSkill?.({
         onAdded: (item) => {
-          if (isPromptReferenceItem(item) && 'skillMdKey' in item && typeof item.skillMdKey === 'string')
-            onSelect(createDriveReferenceToken('skill', item.skillMdKey, item.name))
+          if (isPromptReferenceItem(item))
+            onSelect(createConfigReferenceToken('skill', item.id, item.name))
         },
       })
       return
@@ -105,8 +105,8 @@ export function AgentPromptSlashMenu({
     if (view === 'files') {
       onAddFile?.({
         onAdded: (item) => {
-          if (isPromptReferenceItem(item) && 'driveKey' in item && typeof item.driveKey === 'string')
-            onSelect(createDriveReferenceToken('file', item.driveKey, item.name))
+          if (isPromptReferenceItem(item))
+            onSelect(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
         },
       })
       return
@@ -234,7 +234,7 @@ function AgentPromptSkillRows({
           key={skill.id}
           icon="i-ri-box-3-line"
           label={skill.name}
-          onClick={() => skill.skillMdKey && onSelect(createDriveReferenceToken('skill', skill.skillMdKey, skill.name))}
+          onClick={() => onSelect(createConfigReferenceToken('skill', skill.id, skill.name))}
         />
       ))}
     </>
@@ -259,7 +259,10 @@ function AgentPromptFileRows({
             label={file.name}
             depth={depth}
             hasChildren={!!file.children?.length}
-            onClick={() => file.driveKey && onSelect(createDriveReferenceToken('file', file.driveKey, file.name))}
+            onClick={() => {
+              if (!file.children?.length)
+                onSelect(createConfigReferenceToken('file', file.configName ?? file.id, file.name))
+            }}
           />
           {!!file.children?.length && (
             <AgentPromptFileRows files={file.children} depth={depth + 1} onSelect={onSelect} />

@@ -13,7 +13,7 @@ import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentDriveApiContext } from '../drive-context'
+import { useAgentConfigApiContext } from '../config-context'
 import { AgentSkillItem } from './item'
 import { AgentSkillUploadDialog } from './upload-dialog'
 
@@ -23,11 +23,11 @@ export function AgentSkills() {
   const skillsListId = 'agent-configure-skills-list'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
-  const apiContext = useAgentDriveApiContext()
+  const apiContext = useAgentConfigApiContext()
   const skills = useAtomValue(agentComposerSkillsAtom)
   const setSkills = useSetAtom(agentComposerSkillsAtom)
-  const { mutate: deleteAgentSkill } = useMutation(consoleQuery.agent.byAgentId.skills.bySlug.delete.mutationOptions())
-  const { mutate: deleteAppSkill } = useMutation(consoleQuery.apps.byAppId.agent.skills.bySlug.delete.mutationOptions())
+  const { mutate: deleteAgentSkill } = useMutation(consoleQuery.agent.byAgentId.config.skills.byName.delete.mutationOptions())
+  const { mutate: deleteAppSkill } = useMutation(consoleQuery.apps.byAppId.agent.config.skills.byName.delete.mutationOptions())
 
   const handleOpenUpload = useCallback((options?: AgentOrchestrateAddActionOptions) => {
     promptAddCallbackRef.current = options?.onAdded
@@ -52,8 +52,7 @@ export function AgentSkills() {
 
   const handleRemoveSkill = useCallback((skillId: string) => {
     const skill = skills.find(item => item.id === skillId)
-    const skillSlug = skill?.path ?? skill?.skillMdKey?.split('/', 1)[0]
-    if (!skillSlug)
+    if (!skill)
       return
 
     const onSuccess = () => {
@@ -63,10 +62,12 @@ export function AgentSkills() {
       deleteAppSkill({
         params: {
           app_id: apiContext.workflow.appId,
-          slug: skillSlug,
+          name: skill.name,
         },
         query: {
           node_id: apiContext.workflow.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       }, { onSuccess })
       return
@@ -75,7 +76,11 @@ export function AgentSkills() {
     deleteAgentSkill({
       params: {
         agent_id: apiContext.agentId,
-        slug: skillSlug,
+        name: skill.name,
+      },
+      query: {
+        draft_type: apiContext.draftType,
+        version_id: apiContext.versionId,
       },
     }, { onSuccess })
   }, [apiContext, deleteAgentSkill, deleteAppSkill, setSkills, skills])

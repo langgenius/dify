@@ -161,10 +161,7 @@ export function useAgentConfigureSync({
   }, [debouncedSaveDraft, getAgentSoulDraft, saveComposer, store])
 
   const saveDirtyDraftOnPageClose = useCallback(() => {
-    if (
-      !enabledRef.current
-      || publishInFlightRef.current
-    ) {
+    if (!enabledRef.current || publishInFlightRef.current) {
       return
     }
 

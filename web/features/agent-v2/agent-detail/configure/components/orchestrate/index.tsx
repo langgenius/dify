@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
 import { AgentOrchestrateBottomActions } from './bottom-actions'
-import { AgentDriveApiContextProvider } from './drive-context'
+import { AgentConfigApiContextProvider } from './config-context'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
 import { AgentKnowledgeRetrieval } from './knowledge'
@@ -92,15 +92,21 @@ export function AgentOrchestratePanel({
       )
     : null)
   const hasBottomAction = !!orchestrateBottomAction
-  const driveApiContext = useMemo(() => appId && nodeId
+  const configApiContext = useMemo(() => appId && nodeId
     ? {
         agentId,
+        draftType: isBuildDraftActive ? 'debug_build' : 'draft',
+        versionId: selectedVersionSnapshot?.id ?? undefined,
         workflow: {
           appId,
           nodeId,
         },
       }
-    : { agentId }, [agentId, appId, nodeId])
+    : {
+        agentId,
+        draftType: isBuildDraftActive ? 'debug_build' : 'draft',
+        versionId: selectedVersionSnapshot?.id ?? undefined,
+      }, [agentId, appId, isBuildDraftActive, nodeId, selectedVersionSnapshot?.id])
 
   return (
     <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
@@ -121,7 +127,7 @@ export function AgentOrchestratePanel({
               scrollbar: hasBottomAction ? 'z-20' : undefined,
             }}
           >
-            <AgentDriveApiContextProvider value={driveApiContext}>
+            <AgentConfigApiContextProvider value={configApiContext}>
               <AgentOrchestrateAddActionsProvider>
                 <AgentModelField
                   currentModel={currentModel}
@@ -135,7 +141,7 @@ export function AgentOrchestratePanel({
                 <AgentKnowledgeRetrieval />
                 <AgentAdvancedSettings />
               </AgentOrchestrateAddActionsProvider>
-            </AgentDriveApiContextProvider>
+            </AgentConfigApiContextProvider>
           </ScrollArea>
         </div>
       </AgentOrchestrateReadOnlyContext>

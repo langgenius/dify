@@ -1,6 +1,6 @@
 'use client'
 
-import type { AgentDriveApiContext } from '../drive-context'
+import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
@@ -17,7 +17,7 @@ export function AgentSkillItem({
   skill,
   onRemove,
 }: {
-  apiContext: AgentDriveApiContext
+  apiContext: AgentConfigApiContext
   skill: AgentSkill
   onRemove: (skillId: string) => void
 }) {

@@ -22,7 +22,7 @@ import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store
 import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { useAgentDriveFiles, useAgentDriveSkills } from '../drive-context'
+import { useAgentConfigFiles, useAgentConfigSkills } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { useAgentPromptToolIconResolver } from './hooks'
 import { replaceTrailingSlashWithToken } from './options'
@@ -156,8 +156,8 @@ export function AgentPromptEditor() {
   const { t } = useTranslation('agentV2')
   const readOnly = useAgentOrchestrateReadOnly()
   const [value, setValue] = useAtom(agentComposerPromptAtom)
-  const { skills } = useAgentDriveSkills()
-  const { files } = useAgentDriveFiles()
+  const { skills } = useAgentConfigSkills()
+  const { files } = useAgentConfigFiles()
   const [tools, setTools] = useAtom(agentComposerToolsAtom)
   const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)

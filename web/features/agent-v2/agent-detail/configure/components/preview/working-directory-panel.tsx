@@ -80,7 +80,6 @@ function buildSandboxFileTree(entries: SandboxFileEntryResponse[] = [], basePath
           id: nodePath,
           name: segment,
           icon: isFolder ? 'folder' : getFileIconType(segment),
-          driveKey: nodePath,
           children: isFolder ? [] : undefined,
         }
         currentFiles.push(node)

@@ -1,9 +1,9 @@
 'use client'
 
-import type { PostAgentByAgentIdSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { PostAppsByAppIdAgentSkillsUploadResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { PostAgentByAgentIdConfigSkillsUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { PostAppsByAppIdAgentConfigSkillsUploadResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ChangeEvent, DragEvent } from 'react'
-import type { AgentDriveApiContext } from '../drive-context'
+import type { AgentConfigApiContext } from '../config-context'
 import type { AgentSkill } from '@/features/agent-v2/agent-composer/form-state'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -22,23 +22,19 @@ const skillPackageExtensions = ['.zip', '.skill']
 const getSkillNameFromFile = (file: File) => file.name.replace(/\.(?:skill|zip)$/iu, '') || file.name
 
 const toUploadedSkill = (
-  response: PostAgentByAgentIdSkillsUploadResponse | PostAppsByAppIdAgentSkillsUploadResponse,
+  response: PostAgentByAgentIdConfigSkillsUploadResponse | PostAppsByAppIdAgentConfigSkillsUploadResponse,
   file: File,
 ): AgentSkill => {
-  const name = response.skill?.name
-    ?? response.manifest?.name
-    ?? getSkillNameFromFile(file)
-  const id = response.skill?.skill_md_key
-    ?? response.skill?.path
-    ?? name
+  const name = response.skill?.name ?? getSkillNameFromFile(file)
 
   return {
-    description: response.skill?.description ?? response.manifest?.description ?? undefined,
-    archiveKey: response.skill?.archive_key ?? undefined,
-    id,
+    description: response.skill?.description ?? undefined,
+    fileId: response.skill?.file_id ?? undefined,
+    hash: response.skill?.hash ?? undefined,
+    id: name,
+    mimeType: response.skill?.mime_type ?? undefined,
     name,
-    path: response.skill?.path ?? undefined,
-    skillMdKey: response.skill?.skill_md_key ?? undefined,
+    size: response.skill?.size ?? undefined,
   }
 }
 
@@ -191,7 +187,7 @@ export function AgentSkillUploadDialog({
   open,
   onOpenChange,
 }: {
-  apiContext: AgentDriveApiContext
+  apiContext: AgentConfigApiContext
   onUploaded?: (skill: AgentSkill) => void
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -199,8 +195,8 @@ export function AgentSkillUploadDialog({
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
   const [file, setFile] = useState<File>()
-  const uploadAgentSkillMutation = useMutation(consoleQuery.agent.byAgentId.skills.upload.post.mutationOptions())
-  const uploadWorkflowSkillMutation = useMutation(consoleQuery.apps.byAppId.agent.skills.upload.post.mutationOptions())
+  const uploadAgentSkillMutation = useMutation(consoleQuery.agent.byAgentId.config.skills.upload.post.mutationOptions())
+  const uploadWorkflowSkillMutation = useMutation(consoleQuery.apps.byAppId.agent.config.skills.upload.post.mutationOptions())
   const uploadSkillMutation = apiContext.workflow ? uploadWorkflowSkillMutation : uploadAgentSkillMutation
 
   const handleUpload = () => {
@@ -208,7 +204,9 @@ export function AgentSkillUploadDialog({
       return
 
     const options = {
-      onSuccess: (response: PostAgentByAgentIdSkillsUploadResponse | PostAppsByAppIdAgentSkillsUploadResponse) => {
+      onSuccess: (
+        response: PostAgentByAgentIdConfigSkillsUploadResponse | PostAppsByAppIdAgentConfigSkillsUploadResponse,
+      ) => {
         toast.success(t('agentDetail.configure.skills.upload.success'))
         onUploaded?.(toUploadedSkill(response, file))
         setFile(undefined)
@@ -226,6 +224,8 @@ export function AgentSkillUploadDialog({
         },
         query: {
           node_id: apiContext.workflow.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
         body: {
           file,
@@ -237,6 +237,10 @@ export function AgentSkillUploadDialog({
     uploadAgentSkillMutation.mutate({
       params: {
         agent_id: apiContext.agentId,
+      },
+      query: {
+        draft_type: apiContext.draftType,
+        version_id: apiContext.versionId,
       },
       body: {
         file,

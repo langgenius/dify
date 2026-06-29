@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import type { AgentOrchestrateAddActionOptions } from '../add-actions-context'
-import type { AgentDriveApiContext } from '../drive-context'
+import type { AgentConfigApiContext } from '../config-context'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
 import {
   Dialog,
@@ -22,13 +22,13 @@ import { ConfigureSectionAddButton } from '../common/add-button'
 import { ConfigureSectionEmpty } from '../common/empty'
 import { ConfigureSection } from '../common/section'
 import { AgentConfigureTipContent } from '../common/tip-content'
-import { FILES_DRIVE_PREFIX, useAgentDriveApiContext } from '../drive-context'
+import { useAgentConfigApiContext } from '../config-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { AgentSkillDetailDialog } from '../skills/detail-dialog'
 import { AgentFileTree } from './tree'
 import { AgentFileUploadDialog } from './upload-dialog'
 
-const getAgentFilePreviewKey = (file: AgentFileNode) => file.driveKey ?? file.id
+const getAgentFilePreviewKey = (file: AgentFileNode) => file.configName ?? file.name
 
 const findAgentFileNode = (files: AgentFileNode[], fileId: string): AgentFileNode | undefined => {
   for (const file of files) {
@@ -64,7 +64,7 @@ function AgentFileItem({
   depth: number
   file: AgentFileNode
   files: AgentFileNode[]
-  apiContext: AgentDriveApiContext
+  apiContext: AgentConfigApiContext
   onRemove: (fileId: string) => void
   selected: boolean
 }) {
@@ -75,27 +75,31 @@ function AgentFileItem({
   const selectedFile = selectedFileId ? findAgentFileNode(files, selectedFileId) : undefined
   const previewFileId = getAgentFilePreviewKey(selectedFile ?? file)
   const agentPreviewQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.preview.get.queryOptions({
+    ...consoleQuery.agent.byAgentId.config.files.byName.preview.get.queryOptions({
       input: {
         params: {
           agent_id: apiContext.agentId,
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
     enabled: isPreviewOpen && !!previewFileId && !apiContext.workflow,
   })
   const workflowPreviewQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.files.preview.get.queryOptions({
+    ...consoleQuery.apps.byAppId.agent.config.files.byName.preview.get.queryOptions({
       input: {
         params: {
           app_id: apiContext.workflow?.appId ?? '',
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
           node_id: apiContext.workflow?.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
@@ -106,27 +110,31 @@ function AgentFileItem({
   const isImagePreviewFile = selectedPreviewFile.icon === 'image'
   const shouldDownloadPreviewFile = isPreviewOpen && !!previewFileId && (isImagePreviewFile || !!previewQuery.data?.binary)
   const agentDownloadQuery = useQuery({
-    ...consoleQuery.agent.byAgentId.drive.files.download.get.queryOptions({
+    ...consoleQuery.agent.byAgentId.config.files.byName.download.get.queryOptions({
       input: {
         params: {
           agent_id: apiContext.agentId,
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
     enabled: shouldDownloadPreviewFile && !apiContext.workflow,
   })
   const workflowDownloadQuery = useQuery({
-    ...consoleQuery.apps.byAppId.agent.drive.files.download.get.queryOptions({
+    ...consoleQuery.apps.byAppId.agent.config.files.byName.download.get.queryOptions({
       input: {
         params: {
           app_id: apiContext.workflow?.appId ?? '',
+          name: previewFileId ?? '',
         },
         query: {
-          key: previewFileId ?? '',
           node_id: apiContext.workflow?.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       },
     }),
@@ -205,17 +213,16 @@ export function AgentFiles() {
   const filesTreeId = 'agent-configure-files-tree'
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const promptAddCallbackRef = useRef<AgentOrchestrateAddActionOptions['onAdded']>(undefined)
-  const apiContext = useAgentDriveApiContext()
-  const draftFiles = useAtomValue(agentComposerFilesAtom)
+  const apiContext = useAgentConfigApiContext()
+  const files = useAtomValue(agentComposerFilesAtom)
   const setFiles = useSetAtom(agentComposerFilesAtom)
-  const files = draftFiles.filter(file => file.driveKey?.startsWith(FILES_DRIVE_PREFIX))
-  const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.files.delete.mutationOptions())
-  const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.files.delete.mutationOptions())
+  const { mutate: deleteAgentFile } = useMutation(consoleQuery.agent.byAgentId.config.files.byName.delete.mutationOptions())
+  const { mutate: deleteWorkflowAgentFile } = useMutation(consoleQuery.apps.byAppId.agent.config.files.byName.delete.mutationOptions())
   const removeFile = useCallback((fileId: string) => {
     const file = findAgentFileNode(files, fileId)
-    const driveKey = file?.driveKey
+    const configName = file?.configName ?? file?.name
 
-    if (!driveKey)
+    if (!configName)
       return
 
     const onSuccess = () => {
@@ -225,10 +232,12 @@ export function AgentFiles() {
       deleteWorkflowAgentFile({
         params: {
           app_id: apiContext.workflow.appId,
+          name: configName,
         },
         query: {
-          key: driveKey,
           node_id: apiContext.workflow.nodeId,
+          draft_type: apiContext.draftType,
+          version_id: apiContext.versionId,
         },
       }, { onSuccess })
       return
@@ -237,9 +246,11 @@ export function AgentFiles() {
     deleteAgentFile({
       params: {
         agent_id: apiContext.agentId,
+        name: configName,
       },
       query: {
-        key: driveKey,
+        draft_type: apiContext.draftType,
+        version_id: apiContext.versionId,
       },
     }, { onSuccess })
   }, [apiContext, deleteAgentFile, deleteWorkflowAgentFile, files, setFiles])

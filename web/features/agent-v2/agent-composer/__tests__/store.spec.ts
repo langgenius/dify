@@ -84,26 +84,23 @@ describe('agent composer store conversions', () => {
           },
         ],
       },
-      files: {
-        skills: [
-          {
-            id: 'tender-analyzer',
-            name: 'Tender Analyzer',
-            description: 'Parses RFPs.',
-            path: 'tender-analyzer',
-            skill_md_key: 'tender-analyzer/SKILL.md',
-            full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-          },
-        ],
-        files: [
-          {
-            id: 'files/sample.pdf',
-            file_id: 'drive-file-1',
-            name: 'sample.pdf',
-            drive_key: 'files/sample.pdf',
-          },
-        ],
-      },
+      config_skills: [
+        {
+          name: 'Tender Analyzer',
+          description: 'Parses RFPs.',
+          file_id: 'tool-file-1',
+          file_kind: 'tool_file',
+        },
+      ],
+      config_files: [
+        {
+          file_id: 'drive-file-1',
+          file_kind: 'upload_file',
+          name: 'sample.pdf',
+          mime_type: 'application/pdf',
+        },
+      ],
+      config_note: 'Read the proposal first.',
       model: {
         model: 'gpt-4.1',
         model_provider: 'openai',
@@ -183,16 +180,19 @@ describe('agent composer store conversions', () => {
       ],
       skills: [
         expect.objectContaining({
+          id: 'Tender Analyzer',
+          description: 'Parses RFPs.',
+          fileId: 'tool-file-1',
           name: 'Tender Analyzer',
-          skillMdKey: 'tender-analyzer/SKILL.md',
-          archiveKey: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
         }),
       ],
       files: [
         expect.objectContaining({
+          configName: 'sample.pdf',
+          icon: 'pdf',
+          id: 'sample.pdf',
           name: 'sample.pdf',
           fileId: 'drive-file-1',
-          driveKey: 'files/sample.pdf',
         }),
       ],
     })
@@ -218,26 +218,29 @@ describe('agent composer store conversions', () => {
     })
 
     expect(publishConfig).not.toHaveProperty('skills_files')
-    expect(publishConfig.files).toEqual({
-      skills: [
-        {
-          id: 'tender-analyzer',
-          name: 'Tender Analyzer',
-          description: 'Parses RFPs.',
-          path: 'tender-analyzer',
-          skill_md_key: 'tender-analyzer/SKILL.md',
-          full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        },
-      ],
-      files: [
-        {
-          id: 'files/sample.pdf',
-          file_id: 'drive-file-1',
-          name: 'sample.pdf',
-          drive_key: 'files/sample.pdf',
-        },
-      ],
-    })
+    expect(publishConfig).not.toHaveProperty('files')
+    expect(publishConfig.config_skills).toEqual([
+      {
+        name: 'Tender Analyzer',
+        description: 'Parses RFPs.',
+        file_id: 'tool-file-1',
+        file_kind: 'tool_file',
+        size: undefined,
+        hash: undefined,
+        mime_type: undefined,
+      },
+    ])
+    expect(publishConfig.config_files).toEqual([
+      {
+        name: 'sample.pdf',
+        file_id: 'drive-file-1',
+        file_kind: 'upload_file',
+        size: undefined,
+        hash: undefined,
+        mime_type: 'application/pdf',
+      },
+    ])
+    expect(publishConfig.config_note).toBe('Read the proposal first.')
     expect(publishConfig.tools?.dify_tools).toEqual([
       expect.objectContaining({
         provider: 'DuckDuckGo',
