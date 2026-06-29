@@ -29,7 +29,7 @@ WORKDIR /opt/dify-agent
 
 FROM base AS packages
 
-ENV SHELL_SESSION_MANAGER_VERSION=2.2.1
+ENV SHELL_SESSION_MANAGER_VERSION=2.3.0
 
 COPY pyproject.toml uv.lock README.md ./
 COPY src ./src
