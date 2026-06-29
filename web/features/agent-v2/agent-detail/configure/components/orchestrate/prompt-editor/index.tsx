@@ -170,7 +170,8 @@ export function AgentPromptEditor() {
       insertLabel={t('agentDetail.configure.prompt.insert.label').toLocaleLowerCase()}
     />
   )
-  const { copied, copy, reset } = useClipboard({
+  const { copied, copy } = useClipboard({
+    timeout: 2000,
     onCopyError: () => {
       toast.error(t('agentDetail.configure.prompt.copyFailed'))
     },
@@ -397,7 +398,6 @@ export function AgentPromptEditor() {
                 aria-label={copied ? t('agentDetail.configure.prompt.copied') : t('agentDetail.configure.prompt.copy')}
                 className="flex size-6 shrink-0 items-center justify-center rounded-md p-0.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleCopyPrompt}
-                onMouseLeave={reset}
               >
                 <span aria-hidden className={copied ? 'i-ri-check-line size-4' : 'i-ri-clipboard-line size-4'} />
               </button>
