@@ -28,6 +28,15 @@ describe('Trigger', () => {
       expect(screen.getByText('Backend')).toBeInTheDocument()
       expect(screen.queryByText('common.tag.addTag')).not.toBeInTheDocument()
     })
+
+    it('should preserve tag label casing for mixed-case tags', () => {
+      render(<TagTrigger tags={['Prod', 'prod']} />)
+
+      expect(screen.getByText('Prod')).toHaveClass('system-2xs-medium')
+      expect(screen.getByText('Prod')).not.toHaveClass('system-2xs-medium-uppercase')
+      expect(screen.getByText('prod')).toHaveClass('system-2xs-medium')
+      expect(screen.getByText('prod')).not.toHaveClass('system-2xs-medium-uppercase')
+    })
   })
 
   // Prop-driven rendering updates.

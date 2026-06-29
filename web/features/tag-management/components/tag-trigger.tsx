@@ -43,7 +43,7 @@ export const TagTrigger = ({
                       className="flex max-w-30 min-w-0 shrink-0 items-center gap-x-0.5 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1.25 py-0.75"
                     >
                       <span aria-hidden="true" className="i-ri-price-tag-3-line size-3 shrink-0 text-text-quaternary" />
-                      <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
+                      <div className="truncate system-2xs-medium text-text-tertiary">
                         {content}
                       </div>
                     </div>
