@@ -24,7 +24,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus
-from models.model import App, AppMode, AppModelConfig, Conversation, IconType
+from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message
 from models.workflow import Workflow
 from services.agent.agent_soul_state import agent_soul_has_model
 from services.agent.composer_validator import ComposerConfigValidator
@@ -570,6 +570,18 @@ class AgentRosterService:
         if commit:
             self._session.commit()
         return conversation_id
+
+    def count_agent_app_debug_conversation_messages(self, *, conversation_id: str) -> int:
+        """Return the number of visible messages in an Agent App debug conversation."""
+
+        return (
+            self._session.scalar(
+                select(func.count(Message.id)).where(
+                    Message.conversation_id == conversation_id,
+                )
+            )
+            or 0
+        )
 
     def refresh_agent_app_debug_conversation_id(
         self, *, tenant_id: str, agent_id: str, account_id: str, commit: bool = True
