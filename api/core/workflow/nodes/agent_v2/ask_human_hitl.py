@@ -5,13 +5,13 @@ call, the workflow Agent node pauses the *outer* workflow through the very same
 ``HumanInputRequired`` form mechanism the Human Input node uses — reusing the
 form repository, delivery channels, and submission endpoints unchanged. This
 module is a pure translation layer: model-facing ask_human tool args become
-graphon form entities (``HumanInputNodeData`` / ``FormInputConfig`` /
+Dify-owned human-input entities (``HumanInputNodeData`` / ``FormInputConfig`` /
 ``UserActionConfig``) plus Dify delivery configs. It adds no new HITL behavior.
 
-The agent-side ``dify.ask_human`` contract is richer than the workflow form
+The agent-side ``dify.ask_human`` contract is richer than the Dify workflow form
 schema in two places, handled here without widening the form vocabulary:
 
-* ask_human fields carry a human label; graphon ``FormInputConfig`` does not.
+* ask_human fields carry a human label; Dify ``FormInputConfig`` does not.
   Labels are rendered into ``form_content`` next to a ``{{#$output.<name>#}}``
   marker — exactly how the Human Input node positions labelled inputs today.
 * ask_human action ids are valid identifiers of any length; graphon
@@ -22,11 +22,10 @@ schema in two places, handled here without widening the form vocabulary:
 
 from __future__ import annotations
 
-import importlib
 import hashlib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, cast, assert_never
+from typing import Any, assert_never
 
 from dify_agent.layers.ask_human import (
     AskHumanAction,
@@ -160,7 +159,7 @@ def _to_user_actions(actions: Sequence[AskHumanAction]) -> list[UserActionConfig
 def _render_form_content(args: AskHumanToolArgs) -> str:
     """Compose the markdown body, positioning each field's label + input marker.
 
-    Graphon ``FormInputConfig`` carries no label, so the field label is written
+    Dify ``FormInputConfig`` carries no label, so the field label is written
     into the content next to the ``{{#$output.<name>#}}`` marker that the form
     surface replaces with the live input — identical to the Human Input node.
     """
@@ -179,7 +178,7 @@ def _render_form_content(args: AskHumanToolArgs) -> str:
 def _resolved_default_values(args: AskHumanToolArgs) -> dict[str, Any]:
     """Pre-fill map the form surface reads, keyed by output variable name.
 
-    The graphon select input has no default field, so a select default can only
+    The Dify select input has no default field, so a select default can only
     be conveyed here; paragraph defaults are included for a uniform pre-fill.
     """
     defaults: dict[str, Any] = {}
@@ -191,7 +190,7 @@ def _resolved_default_values(args: AskHumanToolArgs) -> dict[str, Any]:
 
 def ask_human_args_to_node_data(args: AskHumanToolArgs, *, node_title: str) -> HumanInputNodeData:
     """Translate validated ask_human args into a synthetic Human Input node config."""
-    node_data = HumanInputNodeData(
+    return HumanInputNodeData(
         title=node_title,
         form_content=_render_form_content(args),
         inputs=[_to_form_input(field) for field in args.fields],
@@ -199,8 +198,6 @@ def ask_human_args_to_node_data(args: AskHumanToolArgs, *, node_title: str) -> H
         timeout=_DEFAULT_TIMEOUT_HOURS,
         timeout_unit=TimeoutUnit.HOUR,
     )
-    graphon_entities = importlib.import_module("graphon.nodes." + "human_input.entities")
-    return cast(HumanInputNodeData, graphon_entities.HumanInputNodeData.model_validate(node_data.model_dump(mode="json")))
 
 
 def build_delivery_methods(
@@ -337,14 +334,16 @@ def build_ask_human_pause_reason(
         conversation_id=conversation_id,
         display_in_ui=display_in_ui,
     )
-    return HumanInputRequired(
-        form_id=session_binding.issue_session_id_for_form(form_id=created.form_id),
-        form_content=created.node_data.form_content,
-        inputs=list(created.node_data.inputs),
-        actions=list(created.node_data.user_actions),
-        node_id=node_id,
-        node_title=created.node_title,
-        resolved_default_values=created.resolved_default_values,
+    return HumanInputRequired.model_validate(
+        {
+            "form_id": session_binding.issue_session_id_for_form(form_id=created.form_id),
+            "form_content": created.node_data.form_content,
+            "inputs": [form_input.model_dump(mode="json") for form_input in created.node_data.inputs],
+            "actions": [action.model_dump(mode="json") for action in created.node_data.user_actions],
+            "node_id": node_id,
+            "node_title": created.node_title,
+            "resolved_default_values": created.resolved_default_values,
+        }
     )
 
 

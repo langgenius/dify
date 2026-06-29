@@ -25,6 +25,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.repositories.human_input_repository import HumanInputFormRepository, HumanInputFormRepositoryImpl
+from core.workflow.human_input import session_binding
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.entities.pause_reason import HumanInputRequired, SchedulingPause
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
@@ -322,7 +323,7 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 pending_form_id: str | None = None
                 pending_tool_call_id: str | None = None
                 if isinstance(pause_reason, HumanInputRequired):
-                    pending_form_id = pause_reason.form_id
+                    pending_form_id = session_binding.resolve_form_id_from_session_id(session_id=pause_reason.form_id)
                     pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
                 else:
                     pause_reason = SchedulingPause(

@@ -1008,7 +1008,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                         pause_reason_model = WorkflowPauseReason(
                             pause_id=pause_model.id,
                             type_=reason.TYPE,
-                            form_id=reason.form_id,
+                            form_id=session_binding.resolve_form_id_from_session_id(session_id=reason.form_id),
                         )
                     case SchedulingPause():
                         pause_reason_model = WorkflowPauseReason(
