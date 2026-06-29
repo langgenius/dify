@@ -1,0 +1,20 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Dify",
+      "type": "docker-compose",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "--project-directory", ".", "-f", "docker/docker-compose.yaml", "-f", "docker/docker-compose.middleware.yaml", "up", "-d"],
+      "port": 80,
+      "healthCheck": "curl -s -o /dev/null -w '%{http_code}' http://localhost"
+    },
+    {
+      "name": "Dify (with logs)",
+      "type": "docker-compose",
+      "runtimeExecutable": "docker",
+      "runtimeArgs": ["compose", "--project-directory", ".", "-f", "docker/docker-compose.yaml", "up", "--build"],
+      "port": 80
+    }
+  ]
+}
