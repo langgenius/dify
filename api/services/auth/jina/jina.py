@@ -6,6 +6,8 @@ import httpx
 from core.helper.http_client_pooling import get_pooled_http_client
 from services.auth.api_key_auth_base import ApiKeyAuthBase, AuthCredentials
 
+_CREDENTIAL_VALIDATION_TIMEOUT = httpx.Timeout(10.0, connect=3.0)
+
 _http_client: httpx.Client = get_pooled_http_client(
     "auth:jina",
     lambda: httpx.Client(
@@ -42,7 +44,7 @@ class JinaAuth(ApiKeyAuthBase):
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
     def _post_request(self, url, data, headers):
-        return _http_client.post(url, headers=headers, json=data)
+        return _http_client.post(url, headers=headers, json=data, timeout=_CREDENTIAL_VALIDATION_TIMEOUT)
 
     def _handle_error(self, response):
         if response.status_code in {402, 409, 500}:
