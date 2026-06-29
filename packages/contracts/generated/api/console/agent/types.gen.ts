@@ -111,6 +111,8 @@ export type ApiKeyItem = {
   type: string
 }
 
+export type GeneratedAppResponse = JsonValue
+
 export type AgentSimpleResultResponse = {
   result: string
 }
@@ -1869,6 +1871,8 @@ export type AgentAppDetailWithSiteWritable = {
   workflow?: WorkflowPartial | null
 }
 
+export type GeneratedAppResponseWritable = JsonValue
+
 export type AgentAppPartialWritable = {
   access_mode?: string | null
   active_config_is_published?: boolean
@@ -2141,6 +2145,27 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponses = {
 
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponse
   = DeleteAgentByAgentIdApiKeysByApiKeyIdResponses[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdResponses]
+
+export type PostAgentByAgentIdBuildChatFinalizeData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/build-chat/finalize'
+}
+
+export type PostAgentByAgentIdBuildChatFinalizeErrors = {
+  400: unknown
+  404: unknown
+}
+
+export type PostAgentByAgentIdBuildChatFinalizeResponses = {
+  200: GeneratedAppResponse
+}
+
+export type PostAgentByAgentIdBuildChatFinalizeResponse
+  = PostAgentByAgentIdBuildChatFinalizeResponses[keyof PostAgentByAgentIdBuildChatFinalizeResponses]
 
 export type DeleteAgentByAgentIdBuildDraftData = {
   body?: never

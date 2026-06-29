@@ -78,9 +78,7 @@ def _file_pull_output(*, include_file: bool = True) -> str:
 
 def test_config_layer_prefix_prompt_includes_loaded_skill_and_file_paths() -> None:
     layer = _build_layer()
-    layer.runtime_state.pulled_skill_outputs = {
-        "alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."
-    }
+    layer.runtime_state.pulled_skill_outputs = {"alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."}
     layer.runtime_state.pulled_file_outputs = {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
 
     prompt = layer.build_prompt_context()
@@ -175,9 +173,7 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
         "set -eu\ndify-agent config file pull guide.txt",
         "set -eu\ndify-agent config skill pull alpha",
     ]
-    assert layer.runtime_state.pulled_skill_outputs == {
-        "alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."
-    }
+    assert layer.runtime_state.pulled_skill_outputs == {"alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."}
     assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
     assert "dify-agent config push --help" in layer.runtime_state.config_cli_help
     assert "ConfigPushSpec" in layer.runtime_state.push_spec_json_schema

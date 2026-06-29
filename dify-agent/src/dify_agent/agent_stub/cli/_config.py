@@ -78,9 +78,7 @@ class ConfigPushEntrySpec(BaseModel):
     )
     path: str | None = Field(
         default=None,
-        description=(
-            "Local path to upload or update. Omit path and provide name to delete the existing config entry."
-        ),
+        description=("Local path to upload or update. Omit path and provide name to delete the existing config entry."),
     )
 
     model_config = ConfigDict(extra="forbid")

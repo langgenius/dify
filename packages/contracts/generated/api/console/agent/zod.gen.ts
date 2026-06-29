@@ -337,6 +337,11 @@ export const zJsonValue = z
   .nullable()
 
 /**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponse = zJsonValue
+
+/**
  * WorkflowPartial
  */
 export const zWorkflowPartial = z.object({
@@ -2558,6 +2563,11 @@ export const zMessageInfiniteScrollPaginationResponse = z.object({
 })
 
 /**
+ * GeneratedAppResponse
+ */
+export const zGeneratedAppResponseWritable = zJsonValue
+
+/**
  * AgentAppPartial
  */
 export const zAgentAppPartialWritable = z.object({
@@ -2802,6 +2812,15 @@ export const zDeleteAgentByAgentIdApiKeysByApiKeyIdPath = z.object({
  * Agent service API key deleted
  */
 export const zDeleteAgentByAgentIdApiKeysByApiKeyIdResponse = z.void()
+
+export const zPostAgentByAgentIdBuildChatFinalizePath = z.object({
+  agent_id: z.uuid(),
+})
+
+/**
+ * Build chat finalization started
+ */
+export const zPostAgentByAgentIdBuildChatFinalizeResponse = zGeneratedAppResponse
 
 export const zDeleteAgentByAgentIdBuildDraftPath = z.object({
   agent_id: z.uuid(),

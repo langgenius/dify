@@ -31,8 +31,7 @@ Local edits to config files, skills, env, or notes are not saved by themselves. 
 config push. Config push is available only when the Agent config context reports `config_version.kind` as
 `build_draft` and `config_version.writable` as true."""
 _CONFIG_CLI_PUSH_PROMPT = (
-    "- Save updated build-draft config files/skills/env/note by piping a JSON spec to "
-    "`dify-agent config push`."
+    "- Save updated build-draft config files/skills/env/note by piping a JSON spec to `dify-agent config push`."
 )
 _CONFIG_CLI_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config --help": ("config",),
@@ -47,10 +46,7 @@ _CONFIG_CLI_PUSH_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
 }
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
 _CONFIG_PUSH_SPEC_PROMPT = (
-    "Config push JSON spec:\n"
-    "Semantics:\n{semantics}\n\n"
-    "JSON Schema:\n{schema}\n\n"
-    "Example:\n{example}"
+    "Config push JSON spec:\nSemantics:\n{semantics}\n\nJSON Schema:\n{schema}\n\nExample:\n{example}"
 )
 
 

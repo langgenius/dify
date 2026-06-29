@@ -15,9 +15,9 @@ from flask import Flask
 from controllers.console.app import agent_config_inspector as inspector
 from controllers.console.app.agent_config_inspector import (
     AgentConfigFileDownloadApi,
+    AgentConfigFilePreviewApi,
     AgentConfigFilesApi,
     AgentConfigFilesByAgentApi,
-    AgentConfigFilePreviewApi,
     AgentConfigManifestApi,
     AgentConfigManifestByAgentApi,
     AgentConfigSkillFileDownloadApi,
