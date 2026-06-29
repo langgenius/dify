@@ -498,3 +498,43 @@ class TestNotionMetadataAndCredentialMethods:
         monkeypatch.setattr(notion_extractor, "DatasourceProviderService", FakeProviderServiceFound)
 
         assert notion_extractor.NotionExtractor._get_access_token("tenant", "cred") == "token-from-credential"
+
+
+class TestNotionRequestTimeouts:
+    """Notion API calls must carry a bounded timeout so a slow or unresponsive
+    endpoint cannot hang document import/sync indefinitely."""
+
+    def _extractor(self, page_type: str = "page"):
+        return notion_extractor.NotionExtractor(
+            notion_workspace_id="ws",
+            notion_obj_id="obj",
+            notion_page_type=page_type,
+            tenant_id="tenant",
+            notion_access_token="token",
+        )
+
+    def test_database_query_passes_bounded_timeout(self, mocker: MockerFixture):
+        extractor = self._extractor(page_type="database")
+        mock_post = mocker.patch(
+            "httpx.post",
+            return_value=_mock_response({"results": [], "has_more": False, "next_cursor": None}),
+        )
+
+        extractor._get_notion_database_data("db-1")
+
+        timeout = mock_post.call_args.kwargs["timeout"]
+        assert timeout is notion_extractor.NOTION_REQUEST_TIMEOUT
+        assert isinstance(timeout, httpx.Timeout)
+
+    def test_last_edited_time_passes_bounded_timeout(self, mocker: MockerFixture):
+        extractor = self._extractor(page_type="page")
+        mock_request = mocker.patch(
+            "httpx.request",
+            return_value=_mock_response({"last_edited_time": "2024-01-01T00:00:00.000Z"}),
+        )
+
+        extractor.get_notion_last_edited_time()
+
+        timeout = mock_request.call_args.kwargs["timeout"]
+        assert timeout is notion_extractor.NOTION_REQUEST_TIMEOUT
+        assert isinstance(timeout, httpx.Timeout)
