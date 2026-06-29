@@ -44,7 +44,9 @@ from services.agent_config_service import (
     AgentConfigService,
     AgentConfigServiceError,
     AgentConfigVersionKind,
+    ConfigPushFileItem,
     ConfigPushPayload,
+    ConfigPushSkillItem,
 )
 
 
@@ -67,6 +69,16 @@ class AgentConfigByAgentQuery(BaseModel):
 
 class AgentConfigFileUploadPayload(BaseModel):
     upload_file_id: str = Field(..., description="UploadFile UUID from POST /console/api/files/upload")
+
+
+_AGENT_CONFIG_SKILL_UPLOAD_PARAMS = {
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": True,
+        "description": "Skill package (.zip or .skill).",
+    }
+}
 
 
 class AgentConfigSkillFileQuery(AgentConfigQuery):
@@ -580,7 +592,7 @@ def _skill_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[st
         user_id=target.account_id,
         config_version_id=target.version_id,
         config_version_kind=target.version_kind,
-        payload=ConfigPushPayload(skills=[{"name": name, "file_ref": None}]),
+        payload=ConfigPushPayload(skills=[ConfigPushSkillItem(name=name)]),
     )
     return {"result": "success", "removed_names": [name]}
 
@@ -618,7 +630,7 @@ def _file_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[str
         user_id=target.account_id,
         config_version_id=target.version_id,
         config_version_kind=target.version_kind,
-        payload=ConfigPushPayload(files=[{"name": name, "file_ref": None}]),
+        payload=ConfigPushPayload(files=[ConfigPushFileItem(name=name)]),
     )
     return {"result": "success", "removed_names": [name]}
 
@@ -659,7 +671,14 @@ class AgentConfigManifestApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/upload")
 class AgentConfigSkillUploadByAgentApi(Resource):
     @console_ns.doc("upload_agent_config_skill_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "agent_id": "Agent ID",
+            **query_params_from_model(AgentConfigByAgentQuery),
+            **_AGENT_CONFIG_SKILL_UPLOAD_PARAMS,
+        },
+    )
     @console_ns.response(201, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__])
     @setup_required
     @login_required
@@ -678,7 +697,14 @@ class AgentConfigSkillUploadByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/upload")
 class AgentConfigSkillUploadApi(Resource):
     @console_ns.doc("upload_agent_config_skill")
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "app_id": "Application ID",
+            **query_params_from_model(AgentConfigQuery),
+            **_AGENT_CONFIG_SKILL_UPLOAD_PARAMS,
+        },
+    )
     @console_ns.response(201, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__])
     @setup_required
     @login_required

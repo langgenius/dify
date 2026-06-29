@@ -3050,6 +3050,10 @@ export const zGetAgentByAgentIdConfigSkillsQuery = z.object({
  */
 export const zGetAgentByAgentIdConfigSkillsResponse = zAgentConfigSkillListResponse
 
+export const zPostAgentByAgentIdConfigSkillsUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+})
+
 export const zPostAgentByAgentIdConfigSkillsUploadPath = z.object({
   agent_id: z.uuid(),
 })

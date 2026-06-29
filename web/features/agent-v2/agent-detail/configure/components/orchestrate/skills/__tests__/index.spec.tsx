@@ -1,4 +1,5 @@
 import type { AgentConfigApiContext } from '../../config-context'
+import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -13,9 +14,25 @@ import { AgentConfigApiContextProvider } from '../../config-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentSkills } from '../index'
 
+type ConfigSkillInspectQueryOptionsInput = {
+  input: {
+    params: {
+      name: string
+    }
+  }
+}
+
+type ConfigSkillFileQueryOptionsInput = {
+  input: {
+    query: {
+      path: string
+    }
+  }
+}
+
 const mocks = vi.hoisted(() => ({
-  deleteSkillMutationFn: vi.fn(async () => ({ removed_names: ['Tender Analyzer'], result: 'success' })),
-  uploadSkillMutationFn: vi.fn(async () => ({
+  deleteSkillMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['Tender Analyzer'], result: 'success' })),
+  uploadSkillMutationFn: vi.fn(async (_input: unknown) => ({
     config_version: { id: 'draft-1', kind: 'draft', writable: true },
     skill: {
       id: 'Invoice Helper',
@@ -27,9 +44,9 @@ const mocks = vi.hoisted(() => ({
       size: 128,
     },
   })),
-  inspectQueryOptions: vi.fn(),
-  previewQueryOptions: vi.fn(),
-  downloadQueryOptions: vi.fn(),
+  inspectQueryOptions: vi.fn((_options: ConfigSkillInspectQueryOptionsInput) => ({})),
+  previewQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
+  downloadQueryOptions: vi.fn((_options: ConfigSkillFileQueryOptionsInput) => ({})),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -141,6 +158,10 @@ function renderAgentSkills({
   },
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
+}: {
+  initialDraft?: AgentSoulConfigFormState
+  apiContext?: AgentConfigApiContext
+  readOnly?: boolean
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {

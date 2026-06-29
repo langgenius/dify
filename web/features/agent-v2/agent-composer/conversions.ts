@@ -1,4 +1,6 @@
 import type {
+  AgentConfigFileRefConfig,
+  AgentConfigSkillRefConfig,
   AgentKnowledgeMetadataConditions,
   AgentKnowledgeModelConfig,
   AgentKnowledgeRetrievalConfig,
@@ -34,6 +36,8 @@ type AgentSoulDifyToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>
 type AgentSoulCliToolConfig = NonNullable<NonNullable<AgentSoulConfig['tools']>['cli_tools']>[number]
 type AgentSoulToolRuntimeParameterValue = NonNullable<AgentSoulDifyToolConfig['runtime_parameters']>[string]
 type AgentSoulEnvVariableConfig = NonNullable<NonNullable<AgentSoulConfig['env']>['variables']>[number]
+
+export type AgentSoulConfigWithFiles = AgentSoulConfig
 
 const toKnowledgeDatasetRefs = (item: AgentKnowledgeRetrievalItem) => {
   if (item.selectedDatasets !== undefined) {
@@ -399,7 +403,7 @@ const toEnvConfig = (variables: EnvVariable[]): AgentSoulConfig['env'] => ({
     })),
 })
 
-const toConfigSkillConfigs = (skills: AgentSkill[], baseConfig?: AgentSoulConfig) => {
+const toConfigSkillConfigs = (skills: AgentSkill[], baseConfig?: AgentSoulConfig): AgentConfigSkillRefConfig[] => {
   const existingByName = new Map((baseConfig?.config_skills ?? []).map(skill => [skill.name, skill]))
 
   return skills.flatMap((skill) => {
@@ -420,7 +424,7 @@ const toConfigSkillConfigs = (skills: AgentSkill[], baseConfig?: AgentSoulConfig
   })
 }
 
-const toConfigFileConfigs = (files: AgentFileNode[], baseConfig?: AgentSoulConfig) => {
+const toConfigFileConfigs = (files: AgentFileNode[], baseConfig?: AgentSoulConfig): AgentConfigFileRefConfig[] => {
   const existingByName = new Map((baseConfig?.config_files ?? []).map(file => [file.name, file]))
 
   return files.flatMap((file) => {

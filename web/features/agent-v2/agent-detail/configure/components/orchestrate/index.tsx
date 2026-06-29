@@ -92,10 +92,11 @@ export function AgentOrchestratePanel({
       )
     : null)
   const hasBottomAction = !!orchestrateBottomAction
+  const draftType = isBuildDraftActive ? ('debug_build' as const) : ('draft' as const)
   const configApiContext = useMemo(() => appId && nodeId
     ? {
         agentId,
-        draftType: isBuildDraftActive ? 'debug_build' : 'draft',
+        draftType,
         versionId: selectedVersionSnapshot?.id ?? undefined,
         workflow: {
           appId,
@@ -104,9 +105,9 @@ export function AgentOrchestratePanel({
       }
     : {
         agentId,
-        draftType: isBuildDraftActive ? 'debug_build' : 'draft',
+        draftType,
         versionId: selectedVersionSnapshot?.id ?? undefined,
-      }, [agentId, appId, isBuildDraftActive, nodeId, selectedVersionSnapshot?.id])
+      }, [agentId, appId, draftType, nodeId, selectedVersionSnapshot?.id])
 
   return (
     <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>

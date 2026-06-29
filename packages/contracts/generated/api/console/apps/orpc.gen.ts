@@ -308,6 +308,7 @@ import {
   zPostAppsByAppIdAgentConfigFilesPath,
   zPostAppsByAppIdAgentConfigFilesQuery,
   zPostAppsByAppIdAgentConfigFilesResponse,
+  zPostAppsByAppIdAgentConfigSkillsUploadBody,
   zPostAppsByAppIdAgentConfigSkillsUploadPath,
   zPostAppsByAppIdAgentConfigSkillsUploadQuery,
   zPostAppsByAppIdAgentConfigSkillsUploadResponse,
@@ -969,6 +970,7 @@ export const post10 = oc
   })
   .input(
     z.object({
+      body: zPostAppsByAppIdAgentConfigSkillsUploadBody,
       params: zPostAppsByAppIdAgentConfigSkillsUploadPath,
       query: zPostAppsByAppIdAgentConfigSkillsUploadQuery.optional(),
     }),

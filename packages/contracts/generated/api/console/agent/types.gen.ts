@@ -2510,7 +2510,9 @@ export type GetAgentByAgentIdConfigSkillsResponse
   = GetAgentByAgentIdConfigSkillsResponses[keyof GetAgentByAgentIdConfigSkillsResponses]
 
 export type PostAgentByAgentIdConfigSkillsUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     agent_id: string
   }

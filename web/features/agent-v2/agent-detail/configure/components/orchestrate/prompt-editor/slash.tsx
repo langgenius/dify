@@ -65,6 +65,10 @@ const isPromptReferenceItem = (item: AgentOrchestrateAddedItem): item is AgentFi
   'id' in item && 'name' in item
 )
 
+const isAgentFileNode = (item: AgentOrchestrateAddedItem): item is AgentFileNode => (
+  'icon' in item
+)
+
 const isCliToolItem = (item: AgentOrchestrateAddedItem): item is Extract<AgentTool, { kind: 'cli' }> => (
   'kind' in item && item.kind === 'cli'
 )
@@ -105,7 +109,7 @@ export function AgentPromptSlashMenu({
     if (view === 'files') {
       onAddFile?.({
         onAdded: (item) => {
-          if (isPromptReferenceItem(item))
+          if (isAgentFileNode(item))
             onSelect(createConfigReferenceToken('file', item.configName ?? item.id, item.name))
         },
       })

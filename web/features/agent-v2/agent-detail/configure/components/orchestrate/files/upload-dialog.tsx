@@ -1,5 +1,6 @@
 'use client'
 
+import type { AgentConfigFileItemResponse, AgentConfigFileUploadResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { ChangeEvent, DragEvent } from 'react'
 import type { AgentConfigApiContext } from '../config-context'
@@ -17,22 +18,12 @@ import { consoleQuery } from '@/service/client'
 import { formatFileSize } from '@/utils/format'
 import { getFileIconType } from './file-icon'
 
-type AgentConfigFileCommit = {
-  file: {
-    file_id: string
-    hash?: string | null
-    mime_type?: string | null
-    name: string
-    size?: number | null
-  }
-}
-
-function toAgentFileNode(committedFile: AgentConfigFileCommit['file']): AgentFileNode {
+function toAgentFileNode(committedFile: AgentConfigFileItemResponse): AgentFileNode {
   return {
     id: committedFile.name,
     name: committedFile.name,
     icon: getFileIconType(committedFile.name, committedFile.mime_type),
-    fileId: committedFile.file_id,
+    fileId: committedFile.file_id ?? undefined,
     configName: committedFile.name,
     size: committedFile.size ?? undefined,
     hash: committedFile.hash ?? undefined,
@@ -198,7 +189,7 @@ export function AgentFileUploadDialog({
     || commitWorkflowAgentFileMutation.isPending
 
   const commitUploadedFile = (uploadedFile: FileResponse, options: {
-    onSuccess: (committedFile: AgentConfigFileCommit) => void
+    onSuccess: (committedFile: AgentConfigFileUploadResponse) => void
     onError: () => void
   }) => {
     const body = {

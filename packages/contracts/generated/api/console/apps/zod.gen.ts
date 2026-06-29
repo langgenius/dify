@@ -4432,6 +4432,10 @@ export const zGetAppsByAppIdAgentConfigSkillsQuery = z.object({
  */
 export const zGetAppsByAppIdAgentConfigSkillsResponse = zAgentConfigSkillListResponse
 
+export const zPostAppsByAppIdAgentConfigSkillsUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+})
+
 export const zPostAppsByAppIdAgentConfigSkillsUploadPath = z.object({
   app_id: z.uuid(),
 })

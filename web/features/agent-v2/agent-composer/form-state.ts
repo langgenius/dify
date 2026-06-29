@@ -31,9 +31,11 @@ export type AgentSkill = {
   mimeType?: string
   name: string
   size?: number
+  skillMdKey?: string
 }
 
 export type AgentFileNode = {
+  driveKey?: string
   hash?: string
   id: string
   icon: FileTreeIconType

@@ -14,9 +14,17 @@ import { AgentConfigApiContextProvider } from '../../config-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentFiles } from '../index'
 
+type ConfigFileQueryOptionsInput = {
+  input: {
+    params: {
+      name: string
+    }
+  }
+}
+
 const mocks = vi.hoisted(() => ({
-  uploadFileMutationFn: vi.fn(async () => ({ id: 'upload-1' })),
-  commitFileMutationFn: vi.fn(async () => ({
+  uploadFileMutationFn: vi.fn(async (_input: unknown) => ({ id: 'upload-1' })),
+  commitFileMutationFn: vi.fn(async (_input: unknown) => ({
     config_version: { id: 'draft-1', kind: 'draft', writable: true },
     file: {
       id: 'uploaded.md',
@@ -27,9 +35,9 @@ const mocks = vi.hoisted(() => ({
       size: 5,
     },
   })),
-  deleteFileMutationFn: vi.fn(async () => ({ removed_names: ['brief.md'], result: 'success' })),
-  previewQueryOptions: vi.fn(),
-  downloadQueryOptions: vi.fn(),
+  deleteFileMutationFn: vi.fn(async (_input: unknown) => ({ removed_names: ['brief.md'], result: 'success' })),
+  previewQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
+  downloadQueryOptions: vi.fn((_options: ConfigFileQueryOptionsInput) => ({})),
 }))
 
 vi.mock('@langgenius/dify-ui/toast', () => ({
@@ -138,6 +146,10 @@ function renderAgentFiles({
   } satisfies AgentSoulConfigFormState,
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
+}: {
+  initialDraft?: AgentSoulConfigFormState
+  apiContext?: AgentConfigApiContext
+  readOnly?: boolean
 } = {}) {
   const queryClient = new QueryClient({
     defaultOptions: {

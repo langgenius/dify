@@ -31,8 +31,14 @@ class _ConfigTargetQuery(BaseModel):
     config_version_kind: AgentConfigVersionKind
 
 
-class _ConfigPushRequest(_ConfigTargetQuery):
+class _ConfigMutationRequest(BaseModel):
+    tenant_id: str
     user_id: str
+    config_version_id: str
+    config_version_kind: AgentConfigVersionKind
+
+
+class _ConfigPushRequest(_ConfigMutationRequest):
     files: list[dict] = []
     skills: list[dict] = []
     env_text: str | None = None
@@ -49,13 +55,11 @@ class _ConfigPushRequest(_ConfigTargetQuery):
         )
 
 
-class _ConfigEnvUpdateRequest(_ConfigTargetQuery):
-    user_id: str
+class _ConfigEnvUpdateRequest(_ConfigMutationRequest):
     env_text: str
 
 
-class _ConfigNoteUpdateRequest(_ConfigTargetQuery):
-    user_id: str
+class _ConfigNoteUpdateRequest(_ConfigMutationRequest):
     note: str
 
 

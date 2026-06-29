@@ -129,6 +129,7 @@ import {
   zPostAgentByAgentIdConfigFilesPath,
   zPostAgentByAgentIdConfigFilesQuery,
   zPostAgentByAgentIdConfigFilesResponse,
+  zPostAgentByAgentIdConfigSkillsUploadBody,
   zPostAgentByAgentIdConfigSkillsUploadPath,
   zPostAgentByAgentIdConfigSkillsUploadQuery,
   zPostAgentByAgentIdConfigSkillsUploadResponse,
@@ -633,6 +634,7 @@ export const post9 = oc
   })
   .input(
     z.object({
+      body: zPostAgentByAgentIdConfigSkillsUploadBody,
       params: zPostAgentByAgentIdConfigSkillsUploadPath,
       query: zPostAgentByAgentIdConfigSkillsUploadQuery.optional(),
     }),

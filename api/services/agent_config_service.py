@@ -771,6 +771,7 @@ class AgentConfigService:
         user_id: str | None,
     ) -> AgentConfigTarget:
         self._assert_agent_belongs_to_tenant(session, tenant_id=tenant_id, agent_id=agent_id)
+        version: AgentConfigSnapshot | AgentConfigDraft | None
         try:
             match config_version_kind:
                 case AgentConfigVersionKind.SNAPSHOT:

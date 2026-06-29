@@ -3521,7 +3521,9 @@ export type GetAppsByAppIdAgentConfigSkillsResponse
   = GetAppsByAppIdAgentConfigSkillsResponses[keyof GetAppsByAppIdAgentConfigSkillsResponses]
 
 export type PostAppsByAppIdAgentConfigSkillsUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path: {
     app_id: string
   }
