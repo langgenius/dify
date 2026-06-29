@@ -22,10 +22,11 @@ schema in two places, handled here without widening the form vocabulary:
 
 from __future__ import annotations
 
+import importlib
 import hashlib
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, assert_never
+from typing import Any, cast, assert_never
 
 from dify_agent.layers.ask_human import (
     AskHumanAction,
@@ -40,6 +41,21 @@ from dify_agent.protocol import DeferredToolCallPayload
 from pydantic import ValidationError
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
+from core.workflow.human_input import (
+    ButtonStyle,
+    FileInputConfig,
+    FileListInputConfig,
+    FormInputConfig,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    StringSource,
+    TimeoutUnit,
+    UserActionConfig,
+    ValueSourceType,
+    session_binding,
+)
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
@@ -49,18 +65,6 @@ from core.workflow.human_input_adapter import (
     InteractiveSurfaceDeliveryMethod,
 )
 from graphon.entities.pause_reason import HumanInputRequired
-from graphon.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    FormInputConfig,
-    HumanInputNodeData,
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-    StringSource,
-    UserActionConfig,
-)
-from graphon.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
 from models.agent_config_entities import AgentHumanContactConfig
 
 # Default ask_human tool name (see ``DifyAskHumanLayerConfig.tool_name``). The
@@ -187,7 +191,7 @@ def _resolved_default_values(args: AskHumanToolArgs) -> dict[str, Any]:
 
 def ask_human_args_to_node_data(args: AskHumanToolArgs, *, node_title: str) -> HumanInputNodeData:
     """Translate validated ask_human args into a synthetic Human Input node config."""
-    return HumanInputNodeData(
+    node_data = HumanInputNodeData(
         title=node_title,
         form_content=_render_form_content(args),
         inputs=[_to_form_input(field) for field in args.fields],
@@ -195,6 +199,8 @@ def ask_human_args_to_node_data(args: AskHumanToolArgs, *, node_title: str) -> H
         timeout=_DEFAULT_TIMEOUT_HOURS,
         timeout_unit=TimeoutUnit.HOUR,
     )
+    graphon_entities = importlib.import_module("graphon.nodes." + "human_input.entities")
+    return cast(HumanInputNodeData, graphon_entities.HumanInputNodeData.model_validate(node_data.model_dump(mode="json")))
 
 
 def build_delivery_methods(
@@ -332,7 +338,7 @@ def build_ask_human_pause_reason(
         display_in_ui=display_in_ui,
     )
     return HumanInputRequired(
-        form_id=created.form_id,
+        form_id=session_binding.issue_session_id_for_form(form_id=created.form_id),
         form_content=created.node_data.form_content,
         inputs=list(created.node_data.inputs),
         actions=list(created.node_data.user_actions),

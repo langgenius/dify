@@ -34,7 +34,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
-from core.workflow.human_input import FormDefinition
+from core.workflow.human_input import FormDefinition, session_binding
 from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from libs.datetime_utils import naive_utc_now
@@ -130,7 +130,7 @@ def _build_human_input_required_reason(
             node_title = definition.node_title or node_title
 
     reason = HumanInputRequired(
-        form_id=form_id,
+        form_id=session_binding.issue_session_id_for_form(form_id=form_id),
         form_content=form_content,
         inputs=inputs,
         actions=actions,
