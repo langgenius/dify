@@ -59,9 +59,8 @@ class DifyConfigLayerConfig(LayerConfig):
 class DifyConfigRuntimeState(BaseModel):
     """Serializable config-layer values computed once during context entry."""
 
-    loaded_skill_bodies: dict[str, str] = Field(default_factory=dict)
-    pulled_skill_paths: dict[str, str] = Field(default_factory=dict)
-    pulled_file_paths: dict[str, str] = Field(default_factory=dict)
+    pulled_skill_outputs: dict[str, str] = Field(default_factory=dict)
+    pulled_file_outputs: dict[str, str] = Field(default_factory=dict)
     config_context_json: str = ""
     config_cli_help: dict[str, str] = Field(default_factory=dict)
     push_spec_semantics: str = ""

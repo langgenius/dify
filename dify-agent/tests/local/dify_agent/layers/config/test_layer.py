@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from typing import Literal
 
 import pytest
@@ -66,44 +65,32 @@ def _remote_result(
 
 
 def _skill_pull_output(*, include_skill: bool = True) -> str:
-    return json.dumps(
-        {
-            "items": [
-                {
-                    "name": "alpha",
-                    "archive_path": "/tmp/dify-config/skills/alpha.zip",
-                    "directory_path": "/tmp/dify-config/skills/alpha",
-                    "skill_md": "# Alpha\nUse it.\n",
-                }
-            ]
-            if include_skill
-            else []
-        },
-        separators=(",", ":"),
-    )
+    if not include_skill:
+        return ""
+    return "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it.\n"
 
 
 def _file_pull_output(*, include_file: bool = True) -> str:
-    return json.dumps(
-        {"items": [{"name": "guide.txt", "path": "/tmp/dify-config/files/guide.txt"}] if include_file else []},
-        separators=(",", ":"),
-    )
+    if not include_file:
+        return ""
+    return "/workspace/.dify_conf/files/guide.txt\n"
 
 
 def test_config_layer_prefix_prompt_includes_loaded_skill_and_file_paths() -> None:
     layer = _build_layer()
-    layer.runtime_state.loaded_skill_bodies = {"alpha": "# Alpha\nUse it.\n"}
-    layer.runtime_state.pulled_skill_paths = {"alpha": "/tmp/dify-config/skills/alpha"}
-    layer.runtime_state.pulled_file_paths = {"guide.txt": "/tmp/dify-config/files/guide.txt"}
+    layer.runtime_state.pulled_skill_outputs = {
+        "alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."
+    }
+    layer.runtime_state.pulled_file_outputs = {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
 
     prompt = layer.build_prompt_context()
 
     assert "Config note" not in prompt
     assert "Loaded mentioned skills" in prompt
     assert "Name: alpha" in prompt
-    assert "Local path: /tmp/dify-config/skills/alpha" in prompt
-    assert "SKILL.md:\n# Alpha\nUse it.\n" in prompt
-    assert "Mentioned files pulled locally:\n- guide.txt -> /tmp/dify-config/files/guide.txt" in prompt
+    assert "Pull output:\n/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it." in prompt
+    assert "Mentioned files pulled locally" in prompt
+    assert "Name: guide.txt\nPull output:\n/workspace/.dify_conf/files/guide.txt" in prompt
 
 
 def test_config_layer_suffix_prompt_uses_cached_soul_context_cli_help_and_push_schema() -> None:
@@ -143,34 +130,13 @@ def test_config_layer_suffix_prompt_omits_push_usage_when_config_is_not_writable
 def test_build_shell_pull_scripts_include_targets() -> None:
     layer = _build_layer()
 
-    skill_script = layer._build_shell_skill_pull_script()
-    file_script = layer._build_shell_file_pull_script()
+    skill_script = layer._build_shell_skill_pull_script("alpha")
+    file_script = layer._build_shell_file_pull_script("guide.txt")
 
-    assert 'mkdir -p "$base/skills"' in skill_script
-    assert 'dify-agent config skill pull alpha --to "$base/skills" --json' in skill_script
+    assert skill_script == "set -eu\ndify-agent config skill pull alpha"
     assert "__DIFY_CONFIG_SKILLS_BEGIN__" not in skill_script
-    assert 'mkdir -p "$base/files"' in file_script
-    assert 'dify-agent config file pull guide.txt --to "$base/files" --json' in file_script
+    assert file_script == "set -eu\ndify-agent config file pull guide.txt"
     assert "__DIFY_CONFIG_FILES_BEGIN__" not in file_script
-
-
-def test_parse_shell_pull_items_reads_json_payloads() -> None:
-    assert DifyConfigLayer._parse_shell_pull_items(_skill_pull_output()) == [
-        {
-            "name": "alpha",
-            "archive_path": "/tmp/dify-config/skills/alpha.zip",
-            "directory_path": "/tmp/dify-config/skills/alpha",
-            "skill_md": "# Alpha\nUse it.\n",
-        }
-    ]
-    assert DifyConfigLayer._parse_shell_pull_items(_file_pull_output()) == [
-        {"name": "guide.txt", "path": "/tmp/dify-config/files/guide.txt"}
-    ]
-
-
-def test_parse_shell_pull_items_rejects_invalid_json() -> None:
-    with pytest.raises(DifyConfigLayerError, match="invalid JSON"):
-        DifyConfigLayer._parse_shell_pull_items("not-json")
 
 
 @pytest.mark.anyio
@@ -205,11 +171,14 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
 
     assert max_active_commands > 1
     assert len(captured_scripts) == 2
-    assert any("dify-agent config skill pull alpha" in script for script in captured_scripts)
-    assert any("dify-agent config file pull guide.txt" in script for script in captured_scripts)
-    assert layer.runtime_state.loaded_skill_bodies == {"alpha": "# Alpha\nUse it.\n"}
-    assert layer.runtime_state.pulled_skill_paths == {"alpha": "/tmp/dify-config/skills/alpha"}
-    assert layer.runtime_state.pulled_file_paths == {"guide.txt": "/tmp/dify-config/files/guide.txt"}
+    assert sorted(captured_scripts) == [
+        "set -eu\ndify-agent config file pull guide.txt",
+        "set -eu\ndify-agent config skill pull alpha",
+    ]
+    assert layer.runtime_state.pulled_skill_outputs == {
+        "alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."
+    }
+    assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
     assert "dify-agent config push --help" in layer.runtime_state.config_cli_help
     assert "ConfigPushSpec" in layer.runtime_state.push_spec_json_schema
 
@@ -264,7 +233,7 @@ async def test_on_context_create_raises_when_mentioned_skill_is_missing(
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
 
-    with pytest.raises(DifyConfigLayerError, match="missing pulled skill content"):
+    with pytest.raises(DifyConfigLayerError, match="missing pull output"):
         await layer.on_context_create()
 
 
@@ -282,5 +251,5 @@ async def test_on_context_create_raises_when_mentioned_file_is_missing(
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
 
-    with pytest.raises(DifyConfigLayerError, match="missing pulled file"):
+    with pytest.raises(DifyConfigLayerError, match="missing pull output"):
         await layer.on_context_create()
