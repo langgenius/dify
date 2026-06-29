@@ -226,7 +226,7 @@ const WebAppsSectionContent = () => {
             className="overflow-x-hidden"
             role="region"
           >
-            <ScrollAreaContent className="w-full max-w-full min-w-0! pr-5 pl-2">
+            <ScrollAreaContent className="w-full max-w-full min-w-0! px-2">
               {isPending && (
                 <WebAppsSkeleton />
               )}
