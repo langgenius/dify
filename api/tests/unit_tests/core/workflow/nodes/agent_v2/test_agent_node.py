@@ -16,6 +16,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
+from core.workflow.human_input import session_binding
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
@@ -505,7 +506,7 @@ def test_agent_node_failed_run_without_session_store_skips_mark_cleaned():
     assert "session_snapshot_cleaned_on_failure" not in agent_backend
 
 
-def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
+def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot(monkeypatch: pytest.MonkeyPatch):
     store = FakeSessionStore()
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
 
@@ -515,6 +516,8 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     fake_repo = MagicMock()
     fake_repo.create_form.return_value = MagicMock(id="form-1")
     node._build_human_input_form_repository = lambda *, dify_ctx, workflow_run_id: fake_repo  # type: ignore[assignment]
+    mapping = MagicMock(return_value="resolved-form-1")
+    monkeypatch.setattr(session_binding, "resolve_form_id_from_session_id", mapping)
 
     events = list(node._run())
 
@@ -524,11 +527,12 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot():
     assert events[0].reason.form_id == "form-1"
     assert events[0].reason.node_id == "agent-node"
     fake_repo.create_form.assert_called_once()
+    mapping.assert_called_once_with(session_id="form-1")
     assert store.saved
     assert store.saved[0][1] == "fake-run-1"
     assert store.saved[0][3], "paused agent run should still persist replayable layer specs"
     # ENG-637: the awaiting form + deferred tool_call correlation is persisted.
-    assert store.saved[0][4] == "form-1"
+    assert store.saved[0][4] == "resolved-form-1"
     assert store.saved[0][5] == "fake-ask-human-1"
 
 
