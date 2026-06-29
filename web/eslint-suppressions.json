@@ -2457,6 +2457,9 @@
   "app/components/base/markdown-blocks/form.tsx": {
     "erasable-syntax-only/enums": {
       "count": 3
+    },
+    "prefer-regex-literals": {
+      "count": 1
     }
   },
   "app/components/base/markdown-blocks/link.tsx": {
