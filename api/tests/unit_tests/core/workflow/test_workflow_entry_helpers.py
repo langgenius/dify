@@ -125,7 +125,7 @@ class TestWorkflowChildEngineBuilder:
             variable_pool=sentinel.parent_variable_pool,
         )
         child_graph = sentinel.child_graph
-        child_graph_runtime_state = sentinel.child_graph_runtime_state
+        child_graph_runtime_state = SimpleNamespace(execution_context=nullcontext(None))
         child_engine = MagicMock()
 
         with (
