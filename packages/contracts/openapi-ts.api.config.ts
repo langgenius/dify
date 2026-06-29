@@ -240,48 +240,6 @@ const normalizeOpaqueContractResponses = (document: SwaggerDocument) => {
   }
 }
 
-const requireDiscriminatorProperty = (schema: SwaggerSchema, propertyName: string) => {
-  const properties = schema.properties
-  if (!isObject(properties) || !isObject(properties[propertyName]))
-    return
-
-  const required = Array.isArray(schema.required)
-    ? schema.required.filter((item): item is string => typeof item === 'string')
-    : []
-
-  if (!required.includes(propertyName))
-    schema.required = [...required, propertyName]
-}
-
-const normalizeDiscriminatorRequiredProperties = (document: SwaggerDocument) => {
-  const schemas = getDocumentSchemas(document)
-
-  for (const schema of Object.values(schemas)) {
-    if (!isObject(schema))
-      continue
-
-    const discriminator = schema.discriminator
-    if (!isObject(discriminator) || typeof discriminator.propertyName !== 'string')
-      continue
-
-    if (!Array.isArray(schema.oneOf))
-      continue
-
-    for (const variant of schema.oneOf) {
-      if (!isObject(variant) || typeof variant.$ref !== 'string')
-        continue
-
-      const refName = schemaNameFromRef(variant.$ref)
-      if (!refName)
-        continue
-
-      const refSchema = schemas[refName]
-      if (refSchema)
-        requireDiscriminatorProperty(refSchema, discriminator.propertyName)
-    }
-  }
-}
-
 const hasSuccessResponse = (operation: SwaggerOperation) => {
   return Object.entries(operation.responses ?? {}).some(([status, response]) => {
     if (!/^2\d\d$/.test(status))
@@ -316,7 +274,6 @@ const filterContractOperations = (document: SwaggerDocument) => {
 
 const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
-  normalizeDiscriminatorRequiredProperties(document)
   filterContractOperations(document)
   addOperationIds(document)
 

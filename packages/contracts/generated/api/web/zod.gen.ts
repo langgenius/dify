@@ -257,7 +257,7 @@ export const zFileInputConfig = z.object({
   allowed_file_types: z.array(zFileType).optional(),
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   output_variable_name: z.string(),
-  type: z.literal('file').default('file'),
+  type: z.literal('file').optional().default('file'),
 })
 
 /**
@@ -269,7 +269,7 @@ export const zFileListInputConfig = z.object({
   allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
   number_limits: z.int().gte(0).optional().default(0),
   output_variable_name: z.string(),
-  type: z.literal('file-list').default('file-list'),
+  type: z.literal('file-list').optional().default('file-list'),
 })
 
 /**
@@ -737,7 +737,7 @@ export const zStringListSource = z.object({
 export const zSelectInputConfig = z.object({
   option_source: zStringListSource,
   output_variable_name: z.string(),
-  type: z.literal('select').default('select'),
+  type: z.literal('select').optional().default('select'),
 })
 
 /**
@@ -759,7 +759,7 @@ export const zStringSource = z.object({
 export const zParagraphInputConfig = z.object({
   default: zStringSource.nullish(),
   output_variable_name: z.string(),
-  type: z.literal('paragraph').default('paragraph'),
+  type: z.literal('paragraph').optional().default('paragraph'),
 })
 
 export const zFormInputConfig = z.discriminatedUnion('type', [
