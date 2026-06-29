@@ -67,7 +67,9 @@ class FakeShellctlClient:
         self.run_calls: list[RunCall] = []
         self.delete_calls: list[str] = []
 
-    async def run(self, script: str, *, cwd: str | None = None, env: Mapping[str, str] | None = None, timeout: float = 10.0):
+    async def run(
+        self, script: str, *, cwd: str | None = None, env: Mapping[str, str] | None = None, timeout: float = 10.0
+    ):
         self.run_calls.append(RunCall(script=script, cwd=cwd, env=env, timeout=timeout))
         return self.run_handler(script, cwd, env, timeout)
 
@@ -152,7 +154,9 @@ def _locator() -> SandboxLocator:
         ),
         session_snapshot=CompositorSessionSnapshot(
             layers=[
-                LayerSessionSnapshot(name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}),
+                LayerSessionSnapshot(
+                    name="execution_context", lifecycle_state=LifecycleState.SUSPENDED, runtime_state={}
+                ),
                 LayerSessionSnapshot(
                     name="shell",
                     lifecycle_state=LifecycleState.SUSPENDED,
@@ -237,9 +241,7 @@ def test_decode_payload_reports_incomplete_capture_when_frame_is_missing() -> No
 def test_decode_payload_reports_incomplete_capture_when_frame_is_corrupt() -> None:
     broken = f"{_OUTPUT_BEGIN}%%%%{_OUTPUT_END}"
     with pytest.raises(SandboxFileError, match="incomplete while decoding framed payload"):
-        _decode_sandbox_payload(
-            _complete_result(output=broken, output_complete=False, incomplete_reason="timeout")
-        )
+        _decode_sandbox_payload(_complete_result(output=broken, output_complete=False, incomplete_reason="timeout"))
 
 
 def test_upload_injects_agent_stub_env_and_returns_mapping() -> None:

@@ -283,9 +283,7 @@ class AgentBackendRunRequestBuilder:
         )
 
         include_shell = (
-            run_input.include_shell
-            or run_input.config_layer_config is not None
-            or run_input.drive_config is not None
+            run_input.include_shell or run_input.config_layer_config is not None or run_input.drive_config is not None
         )
         if include_shell:
             # Sandboxed bash workspace (dify.shell). It enters before config/drive
@@ -497,9 +495,7 @@ class AgentBackendRunRequestBuilder:
         )
 
         include_shell = (
-            run_input.include_shell
-            or run_input.config_layer_config is not None
-            or run_input.drive_config is not None
+            run_input.include_shell or run_input.config_layer_config is not None or run_input.drive_config is not None
         )
         if include_shell:
             # Sandboxed bash workspace (dify.shell). It enters before drive so

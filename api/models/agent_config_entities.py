@@ -184,9 +184,7 @@ def validate_config_name(name: str) -> str:
 def validate_config_skill_name(name: str) -> str:
     normalized = validate_config_name(name)
     if _CONFIG_SKILL_NAME_PATTERN.fullmatch(normalized) is None:
-        raise ValueError(
-            f"config skill name {normalized!r} must match {_CONFIG_SKILL_NAME_PATTERN.pattern}"
-        )
+        raise ValueError(f"config skill name {normalized!r} must match {_CONFIG_SKILL_NAME_PATTERN.pattern}")
     return normalized
 
 

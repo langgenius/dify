@@ -17,8 +17,8 @@ from pytest_mock import MockerFixture
 from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from models.agent import AgentConfigDraftType
 from models import Account
+from models.agent import AgentConfigDraftType
 
 MODULE = "core.app.apps.agent_app.app_generator"
 

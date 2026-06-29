@@ -73,6 +73,7 @@ from services.agent.prompt_mentions import (
     parse_prompt_mentions,
     workflow_previous_node_output_refs_from_selectors,
 )
+
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
 from .runtime_feature_manifest import build_runtime_feature_manifest
@@ -775,7 +776,12 @@ def build_config_layer_config(
             if mention.kind in {MentionKind.SKILL, MentionKind.FILE} and mention.ref_id
         )
     )
-    if not agent_soul.config_skills and not agent_soul.config_files and not agent_soul.config_note and not ordered_mentions:
+    if (
+        not agent_soul.config_skills
+        and not agent_soul.config_files
+        and not agent_soul.config_note
+        and not ordered_mentions
+    ):
         return None, []
 
     skill_names = {skill.name for skill in agent_soul.config_skills}
@@ -807,7 +813,9 @@ def build_config_layer_config(
             files=[DifyConfigFileConfig(name=file_ref.name) for file_ref in agent_soul.config_files],
             env_keys=[
                 key
-                for key in (item.key or item.name or item.env_name or item.variable for item in agent_soul.env.variables)
+                for key in (
+                    item.key or item.name or item.env_name or item.variable for item in agent_soul.env.variables
+                )
                 if key
             ],
             note=agent_soul.config_note,

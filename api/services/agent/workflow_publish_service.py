@@ -12,7 +12,6 @@ from core.workflow.nodes.agent_v2.validators import WorkflowAgentNodeValidationE
 from models.agent import (
     Agent,
     AgentConfigSnapshot,
-    AgentDriveFile,
     AgentScope,
     AgentStatus,
     WorkflowAgentBindingType,

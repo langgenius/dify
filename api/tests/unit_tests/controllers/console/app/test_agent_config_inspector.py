@@ -13,8 +13,8 @@ from unittest.mock import PropertyMock, patch
 from flask import Flask
 
 from controllers.console.app.agent_config_inspector import (
-    AgentConfigFilesByAgentApi,
     AgentConfigFilePreviewApi,
+    AgentConfigFilesByAgentApi,
     AgentConfigManifestApi,
     AgentConfigManifestByAgentApi,
     AgentConfigSkillInspectByAgentApi,
@@ -179,6 +179,5 @@ def test_file_upload_by_agent_delegates_to_service_owned_upload_lookup():
     assert config_service.return_value.push_file_for_console.call_args.kwargs["upload_file_id"] == "upload-1"
     assert config_service.return_value.push_file_for_console.call_args.kwargs["config_version_id"] == "build-draft-1"
     assert (
-        config_service.return_value.push_file_for_console.call_args.kwargs["config_version_kind"].value
-        == "build_draft"
+        config_service.return_value.push_file_for_console.call_args.kwargs["config_version_kind"].value == "build_draft"
     )

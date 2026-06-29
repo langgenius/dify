@@ -10,10 +10,10 @@ from unittest.mock import MagicMock
 
 from pytest_mock import MockerFixture
 
+from core.app.entities.app_invoke_entities import InvokeFrom
 from models.account import Account
 from models.human_input import HumanInputForm
 from models.model import App, Conversation, EndUser
-from core.app.entities.app_invoke_entities import InvokeFrom
 from tasks.app_generate import resume_agent_app_task as mod
 
 MODULE = "tasks.app_generate.resume_agent_app_task"

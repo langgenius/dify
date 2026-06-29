@@ -30,9 +30,7 @@ def _raw(method):
 def test_manifest_happy_path_calls_service() -> None:
     raw = _raw(AgentConfigManifestApi.get)
 
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
+    with app.test_request_context("/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"):
         with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.manifest.return_value = {"agent_id": "agent-1", "skills": []}
             body = raw(AgentConfigManifestApi(), "agent-1")
@@ -50,9 +48,7 @@ def test_manifest_happy_path_calls_service() -> None:
 def test_skill_pull_returns_send_file_response() -> None:
     raw = _raw(AgentConfigSkillPullApi.get)
 
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
+    with app.test_request_context("/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"):
         with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.pull_skill.return_value = SimpleNamespace(
                 payload=b"zip-bytes",
@@ -65,15 +61,13 @@ def test_skill_pull_returns_send_file_response() -> None:
     assert response.status_code == 200
     assert response.mimetype == "application/zip"
     assert response.get_data() == b"zip-bytes"
-    assert 'filename=alpha.zip' in response.headers["Content-Disposition"]
+    assert "filename=alpha.zip" in response.headers["Content-Disposition"]
 
 
 def test_skill_inspect_happy_path_returns_service_payload() -> None:
     raw = _raw(AgentConfigSkillInspectApi.get)
 
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
+    with app.test_request_context("/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"):
         with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.inspect_skill.return_value = {"name": "alpha", "files": ["SKILL.md"]}
             body = raw(AgentConfigSkillInspectApi(), "agent-1", "alpha")
@@ -84,9 +78,7 @@ def test_skill_inspect_happy_path_returns_service_payload() -> None:
 def test_file_pull_returns_send_file_response() -> None:
     raw = _raw(AgentConfigFilePullApi.get)
 
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
+    with app.test_request_context("/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"):
         with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.pull_file.return_value = SimpleNamespace(
                 payload=b"file-bytes",
@@ -99,7 +91,7 @@ def test_file_pull_returns_send_file_response() -> None:
     assert response.status_code == 200
     assert response.mimetype == "text/plain"
     assert response.get_data() == b"file-bytes"
-    assert 'filename=guide.txt' in response.headers["Content-Disposition"]
+    assert "filename=guide.txt" in response.headers["Content-Disposition"]
 
 
 def test_push_happy_path_validates_body_and_canonicalizes_user() -> None:
@@ -196,9 +188,7 @@ def test_push_invalid_body_returns_400() -> None:
 def test_manifest_maps_service_errors() -> None:
     raw = _raw(AgentConfigManifestApi.get)
 
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
+    with app.test_request_context("/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"):
         with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.manifest.side_effect = AgentConfigServiceError(
                 "config_version_not_found",

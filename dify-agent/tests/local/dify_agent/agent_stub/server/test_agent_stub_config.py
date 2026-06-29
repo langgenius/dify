@@ -198,11 +198,29 @@ async def test_dify_api_handler_push_env_and_note_success(monkeypatch: pytest.Mo
 @pytest.mark.parametrize(
     ("method_name", "path", "response", "expected_status", "expected_message"),
     [
-        ("manifest", "/inner/api/agent-config/agent-1/manifest", httpx.Response(200, json={"bad": "shape"}), 502, "manifest"),
-        ("pull_skill", "/inner/api/agent-config/agent-1/skills/alpha/pull", httpx.Response(404, json={"detail": "missing"}), 404, "missing"),
+        (
+            "manifest",
+            "/inner/api/agent-config/agent-1/manifest",
+            httpx.Response(200, json={"bad": "shape"}),
+            502,
+            "manifest",
+        ),
+        (
+            "pull_skill",
+            "/inner/api/agent-config/agent-1/skills/alpha/pull",
+            httpx.Response(404, json={"detail": "missing"}),
+            404,
+            "missing",
+        ),
         ("push", "/inner/api/agent-config/agent-1/push", httpx.Response(200, json={"bad": "shape"}), 502, "push"),
         ("update_env", "/inner/api/agent-config/agent-1/env", httpx.Response(200, json=["bad"]), 502, "env"),
-        ("update_note", "/inner/api/agent-config/agent-1/note", httpx.Response(200, text="not-json"), 502, "invalid JSON"),
+        (
+            "update_note",
+            "/inner/api/agent-config/agent-1/note",
+            httpx.Response(200, text="not-json"),
+            502,
+            "invalid JSON",
+        ),
     ],
 )
 async def test_dify_api_handler_maps_error_cases(
@@ -321,7 +339,9 @@ async def test_control_plane_maps_config_request_errors(method_name: str) -> Non
             del principal, note
             raise AgentStubConfigRequestError(409, {"code": "conflict"})
 
-    service = AgentStubControlPlaneService(codec, config_request_handler=cast(AgentStubConfigRequestHandler, FakeHandler()))
+    service = AgentStubControlPlaneService(
+        codec, config_request_handler=cast(AgentStubConfigRequestHandler, FakeHandler())
+    )
 
     with pytest.raises(AgentStubControlPlaneError) as exc_info:
         match method_name:
@@ -405,7 +425,9 @@ def test_http_config_routes_forward_requests(
             return {"note": note}
 
     app = FastAPI()
-    app.include_router(create_agent_stub_http_router(codec, config_request_handler=cast(AgentStubConfigRequestHandler, FakeHandler())))
+    app.include_router(
+        create_agent_stub_http_router(codec, config_request_handler=cast(AgentStubConfigRequestHandler, FakeHandler()))
+    )
     client = TestClient(app)
     headers = {"Authorization": f"Bearer {token}"}
     response = client.request(method.upper(), path, headers=headers, json=body)

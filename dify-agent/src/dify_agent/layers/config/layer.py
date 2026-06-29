@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 import shlex
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import ClassVar
 
 from typing_extensions import Self, override
@@ -102,9 +101,7 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
         if remaining_skills:
             sections.append("Other available skills:\n" + "\n".join(remaining_skills))
         remaining_files = [
-            f"- {file.name}"
-            for file in self.config.files
-            if file.name not in set(self.config.mentioned_file_names)
+            f"- {file.name}" for file in self.config.files if file.name not in set(self.config.mentioned_file_names)
         ]
         if remaining_files:
             sections.append("Available files:\n" + "\n".join(remaining_files))
@@ -131,7 +128,9 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
             )
         if not result.output_complete:
             reason = result.incomplete_reason or "unknown"
-            raise DifyConfigLayerError(f"config mentioned pull output was incomplete before the payload finished: {reason}")
+            raise DifyConfigLayerError(
+                f"config mentioned pull output was incomplete before the payload finished: {reason}"
+            )
 
         skill_items, file_items = self._parse_shell_pull_output(result.output)
         self._loaded_skill_bodies = {item["name"]: item["skill_md"] for item in skill_items}

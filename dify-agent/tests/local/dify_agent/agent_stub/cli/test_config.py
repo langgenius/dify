@@ -123,7 +123,9 @@ def test_push_config_from_environment_builds_request_from_files_skills_env_and_n
         return SimpleNamespace(tool_file_id=f"tool-file-{len(uploaded_paths)}")
 
     monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
-    monkeypatch.setattr(config_cli, "upload_tool_file_resource_from_environment", fake_upload_tool_file_resource_from_environment)
+    monkeypatch.setattr(
+        config_cli, "upload_tool_file_resource_from_environment", fake_upload_tool_file_resource_from_environment
+    )
 
     captured: dict[str, object] = {}
 

@@ -334,8 +334,7 @@ def _decode_sandbox_payload(result: CompleteRemoteCommandResult) -> dict[str, ob
     if result.exit_code not in (0, None):
         raise SandboxFileError(
             "sandbox_command_failed",
-            "sandbox command exited with code "
-            + f"{result.exit_code}: {_shell_result_details(result)}",
+            "sandbox command exited with code " + f"{result.exit_code}: {_shell_result_details(result)}",
             status_code=502,
         )
     begin = result.output.find(_OUTPUT_BEGIN)

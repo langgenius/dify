@@ -41,7 +41,9 @@ def create_agent_stub_http_router(
 ) -> APIRouter:
     """Create HTTP routes bound to the application's Agent Stub dependencies."""
     router = APIRouter(prefix="/agent-stub", tags=["agent-stub"])
-    service = AgentStubControlPlaneService(token_codec, file_request_handler, config_request_handler, drive_request_handler)
+    service = AgentStubControlPlaneService(
+        token_codec, file_request_handler, config_request_handler, drive_request_handler
+    )
 
     @router.post("/connections", response_model=AgentStubConnectResponse)
     async def create_connection(

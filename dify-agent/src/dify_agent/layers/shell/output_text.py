@@ -37,7 +37,9 @@ def normalized_output_text(
     if not truncated_in_middle:
         return head
     if truncation_message is None:
-        truncation_message = f"truncated in middle because the max output size is limited to {max_output_size_bytes} bytes"
+        truncation_message = (
+            f"truncated in middle because the max output size is limited to {max_output_size_bytes} bytes"
+        )
 
     parts = [
         head,

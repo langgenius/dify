@@ -112,6 +112,7 @@ def config_push(
     """Update the current build-draft Agent config from one local spec."""
     _run_config_push(from_path=from_path)
 
+
 @config_skill_app.command("pull")
 def config_skill_pull(
     names: list[str] = typer.Argument(None, metavar="NAME"),

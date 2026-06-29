@@ -1130,8 +1130,7 @@ def _soul_with_config_assets() -> AgentSoulConfig:
     return AgentSoulConfig(
         prompt={
             "system_prompt": (
-                "You are careful. Use [§skill:tender-analyzer:Tender Analyzer§] "
-                "and [§file:sample.pdf:sample.pdf§]."
+                "You are careful. Use [§skill:tender-analyzer:Tender Analyzer§] and [§file:sample.pdf:sample.pdf§]."
             )
         },
         model=AgentSoulModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),

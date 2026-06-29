@@ -147,7 +147,9 @@ def test_parse_shell_pull_output_rejects_invalid_json() -> None:
 
 def test_extract_marked_json_rejects_missing_end_marker() -> None:
     with pytest.raises(DifyConfigLayerError, match="omitted end marker"):
-        DifyConfigLayer._extract_marked_json("prefix __DIFY_CONFIG_SKILLS_BEGIN__\n{}", "__DIFY_CONFIG_SKILLS_BEGIN__", "__DIFY_CONFIG_SKILLS_END__")
+        DifyConfigLayer._extract_marked_json(
+            "prefix __DIFY_CONFIG_SKILLS_BEGIN__\n{}", "__DIFY_CONFIG_SKILLS_BEGIN__", "__DIFY_CONFIG_SKILLS_END__"
+        )
 
 
 @pytest.mark.anyio

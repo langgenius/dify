@@ -177,14 +177,8 @@ def push_config_from_environment(spec_path: str | None = None) -> AgentStubConfi
     raw_spec = _read_push_spec(spec_path)
     spec = ConfigPushSpec.model_validate(json.loads(raw_spec))
 
-    file_items = [
-        _build_file_push_item(item=item)
-        for item in _prepare_push_items(spec.files, kind="file")
-    ]
-    skill_items = [
-        _build_skill_push_item(item=item)
-        for item in _prepare_push_items(spec.skills, kind="skill")
-    ]
+    file_items = [_build_file_push_item(item=item) for item in _prepare_push_items(spec.files, kind="file")]
+    skill_items = [_build_skill_push_item(item=item) for item in _prepare_push_items(spec.skills, kind="skill")]
     env_text = _read_optional_text_path(spec.env)
     note_text = _read_optional_text_path(spec.note)
     return request_agent_stub_config_push_sync(

@@ -21,7 +21,6 @@ from dify_agent.adapters.shell.protocols import (
     CompleteShellCommandResult,
     ShellCommandProtocol,
     ShellCommandResult,
-    ShellCommandStatus,
     ShellPromptObservation,
     ShellProviderProtocol,
     ShellResourceProtocol,
@@ -267,7 +266,9 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         identity = self._try_session_identity()
         if identity is not None:
             session_id, _workspace_cwd = identity
-            result = await self._run_internal_script_complete(_workspace_cleanup_script(session_id=session_id), cwd=None)
+            result = await self._run_internal_script_complete(
+                _workspace_cleanup_script(session_id=session_id), cwd=None
+            )
             if result.exit_code != 0 or not result.output_complete:
                 logger.warning(
                     "Shell workspace cleanup for session %s ended with status=%s exit_code=%s output_complete=%s.",
