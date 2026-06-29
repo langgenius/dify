@@ -1196,11 +1196,12 @@ export const annotationSettings = {
 }
 
 /**
- * Batch import annotations from CSV file with rate limiting and security checks
+ * Batch import annotations from CSV or JSONL file with rate limiting and security checks
  */
 export const post14 = oc
   .route({
-    description: 'Batch import annotations from CSV file with rate limiting and security checks',
+    description:
+      'Batch import annotations from CSV or JSONL file with rate limiting and security checks',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdAnnotationsBatchImport',

@@ -62,8 +62,8 @@ def _make_setting(setting_id: str = "setting-1", with_detail: bool = True) -> Ma
     return setting
 
 
-def _make_file(content: bytes) -> FileStorage:
-    return FileStorage(stream=BytesIO(content))
+def _make_file(content: bytes, filename: str | None = None) -> FileStorage:
+    return FileStorage(stream=BytesIO(content), filename=filename)
 
 
 class TestAppAnnotationServiceUpInsert:
@@ -1049,6 +1049,71 @@ class TestAppAnnotationServiceBatchImport:
             mock_redis.expire.assert_called_once()
             mock_redis.setnx.assert_called_once_with("app_annotation_batch_import_uuid-3", "waiting")
             mock_task.delay.assert_called_once()
+
+    def test_batch_import_app_annotations_should_enqueue_job_when_jsonl_valid(self) -> None:
+        """Test successful JSONL batch import enqueues normalized records."""
+        # Arrange
+        file = _make_file(
+            b'{"question":"q1","answer":"a1"}\n{"question":"q2","answer":"a2"}\n',
+            filename="annotations.jsonl",
+        )
+        tenant_id = "tenant-1"
+        current_user = _make_user("user-1")
+        app = _make_app()
+        features = SimpleNamespace(billing=SimpleNamespace(enabled=False), annotation_quota_limit=None)
+
+        with (
+            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
+            patch("services.annotation_service.db") as mock_db,
+            patch("services.annotation_service.FeatureService.get_features", return_value=features),
+            patch("services.annotation_service.batch_import_annotations_task") as mock_task,
+            patch("services.annotation_service.redis_client") as mock_redis,
+            patch("services.annotation_service.uuid.uuid4", return_value="uuid-jsonl"),
+            patch("services.annotation_service.naive_utc_now", return_value=SimpleNamespace(timestamp=lambda: 1)),
+            patch(
+                "configs.dify_config",
+                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
+            ),
+        ):
+            mock_db.session.scalar.return_value = app
+
+            # Act
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+
+            # Assert
+            assert result == {"job_id": "uuid-jsonl", "job_status": "waiting", "record_count": 2}
+            mock_redis.setnx.assert_called_once_with("app_annotation_batch_import_uuid-jsonl", "waiting")
+            mock_task.delay.assert_called_once_with(
+                "uuid-jsonl",
+                [{"question": "q1", "answer": "a1"}, {"question": "q2", "answer": "a2"}],
+                app.id,
+                tenant_id,
+                current_user.id,
+            )
+
+    def test_batch_import_app_annotations_should_return_error_when_jsonl_invalid(self) -> None:
+        """Test malformed JSONL returns a line-specific validation error."""
+        # Arrange
+        file = _make_file(b'{"question":"q1","answer":"a1"}\nnot-json\n', filename="annotations.jsonl")
+        tenant_id = "tenant-1"
+        app = _make_app()
+
+        with (
+            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
+            patch("services.annotation_service.db") as mock_db,
+            patch(
+                "configs.dify_config",
+                new=SimpleNamespace(ANNOTATION_IMPORT_MAX_RECORDS=5, ANNOTATION_IMPORT_MIN_RECORDS=1),
+            ),
+        ):
+            mock_db.session.scalar.return_value = app
+
+            # Act
+            result = AppAnnotationService.batch_import_app_annotations(app.id, file)
+
+            # Assert
+            error_msg = cast(str, result["error_msg"])
+            assert "Invalid JSONL format at line 2" in error_msg
 
     def test_batch_import_app_annotations_should_cleanup_active_job_on_unexpected_exception(
         self, caplog: pytest.LogCaptureFixture

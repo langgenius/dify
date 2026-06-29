@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import TypedDict
 
 import click
 from celery import shared_task
@@ -18,12 +19,21 @@ from services.dataset_service import DatasetCollectionBindingService
 logger = logging.getLogger(__name__)
 
 
+class AnnotationImportRecord(TypedDict):
+    """Normalized annotation record parsed from a supported import file."""
+
+    question: str
+    answer: str
+
+
 @shared_task(queue="dataset")
-def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id: str, tenant_id: str, user_id: str):
+def batch_import_annotations_task(
+    job_id: str, content_list: list[AnnotationImportRecord], app_id: str, tenant_id: str, user_id: str
+):
     """
     Add annotation to index.
     :param job_id: job_id
-    :param content_list: content list
+    :param content_list: normalized annotation records with question and answer text
     :param app_id: app id
     :param tenant_id: tenant id
     :param user_id: user_id

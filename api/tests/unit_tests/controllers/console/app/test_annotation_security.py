@@ -173,8 +173,8 @@ class TestAnnotationImportFileValidation:
         # Should be rejected
         # This would be tested in integration tests
 
-    def test_non_csv_file_rejected(self):
-        """Test that non-CSV files are rejected."""
+    def test_unsupported_file_rejected(self):
+        """Test that files outside CSV/JSONL are rejected."""
         file = FileStorage(stream=io.BytesIO(b"test"), filename="test.txt", content_type="text/plain")
 
         # Should be rejected based on extension

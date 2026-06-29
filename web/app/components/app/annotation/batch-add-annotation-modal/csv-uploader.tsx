@@ -1,5 +1,4 @@
 'use client'
-import type { FC } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -7,17 +6,28 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import * as React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import { Csv as CSVIcon, Json as JSONIcon } from '@/app/components/base/icons/src/public/files'
 
 export type Props = Readonly<{
   file: File | undefined
   updateFile: (file?: File) => void
 }>
 
-const CSVUploader: FC<Props> = ({
+function getFileNameParts(fileName: string) {
+  const extensionStart = fileName.lastIndexOf('.')
+  if (extensionStart <= 0)
+    return { name: fileName, extension: '' }
+
+  return {
+    name: fileName.slice(0, extensionStart),
+    extension: fileName.slice(extensionStart),
+  }
+}
+
+function CSVUploader({
   file,
   updateFile,
-}) => {
+}: Props) {
   const { t } = useTranslation()
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
@@ -66,6 +76,8 @@ const CSVUploader: FC<Props> = ({
     const currentFile = e.target.files?.[0]
     updateFile(currentFile)
   }
+  const selectedFileName = file ? getFileNameParts(file.name) : undefined
+  const SelectedFileIcon = selectedFileName?.extension.toLowerCase() === '.jsonl' ? JSONIcon : CSVIcon
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
@@ -87,19 +99,22 @@ const CSVUploader: FC<Props> = ({
         style={{ display: 'none' }}
         type="file"
         id="fileUploader"
-        accept=".csv"
+        accept=".csv,.jsonl"
         onChange={fileChangeHandle}
       />
       <div ref={dropRef}>
         {!file && (
           <div className={cn('flex h-20 items-center rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg system-sm-regular', dragging && 'border border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
-            <div className="flex w-full items-center justify-center space-x-2">
-              <CSVIcon className="shrink-0" />
+            <div className="flex w-full items-center justify-center gap-3">
+              <div className="flex shrink-0 items-center gap-2">
+                <CSVIcon className="shrink-0" aria-hidden="true" />
+                <JSONIcon className="shrink-0" aria-hidden="true" />
+              </div>
               <div className="text-text-tertiary">
                 {t('batchModal.csvUploadTitle', { ns: 'appAnnotation' })}
                 <button
                   type="button"
-                  className="inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                  className="ml-1 inline cursor-pointer border-none bg-transparent p-0 text-left text-text-accent focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
                   onClick={selectHandle}
                 >
                   {t('batchModal.browse', { ns: 'appAnnotation' })}
@@ -111,10 +126,10 @@ const CSVUploader: FC<Props> = ({
         )}
         {file && (
           <div className={cn('group flex h-20 items-center rounded-xl border border-components-panel-border bg-components-panel-bg px-6 text-sm font-normal', 'hover:border-components-panel-bg-blur hover:bg-components-panel-bg-blur')}>
-            <CSVIcon className="shrink-0" />
+            <SelectedFileIcon className="shrink-0" aria-hidden="true" />
             <div className="ml-2 flex w-0 grow">
-              <span className="max-w-[calc(100%-30px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{file.name.replace(/.csv$/, '')}</span>
-              <span className="shrink-0 text-text-tertiary">.csv</span>
+              <span className="max-w-[calc(100%-48px)] overflow-hidden text-ellipsis whitespace-nowrap text-text-primary">{selectedFileName?.name}</span>
+              <span className="shrink-0 text-text-tertiary">{selectedFileName?.extension}</span>
             </div>
             <div className="hidden items-center group-hover:flex">
               <Button variant="secondary" onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>

@@ -170,4 +170,23 @@ describe('BatchModal', () => {
     })
     vi.useRealTimers()
   })
+
+  it('should show import error and skip polling when batch import returns error response', async () => {
+    renderComponent()
+    fireEvent.click(screen.getByTestId('mock-uploader'))
+
+    annotationBatchImportMock.mockResolvedValue({ error_msg: 'Invalid JSONL format at line 2' })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.run' }))
+    })
+
+    await waitFor(() => {
+      expect(mockNotify).toHaveBeenCalledWith({
+        type: 'error',
+        message: 'appAnnotation.batchModal.runError: Invalid JSONL format at line 2',
+      })
+    })
+    expect(checkAnnotationBatchImportProgressMock).not.toHaveBeenCalled()
+  })
 })

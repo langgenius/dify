@@ -1,3 +1,4 @@
+import json
 import logging
 import uuid
 from typing import TypedDict
@@ -16,7 +17,7 @@ from libs.login import current_account_with_tenant
 from models.model import App, AppAnnotationHitHistory, AppAnnotationSetting, Message, MessageAnnotation
 from services.feature_service import FeatureService
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
-from tasks.annotation.batch_import_annotations_task import batch_import_annotations_task
+from tasks.annotation.batch_import_annotations_task import AnnotationImportRecord, batch_import_annotations_task
 from tasks.annotation.delete_annotation_index_task import delete_annotation_index_task
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
@@ -85,6 +86,118 @@ class UpdateAnnotationSettingArgs(TypedDict):
     """Expected shape of the args dict passed to update_app_annotation_setting."""
 
     score_threshold: float
+
+
+def _normalize_annotation_import_value(value: object) -> str:
+    if value is None:
+        return ""
+
+    text = str(value).strip()
+    if text.lower() == "nan":
+        return ""
+    return text
+
+
+def _validate_annotation_import_record(question: str, answer: str, location: str) -> AnnotationImportRecord | None:
+    if not question or not answer:
+        return None
+
+    if len(question) > 2000:
+        raise ValueError(f"Question at {location} is too long. Maximum 2000 characters allowed.")
+    if len(answer) > 10000:
+        raise ValueError(f"Answer at {location} is too long. Maximum 10000 characters allowed.")
+
+    return {"question": question, "answer": answer}
+
+
+def _too_many_records_error(max_records: int, file_format: str) -> ValueError:
+    return ValueError(
+        f"The {file_format} file contains too many records. Maximum {max_records} records allowed per import. "
+        f"Please split your file into smaller batches."
+    )
+
+
+def _parse_csv_annotation_import_file(file: FileStorage, max_records: int) -> list[AnnotationImportRecord]:
+    # Read CSV in chunks to avoid loading entire file into memory
+    df = pd.read_csv(
+        file.stream,
+        dtype=str,
+        nrows=max_records + 1,  # Read one extra to detect overflow
+        engine="python",
+        on_bad_lines="skip",  # Skip malformed lines instead of crashing
+    )
+
+    # Validate column count
+    if len(df.columns) < 2:
+        raise ValueError("Invalid CSV format. The file must contain at least 2 columns (question and answer).")
+
+    result: list[AnnotationImportRecord] = []
+    for idx, row in df.iterrows():
+        # Stop if we exceed the limit
+        if len(result) >= max_records:
+            raise _too_many_records_error(max_records, "CSV")
+
+        # Extract and validate question and answer
+        try:
+            question_raw = row.iloc[0]
+            answer_raw = row.iloc[1]
+        except (IndexError, KeyError):
+            continue  # Skip malformed rows
+
+        question = _normalize_annotation_import_value(question_raw)
+        answer = _normalize_annotation_import_value(answer_raw)
+
+        # Validate length constraints (idx is pandas index, convert to int for display)
+        row_num = int(idx) + 2 if isinstance(idx, (int, float)) else len(result) + 2
+        record = _validate_annotation_import_record(question, answer, f"row {row_num}")
+        if record is not None:
+            result.append(record)
+
+    return result
+
+
+def _parse_jsonl_annotation_import_file(file: FileStorage, max_records: int) -> list[AnnotationImportRecord]:
+    result: list[AnnotationImportRecord] = []
+
+    for line_number, raw_line in enumerate(file.stream, start=1):
+        try:
+            text = raw_line.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise ValueError("Invalid JSONL encoding. Please upload a UTF-8 encoded file.") from e
+
+        if line_number == 1:
+            text = text.lstrip("\ufeff")
+
+        text = text.strip()
+        if not text:
+            continue
+
+        if len(result) >= max_records:
+            raise _too_many_records_error(max_records, "JSONL")
+
+        try:
+            payload: object = json.loads(text)
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSONL format at line {line_number}. Each line must be a JSON object.") from e
+
+        if not isinstance(payload, dict):
+            raise ValueError(f"Invalid JSONL format at line {line_number}. Each line must be a JSON object.")
+
+        question = _normalize_annotation_import_value(payload.get("question"))
+        answer = _normalize_annotation_import_value(payload.get("answer"))
+        record = _validate_annotation_import_record(question, answer, f"line {line_number}")
+        if record is not None:
+            result.append(record)
+
+    return result
+
+
+def _parse_annotation_import_file(file: FileStorage, max_records: int) -> list[AnnotationImportRecord]:
+    filename = (file.filename or "").lower()
+    if filename.endswith(".jsonl"):
+        return _parse_jsonl_annotation_import_file(file, max_records)
+
+    return _parse_csv_annotation_import_file(file, max_records)
 
 
 class AppAnnotationService:
@@ -430,12 +543,12 @@ class AppAnnotationService:
     @classmethod
     def batch_import_app_annotations(cls, app_id: str, file: FileStorage):
         """
-        Batch import annotations from CSV file with enhanced security checks.
+        Batch import annotations from CSV or JSONL file with enhanced security checks.
 
         Security features:
         - File size validation
         - Row count limits (min/max)
-        - Memory-efficient CSV parsing
+        - Memory-efficient CSV/JSONL parsing
         - Subscription quota validation
         - Concurrency tracking
         """
@@ -452,74 +565,24 @@ class AppAnnotationService:
 
         job_id: str | None = None  # Initialize to avoid unbound variable error
         try:
-            # Quick row count check before full parsing (memory efficient)
-            # Read only first chunk to estimate row count
+            # Quick empty file check before parser-specific processing.
             file.stream.seek(0)
             first_chunk = file.stream.read(8192)  # Read first 8KB
             file.stream.seek(0)
 
-            # Estimate row count from first chunk
-            newline_count = first_chunk.count(b"\n")
-            if newline_count == 0:
-                raise ValueError("The CSV file appears to be empty or invalid.")
+            if not first_chunk.strip():
+                raise ValueError("The uploaded file appears to be empty or invalid.")
 
-            # Parse CSV with row limit to prevent memory exhaustion
-            # Use chunksize for memory-efficient processing
             max_records = dify_config.ANNOTATION_IMPORT_MAX_RECORDS
             min_records = dify_config.ANNOTATION_IMPORT_MIN_RECORDS
 
-            # Read CSV in chunks to avoid loading entire file into memory
-            df = pd.read_csv(
-                file.stream,
-                dtype=str,
-                nrows=max_records + 1,  # Read one extra to detect overflow
-                engine="python",
-                on_bad_lines="skip",  # Skip malformed lines instead of crashing
-            )
-
-            # Validate column count
-            if len(df.columns) < 2:
-                raise ValueError("Invalid CSV format. The file must contain at least 2 columns (question and answer).")
-
-            # Build result list with validation
-            result: list[dict] = []
-            for idx, row in df.iterrows():
-                # Stop if we exceed the limit
-                if len(result) >= max_records:
-                    raise ValueError(
-                        f"The CSV file contains too many records. Maximum {max_records} records allowed per import. "
-                        f"Please split your file into smaller batches."
-                    )
-
-                # Extract and validate question and answer
-                try:
-                    question_raw = row.iloc[0]
-                    answer_raw = row.iloc[1]
-                except (IndexError, KeyError):
-                    continue  # Skip malformed rows
-
-                # Convert to string and strip whitespace
-                question = str(question_raw).strip() if question_raw is not None else ""
-                answer = str(answer_raw).strip() if answer_raw is not None else ""
-
-                # Skip empty entries or NaN values
-                if not question or not answer or question.lower() == "nan" or answer.lower() == "nan":
-                    continue
-
-                # Validate length constraints (idx is pandas index, convert to int for display)
-                row_num = int(idx) + 2 if isinstance(idx, (int, float)) else len(result) + 2
-                if len(question) > 2000:
-                    raise ValueError(f"Question at row {row_num} is too long. Maximum 2000 characters allowed.")
-                if len(answer) > 10000:
-                    raise ValueError(f"Answer at row {row_num} is too long. Maximum 10000 characters allowed.")
-
-                content = {"question": question, "answer": answer}
-                result.append(content)
+            # Build result list with format-specific parsing and shared validation.
+            result = _parse_annotation_import_file(file, max_records)
 
             # Validate minimum records
             if len(result) < min_records:
                 raise ValueError(
-                    f"The CSV file must contain at least {min_records} valid annotation record(s). "
+                    f"The import file must contain at least {min_records} valid annotation record(s). "
                     f"Found {len(result)} valid record(s)."
                 )
 
@@ -555,7 +618,7 @@ class AppAnnotationService:
                     # Silently ignore cleanup errors - the job will be auto-expired
                     logger.debug("Failed to clean up active job tracking during error handling")
 
-            # Check if it's a CSV parsing error
+            # Check if it's a file parsing error
             error_str = str(e)
             return {"error_msg": f"An error occurred while processing the file: {error_str}"}
 

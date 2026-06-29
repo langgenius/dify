@@ -408,7 +408,9 @@ class AnnotationUpdateDeleteApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
-    @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
+    @console_ns.doc(
+        description="Batch import annotations from CSV or JSONL file with rate limiting and security checks"
+    )
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
         200,
@@ -441,8 +443,8 @@ class AnnotationBatchImportApi(Resource):
         file = request.files["file"]
 
         # check file type
-        if not file.filename or not file.filename.lower().endswith(".csv"):
-            raise ValueError("Invalid file type. Only CSV files are allowed")
+        if not file.filename or not file.filename.lower().endswith((".csv", ".jsonl")):
+            raise ValueError("Invalid file type. Only CSV and JSONL files are allowed")
 
         # Check file size before processing
         file.stream.seek(0, 2)  # Seek to end of file
@@ -481,17 +483,18 @@ class AnnotationBatchImportStatusApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID, job_id: UUID):
-        indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
+        job_id_str = str(job_id)
+        indexing_cache_key = f"app_annotation_batch_import_{job_id_str}"
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
             raise ValueError("The job does not exist.")
         job_status = cache_result.decode()
         error_msg = ""
         if job_status == "error":
-            indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{str(job_id)}"
+            indexing_error_msg_key = f"app_annotation_batch_import_error_msg_{job_id_str}"
             error_msg = redis_client.get(indexing_error_msg_key).decode()
 
-        return {"job_id": job_id, "job_status": job_status, "error_msg": error_msg}, 200
+        return {"job_id": job_id_str, "job_status": job_status, "error_msg": error_msg}, 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories")

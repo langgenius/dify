@@ -43,12 +43,19 @@ export const addAnnotation = (appId: string, body: AnnotationItemBasic) => {
   return post<AnnotationCreateResponse>(`apps/${appId}/annotations`, { body })
 }
 
-export const annotationBatchImport = ({ url, body }: { url: string, body: FormData }): Promise<{ job_id: string, job_status: string }> => {
-  return post<{ job_id: string, job_status: string }>(url, { body }, { bodyStringify: false, deleteContentType: true })
+type AnnotationBatchImportResponse = {
+  job_id?: string
+  job_status?: string
+  error_msg?: string
+  record_count?: number
 }
 
-export const checkAnnotationBatchImportProgress = ({ jobID, appId }: { jobID: string, appId: string }): Promise<{ job_id: string, job_status: string }> => {
-  return get<{ job_id: string, job_status: string }>(`/apps/${appId}/annotations/batch-import-status/${jobID}`)
+export const annotationBatchImport = ({ url, body }: { url: string, body: FormData }): Promise<AnnotationBatchImportResponse> => {
+  return post<AnnotationBatchImportResponse>(url, { body }, { bodyStringify: false, deleteContentType: true })
+}
+
+export const checkAnnotationBatchImportProgress = ({ jobID, appId }: { jobID: string, appId: string }): Promise<{ job_id: string, job_status: string, error_msg?: string }> => {
+  return get<{ job_id: string, job_status: string, error_msg?: string }>(`/apps/${appId}/annotations/batch-import-status/${jobID}`)
 }
 
 export const editAnnotation = (appId: string, annotationId: string, body: AnnotationItemBasic) => {
