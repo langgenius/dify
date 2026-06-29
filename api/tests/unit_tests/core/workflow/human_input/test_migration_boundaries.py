@@ -10,6 +10,8 @@ API_ROOT = Path(__file__).resolve().parents[5]
     "relative_path",
     [
         "core/entities/execution_extra_content.py",
+        "core/workflow/nodes/agent_v2/ask_human_hitl.py",
+        "core/workflow/nodes/agent_v2/ask_human_resume.py",
         "repositories/sqlalchemy_execution_extra_content_repository.py",
         "repositories/sqlalchemy_api_workflow_run_repository.py",
         "services/human_input_service.py",

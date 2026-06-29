@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from types import SimpleNamespace
 
-from graphon.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
-from graphon.nodes.human_input.enums import FormInputType
+from core.workflow.human_input import FormDefinition
+import repositories.sqlalchemy_api_workflow_run_repository as workflow_run_repository_module
 from models.human_input import RecipientType
 from repositories.sqlalchemy_api_workflow_run_repository import _build_human_input_required_reason
 
@@ -13,8 +13,8 @@ def _build_form_model() -> SimpleNamespace:
     expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
     definition = FormDefinition(
         form_content="content",
-        inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
-        user_actions=[UserActionConfig(id="approve", title="Approve")],
+        inputs=[],
+        user_actions=[],
         rendered_content="rendered",
         expiration_time=expiration_time,
         default_values={"name": "Alice"},
@@ -60,5 +60,21 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
     )
 
     assert reason.node_id == "node-1"
-    assert reason.actions[0].id == "approve"
+    assert reason.actions == []
     assert not hasattr(reason, "form_token")
+
+
+def test_build_human_input_required_reason_uses_session_binding_form_id(monkeypatch) -> None:
+    monkeypatch.setattr(
+        workflow_run_repository_module,
+        "session_binding",
+        SimpleNamespace(issue_session_id_for_form=lambda *, form_id: f"session::{form_id}"),
+        raising=False,
+    )
+
+    reason = _build_human_input_required_reason(
+        _build_reason_model(),
+        _build_form_model(),
+    )
+
+    assert reason.form_id == "session::form-1"

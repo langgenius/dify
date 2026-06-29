@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 from typing import Any
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 from dify_agent.layers.ask_human import AskHumanToolArgs
 from dify_agent.protocol import DeferredToolCallPayload
 
+import core.workflow.nodes.agent_v2.ask_human_hitl as ask_human_hitl_module
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
 from core.workflow.human_input_adapter import (
     EmailDeliveryMethod,
@@ -295,6 +297,27 @@ def test_pause_reason_falls_back_to_default_node_title() -> None:
     )
     assert result is not None
     assert result.node_title == "Agent fallback"
+
+
+def test_pause_reason_uses_session_binding_form_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        ask_human_hitl_module,
+        "session_binding",
+        SimpleNamespace(issue_session_id_for_form=lambda *, form_id: f"session::{form_id}"),
+        raising=False,
+    )
+
+    result = build_ask_human_pause_reason(
+        deferred_tool_call=_deferred_call({"question": "q"}),
+        node_id="node-1",
+        default_node_title="Agent fallback",
+        workflow_run_id="wf-1",
+        contacts=[],
+        repository=_fake_repository(form_id="form-xyz"),
+    )
+
+    assert result is not None
+    assert result.form_id == "session::form-xyz"
 
 
 def test_pause_reason_select_default_flows_into_resolved_defaults() -> None:
