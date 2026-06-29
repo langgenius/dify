@@ -83,12 +83,30 @@ const DocumentList = ({
     hasErrorDocumentsSelected,
     downloadableSelectedIds,
     clearSelection,
+    updateSelectionFromCurrentPage,
   } = useDocumentSelection({
     documents,
     selectedIds,
     onSelectedIdChange,
   })
   const documentIds = useMemo(() => documents.map(doc => doc.id), [documents])
+
+  // The checkbox group's `value` / `allValues` must both reflect the current
+  // page only, otherwise the header select-all checkbox renders the wrong
+  // checked/indeterminate state on any page that holds a different subset of
+  // the cross-page selection. `selectedIds` itself is preserved across pages
+  // (see use-documents-page-state.ts), so we clip on the way in and merge
+  // off-page selections back in on the way out.
+  const currentPageSelectedIds = useMemo(() => {
+    const documentIdSet = new Set(documentIds)
+    return selectedIds.filter(id => documentIdSet.has(id))
+  }, [documentIds, selectedIds])
+
+  const handleCheckboxGroupChange = useCallback((nextCurrentPageIds: string[]) => {
+    const documentIdSet = new Set(documentIds)
+    const offPageSelectedIds = selectedIds.filter(id => !documentIdSet.has(id))
+    updateSelectionFromCurrentPage([...offPageSelectedIds, ...nextCurrentPageIds])
+  }, [documentIds, selectedIds, updateSelectionFromCurrentPage])
 
   // Actions
   const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
@@ -132,8 +150,8 @@ const DocumentList = ({
   return (
     <div className="relative mt-3 flex size-full flex-col">
       <CheckboxGroup
-        value={selectedIds}
-        onValueChange={nextSelectedIds => onSelectedIdChange(nextSelectedIds)}
+        value={currentPageSelectedIds}
+        onValueChange={handleCheckboxGroupChange}
         allValues={documentIds}
         className="relative h-0 grow overflow-x-auto"
       >

@@ -21,10 +21,11 @@ vi.mock('../document-list/hooks', () => ({
     sortOrder: 'desc',
     handleSort: mockHandleSort,
   })),
-  useDocumentSelection: vi.fn(() => ({
+  useDocumentSelection: vi.fn(({ onSelectedIdChange }: { onSelectedIdChange: (ids: string[]) => void }) => ({
     hasErrorDocumentsSelected: false,
     downloadableSelectedIds: [],
     clearSelection: mockClearSelection,
+    updateSelectionFromCurrentPage: (nextIds: string[]) => onSelectedIdChange(nextIds),
   })),
   useDocumentActions: vi.fn(() => ({
     handleAction: mockHandleAction,
