@@ -58,8 +58,8 @@ def test_upgrade_creates_both_functions_when_native_uuidv7_absent(migration):
         migration.upgrade()
 
     sql = _executed_sql(fake_op)
-    assert any("CREATE FUNCTION uuidv7()" in stmt for stmt in sql)
-    assert any("CREATE FUNCTION uuidv7_boundary(timestamptz)" in stmt for stmt in sql)
+    assert any("CREATE FUNCTION public.uuidv7()" in stmt for stmt in sql)
+    assert any("CREATE FUNCTION public.uuidv7_boundary(timestamptz)" in stmt for stmt in sql)
 
 
 def test_upgrade_skips_uuidv7_but_keeps_boundary_when_native_present(migration):
@@ -79,7 +79,7 @@ def test_upgrade_skips_uuidv7_but_keeps_boundary_when_native_present(migration):
     assert "uuidv7" in do_block
     assert "IF NOT EXISTS" in do_block
     # uuidv7_boundary is always created (not guarded by the DO block).
-    assert any("CREATE FUNCTION uuidv7_boundary(timestamptz)" in stmt for stmt in sql)
+    assert any("CREATE FUNCTION public.uuidv7_boundary(timestamptz)" in stmt for stmt in sql)
 
 
 def test_upgrade_is_noop_on_non_postgres(migration):
