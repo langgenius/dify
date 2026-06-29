@@ -44,7 +44,9 @@ from services.agent_config_service import (
     AgentConfigService,
     AgentConfigServiceError,
     AgentConfigVersionKind,
+    ConfigPushFileItem,
     ConfigPushPayload,
+    ConfigPushSkillItem,
 )
 
 
@@ -67,6 +69,16 @@ class AgentConfigByAgentQuery(BaseModel):
 
 class AgentConfigFileUploadPayload(BaseModel):
     upload_file_id: str = Field(..., description="UploadFile UUID from POST /console/api/files/upload")
+
+
+_AGENT_CONFIG_SKILL_UPLOAD_PARAMS = {
+    "file": {
+        "in": "formData",
+        "type": "file",
+        "required": True,
+        "description": "Skill package (.zip or .skill).",
+    }
+}
 
 
 class AgentConfigSkillFileQuery(AgentConfigQuery):
@@ -580,7 +592,7 @@ def _skill_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[st
         user_id=target.account_id,
         config_version_id=target.version_id,
         config_version_kind=target.version_kind,
-        payload=ConfigPushPayload(skills=[{"name": name, "file_ref": None}]),
+        payload=ConfigPushPayload(skills=[ConfigPushSkillItem(name=name)]),
     )
     return {"result": "success", "removed_names": [name]}
 
@@ -618,7 +630,7 @@ def _file_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[str
         user_id=target.account_id,
         config_version_id=target.version_id,
         config_version_kind=target.version_kind,
-        payload=ConfigPushPayload(files=[{"name": name, "file_ref": None}]),
+        payload=ConfigPushPayload(files=[ConfigPushFileItem(name=name)]),
     )
     return {"result": "success", "removed_names": [name]}
 
@@ -659,7 +671,14 @@ class AgentConfigManifestApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/upload")
 class AgentConfigSkillUploadByAgentApi(Resource):
     @console_ns.doc("upload_agent_config_skill_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "agent_id": "Agent ID",
+            **query_params_from_model(AgentConfigByAgentQuery),
+            **_AGENT_CONFIG_SKILL_UPLOAD_PARAMS,
+        },
+    )
     @console_ns.response(201, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__])
     @setup_required
     @login_required
@@ -678,7 +697,14 @@ class AgentConfigSkillUploadByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/upload")
 class AgentConfigSkillUploadApi(Resource):
     @console_ns.doc("upload_agent_config_skill")
-    @console_ns.doc(params={"app_id": "Application ID", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        consumes=["multipart/form-data"],
+        params={
+            "app_id": "Application ID",
+            **query_params_from_model(AgentConfigQuery),
+            **_AGENT_CONFIG_SKILL_UPLOAD_PARAMS,
+        },
+    )
     @console_ns.response(201, "Uploaded config skill", console_ns.models[AgentConfigSkillUploadResponse.__name__])
     @setup_required
     @login_required
@@ -838,8 +864,16 @@ class AgentConfigSkillInspectApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/files/preview")
 class AgentConfigSkillFilePreviewByAgentApi(Resource):
     @console_ns.doc("preview_agent_config_skill_file_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileByAgentQuery)})
-    @console_ns.response(200, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__])
+    @console_ns.doc(
+        params={
+            "agent_id": "Agent ID",
+            "name": "Config skill name",
+            **query_params_from_model(AgentConfigSkillFileByAgentQuery),
+        }
+    )
+    @console_ns.response(
+        200, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -862,8 +896,16 @@ class AgentConfigSkillFilePreviewByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/preview")
 class AgentConfigSkillFilePreviewApi(Resource):
     @console_ns.doc("preview_agent_config_skill_file")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileQuery)})
-    @console_ns.response(200, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__])
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "name": "Config skill name",
+            **query_params_from_model(AgentConfigSkillFileQuery),
+        }
+    )
+    @console_ns.response(
+        200, "Config skill file preview", console_ns.models[AgentConfigSkillFilePreviewResponse.__name__]
+    )
     @setup_required
     @login_required
     @account_initialization_required
@@ -883,7 +925,9 @@ class AgentConfigSkillFilePreviewApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/download")
 class AgentConfigSkillDownloadByAgentApi(Resource):
     @console_ns.doc("download_agent_config_skill_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)}
+    )
     @console_ns.response(200, "Config skill download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
@@ -902,7 +946,9 @@ class AgentConfigSkillDownloadByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/download")
 class AgentConfigSkillDownloadApi(Resource):
     @console_ns.doc("download_agent_config_skill")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
+    )
     @console_ns.response(200, "Config skill download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
@@ -920,7 +966,13 @@ class AgentConfigSkillDownloadApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/files/download")
 class AgentConfigSkillFileDownloadByAgentApi(Resource):
     @console_ns.doc("download_agent_config_skill_file_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileByAgentQuery)})
+    @console_ns.doc(
+        params={
+            "agent_id": "Agent ID",
+            "name": "Config skill name",
+            **query_params_from_model(AgentConfigSkillFileByAgentQuery),
+        }
+    )
     @console_ns.response(200, "Config skill file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
@@ -950,7 +1002,13 @@ class AgentConfigSkillFileDownloadByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/files/download")
 class AgentConfigSkillFileDownloadApi(Resource):
     @console_ns.doc("download_agent_config_skill_file")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigSkillFileQuery)})
+    @console_ns.doc(
+        params={
+            "app_id": "Application ID",
+            "name": "Config skill name",
+            **query_params_from_model(AgentConfigSkillFileQuery),
+        }
+    )
     @console_ns.response(200, "Config skill file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
@@ -1023,7 +1081,9 @@ class AgentConfigSkillFileDownloadContentApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>")
 class AgentConfigSkillByAgentApi(Resource):
     @console_ns.doc("delete_agent_config_skill_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)}
+    )
     @console_ns.response(200, "Config skill deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required
@@ -1042,7 +1102,9 @@ class AgentConfigSkillByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>")
 class AgentConfigSkillApi(Resource):
     @console_ns.doc("delete_agent_config_skill")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
+    )
     @console_ns.response(200, "Config skill deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required
@@ -1062,7 +1124,9 @@ class AgentConfigSkillApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>/preview")
 class AgentConfigFilePreviewByAgentApi(Resource):
     @console_ns.doc("preview_agent_config_file_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)}
+    )
     @console_ns.response(200, "Preview", console_ns.models[AgentConfigFilePreviewResponse.__name__])
     @setup_required
     @login_required
@@ -1081,7 +1145,9 @@ class AgentConfigFilePreviewByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/preview")
 class AgentConfigFilePreviewApi(Resource):
     @console_ns.doc("preview_agent_config_file")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}
+    )
     @console_ns.response(200, "Preview", console_ns.models[AgentConfigFilePreviewResponse.__name__])
     @setup_required
     @login_required
@@ -1099,7 +1165,9 @@ class AgentConfigFilePreviewApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>/download")
 class AgentConfigFileDownloadByAgentApi(Resource):
     @console_ns.doc("download_agent_config_file_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)}
+    )
     @console_ns.response(200, "Config file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
@@ -1118,7 +1186,9 @@ class AgentConfigFileDownloadByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>/download")
 class AgentConfigFileDownloadApi(Resource):
     @console_ns.doc("download_agent_config_file")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}
+    )
     @console_ns.response(200, "Config file download URL", console_ns.models[AgentConfigDownloadResponse.__name__])
     @setup_required
     @login_required
@@ -1136,7 +1206,9 @@ class AgentConfigFileDownloadApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/files/<string:name>")
 class AgentConfigFileByAgentApi(Resource):
     @console_ns.doc("delete_agent_config_file_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        params={"agent_id": "Agent ID", "name": "Config file name", **query_params_from_model(AgentConfigByAgentQuery)}
+    )
     @console_ns.response(200, "Config file deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required
@@ -1155,7 +1227,9 @@ class AgentConfigFileByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/files/<string:name>")
 class AgentConfigFileApi(Resource):
     @console_ns.doc("delete_agent_config_file")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        params={"app_id": "Application ID", "name": "Config file name", **query_params_from_model(AgentConfigQuery)}
+    )
     @console_ns.response(200, "Config file deleted", console_ns.models[AgentConfigDeleteResponse.__name__])
     @setup_required
     @login_required

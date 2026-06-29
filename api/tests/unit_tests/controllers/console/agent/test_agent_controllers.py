@@ -298,6 +298,11 @@ def test_agent_app_list_and_create_use_agent_route(
     )
     monkeypatch.setattr(
         roster_controller.AgentRosterService,
+        "count_agent_app_debug_conversation_messages",
+        lambda _self, **kwargs: 0,
+    )
+    monkeypatch.setattr(
+        roster_controller.AgentRosterService,
         "get_or_create_agent_app_debug_conversation_id",
         lambda _self, **kwargs: "debug-conversation-created",
     )

@@ -3868,7 +3868,9 @@ export const zWorkflowAgentComposerResponse = z.object({
   backing_app_id: z.string().nullish(),
   binding: zAgentComposerBindingResponse.nullish(),
   chat_endpoint: z.string().nullish(),
+  debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string().nullish(),
+  debug_conversation_message_count: z.int().optional().default(0),
   effective_declared_outputs: z.array(zDeclaredOutputConfig).optional(),
   hidden_app_backed: z.boolean().optional().default(false),
   impact_summary: zAgentComposerImpactResponse.nullish(),
@@ -4429,6 +4431,10 @@ export const zGetAppsByAppIdAgentConfigSkillsQuery = z.object({
  * Config skills
  */
 export const zGetAppsByAppIdAgentConfigSkillsResponse = zAgentConfigSkillListResponse
+
+export const zPostAppsByAppIdAgentConfigSkillsUploadBody = z.object({
+  file: z.custom<Blob | File>(),
+})
 
 export const zPostAppsByAppIdAgentConfigSkillsUploadPath = z.object({
   app_id: z.uuid(),

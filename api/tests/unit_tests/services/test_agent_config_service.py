@@ -9,7 +9,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentEnvVariableConfig, AgentSoulConfig
+from models.agent_config_entities import (
+    AgentConfigFileRefConfig,
+    AgentConfigSkillRefConfig,
+    AgentEnvVariableConfig,
+    AgentSoulConfig,
+)
 from services.agent.skill_package_service import SkillPackageError
 from services.agent_config_service import (
     AgentConfigService,
@@ -585,15 +590,18 @@ def test_resolve_skill_file_member_path_requires_existing_member() -> None:
         patch.object(service, "resolve_target", return_value=target),
         patch.object(service, "_load_tool_file_bytes", return_value=(archive_bytes, "application/zip")),
     ):
-        assert service.resolve_skill_file_member_path(
-            tenant_id=TENANT,
-            agent_id=AGENT,
-            config_version_id="build-draft-1",
-            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
-            name="alpha",
-            path="references/guide.md",
-            user_id=USER,
-        ) == "references/guide.md"
+        assert (
+            service.resolve_skill_file_member_path(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                config_version_id="build-draft-1",
+                config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                name="alpha",
+                path="references/guide.md",
+                user_id=USER,
+            )
+            == "references/guide.md"
+        )
 
         with pytest.raises(AgentConfigServiceError, match="config skill file not found") as exc_info:
             service.resolve_skill_file_member_path(
@@ -623,7 +631,11 @@ def test_download_url_helpers_use_shared_url_resolution() -> None:
 
     with (
         patch.object(service, "resolve_target", return_value=target),
-        patch.object(service, "_resolve_download_url", side_effect=["https://example.com/alpha.zip", "https://example.com/guide.txt"]),
+        patch.object(
+            service,
+            "_resolve_download_url",
+            side_effect=["https://example.com/alpha.zip", "https://example.com/guide.txt"],
+        ),
     ):
         assert (
             service.download_skill_url(

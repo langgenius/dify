@@ -1214,12 +1214,12 @@ def test_workflow_run_request_contains_config_layer_when_flag_enabled(monkeypatc
         "config_version": {"id": "snapshot-1", "kind": "snapshot", "writable": False},
         "skills": [
             {
-                    "name": "tender-analyzer",
-                    "description": "Parses RFPs.",
-                    "size": None,
-                    "mime_type": "application/zip",
-                }
-            ],
+                "name": "tender-analyzer",
+                "description": "Parses RFPs.",
+                "size": None,
+                "mime_type": "application/zip",
+            }
+        ],
         "files": [{"name": "sample.pdf", "size": None, "mime_type": None}],
         "env_keys": [],
         "note": "Read the proposal first.",

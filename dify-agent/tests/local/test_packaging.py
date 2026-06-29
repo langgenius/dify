@@ -88,7 +88,7 @@ def test_local_sandbox_dockerfile_installs_stub_client_and_shellctl() -> None:
     assert "jq" in dockerfile
     assert "openssh-client" in dockerfile
     assert "ripgrep" in dockerfile
-    assert "node_dist=\"node-v${NODE_VERSION}-linux-${node_arch}\"" in dockerfile
+    assert 'node_dist="node-v${NODE_VERSION}-linux-${node_arch}"' in dockerfile
     assert 'curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt"' in dockerfile
     assert 'tar -xJf "${node_dist}.tar.xz" -C /usr/local --strip-components=1' in dockerfile
     assert 'npm install --global "pnpm@${PNPM_VERSION}"' in dockerfile

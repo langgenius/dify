@@ -10,7 +10,7 @@ import { consoleQuery } from '@/service/client'
 import { getDriveFileIconType } from '../files/file-icon'
 
 const isSkillFolder = (file: AgentConfigSkillFileResponse) =>
-  file.type === 'directory' || file.type === 'folder'
+  file.type === 'directory'
 
 const toSkillFileNode = (item: AgentConfigSkillFileResponse): AgentFileNode => {
   const fileName = item.name || item.path.split('/').pop() || item.path
