@@ -200,6 +200,11 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
             raise ValueError("tools in agent_mode must be a list of objects")
 
         for tool in agent_mode["tools"]:
+            if not tool:
+                # Skip malformed empty tool entries; list(tool.keys())[0]
+                # would otherwise raise IndexError (same guard as the sibling
+                # dataset/manager.py and variables/manager.py).
+                continue
             key = list(tool.keys())[0]
             if key in OLD_TOOLS:
                 # old style, use tool name as key
