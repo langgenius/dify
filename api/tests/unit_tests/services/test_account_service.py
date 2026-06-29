@@ -24,10 +24,7 @@ from services.errors.account import (
 
 @pytest.fixture
 def sqlite_session(request: pytest.FixtureRequest) -> Iterator[Session]:
-    try:
-        models: tuple[type[TypeBase], ...] = request.param
-    except AttributeError:
-        models = (Account,)
+    models: tuple[type[TypeBase], ...] = request.param
     engine = create_engine("sqlite:///:memory:")
     tables = [model.metadata.tables[model.__tablename__] for model in models]
     Account.metadata.create_all(engine, tables=tables)
@@ -2643,6 +2640,7 @@ class TestSessionInjectedGetters:
 
         assert AccountService.get_account_by_id(mock_session, "missing") is None
 
+    @pytest.mark.parametrize("sqlite_session", [(Account,)], indirect=True)
     def test_get_account_by_email_returns_scalar_or_none(self, sqlite_session: Session):
         """Plain getter — case-sensitive equality (callers needing the
         case-insensitive existence check use
