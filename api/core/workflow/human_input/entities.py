@@ -333,6 +333,27 @@ def render_form_content_with_outputs(
     return rendered_content
 
 
+def resolve_default_values(
+    *,
+    node_data: HumanInputNodeData,
+    variable_pool: ReadOnlyVariablePool,
+) -> dict[str, Any]:
+    default_values: dict[str, Any] = {}
+    for form_input in node_data.inputs:
+        if isinstance(form_input, ParagraphInputConfig) and form_input.default is not None:
+            if form_input.default.type == ValueSourceType.CONSTANT:
+                default_values[form_input.output_variable_name] = form_input.default.value
+                continue
+
+        resolved_default = form_input.resolve_default_value(variable_pool)
+        if resolved_default is None:
+            continue
+
+        value = getattr(resolved_default, "value", None)
+        default_values[form_input.output_variable_name] = value if value is not None else resolved_default.text
+    return default_values
+
+
 def restore_submitted_data(
     *,
     node_data: HumanInputNodeData,
@@ -500,6 +521,7 @@ __all__ = [
     "StringSource",
     "UserActionConfig",
     "extract_output_field_names",
+    "resolve_default_values",
     "render_form_content_before_submission",
     "render_form_content_with_outputs",
     "restore_submitted_data",

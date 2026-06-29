@@ -3,6 +3,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
 from sqlalchemy import exists, select
@@ -18,7 +19,13 @@ from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly,
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
 from core.trigger.constants import is_trigger_node_type
-from core.workflow.human_input import HumanInputFormKind, HumanInputNodeData
+from core.workflow.human_input import (
+    HumanInputFormKind,
+    HumanInputNodeData,
+    render_form_content_before_submission,
+    render_form_content_with_outputs,
+    resolve_default_values,
+)
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,
@@ -61,7 +68,6 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import load_into_variable_pool
@@ -97,6 +103,71 @@ from .workflow_draft_variable_service import DraftVariableSaver, DraftVarLoader,
 from .workflow_restore import apply_published_workflow_snapshot_to_draft
 
 _file_access_controller = DatabaseFileAccessController()
+
+
+@dataclass(slots=True)
+class HumanInputNode:
+    """Compatibility wrapper that keeps workflow debug flows off graphon human-input imports."""
+
+    title: str
+    node_data: HumanInputNodeData
+    variable_pool: VariablePool
+
+    def __init__(
+        self,
+        *,
+        node_id: str,
+        data: HumanInputNodeData,
+        graph_init_params: Any,
+        graph_runtime_state: GraphRuntimeState,
+        hitl_callback: Any,
+    ) -> None:
+        _ = node_id, graph_init_params, hitl_callback
+        self.title = data.title
+        self.node_data = data
+        self.variable_pool = graph_runtime_state.variable_pool
+
+    @staticmethod
+    def validate_node_data(node_data: Mapping[str, Any]) -> HumanInputNodeData:
+        return HumanInputNodeData.model_validate(node_data, from_attributes=True)
+
+    @staticmethod
+    def extract_variable_selector_to_variable_mapping(
+        *,
+        graph_config: Mapping[str, Any],
+        config: NodeConfigDict,
+    ) -> Mapping[str, Sequence[str]]:
+        _ = graph_config
+        node_data = HumanInputNode.validate_node_data(adapt_human_input_node_data_for_graph(config["data"]))
+        return node_data.extract_variable_selector_to_variable_mapping(config["id"])
+
+    def render_form_content_before_submission(self) -> str:
+        return render_form_content_before_submission(
+            form_content=self.node_data.form_content,
+            variable_pool=self.variable_pool,
+        )
+
+    def resolve_default_values(self) -> dict[str, Any]:
+        return resolve_default_values(node_data=self.node_data, variable_pool=self.variable_pool)
+
+    def render_form_content_with_outputs(self, form_content: str, outputs: Mapping[str, Any]) -> str:
+        return render_form_content_with_outputs(
+            form_content,
+            outputs,
+            self.node_data.outputs_field_names(),
+            self.node_data.inputs,
+        )
+
+
+class HumanInputRequired:
+    """Compatibility payload wrapper for debug preview responses."""
+
+    def __init__(self, **payload: Any) -> None:
+        self._payload = payload
+
+    def model_dump(self, *, mode: str = "json") -> dict[str, Any]:
+        _ = mode
+        return dict(self._payload)
 
 
 class WorkflowService:
@@ -1037,16 +1108,16 @@ class WorkflowService:
         rendered_content = node.render_form_content_before_submission()
         resolved_default_values = node.resolve_default_values()
         node_data = node.node_data
-        return {
-            "TYPE": PauseReasonType.HITL_REQUIRED,
-            "session_id": node_id,
-            "node_id": node_id,
-            "node_title": node.title,
-            "form_content": rendered_content,
-            "inputs": [form_input.model_dump(mode="json") for form_input in node_data.inputs],
-            "actions": [action.model_dump(mode="json") for action in node_data.user_actions],
-            "resolved_default_values": resolved_default_values,
-        }
+        return HumanInputRequired(
+            TYPE=PauseReasonType.HITL_REQUIRED,
+            session_id=node_id,
+            node_id=node_id,
+            node_title=node.title,
+            form_content=rendered_content,
+            inputs=[form_input.model_dump(mode="json") for form_input in node_data.inputs],
+            actions=[action.model_dump(mode="json") for action in node_data.user_actions],
+            resolved_default_values=resolved_default_values,
+        ).model_dump(mode="json")
 
     def submit_human_input_form_preview(
         self,
@@ -1312,14 +1383,13 @@ class WorkflowService:
             delivery_methods=parse_human_input_delivery_methods(node_config["data"]),
             display_in_ui=True,
         )
-        node = HumanInputNode(
+        return HumanInputNode(
             node_id=node_config["id"],
             data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
             hitl_callback=hitl_callback,
         )
-        return node
 
     def _build_human_input_variable_pool(
         self,
