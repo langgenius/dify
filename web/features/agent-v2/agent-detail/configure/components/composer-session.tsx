@@ -114,7 +114,11 @@ function AgentConfigurePageComposerSession({
   const queryClient = useQueryClient()
   const agentIconType = agentQuery.data?.icon_type as AgentIconType | null | undefined
   const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
-    onSuccess: ({ debug_conversation_id }) => {
+    onSuccess: ({
+      debug_conversation_id,
+      debug_conversation_has_messages,
+      debug_conversation_message_count,
+    }) => {
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
         consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
         (agentDetail) => {
@@ -124,6 +128,8 @@ function AgentConfigurePageComposerSession({
           return {
             ...agentDetail,
             debug_conversation_id,
+            debug_conversation_has_messages: debug_conversation_has_messages ?? false,
+            debug_conversation_message_count: debug_conversation_message_count ?? 0,
           }
         },
       )
@@ -276,7 +282,9 @@ function AgentConfigurePageComposerContent({
   const selectVersion = useCallback((versionId: string | null) => {
     onSelectVersion(versionId)
   }, [onSelectVersion])
-  const hasRestartCurrentChatTarget = !!conversationIds[rightPanelChatMode] || (rightPanelChatMode === 'build' && buildDraft.isActive)
+  const hasRestartCurrentChatTarget = rightPanelChatMode === 'build'
+    ? (agentQuery.data?.debug_conversation_has_messages ?? false) || buildDraft.isActive
+    : !!conversationIds[rightPanelChatMode]
   const isRestartCurrentChatDisabled = !hasRestartCurrentChatTarget
     || buildDraftActionsDisabled
     || isRefreshingDebugConversation

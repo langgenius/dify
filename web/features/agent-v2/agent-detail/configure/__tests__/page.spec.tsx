@@ -12,7 +12,9 @@ const mocks = vi.hoisted(() => ({
   queryState: {
     agent: {
       data: {
+        debug_conversation_has_messages: true,
         debug_conversation_id: 'debug-conversation-old',
+        debug_conversation_message_count: 1,
         icon: 'agent',
         icon_background: '#E0F2FE',
         icon_type: 'emoji',
@@ -102,7 +104,13 @@ vi.mock('@/service/client', () => ({
         debugConversation: {
           refresh: {
             post: {
-              mutationOptions: (options?: { onSuccess?: (data: { debug_conversation_id: string }) => void }) => ({
+              mutationOptions: (options?: {
+                onSuccess?: (data: {
+                  debug_conversation_has_messages?: boolean
+                  debug_conversation_id: string
+                  debug_conversation_message_count?: number
+                }) => void
+              }) => ({
                 mutationFn: mocks.refreshDebugConversation,
                 ...options,
               }),
@@ -143,6 +151,13 @@ vi.mock('@/service/client', () => ({
           },
           delete: {
             mutationOptions: () => ({ mutationFn: mocks.discardBuildDraft }),
+          },
+        },
+        sandbox: {
+          files: {
+            get: {
+              key: () => ['sandbox-files'],
+            },
           },
         },
         versions: {
@@ -216,7 +231,7 @@ vi.mock('../components/preview/build-chat', async () => {
   return {
     AgentBuildChat: (props: {
       conversationId?: string | null
-      onConversationComplete?: () => void
+      onConversationComplete?: (conversationId: string) => void
       onConversationIdChange?: (conversationId: string) => void
       onSaveDraftBeforeRun?: () => Promise<void>
     }) => {
@@ -240,7 +255,7 @@ vi.mock('../components/preview/build-chat', async () => {
           >
             send build message
           </button>
-          <button type="button" onClick={() => props.onConversationComplete?.()}>
+          <button type="button" onClick={() => props.onConversationComplete?.('build-conversation-new')}>
             complete build conversation
           </button>
         </div>
@@ -321,7 +336,9 @@ describe('AgentConfigurePage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.refreshDebugConversation.mockResolvedValue({
+      debug_conversation_has_messages: false,
       debug_conversation_id: 'debug-conversation-new',
+      debug_conversation_message_count: 0,
     })
     mocks.applyBuildDraft.mockResolvedValue({ result: 'success', draft: {} })
     mocks.checkoutBuildDraft.mockResolvedValue({
@@ -332,11 +349,13 @@ describe('AgentConfigurePage', () => {
     mocks.discardBuildDraft.mockResolvedValue({ result: 'success' })
     mocks.queryState.agent = {
       data: {
+        debug_conversation_has_messages: true,
+        debug_conversation_id: 'debug-conversation-old',
+        debug_conversation_message_count: 1,
         icon: 'agent',
         icon_background: '#E0F2FE',
         icon_type: 'emoji',
         name: 'Research Agent',
-        debug_conversation_id: 'debug-conversation-old',
       },
       isFetching: false,
       isError: false,
@@ -465,14 +484,16 @@ describe('AgentConfigurePage', () => {
       expect(screen.queryByRole('region', { name: 'preview-chat', hidden: true })).not.toBeInTheDocument()
     })
 
-    it('should disable restart when there is no conversation or build draft to reset', async () => {
+    it('should disable restart when the debug conversation has no messages', async () => {
       const user = userEvent.setup()
       const queryClient = new QueryClient()
       mocks.queryState.agent = {
         ...mocks.queryState.agent,
         data: {
           ...mocks.queryState.agent.data,
-          debug_conversation_id: '',
+          debug_conversation_has_messages: false,
+          debug_conversation_id: 'debug-conversation-empty',
+          debug_conversation_message_count: 0,
         },
       }
       mocks.queryState.composer = {
