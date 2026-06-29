@@ -7,7 +7,7 @@ export const getTagManagePermissionKey = (type: TagType): PermissionKey => {
     return 'app.tag.manage'
 
   if (type === 'snippet')
-    return SnippetPermission.Management
+    return SnippetPermission.CreateAndModify
 
   return 'dataset.tag.manage'
 }
