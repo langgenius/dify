@@ -1,9 +1,9 @@
 import contextlib
+from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any
 
 from core.helper import encrypter
-from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
+from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCachePayload, ToolParameterCacheType
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
@@ -31,11 +31,16 @@ class ToolParameterConfigurationManager:
         self.provider_type = provider_type
         self.identity_id = identity_id
 
-    def _deep_copy(self, parameters: dict[str, Any]) -> dict[str, Any]:
+    def _deep_copy(self, parameters: ToolParameterCachePayload) -> ToolParameterCachePayload:
         """
         deep copy parameters
         """
         return deepcopy(parameters)
+
+    @staticmethod
+    def _get_secret_parameter_value(parameters: Mapping[str, object], parameter_name: str) -> str | None:
+        raw_value = parameters.get(parameter_name)
+        return raw_value if isinstance(raw_value, str) else None
 
     def _merge_parameters(self) -> list[ToolParameter]:
         """
@@ -60,7 +65,7 @@ class ToolParameterConfigurationManager:
 
         return current_parameters
 
-    def mask_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
+    def mask_tool_parameters(self, parameters: ToolParameterCachePayload) -> ToolParameterCachePayload:
         """
         mask tool parameters
 
@@ -76,19 +81,18 @@ class ToolParameterConfigurationManager:
                 parameter.form == ToolParameter.ToolParameterForm.FORM
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
             ):
-                if parameter.name in parameters:
-                    if len(parameters[parameter.name]) > 6:
-                        parameters[parameter.name] = (
-                            parameters[parameter.name][:2]
-                            + "*" * (len(parameters[parameter.name]) - 4)
-                            + parameters[parameter.name][-2:]
-                        )
-                    else:
-                        parameters[parameter.name] = "*" * len(parameters[parameter.name])
+                secret_value = self._get_secret_parameter_value(parameters, parameter.name)
+                if secret_value is None:
+                    continue
+
+                if len(secret_value) > 6:
+                    parameters[parameter.name] = secret_value[:2] + "*" * (len(secret_value) - 4) + secret_value[-2:]
+                else:
+                    parameters[parameter.name] = "*" * len(secret_value)
 
         return parameters
 
-    def encrypt_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
+    def encrypt_tool_parameters(self, parameters: ToolParameterCachePayload) -> ToolParameterCachePayload:
         """
         encrypt tool parameters with tenant id
 
@@ -104,13 +108,13 @@ class ToolParameterConfigurationManager:
                 parameter.form == ToolParameter.ToolParameterForm.FORM
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
             ):
-                if parameter.name in parameters:
-                    encrypted = encrypter.encrypt_token(self.tenant_id, parameters[parameter.name])
-                    parameters[parameter.name] = encrypted
+                secret_value = self._get_secret_parameter_value(parameters, parameter.name)
+                if secret_value is not None:
+                    parameters[parameter.name] = encrypter.encrypt_token(self.tenant_id, secret_value)
 
         return parameters
 
-    def decrypt_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
+    def decrypt_tool_parameters(self, parameters: ToolParameterCachePayload) -> ToolParameterCachePayload:
         """
         decrypt tool parameters with tenant id
 
@@ -138,17 +142,20 @@ class ToolParameterConfigurationManager:
                 parameter.form == ToolParameter.ToolParameterForm.FORM
                 and parameter.type == ToolParameter.ToolParameterType.SECRET_INPUT
             ):
-                if parameter.name in parameters:
-                    has_secret_input = True
-                    with contextlib.suppress(Exception):
-                        parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, parameters[parameter.name])
+                secret_value = self._get_secret_parameter_value(parameters, parameter.name)
+                if secret_value is None:
+                    continue
+
+                has_secret_input = True
+                with contextlib.suppress(Exception):
+                    parameters[parameter.name] = encrypter.decrypt_token(self.tenant_id, secret_value)
 
         if has_secret_input:
             cache.set(parameters)
 
         return parameters
 
-    def delete_tool_parameters_cache(self):
+    def delete_tool_parameters_cache(self) -> None:
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
             provider=f"{self.provider_type.value}.{self.provider_name}",
