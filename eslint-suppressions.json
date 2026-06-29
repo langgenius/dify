@@ -1937,6 +1937,9 @@
   "web/app/components/base/markdown-blocks/form.tsx": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "prefer-regex-literals": {
+      "count": 1
     }
   },
   "web/app/components/base/markdown-blocks/index.ts": {
