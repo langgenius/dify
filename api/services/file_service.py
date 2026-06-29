@@ -1,6 +1,8 @@
 import base64
 import hashlib
+import hmac
 import os
+import time
 import uuid
 from collections.abc import Generator, Sequence  # Changed Iterator to Generator
 from contextlib import contextmanager, suppress
@@ -45,6 +47,40 @@ class FileService:
                 self._session_maker = session_factory
             case _:
                 raise AssertionError("must be a sessionmaker or an Engine.")
+
+    def _verify_preview_signature(
+        self,
+        *,
+        preview_kind: Literal["image", "file"],
+        file_id: str,
+        timestamp: str,
+        nonce: str,
+        sign: str,
+        tenant_id: str | None = None,
+    ) -> bool:
+        """Verify HMAC signature for a file preview, with optional tenant binding.
+
+        When *tenant_id* is provided the new payload format
+        ``{kind}-preview|{file_id}|{tenant_id}|{timestamp}|{nonce}`` is checked
+        first.  If that fails, or if *tenant_id* is ``None``, the legacy format
+        ``{kind}-preview|{file_id}|{timestamp}|{nonce}`` is tried so that
+        pre-existing URLs keep working during the migration window.
+        """
+        secret_key = dify_config.SECRET_KEY.encode()
+
+        # Try new tenant-bound format first
+        if tenant_id:
+            payload = f"{preview_kind}-preview|{file_id}|{tenant_id}|{timestamp}|{nonce}"
+            recalculated = hmac.new(secret_key, payload.encode(), hashlib.sha256).digest()
+            if sign == base64.urlsafe_b64encode(recalculated).decode():
+                return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+        # Fall back to legacy format
+        payload = f"{preview_kind}-preview|{file_id}|{timestamp}|{nonce}"
+        recalculated = hmac.new(secret_key, payload.encode(), hashlib.sha256).digest()
+        if sign != base64.urlsafe_b64encode(recalculated).decode():
+            return False
+        return int(time.time()) - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
     def upload_file(
         self,
@@ -195,14 +231,29 @@ class FileService:
 
         return text
 
-    def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_image_signature(
-            upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
-        )
-        if not result:
+    def get_image_preview(self, file_id: str, timestamp: str, nonce: str, sign: str, tenant_id: str | None = None):
+        """Retrieve a streaming image preview for *file_id*.
+
+        The HMAC signature is verified using the new tenant-bound format when
+        *tenant_id* is supplied, falling back to the legacy format for backward
+        compatibility.  The database lookup is always scoped to *tenant_id* when
+        provided, preventing cross-tenant file access even if a legacy signature
+        is accepted.
+        """
+        if not self._verify_preview_signature(
+            preview_kind="image",
+            file_id=file_id,
+            timestamp=timestamp,
+            nonce=nonce,
+            sign=sign,
+            tenant_id=tenant_id,
+        ):
             raise NotFound("File not found or signature is invalid")
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            stmt = select(UploadFile).where(UploadFile.id == file_id)
+            if tenant_id:
+                stmt = stmt.where(UploadFile.tenant_id == tenant_id)
+            upload_file = session.scalar(stmt.limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")
@@ -216,13 +267,32 @@ class FileService:
 
         return generator, upload_file.mime_type
 
-    def get_file_generator_by_file_id(self, file_id: str, timestamp: str, nonce: str, sign: str):
-        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
-        if not result:
+    def get_file_generator_by_file_id(
+        self, file_id: str, timestamp: str, nonce: str, sign: str, tenant_id: str | None = None
+    ):
+        """Retrieve a streaming file generator for *file_id*.
+
+        The HMAC signature is verified using the new tenant-bound format when
+        *tenant_id* is supplied, falling back to the legacy format for backward
+        compatibility.  The database lookup is always scoped to *tenant_id* when
+        provided, preventing cross-tenant file access even if a legacy signature
+        is accepted.
+        """
+        if not self._verify_preview_signature(
+            preview_kind="file",
+            file_id=file_id,
+            timestamp=timestamp,
+            nonce=nonce,
+            sign=sign,
+            tenant_id=tenant_id,
+        ):
             raise NotFound("File not found or signature is invalid")
 
         with self._session_maker(expire_on_commit=False) as session:
-            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
+            stmt = select(UploadFile).where(UploadFile.id == file_id)
+            if tenant_id:
+                stmt = stmt.where(UploadFile.tenant_id == tenant_id)
+            upload_file = session.scalar(stmt.limit(1))
 
         if not upload_file:
             raise NotFound("File not found or signature is invalid")

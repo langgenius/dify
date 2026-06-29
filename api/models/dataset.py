@@ -958,12 +958,12 @@ class DocumentSegment(TypeBase):
             upload_file_id = match.group(1)
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
-            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+            data_to_sign = f"image-preview|{upload_file_id}|{self.tenant_id}|{timestamp}|{nonce}"
             secret_key = dify_config.SECRET_KEY.encode()
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            params = f"timestamp={timestamp}&nonce={nonce}&tenant_id={self.tenant_id}&sign={encoded_sign}"
             base_url = f"/files/{upload_file_id}/image-preview"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
@@ -975,31 +975,31 @@ class DocumentSegment(TypeBase):
             upload_file_id = match.group(1)
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
-            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
+            data_to_sign = f"file-preview|{upload_file_id}|{self.tenant_id}|{timestamp}|{nonce}"
             secret_key = dify_config.SECRET_KEY.encode()
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            params = f"timestamp={timestamp}&nonce={nonce}&tenant_id={self.tenant_id}&sign={encoded_sign}"
             base_url = f"/files/{upload_file_id}/file-preview"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
 
         # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
         # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
-        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
+        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\'\`]*)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
             file_extension = match.group(2)
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
-            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
+            data_to_sign = f"file-preview|{upload_file_id}|{self.tenant_id}|{timestamp}|{nonce}"
             secret_key = dify_config.SECRET_KEY.encode()
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
-            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            params = f"timestamp={timestamp}&nonce={nonce}&tenant_id={self.tenant_id}&sign={encoded_sign}"
             base_url = f"/files/tools/{upload_file_id}.{file_extension}"
             signed_url = f"{base_url}?{params}"
             signed_urls.append((match.start(), match.end(), signed_url))
