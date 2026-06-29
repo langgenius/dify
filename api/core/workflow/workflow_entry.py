@@ -271,9 +271,7 @@ class WorkflowEntry:
         self.graph_engine.layer(LLMQuotaLayer(tenant_id=tenant_id))
 
         # Add workflow log context layer (node_id tracking in logs)
-        self.graph_engine.layer(
-            WorkflowLogContextLayer(execution_context=execution_context)
-        )
+        self.graph_engine.layer(WorkflowLogContextLayer(execution_context=execution_context))
 
         # Add observability layer when OTel is enabled
         if dify_config.ENABLE_OTEL or is_instrument_flag_enabled():

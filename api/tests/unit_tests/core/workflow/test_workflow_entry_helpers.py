@@ -410,7 +410,6 @@ class TestExtractFailedNodeId:
     """Tests for _extract_failed_node_id helper."""
 
     def test_returns_empty_when_graph_execution_is_none(self):
-        from types import SimpleNamespace
 
         engine = MagicMock()
         engine.graph_runtime_state.graph_execution = None
@@ -419,7 +418,6 @@ class TestExtractFailedNodeId:
 
     def test_returns_empty_when_no_failed_nodes(self):
         from graphon.graph_engine.domain.graph_execution import GraphExecution
-        from graphon.graph_engine.domain.node_execution import NodeExecution
 
         graph_exec = GraphExecution(workflow_id="wf-1")
         graph_exec.get_or_create_node_execution("node-1").mark_taken()
