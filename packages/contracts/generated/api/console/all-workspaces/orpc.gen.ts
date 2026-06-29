@@ -13,7 +13,7 @@ export const get = oc
     path: '/all-workspaces',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAllWorkspacesQuery.optional() }))
+  .input(z.object({ query: zGetAllWorkspacesQuery.optional() }).optional())
   .output(zGetAllWorkspacesResponse)
 
 export const allWorkspaces = {

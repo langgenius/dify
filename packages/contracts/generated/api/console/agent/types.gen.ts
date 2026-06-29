@@ -1573,13 +1573,13 @@ export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 export type ParagraphInputConfig = {
   default?: StringSource | null
   output_variable_name: string
-  type?: 'paragraph'
+  type: 'paragraph'
 }
 
 export type SelectInputConfig = {
   option_source: StringListSource
   output_variable_name: string
-  type?: 'select'
+  type: 'select'
 }
 
 export type FileInputConfig = {
@@ -1587,7 +1587,7 @@ export type FileInputConfig = {
   allowed_file_types?: Array<FileType>
   allowed_file_upload_methods?: Array<FileTransferMethod>
   output_variable_name: string
-  type?: 'file'
+  type: 'file'
 }
 
 export type FileListInputConfig = {
@@ -1596,7 +1596,7 @@ export type FileListInputConfig = {
   allowed_file_upload_methods?: Array<FileTransferMethod>
   number_limits?: number
   output_variable_name: string
-  type?: 'file-list'
+  type: 'file-list'
 }
 
 export type AgentKnowledgeMetadataConditions = {

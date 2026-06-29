@@ -15,11 +15,9 @@ registerHooks({
   },
 })
 
-const { agentSandbox, sandbox } = await import(pathToFileURL(sourcePath).href)
+const { byWorkflowRunId, sandbox } = await import(pathToFileURL(sourcePath).href)
 
-assert.ok(agentSandbox.files.get)
-assert.ok(agentSandbox.files.read.get)
-assert.ok(agentSandbox.files.upload.post)
+assert.equal(byWorkflowRunId.agentNodes.byNodeId.sandbox, sandbox)
 
 assert.ok(sandbox.files.get)
 assert.ok(sandbox.files.read.get)

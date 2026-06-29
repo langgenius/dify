@@ -18,6 +18,7 @@
     "gen-api-contract-from-openapi": "node -e \"fs.rmSync('generated/api', { recursive: true, force: true })\" && openapi-ts -f openapi-ts.api.config.ts && vp fmt generated/api && eslint --fix generated/api",
     "gen-api-openapi": "uv run --project ../../api ../../api/dev/generate_swagger_specs.py --output-dir openapi",
     "gen-enterprise-contract": "openapi-ts -f openapi-ts.enterprise.config.ts",
+    "test:codegen": "node sandbox-contract.smoke.test.ts && node codegen-output-boundary.smoke.test.ts",
     "type-check": "tsgo"
   },
   "dependencies": {

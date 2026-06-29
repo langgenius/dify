@@ -519,7 +519,7 @@ export const get2 = oc
     path: '/apps/starred',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsStarredQuery.optional() }))
+  .input(z.object({ query: zGetAppsStarredQuery.optional() }).optional())
   .output(zGetAppsStarredResponse)
 
 export const starred = {
@@ -4585,7 +4585,7 @@ export const get83 = oc
     summary: 'Get app list',
     tags: ['console'],
   })
-  .input(z.object({ query: zGetAppsQuery.optional() }))
+  .input(z.object({ query: zGetAppsQuery.optional() }).optional())
   .output(zGetAppsResponse)
 
 /**

@@ -39,7 +39,6 @@ type ApiSpec = {
 }
 
 type ApiJob = {
-  clean?: boolean
   document: SwaggerDocument
   outputPath: string
   plugins?: UserConfig['plugins']
@@ -241,6 +240,48 @@ const normalizeOpaqueContractResponses = (document: SwaggerDocument) => {
   }
 }
 
+const requireDiscriminatorProperty = (schema: SwaggerSchema, propertyName: string) => {
+  const properties = schema.properties
+  if (!isObject(properties) || !isObject(properties[propertyName]))
+    return
+
+  const required = Array.isArray(schema.required)
+    ? schema.required.filter((item): item is string => typeof item === 'string')
+    : []
+
+  if (!required.includes(propertyName))
+    schema.required = [...required, propertyName]
+}
+
+const normalizeDiscriminatorRequiredProperties = (document: SwaggerDocument) => {
+  const schemas = getDocumentSchemas(document)
+
+  for (const schema of Object.values(schemas)) {
+    if (!isObject(schema))
+      continue
+
+    const discriminator = schema.discriminator
+    if (!isObject(discriminator) || typeof discriminator.propertyName !== 'string')
+      continue
+
+    if (!Array.isArray(schema.oneOf))
+      continue
+
+    for (const variant of schema.oneOf) {
+      if (!isObject(variant) || typeof variant.$ref !== 'string')
+        continue
+
+      const refName = schemaNameFromRef(variant.$ref)
+      if (!refName)
+        continue
+
+      const refSchema = schemas[refName]
+      if (refSchema)
+        requireDiscriminatorProperty(refSchema, discriminator.propertyName)
+    }
+  }
+}
+
 const hasSuccessResponse = (operation: SwaggerOperation) => {
   return Object.entries(operation.responses ?? {}).some(([status, response]) => {
     if (!/^2\d\d$/.test(status))
@@ -275,6 +316,7 @@ const filterContractOperations = (document: SwaggerDocument) => {
 
 const normalizeApiSwagger = (document: SwaggerDocument) => {
   normalizeOpaqueContractResponses(document)
+  normalizeDiscriminatorRequiredProperties(document)
   filterContractOperations(document)
   addOperationIds(document)
 
@@ -367,20 +409,12 @@ const writeConsoleContractEntry = (segments: string[]) => {
   fs.writeFileSync(entryPath, consoleContractEntryContent(segments))
 }
 
-const createConsoleContractEntryJob = (document: SwaggerDocument, segments: string[]): ApiJob => {
-  return {
-    clean: false,
-    document,
-    outputPath: 'generated/api/console',
-    plugins: [],
-    source: {
-      callback: () => writeConsoleContractEntry(segments),
-      enabled: true,
-      path: null,
-      serialize: () => '',
-    },
-  }
-}
+const consoleContractEntrySource = (segments: string[]): NonNullable<ApiJob['source']> => ({
+  callback: () => writeConsoleContractEntry(segments),
+  enabled: true,
+  path: null,
+  serialize: () => '',
+})
 
 const splitConsoleDocument = (document: SwaggerDocument) => {
   const pathsBySegment = new Map<string, Record<string, Record<string, unknown>>>()
@@ -393,12 +427,13 @@ const splitConsoleDocument = (document: SwaggerDocument) => {
   }
 
   const segments = [...pathsBySegment.keys()].sort((left, right) => left.localeCompare(right))
-  const jobs = segments.map((segment): ApiJob => ({
+  const jobs = segments.map((segment, index): ApiJob => ({
     document: cloneDocumentWithPaths(document, pathsBySegment.get(segment) ?? {}),
     outputPath: `generated/api/console/${toKebabCase(segment)}`,
+    ...(index === 0 ? { source: consoleContractEntrySource(segments) } : {}),
   }))
 
-  return [...jobs, createConsoleContractEntryJob(document, segments)]
+  return jobs
 }
 
 const createApiJobs = (spec: ApiSpec): ApiJob[] => {
@@ -423,7 +458,6 @@ const createApiConfig = (job: ApiJob): UserConfig => ({
     file: false,
   },
   output: {
-    ...(job.clean === undefined ? {} : { clean: job.clean }),
     entryFile: false,
     fileName: {
       suffix: '.gen',
