@@ -9,8 +9,10 @@ import pytest
 from dify_agent.agent_stub.cli._drive import DrivePullResult
 from dify_agent.agent_stub.cli.main import main
 from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubConfigFileItemsResponse,
     AgentStubConfigFileItem,
     AgentStubConfigManifestResponse,
+    AgentStubConfigSkillItemsResponse,
     AgentStubConfigSkillItem,
     AgentStubConfigVersionInfo,
     AgentStubDriveCommitResponse,
@@ -182,23 +184,27 @@ def test_cli_config_manifest_omits_hash_fields(
         lambda: AgentStubConfigManifestResponse(
             agent_id="agent-1",
             config_version=AgentStubConfigVersionInfo(id="cfg-1", kind="build_draft", writable=True),
-            skills=[
-                AgentStubConfigSkillItem(
-                    name="alpha",
-                    description="Alpha skill.",
-                    size=12,
-                    hash="sha256:skill",
-                    mime_type="application/zip",
-                )
-            ],
-            files=[
-                AgentStubConfigFileItem(
-                    name="guide.txt",
-                    size=34,
-                    hash="sha256:file",
-                    mime_type="text/plain",
-                )
-            ],
+            skills=AgentStubConfigSkillItemsResponse(
+                items=[
+                    AgentStubConfigSkillItem(
+                        name="alpha",
+                        description="Alpha skill.",
+                        size=12,
+                        hash="sha256:skill",
+                        mime_type="application/zip",
+                    )
+                ]
+            ),
+            files=AgentStubConfigFileItemsResponse(
+                items=[
+                    AgentStubConfigFileItem(
+                        name="guide.txt",
+                        size=34,
+                        hash="sha256:file",
+                        mime_type="text/plain",
+                    )
+                ]
+            ),
             env_keys=["RUNTIME_KEY"],
             note="Runtime note.",
         ),
@@ -210,21 +216,25 @@ def test_cli_config_manifest_omits_hash_fields(
     captured = capsys.readouterr()
     payload = json.loads(captured.out)
     assert exc_info.value.code == 0
-    assert payload["skills"] == [
-        {
-            "name": "alpha",
-            "description": "Alpha skill.",
-            "size": 12,
-            "mime_type": "application/zip",
-        }
-    ]
-    assert payload["files"] == [
-        {
-            "name": "guide.txt",
-            "size": 34,
-            "mime_type": "text/plain",
-        }
-    ]
+    assert payload["skills"] == {
+        "items": [
+            {
+                "name": "alpha",
+                "description": "Alpha skill.",
+                "size": 12,
+                "mime_type": "application/zip",
+            }
+        ]
+    }
+    assert payload["files"] == {
+        "items": [
+            {
+                "name": "guide.txt",
+                "size": 34,
+                "mime_type": "text/plain",
+            }
+        ]
+    }
 
 
 def test_cli_file_upload_prints_uploaded_tool_file_json(
