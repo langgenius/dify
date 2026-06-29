@@ -2869,13 +2869,9 @@ class TestWorkflowServiceFreeNodeExecution:
             ) as mock_adapt_node_data,
             patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
             patch("services.workflow_service.build_dify_human_input_hitl_callback", create=True) as mock_build_hitl_callback,
-            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
-            patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):
             mock_build_hitl_callback.return_value = sentinel.hitl_callback
-            mock_file_reference_factory_cls.return_value = sentinel.file_reference_factory
-            mock_runtime_cls.return_value = sentinel.runtime
             mock_node_cls.validate_node_data.return_value = sentinel.node_data
             node = service._build_human_input_node_for_debugging(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
@@ -2891,10 +2887,11 @@ class TestWorkflowServiceFreeNodeExecution:
             mock_adapt_node_data.assert_called_once_with(node_config["data"])
             mock_node_cls.validate_node_data.assert_called_once_with(sentinel.adapted_node_data)
             mock_build_hitl_callback.assert_called_once_with(
-                workflow_id="wf-1",
-                app_id="app-1",
-                node_id="n-1",
                 node_data=sentinel.node_data,
+                repository_factory=ANY,
+                file_value_restorer=ANY,
+                delivery_methods=ANY,
+                display_in_ui=True,
             )
             mock_node_cls.assert_called_once_with(
                 node_id="n-1",
