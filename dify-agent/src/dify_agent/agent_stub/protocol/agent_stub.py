@@ -218,8 +218,6 @@ class AgentStubFileUploadResponse(BaseModel):
 
     upload_url: str
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
 
 class AgentStubFileMapping(BaseModel):
     """Public file mapping used by download-request control-plane calls."""
@@ -262,8 +260,6 @@ class AgentStubFileDownloadResponse(BaseModel):
     mime_type: str | None = None
     size: int
     download_url: str
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 class AgentStubDriveFileRef(BaseModel):
@@ -323,23 +319,17 @@ class AgentStubDriveManifestResponse(BaseModel):
 
     items: list[AgentStubDriveItem]
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
 
 class AgentStubDriveCommitResponse(BaseModel):
     """Response body for one Agent Stub drive commit request."""
 
     items: list[AgentStubDriveItem]
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
 
 class AgentStubConfigVersionInfo(BaseModel):
     id: str
     kind: Literal["snapshot", "draft", "build_draft"]
     writable: bool
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 class AgentStubConfigSkillItem(BaseModel):
@@ -349,7 +339,9 @@ class AgentStubConfigSkillItem(BaseModel):
     hash: str | None = None
     mime_type: str | None = None
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+class AgentStubConfigSkillItemsResponse(BaseModel):
+    items: list[AgentStubConfigSkillItem] = Field(default_factory=list)
 
 
 class AgentStubConfigFileItem(BaseModel):
@@ -358,18 +350,18 @@ class AgentStubConfigFileItem(BaseModel):
     hash: str | None = None
     mime_type: str | None = None
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
+
+class AgentStubConfigFileItemsResponse(BaseModel):
+    items: list[AgentStubConfigFileItem] = Field(default_factory=list)
 
 
 class AgentStubConfigManifestResponse(BaseModel):
     agent_id: str
     config_version: AgentStubConfigVersionInfo
-    skills: list[AgentStubConfigSkillItem] = Field(default_factory=list)
-    files: list[AgentStubConfigFileItem] = Field(default_factory=list)
+    skills: AgentStubConfigSkillItemsResponse = Field(default_factory=AgentStubConfigSkillItemsResponse)
+    files: AgentStubConfigFileItemsResponse = Field(default_factory=AgentStubConfigFileItemsResponse)
     env_keys: list[str] = Field(default_factory=list)
     note: str = ""
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 class AgentStubConfigFileRef(BaseModel):
@@ -440,6 +432,7 @@ __all__ = [
     "AgentStubEndpoint",
     "AgentStubConfigEnvUpdateRequest",
     "AgentStubConfigFileItem",
+    "AgentStubConfigFileItemsResponse",
     "AgentStubConfigFileRef",
     "AgentStubConfigManifestResponse",
     "AgentStubConfigNoteUpdateRequest",
@@ -448,6 +441,7 @@ __all__ = [
     "AgentStubConfigPushResponse",
     "AgentStubConfigPushSkillItem",
     "AgentStubConfigSkillItem",
+    "AgentStubConfigSkillItemsResponse",
     "AgentStubConfigVersionInfo",
     "AgentStubDriveCommitItem",
     "AgentStubDriveCommitRequest",
