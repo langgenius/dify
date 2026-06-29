@@ -18,6 +18,7 @@ from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.code.entities import CodeLanguage
+from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
@@ -663,6 +664,60 @@ class TestDifyNodeFactoryCreateNode:
         assert "form_repository" not in kwargs
         assert "file_reference_factory" not in kwargs
         factory._build_human_input_hitl_callback.assert_called_once()
+
+    def test_human_input_callback_builder_receives_dify_node_data_via_real_node_class_path(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory,
+    ) -> None:
+        factory._build_human_input_hitl_callback = node_factory.DifyNodeFactory._build_human_input_hitl_callback.__get__(
+            factory, node_factory.DifyNodeFactory
+        )
+        factory.graph_init_params = SimpleNamespace(
+            workflow_id="workflow-id",
+            graph_config={},
+            run_context={},
+            call_depth=0,
+        )
+        factory.graph_runtime_state = SimpleNamespace(
+            variable_pool=MagicMock(),
+            graph_execution=SimpleNamespace(node_executions={}),
+        )
+
+        def fake_build_dify_human_input_hitl_callback(*, node_data, **_kwargs):
+            assert isinstance(node_data, node_factory.HumanInputNodeData)
+            assert node_data.outputs_field_names() == ["answer"]
+            return sentinel.human_input_hitl_callback
+
+        monkeypatch.setattr(
+            node_factory,
+            "get_node_type_classes_mapping",
+            lambda: {BuiltinNodeTypes.HUMAN_INPUT: {"1": HumanInputNode}},
+        )
+        monkeypatch.setattr(
+            node_factory,
+            "build_dify_human_input_hitl_callback",
+            fake_build_dify_human_input_hitl_callback,
+        )
+
+        factory.create_node(
+            {
+                "id": "human-node",
+                "data": {
+                    "type": BuiltinNodeTypes.HUMAN_INPUT,
+                    "title": "Ask human",
+                    "form_content": "{{ answer }}",
+                    "inputs": [
+                        {
+                            "label": "Answer",
+                            "variable": "answer",
+                            "required": True,
+                            "max_length": 48,
+                        }
+                    ],
+                },
+            }
+        )
 
     def test_tool_node_receives_tool_file_manager(self, monkeypatch: pytest.MonkeyPatch, factory) -> None:
         created_node = object()
