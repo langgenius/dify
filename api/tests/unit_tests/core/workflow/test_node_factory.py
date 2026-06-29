@@ -359,7 +359,6 @@ class TestDifyNodeFactoryInit:
         llm_file_saver = sentinel.llm_file_saver
         credentials_provider = sentinel.credentials_provider
         model_factory = sentinel.model_factory
-        human_input_runtime = sentinel.human_input_runtime
         tool_runtime = sentinel.tool_runtime
 
         with (
@@ -406,7 +405,6 @@ class TestDifyNodeFactoryInit:
             patch.object(
                 node_factory,
                 "DifyHumanInputNodeRuntime",
-                return_value=human_input_runtime,
             ),
             patch.object(
                 node_factory,
@@ -437,7 +435,6 @@ class TestDifyNodeFactoryInit:
         assert factory._prompt_message_serializer is prompt_message_serializer
         assert factory._retriever_attachment_loader is retriever_attachment_loader
         assert factory._llm_file_saver is llm_file_saver
-        assert factory._human_input_runtime is human_input_runtime
         assert factory._tool_runtime is tool_runtime
         assert factory._llm_credentials_provider is credentials_provider
         assert factory._llm_model_factory is model_factory
@@ -501,6 +498,7 @@ class TestDifyNodeFactoryCreateNode:
         factory._prompt_message_serializer = sentinel.prompt_message_serializer
         factory._retriever_attachment_loader = sentinel.retriever_attachment_loader
         factory._llm_file_saver = sentinel.llm_file_saver
+        factory._build_human_input_hitl_callback = MagicMock(return_value=sentinel.human_input_hitl_callback)
         factory._human_input_runtime = sentinel.human_input_runtime
         factory._tool_runtime = sentinel.tool_runtime
         factory._http_request_file_manager = sentinel.file_manager
@@ -602,9 +600,7 @@ class TestDifyNodeFactoryCreateNode:
         )
 
         if constructor_name == "HumanInputNode":
-            form_repository = sentinel.form_repository
             factory._human_input_runtime = MagicMock()
-            factory._human_input_runtime.build_form_repository.return_value = form_repository
 
         node_config = {"id": "node-id", "data": {"type": node_type}}
         result = factory.create_node(node_config)
@@ -630,11 +626,11 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
             factory._bound_tool_file_manager_factory.assert_not_called()
         elif constructor_name == "HumanInputNode":
-            assert kwargs["form_repository"] is form_repository
-            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
-            assert kwargs["runtime"] is factory._human_input_runtime
-            assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
-            factory._human_input_runtime.build_form_repository.assert_called_once_with()
+            assert kwargs["hitl_callback"] is sentinel.human_input_hitl_callback
+            assert "runtime" not in kwargs
+            assert "form_repository" not in kwargs
+            assert "file_reference_factory" not in kwargs
+            factory._build_human_input_hitl_callback.assert_called_once()
         elif constructor_name == "ToolNode":
             assert kwargs["tool_file_manager"] is sentinel.tool_file_manager
             assert kwargs["runtime"] is sentinel.tool_runtime
@@ -643,16 +639,15 @@ class TestDifyNodeFactoryCreateNode:
             assert kwargs["unstructured_api_config"] is sentinel.unstructured_api_config
             assert kwargs["http_client"] is sentinel.remote_file_http_client
 
-    def test_human_input_node_receives_runtime_repository_and_file_reference_factory(
+    def test_human_input_node_receives_hitl_callback_only(
         self,
         monkeypatch: pytest.MonkeyPatch,
         factory,
     ) -> None:
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
-        form_repository = sentinel.form_repository
+        factory._build_human_input_hitl_callback = MagicMock(return_value=sentinel.human_input_hitl_callback)
         factory._human_input_runtime = MagicMock()
-        factory._human_input_runtime.build_form_repository.return_value = form_repository
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -663,10 +658,11 @@ class TestDifyNodeFactoryCreateNode:
 
         assert result is created_node
         kwargs = constructor.call_args.kwargs
-        assert kwargs["runtime"] is factory._human_input_runtime
-        assert kwargs["form_repository"] is form_repository
-        assert kwargs["file_reference_factory"] is sentinel.file_reference_factory
-        factory._human_input_runtime.build_form_repository.assert_called_once_with()
+        assert kwargs["hitl_callback"] is sentinel.human_input_hitl_callback
+        assert "runtime" not in kwargs
+        assert "form_repository" not in kwargs
+        assert "file_reference_factory" not in kwargs
+        factory._build_human_input_hitl_callback.assert_called_once()
 
     def test_tool_node_receives_tool_file_manager(self, monkeypatch: pytest.MonkeyPatch, factory) -> None:
         created_node = object()
