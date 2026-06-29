@@ -63,6 +63,4 @@ def _is_db_operational_error(exc: BaseException) -> bool:
     if isinstance(exc, SQLAlchemyOperationalError):
         return True
 
-    return exc.__class__.__name__ == "OperationalError" and exc.__class__.__module__.startswith(
-        ("psycopg", "psycopg2")
-    )
+    return exc.__class__.__name__ == "OperationalError" and exc.__class__.__module__.startswith(("psycopg", "psycopg2"))
