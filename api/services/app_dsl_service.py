@@ -53,6 +53,9 @@ CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
 CURRENT_DSL_VERSION = CURRENT_APP_DSL_VERSION
+FILE_VARIABLE_TYPES = {"file", "file-list"}
+LOCAL_FILE_ID_KEYS = {"upload_file_id", "uploadedId"}
+LOCAL_FILE_TRANSFER_METHODS = {"local_file"}
 
 
 class Import(BaseModel):
@@ -563,6 +566,7 @@ class AppDslService:
             raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
+        cls._strip_tenant_file_defaults_from_workflow_dict(workflow_dict)
         # TODO: refactor: we need a better way to filter workspace related data from nodes
         for node in workflow_dict.get("graph", {}).get("nodes", []):
             node_data = node.get("data", {})
@@ -601,6 +605,51 @@ class AppDslService:
                 tenant_id=app_model.tenant_id, dependencies=dependencies
             )
         ]
+
+    @classmethod
+    def _strip_tenant_file_defaults_from_workflow_dict(cls, workflow_dict: Mapping[str, Any]) -> None:
+        for node in workflow_dict.get("graph", {}).get("nodes", []):
+            node_data = node.get("data", {})
+            if not isinstance(node_data, dict):
+                continue
+
+            variables = node_data.get("variables")
+            if not isinstance(variables, list):
+                continue
+
+            for variable in variables:
+                if not isinstance(variable, dict) or variable.get("type") not in FILE_VARIABLE_TYPES:
+                    continue
+                if "default" not in variable:
+                    continue
+
+                sanitized_default = cls._sanitize_file_variable_default(variable["default"])
+                if sanitized_default is None:
+                    variable.pop("default", None)
+                else:
+                    variable["default"] = sanitized_default
+
+    @classmethod
+    def _sanitize_file_variable_default(cls, value: Any) -> Any | None:
+        if isinstance(value, list):
+            items = [item for item in (cls._sanitize_file_variable_default(item) for item in value) if item is not None]
+            return items or None
+
+        if not isinstance(value, dict):
+            return value
+
+        if cls._is_tenant_local_file_default(value):
+            return None
+
+        sanitized = dict(value)
+        for key in LOCAL_FILE_ID_KEYS:
+            sanitized.pop(key, None)
+        return sanitized
+
+    @staticmethod
+    def _is_tenant_local_file_default(value: Mapping[str, Any]) -> bool:
+        transfer_method = value.get("transfer_method") or value.get("transferMethod")
+        return transfer_method in LOCAL_FILE_TRANSFER_METHODS or any(key in value for key in LOCAL_FILE_ID_KEYS)
 
     @classmethod
     def _append_model_config_export_data(cls, export_data: dict[str, Any], app_model: App):
