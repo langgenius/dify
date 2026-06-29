@@ -41,19 +41,28 @@ from dify_agent.agent_stub.cli._files import download_file_from_environment, upl
 from dify_agent.agent_stub.client._errors import AgentStubClientError
 from dify_agent.agent_stub.protocol.agent_stub import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
 
+_CONFIG_MANIFEST_STDOUT_EXCLUDE = {
+    "skills": {"__all__": {"hash"}},
+    "files": {"__all__": {"hash"}},
+}
+
 
 app = typer.Typer(
     add_completion=False,
     help="Forward shell-visible dify-agent commands to the Dify Agent Stub server.",
     no_args_is_help=True,
+    rich_markup_mode=None,
 )
-file_app = typer.Typer(help="Upload or download workflow files through the Agent Stub.")
-config_app = typer.Typer(help="Inspect or update Agent Soul-backed config assets through the Agent Stub.")
-config_skill_app = typer.Typer(help="Pull config skills through the Agent Stub.")
-config_file_app = typer.Typer(help="Pull config files through the Agent Stub.")
-config_env_app = typer.Typer(help="Export config env variables visible to the current run.")
-config_note_app = typer.Typer(help="Export the current config note.")
-drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.")
+file_app = typer.Typer(help="Upload or download workflow files through the Agent Stub.", rich_markup_mode=None)
+config_app = typer.Typer(
+    help="Inspect or update Agent Soul-backed config assets through the Agent Stub.",
+    rich_markup_mode=None,
+)
+config_skill_app = typer.Typer(help="Pull config skills through the Agent Stub.", rich_markup_mode=None)
+config_file_app = typer.Typer(help="Pull config files through the Agent Stub.", rich_markup_mode=None)
+config_env_app = typer.Typer(help="Export config env variables visible to the current run.", rich_markup_mode=None)
+config_note_app = typer.Typer(help="Export the current config note.", rich_markup_mode=None)
+drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.", rich_markup_mode=None)
 app.add_typer(file_app, name="file")
 app.add_typer(config_app, name="config")
 config_app.add_typer(config_skill_app, name="skill")
@@ -330,7 +339,7 @@ def _run_config_manifest() -> None:
     except AgentStubClientError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(1) from exc
-    typer.echo(response.model_dump_json())
+    typer.echo(response.model_dump_json(exclude=_CONFIG_MANIFEST_STDOUT_EXCLUDE))
 
 
 def _run_config_skill_pull(*, names: list[str] | None, local_dir: str | None, json_output: bool) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import shlex
 from dataclasses import dataclass, field
@@ -26,13 +27,9 @@ _CONFIG_CLI_PUSH_PROMPT = "- Save updated build-draft config files/skills/env/no
 _CONFIG_CLI_HELP_COMMANDS = (
     "dify-agent config --help",
     "dify-agent config manifest --help",
-    "dify-agent config skill --help",
     "dify-agent config skill pull --help",
-    "dify-agent config file --help",
     "dify-agent config file pull --help",
-    "dify-agent config env --help",
     "dify-agent config env pull --help",
-    "dify-agent config note --help",
     "dify-agent config note pull --help",
 )
 _CONFIG_CLI_PUSH_HELP_COMMAND = "dify-agent config push --help"
@@ -77,15 +74,24 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
 
     @override
     async def on_context_create(self) -> None:
-        await self._load_config_manifest()
-        await self._load_config_cli_help()
-        await self._pull_mentioned_targets()
+        await self._initialize_context()
 
     @override
     async def on_context_resume(self) -> None:
-        await self._load_config_manifest()
-        await self._load_config_cli_help()
-        await self._pull_mentioned_targets()
+        await self._initialize_context()
+
+    async def _initialize_context(self) -> None:
+        results = await asyncio.gather(
+            self._load_config_manifest(),
+            self._load_config_cli_help(),
+            self._pull_mentioned_targets(),
+            return_exceptions=True,
+        )
+        for result in results:
+            if isinstance(result, BaseException):
+                raise result
+        if self._config_writable:
+            await self._load_config_cli_help_commands((_CONFIG_CLI_PUSH_HELP_COMMAND,))
 
     def build_prompt_context(self) -> str:
         sections: list[str] = []
@@ -141,14 +147,20 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
 
     async def _load_config_cli_help(self) -> None:
         self._config_cli_help = {}
-        commands = list(_CONFIG_CLI_HELP_COMMANDS)
-        if self._config_writable:
-            commands.append(_CONFIG_CLI_PUSH_HELP_COMMAND)
-        for command in commands:
+        await self._load_config_cli_help_commands(_CONFIG_CLI_HELP_COMMANDS)
+
+    async def _load_config_cli_help_commands(self, commands: tuple[str, ...]) -> None:
+        async def load_command(command: str) -> tuple[str, str | None]:
             result = await self.deps.shell.run_remote_script(command, timeout=10.0)
             if result.exit_code != 0 or not result.output_complete:
-                continue
+                return command, None
             output = result.output.strip()
+            if not output:
+                return command, None
+            return command, output
+
+        results = await asyncio.gather(*(load_command(command) for command in commands))
+        for command, output in results:
             if output:
                 self._config_cli_help[command] = output
 
