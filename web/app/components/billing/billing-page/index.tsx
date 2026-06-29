@@ -11,9 +11,9 @@ import PlanComp from '../plan'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
-  const { workspacePermissionKeys } = useAppContext()
+  const { isCurrentWorkspaceManager, workspacePermissionKeys } = useAppContext()
   const { enableBilling } = useProviderContext()
-  const canManageBillingSubscription = hasPermission(workspacePermissionKeys, BillingPermission.SubscriptionManage)
+  const canManageBillingSubscription = isCurrentWorkspaceManager && hasPermission(workspacePermissionKeys, BillingPermission.SubscriptionManage)
   const { data: billingUrl, isFetching, refetch } = useBillingUrl(enableBilling && canManageBillingSubscription)
   const openAsyncWindow = useAsyncWindowOpen()
 
