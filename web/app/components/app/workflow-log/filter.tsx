@@ -10,6 +10,8 @@ import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 
 dayjs.extend(quarterOfYear)
 
@@ -34,8 +36,52 @@ type IFilterProps = {
   setQueryParams: (v: QueryParam) => void
 }
 
+type DateTimeFilterFieldProps = {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  onClear: () => void
+  className?: string
+}
+
+const DateTimeFilterField: FC<DateTimeFilterFieldProps> = ({
+  label,
+  value,
+  onChange,
+  onClear,
+  className,
+}) => (
+  <div className="w-[200px]">
+    <div className="relative w-full">
+      {!value && (
+        <span
+          className="pointer-events-none absolute inset-y-0 left-3 z-[1] flex items-center system-sm-regular text-components-input-text-placeholder"
+          aria-hidden="true"
+        >
+          {label}
+        </span>
+      )}
+      <Input
+        wrapperClassName="w-full"
+        type="datetime-local"
+        showClearIcon
+        aria-label={label}
+        title={label}
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onClear={onClear}
+        className={`${className ?? ''}${!value ? 'text-transparent [&::-webkit-datetime-edit]:opacity-0' : ''}`}
+      />
+    </div>
+  </div>
+)
+
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
   const { t } = useTranslation()
+  const { theme } = useTheme()
+  const dateTimeInputClassName = theme === Theme.dark
+    ? '[&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:invert'
+    : '[&::-webkit-calendar-picker-indicator]:cursor-pointer'
   return (
     <div className="mb-2 flex flex-row flex-wrap gap-2">
       <Chip
@@ -70,6 +116,38 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
+      />
+      <Input
+        wrapperClassName="w-[200px]"
+        showLeftIcon
+        showClearIcon
+        value={queryParams.created_by_end_user_session_id ?? ''}
+        placeholder={t('filter.sessionId.placeholder', { ns: 'appLog' })}
+        onChange={e => setQueryParams({ ...queryParams, created_by_end_user_session_id: e.target.value })}
+        onClear={() => setQueryParams({ ...queryParams, created_by_end_user_session_id: '' })}
+      />
+      <Input
+        wrapperClassName="w-[200px]"
+        showLeftIcon
+        showClearIcon
+        value={queryParams.created_by_account ?? ''}
+        placeholder={t('filter.accountEmail.placeholder', { ns: 'appLog' })}
+        onChange={e => setQueryParams({ ...queryParams, created_by_account: e.target.value })}
+        onClear={() => setQueryParams({ ...queryParams, created_by_account: '' })}
+      />
+      <DateTimeFilterField
+        label={t('filter.dateFromTitle', { ns: 'appLog' })}
+        value={queryParams.dateAfter ?? ''}
+        onChange={value => setQueryParams({ ...queryParams, dateAfter: value })}
+        onClear={() => setQueryParams({ ...queryParams, dateAfter: '' })}
+        className={dateTimeInputClassName}
+      />
+      <DateTimeFilterField
+        label={t('filter.dateToTitle', { ns: 'appLog' })}
+        value={queryParams.dateBefore ?? ''}
+        onChange={value => setQueryParams({ ...queryParams, dateBefore: value })}
+        onClear={() => setQueryParams({ ...queryParams, dateBefore: '' })}
+        className={dateTimeInputClassName}
       />
     </div>
   )

@@ -22,6 +22,10 @@ vi.mock('@/app/components/base/amplitude/utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
+vi.mock('@/hooks/use-theme', () => ({
+  default: () => ({ theme: 'light' }),
+}))
+
 // ============================================================================
 // Test Data Factories
 // ============================================================================
@@ -510,6 +514,96 @@ describe('Filter', () => {
         status: 'failed',
         period: '3',
         keyword: 'a',
+      })
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // Advanced Filter Tests
+  // --------------------------------------------------------------------------
+  describe('Advanced Filters', () => {
+    it('should render session id filter input', () => {
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams()}
+          setQueryParams={defaultSetQueryParams}
+        />,
+      )
+
+      expect(screen.getByPlaceholderText('appLog.filter.sessionId.placeholder')).toBeInTheDocument()
+    })
+
+    it('should render account email filter input', () => {
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams()}
+          setQueryParams={defaultSetQueryParams}
+        />,
+      )
+
+      expect(screen.getByPlaceholderText('appLog.filter.accountEmail.placeholder')).toBeInTheDocument()
+    })
+
+    it('should call setQueryParams when session id changes', () => {
+      const setQueryParams = vi.fn()
+
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams()}
+          setQueryParams={setQueryParams}
+        />,
+      )
+
+      fireEvent.change(screen.getByPlaceholderText('appLog.filter.sessionId.placeholder'), {
+        target: { value: 'session-123' },
+      })
+
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '2',
+        created_by_end_user_session_id: 'session-123',
+      })
+    })
+
+    it('should call setQueryParams when account email changes', () => {
+      const setQueryParams = vi.fn()
+
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams()}
+          setQueryParams={setQueryParams}
+        />,
+      )
+
+      fireEvent.change(screen.getByPlaceholderText('appLog.filter.accountEmail.placeholder'), {
+        target: { value: 'user@example.com' },
+      })
+
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '2',
+        created_by_account: 'user@example.com',
+      })
+    })
+
+    it('should call setQueryParams when custom date range changes', () => {
+      const setQueryParams = vi.fn()
+
+      render(
+        <Filter
+          queryParams={createDefaultQueryParams()}
+          setQueryParams={setQueryParams}
+        />,
+      )
+
+      const dateInputs = screen.getAllByDisplayValue('')
+      const fromInput = dateInputs.find(input => input.getAttribute('type') === 'datetime-local')
+      fireEvent.change(fromInput!, { target: { value: '2024-01-01T10:00' } })
+
+      expect(setQueryParams).toHaveBeenCalledWith({
+        status: 'all',
+        period: '2',
+        dateAfter: '2024-01-01T10:00',
       })
     })
   })
