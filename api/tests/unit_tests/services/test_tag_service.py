@@ -21,9 +21,7 @@ def db_session(mocker: MockerFixture):
     return mock_db.session
 
 
-def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(
-    mocker: MockerFixture, current_user, db_session
-):
+def test_save_tag_binding_only_creates_bindings_for_valid_snippet_tags(mocker: MockerFixture, current_user, db_session):
     mocker.patch("services.tag_service.TagService.check_target_exists")
     db_session.scalars.return_value.all.return_value = ["tag-1"]
     db_session.scalar.return_value = None
@@ -84,9 +82,7 @@ def test_update_tags_scopes_lookup_to_current_tenant_and_type(current_user, db_s
     tag = SimpleNamespace(id="tag-1", name="old", type=TagType.KNOWLEDGE)
     db_session.scalar.side_effect = [tag, None]
 
-    result = TagService.update_tags(
-        UpdateTagPayload(name="new"), "tag-1", db_session, tag_type=TagType.KNOWLEDGE
-    )
+    result = TagService.update_tags(UpdateTagPayload(name="new"), "tag-1", db_session, tag_type=TagType.KNOWLEDGE)
 
     stmt = db_session.scalar.call_args_list[0].args[0]
     compiled = stmt.compile()
