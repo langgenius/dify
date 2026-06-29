@@ -22,10 +22,10 @@ import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
-import MainNav from '../index'
+import { MainNav } from '../index'
 import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 
-const activeGradientMaskClassName = 'aria-[current=page]:main-nav-active-glass'
+const activeGradientMaskClassName = 'aria-[current=page]:dify-blue-glass-surface'
 const activeStackingClassName = 'aria-[current=page]:z-1'
 
 type SnippetNavigationTestState = {
@@ -459,6 +459,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).toHaveAttribute('href', '/')
     expect(screen.getByRole('link', { name: /common.menus.apps/ })).toHaveAttribute('href', '/apps')
     expect(screen.getByRole('link', { name: /common.menus.roster/ })).toHaveAttribute('href', '/roster')
+    expect(screen.getByRole('link', { name: /common.menus.roster common.menus.status/ })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
@@ -712,7 +713,7 @@ describe('MainNav', () => {
     expect(screen.getByTestId('app-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
@@ -777,7 +778,7 @@ describe('MainNav', () => {
     fireEvent.mouseEnter(screen.getByTestId('app-detail-top').parentElement!)
     fireEvent.click(screen.getByTestId('app-detail-toggle'))
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]', 'transition-none')
+    expect(screen.getByRole('complementary')).toHaveClass('w-62', 'transition-none')
     expect(screen.getByRole('complementary')).not.toHaveClass('overflow-visible')
     expect(screen.getByTestId('app-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('app-detail-section')).toHaveAttribute('data-expand', 'true')
@@ -793,7 +794,7 @@ describe('MainNav', () => {
     expect(screen.getByTestId('dataset-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('dataset-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('dataset-detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
@@ -837,7 +838,7 @@ describe('MainNav', () => {
     expect(screen.getByTestId('agent-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('agent-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('agent-detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
@@ -864,7 +865,7 @@ describe('MainNav', () => {
     expect(screen.getByTestId('deployment-detail-section')).toBeInTheDocument()
     expect(screen.getByTestId('deployment-detail-top')).toHaveAttribute('data-expand', 'true')
     expect(screen.getByTestId('deployment-detail-section')).toHaveAttribute('data-expand', 'true')
-    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()

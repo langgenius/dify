@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from dify_agent.agent_stub.cli._drive import DrivePullResult
 from dify_agent.agent_stub.cli.main import main
 from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveCommitResponse,
@@ -194,11 +195,72 @@ def test_cli_file_download_prints_saved_path(
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main(["file", "download", "tool_file", _reference("tool-file-1"), "/tmp"])
+        main(["file", "download", "tool_file", _reference("tool-file-1"), "--to", "/tmp"])
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
     assert captured.out.strip() == "/tmp/report.pdf"
+
+
+def test_cli_file_download_supports_mapping_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_download_file_from_environment(**kwargs):
+        captured_kwargs.update(kwargs)
+        return type("Response", (), {"path": Path("/tmp/inputs/report.pdf")})()
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(
+            [
+                "file",
+                "download",
+                "--mapping",
+                json.dumps({"transfer_method": "tool_file", "reference": _reference("tool-file-1")}),
+                "--to",
+                "/tmp/inputs",
+            ]
+        )
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {
+        "transfer_method": None,
+        "reference_or_url": None,
+        "mapping": json.dumps({"transfer_method": "tool_file", "reference": _reference("tool-file-1")}),
+        "local_dir": "/tmp/inputs",
+    }
+    assert captured.out.strip() == "/tmp/inputs/report.pdf"
+
+
+def test_cli_file_download_rejects_legacy_positional_directory(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    called = False
+
+    def fake_download_file_from_environment(**_kwargs):
+        nonlocal called
+        called = True
+        return type("Response", (), {"path": Path("/tmp/report.pdf")})()
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.download_file_from_environment", fake_download_file_from_environment
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["file", "download", "tool_file", _reference("tool-file-1"), "/tmp"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert called is False
+    assert "/tmp" in captured.err
 
 
 def test_cli_drive_list_prints_manifest_json(
@@ -206,8 +268,8 @@ def test_cli_drive_list_prints_manifest_json(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.list_drive_from_environment",
-        lambda *, prefix, json_output: AgentStubDriveManifestResponse(
+        "dify_agent.agent_stub.cli.main.list_drive_manifest_from_environment",
+        lambda *, prefix: AgentStubDriveManifestResponse(
             items=[
                 AgentStubDriveItem(
                     key=prefix + "example/SKILL.md",
@@ -234,8 +296,19 @@ def test_cli_drive_list_prints_human_readable_listing(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr(
-        "dify_agent.agent_stub.cli.main.list_drive_from_environment",
-        lambda *, prefix, json_output: f"12\ttext/markdown\t-\t{prefix}example/SKILL.md",
+        "dify_agent.agent_stub.cli.main.list_drive_manifest_from_environment",
+        lambda *, prefix: AgentStubDriveManifestResponse(
+            items=[
+                AgentStubDriveItem(
+                    key=f"{prefix}example/SKILL.md",
+                    size=12,
+                    hash=None,
+                    mime_type="text/markdown",
+                    file_kind="tool_file",
+                    file_id="tool-file-1",
+                )
+            ]
+        ),
     )
 
     with pytest.raises(SystemExit) as exc_info:
@@ -252,14 +325,20 @@ def test_cli_drive_pull_prints_downloaded_paths(
 ) -> None:
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
-        lambda *, targets, drive_base: [
-            Path(drive_base) / targets[0] / "SKILL.md",
-            Path(drive_base) / targets[0] / "helper.py",
-        ],
+        lambda *, targets, local_base: DrivePullResult(
+            items=[
+                DrivePullResult.Item(
+                    key=f"{targets[0]}/SKILL.md", local_path=str(Path(local_base) / targets[0] / "SKILL.md")
+                ),
+                DrivePullResult.Item(
+                    key=f"{targets[0]}/helper.py", local_path=str(Path(local_base) / targets[0] / "helper.py")
+                ),
+            ]
+        ),
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main(["drive", "pull", "skills/example", "--drive-base", "/tmp/drive"])
+        main(["drive", "pull", "skills/example", "--to", "/tmp/drive"])
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
@@ -269,16 +348,49 @@ def test_cli_drive_pull_prints_downloaded_paths(
     ]
 
 
+def test_cli_drive_pull_prints_json_result(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        lambda *, targets, local_base: DrivePullResult(
+            items=[
+                DrivePullResult.Item(key="files/a.txt", local_path=f"{local_base}/files/a.txt"),
+                DrivePullResult.Item(key="skills/foo/SKILL.md", local_path=f"{local_base}/skills/foo/SKILL.md"),
+            ]
+        ),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "files/a.txt", "--to", "/tmp/drive", "--json"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert json.loads(captured.out) == {
+        "items": [
+            {"key": "files/a.txt", "local_path": "/tmp/drive/files/a.txt"},
+            {"key": "skills/foo/SKILL.md", "local_path": "/tmp/drive/skills/foo/SKILL.md"},
+        ]
+    }
+
+
 def test_cli_drive_pull_forwards_multiple_targets(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     captured_kwargs: dict[str, object] = {}
 
-    def fake_pull_drive_from_environment(*, targets, drive_base):
+    def fake_pull_drive_from_environment(*, targets, local_base):
         captured_kwargs["targets"] = targets
-        captured_kwargs["drive_base"] = drive_base
-        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+        captured_kwargs["local_base"] = local_base
+        return DrivePullResult(
+            items=[
+                DrivePullResult.Item(
+                    key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md")
+                )
+            ]
+        )
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
@@ -286,11 +398,11 @@ def test_cli_drive_pull_forwards_multiple_targets(
     )
 
     with pytest.raises(SystemExit) as exc_info:
-        main(["drive", "pull", "skills/foo", "files/a.txt", "--drive-base", "/tmp/drive"])
+        main(["drive", "pull", "skills/foo", "files/a.txt", "--to", "/tmp/drive"])
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
-    assert captured_kwargs == {"targets": ["skills/foo", "files/a.txt"], "drive_base": "/tmp/drive"}
+    assert captured_kwargs == {"targets": ["skills/foo", "files/a.txt"], "local_base": "/tmp/drive"}
     assert captured.out.strip() == "/tmp/drive/skills/foo/SKILL.md"
 
 
@@ -301,10 +413,16 @@ def test_cli_drive_pull_uses_environment_drive_base_default(
     monkeypatch.setenv("DIFY_AGENT_STUB_DRIVE_BASE", "/env/drive")
     captured_kwargs: dict[str, object] = {}
 
-    def fake_pull_drive_from_environment(*, targets, drive_base):
+    def fake_pull_drive_from_environment(*, targets, local_base):
         captured_kwargs["targets"] = targets
-        captured_kwargs["drive_base"] = drive_base
-        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+        captured_kwargs["local_base"] = local_base
+        return DrivePullResult(
+            items=[
+                DrivePullResult.Item(
+                    key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md")
+                )
+            ]
+        )
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
@@ -316,7 +434,7 @@ def test_cli_drive_pull_uses_environment_drive_base_default(
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
-    assert captured_kwargs == {"targets": ["skills/foo"], "drive_base": "/env/drive"}
+    assert captured_kwargs == {"targets": ["skills/foo"], "local_base": "/env/drive"}
     assert captured.out.strip() == "/env/drive/skills/foo/SKILL.md"
 
 
@@ -327,10 +445,16 @@ def test_cli_drive_pull_keeps_historical_drive_base_when_env_is_missing(
     monkeypatch.delenv("DIFY_AGENT_STUB_DRIVE_BASE", raising=False)
     captured_kwargs: dict[str, object] = {}
 
-    def fake_pull_drive_from_environment(*, targets, drive_base):
+    def fake_pull_drive_from_environment(*, targets, local_base):
         captured_kwargs["targets"] = targets
-        captured_kwargs["drive_base"] = drive_base
-        return [Path(drive_base) / "skills" / "foo" / "SKILL.md"]
+        captured_kwargs["local_base"] = local_base
+        return DrivePullResult(
+            items=[
+                DrivePullResult.Item(
+                    key="skills/foo/SKILL.md", local_path=str(Path(local_base) / "skills" / "foo" / "SKILL.md")
+                )
+            ]
+        )
 
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
@@ -342,8 +466,35 @@ def test_cli_drive_pull_keeps_historical_drive_base_when_env_is_missing(
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
-    assert captured_kwargs == {"targets": ["skills/foo"], "drive_base": "/mnt/drive"}
+    assert captured_kwargs == {"targets": ["skills/foo"], "local_base": "/mnt/drive"}
     assert captured.out.strip() == "/mnt/drive/skills/foo/SKILL.md"
+
+
+def test_cli_drive_pull_without_targets_pulls_whole_visible_drive(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_pull_drive_from_environment(*, targets, local_base):
+        captured_kwargs["targets"] = targets
+        captured_kwargs["local_base"] = local_base
+        return DrivePullResult(
+            items=[DrivePullResult.Item(key="files/a.txt", local_path=str(Path(local_base) / "files" / "a.txt"))]
+        )
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.pull_drive_from_environment",
+        fake_pull_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "pull", "--to", "/tmp/drive"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {"targets": None, "local_base": "/tmp/drive"}
+    assert captured.out.strip() == "/tmp/drive/files/a.txt"
 
 
 def test_cli_drive_push_prints_commit_json(
@@ -352,7 +503,7 @@ def test_cli_drive_push_prints_commit_json(
 ) -> None:
     monkeypatch.setattr(
         "dify_agent.agent_stub.cli.main.push_drive_from_environment",
-        lambda *, local_path, drive_path, recursive: AgentStubDriveCommitResponse(
+        lambda *, local_path, drive_path, kind: AgentStubDriveCommitResponse(
             items=[
                 AgentStubDriveItem(
                     key=drive_path,
@@ -361,7 +512,7 @@ def test_cli_drive_push_prints_commit_json(
                     mime_type="text/markdown",
                     file_kind="tool_file",
                     file_id=Path(local_path).name,
-                    value_owned_by_drive=recursive is False,
+                    value_owned_by_drive=kind != "dir",
                 )
             ]
         ),
@@ -373,3 +524,87 @@ def test_cli_drive_push_prints_commit_json(
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
     assert json.loads(captured.out)["items"][0]["key"] == "skills/example/SKILL.md"
+
+
+def test_cli_drive_push_forwards_kind(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_push_drive_from_environment(*, local_path, drive_path, kind):
+        captured_kwargs["local_path"] = local_path
+        captured_kwargs["drive_path"] = drive_path
+        captured_kwargs["kind"] = kind
+        return AgentStubDriveCommitResponse(items=[])
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
+        fake_push_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "push", "/tmp/skill", "skills/example", "--kind", "skill"])
+
+    capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert captured_kwargs == {
+        "local_path": "/tmp/skill",
+        "drive_path": "skills/example",
+        "kind": "skill",
+    }
+
+
+def test_cli_drive_push_accepts_json_flag(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_push_drive_from_environment(*, local_path, drive_path, kind):
+        captured_kwargs["local_path"] = local_path
+        captured_kwargs["drive_path"] = drive_path
+        captured_kwargs["kind"] = kind
+        return AgentStubDriveCommitResponse(items=[])
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
+        fake_push_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "push", "/tmp/report.md", "files/report.md", "--json"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert json.loads(captured.out) == {"items": []}
+    assert captured_kwargs == {
+        "local_path": "/tmp/report.md",
+        "drive_path": "files/report.md",
+        "kind": None,
+    }
+
+
+def test_cli_drive_push_rejects_recursive_option(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    called = False
+
+    def fake_push_drive_from_environment(*, local_path, drive_path, kind):
+        nonlocal called
+        called = True
+        return AgentStubDriveCommitResponse(items=[])
+
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.push_drive_from_environment",
+        fake_push_drive_from_environment,
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["drive", "push", "/tmp/dir", "files/dir", "--recursive"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert called is False
+    assert "--recursive" in captured.err

@@ -35,6 +35,12 @@ class WorkflowRunArchiveTenantPlan(TypedDict):
     unpaid_tenant_ids: list[str]
 
 
+def _normalize_utc_datetime(value: datetime.datetime) -> datetime.datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=datetime.UTC)
+    return value.astimezone(datetime.UTC)
+
+
 def _parse_tenant_prefixes(prefixes: str | None) -> list[str]:
     if not prefixes:
         return []
@@ -156,10 +162,15 @@ def _resolve_archive_time_range(
             raise click.UsageError("Choose either day offsets or explicit dates, not both.")
         if from_days_ago <= to_days_ago:
             raise click.UsageError("--from-days-ago must be greater than --to-days-ago.")
-        now = datetime.datetime.now()
+        now = datetime.datetime.now(datetime.UTC)
         start_from = now - datetime.timedelta(days=from_days_ago)
         end_before = now - datetime.timedelta(days=to_days_ago)
         before_days = 0
+
+    if start_from is not None:
+        start_from = _normalize_utc_datetime(start_from)
+    if end_before is not None:
+        end_before = _normalize_utc_datetime(end_before)
 
     if start_from and end_before and start_from >= end_before:
         raise click.UsageError("--start-from must be earlier than --end-before.")
@@ -402,6 +413,13 @@ def archive_workflow_runs_plan(
             fg="white",
         )
     )
+    click.echo(
+        click.style(
+            "fixed_archive_window="
+            f"{start_from.isoformat() if start_from else 'unbounded'},{plan_end_before.isoformat()}",
+            fg="white",
+        )
+    )
     click.echo("tenant_prefix,total_tenants,workflow_runs,workflow_node_executions,paid_tenants,unpaid_tenants")
     for row in rows:
         click.echo(
@@ -451,7 +469,7 @@ def archive_workflow_runs_plan(
     default=None,
     help="Archive runs created before this timestamp (UTC if no timezone).",
 )
-@click.option("--batch-size", default=100, show_default=True, help="Maximum workflow runs per archive bundle.")
+@click.option("--batch-size", default=10000, show_default=True, help="Maximum workflow runs per archive bundle.")
 @click.option(
     "--workers",
     default=1,
@@ -521,6 +539,7 @@ def archive_workflow_runs(
         )
     )
 
+    uses_relative_window = start_from is None and end_before is None
     try:
         before_days, start_from, end_before = _resolve_archive_time_range(
             before_days=before_days,
@@ -546,6 +565,14 @@ def archive_workflow_runs(
     if delete_after_archive:
         click.echo(click.style("delete-after-archive is not supported by bundle archive.", fg="red"))
         return
+    if uses_relative_window:
+        click.echo(
+            click.style(
+                "Relative archive windows are evaluated at command start. For multi-day prefix/shard rollout, "
+                "reuse absolute --start-from/--end-before values from archive-workflow-runs-plan.",
+                fg="yellow",
+            )
+        )
 
     try:
         tenant_plan = _resolve_archive_tenant_ids_from_plan(

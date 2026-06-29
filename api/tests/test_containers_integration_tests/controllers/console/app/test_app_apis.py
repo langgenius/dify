@@ -343,8 +343,13 @@ class TestSiteEndpoints:
         return flask_app_with_containers
 
     def test_site_response_structure(self):
-        payload = AppSiteUpdatePayload(title="My Site", description="Test site")
+        payload = AppSiteUpdatePayload(
+            title="My Site",
+            description="Test site",
+            input_placeholder="Ask me anything",
+        )
         assert payload.title == "My Site"
+        assert payload.input_placeholder == "Ask me anything"
 
     def test_site_default_language_validation(self):
         payload = AppSiteUpdatePayload(default_language="en-US")
@@ -365,6 +370,7 @@ class TestSiteEndpoints:
         site.customize_domain = None
         site.copyright = None
         site.privacy_policy = None
+        site.input_placeholder = None
         site.custom_disclaimer = ""
         site.customize_token_strategy = "not_allow"
         site.prompt_public = False
@@ -377,11 +383,13 @@ class TestSiteEndpoints:
         )
         monkeypatch.setattr(site_module, "naive_utc_now", lambda: "now")
 
-        with app.test_request_context("/", json={"title": "My Site"}):
+        with app.test_request_context("/", json={"title": "My Site", "input_placeholder": "Ask me anything"}):
             result = method(api, SimpleNamespace(id="u1"), app_model=SimpleNamespace(id="app-1"))
 
         assert isinstance(result, dict)
         assert result["title"] == "My Site"
+        assert result["input_placeholder"] == "Ask me anything"
+        assert site.input_placeholder == "Ask me anything"
 
     def test_app_site_access_token_reset(self, app: Flask, monkeypatch: pytest.MonkeyPatch):
         api = site_module.AppSiteAccessTokenReset()
@@ -398,6 +406,7 @@ class TestSiteEndpoints:
         site.customize_domain = None
         site.copyright = None
         site.privacy_policy = None
+        site.input_placeholder = None
         site.custom_disclaimer = ""
         site.customize_token_strategy = "not_allow"
         site.prompt_public = False

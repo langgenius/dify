@@ -12,6 +12,7 @@ import AppDetailTop from '@/app/components/app-sidebar/app-detail-top'
 import DatasetDetailSection from '@/app/components/app-sidebar/dataset-detail-section'
 import DatasetDetailTop from '@/app/components/app-sidebar/dataset-detail-top'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
 import { SnippetCollapsedPreview } from '@/app/components/snippets/components/snippet-collapsed-preview'
@@ -86,9 +87,9 @@ const isSnippetDetailPathname = (pathname: string) => {
   return section === 'snippets' && !!snippetId
 }
 
-const MainNav = ({
+export function MainNav({
   className,
-}: MainNavProps) => {
+}: MainNavProps) {
   const { t } = useTranslation()
   const pathname = usePathname()
   const { langGeniusVersionInfo, isCurrentWorkspaceDatasetOperator, isCurrentWorkspaceEditor } = useAppContext()
@@ -230,7 +231,7 @@ const MainNav = ({
         isDetailNavigationHoverPreviewOpen ? 'overflow-visible' : 'overflow-hidden',
         showDetailNavigation
           ? detailNavigationExpanded
-            ? 'w-[248px] bg-background-body p-1'
+            ? 'w-62 bg-background-body p-1'
             : 'w-16 bg-background-body p-1'
           : 'w-60 flex-col',
         'bg-background-body',
@@ -322,7 +323,16 @@ const MainNav = ({
                 <>
                   <nav className="isolate flex flex-col gap-px p-2">
                     {navItems.map(item => (
-                      <MainNavLink key={item.href} item={item} pathname={pathname} />
+                      <MainNavLink key={item.href} item={item} pathname={pathname}>
+                        {item.href === '/roster' && (
+                          <Badge
+                            size="xs"
+                            variant="dimm"
+                            text={t('menus.status', { ns: 'common' })}
+                            className="ml-auto shrink-0"
+                          />
+                        )}
+                      </MainNavLink>
                     ))}
                   </nav>
                   {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
@@ -369,5 +379,3 @@ const MainNav = ({
     </aside>
   )
 }
-
-export default MainNav

@@ -288,6 +288,7 @@
   "menus.exploreMarketplace": "Esplora il Marketplace",
   "menus.plugins": "Integrazione",
   "menus.roster": "Elenco agenti",
+  "menus.status": "beta",
   "menus.tools": "Strumenti",
   "model.capabilities": "Funzionalità multimodali",
   "model.params.stop_sequencesPlaceholder": "Inserisci la sequenza e premi Tab",
