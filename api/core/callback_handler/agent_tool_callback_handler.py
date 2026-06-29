@@ -34,7 +34,7 @@ def print_text(text: str, color: str | None = None, end: str = "", file: TextIO 
 class DifyAgentCallbackHandler(BaseModel):
     """Callback Handler that prints to std out."""
 
-    color: str | None = ""
+    color: str = ""
     current_loop: int = 1
 
     def __init__(self, color: str | None = None):

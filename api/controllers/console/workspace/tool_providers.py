@@ -141,7 +141,7 @@ class WorkflowToolBasePayload(BaseModel):
     description: str
     icon: dict[str, Any]
     parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
-    privacy_policy: str | None = ""
+    privacy_policy: str = ""
     labels: list[str] | None = None
 
     @field_validator("name")

@@ -49,8 +49,8 @@ class DatasourceProviderApiEntity(BaseModel):
     original_credentials: dict[str, Any] | None = None
     is_team_authorization: bool = False
     allow_delete: bool = True
-    plugin_id: str | None = Field(default="", description="The plugin id of the datasource")
-    plugin_unique_identifier: str | None = Field(default="", description="The unique identifier of the datasource")
+    plugin_id: str = Field(default="", description="The plugin id of the datasource")
+    plugin_unique_identifier: str = Field(default="", description="The unique identifier of the datasource")
     datasources: list[DatasourceApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
 

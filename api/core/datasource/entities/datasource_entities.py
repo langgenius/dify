@@ -318,8 +318,8 @@ class WebSiteInfo(BaseModel):
 
     status: str | None = Field(..., description="crawl job status")
     web_info_list: list[WebSiteInfoDetail] | None = []
-    total: int | None = Field(default=0, description="The total number of websites")
-    completed: int | None = Field(default=0, description="The number of completed websites")
+    total: int = Field(default=0, description="The total number of websites")
+    completed: int = Field(default=0, description="The number of completed websites")
 
 
 class WebsiteCrawlMessage(BaseModel):

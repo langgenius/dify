@@ -332,7 +332,7 @@ export const zDatasetUpdatePayload = z.object({
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   icon_info: z.record(z.string(), z.unknown()).nullish(),
   indexing_technique: z.string().nullish(),
-  is_multimodal: z.boolean().nullish().default(false),
+  is_multimodal: z.boolean().optional().default(false),
   name: z.string().min(1).max(40).nullish(),
   partial_member_list: z.array(z.record(z.string(), z.string())).nullish(),
   permission: zPermissionEnum.nullish(),

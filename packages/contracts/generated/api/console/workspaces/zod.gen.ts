@@ -796,7 +796,7 @@ export const zCreateSnippetPayload = z.object({
   description: z.string().max(2000).nullish(),
   graph: z.record(z.string(), z.unknown()).nullish(),
   icon_info: zIconInfo.nullish(),
-  input_fields: z.array(zInputFieldDefinition).nullish(),
+  input_fields: z.array(zInputFieldDefinition).optional(),
   name: z.string().min(1).max(255),
   type: z.enum(['group', 'node']).optional().default('node'),
 })
@@ -1774,7 +1774,7 @@ export const zWorkflowToolCreatePayload = z.object({
   labels: z.array(z.string()).nullish(),
   name: z.string(),
   parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
-  privacy_policy: z.string().nullish().default(''),
+  privacy_policy: z.string().optional().default(''),
   workflow_app_id: z.string(),
 })
 
@@ -1788,7 +1788,7 @@ export const zWorkflowToolUpdatePayload = z.object({
   labels: z.array(z.string()).nullish(),
   name: z.string(),
   parameters: z.array(zWorkflowToolParameterConfiguration).optional(),
-  privacy_policy: z.string().nullish().default(''),
+  privacy_policy: z.string().optional().default(''),
   workflow_tool_id: z.string(),
 })
 

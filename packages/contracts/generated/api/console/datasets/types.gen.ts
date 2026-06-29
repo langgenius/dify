@@ -298,7 +298,7 @@ export type DatasetUpdatePayload = {
     [key: string]: unknown
   } | null
   indexing_technique?: string | null
-  is_multimodal?: boolean | null
+  is_multimodal?: boolean
   name?: string | null
   partial_member_list?: Array<{
     [key: string]: string

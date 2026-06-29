@@ -45,7 +45,7 @@ export type CreateSnippetPayload = {
     [key: string]: unknown
   } | null
   icon_info?: IconInfo | null
-  input_fields?: Array<InputFieldDefinition> | null
+  input_fields?: Array<InputFieldDefinition>
   name: string
   type?: 'group' | 'node'
 }
@@ -760,7 +760,7 @@ export type WorkflowToolCreatePayload = {
   labels?: Array<string> | null
   name: string
   parameters?: Array<WorkflowToolParameterConfiguration>
-  privacy_policy?: string | null
+  privacy_policy?: string
   workflow_app_id: string
 }
 
@@ -777,7 +777,7 @@ export type WorkflowToolUpdatePayload = {
   labels?: Array<string> | null
   name: string
   parameters?: Array<WorkflowToolParameterConfiguration>
-  privacy_policy?: string | null
+  privacy_policy?: string
   workflow_tool_id: string
 }
 

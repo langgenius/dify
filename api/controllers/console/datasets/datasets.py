@@ -112,7 +112,7 @@ class DatasetUpdatePayload(BaseModel):
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
     icon_info: dict[str, Any] | None = Field(default=None)
-    is_multimodal: bool | None = False
+    is_multimodal: bool = False
 
     @field_validator("indexing_technique")
     @classmethod
