@@ -6,6 +6,7 @@ import { useState } from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
+import { consoleQuery } from '@/service/client'
 import { TransferMethod } from '@/types/app'
 import { AgentChatRuntime } from '../chat-runtime'
 
@@ -100,27 +101,47 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   }),
 }))
 
-vi.mock('@/service/client', () => ({
-  consoleClient: {
-    agent: {
-      byAgentId: {
-        chatMessages: {
-          get: chatMessagesGetMock,
-          byMessageId: {
-            suggestedQuestions: {
-              get: suggestedQuestionsGetMock,
+vi.mock('@/service/client', async () => {
+  const { skipToken } = await import('@tanstack/react-query')
+  const getChatMessagesQueryKey = (input: unknown) => ['agent-chat-conversation-messages', input]
+
+  return {
+    consoleClient: {
+      agent: {
+        byAgentId: {
+          chatMessages: {
+            get: chatMessagesGetMock,
+            byMessageId: {
+              suggestedQuestions: {
+                get: suggestedQuestionsGetMock,
+              },
             },
-          },
-          byTaskId: {
-            stop: {
-              post: stopPostMock,
+            byTaskId: {
+              stop: {
+                post: stopPostMock,
+              },
             },
           },
         },
       },
     },
-  },
-}))
+    consoleQuery: {
+      agent: {
+        byAgentId: {
+          chatMessages: {
+            get: {
+              queryKey: ({ input }: { input: unknown }) => getChatMessagesQueryKey(input),
+              queryOptions: ({ input }: { input: unknown }) => ({
+                queryKey: getChatMessagesQueryKey(input),
+                queryFn: input === skipToken ? skipToken : () => chatMessagesGetMock(input),
+              }),
+            },
+          },
+        },
+      },
+    },
+  }
+})
 
 function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntime>>) {
   const store = createStore()
@@ -137,20 +158,23 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntim
   })
   store.set(agentComposerPromptAtom, 'You are helpful.')
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <JotaiProvider store={store}>
-        <AgentChatRuntime
-          agentId="agent-1"
-          clearChatList={false}
-          inputPlaceholder="Message agent"
-          renderEmptyState={() => null}
-          onClearChatListChange={vi.fn()}
-          {...props}
-        />
-      </JotaiProvider>
-    </QueryClientProvider>,
-  )
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <JotaiProvider store={store}>
+          <AgentChatRuntime
+            agentId="agent-1"
+            clearChatList={false}
+            inputPlaceholder="Message agent"
+            renderEmptyState={() => null}
+            onClearChatListChange={vi.fn()}
+            {...props}
+          />
+        </JotaiProvider>
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 function RuntimeConversationHarness() {
@@ -361,6 +385,49 @@ describe('AgentPreviewChat', () => {
         task_id: 'task-1',
       },
     })
+  })
+
+  it('should sync the completed conversation history into the query cache', async () => {
+    const conversationMessagesResponse = {
+      data: [
+        {
+          id: 'message-after-send',
+          conversation_id: 'conversation-1',
+          query: 'hello',
+          answer: 'hi',
+          inputs: {},
+          message: [],
+          message_files: [],
+          agent_thoughts: [],
+          feedbacks: [],
+          answer_tokens: 1,
+          message_tokens: 1,
+          provider_response_latency: 1,
+          status: 'success',
+          from_source: 'console',
+        },
+      ],
+    }
+    chatMessagesGetMock.mockResolvedValue(conversationMessagesResponse)
+    const { queryClient } = renderPreviewChat()
+
+    fireEvent.click(screen.getByRole('button', { name: 'send' }))
+
+    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
+    const callbacks = handleSendMock.mock.calls.at(0)?.[2]
+
+    await callbacks.onGetConversationMessages('conversation-1')
+
+    expect(queryClient.getQueryData(consoleQuery.agent.byAgentId.chatMessages.get.queryKey({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          conversation_id: 'conversation-1',
+        },
+      },
+    }))).toBe(conversationMessagesResponse)
   })
 
   it('should notify the owner when a send settles with an error', async () => {
