@@ -22,7 +22,7 @@ from controllers.common.schema import query_params_from_model
 from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData, RBACRequirement
+from controllers.openapi.auth.data import AuthData, CallerKind, RBACRequirement
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
@@ -70,7 +70,7 @@ class OpenApiWorkflowEventsApi(Resource):
         if workflow_run.app_id != app_model.id:
             raise NotFound("Workflow run not found")
 
-        if caller_kind == "account":
+        if caller_kind == CallerKind.ACCOUNT:
             if workflow_run.created_by_role != CreatorUserRole.ACCOUNT or workflow_run.created_by != caller.id:
                 raise NotFound("Workflow run not found")
         else:

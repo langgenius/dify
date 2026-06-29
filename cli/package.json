@@ -14,11 +14,31 @@
       "binName": "difyctl",
       "checksumsSuffix": "-checksums.txt",
       "targets": [
-        { "id": "linux-x64", "bunTarget": "bun-linux-x64", "exe": false },
-        { "id": "linux-arm64", "bunTarget": "bun-linux-arm64", "exe": false },
-        { "id": "darwin-x64", "bunTarget": "bun-darwin-x64", "exe": false },
-        { "id": "darwin-arm64", "bunTarget": "bun-darwin-arm64", "exe": false },
-        { "id": "windows-x64", "bunTarget": "bun-windows-x64", "exe": true }
+        {
+          "id": "linux-x64",
+          "bunTarget": "bun-linux-x64",
+          "exe": false
+        },
+        {
+          "id": "linux-arm64",
+          "bunTarget": "bun-linux-arm64",
+          "exe": false
+        },
+        {
+          "id": "darwin-x64",
+          "bunTarget": "bun-darwin-x64",
+          "exe": false
+        },
+        {
+          "id": "darwin-arm64",
+          "bunTarget": "bun-darwin-arm64",
+          "exe": false
+        },
+        {
+          "id": "windows-x64",
+          "bunTarget": "bun-windows-x64",
+          "exe": true
+        }
       ]
     }
   },

@@ -29,7 +29,7 @@ const { mockUseQueryData, createTag } = vi.hoisted(() => ({
 }))
 
 const mockWorkspacePermissionKeys = vi.hoisted(() => ({
-  value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.management'] as string[],
+  value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] as string[],
 }))
 
 vi.mock('@tanstack/react-query', () => ({
@@ -99,7 +99,7 @@ describe('TagManagementModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQueryData.current = mockTags
-    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.management']
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify']
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
   })
 

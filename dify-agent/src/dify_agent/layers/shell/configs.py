@@ -3,7 +3,8 @@
 Server-only shellctl connection settings are injected by the runtime provider
 factory. Public config carries product-level Agent Soul settings that must affect
 the sandbox workspace itself: CLI tool bootstrap commands, normal environment
-variables, secret environment variable names, and sandbox-provider metadata.
+variables, secret environment variable names, sandbox-provider metadata, and the
+Agent Stub drive ref used by shell-visible drive commands.
 """
 
 import re
@@ -80,6 +81,8 @@ class DifyShellLayerConfig(LayerConfig):
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
+    # Optional because shell can be used without a drive layer.
+    agent_stub_drive_ref: str | None = Field(default=None, max_length=1024)
     cli_tools: list[DifyShellCliToolConfig] = Field(default_factory=list)
     env: list[DifyShellEnvVarConfig] = Field(default_factory=list)
     secret_refs: list[DifyShellSecretRefConfig] = Field(default_factory=list)

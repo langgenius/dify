@@ -288,6 +288,7 @@
   "menus.exploreMarketplace": "Jelajahi Marketplace",
   "menus.plugins": "Integrasi",
   "menus.roster": "Daftar Agen",
+  "menus.status": "beta",
   "menus.tools": "Perkakas",
   "model.capabilities": "Kemampuan MultiModal",
   "model.params.stop_sequencesPlaceholder": "Masukkan urutan dan tekan Tab",

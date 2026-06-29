@@ -42,7 +42,7 @@ export const useSnippetPublish = ({
       )
       workflowStore.getState().setPublishedAt(publishedWorkflow.created_at)
       resetWorkflowVersionHistory()
-      toast.success(t('saveSuccess'))
+      toast.success(t('publishSuccess'))
       return true
     }
     catch (error) {
