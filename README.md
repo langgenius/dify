@@ -74,13 +74,31 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
 The easiest way to start the Dify server is through [Docker Compose](docker/docker-compose.yaml). Before running Dify with the following commands, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
 
 ```bash
-cd dify
-cd docker
+git clone https://github.com/langgenius/dify.git
+cd dify/docker
 cp .env.example .env
 docker compose up -d
 ```
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
+
+For managing the deployment, you can use the following commands:
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop all services
+docker compose down
+
+# Restart all services
+docker compose restart
+
+# Start with specific services only (e.g., API + Web + DB)
+docker compose up -d api web db_postgres redis
+```
+
+You can customize the deployment by editing the `.env` file. For a full list of configurable environment variables, refer to the [.env.example](docker/.env.example) file and the [Docker Compose deployment documentation](https://docs.dify.ai/getting-started/install-self-hosted/docker-compose).
 
 #### Seeking help
 
