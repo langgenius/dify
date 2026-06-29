@@ -1,5 +1,4 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentSoulConfigWithFiles } from '../conversions'
 import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
@@ -37,7 +36,7 @@ describe('agent composer store conversions', () => {
   })
 
   it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
-    const baseConfig: AgentSoulConfigWithFiles = {
+    const baseConfig: AgentSoulConfig = {
       app_features: {
         opening_statement: 'Hello',
         suggested_questions: ['What changed?'],
