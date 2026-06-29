@@ -12,6 +12,7 @@ from unittest.mock import PropertyMock, patch
 
 from flask import Flask
 
+from controllers.console.app import agent_config_inspector as inspector
 from controllers.console.app.agent_config_inspector import (
     AgentConfigFileDownloadApi,
     AgentConfigFilesApi,
@@ -87,6 +88,26 @@ def test_manifest_resolves_workflow_node_agent_and_normal_draft():
     assert body["agent_id"] == "wf-agent-9"
     assert composer.resolve_workflow_node_agent_id.call_args.kwargs["node_id"] == "node-1"
     assert config_service.return_value.manifest.call_args.kwargs["config_version_kind"].value == "draft"
+
+
+def test_normal_draft_resolution_commits_created_draft_before_service_session() -> None:
+    with (
+        patch(f"{_MOD}.AgentComposerService") as composer,
+        patch(f"{_MOD}.db") as db,
+    ):
+        composer.load_agent_composer.return_value = {"draft": {"id": "draft-1"}}
+
+        version_id, version_kind = inspector._resolve_console_version(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            account_id="acct-1",
+            version_id=None,
+            draft_type="draft",
+        )
+
+    assert version_id == "draft-1"
+    assert version_kind.value == "draft"
+    db.session.commit.assert_called_once()
 
 
 def test_skill_inspect_by_agent_returns_strict_json_response():
