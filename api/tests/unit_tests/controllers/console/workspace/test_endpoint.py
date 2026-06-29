@@ -5,6 +5,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 
+from constants import HIDDEN_VALUE
 from controllers.console import console_ns
 from controllers.console.workspace.endpoint import (
     DeprecatedEndpointCreateApi,
@@ -17,7 +18,8 @@ from controllers.console.workspace.endpoint import (
     EndpointListApi,
     EndpointListForSinglePluginApi,
 )
-from core.plugin.entities.endpoint import EndpointEntityWithInstance
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.plugin.entities.endpoint import EndpointEntityWithInstance, EndpointProviderDeclaration
 from core.plugin.impl.exc import PluginPermissionDeniedError
 
 
@@ -30,12 +32,18 @@ def _endpoint_entity() -> EndpointEntityWithInstance:
         tenant_id="t1",
         plugin_id="p1",
         settings={
-            "secret": "value",
+            "api_key": "plain-secret",
             "enabled": True,
             "ids": ["a", "b"],
             "nested": {"limit": 3},
         },
         expired_at=now,
+        declaration=EndpointProviderDeclaration(
+            settings=[
+                ProviderConfig(type=ProviderConfigType.SECRET_INPUT, name="api_key"),
+                ProviderConfig(type=ProviderConfigType.BOOLEAN, name="enabled"),
+            ]
+        ),
         name="endpoint",
         enabled=True,
         url="https://example.test/hook-1",
@@ -123,37 +131,40 @@ class TestEndpointListApi:
     def test_list_success(self, app: Flask):
         api = EndpointListApi()
         method = inspect.unwrap(api.get)
+        endpoint_entity = _endpoint_entity()
 
         with (
             app.test_request_context("/?page=1&page_size=10"),
             patch(
                 "controllers.console.workspace.endpoint.EndpointService.list_endpoints",
-                return_value=[_endpoint_entity()],
+                return_value=[endpoint_entity],
             ),
         ):
             result = method(api, "t1", "u1")
 
-        assert result["endpoints"] == [
-            {
-                "id": "e1",
-                "created_at": "2026-01-01T00:00:00Z",
-                "updated_at": "2026-01-01T00:00:00Z",
-                "settings": {
-                    "secret": "value",
-                    "enabled": True,
-                    "ids": ["a", "b"],
-                    "nested": {"limit": 3},
-                },
-                "tenant_id": "t1",
-                "plugin_id": "p1",
-                "expired_at": "2026-01-01T00:00:00Z",
-                "declaration": {"settings": [], "endpoints": []},
-                "name": "endpoint",
-                "enabled": True,
-                "url": "https://example.test/hook-1",
-                "hook_id": "hook-1",
-            }
-        ]
+        endpoint = result["endpoints"][0]
+        assert endpoint["id"] == "e1"
+        assert endpoint["created_at"] == "2026-01-01T00:00:00Z"
+        assert endpoint["updated_at"] == "2026-01-01T00:00:00Z"
+        assert endpoint["settings"] == {
+            "api_key": HIDDEN_VALUE,
+            "enabled": True,
+            "ids": ["a", "b"],
+            "nested": {"limit": 3},
+        }
+        assert endpoint["tenant_id"] == "t1"
+        assert endpoint["plugin_id"] == "p1"
+        assert endpoint["expired_at"] == "2026-01-01T00:00:00Z"
+        assert endpoint["declaration"]["settings"][0]["type"] == "secret-input"
+        assert endpoint["declaration"]["settings"][0]["name"] == "api_key"
+        assert endpoint["declaration"]["settings"][1]["type"] == "boolean"
+        assert endpoint["declaration"]["settings"][1]["name"] == "enabled"
+        assert endpoint["declaration"]["endpoints"] == []
+        assert endpoint["name"] == "endpoint"
+        assert endpoint["enabled"] is True
+        assert endpoint["url"] == "https://example.test/hook-1"
+        assert endpoint["hook_id"] == "hook-1"
+        assert endpoint_entity.settings["api_key"] == "plain-secret"
 
     def test_list_invalid_query(self, app: Flask):
         api = EndpointListApi()
@@ -181,6 +192,7 @@ class TestEndpointListForSinglePluginApi:
             result = method(api, "t1", "u1")
 
         assert result["endpoints"][0]["id"] == "e1"
+        assert result["endpoints"][0]["settings"]["api_key"] == HIDDEN_VALUE
         assert result["endpoints"][0]["settings"]["nested"] == {"limit": 3}
 
     def test_list_for_plugin_missing_param(self, app: Flask):

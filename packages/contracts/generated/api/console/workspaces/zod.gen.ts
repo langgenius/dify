@@ -142,7 +142,7 @@ export const zSimpleResultDataResponse = z.object({
  */
 export const zMemberActionResponse = z.object({
   result: z.string(),
-  tenant_id: z.string().optional().default(''),
+  tenant_id: z.string(),
 })
 
 /**
@@ -1027,9 +1027,9 @@ export const zModelCredentialResponse = z.object({
 })
 
 /**
- * PluginCategory
+ * TenantPluginAutoUpgradeCategory
  */
-export const zPluginCategory = z.enum([
+export const zTenantPluginAutoUpgradeCategory = z.enum([
   'agent-strategy',
   'datasource',
   'extension',
@@ -1042,34 +1042,34 @@ export const zPluginCategory = z.enum([
  * ParserExcludePlugin
  */
 export const zParserExcludePlugin = z.object({
-  category: zPluginCategory,
+  category: zTenantPluginAutoUpgradeCategory,
   plugin_id: z.string(),
 })
 
 /**
- * DebugPermission
+ * TenantPluginDebugPermission
  */
-export const zDebugPermission = z.enum(['admins', 'everyone', 'noone'])
+export const zTenantPluginDebugPermission = z.enum(['admins', 'everyone', 'noone'])
 
 /**
- * InstallPermission
+ * TenantPluginInstallPermission
  */
-export const zInstallPermission = z.enum(['admins', 'everyone', 'noone'])
+export const zTenantPluginInstallPermission = z.enum(['admins', 'everyone', 'noone'])
 
 /**
  * ParserPermissionChange
  */
 export const zParserPermissionChange = z.object({
-  debug_permission: zDebugPermission.optional().default('everyone'),
-  install_permission: zInstallPermission.optional().default('everyone'),
+  debug_permission: zTenantPluginDebugPermission.optional().default('everyone'),
+  install_permission: zTenantPluginInstallPermission.optional().default('everyone'),
 })
 
 /**
  * PluginPermissionResponse
  */
 export const zPluginPermissionResponse = z.object({
-  debug_permission: zDebugPermission,
-  install_permission: zInstallPermission,
+  debug_permission: zTenantPluginDebugPermission,
+  install_permission: zTenantPluginInstallPermission,
 })
 
 /**
@@ -1510,14 +1510,14 @@ export const zProviderWithModelsDataResponse = z.object({
 })
 
 /**
- * StrategySetting
+ * TenantPluginAutoUpgradeStrategySetting
  */
-export const zStrategySetting = z.enum(['disabled', 'fix_only', 'latest'])
+export const zTenantPluginAutoUpgradeStrategySetting = z.enum(['disabled', 'fix_only', 'latest'])
 
 /**
- * UpgradeMode
+ * TenantPluginAutoUpgradeMode
  */
-export const zUpgradeMode = z.enum(['all', 'exclude', 'partial'])
+export const zTenantPluginAutoUpgradeMode = z.enum(['all', 'exclude', 'partial'])
 
 /**
  * PluginAutoUpgradeSettingsPayload
@@ -1525,8 +1525,8 @@ export const zUpgradeMode = z.enum(['all', 'exclude', 'partial'])
 export const zPluginAutoUpgradeSettingsPayload = z.object({
   exclude_plugins: z.array(z.string()).optional(),
   include_plugins: z.array(z.string()).optional(),
-  strategy_setting: zStrategySetting.optional().default('fix_only'),
-  upgrade_mode: zUpgradeMode.optional().default('exclude'),
+  strategy_setting: zTenantPluginAutoUpgradeStrategySetting.optional().default('fix_only'),
+  upgrade_mode: zTenantPluginAutoUpgradeMode.optional().default('exclude'),
   upgrade_time_of_day: z.int().optional().default(0),
 })
 
@@ -1535,7 +1535,7 @@ export const zPluginAutoUpgradeSettingsPayload = z.object({
  */
 export const zParserAutoUpgradeChange = z.object({
   auto_upgrade: zPluginAutoUpgradeSettingsPayload,
-  category: zPluginCategory,
+  category: zTenantPluginAutoUpgradeCategory,
 })
 
 /**
@@ -1544,8 +1544,8 @@ export const zParserAutoUpgradeChange = z.object({
 export const zPluginAutoUpgradeSettingsResponseModel = z.object({
   exclude_plugins: z.array(z.string()),
   include_plugins: z.array(z.string()),
-  strategy_setting: zStrategySetting,
-  upgrade_mode: zUpgradeMode,
+  strategy_setting: zTenantPluginAutoUpgradeStrategySetting,
+  upgrade_mode: zTenantPluginAutoUpgradeMode,
   upgrade_time_of_day: z.int(),
 })
 
@@ -1554,7 +1554,7 @@ export const zPluginAutoUpgradeSettingsResponseModel = z.object({
  */
 export const zPluginAutoUpgradeFetchResponse = z.object({
   auto_upgrade: zPluginAutoUpgradeSettingsResponseModel,
-  category: zPluginCategory,
+  category: zTenantPluginAutoUpgradeCategory,
 })
 
 /**
@@ -1746,11 +1746,9 @@ export const zWorkflowToolUpdatePayload = z.object({
 })
 
 /**
- * EndpointDeclaration
- *
- * declaration of an endpoint
+ * EndpointDeclarationResponse
  */
-export const zEndpointDeclaration = z.object({
+export const zEndpointDeclarationResponse = z.object({
   hidden: z.boolean().optional().default(false),
   method: z.string(),
   path: z.string(),
@@ -1807,6 +1805,18 @@ export const zFieldModelSchema = z.object({
  * ProviderQuotaType
  */
 export const zProviderQuotaType = z.enum(['free', 'paid', 'trial'])
+
+/**
+ * PluginCategory
+ */
+export const zPluginCategory = z.enum([
+  'agent-strategy',
+  'datasource',
+  'extension',
+  'model',
+  'tool',
+  'trigger',
+])
 
 /**
  * PriceConfigResponse
@@ -1899,22 +1909,32 @@ export const zModelWithProviderListResponse = z.object({
 })
 
 /**
- * Option
+ * EndpointProviderConfigI18nResponse
  */
-export const zOption = z.object({
-  label: zI18nObject,
+export const zEndpointProviderConfigI18nResponse = z.object({
+  en_US: z.string(),
+  ja_JP: z.string().nullish(),
+  pt_BR: z.string().nullish(),
+  zh_Hans: z.string().nullish(),
+})
+
+/**
+ * EndpointProviderConfigOptionResponse
+ */
+export const zEndpointProviderConfigOptionResponse = z.object({
+  label: zEndpointProviderConfigI18nResponse,
   value: z.string(),
 })
 
 /**
- * AppSelectorScope
+ * EndpointProviderConfigScope
  */
-export const zAppSelectorScope = z.enum(['all', 'chat', 'completion', 'workflow'])
-
-/**
- * ModelSelectorScope
- */
-export const zModelSelectorScope = z.enum([
+export const zEndpointProviderConfigScope = z.enum([
+  'all',
+  'builtin',
+  'chat',
+  'completion',
+  'custom',
   'llm',
   'moderation',
   'rerank',
@@ -1922,17 +1942,13 @@ export const zModelSelectorScope = z.enum([
   'text-embedding',
   'tts',
   'vision',
+  'workflow',
 ])
 
 /**
- * ToolSelectorScope
+ * ProviderConfigType
  */
-export const zToolSelectorScope = z.enum(['all', 'builtin', 'custom', 'workflow'])
-
-/**
- * Type
- */
-export const zType = z.enum([
+export const zProviderConfigType = z.enum([
   'app-selector',
   'array[tools]',
   'boolean',
@@ -1943,40 +1959,36 @@ export const zType = z.enum([
 ])
 
 /**
- * ProviderConfig
- *
- * Model class for common provider settings like credentials
+ * EndpointProviderConfigResponse
  */
-export const zProviderConfig = z.object({
+export const zEndpointProviderConfigResponse = z.object({
   default: z.union([z.int(), z.string(), z.number(), z.boolean()]).nullish(),
-  help: zI18nObject.nullish(),
-  label: zI18nObject.nullish(),
+  help: zEndpointProviderConfigI18nResponse.nullish(),
+  label: zEndpointProviderConfigI18nResponse.nullish(),
   multiple: z.boolean().optional().default(false),
   name: z.string(),
-  options: z.array(zOption).nullish(),
-  placeholder: zI18nObject.nullish(),
+  options: z.array(zEndpointProviderConfigOptionResponse).nullish(),
+  placeholder: zEndpointProviderConfigI18nResponse.nullish(),
   required: z.boolean().optional().default(false),
-  scope: z.union([zAppSelectorScope, zModelSelectorScope, zToolSelectorScope]).nullish(),
-  type: zType,
+  scope: zEndpointProviderConfigScope.nullish(),
+  type: zProviderConfigType,
   url: z.string().nullish(),
 })
 
 /**
- * EndpointProviderDeclaration
- *
- * declaration of an endpoint group
+ * EndpointProviderDeclarationResponse
  */
-export const zEndpointProviderDeclaration = z.object({
-  endpoints: z.array(zEndpointDeclaration).nullish(),
-  settings: z.array(zProviderConfig).optional(),
+export const zEndpointProviderDeclarationResponse = z.object({
+  endpoints: z.array(zEndpointDeclarationResponse).nullish(),
+  settings: z.array(zEndpointProviderConfigResponse).optional(),
 })
 
 /**
- * EndpointEntityWithInstance
+ * EndpointListItemResponse
  */
-export const zEndpointEntityWithInstance = z.object({
+export const zEndpointListItemResponse = z.object({
   created_at: z.iso.datetime(),
-  declaration: zEndpointProviderDeclaration.optional(),
+  declaration: zEndpointProviderDeclarationResponse.optional(),
   enabled: z.boolean(),
   expired_at: z.iso.datetime(),
   hook_id: z.string(),
@@ -1993,7 +2005,7 @@ export const zEndpointEntityWithInstance = z.object({
  * EndpointListResponse
  */
 export const zEndpointListResponse = z.object({
-  endpoints: z.array(zEndpointEntityWithInstance),
+  endpoints: z.array(zEndpointListItemResponse),
 })
 
 /**

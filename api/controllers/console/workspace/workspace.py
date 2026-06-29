@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from http import HTTPStatus
 
 from flask import request
 from flask_restx import Resource
@@ -213,7 +214,7 @@ register_response_schema_models(
 
 @console_ns.route("/workspaces")
 class TenantListApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[TenantListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantListResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -264,13 +265,13 @@ class TenantListApi(Resource):
 
             tenant_dicts.append(tenant_dict)
 
-        return dump_response(TenantListResponse, {"workspaces": tenant_dicts}), 200
+        return dump_response(TenantListResponse, {"workspaces": tenant_dicts}), HTTPStatus.OK
 
 
 @console_ns.route("/all-workspaces")
 class WorkspaceListApi(Resource):
     @console_ns.doc(params=query_params_from_model(WorkspaceListQuery))
-    @console_ns.response(200, "Success", console_ns.models[WorkspacePaginationResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspacePaginationResponse.__name__])
     @setup_required
     @admin_required
     def get(self):
@@ -285,7 +286,7 @@ class WorkspaceListApi(Resource):
 
         return WorkspacePaginationResponse(
             data=tenants.items, has_more=has_more, limit=args.limit, page=args.page, total=tenants.total or 0
-        ).model_dump(mode="json"), 200
+        ).model_dump(mode="json"), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current", endpoint="workspaces_current")
@@ -294,7 +295,7 @@ class TenantApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[TenantInfoResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[TenantInfoResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         if request.path == "/info":
@@ -314,13 +315,13 @@ class TenantApi(Resource):
             else:
                 raise Unauthorized("workspace is archived")
 
-        return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant)), 200
+        return dump_response(TenantInfoResponse, WorkspaceService.get_tenant_info(tenant)), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[SwitchWorkspacePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SwitchWorkspaceResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -329,7 +330,7 @@ class SwitchWorkspaceApi(Resource):
         payload = console_ns.payload or {}
         args = SwitchWorkspacePayload.model_validate(payload)
 
-        # check if tenant_id is valid, 403 if not
+        # Check whether the tenant_id belongs to the current account.
         try:
             TenantService.switch_tenant(current_user, args.tenant_id, session=db.session)
         except Exception:
@@ -347,7 +348,7 @@ class SwitchWorkspaceApi(Resource):
 @console_ns.route("/workspaces/custom-config")
 class CustomConfigWorkspaceApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceCustomConfigPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -378,7 +379,7 @@ class CustomConfigWorkspaceApi(Resource):
 @console_ns.route("/workspaces/custom-config/webapp-logo/upload")
 class WebappLogoWorkspaceApi(Resource):
     @console_ns.doc(consumes=["multipart/form-data"], params=WORKSPACE_LOGO_UPLOAD_PARAMS)
-    @console_ns.response(201, "Logo uploaded", console_ns.models[WorkspaceLogoUploadResponse.__name__])
+    @console_ns.response(HTTPStatus.CREATED, "Logo uploaded", console_ns.models[WorkspaceLogoUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -414,13 +415,13 @@ class WebappLogoWorkspaceApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return WorkspaceLogoUploadResponse(id=upload_file.id).model_dump(mode="json"), 201
+        return WorkspaceLogoUploadResponse(id=upload_file.id).model_dump(mode="json"), HTTPStatus.CREATED
 
 
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
     @console_ns.expect(console_ns.models[WorkspaceInfoPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspaceTenantResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -445,7 +446,7 @@ class WorkspaceInfoApi(Resource):
 class WorkspacePermissionApi(Resource):
     """Get workspace permissions for the current workspace."""
 
-    @console_ns.response(200, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[WorkspacePermissionResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -466,4 +467,4 @@ class WorkspacePermissionApi(Resource):
             workspace_id=permission.workspace_id,
             allow_member_invite=permission.allow_member_invite,
             allow_owner_transfer=permission.allow_owner_transfer,
-        ).model_dump(mode="json"), 200
+        ).model_dump(mode="json"), HTTPStatus.OK

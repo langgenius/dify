@@ -137,7 +137,7 @@ export type EndpointIdPayload = {
 }
 
 export type EndpointListResponse = {
-  endpoints: Array<EndpointEntityWithInstance>
+  endpoints: Array<EndpointListItemResponse>
 }
 
 export type LegacyEndpointUpdatePayload = {
@@ -189,7 +189,7 @@ export type SimpleResultDataResponse = {
 
 export type MemberActionResponse = {
   result: string
-  tenant_id?: string
+  tenant_id: string
 }
 
 export type OwnerTransferPayload = {
@@ -354,7 +354,7 @@ export type BinaryFileResponse = Blob | File
 
 export type ParserAutoUpgradeChange = {
   auto_upgrade: PluginAutoUpgradeSettingsPayload
-  category: PluginCategory
+  category: TenantPluginAutoUpgradeCategory
 }
 
 export type PluginAutoUpgradeChangeResponse = {
@@ -363,13 +363,13 @@ export type PluginAutoUpgradeChangeResponse = {
 }
 
 export type ParserExcludePlugin = {
-  category: PluginCategory
+  category: TenantPluginAutoUpgradeCategory
   plugin_id: string
 }
 
 export type PluginAutoUpgradeFetchResponse = {
   auto_upgrade: PluginAutoUpgradeSettingsResponseModel
-  category: PluginCategory
+  category: TenantPluginAutoUpgradeCategory
 }
 
 export type PluginDebuggingKeyResponse = {
@@ -428,13 +428,13 @@ export type ParserDynamicOptionsWithCredentials = {
 }
 
 export type ParserPermissionChange = {
-  debug_permission?: DebugPermission
-  install_permission?: InstallPermission
+  debug_permission?: TenantPluginDebugPermission
+  install_permission?: TenantPluginInstallPermission
 }
 
 export type PluginPermissionResponse = {
-  debug_permission: DebugPermission
-  install_permission: InstallPermission
+  debug_permission: TenantPluginDebugPermission
+  install_permission: TenantPluginInstallPermission
 }
 
 export type PluginReadmeResponse = {
@@ -922,9 +922,9 @@ export type Inner = {
   provider?: string | null
 }
 
-export type EndpointEntityWithInstance = {
+export type EndpointListItemResponse = {
   created_at: string
-  declaration?: EndpointProviderDeclaration
+  declaration?: EndpointProviderDeclarationResponse
   enabled: boolean
   expired_at: string
   hook_id: string
@@ -1028,12 +1028,12 @@ export type ProviderWithModelsResponse = {
 export type PluginAutoUpgradeSettingsPayload = {
   exclude_plugins?: Array<string>
   include_plugins?: Array<string>
-  strategy_setting?: StrategySetting
-  upgrade_mode?: UpgradeMode
+  strategy_setting?: TenantPluginAutoUpgradeStrategySetting
+  upgrade_mode?: TenantPluginAutoUpgradeMode
   upgrade_time_of_day?: number
 }
 
-export type PluginCategory
+export type TenantPluginAutoUpgradeCategory
   = | 'agent-strategy'
     | 'datasource'
     | 'extension'
@@ -1044,14 +1044,14 @@ export type PluginCategory
 export type PluginAutoUpgradeSettingsResponseModel = {
   exclude_plugins: Array<string>
   include_plugins: Array<string>
-  strategy_setting: StrategySetting
-  upgrade_mode: UpgradeMode
+  strategy_setting: TenantPluginAutoUpgradeStrategySetting
+  upgrade_mode: TenantPluginAutoUpgradeMode
   upgrade_time_of_day: number
 }
 
-export type DebugPermission = 'admins' | 'everyone' | 'noone'
+export type TenantPluginDebugPermission = 'admins' | 'everyone' | 'noone'
 
-export type InstallPermission = 'admins' | 'everyone' | 'noone'
+export type TenantPluginInstallPermission = 'admins' | 'everyone' | 'noone'
 
 export type PluginCategoryBuiltinToolProviderResponse = {
   allow_delete: boolean
@@ -1200,9 +1200,9 @@ export type SimpleProviderEntityResponse = {
   tenant_id: string
 }
 
-export type EndpointProviderDeclaration = {
-  endpoints?: Array<EndpointDeclaration> | null
-  settings?: Array<ProviderConfig>
+export type EndpointProviderDeclarationResponse = {
+  endpoints?: Array<EndpointDeclarationResponse> | null
+  settings?: Array<EndpointProviderConfigResponse>
 }
 
 export type ConfigurateMethod = 'customizable-model' | 'predefined-model'
@@ -1304,9 +1304,9 @@ export type ProviderModelWithStatusEntity = {
 
 export type CustomConfigurationStatus = 'active' | 'no-configure'
 
-export type StrategySetting = 'disabled' | 'fix_only' | 'latest'
+export type TenantPluginAutoUpgradeStrategySetting = 'disabled' | 'fix_only' | 'latest'
 
-export type UpgradeMode = 'all' | 'exclude' | 'partial'
+export type TenantPluginAutoUpgradeMode = 'all' | 'exclude' | 'partial'
 
 export type CoreToolsEntitiesCommonEntitiesI18nObject = {
   en_US: string
@@ -1415,23 +1415,23 @@ export type AiModelEntityResponse = {
   pricing?: PriceConfigResponse | null
 }
 
-export type EndpointDeclaration = {
+export type EndpointDeclarationResponse = {
   hidden?: boolean
   method: string
   path: string
 }
 
-export type ProviderConfig = {
+export type EndpointProviderConfigResponse = {
   default?: number | string | number | boolean | null
-  help?: I18nObject | null
-  label?: I18nObject | null
+  help?: EndpointProviderConfigI18nResponse | null
+  label?: EndpointProviderConfigI18nResponse | null
   multiple?: boolean
   name: string
-  options?: Array<Option> | null
-  placeholder?: I18nObject | null
+  options?: Array<EndpointProviderConfigOptionResponse> | null
+  placeholder?: EndpointProviderConfigI18nResponse | null
   required?: boolean
-  scope?: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | null
-  type: Type
+  scope?: EndpointProviderConfigScope | null
+  type: ProviderConfigType
   url?: string | null
 }
 
@@ -1480,6 +1480,14 @@ export type QuotaConfiguration = {
   restrict_models?: Array<RestrictModel>
 }
 
+export type PluginCategory
+  = | 'agent-strategy'
+    | 'datasource'
+    | 'extension'
+    | 'model'
+    | 'tool'
+    | 'trigger'
+
 export type ProviderEntityResponse = {
   background?: string | null
   configurate_methods: Array<ConfigurateMethod>
@@ -1506,25 +1514,34 @@ export type PriceConfigResponse = {
   unit: string
 }
 
-export type Option = {
-  label: I18nObject
+export type EndpointProviderConfigI18nResponse = {
+  en_US: string
+  ja_JP?: string | null
+  pt_BR?: string | null
+  zh_Hans?: string | null
+}
+
+export type EndpointProviderConfigOptionResponse = {
+  label: EndpointProviderConfigI18nResponse
   value: string
 }
 
-export type AppSelectorScope = 'all' | 'chat' | 'completion' | 'workflow'
-
-export type ModelSelectorScope
-  = | 'llm'
+export type EndpointProviderConfigScope
+  = | 'all'
+    | 'builtin'
+    | 'chat'
+    | 'completion'
+    | 'custom'
+    | 'llm'
     | 'moderation'
     | 'rerank'
     | 'speech2text'
     | 'text-embedding'
     | 'tts'
     | 'vision'
+    | 'workflow'
 
-export type ToolSelectorScope = 'all' | 'builtin' | 'custom' | 'workflow'
-
-export type Type
+export type ProviderConfigType
   = | 'app-selector'
     | 'array[tools]'
     | 'boolean'

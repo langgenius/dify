@@ -545,17 +545,9 @@ export const zDatasetRerankingModelResponse = z.object({
 })
 
 /**
- * Type
+ * PluginDependencyType
  */
-export const zType = z.enum([
-  'app-selector',
-  'array[tools]',
-  'boolean',
-  'model-selector',
-  'secret-input',
-  'select',
-  'text-input',
-])
+export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
 
 /**
  * Github
@@ -588,7 +580,7 @@ export const zPackage = z.object({
  */
 export const zPluginDependency = z.object({
   current_identifier: z.string().nullish(),
-  type: zType,
+  type: zPluginDependencyType,
   value: z.union([zGithub, zMarketplace, zPackage]),
 })
 

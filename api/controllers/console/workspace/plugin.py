@@ -42,7 +42,15 @@ from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import dump_response
 from libs.login import login_required
-from models.account import Account, TenantPluginAutoUpgradeStrategy, TenantPluginPermission
+from models.account import (
+    Account,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategy,
+    TenantPluginAutoUpgradeStrategySetting,
+    TenantPluginDebugPermission,
+    TenantPluginInstallPermission,
+)
 from models.provider_ids import ToolProviderID
 from services.entities.model_provider_entities import ProviderEntityResponse
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
@@ -52,9 +60,9 @@ from services.tools.tools_transform_service import ToolTransformService
 
 
 class AutoUpgradeSettingsResponse(TypedDict):
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting
     upgrade_time_of_day: int
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode
+    upgrade_mode: TenantPluginAutoUpgradeMode
     exclude_plugins: list[str]
     include_plugins: list[str]
 
@@ -127,8 +135,8 @@ class ParserUninstall(BaseModel):
 
 
 class ParserPermissionChange(BaseModel):
-    install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
-    debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
+    install_permission: TenantPluginInstallPermission = TenantPluginInstallPermission.EVERYONE
+    debug_permission: TenantPluginDebugPermission = TenantPluginDebugPermission.EVERYONE
 
 
 class ParserDynamicOptions(BaseModel):
@@ -150,16 +158,16 @@ class ParserDynamicOptionsWithCredentials(BaseModel):
 
 
 class PluginPermissionSettingsPayload(BaseModel):
-    install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
-    debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
+    install_permission: TenantPluginInstallPermission = TenantPluginInstallPermission.EVERYONE
+    debug_permission: TenantPluginDebugPermission = TenantPluginDebugPermission.EVERYONE
 
 
 class PluginAutoUpgradeSettingsPayload(BaseModel):
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting = (
-        TenantPluginAutoUpgradeStrategy.StrategySetting.FIX_ONLY
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting = (
+        TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
     )
     upgrade_time_of_day: int = 0
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode = TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE
+    upgrade_mode: TenantPluginAutoUpgradeMode = TenantPluginAutoUpgradeMode.EXCLUDE
     exclude_plugins: list[str] = Field(default_factory=list)
     include_plugins: list[str] = Field(default_factory=list)
 
@@ -170,15 +178,15 @@ class PluginAutoUpgradeChangeResponse(ResponseModel):
 
 
 class PluginAutoUpgradeSettingsResponseModel(ResponseModel):
-    strategy_setting: TenantPluginAutoUpgradeStrategy.StrategySetting
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting
     upgrade_time_of_day: int
-    upgrade_mode: TenantPluginAutoUpgradeStrategy.UpgradeMode
+    upgrade_mode: TenantPluginAutoUpgradeMode
     exclude_plugins: list[str]
     include_plugins: list[str]
 
 
 class PluginAutoUpgradeFetchResponse(ResponseModel):
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
     auto_upgrade: PluginAutoUpgradeSettingsResponseModel
 
 
@@ -209,19 +217,19 @@ class PluginDeclarationResponse(ResponseModel):
 class ParserAutoUpgradeChange(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
     auto_upgrade: PluginAutoUpgradeSettingsPayload
 
 
 class ParserAutoUpgradeFetch(BaseModel):
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
 
 
 class ParserExcludePlugin(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     plugin_id: str
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory
+    category: TenantPluginAutoUpgradeCategory
 
 
 class ParserReadme(BaseModel):
@@ -339,8 +347,8 @@ class PluginTaskResponse(ResponseModel):
 
 
 class PluginPermissionResponse(ResponseModel):
-    install_permission: TenantPluginPermission.InstallPermission
-    debug_permission: TenantPluginPermission.DebugPermission
+    install_permission: TenantPluginInstallPermission
+    debug_permission: TenantPluginDebugPermission
 
 
 class PluginDynamicOptionsResponse(ResponseModel):
@@ -408,22 +416,22 @@ register_response_schema_models(
 
 register_enum_models(
     console_ns,
-    TenantPluginPermission.DebugPermission,
-    TenantPluginAutoUpgradeStrategy.PluginCategory,
-    TenantPluginAutoUpgradeStrategy.UpgradeMode,
-    TenantPluginAutoUpgradeStrategy.StrategySetting,
-    TenantPluginPermission.InstallPermission,
+    TenantPluginDebugPermission,
+    TenantPluginAutoUpgradeCategory,
+    TenantPluginAutoUpgradeMode,
+    TenantPluginAutoUpgradeStrategySetting,
+    TenantPluginInstallPermission,
 )
 
 
 def _default_auto_upgrade_settings(
     tenant_id: str,
-    category: TenantPluginAutoUpgradeStrategy.PluginCategory,
+    category: TenantPluginAutoUpgradeCategory,
 ) -> AutoUpgradeSettingsResponse:
     return {
         "strategy_setting": PluginAutoUpgradeService.default_strategy_setting_for_category(category),
         "upgrade_time_of_day": PluginAutoUpgradeService.default_upgrade_time_of_day(tenant_id),
-        "upgrade_mode": TenantPluginAutoUpgradeStrategy.UpgradeMode.EXCLUDE,
+        "upgrade_mode": TenantPluginAutoUpgradeMode.EXCLUDE,
         "exclude_plugins": [],
         "include_plugins": [],
     }
@@ -987,8 +995,8 @@ class PluginFetchPermissionApi(Resource):
         if not permission:
             return jsonable_encoder(
                 {
-                    "install_permission": TenantPluginPermission.InstallPermission.EVERYONE,
-                    "debug_permission": TenantPluginPermission.DebugPermission.EVERYONE,
+                    "install_permission": TenantPluginInstallPermission.EVERYONE,
+                    "debug_permission": TenantPluginDebugPermission.EVERYONE,
                 }
             )
 
