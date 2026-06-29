@@ -402,7 +402,32 @@ class AgentConfigService:
             file_kind=file_ref.file_kind,
             file_id=file_ref.file_id,
         )
-        return ConfigDownload(filename=filename or file_ref.name, mime_type=mime_type or "application/octet-stream", payload=payload)
+        return ConfigDownload(
+            filename=filename or file_ref.name, mime_type=mime_type or "application/octet-stream", payload=payload
+        )
+
+    def download_file_url(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        user_id: str | None = None,
+    ) -> str:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        file_ref = self._require_file(target.agent_soul, name=name)
+        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=file_ref.file_kind, file_id=file_ref.file_id)
+        if url is None:
+            raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
+        return url
 
     def download_file_url(
         self,
@@ -835,7 +860,9 @@ class AgentConfigService:
             found = session.scalar(select(Agent.id).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
-            raise AgentConfigServiceError("agent_not_found", "agent does not belong to this tenant", status_code=404) from exc
+            raise AgentConfigServiceError(
+                "agent_not_found", "agent does not belong to this tenant", status_code=404
+            ) from exc
         if found is None:
             raise AgentConfigServiceError("agent_not_found", "agent does not belong to this tenant", status_code=404)
 
@@ -986,7 +1013,9 @@ class AgentConfigService:
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
-            raise AgentConfigServiceError("source_not_found", "source tool file ref is invalid", status_code=404) from exc
+            raise AgentConfigServiceError(
+                "source_not_found", "source tool file ref is invalid", status_code=404
+            ) from exc
         if tool_file is None:
             raise AgentConfigServiceError(
                 "source_not_found",
@@ -1030,7 +1059,9 @@ class AgentConfigService:
             )
         except (DataError, SQLAlchemyError) as exc:
             session.rollback()
-            raise AgentConfigServiceError("source_not_found", "source upload file ref is invalid", status_code=404) from exc
+            raise AgentConfigServiceError(
+                "source_not_found", "source upload file ref is invalid", status_code=404
+            ) from exc
         if upload_file is None:
             raise AgentConfigServiceError(
                 "source_not_found",
@@ -1289,7 +1320,9 @@ class AgentConfigService:
                     select(ToolFile).where(ToolFile.id == file_id, ToolFile.tenant_id == tenant_id)
                 )
                 if tool_file is None:
-                    raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
+                    raise AgentConfigServiceError(
+                        "config_file_not_found", "config file payload is missing", status_code=404
+                    )
                 return storage.load_once(tool_file.file_key), tool_file.name, tool_file.mimetype
             upload_file = session.scalar(
                 select(UploadFile).where(UploadFile.id == file_id, UploadFile.tenant_id == tenant_id)

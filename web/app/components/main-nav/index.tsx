@@ -15,6 +15,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import Badge from '@/app/components/base/badge'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import EnvNav from '@/app/components/header/env-nav'
+import { SnippetCollapsedPreview } from '@/app/components/snippets/components/snippet-collapsed-preview'
+import { SnippetSidebarContent } from '@/app/components/snippets/components/snippet-sidebar'
+import { useSnippetDraftStore } from '@/app/components/snippets/draft-store'
+import { useSnippetDetailStore } from '@/app/components/snippets/store'
 import { useAppContext } from '@/context/app-context'
 import { AgentDetailSection, AgentDetailTop } from '@/features/agent-v2/agent-detail/navigation'
 import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
@@ -26,6 +30,7 @@ import AccountSection from './components/account-section'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
+import SnippetDetailTop from './components/snippet-detail-top'
 import WebAppsSection from './components/web-apps-section'
 import { WorkspaceCard } from './components/workspace-card'
 import { isMainNavRouteVisible, MAIN_NAV_ROUTES } from './routes'
@@ -96,8 +101,14 @@ export function MainNav({
   const showDatasetDetailNavigation = isDatasetDetailPathname(pathname)
   const showAgentDetailNavigation = agentV2Enabled && !isCurrentWorkspaceDatasetOperator && isAgentDetailPathname(pathname)
   const showDeploymentDetailNavigation = canUseAppDeploy && !isCurrentWorkspaceDatasetOperator && isDeploymentDetailPathname(pathname)
-  const showSnippetDetailBottomNavigation = isSnippetDetailPathname(pathname)
-  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation
+  const showSnippetDetailNavigation = isSnippetDetailPathname(pathname)
+  const showDetailNavigation = showAppDetailNavigation || showDatasetDetailNavigation || showAgentDetailNavigation || showDeploymentDetailNavigation || showSnippetDetailNavigation
+  const snippetNavigation = useSnippetDetailStore(useShallow(state => ({
+    onFieldsChange: state.onFieldsChange,
+    readonly: state.readonly,
+    snippet: state.snippet,
+  })))
+  const snippetInputFields = useSnippetDraftStore(state => state.inputFields)
   const { hasAppDetail, setAppDetail } = useAppStore(useShallow(state => ({
     hasAppDetail: !!state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -112,9 +123,7 @@ export function MainNav({
   const detailNavigationTransitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDetailNavigationHoverPreviewOpen = isCollapsedDetailNavigation && detailNavigationHoverPreviewOpen
   const detailNavigationVisibleExpanded = detailNavigationExpanded || isDetailNavigationHoverPreviewOpen
-  const bottomNavigationExpanded = showSnippetDetailBottomNavigation
-    ? false
-    : !showDetailNavigation || detailNavigationVisibleExpanded
+  const bottomNavigationExpanded = !showDetailNavigation || detailNavigationVisibleExpanded
   const handleToggleDetailNavigation = useCallback(() => {
     if (isDetailNavigationHoverPreviewOpen) {
       if (detailNavigationTransitionTimerRef.current)
@@ -224,9 +233,7 @@ export function MainNav({
           ? detailNavigationExpanded
             ? 'w-62 bg-background-body p-1'
             : 'w-16 bg-background-body p-1'
-          : showSnippetDetailBottomNavigation
-            ? 'w-16 bg-background-body p-1'
-            : 'w-60 flex-col',
+          : 'w-60 flex-col',
         'bg-background-body',
         className,
       )}
@@ -267,25 +274,30 @@ export function MainNav({
                         onToggle={handleToggleDetailNavigation}
                       />
                     )
-                  : (
-                      <DeploymentDetailTop
-                        expand={detailNavigationVisibleExpanded}
-                        onToggle={handleToggleDetailNavigation}
-                      />
-                    )
-            : showSnippetDetailBottomNavigation
-              ? null
-              : (
-                  <>
-                    <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
-                      {renderLogo()}
-                      <MainNavSearchButton />
-                    </div>
-                    <div className="p-2">
-                      <WorkspaceCard />
-                    </div>
-                  </>
-                )}
+                  : showDeploymentDetailNavigation
+                    ? (
+                        <DeploymentDetailTop
+                          expand={detailNavigationVisibleExpanded}
+                          onToggle={handleToggleDetailNavigation}
+                        />
+                      )
+                    : (
+                        <SnippetDetailTop
+                          expand={detailNavigationVisibleExpanded}
+                          onToggle={handleToggleDetailNavigation}
+                        />
+                      )
+            : (
+                <>
+                  <div className="flex items-center justify-between pt-3 pr-2 pb-2 pl-4">
+                    {renderLogo()}
+                    <MainNavSearchButton />
+                  </div>
+                  <div className="p-2">
+                    <WorkspaceCard />
+                  </div>
+                </>
+              )}
           {showDetailNavigation
             ? showAppDetailNavigation
               ? <AppDetailSection expand={detailNavigationVisibleExpanded} />
@@ -293,29 +305,40 @@ export function MainNav({
                 ? <DatasetDetailSection expand={detailNavigationVisibleExpanded} />
                 : showAgentDetailNavigation
                   ? <AgentDetailSection expand={detailNavigationVisibleExpanded} />
-                  : <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
-            : showSnippetDetailBottomNavigation
-              ? null
-              : (
-                  <>
-                    <nav className="isolate flex flex-col gap-px p-2">
-                      {navItems.map(item => (
-                        <MainNavLink key={item.href} item={item} pathname={pathname}>
-                          {item.href === '/roster' && (
-                            <Badge
-                              size="xs"
-                              variant="dimm"
-                              text={t('menus.status', { ns: 'common' })}
-                              className="ml-auto shrink-0"
+                  : showDeploymentDetailNavigation
+                    ? <DeploymentDetailSection expand={detailNavigationVisibleExpanded} />
+                    : detailNavigationVisibleExpanded
+                      ? snippetNavigation.snippet && snippetNavigation.onFieldsChange
+                        ? (
+                            <SnippetSidebarContent
+                              snippet={snippetNavigation.snippet}
+                              fields={snippetInputFields}
+                              readonly={snippetNavigation.readonly}
+                              onFieldsChange={snippetNavigation.onFieldsChange}
                             />
-                          )}
-                        </MainNavLink>
-                      ))}
-                    </nav>
-                    {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
-                  </>
-                )}
-          {showEnvTag && !showSnippetDetailBottomNavigation && detailNavigationVisibleExpanded && (
+                          )
+                        : null
+                      : <SnippetCollapsedPreview inputFieldCount={snippetInputFields.length} />
+            : (
+                <>
+                  <nav className="isolate flex flex-col gap-px p-2">
+                    {navItems.map(item => (
+                      <MainNavLink key={item.href} item={item} pathname={pathname}>
+                        {item.href === '/roster' && (
+                          <Badge
+                            size="xs"
+                            variant="dimm"
+                            text={t('menus.status', { ns: 'common' })}
+                            className="ml-auto shrink-0"
+                          />
+                        )}
+                      </MainNavLink>
+                    ))}
+                  </nav>
+                  {!isCurrentWorkspaceDatasetOperator && <WebAppsSection />}
+                </>
+              )}
+          {showEnvTag && detailNavigationVisibleExpanded && (
             <div className="relative z-30 mt-auto shrink-0 px-3 pb-2">
               <EnvNav />
             </div>

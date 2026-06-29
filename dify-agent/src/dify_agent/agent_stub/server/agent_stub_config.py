@@ -15,7 +15,11 @@ from typing import Any, Protocol
 import httpx
 from pydantic import ValidationError
 
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubConfigManifestResponse, AgentStubConfigPushRequest, AgentStubConfigPushResponse
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubConfigManifestResponse,
+    AgentStubConfigPushRequest,
+    AgentStubConfigPushResponse,
+)
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubPrincipal
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 
@@ -182,7 +186,9 @@ class DifyApiAgentStubConfigRequestHandler:
 
     async def _get_inner_api_json(self, path: str, params: Mapping[str, str]) -> object:
         response = await self._request("GET", path, params=dict(params))
-        return self._normalize_json_payload(response, invalid_json_detail="Dify API config request returned invalid JSON")
+        return self._normalize_json_payload(
+            response, invalid_json_detail="Dify API config request returned invalid JSON"
+        )
 
     async def _get_inner_api_bytes(self, path: str, params: Mapping[str, str]) -> bytes:
         response = await self._request("GET", path, params=dict(params))
@@ -191,20 +197,28 @@ class DifyApiAgentStubConfigRequestHandler:
                 response,
                 invalid_json_detail="Dify API config request returned invalid JSON",
             )
-            raise AgentStubConfigRequestError(response.status_code, detail.get("detail", detail) if isinstance(detail, dict) else detail)
+            raise AgentStubConfigRequestError(
+                response.status_code, detail.get("detail", detail) if isinstance(detail, dict) else detail
+            )
         return response.content
 
     async def _post_inner_api_json(self, path: str, payload: Mapping[str, Any]) -> object:
         response = await self._request("POST", path, json=dict(payload))
-        return self._normalize_json_payload(response, invalid_json_detail="Dify API config request returned invalid JSON")
+        return self._normalize_json_payload(
+            response, invalid_json_detail="Dify API config request returned invalid JSON"
+        )
 
     async def _patch_inner_api_json(self, path: str, payload: Mapping[str, Any]) -> object:
         response = await self._request("PATCH", path, json=dict(payload))
-        return self._normalize_json_payload(response, invalid_json_detail="Dify API config request returned invalid JSON")
+        return self._normalize_json_payload(
+            response, invalid_json_detail="Dify API config request returned invalid JSON"
+        )
 
     async def _put_inner_api_json(self, path: str, payload: Mapping[str, Any]) -> object:
         response = await self._request("PUT", path, json=dict(payload))
-        return self._normalize_json_payload(response, invalid_json_detail="Dify API config request returned invalid JSON")
+        return self._normalize_json_payload(
+            response, invalid_json_detail="Dify API config request returned invalid JSON"
+        )
 
     async def _request(
         self,

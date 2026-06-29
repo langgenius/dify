@@ -472,7 +472,9 @@ def _upload_skill_for_target(
     return manifest, 201
 
 
-def _file_upload_response(target: _ResolvedConsoleTarget, payload: AgentConfigFileUploadPayload) -> tuple[dict[str, object], int]:
+def _file_upload_response(
+    target: _ResolvedConsoleTarget, payload: AgentConfigFileUploadPayload
+) -> tuple[dict[str, object], int]:
     manifest = _service().push_file_for_console(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -795,7 +797,9 @@ class AgentConfigFilesApi(Resource):
 @console_ns.route("/agent/<uuid:agent_id>/config/skills/<string:name>/inspect")
 class AgentConfigSkillInspectByAgentApi(Resource):
     @console_ns.doc("inspect_agent_config_skill_by_agent")
-    @console_ns.doc(params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)})
+    @console_ns.doc(
+        params={"agent_id": "Agent ID", "name": "Config skill name", **query_params_from_model(AgentConfigByAgentQuery)}
+    )
     @console_ns.response(200, "Config skill inspect view", console_ns.models[AgentConfigSkillInspectResponse.__name__])
     @setup_required
     @login_required
@@ -814,7 +818,9 @@ class AgentConfigSkillInspectByAgentApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/agent/config/skills/<string:name>/inspect")
 class AgentConfigSkillInspectApi(Resource):
     @console_ns.doc("inspect_agent_config_skill")
-    @console_ns.doc(params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)})
+    @console_ns.doc(
+        params={"app_id": "Application ID", "name": "Config skill name", **query_params_from_model(AgentConfigQuery)}
+    )
     @console_ns.response(200, "Config skill inspect view", console_ns.models[AgentConfigSkillInspectResponse.__name__])
     @setup_required
     @login_required

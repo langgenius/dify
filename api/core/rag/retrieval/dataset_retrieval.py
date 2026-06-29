@@ -1030,6 +1030,10 @@ class DatasetRetrieval:
     ):
         """
         Persist dataset query audit rows for retrieval requests.
+
+        Query audit logging is a side effect of retrieval. Keep it in an
+        independent transaction so failures or commits here do not affect the
+        request/workflow transaction that called the retriever.
         """
         if not query and not attachment_ids:
             return
@@ -1040,6 +1044,9 @@ class DatasetRetrieval:
                 user_from,
                 app_id,
             )
+            return
+        created_by_role = self._resolve_creator_user_role(user_from)
+        if created_by_role is None:
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
@@ -1055,13 +1062,16 @@ class DatasetRetrieval:
                     content=json.dumps(contents),
                     source=DatasetQuerySource.APP,
                     source_app_id=app_id,
-                    created_by_role=CreatorUserRole(user_from),
+                    created_by_role=created_by_role,
                     created_by=created_by,
                 )
                 dataset_queries.append(dataset_query)
-            if dataset_queries:
-                db.session.add_all(dataset_queries)
-        db.session.commit()
+
+        if not dataset_queries:
+            return
+
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            session.add_all(dataset_queries)
 
     def _retriever(
         self,

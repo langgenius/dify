@@ -44,8 +44,8 @@ from dify_agent.agent_stub.client._errors import AgentStubClientError
 from dify_agent.agent_stub.protocol.agent_stub import AGENT_STUB_DRIVE_BASE_ENV_VAR, DEFAULT_AGENT_STUB_DRIVE_BASE
 
 _CONFIG_MANIFEST_STDOUT_EXCLUDE = {
-    "skills": {"__all__": {"hash"}},
-    "files": {"__all__": {"hash"}},
+    "skills": {"items": {"__all__": {"hash"}}},
+    "files": {"items": {"__all__": {"hash"}}},
 }
 
 

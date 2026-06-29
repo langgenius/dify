@@ -16,12 +16,15 @@ def test_normalized_output_text_includes_marker_and_log_guidance() -> None:
 
 
 def test_normalized_output_text_avoids_duplicate_tail_for_short_output() -> None:
-    assert normalized_output_text(
-        "short output",
-        tail="short output",
-        output_path="/tmp/output.log",
-        max_output_size_bytes=16,
-    ) == "short output"
+    assert (
+        normalized_output_text(
+            "short output",
+            tail="short output",
+            output_path="/tmp/output.log",
+            max_output_size_bytes=16,
+        )
+        == "short output"
+    )
 
 
 def test_normalized_output_text_can_force_middle_truncation_when_head_matches_tail() -> None:
@@ -56,11 +59,7 @@ def test_normalized_output_text_omits_log_guidance_without_output_path() -> None
         tail="tail",
         output_path=None,
         max_output_size_bytes=16,
-    ) == (
-        "head\n"
-        "... (truncated in middle because the max output size is limited to 16 bytes) ...\n"
-        "tail"
-    )
+    ) == ("head\n... (truncated in middle because the max output size is limited to 16 bytes) ...\ntail")
 
 
 def test_normalized_output_text_can_use_custom_truncation_message() -> None:

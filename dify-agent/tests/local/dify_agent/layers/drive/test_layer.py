@@ -224,7 +224,9 @@ async def test_on_context_create_reports_incomplete_capture_when_required_marker
         inject_agent_stub_env: bool = False,
     ) -> CompleteRemoteCommandResult:
         del self, script, timeout, inject_agent_stub_env
-        output = "__DIFY_DRIVE_MENTIONED_PATH__\ttender-analyzer/SKILL.md\t/mnt/drive/agent-1/tender-analyzer/SKILL.md\n"
+        output = (
+            "__DIFY_DRIVE_MENTIONED_PATH__\ttender-analyzer/SKILL.md\t/mnt/drive/agent-1/tender-analyzer/SKILL.md\n"
+        )
         return _remote_result(output, output_complete=False, incomplete_reason="output_limit")
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script_complete", fake_run_remote_script_complete)

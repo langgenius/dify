@@ -147,9 +147,7 @@ class ShellctlCommands(ShellCommandProtocol):
         offset: int,
         timeout: float,
     ) -> ShellCommandResult:
-        return _from_job_result(
-            await _run_client_call(self.client.input(job_id, text, offset=offset, timeout=timeout))
-        )
+        return _from_job_result(await _run_client_call(self.client.input(job_id, text, offset=offset, timeout=timeout)))
 
     async def interrupt(
         self,
@@ -328,9 +326,7 @@ async def _run_to_completion(
     deadline = time.monotonic() + timeout
     job_id: str | None = None
     try:
-        result = await _run_client_call(
-            client.run(script, cwd=cwd, env=None, timeout=_remaining_timeout(deadline))
-        )
+        result = await _run_client_call(client.run(script, cwd=cwd, env=None, timeout=_remaining_timeout(deadline)))
         parts = [result.output]
         job_id = result.job_id
         while not result.done or result.truncated:
@@ -350,7 +346,7 @@ async def _run_to_completion(
 def _upload_script(*, remote_path: str, encoded: str) -> str:
     return (
         "set -eu\n"
-        f"mkdir -p \"$(dirname -- {_shquote(remote_path)})\"\n"
+        f'mkdir -p "$(dirname -- {_shquote(remote_path)})"\n'
         f"printf %s {_shquote(encoded)} | base64 -d > {_shquote(remote_path)}"
     )
 

@@ -126,7 +126,7 @@ def test_skill_pull_returns_send_file_response() -> None:
     assert response.status_code == 200
     assert response.mimetype == "application/zip"
     assert response.get_data() == b"zip-bytes"
-    assert 'filename=alpha.zip' in response.headers["Content-Disposition"]
+    assert "filename=alpha.zip" in response.headers["Content-Disposition"]
     assert service.return_value.pull_skill.call_args.kwargs["user_id"] == "user-1"
 
 
@@ -162,7 +162,7 @@ def test_file_pull_returns_send_file_response() -> None:
     assert response.status_code == 200
     assert response.mimetype == "text/plain"
     assert response.get_data() == b"file-bytes"
-    assert 'filename=guide.txt' in response.headers["Content-Disposition"]
+    assert "filename=guide.txt" in response.headers["Content-Disposition"]
     assert service.return_value.pull_file.call_args.kwargs["user_id"] == "user-1"
 
 
@@ -266,9 +266,7 @@ def test_push_invalid_body_returns_400() -> None:
 def test_manifest_maps_service_errors() -> None:
     raw = _raw(AgentConfigManifestApi.get)
 
-    with app.test_request_context(
-        "/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"
-    ):
+    with app.test_request_context("/?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"):
         with patch(f"{MODULE}.AgentConfigService") as service:
             service.return_value.manifest.side_effect = AgentConfigServiceError(
                 "config_version_not_found",

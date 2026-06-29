@@ -208,7 +208,9 @@ class FakeProvider(ShellProviderProtocol):
         return self.resource
 
 
-def _layer(*, commands: FakeCommands, config: DifyShellLayerConfig | None = None) -> tuple[DifyShellLayer, FakeProvider]:
+def _layer(
+    *, commands: FakeCommands, config: DifyShellLayerConfig | None = None
+) -> tuple[DifyShellLayer, FakeProvider]:
     provider = FakeProvider(resource=FakeResource(commands=commands))
     layer = DifyShellLayer.from_config_with_settings(config or DifyShellLayerConfig(), shell_provider=provider)
     return layer, provider
@@ -582,7 +584,9 @@ def test_run_remote_script_complete_returns_incomplete_reason_for_output_limit()
 
     asyncio.run(scenario())
     assert commands.wait_calls == []
-    assert commands.interrupt_calls == [InterruptCall(job_id="remote-job", grace_seconds=DEFAULT_TERMINATE_GRACE_SECONDS)]
+    assert commands.interrupt_calls == [
+        InterruptCall(job_id="remote-job", grace_seconds=DEFAULT_TERMINATE_GRACE_SECONDS)
+    ]
 
 
 def test_run_remote_script_complete_returns_incomplete_reason_for_timeout(

@@ -235,7 +235,9 @@ def request_agent_stub_config_skill_pull_http_sync(
         sync_http_client=sync_http_client,
     )
     if response.is_error:
-        payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config skill pull")
+        payload = _parse_json_payload(
+            response, invalid_json_message="Agent Stub returned invalid JSON for config skill pull"
+        )
         detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
         raise AgentStubHTTPError(response.status_code, detail)
     return response.content
@@ -259,7 +261,9 @@ def request_agent_stub_config_skill_inspect_http_sync(
         timeout=timeout,
         sync_http_client=sync_http_client,
     )
-    payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config skill inspect")
+    payload = _parse_json_payload(
+        response, invalid_json_message="Agent Stub returned invalid JSON for config skill inspect"
+    )
     if response.is_error:
         detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
         raise AgentStubHTTPError(response.status_code, detail)
@@ -287,7 +291,9 @@ def request_agent_stub_config_file_pull_http_sync(
         sync_http_client=sync_http_client,
     )
     if response.is_error:
-        payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config file pull")
+        payload = _parse_json_payload(
+            response, invalid_json_message="Agent Stub returned invalid JSON for config file pull"
+        )
         detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
         raise AgentStubHTTPError(response.status_code, detail)
     return response.content
@@ -344,7 +350,9 @@ def request_agent_stub_config_env_update_http_sync(
         timeout=timeout,
         sync_http_client=sync_http_client,
     )
-    payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config env update")
+    payload = _parse_json_payload(
+        response, invalid_json_message="Agent Stub returned invalid JSON for config env update"
+    )
     if response.is_error:
         detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
         raise AgentStubHTTPError(response.status_code, detail)
@@ -373,7 +381,9 @@ def request_agent_stub_config_note_update_http_sync(
         timeout=timeout,
         sync_http_client=sync_http_client,
     )
-    payload = _parse_json_payload(response, invalid_json_message="Agent Stub returned invalid JSON for config note update")
+    payload = _parse_json_payload(
+        response, invalid_json_message="Agent Stub returned invalid JSON for config note update"
+    )
     if response.is_error:
         detail = payload.get("detail", payload) if isinstance(payload, dict) else payload
         raise AgentStubHTTPError(response.status_code, detail)

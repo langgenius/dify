@@ -344,7 +344,11 @@ def test_apply_skill_updates_rejects_non_tool_file_refs() -> None:
             tenant_id=TENANT,
             user_id=USER,
             current=[],
-            updates=[ConfigPushSkillItem.model_validate({"name": "alpha", "file_ref": {"kind": "upload_file", "id": "upload-1"}})],
+            updates=[
+                ConfigPushSkillItem.model_validate(
+                    {"name": "alpha", "file_ref": {"kind": "upload_file", "id": "upload-1"}}
+                )
+            ],
         )
 
     assert exc_info.value.code == "invalid_skill_file_ref"
@@ -371,17 +375,17 @@ def test_apply_skill_updates_maps_normalizer_failures(error_code: str, message: 
         ),
     ):
         with pytest.raises(AgentConfigServiceError, match=message) as exc_info:
-                service._apply_skill_updates(
-                    MagicMock(),
-                    tenant_id=TENANT,
-                    user_id=USER,
-                    current=[],
-                    updates=[
-                        ConfigPushSkillItem.model_validate(
-                            {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
-                        )
-                    ],
-                )
+            service._apply_skill_updates(
+                MagicMock(),
+                tenant_id=TENANT,
+                user_id=USER,
+                current=[],
+                updates=[
+                    ConfigPushSkillItem.model_validate(
+                        {"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}
+                    )
+                ],
+            )
 
     assert exc_info.value.code == error_code
 

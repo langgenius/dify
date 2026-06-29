@@ -45,7 +45,7 @@ export function AgentWorkflowReferencesDropdown({
     <DropdownMenu modal={false}>
       <DropdownMenuTrigger
         aria-label={t('roster.references.trigger', { name: agentName, count: referenceCount })}
-        className="-ml-1 flex shrink-0 cursor-pointer items-center gap-1 rounded-md px-1 py-0.5 outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-state-base-hover"
+        className="relative flex h-4 shrink-0 cursor-pointer items-center gap-1 rounded-md outline-hidden before:pointer-events-none before:absolute before:-inset-x-1 before:-inset-y-0.5 before:rounded-md before:content-[''] hover:before:bg-state-base-hover focus-visible:before:ring-2 focus-visible:before:ring-state-accent-solid data-popup-open:before:bg-state-base-hover"
       >
         <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
         <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
