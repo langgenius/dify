@@ -270,7 +270,6 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                             operation="knowledge",
                         )
                         db.session.add(rate_limit_log)
-                        db.session.commit()
                         raise Forbidden(
                             "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )

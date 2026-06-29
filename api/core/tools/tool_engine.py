@@ -338,9 +338,17 @@ class ToolEngine:
         user_id: str,
     ) -> list[str]:
         """
-        Create message file
+        Create message file records for binary tool outputs.
 
-        :return: message file ids
+        Stages ``MessageFile`` rows on the current scoped session and flushes
+        to obtain generated IDs, but does **not** commit or close the session.
+        The caller (or Flask request teardown) is responsible for the final
+        commit so that the file records participate in the same transaction as
+        the surrounding agent workflow.  This prevents:
+
+        * Partial commits when a downstream step fails after files are written.
+        * ``DetachedInstanceError`` on lazy-loaded ORM properties caused by an
+          early ``db.session.close()``.
         """
         result = []
 
@@ -374,11 +382,8 @@ class ToolEngine:
             )
 
             db.session.add(message_file)
-            db.session.commit()
-            db.session.refresh(message_file)
+            db.session.flush()
 
-            result.append(message_file.id)
-
-        db.session.close()
+            result.append(str(message_file.id))
 
         return result

@@ -74,12 +74,19 @@ class CodeExecutor:
         :param code: code
         :return:
         """
+        running_language = cls.code_language_to_running_language.get(language)
+        if not running_language:
+            raise CodeExecutionError(
+                f"Unsupported code language: {language}. "
+                f"Supported languages: {', '.join(lang.value for lang in cls.code_language_to_running_language)}"
+            )
+
         url = code_execution_endpoint_url / "v1" / "sandbox" / "run"
 
         headers = {"X-Api-Key": dify_config.CODE_EXECUTION_API_KEY}
 
         data = {
-            "language": cls.code_language_to_running_language.get(language),
+            "language": running_language,
             "code": code,
             "preload": preload,
             "enable_network": True,
