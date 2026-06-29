@@ -77,7 +77,7 @@ describe('useSnippetPublish', () => {
       expect(updateSnippetDetail({ is_published: false })).toEqual({ is_published: true })
       expect(mockSetPublishedAt).toHaveBeenCalledWith(1_712_345_678)
       expect(mockResetWorkflowVersionHistory).toHaveBeenCalledTimes(1)
-      expect(toast.success).toHaveBeenCalledWith('snippet.saveSuccess')
+      expect(toast.success).toHaveBeenCalledWith('snippet.publishSuccess')
     })
 
     it('should not publish the snippet when checklist validation fails', async () => {

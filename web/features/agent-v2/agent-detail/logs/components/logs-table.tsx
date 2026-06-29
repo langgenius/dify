@@ -41,7 +41,7 @@ export function AgentLogsTable({
 
   return (
     <div className="flex h-full min-w-0 flex-col overflow-hidden">
-      <div className="shrink-0">
+      <div className="shrink-0 pr-3">
         <table aria-hidden="true" className="w-full table-fixed border-collapse">
           <LogsTableColGroup />
           <LogsTableHeader labels={tableHeaderLabels} />
@@ -55,7 +55,7 @@ export function AgentLogsTable({
           tabIndex={-1}
           className="overscroll-contain"
         >
-          <ScrollAreaContent>
+          <ScrollAreaContent className="pr-3">
             <table className="w-full table-fixed border-collapse">
               <LogsTableColGroup />
               <LogsTableHeader labels={tableHeaderLabels} rowClassName="sr-only" />
@@ -69,7 +69,7 @@ export function AgentLogsTable({
             </table>
           </ScrollAreaContent>
         </ScrollAreaViewport>
-        <ScrollAreaScrollbar className="data-[orientation=vertical]:translate-x-1">
+        <ScrollAreaScrollbar>
           <ScrollAreaThumb />
         </ScrollAreaScrollbar>
       </ScrollAreaRoot>

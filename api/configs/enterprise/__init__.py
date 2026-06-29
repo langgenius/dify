@@ -16,7 +16,7 @@ class EnterpriseFeatureConfig(BaseSettings):
 
     CAN_REPLACE_LOGO: bool = Field(
         description="Allow customization of the enterprise logo.",
-        default=True,
+        default=False,
     )
 
     ENTERPRISE_REQUEST_TIMEOUT: int = Field(
