@@ -34,10 +34,70 @@ def test_manifest_happy_path_calls_service() -> None:
         "/?tenant_id=tenant-1&user_id=user-1&config_version_id=cfg-1&config_version_kind=build_draft"
     ):
         with patch(f"{MODULE}.AgentConfigService") as service:
-            service.return_value.manifest.return_value = {"agent_id": "agent-1", "skills": []}
+            service.return_value.manifest.return_value = {
+                "agent_id": "agent-1",
+                "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
+                "skills": {
+                    "items": [
+                        {
+                            "id": "alpha",
+                            "name": "alpha",
+                            "file_id": "tool-file-1",
+                            "description": "Alpha skill",
+                            "size": 123,
+                            "hash": "sha256:abc",
+                            "mime_type": "application/zip",
+                        }
+                    ]
+                },
+                "files": {
+                    "items": [
+                        {
+                            "id": "guide.txt",
+                            "name": "guide.txt",
+                            "file_id": "upload-file-1",
+                            "size": 7,
+                            "hash": "sha256:def",
+                            "mime_type": "text/plain",
+                        }
+                    ]
+                },
+                "env_keys": ["KEY"],
+                "note": "hello",
+            }
             body = raw(AgentConfigManifestApi(), "agent-1")
 
-    assert body == {"agent_id": "agent-1", "skills": []}
+    assert body == {
+        "agent_id": "agent-1",
+        "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
+        "skills": {
+            "items": [
+                {
+                    "id": "alpha",
+                    "name": "alpha",
+                    "file_id": "tool-file-1",
+                    "description": "Alpha skill",
+                    "size": 123,
+                    "hash": "sha256:abc",
+                    "mime_type": "application/zip",
+                }
+            ]
+        },
+        "files": {
+            "items": [
+                {
+                    "id": "guide.txt",
+                    "name": "guide.txt",
+                    "file_id": "upload-file-1",
+                    "size": 7,
+                    "hash": "sha256:def",
+                    "mime_type": "text/plain",
+                }
+            ]
+        },
+        "env_keys": ["KEY"],
+        "note": "hello",
+    }
     assert service.return_value.manifest.call_args.kwargs == {
         "tenant_id": "tenant-1",
         "agent_id": "agent-1",
@@ -124,10 +184,24 @@ def test_push_happy_path_validates_body_and_canonicalizes_user() -> None:
             patch(f"{MODULE}.get_user", return_value=SimpleNamespace(id="user-1")) as get_user,
             patch(f"{MODULE}.AgentConfigService") as service,
         ):
-            service.return_value.push.return_value = {"agent_id": "agent-1"}
+            service.return_value.push.return_value = {
+                "agent_id": "agent-1",
+                "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
+                "skills": {"items": []},
+                "files": {"items": []},
+                "env_keys": ["KEY"],
+                "note": "hello",
+            }
             body = raw(AgentConfigPushApi(), "agent-1")
 
-    assert body == {"agent_id": "agent-1"}
+    assert body == {
+        "agent_id": "agent-1",
+        "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
+        "skills": {"items": []},
+        "files": {"items": []},
+        "env_keys": ["KEY"],
+        "note": "hello",
+    }
     assert get_user.call_args.args == ("tenant-1", "session-user-1")
     assert service.return_value.push.call_args.kwargs["user_id"] == "user-1"
     assert service.return_value.push.call_args.kwargs["config_version_kind"].value == "build_draft"

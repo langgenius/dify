@@ -19,8 +19,8 @@ def _manifest_payload() -> AgentStubConfigManifestResponse:
         {
             "agent_id": "agent-1",
             "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
-            "skills": [{"name": "alpha", "description": "Alpha skill"}],
-            "files": [{"name": "guide.txt"}],
+            "skills": {"items": [{"name": "alpha", "description": "Alpha skill"}]},
+            "files": {"items": [{"name": "guide.txt"}]},
             "env_keys": ["API_KEY", "JSON_VALUE"],
             "note": "Use carefully.",
         }

@@ -62,11 +62,12 @@ def _principal(**context_updates: object) -> AgentStubPrincipal:
 def _manifest_payload() -> dict[str, object]:
     return {
         "agent_id": "agent-1",
-        "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True},
-        "skills": [{"name": "alpha", "description": "Alpha skill"}],
-        "files": [{"name": "guide.txt"}],
+        "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": True, "source": "inner-api"},
+        "skills": {"items": [{"id": "alpha", "name": "alpha", "description": "Alpha skill", "file_id": "tool-file-1"}]},
+        "files": {"items": [{"id": "guide.txt", "name": "guide.txt", "file_id": "upload-file-1"}]},
         "env_keys": ["API_KEY"],
         "note": "Use carefully.",
+        "ignored": True,
     }
 
 
@@ -95,6 +96,19 @@ async def test_dify_api_handler_manifest_success(monkeypatch: pytest.MonkeyPatch
     assert isinstance(response, AgentStubConfigManifestResponse)
     assert response.agent_id == "agent-1"
     assert response.config_version.kind == "build_draft"
+    assert response.skills.items[0].model_dump() == {
+        "name": "alpha",
+        "description": "Alpha skill",
+        "size": None,
+        "hash": None,
+        "mime_type": None,
+    }
+    assert response.files.items[0].model_dump() == {
+        "name": "guide.txt",
+        "size": None,
+        "hash": None,
+        "mime_type": None,
+    }
 
 
 @pytest.mark.anyio

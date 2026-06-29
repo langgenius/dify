@@ -92,7 +92,7 @@ def pull_config_skills_from_environment(
 ) -> ConfigSkillPullResult:
     environment = read_agent_stub_environment()
     manifest = request_agent_stub_config_manifest_sync(url=environment.url, auth_jwe=environment.auth_jwe)
-    selected_names = names or [item.name for item in manifest.skills]
+    selected_names = names or [item.name for item in manifest.skills.items]
     target_dir = Path(local_dir or (_DEFAULT_CONFIG_BASE / "skills")).expanduser().resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
 
@@ -133,7 +133,7 @@ def pull_config_files_from_environment(
 ) -> ConfigFilePullResult:
     environment = read_agent_stub_environment()
     manifest = request_agent_stub_config_manifest_sync(url=environment.url, auth_jwe=environment.auth_jwe)
-    selected_names = names or [item.name for item in manifest.files]
+    selected_names = names or [item.name for item in manifest.files.items]
     target_dir = Path(local_dir or (_DEFAULT_CONFIG_BASE / "files")).expanduser().resolve()
     target_dir.mkdir(parents=True, exist_ok=True)
 
