@@ -294,13 +294,8 @@ class TestAgentAppConfigLayer:
         config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
         assert config.type == "dify.config"
         assert config.deps == {"shell": DIFY_SHELL_LAYER_ID}
-        assert [skill.name for skill in config.config.skills] == ["tender-analyzer"]
-        assert [skill.description for skill in config.config.skills] == ["Parses RFPs."]
-        assert [file_ref.name for file_ref in config.config.files] == ["sample.pdf"]
-        assert config.config.note == "Read the proposal first."
         assert config.config.mentioned_skill_names == ["tender-analyzer"]
         assert config.config.mentioned_file_names == []
-        assert config.config.writable is False
         # shell enters first; config uses that shell to materialize mentioned targets.
         names = [layer.name for layer in result.request.composition.layers]
         assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 1
@@ -323,7 +318,7 @@ class TestAgentAppConfigLayer:
         assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": "execution_context"}
         assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 
-    def test_config_layer_is_writable_for_build_draft(self, monkeypatch: pytest.MonkeyPatch):
+    def test_config_layer_for_build_draft_only_contains_mentions(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
@@ -335,7 +330,10 @@ class TestAgentAppConfigLayer:
         result = builder.build(_ctx(_soul_with_model_and_skill(), agent_config_version_kind="build_draft"))
 
         config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
-        assert config.config.writable is True
+        assert config.config.model_dump(mode="json") == {
+            "mentioned_skill_names": ["tender-analyzer"],
+            "mentioned_file_names": [],
+        }
 
     def test_no_config_layer_when_flag_disabled(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(

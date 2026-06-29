@@ -35,7 +35,7 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubConfigPushSkillItem,
 )
 
-_DEFAULT_CONFIG_BASE = Path("./dify_conf")
+_DEFAULT_CONFIG_BASE = Path("./.dify_conf")
 _SKILL_MD_FILENAME = "SKILL.md"
 _SAFE_ENV_VALUE = re.compile(r"^[A-Za-z0-9_./:@+-]+$")
 

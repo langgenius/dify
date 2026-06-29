@@ -1141,29 +1141,14 @@ def _soul_with_config_assets() -> AgentSoulConfig:
     )
 
 
-def test_build_config_layer_config_catalogs_assets_and_mentions():
+def test_build_config_layer_config_includes_only_mentions():
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
     config, warnings = build_config_layer_config(_soul_with_config_assets())
 
     assert config is not None
-    assert [skill.name for skill in config.skills] == ["tender-analyzer"]
-    assert [skill.description for skill in config.skills] == ["Parses RFPs."]
-    assert [file_ref.name for file_ref in config.files] == ["sample.pdf"]
-    assert config.note == "Read the proposal first."
     assert config.mentioned_skill_names == ["tender-analyzer"]
     assert config.mentioned_file_names == ["sample.pdf"]
-    assert config.writable is False
-    assert warnings == []
-
-
-def test_build_config_layer_config_marks_build_draft_writable():
-    from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
-
-    config, warnings = build_config_layer_config(_soul_with_config_assets(), writable=True)
-
-    assert config is not None
-    assert config.writable is True
     assert warnings == []
 
 
@@ -1213,13 +1198,10 @@ def test_workflow_run_request_contains_config_layer_when_flag_enabled(monkeypatc
     config = next(layer for layer in dumped["composition"]["layers"] if layer["name"] == DIFY_CONFIG_LAYER_ID)
     assert config["type"] == "dify.config"
     assert config["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
-    assert config["config"]["skills"] == [{"name": "tender-analyzer", "description": "Parses RFPs."}]
-    assert config["config"]["files"] == [{"name": "sample.pdf"}]
-    assert config["config"]["env_keys"] == []
-    assert config["config"]["note"] == "Read the proposal first."
-    assert config["config"]["mentioned_skill_names"] == ["tender-analyzer"]
-    assert config["config"]["mentioned_file_names"] == ["sample.pdf"]
-    assert config["config"]["writable"] is False
+    assert config["config"] == {
+        "mentioned_skill_names": ["tender-analyzer"],
+        "mentioned_file_names": ["sample.pdf"],
+    }
     warnings = result.metadata["runtime_support"]["unsupported_runtime_warnings"]
     assert warnings == []
     # the config layer is non-sensitive and must survive into persistable specs
@@ -1278,7 +1260,7 @@ def test_workflow_run_request_has_no_config_layer_when_flag_disabled(monkeypatch
     assert result.metadata["runtime_support"]["unsupported_runtime_warnings"] == []
 
 
-def test_build_config_layer_config_missing_mentions_warn_but_keep_catalog():
+def test_build_config_layer_config_missing_mentions_warn_without_catalog():
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
     soul = AgentSoulConfig(
@@ -1288,7 +1270,8 @@ def test_build_config_layer_config_missing_mentions_warn_but_keep_catalog():
     )
     config, warnings = build_config_layer_config(soul)
     assert config is not None
-    assert [skill.name for skill in config.skills] == ["tender-analyzer"]
+    assert config.mentioned_skill_names == []
+    assert config.mentioned_file_names == []
     assert [w["code"] for w in warnings] == ["mention_target_missing"]
 
 

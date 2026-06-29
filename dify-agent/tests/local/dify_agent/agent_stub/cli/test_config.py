@@ -90,6 +90,24 @@ def test_pull_config_env_from_environment_writes_only_declared_keys(
     assert result.read_text(encoding="utf-8") == 'API_KEY=plain\nJSON_VALUE="two words"\n'
 
 
+def test_pull_config_env_and_note_use_hidden_default_dir(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(config_cli, "manifest_from_environment", _manifest_payload)
+    monkeypatch.setenv("API_KEY", "plain")
+    monkeypatch.setenv("JSON_VALUE", "two words")
+
+    env_path = config_cli.pull_config_env_from_environment()
+    note_path = config_cli.pull_config_note_from_environment()
+
+    assert env_path == (tmp_path / ".dify_conf" / ".env").resolve()
+    assert note_path == (tmp_path / ".dify_conf" / "note.md").resolve()
+    assert env_path.read_text(encoding="utf-8") == 'API_KEY=plain\nJSON_VALUE="two words"\n'
+    assert note_path.read_text(encoding="utf-8") == "Use carefully."
+
+
 def test_push_config_from_environment_builds_request_from_files_skills_env_and_note(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

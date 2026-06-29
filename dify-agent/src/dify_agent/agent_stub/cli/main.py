@@ -109,8 +109,33 @@ def config_push(
         help="JSON spec file path. Omit or pass - to read the spec from stdin.",
     ),
 ) -> None:
-    """Update the current build-draft Agent config from one local spec."""
+    """Update the current build-draft Agent config from one local spec.
+
+    Recommended usage reads the JSON spec from stdin:
+
+    \b
+        cat <<'JSON' | dify-agent config push
+        {
+          "files": [
+            {"name": "guide.txt", "path": "./.dify_conf/files/guide.txt"},
+            {"name": "old.txt"}
+          ],
+          "skills": [
+            {"name": "alpha", "path": "./.dify_conf/skills/alpha"},
+            {"name": "old-skill"}
+          ],
+          "env": "./.dify_conf/.env",
+          "note": "./.dify_conf/note.md"
+        }
+        JSON
+
+    By default, pull/edit files live under ./.dify_conf/: files in ./.dify_conf/files/, skills in
+    ./.dify_conf/skills/, env in ./.dify_conf/.env, and note in ./.dify_conf/note.md.
+    For files and skills, a string or {name, path} uploads or updates that entry. A {name} object without path deletes
+    that entry. env and note point to local text files whose contents replace the config env/note.
+    """
     _run_config_push(from_path=from_path)
+
 
 @config_skill_app.command("pull")
 def config_skill_pull(
@@ -118,6 +143,7 @@ def config_skill_pull(
     local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config skills."),
     json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
 ) -> None:
+    """Pull one or all visible config skills into ./.dify_conf/skills by default."""
     _run_config_skill_pull(names=names or None, local_dir=local_dir, json_output=json_output)
 
 
@@ -127,6 +153,7 @@ def config_file_pull(
     local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config files."),
     json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
 ) -> None:
+    """Pull one or all visible config files into ./.dify_conf/files by default."""
     _run_config_file_pull(names=names or None, local_dir=local_dir, json_output=json_output)
 
 
@@ -134,6 +161,7 @@ def config_file_pull(
 def config_env_pull(
     local_path: str | None = typer.Option(None, "--to", help="Local dotenv file path."),
 ) -> None:
+    """Export visible config env values into ./.dify_conf/.env by default."""
     _run_config_env_pull(local_path=local_path)
 
 
@@ -141,6 +169,7 @@ def config_env_pull(
 def config_note_pull(
     local_path: str | None = typer.Option(None, "--to", help="Local markdown file path."),
 ) -> None:
+    """Export the current config note into ./.dify_conf/note.md by default."""
     _run_config_note_pull(local_path=local_path)
 
 

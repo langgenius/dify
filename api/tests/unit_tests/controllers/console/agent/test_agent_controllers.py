@@ -44,7 +44,7 @@ from controllers.console.agent.roster import (
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app import message as message_controller
-from controllers.console.app.completion import AgentChatMessageApi, AgentChatMessageStopApi
+from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
 from controllers.console.app.message import (
     AgentChatMessageListApi,
     AgentMessageApi,
@@ -1353,6 +1353,94 @@ def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
     ) == ({"result": "success"}, 200)
     stop_call = cast(dict[str, object], captured["stop"])
     assert stop_call == {"current_user_id": account_id, "app_model": app_model, "task_id": "task-1"}
+
+
+def test_agent_build_chat_finalize_route_resolves_app_from_agent_id(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    agent_id = "00000000-0000-0000-0000-000000000001"
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    captured: dict[str, object] = {}
+
+    def resolve_agent_app_model(**kwargs: object) -> object:
+        captured["resolve"] = kwargs
+        return app_model
+
+    def create_finalization_message(**kwargs: object) -> dict[str, object]:
+        captured["finalize"] = kwargs
+        return {"result": "generated"}
+
+    monkeypatch.setattr(completion_controller, "resolve_agent_runtime_app_model", resolve_agent_app_model)
+    monkeypatch.setattr(completion_controller, "_create_build_chat_finalization_message", create_finalization_message)
+
+    with app.test_request_context():
+        assert unwrap(AgentBuildChatFinalizeApi.post)(
+            AgentBuildChatFinalizeApi(), "tenant-1", SimpleNamespace(id=account_id), agent_id
+        ) == {"result": "generated"}
+
+    assert cast(dict[str, object], captured["resolve"]) == {"tenant_id": "tenant-1", "agent_id": agent_id}
+    finalize_call = cast(dict[str, object], captured["finalize"])
+    assert finalize_call["app_model"] is app_model
+    assert finalize_call["current_tenant_id"] == "tenant-1"
+    assert finalize_call["agent_id"] == agent_id
+    assert cast(SimpleNamespace, finalize_call["current_user"]).id == account_id
+
+
+def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
+) -> None:
+    app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode="agent")
+    captured: dict[str, object] = {}
+
+    def resolve_debug_conversation(**kwargs: object) -> str:
+        captured["resolve_debug_conversation"] = kwargs
+        return "debug-conversation-1"
+
+    def generate(**kwargs: object) -> dict[str, object]:
+        captured["generate"] = kwargs
+        return {"answer": "ok"}
+
+    monkeypatch.setattr(
+        completion_controller,
+        "_resolve_current_user_agent_debug_conversation_id",
+        resolve_debug_conversation,
+    )
+    monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
+    monkeypatch.setattr(
+        completion_controller.helper,
+        "compact_generate_response",
+        lambda response: {"response": response},
+    )
+
+    with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
+        result = completion_controller._create_build_chat_finalization_message(
+            current_tenant_id="tenant-1",
+            current_user=SimpleNamespace(id=account_id),
+            app_model=app_model,
+            agent_id="agent-1",
+        )
+
+    assert result == {"response": {"answer": "ok"}}
+    assert captured["resolve_debug_conversation"] == {
+        "current_tenant_id": "tenant-1",
+        "current_user": SimpleNamespace(id=account_id),
+        "app_model": app_model,
+        "agent_id": "agent-1",
+    }
+    generate_call = cast(dict[str, object], captured["generate"])
+    assert generate_call["app_model"] is app_model
+    assert generate_call["streaming"] is True
+    args = cast(dict[str, object], generate_call["args"])
+    assert args["draft_type"] == "debug_build"
+    assert args["response_mode"] == "streaming"
+    assert args["conversation_id"] == "debug-conversation-1"
+    assert args["inputs"] == {}
+    assert args["auto_generate_name"] is False
+    assert args["external_trace_id"] == "trace-1"
+    query = cast(str, args["query"])
+    assert "Update the config note. This is required" in query
+    assert "piping the JSON push spec to `dify-agent config push`" in query
+    assert "what you installed or configured on your machine" in query
 
 
 def test_agent_chat_helper_forces_agent_streaming_and_external_trace(

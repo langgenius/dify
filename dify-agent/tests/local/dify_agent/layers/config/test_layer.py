@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from typing import Literal
 
 import pytest
 
 from dify_agent.adapters.shell.shellctl import ShellctlProvider
-from dify_agent.layers.config import DifyConfigFileConfig, DifyConfigLayerConfig, DifyConfigSkillConfig
+from dify_agent.agent_stub.protocol.agent_stub import AgentStubConfigManifestResponse
+from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.config.layer import DifyConfigLayer, DifyConfigLayerError
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import CompleteRemoteCommandResult, DifyShellLayer
@@ -24,19 +26,11 @@ def _shell_layer() -> DifyShellLayer:
     )
 
 
-def _build_layer(*, writable: bool = True) -> DifyConfigLayer:
+def _build_layer() -> DifyConfigLayer:
     layer = DifyConfigLayer.from_config(
         DifyConfigLayerConfig(
-            skills=[
-                DifyConfigSkillConfig(name="alpha", description="Primary skill."),
-                DifyConfigSkillConfig(name="beta", description="Fallback skill."),
-            ],
-            files=[DifyConfigFileConfig(name="guide.txt"), DifyConfigFileConfig(name="report.csv")],
-            env_keys=["API_KEY", "TOKEN"],
-            note="Use the config carefully.",
             mentioned_skill_names=["alpha"],
             mentioned_file_names=["guide.txt"],
-            writable=writable,
         )
     )
     layer.bind_deps({"shell": _shell_layer()})
@@ -80,7 +74,32 @@ def _pull_output(*, include_file: bool = True, include_skill: bool = True) -> st
     return "".join(parts)
 
 
-def test_config_layer_prefix_prompt_includes_loaded_note_skill_and_file_paths() -> None:
+def _push_help_output() -> str:
+    return (
+        "Usage: dify-agent config push [OPTIONS]\n\n"
+        "Recommended usage reads the JSON spec from stdin:\n\n"
+        "cat <<'JSON' | dify-agent config push\n"
+        '{"files": [{"name": "guide.txt", "path": "./.dify_conf/files/guide.txt"}], '
+        '"env": "./.dify_conf/.env", "note": "./.dify_conf/note.md"}\n'
+        "JSON\n"
+    )
+
+
+def _manifest_output(*, writable: bool = True, note: str = "Runtime note.") -> str:
+    return json.dumps(
+        {
+            "agent_id": "agent-1",
+            "config_version": {"id": "cfg-1", "kind": "build_draft", "writable": writable},
+            "skills": [{"name": "runtime-skill", "description": "Runtime skill."}],
+            "files": [{"name": "runtime-file.txt"}],
+            "env_keys": ["RUNTIME_KEY"],
+            "note": note,
+        },
+        separators=(",", ":"),
+    )
+
+
+def test_config_layer_prefix_prompt_includes_loaded_skill_and_file_paths() -> None:
     layer = _build_layer()
     layer._loaded_skill_bodies = {"alpha": "# Alpha\nUse it.\n"}
     layer._pulled_skill_paths = {"alpha": "/tmp/dify-config/skills/alpha"}
@@ -88,7 +107,7 @@ def test_config_layer_prefix_prompt_includes_loaded_note_skill_and_file_paths() 
 
     prompt = layer.build_prompt_context()
 
-    assert "Config note:\nUse the config carefully." in prompt
+    assert "Config note" not in prompt
     assert "Loaded mentioned skills" in prompt
     assert "Name: alpha" in prompt
     assert "Local path: /tmp/dify-config/skills/alpha" in prompt
@@ -96,18 +115,62 @@ def test_config_layer_prefix_prompt_includes_loaded_note_skill_and_file_paths() 
     assert "Mentioned files pulled locally:\n- guide.txt -> /tmp/dify-config/files/guide.txt" in prompt
 
 
-def test_config_layer_suffix_prompt_shows_remaining_assets_and_writable_push_hint() -> None:
-    writable_layer = _build_layer(writable=True)
-    readonly_layer = _build_layer(writable=False)
+def test_config_layer_prefix_prompt_does_not_synthesize_runtime_manifest_note() -> None:
+    layer = _build_layer()
+    layer._config_manifest = AgentStubConfigManifestResponse.model_validate_json(_manifest_output(note="Runtime note."))
 
-    writable_prompt = writable_layer.build_suffix_prompt()
-    readonly_prompt = readonly_layer.build_suffix_prompt()
+    prompt = layer.build_prompt_context()
 
-    assert "Other available skills:\n- beta: Fallback skill." in writable_prompt
-    assert "Available files:\n- report.csv" in writable_prompt
-    assert "Available env keys:\n- API_KEY\n- TOKEN" in writable_prompt
-    assert "dify-agent config push [--from PATH]" in writable_prompt
-    assert "dify-agent config push [--from PATH]" not in readonly_prompt
+    assert prompt == ""
+
+
+def test_config_layer_suffix_prompt_without_manifest_does_not_fallback_to_request_catalog() -> None:
+    layer = _build_layer()
+
+    prompt = layer.build_suffix_prompt()
+
+    assert "Other available skills" not in prompt
+    assert "Available files" not in prompt
+    assert "Available env keys" not in prompt
+    assert "Config changes are saved only by a" in prompt
+    assert "`dify-agent config manifest` reports" in prompt
+    assert "`config_version.kind` as\n`build_draft`" in prompt
+    assert "`config_version.writable` as true" in prompt
+    assert "Save updated build-draft config files/skills/env/note" not in prompt
+    assert "cat <<'JSON' | dify-agent config push" not in prompt
+    assert "./.dify_conf/files/guide.txt" not in prompt
+
+
+def test_config_layer_suffix_prompt_uses_raw_runtime_manifest_without_catalog_synthesis() -> None:
+    layer = _build_layer()
+    layer._config_manifest_output = _manifest_output(writable=False)
+    layer._config_manifest = AgentStubConfigManifestResponse.model_validate_json(layer._config_manifest_output)
+
+    prompt = layer.build_suffix_prompt()
+
+    assert "`dify-agent config manifest` output" in prompt
+    assert "runtime-skill" in prompt
+    assert "runtime-file.txt" in prompt
+    assert "RUNTIME_KEY" in prompt
+    assert layer._config_manifest_output in prompt
+    assert "Other available skills" not in prompt
+    assert "Available files" not in prompt
+    assert "Available env keys" not in prompt
+    assert "Save updated build-draft config files/skills/env/note" not in prompt
+
+
+def test_config_layer_suffix_prompt_uses_loaded_cli_push_help() -> None:
+    layer = _build_layer()
+    layer._config_manifest = AgentStubConfigManifestResponse.model_validate_json(_manifest_output(writable=True))
+    layer._config_cli_help = {"dify-agent config push --help": _push_help_output()}
+
+    prompt = layer.build_suffix_prompt()
+
+    assert "Agent config CLI help" in prompt
+    assert "$ dify-agent config push --help" in prompt
+    assert "Recommended usage reads the JSON spec from stdin" in prompt
+    assert "cat <<'JSON' | dify-agent config push" in prompt
+    assert "./.dify_conf/files/guide.txt" in prompt
 
 
 def test_build_shell_pull_script_includes_json_markers_and_targets() -> None:
@@ -156,20 +219,36 @@ async def test_on_context_create_pulls_mentioned_assets_and_populates_materializ
 ) -> None:
     layer = _build_layer()
     captured: dict[str, object] = {}
+    help_scripts: list[str] = []
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
         del self, timeout
-        captured["script"] = script
-        captured["inject_agent_stub_env"] = inject_agent_stub_env
+        if script == "dify-agent config manifest":
+            captured["manifest_inject_agent_stub_env"] = inject_agent_stub_env
+            return _remote_result(_manifest_output())
+        if "--help" in script:
+            help_scripts.append(script)
+            return _remote_result(_push_help_output())
+        captured["pull_script"] = script
+        captured["pull_inject_agent_stub_env"] = inject_agent_stub_env
         return _remote_result(_pull_output())
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
 
     await layer.on_context_create()
 
-    assert captured["inject_agent_stub_env"] is True
-    assert 'dify-agent config skill pull alpha --to "$base/skills" --json' in captured["script"]
-    assert 'dify-agent config file pull guide.txt --to "$base/files" --json' in captured["script"]
+    assert captured["manifest_inject_agent_stub_env"] is True
+    assert layer._config_manifest_output == _manifest_output()
+    assert "dify-agent config manifest --help" in help_scripts
+    assert "dify-agent config skill pull --help" in help_scripts
+    assert "dify-agent config file pull --help" in help_scripts
+    assert "dify-agent config env pull --help" in help_scripts
+    assert "dify-agent config note pull --help" in help_scripts
+    assert "dify-agent config push --help" in help_scripts
+    assert layer._config_cli_help["dify-agent config push --help"] == _push_help_output().strip()
+    assert captured["pull_inject_agent_stub_env"] is True
+    assert 'dify-agent config skill pull alpha --to "$base/skills" --json' in captured["pull_script"]
+    assert 'dify-agent config file pull guide.txt --to "$base/files" --json' in captured["pull_script"]
     assert layer._loaded_skill_bodies == {"alpha": "# Alpha\nUse it.\n"}
     assert layer._pulled_skill_paths == {"alpha": "/tmp/dify-config/skills/alpha"}
     assert layer._pulled_file_paths == {"guide.txt": "/tmp/dify-config/files/guide.txt"}
@@ -182,7 +261,11 @@ async def test_on_context_create_raises_when_shell_output_is_truncated(
     layer = _build_layer()
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, script, inject_agent_stub_env, timeout
+        del self, inject_agent_stub_env, timeout
+        if script == "dify-agent config manifest":
+            return _remote_result(_manifest_output())
+        if "--help" in script:
+            return _remote_result(_push_help_output())
         return _remote_result(_pull_output(), output_complete=False, incomplete_reason="output_limit")
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
@@ -198,7 +281,11 @@ async def test_on_context_create_raises_when_mentioned_skill_is_missing(
     layer = _build_layer()
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, script, inject_agent_stub_env, timeout
+        del self, inject_agent_stub_env, timeout
+        if script == "dify-agent config manifest":
+            return _remote_result(_manifest_output())
+        if "--help" in script:
+            return _remote_result(_push_help_output())
         return _remote_result(_pull_output(include_skill=False))
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
@@ -214,7 +301,11 @@ async def test_on_context_create_raises_when_mentioned_file_is_missing(
     layer = _build_layer()
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
-        del self, script, inject_agent_stub_env, timeout
+        del self, inject_agent_stub_env, timeout
+        if script == "dify-agent config manifest":
+            return _remote_result(_manifest_output())
+        if "--help" in script:
+            return _remote_result(_push_help_output())
         return _remote_result(_pull_output(include_file=False))
 
     monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)

@@ -5,24 +5,37 @@ from __future__ import annotations
 import json
 import shlex
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import ClassVar
 
 from typing_extensions import Self, override
 
 from agenton.layers import EmptyRuntimeState, LayerDeps, PlainLayer
+from dify_agent.agent_stub.protocol.agent_stub import AgentStubConfigManifestResponse
 from dify_agent.layers.config.configs import DIFY_CONFIG_LAYER_TYPE_ID, DifyConfigLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
 
 _CONFIG_BASE_PATH = "/tmp/dify-config"
-_CONFIG_CLI_USAGE_PROMPT = """Agent config CLI usage is available inside shell jobs:
+_CONFIG_MANIFEST_COMMAND = "dify-agent config manifest"
+_CONFIG_CLI_USAGE_PROMPT = """Agent config CLI usage is available inside shell jobs. The command help below is captured
+from the current `dify-agent` CLI.
 
-- Show the current config manifest: `dify-agent config manifest`
-- Pull config skills: `dify-agent config skill pull [NAME ...]`
-- Pull config files: `dify-agent config file pull [NAME ...]`
-- Export config env variables: `dify-agent config env pull`
-- Export the config note: `dify-agent config note pull`"""
-_CONFIG_CLI_PUSH_PROMPT = "- Update the current build-draft config: `dify-agent config push [--from PATH]`"
+Local edits to config files, skills, env, or notes are not saved by themselves. Config changes are saved only by a
+config push. Config push is available only when `dify-agent config manifest` reports `config_version.kind` as
+`build_draft` and `config_version.writable` as true."""
+_CONFIG_CLI_PUSH_PROMPT = "- Save updated build-draft config files/skills/env/note by piping a JSON spec to `dify-agent config push`."
+_CONFIG_CLI_HELP_COMMANDS = (
+    "dify-agent config --help",
+    "dify-agent config manifest --help",
+    "dify-agent config skill --help",
+    "dify-agent config skill pull --help",
+    "dify-agent config file --help",
+    "dify-agent config file pull --help",
+    "dify-agent config env --help",
+    "dify-agent config env pull --help",
+    "dify-agent config note --help",
+    "dify-agent config note pull --help",
+)
+_CONFIG_CLI_PUSH_HELP_COMMAND = "dify-agent config push --help"
 
 
 class DifyConfigLayerError(RuntimeError):
@@ -43,6 +56,9 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
     _loaded_skill_bodies: dict[str, str] = field(default_factory=dict)
     _pulled_skill_paths: dict[str, str] = field(default_factory=dict)
     _pulled_file_paths: dict[str, str] = field(default_factory=dict)
+    _config_manifest: AgentStubConfigManifestResponse | None = None
+    _config_manifest_output: str = ""
+    _config_cli_help: dict[str, str] = field(default_factory=dict)
 
     @classmethod
     @override
@@ -61,16 +77,18 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
 
     @override
     async def on_context_create(self) -> None:
+        await self._load_config_manifest()
+        await self._load_config_cli_help()
         await self._pull_mentioned_targets()
 
     @override
     async def on_context_resume(self) -> None:
+        await self._load_config_manifest()
+        await self._load_config_cli_help()
         await self._pull_mentioned_targets()
 
     def build_prompt_context(self) -> str:
         sections: list[str] = []
-        if self.config.note.strip():
-            sections.append(f"Config note:\n{self.config.note}")
 
         loaded_skill_sections = []
         for name in self.config.mentioned_skill_names:
@@ -94,27 +112,64 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, EmptyRun
 
     def build_suffix_prompt(self) -> str:
         sections: list[str] = []
-        remaining_skills = [
-            f"- {skill.name}: {skill.description}"
-            for skill in self.config.skills
-            if skill.name not in set(self.config.mentioned_skill_names)
-        ]
-        if remaining_skills:
-            sections.append("Other available skills:\n" + "\n".join(remaining_skills))
-        remaining_files = [
-            f"- {file.name}"
-            for file in self.config.files
-            if file.name not in set(self.config.mentioned_file_names)
-        ]
-        if remaining_files:
-            sections.append("Available files:\n" + "\n".join(remaining_files))
-        if self.config.env_keys:
-            sections.append("Available env keys:\n" + "\n".join(f"- {key}" for key in self.config.env_keys))
+        if self._config_manifest_output:
+            sections.append(f"`{_CONFIG_MANIFEST_COMMAND}` output:\n{self._config_manifest_output}")
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
-        if self.config.writable:
+        if self._config_writable:
             usage_lines.append(_CONFIG_CLI_PUSH_PROMPT)
+        if cli_help := self._format_config_cli_help():
+            usage_lines.append(cli_help)
         sections.append("\n".join(usage_lines))
         return "\n\n".join(section for section in sections if section)
+
+    @property
+    def _config_writable(self) -> bool:
+        if self._config_manifest is not None:
+            return self._config_manifest.config_version.writable
+        return False
+
+    def _format_config_cli_help(self) -> str:
+        commands = list(_CONFIG_CLI_HELP_COMMANDS)
+        if self._config_writable:
+            commands.append(_CONFIG_CLI_PUSH_HELP_COMMAND)
+        command_sections = [
+            f"$ {command}\n{self._config_cli_help[command]}" for command in commands if command in self._config_cli_help
+        ]
+        if not command_sections:
+            return ""
+        return "Agent config CLI help:\n" + "\n\n".join(command_sections)
+
+    async def _load_config_cli_help(self) -> None:
+        self._config_cli_help = {}
+        commands = list(_CONFIG_CLI_HELP_COMMANDS)
+        if self._config_writable:
+            commands.append(_CONFIG_CLI_PUSH_HELP_COMMAND)
+        for command in commands:
+            result = await self.deps.shell.run_remote_script(command, timeout=10.0)
+            if result.exit_code != 0 or not result.output_complete:
+                continue
+            output = result.output.strip()
+            if output:
+                self._config_cli_help[command] = output
+
+    async def _load_config_manifest(self) -> None:
+        self._config_manifest = None
+        self._config_manifest_output = ""
+        result = await self.deps.shell.run_remote_script(
+            _CONFIG_MANIFEST_COMMAND,
+            inject_agent_stub_env=True,
+            timeout=10.0,
+        )
+        if result.exit_code != 0 or not result.output_complete:
+            return
+        output = result.output.strip()
+        if not output:
+            return
+        try:
+            self._config_manifest = AgentStubConfigManifestResponse.model_validate_json(output)
+        except ValueError:
+            return
+        self._config_manifest_output = output
 
     async def _pull_mentioned_targets(self) -> None:
         self._loaded_skill_bodies = {}
