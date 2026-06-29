@@ -31,16 +31,32 @@ const joinSandboxPath = (basePath: string, name: string) => {
   return normalizedBasePath ? `${normalizedBasePath}/${name}` : name
 }
 
+function getSandboxEntryPathSegments(entryName: string, basePath: string) {
+  const normalizedBasePath = normalizeSandboxPath(basePath)
+  const normalizedEntryName = normalizeSandboxPath(entryName)
+
+  if (!normalizedEntryName)
+    return []
+
+  if (!normalizedBasePath)
+    return normalizedEntryName.split('/').filter(Boolean)
+
+  if (normalizedEntryName === normalizedBasePath || normalizedEntryName.startsWith(`${normalizedBasePath}/`))
+    return normalizedEntryName.split('/').filter(Boolean)
+
+  return [...normalizedBasePath.split('/').filter(Boolean), ...normalizedEntryName.split('/').filter(Boolean)]
+}
+
 function buildSandboxFileTree(entries: SandboxFileEntryResponse[] = [], basePath = '.'): AgentFileNode[] {
   const rootFiles: AgentFileNode[] = []
 
   for (const entry of entries) {
-    const pathSegments = entry.name.split('/').filter(Boolean)
+    const pathSegments = getSandboxEntryPathSegments(entry.name, basePath)
     if (!pathSegments.length)
       continue
 
     let currentFiles = rootFiles
-    let currentPath = normalizeSandboxPath(basePath)
+    let currentPath = ''
 
     pathSegments.forEach((segment, index) => {
       const isLeaf = index === pathSegments.length - 1
