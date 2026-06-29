@@ -64,6 +64,9 @@ describe('formatFileSize', () => {
   it('should format petabytes correctly', () => {
     expect(formatFileSize(1500000000000000)).toBe('1.33 PB')
   })
+  it('should clamp to PB instead of an undefined unit for very large sizes', () => {
+    expect(formatFileSize(1024 ** 6)).toBe('1024.00 PB')
+  })
 })
 describe('formatTime', () => {
   it('should return the input if it is falsy', () => {
@@ -80,6 +83,9 @@ describe('formatTime', () => {
   })
   it('should handle large numbers', () => {
     expect(formatTime(7200)).toBe('2.00 h')
+  })
+  it('should clamp to hours instead of an undefined unit for very large durations', () => {
+    expect(formatTime(216000)).toBe('60.00 h')
   })
 })
 describe('formatNumberAbbreviated', () => {
