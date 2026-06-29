@@ -166,9 +166,7 @@ class _ProcessStreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
             id="3-0",
             run_id=run_id,
             created_at=created_at,
-            data=FunctionToolCallEvent(
-                part=ToolCallPart(tool_name="bash", args={"cmd": "ls"}, tool_call_id="tool-1")
-            ),
+            data=FunctionToolCallEvent(part=ToolCallPart(tool_name="bash", args={"cmd": "ls"}, tool_call_id="tool-1")),
         )
         yield PydanticAIStreamRunEvent(
             id="4-0",
