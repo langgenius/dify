@@ -368,6 +368,60 @@ class TestAppAnnotationServiceEnableDisable:
             mock_redis.setnx.assert_called_once_with("disable_app_annotation_job_uuid-2", "waiting")
             mock_task.delay.assert_called_once_with("uuid-2", "app-1", tenant_id)
 
+    def test_enable_app_annotation_second_call_returns_processing_while_guard_set(self) -> None:
+        args = {"score_threshold": 0.5, "embedding_provider_name": "p", "embedding_model_name": "m"}
+        current_user = _make_user("user-1")
+        tenant_id = "tenant-1"
+        guard_store: dict[str, str] = {}
+
+        def mock_get(key: str) -> str | None:
+            return guard_store.get(key)
+
+        def mock_setex(key: str, ttl: int, value: str) -> None:
+            guard_store[key] = value
+
+        with (
+            patch("services.annotation_service.redis_client") as mock_redis,
+            patch("services.annotation_service.current_account_with_tenant", return_value=(current_user, tenant_id)),
+            patch("services.annotation_service.uuid.uuid4", side_effect=["uuid-1", "uuid-2"]),
+            patch("services.annotation_service.enable_annotation_reply_task") as mock_task,
+        ):
+            mock_redis.get.side_effect = mock_get
+            mock_redis.setex.side_effect = mock_setex
+
+            first = AppAnnotationService.enable_app_annotation(args, "app-1")
+            second = AppAnnotationService.enable_app_annotation(args, "app-1")
+
+        assert first == {"job_id": "uuid-1", "job_status": "waiting"}
+        assert second == {"job_id": "uuid-1", "job_status": "processing"}
+        mock_task.delay.assert_called_once()
+
+    def test_disable_app_annotation_second_call_returns_processing_while_guard_set(self) -> None:
+        tenant_id = "tenant-1"
+        guard_store: dict[str, str] = {}
+
+        def mock_get(key: str) -> str | None:
+            return guard_store.get(key)
+
+        def mock_setex(key: str, ttl: int, value: str) -> None:
+            guard_store[key] = value
+
+        with (
+            patch("services.annotation_service.redis_client") as mock_redis,
+            patch("services.annotation_service.current_account_with_tenant", return_value=(_make_user(), tenant_id)),
+            patch("services.annotation_service.uuid.uuid4", side_effect=["uuid-1", "uuid-2"]),
+            patch("services.annotation_service.disable_annotation_reply_task") as mock_task,
+        ):
+            mock_redis.get.side_effect = mock_get
+            mock_redis.setex.side_effect = mock_setex
+
+            first = AppAnnotationService.disable_app_annotation("app-1")
+            second = AppAnnotationService.disable_app_annotation("app-1")
+
+        assert first == {"job_id": "uuid-1", "job_status": "waiting"}
+        assert second == {"job_id": "uuid-1", "job_status": "processing"}
+        mock_task.delay.assert_called_once()
+
 
 class TestAppAnnotationServiceListAndExport:
     """Test suite for list and export methods."""
