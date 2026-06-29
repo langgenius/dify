@@ -459,12 +459,12 @@ class MCPToolManageService:
         Returns:
             JSON string of encrypted data
         """
-        from core.entities.provider_entities import BasicProviderConfig
+        from core.entities.provider_entities import BasicProviderConfig, ProviderConfigType
         from core.tools.utils.encryption import create_provider_encrypter
 
         # Create config for secret fields
         config = [
-            BasicProviderConfig(type=BasicProviderConfig.Type.SECRET_INPUT, name=field) for field in secret_fields
+            BasicProviderConfig(type=ProviderConfigType.SECRET_INPUT, name=field) for field in secret_fields
         ]
 
         encrypter_instance, _ = create_provider_encrypter(

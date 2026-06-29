@@ -1,10 +1,12 @@
+from http import HTTPStatus
 from urllib import parse
 from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, select
+from werkzeug.exceptions import NotFound
 
 import services
 from configs import dify_config
@@ -45,6 +47,11 @@ class MemberInvitePayload(BaseModel):
     role: str
     language: str | None = None
 
+    @field_validator("emails")
+    @classmethod
+    def normalize_emails(cls, emails: list[str]) -> list[str]:
+        return list(dict.fromkeys(email.lower() for email in emails))
+
 
 class MemberRoleUpdatePayload(BaseModel):
     role: str
@@ -72,7 +79,7 @@ class MemberInviteResultResponse(ResponseModel):
 
 class MemberActionResponse(ResponseModel):
     result: str
-    tenant_id: str = ""
+    tenant_id: str
 
 
 class MemberInviteResponse(ResponseModel):
@@ -123,10 +130,6 @@ def _serialize_member_roles(
 def _normalize_enum_value(value: object) -> str:
     normalized = getattr(value, "value", value)
     return str(normalized) if normalized is not None else ""
-
-
-def _normalize_invitee_emails(emails: list[str]) -> list[str]:
-    return list(dict.fromkeys(email.lower() for email in emails))
 
 
 def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
@@ -180,7 +183,7 @@ class MemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @with_current_user
     def get(self, current_user: Account | None = None):
         if current_user is None:
@@ -217,7 +220,7 @@ class MemberListApi(Resource):
                 }
             )
 
-        return dump_response(AccountWithRoleListResponse, {"accounts": serialized_members}), 200
+        return dump_response(AccountWithRoleListResponse, {"accounts": serialized_members}), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/invite-email")
@@ -225,7 +228,7 @@ class MemberInviteEmailApi(Resource):
     """Invite a new member by email."""
 
     @console_ns.expect(console_ns.models[MemberInvitePayload.__name__])
-    @console_ns.response(201, "Success", console_ns.models[MemberInviteResponse.__name__])
+    @console_ns.response(HTTPStatus.CREATED, "Success", console_ns.models[MemberInviteResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -234,19 +237,19 @@ class MemberInviteEmailApi(Resource):
         payload = console_ns.payload or {}
         args = MemberInvitePayload.model_validate(payload)
 
-        invitee_emails = _normalize_invitee_emails(args.emails)
+        invitee_emails = args.emails
         invitee_role = args.role
         interface_language = args.language
         if not dify_config.RBAC_ENABLED:
             if not TenantAccountRole.is_valid_role(invitee_role):
-                return {"code": "invalid-role", "message": "Invalid role"}, 400
+                return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
             if not TenantAccountRole.is_non_owner_role(TenantAccountRole(invitee_role)):
-                return {"code": "invalid-role", "message": "Invalid role"}, 400
+                return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         inviter = current_user
         if not inviter.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(invitee_role, inviter.current_tenant.id):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
 
         # Check workspace permission for member invitations
         from libs.workspace_permission import check_workspace_member_invite_permission
@@ -299,7 +302,7 @@ class MemberInviteEmailApi(Resource):
             result="success",
             invitation_results=invitation_results,
             tenant_id=inviter.current_tenant.id if inviter.current_tenant else "",
-        ).model_dump(mode="json"), 201
+        ).model_dump(mode="json"), HTTPStatus.CREATED
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>")
@@ -309,32 +312,32 @@ class MemberCancelInviteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[MemberActionResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[MemberActionResponse.__name__])
     @with_current_user
     def delete(self, current_user: Account, member_id: UUID):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         member = db.session.get(Account, str(member_id))
         if member is None:
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
         else:
             try:
                 TenantService.remove_member_from_tenant(
                     current_user.current_tenant, member, current_user, session=db.session
                 )
             except services.errors.account.CannotOperateSelfError as e:
-                return {"code": "cannot-operate-self", "message": str(e)}, 400
+                return {"code": "cannot-operate-self", "message": str(e)}, HTTPStatus.BAD_REQUEST
             except services.errors.account.NoPermissionError as e:
-                return {"code": "forbidden", "message": str(e)}, 403
+                return {"code": "forbidden", "message": str(e)}, HTTPStatus.FORBIDDEN
             except services.errors.account.MemberNotInTenantError as e:
-                return {"code": "member-not-found", "message": str(e)}, 404
+                return {"code": "member-not-found", "message": str(e)}, HTTPStatus.NOT_FOUND
             except Exception as e:
                 raise ValueError(str(e))
 
         return MemberActionResponse(
             result="success",
             tenant_id=current_user.current_tenant.id if current_user.current_tenant else "",
-        ).model_dump(mode="json"), 200
+        ).model_dump(mode="json"), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/update-role")
@@ -342,7 +345,7 @@ class MemberUpdateRoleApi(Resource):
     """Update member role."""
 
     @console_ns.expect(console_ns.models[MemberRoleUpdatePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -353,14 +356,14 @@ class MemberUpdateRoleApi(Resource):
         new_role = args.role
 
         if not TenantAccountRole.is_valid_role(new_role):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         if not _is_role_enabled(new_role, current_user.current_tenant.id):
-            return {"code": "invalid-role", "message": "Invalid role"}, 400
+            return {"code": "invalid-role", "message": "Invalid role"}, HTTPStatus.BAD_REQUEST
         member = db.session.get(Account, str(member_id))
         if not member:
-            abort(404)
+            abort(HTTPStatus.NOT_FOUND)
 
         try:
             assert member is not None, "Member not found"
@@ -368,13 +371,13 @@ class MemberUpdateRoleApi(Resource):
                 current_user.current_tenant, member, new_role, current_user, session=db.session
             )
         except services.errors.account.CannotOperateSelfError as e:
-            return {"code": "cannot-operate-self", "message": str(e)}, 400
+            return {"code": "cannot-operate-self", "message": str(e)}, HTTPStatus.BAD_REQUEST
         except services.errors.account.NoPermissionError as e:
-            return {"code": "forbidden", "message": str(e)}, 403
+            return {"code": "forbidden", "message": str(e)}, HTTPStatus.FORBIDDEN
         except services.errors.account.MemberNotInTenantError as e:
-            return {"code": "member-not-found", "message": str(e)}, 404
+            return {"code": "member-not-found", "message": str(e)}, HTTPStatus.NOT_FOUND
         except services.errors.account.RoleAlreadyAssignedError as e:
-            return {"code": "role-already-assigned", "message": str(e)}, 400
+            return {"code": "role-already-assigned", "message": str(e)}, HTTPStatus.BAD_REQUEST
         except Exception as e:
             raise ValueError(str(e))
 
@@ -388,13 +391,13 @@ class DatasetOperatorMemberListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountWithRoleListResponse.__name__])
     @with_current_user
     def get(self, current_user: Account):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
         members = TenantService.get_dataset_operator_members(current_user.current_tenant, session=db.session)
-        return dump_response(AccountWithRoleListResponse, {"accounts": members}), 200
+        return dump_response(AccountWithRoleListResponse, {"accounts": members}), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/send-owner-transfer-confirm-email")
@@ -402,7 +405,7 @@ class SendOwnerTransferEmailApi(Resource):
     """Send owner transfer email."""
 
     @console_ns.expect(console_ns.models[OwnerTransferEmailPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -440,7 +443,7 @@ class SendOwnerTransferEmailApi(Resource):
 @console_ns.route("/workspaces/current/members/owner-transfer-check")
 class OwnerTransferCheckApi(Resource):
     @console_ns.expect(console_ns.models[OwnerTransferCheckPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -485,7 +488,7 @@ class OwnerTransferCheckApi(Resource):
 @console_ns.route("/workspaces/current/members/<uuid:member_id>/owner-transfer")
 class OwnerTransfer(Resource):
     @console_ns.expect(console_ns.models[OwnerTransferPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -515,8 +518,7 @@ class OwnerTransfer(Resource):
 
         member = db.session.get(Account, str(member_id))
         if not member:
-            abort(404)
-            return  # Never reached, but helps type checker
+            raise NotFound()
 
         if not current_user.current_tenant:
             raise ValueError("No current tenant")

@@ -6,12 +6,16 @@ verb-based aliases stay available as deprecated resources so OpenAPI metadata
 marks only the legacy paths as deprecated.
 """
 
-from typing import Any
+from datetime import datetime
+from enum import StrEnum
+from http import HTTPStatus
+from typing import Any, Self
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
+from constants import HIDDEN_VALUE
 from controllers.common.fields import SuccessResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -25,7 +29,12 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user_id,
 )
-from core.plugin.entities.endpoint import EndpointEntityWithInstance
+from core.entities.parameter_entities import (
+    AppSelectorScope,
+    ModelSelectorScope,
+    ToolSelectorScope,
+)
+from core.entities.provider_entities import ProviderConfigType
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from fields.base import ResponseModel
 from libs.login import login_required
@@ -64,8 +73,95 @@ class EndpointListForPluginQuery(EndpointListQuery):
     plugin_id: str
 
 
+class EndpointProviderConfigScope(StrEnum):
+    ALL = AppSelectorScope.ALL.value
+    CHAT = AppSelectorScope.CHAT.value
+    WORKFLOW = AppSelectorScope.WORKFLOW.value
+    COMPLETION = AppSelectorScope.COMPLETION.value
+    LLM = ModelSelectorScope.LLM.value
+    TEXT_EMBEDDING = ModelSelectorScope.TEXT_EMBEDDING.value
+    RERANK = ModelSelectorScope.RERANK.value
+    TTS = ModelSelectorScope.TTS.value
+    SPEECH2TEXT = ModelSelectorScope.SPEECH2TEXT.value
+    MODERATION = ModelSelectorScope.MODERATION.value
+    VISION = ModelSelectorScope.VISION.value
+    CUSTOM = ToolSelectorScope.CUSTOM.value
+    BUILTIN = ToolSelectorScope.BUILTIN.value
+
+
+class EndpointProviderConfigI18nResponse(ResponseModel):
+    en_US: str
+    zh_Hans: str | None = None
+    pt_BR: str | None = None
+    ja_JP: str | None = None
+
+
+class EndpointProviderConfigOptionResponse(ResponseModel):
+    value: str
+    label: EndpointProviderConfigI18nResponse
+
+
+class EndpointProviderConfigResponse(ResponseModel):
+    type: ProviderConfigType
+    name: str
+    scope: EndpointProviderConfigScope | None = None
+    required: bool = False
+    default: int | str | float | bool | None = None
+    options: list[EndpointProviderConfigOptionResponse] | None = None
+    multiple: bool = False
+    label: EndpointProviderConfigI18nResponse | None = None
+    help: EndpointProviderConfigI18nResponse | None = None
+    url: str | None = None
+    placeholder: EndpointProviderConfigI18nResponse | None = None
+
+    def is_secret_input(self) -> bool:
+        return self.type == ProviderConfigType.SECRET_INPUT
+
+
+class EndpointDeclarationResponse(ResponseModel):
+    path: str
+    method: str
+    hidden: bool = False
+
+
+class EndpointProviderDeclarationResponse(ResponseModel):
+    settings: list[EndpointProviderConfigResponse] = Field(default_factory=list)
+    endpoints: list[EndpointDeclarationResponse] | None = Field(default_factory=list)
+
+    def secret_setting_names(self) -> set[str]:
+        return {setting.name for setting in self.settings if setting.is_secret_input()}
+
+
+class EndpointListItemResponse(ResponseModel):
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    tenant_id: str
+    plugin_id: str
+    settings: dict[str, Any]
+    expired_at: datetime
+    declaration: EndpointProviderDeclarationResponse = Field(default_factory=EndpointProviderDeclarationResponse)
+    name: str
+    enabled: bool
+    url: str
+    hook_id: str
+
+    @model_validator(mode="after")
+    def mask_secret_settings(self) -> Self:
+        secret_names = self.declaration.secret_setting_names()
+        if not secret_names:
+            return self
+
+        settings = dict(self.settings)
+        for secret_name in secret_names:
+            if secret_name in settings:
+                settings[secret_name] = HIDDEN_VALUE
+        self.settings = settings
+        return self
+
+
 class EndpointListResponse(ResponseModel):
-    endpoints: list[EndpointEntityWithInstance] = Field(description="Endpoint information")
+    endpoints: list[EndpointListItemResponse] = Field(description="Endpoint information")
 
 
 register_schema_models(
@@ -81,6 +177,11 @@ register_schema_models(
 register_response_schema_models(
     console_ns,
     SuccessResponse,
+    EndpointProviderConfigOptionResponse,
+    EndpointProviderConfigResponse,
+    EndpointDeclarationResponse,
+    EndpointProviderDeclarationResponse,
+    EndpointListItemResponse,
     EndpointListResponse,
 )
 
@@ -153,11 +254,11 @@ class EndpointCollectionApi(Resource):
     @console_ns.doc(description="Create a new plugin endpoint")
     @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint created successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -182,11 +283,11 @@ class DeprecatedEndpointCreateApi(Resource):
     )
     @console_ns.expect(console_ns.models[EndpointCreatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint created successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -204,7 +305,7 @@ class EndpointListApi(Resource):
     @console_ns.doc(description="List plugin endpoints with pagination")
     @console_ns.doc(params=query_params_from_model(EndpointListQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Success",
         console_ns.models[EndpointListResponse.__name__],
     )
@@ -216,14 +317,14 @@ class EndpointListApi(Resource):
     def get(self, tenant_id: str, user_id: str):
         args = EndpointListQuery.model_validate(request.args.to_dict(flat=True))
 
-        return EndpointListResponse(
-            endpoints=EndpointService.list_endpoints(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                page=args.page,
-                page_size=args.page_size,
-            )
-        ).model_dump(mode="json")
+        endpoints = EndpointService.list_endpoints(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            page=args.page,
+            page_size=args.page_size,
+        )
+
+        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/list/plugin")
@@ -232,7 +333,7 @@ class EndpointListForSinglePluginApi(Resource):
     @console_ns.doc(description="List endpoints for a specific plugin")
     @console_ns.doc(params=query_params_from_model(EndpointListForPluginQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Success",
         console_ns.models[EndpointListResponse.__name__],
     )
@@ -244,15 +345,15 @@ class EndpointListForSinglePluginApi(Resource):
     def get(self, tenant_id: str, user_id: str):
         args = EndpointListForPluginQuery.model_validate(request.args.to_dict(flat=True))
 
-        return EndpointListResponse(
-            endpoints=EndpointService.list_endpoints_for_single_plugin(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                plugin_id=args.plugin_id,
-                page=args.page,
-                page_size=args.page_size,
-            )
-        ).model_dump(mode="json")
+        endpoints = EndpointService.list_endpoints_for_single_plugin(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plugin_id=args.plugin_id,
+            page=args.page,
+            page_size=args.page_size,
+        )
+
+        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/endpoints/<string:id>")
@@ -263,11 +364,11 @@ class EndpointItemApi(Resource):
     @console_ns.doc(description="Delete a plugin endpoint")
     @console_ns.doc(params={"id": {"description": "Endpoint ID", "type": "string", "required": True}})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint deleted successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -285,11 +386,11 @@ class EndpointItemApi(Resource):
     @console_ns.expect(console_ns.models[EndpointUpdatePayload.__name__])
     @console_ns.doc(params={"id": {"description": "Endpoint ID", "type": "string", "required": True}})
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint updated successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -317,11 +418,11 @@ class DeprecatedEndpointDeleteApi(Resource):
     )
     @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint deleted successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -330,7 +431,7 @@ class DeprecatedEndpointDeleteApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        return SuccessResponse(  #
+        return SuccessResponse(
             success=_delete_endpoint_from_payload(tenant_id=tenant_id, user_id=user_id)
         ).model_dump(mode="json")
 
@@ -349,11 +450,11 @@ class DeprecatedEndpointUpdateApi(Resource):
     )
     @console_ns.expect(console_ns.models[LegacyEndpointUpdatePayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint updated successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -362,7 +463,7 @@ class DeprecatedEndpointUpdateApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        return SuccessResponse(  #
+        return SuccessResponse(
             success=_legacy_update_endpoint(tenant_id=tenant_id, user_id=user_id)
         ).model_dump(mode="json")
 
@@ -373,11 +474,11 @@ class EndpointEnableApi(Resource):
     @console_ns.doc(description="Enable a plugin endpoint")
     @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint enabled successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -397,11 +498,11 @@ class EndpointDisableApi(Resource):
     @console_ns.doc(description="Disable a plugin endpoint")
     @console_ns.expect(console_ns.models[EndpointIdPayload.__name__])
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Endpoint disabled successfully",
         console_ns.models[SuccessResponse.__name__],
     )
-    @console_ns.response(403, "Admin privileges required")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Admin privileges required")
     @setup_required
     @login_required
     @is_admin_or_owner_required

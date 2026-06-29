@@ -369,17 +369,19 @@ class InvitationCode(TypeBase):
     )
 
 
+class TenantPluginInstallPermission(enum.StrEnum):
+    EVERYONE = "everyone"
+    ADMINS = "admins"
+    NOBODY = "noone"
+
+
+class TenantPluginDebugPermission(enum.StrEnum):
+    EVERYONE = "everyone"
+    ADMINS = "admins"
+    NOBODY = "noone"
+
+
 class TenantPluginPermission(TypeBase):
-    class InstallPermission(enum.StrEnum):
-        EVERYONE = "everyone"
-        ADMINS = "admins"
-        NOBODY = "noone"
-
-    class DebugPermission(enum.StrEnum):
-        EVERYONE = "everyone"
-        ADMINS = "admins"
-        NOBODY = "noone"
-
     __tablename__ = "account_plugin_permissions"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="account_plugin_permission_pkey"),
@@ -390,36 +392,42 @@ class TenantPluginPermission(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    install_permission: Mapped[InstallPermission] = mapped_column(
-        EnumText(InstallPermission, length=16),
+    install_permission: Mapped[TenantPluginInstallPermission] = mapped_column(
+        EnumText(TenantPluginInstallPermission, length=16),
         nullable=False,
         server_default="everyone",
-        default=InstallPermission.EVERYONE,
+        default=TenantPluginInstallPermission.EVERYONE,
     )
-    debug_permission: Mapped[DebugPermission] = mapped_column(
-        EnumText(DebugPermission, length=16), nullable=False, server_default="noone", default=DebugPermission.NOBODY
+    debug_permission: Mapped[TenantPluginDebugPermission] = mapped_column(
+        EnumText(TenantPluginDebugPermission, length=16),
+        nullable=False,
+        server_default="noone",
+        default=TenantPluginDebugPermission.NOBODY,
     )
+
+
+class TenantPluginAutoUpgradeCategory(enum.StrEnum):
+    TOOL = "tool"
+    MODEL = "model"
+    EXTENSION = "extension"
+    AGENT_STRATEGY = "agent-strategy"
+    DATASOURCE = "datasource"
+    TRIGGER = "trigger"
+
+
+class TenantPluginAutoUpgradeStrategySetting(enum.StrEnum):
+    DISABLED = "disabled"
+    FIX_ONLY = "fix_only"
+    LATEST = "latest"
+
+
+class TenantPluginAutoUpgradeMode(enum.StrEnum):
+    ALL = "all"
+    PARTIAL = "partial"
+    EXCLUDE = "exclude"
 
 
 class TenantPluginAutoUpgradeStrategy(TypeBase):
-    class PluginCategory(enum.StrEnum):
-        TOOL = "tool"
-        MODEL = "model"
-        EXTENSION = "extension"
-        AGENT_STRATEGY = "agent-strategy"
-        DATASOURCE = "datasource"
-        TRIGGER = "trigger"
-
-    class StrategySetting(enum.StrEnum):
-        DISABLED = "disabled"
-        FIX_ONLY = "fix_only"
-        LATEST = "latest"
-
-    class UpgradeMode(enum.StrEnum):
-        ALL = "all"
-        PARTIAL = "partial"
-        EXCLUDE = "exclude"
-
     __tablename__ = "tenant_plugin_auto_upgrade_strategies"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_plugin_auto_upgrade_strategy_pkey"),
@@ -431,20 +439,23 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    category: Mapped[PluginCategory] = mapped_column(
-        EnumText(PluginCategory, length=32),
+    category: Mapped[TenantPluginAutoUpgradeCategory] = mapped_column(
+        EnumText(TenantPluginAutoUpgradeCategory, length=32),
         nullable=False,
         server_default="tool",
-        default=PluginCategory.TOOL,
+        default=TenantPluginAutoUpgradeCategory.TOOL,
     )
-    strategy_setting: Mapped[StrategySetting] = mapped_column(
-        EnumText(StrategySetting, length=16),
+    strategy_setting: Mapped[TenantPluginAutoUpgradeStrategySetting] = mapped_column(
+        EnumText(TenantPluginAutoUpgradeStrategySetting, length=16),
         nullable=False,
         server_default="fix_only",
-        default=StrategySetting.FIX_ONLY,
+        default=TenantPluginAutoUpgradeStrategySetting.FIX_ONLY,
     )
-    upgrade_mode: Mapped[UpgradeMode] = mapped_column(
-        EnumText(UpgradeMode, length=16), nullable=False, server_default="exclude", default=UpgradeMode.EXCLUDE
+    upgrade_mode: Mapped[TenantPluginAutoUpgradeMode] = mapped_column(
+        EnumText(TenantPluginAutoUpgradeMode, length=16),
+        nullable=False,
+        server_default="exclude",
+        default=TenantPluginAutoUpgradeMode.EXCLUDE,
     )
     exclude_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     include_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default_factory=list)

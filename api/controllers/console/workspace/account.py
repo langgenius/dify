@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from http import HTTPStatus
 from typing import Literal
 
 import pytz
@@ -250,7 +251,7 @@ register_response_schema_models(
 @console_ns.route("/account/init")
 class AccountInitApi(Resource):
     @console_ns.expect(console_ns.models[AccountInitPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @with_current_user
@@ -298,7 +299,7 @@ class AccountProfileApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @enterprise_license_required
     @with_current_user
     def get(self, current_user: Account):
@@ -311,7 +312,7 @@ class AccountNameApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
@@ -326,7 +327,7 @@ class AccountAvatarApi(Resource):
     @console_ns.doc("get_account_avatar")
     @console_ns.doc(description="Get account avatar url")
     @console_ns.doc(params=query_params_from_model(AccountAvatarQuery))
-    @console_ns.response(200, "Success", console_ns.models[AvatarUrlResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AvatarUrlResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -356,7 +357,7 @@ class AccountAvatarApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
@@ -373,7 +374,7 @@ class AccountInterfaceLanguageApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
@@ -392,7 +393,7 @@ class AccountInterfaceThemeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
@@ -411,7 +412,7 @@ class AccountTimezoneApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
@@ -428,7 +429,7 @@ class AccountPasswordApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
@@ -448,7 +449,7 @@ class AccountIntegrateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountIntegrateListResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountIntegrateListResponse.__name__])
     @with_current_user
     def get(self, account: Account):
         account_integrates = db.session.scalars(
@@ -489,7 +490,7 @@ class AccountDeleteVerifyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @with_current_user
     def get(self, account: Account):
         token, code = AccountService.generate_account_deletion_verification_code(account)
@@ -501,7 +502,7 @@ class AccountDeleteVerifyApi(Resource):
 @console_ns.route("/account/delete")
 class AccountDeleteApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -521,7 +522,7 @@ class AccountDeleteApi(Resource):
 @console_ns.route("/account/delete/feedback")
 class AccountDeleteUpdateFeedbackApi(Resource):
     @console_ns.expect(console_ns.models[AccountDeletionFeedbackPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     def post(self):
         payload = console_ns.payload or {}
@@ -539,7 +540,7 @@ class EducationVerifyApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @console_ns.response(200, "Success", console_ns.models[EducationVerifyResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationVerifyResponse.__name__])
     @with_current_user
     def get(self, account: Account):
         return dump_response(
@@ -551,7 +552,7 @@ class EducationVerifyApi(Resource):
 class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
     # response-contract:ignore billing-service activation payload; TODO: model education activation result.
-    @console_ns.response(200, "Success")
+    @console_ns.response(HTTPStatus.OK, "Success")
     @setup_required
     @login_required
     @account_initialization_required
@@ -570,7 +571,7 @@ class EducationApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @console_ns.response(200, "Success", console_ns.models[EducationStatusResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationStatusResponse.__name__])
     @with_current_user
     def get(self, account: Account):
         res = BillingService.EducationIdentity.status(account.id) or {}
@@ -588,7 +589,7 @@ class EducationAutoCompleteApi(Resource):
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    @console_ns.response(200, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[EducationAutocompleteResponse.__name__])
     def get(self):
         payload = request.args.to_dict(flat=True)
         args = EducationAutocompleteQuery.model_validate(payload)
@@ -602,7 +603,7 @@ class EducationAutoCompleteApi(Resource):
 @console_ns.route("/account/change-email")
 class ChangeEmailSendEmailApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailSendPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultDataResponse.__name__])
     @enable_change_email
     @setup_required
     @login_required
@@ -662,7 +663,7 @@ class ChangeEmailSendEmailApi(Resource):
 @console_ns.route("/account/change-email/validity")
 class ChangeEmailCheckApi(Resource):
     @console_ns.expect(console_ns.models[ChangeEmailValidityPayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[VerificationTokenResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[VerificationTokenResponse.__name__])
     @enable_change_email
     @setup_required
     @login_required
@@ -715,7 +716,7 @@ class ChangeEmailResetApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[AccountResponse.__name__])
     @with_current_user
     def post(self, current_user: Account):
         payload = console_ns.payload or {}
@@ -763,7 +764,7 @@ class ChangeEmailResetApi(Resource):
 @console_ns.route("/account/change-email/check-email-unique")
 class CheckEmailUnique(Resource):
     @console_ns.expect(console_ns.models[CheckEmailUniquePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     def post(self):
         payload = console_ns.payload or {}
