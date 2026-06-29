@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from typing import Literal
 
@@ -241,12 +242,17 @@ async def test_on_context_create_pulls_mentioned_assets_and_populates_materializ
 
     assert captured["manifest_inject_agent_stub_env"] is True
     assert layer._config_manifest_output == _manifest_output()
+    assert "dify-agent config --help" in help_scripts
     assert "dify-agent config manifest --help" in help_scripts
     assert "dify-agent config skill pull --help" in help_scripts
     assert "dify-agent config file pull --help" in help_scripts
     assert "dify-agent config env pull --help" in help_scripts
     assert "dify-agent config note pull --help" in help_scripts
     assert "dify-agent config push --help" in help_scripts
+    assert "dify-agent config skill --help" not in help_scripts
+    assert "dify-agent config file --help" not in help_scripts
+    assert "dify-agent config env --help" not in help_scripts
+    assert "dify-agent config note --help" not in help_scripts
     assert layer._config_cli_help["dify-agent config push --help"] == _push_help_output().strip()
     assert captured["pull_inject_agent_stub_env"] is True
     assert 'dify-agent config skill pull alpha --to "$base/skills" --json' in captured["pull_script"]
@@ -254,6 +260,30 @@ async def test_on_context_create_pulls_mentioned_assets_and_populates_materializ
     assert layer._loaded_skill_bodies == {"alpha": "# Alpha\nUse it.\n"}
     assert layer._pulled_skill_paths == {"alpha": "/tmp/dify-config/skills/alpha"}
     assert layer._pulled_file_paths == {"guide.txt": "/tmp/dify-config/files/guide.txt"}
+
+
+@pytest.mark.anyio
+async def test_config_cli_help_commands_run_in_parallel(monkeypatch: pytest.MonkeyPatch) -> None:
+    layer = _build_layer()
+    active_commands = 0
+    max_active_commands = 0
+
+    async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
+        nonlocal active_commands, max_active_commands
+        del self, inject_agent_stub_env, timeout
+        active_commands += 1
+        max_active_commands = max(max_active_commands, active_commands)
+        await asyncio.sleep(0)
+        active_commands -= 1
+        return _remote_result(f"Usage: {script}\n")
+
+    monkeypatch.setattr(DifyShellLayer, "run_remote_script", fake_run_remote_script)
+
+    await layer._load_config_cli_help()
+
+    assert max_active_commands > 1
+    assert "dify-agent config skill --help" not in layer._config_cli_help
+    assert "dify-agent config skill pull --help" in layer._config_cli_help
 
 
 @pytest.mark.anyio

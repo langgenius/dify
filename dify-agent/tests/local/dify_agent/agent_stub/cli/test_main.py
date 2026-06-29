@@ -9,6 +9,10 @@ import pytest
 from dify_agent.agent_stub.cli._drive import DrivePullResult
 from dify_agent.agent_stub.cli.main import main
 from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubConfigFileItem,
+    AgentStubConfigManifestResponse,
+    AgentStubConfigSkillItem,
+    AgentStubConfigVersionInfo,
     AgentStubDriveCommitResponse,
     AgentStubDriveItem,
     AgentStubDriveManifestResponse,
@@ -91,6 +95,21 @@ def test_cli_connect_help_routes_to_typer_help(capsys: pytest.CaptureFixture[str
     assert exc_info.value.code == 0
     assert "Establish one Agent Stub connection" in captured.out
     assert "--json" in captured.out
+    assert "╭" not in captured.out
+    assert "─" not in captured.out
+
+
+def test_cli_config_push_help_uses_plain_click_format(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["config", "push", "--help"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert "Usage: dify-agent config push [OPTIONS]" in captured.out
+    assert "Recommended usage reads the JSON spec from stdin" in captured.out
+    assert "cat <<'JSON' | dify-agent config push" in captured.out
+    assert "╭" not in captured.out
+    assert "─" not in captured.out
 
 
 def test_cli_reports_invalid_agent_stub_api_base_url_environment_value(
@@ -152,6 +171,60 @@ def test_cli_connect_accepts_grpc_agent_stub_api_base_url(
 
     captured = capsys.readouterr()
     assert captured.out.strip() == "connected conn-1"
+
+
+def test_cli_config_manifest_omits_hash_fields(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        "dify_agent.agent_stub.cli.main.manifest_from_environment",
+        lambda: AgentStubConfigManifestResponse(
+            agent_id="agent-1",
+            config_version=AgentStubConfigVersionInfo(id="cfg-1", kind="build_draft", writable=True),
+            skills=[
+                AgentStubConfigSkillItem(
+                    name="alpha",
+                    description="Alpha skill.",
+                    size=12,
+                    hash="sha256:skill",
+                    mime_type="application/zip",
+                )
+            ],
+            files=[
+                AgentStubConfigFileItem(
+                    name="guide.txt",
+                    size=34,
+                    hash="sha256:file",
+                    mime_type="text/plain",
+                )
+            ],
+            env_keys=["RUNTIME_KEY"],
+            note="Runtime note.",
+        ),
+    )
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["config", "manifest"])
+
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert exc_info.value.code == 0
+    assert payload["skills"] == [
+        {
+            "name": "alpha",
+            "description": "Alpha skill.",
+            "size": 12,
+            "mime_type": "application/zip",
+        }
+    ]
+    assert payload["files"] == [
+        {
+            "name": "guide.txt",
+            "size": 34,
+            "mime_type": "text/plain",
+        }
+    ]
 
 
 def test_cli_file_upload_prints_uploaded_tool_file_json(
