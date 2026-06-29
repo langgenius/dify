@@ -30,7 +30,8 @@ from core.workflow.node_factory import (
     get_node_type_classes_mapping,
     is_start_node_type,
 )
-from core.workflow.node_runtime import (
+from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
+from core.workflow.node_runtime import (  # noqa: F401
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
     apply_dify_debug_email_recipient,
@@ -1294,13 +1295,29 @@ class WorkflowService:
             start_at=time.perf_counter(),
         )
         node_data = HumanInputNode.validate_node_data(adapt_human_input_node_data_for_graph(node_config["data"]))
+        hitl_callback = build_dify_human_input_hitl_callback(
+            node_data=node_data,
+            repository_factory=lambda workflow_execution_id: HumanInputFormRepositoryImpl(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                workflow_execution_id=workflow_execution_id,
+                invoke_source=run_context.invoke_from.value,
+                submission_actor_id=account.id if run_context.invoke_from in {"debugger", "explore"} else None,
+            ),
+            file_value_restorer=lambda mapping: build_from_mapping(
+                mapping=mapping,
+                tenant_id=workflow.tenant_id,
+                access_controller=_file_access_controller,
+            ),
+            delivery_methods=parse_human_input_delivery_methods(node_config["data"]),
+            display_in_ui=True,
+        )
         node = HumanInputNode(
             node_id=node_config["id"],
             data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
-            runtime=DifyHumanInputNodeRuntime(run_context),
-            file_reference_factory=DifyFileReferenceFactory(run_context),
+            hitl_callback=hitl_callback,
         )
         return node
 
