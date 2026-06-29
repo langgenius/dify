@@ -1145,6 +1145,7 @@ class DatasetQuery(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_query_pkey"),
         sa.Index("dataset_query_dataset_id_idx", "dataset_id"),
+        sa.Index("dataset_query_created_at_idx", "created_at"),
     )
 
     id: Mapped[str] = mapped_column(

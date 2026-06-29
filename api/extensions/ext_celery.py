@@ -171,6 +171,12 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
             "schedule": crontab(minute="0", hour="3", day_of_month=f"*/{day}"),
         }
+    if dify_config.ENABLE_CLEAN_DATASET_QUERIES_TASK:
+        imports.append("schedule.clean_dataset_queries_task")
+        beat_schedule["clean_dataset_queries_task"] = {
+            "task": "schedule.clean_dataset_queries_task.clean_dataset_queries_task",
+            "schedule": crontab(minute="0", hour="5", day_of_month=f"*/{day}"),
+        }
     if dify_config.ENABLE_CREATE_TIDB_SERVERLESS_TASK:
         imports.append("schedule.create_tidb_serverless_task")
         beat_schedule["create_tidb_serverless_task"] = {

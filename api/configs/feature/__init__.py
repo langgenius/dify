@@ -1329,6 +1329,25 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=60 * 60,
     )
 
+    # Clean dataset_queries scheduled task
+    ENABLE_CLEAN_DATASET_QUERIES_TASK: bool = Field(
+        description="Enable scheduled cleanup for the dataset_queries table",
+        default=False,
+    )
+    CLEAN_DATASET_QUERIES_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days for dataset_queries rows; "
+        "must be >= PLAN_SANDBOX_CLEAN_DAY_SETTING to avoid breaking clean_unused_datasets_task",
+        default=60,
+    )
+    CLEAN_DATASET_QUERIES_BATCH_SIZE: PositiveInt = Field(
+        description="Batch size for dataset_queries cleanup",
+        default=500,
+    )
+    CLEAN_DATASET_QUERIES_LOCK_TTL: PositiveInt = Field(
+        description="Redis lock TTL in seconds for the dataset_queries cleanup task",
+        default=3600,
+    )
+
 
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
