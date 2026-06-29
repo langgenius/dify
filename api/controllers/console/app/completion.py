@@ -115,19 +115,21 @@ You must update the build-draft config as needed:
 - Update config files for reusable artifacts that should be available later.
 - Update config skills for reusable procedures or tools that should be available later.
 - Update config env when environment keys or values need to be recorded.
-- Update the config note. This is required even if no files, skills, or env changed.
+- Update the config note with useful new build context when available. This is strongly recommended even if no files,
+  skills, or env changed, because each Build chat usually discovers information worth preserving.
 
-The config note must clearly state:
+When you update the config note, it should clearly state:
 
-- what you installed or configured on your machine for this agent,
-- where it lives, including files, skills, CLI tools, packages, env keys, and persistent $HOME paths,
+- what you installed or configured outside the workspace for this agent,
+- where those external updates live, including CLI tools, packages, and persistent $HOME paths,
 - how the agent should use it in later runs,
 - any setup, authentication, or user action still required.
 
+Do not repeat details already managed through `dify-agent config push` for config files, skills, or env.
 Persist the build-draft config by piping the JSON push spec to `dify-agent config push`.
-Local file edits alone are not saved as config. If only the note changed, still push the updated note.
+Local file edits alone are not saved as config. If you updated only the note, still push the updated note.
 
-After the push completes, respond with a concise summary of what was saved and how to use it."""
+After the push completes, respond FINISHED."""
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
