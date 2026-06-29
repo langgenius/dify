@@ -20,14 +20,14 @@ const MethodOptions = [
   { label: 'PUT', value: Method.put },
   { label: 'DELETE', value: Method.delete },
 ]
-type Props = {
+type Props = Readonly<{
   nodeId: string
   readonly: boolean
   method: Method
   onMethodChange: (method: Method) => void
   url: string
   onUrlChange: (url: string) => void
-}
+}>
 
 const ApiInput: FC<Props> = ({
   nodeId,

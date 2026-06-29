@@ -64,10 +64,14 @@ vi.mock('../variable-in-markdown', () => ({
   rehypeNotes: vi.fn(),
   rehypeVariable: vi.fn(),
   Variable: ({ path }: { path: string }) => <div data-testid="variable-path">{path}</div>,
-  Note: ({ defaultInput, nodeName }: {
-    defaultInput: { selector: string[] }
+  Note: ({ input, nodeName }: {
+    input: { type: string, default?: { selector: string[] }, option_source?: { selector: string[] } }
     nodeName: (nodeId: string) => string
-  }) => <div data-testid="note">{nodeName(defaultInput.selector[0]!)}</div>,
+  }) => (
+    <div data-testid="note">
+      {input.default?.selector?.length ? nodeName(input.default.selector[0]!) : input.option_source?.selector?.join('.') || input.type}
+    </div>
+  ),
 }))
 
 describe('FormContentPreview', () => {
@@ -130,5 +134,26 @@ describe('FormContentPreview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'close-preview' }))
 
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('should pass non-paragraph inputs through the preview note renderer', () => {
+    render(
+      <FormContentPreview
+        content="content"
+        formInputs={[{
+          type: 'select' as never,
+          output_variable_name: 'field_1',
+          option_source: {
+            type: 'variable',
+            selector: ['node-1', 'items'],
+            value: [],
+          },
+        }]}
+        userActions={[]}
+        onClose={onClose}
+      />,
+    )
+
+    expect(screen.getByTestId('note')).toHaveTextContent('node-1.items')
   })
 })

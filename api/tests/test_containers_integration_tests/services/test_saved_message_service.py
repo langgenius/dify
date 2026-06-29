@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy.orm import Session
 
 from models import App, CreatorUserRole
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, EndUserType
 from models.model import EndUser, Message
 from models.web import SavedMessage
 from services.app_service import AppService, CreateAppParams
@@ -68,8 +68,9 @@ class TestSavedMessageService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
         # Create app with realistic data
@@ -107,7 +108,7 @@ class TestSavedMessageService:
             app_id=app.id,
             external_user_id=fake.uuid4(),
             name=fake.name(),
-            type="normal",
+            type=EndUserType.BROWSER,
             session_id=fake.uuid4(),
             is_anonymous=False,
         )
@@ -220,7 +221,9 @@ class TestSavedMessageService:
         mock_external_service_dependencies["message_service"].pagination_by_last_id.return_value = mock_pagination
 
         # Act: Execute the method under test
-        result = SavedMessageService.pagination_by_last_id(app_model=app, user=account, last_id=None, limit=10)
+        result = SavedMessageService.pagination_by_last_id(
+            db_session_with_containers, app_model=app, user=account, last_id=None, limit=10
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
@@ -294,7 +297,7 @@ class TestSavedMessageService:
 
         # Act: Execute the method under test
         result = SavedMessageService.pagination_by_last_id(
-            app_model=app, user=end_user, last_id="test_last_id", limit=5
+            db_session_with_containers, app_model=app, user=end_user, last_id="test_last_id", limit=5
         )
 
         # Assert: Verify the expected outcomes
@@ -344,7 +347,7 @@ class TestSavedMessageService:
         mock_external_service_dependencies["message_service"].get_message.return_value = message
 
         # Act: Execute the method under test
-        SavedMessageService.save(app_model=app, user=account, message_id=message.id)
+        SavedMessageService.save(db_session_with_containers, app_model=app, user=account, message_id=message.id)
 
         # Assert: Verify the expected outcomes
         # Check if saved message was created in database
@@ -393,7 +396,9 @@ class TestSavedMessageService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError) as exc_info:
-            SavedMessageService.pagination_by_last_id(app_model=app, user=None, last_id=None, limit=10)
+            SavedMessageService.pagination_by_last_id(
+                db_session_with_containers, app_model=app, user=None, last_id=None, limit=10
+            )
 
         assert "User is required" in str(exc_info.value)
 
@@ -412,7 +417,7 @@ class TestSavedMessageService:
         message = self._create_test_message(db_session_with_containers, app, account)
 
         # Act: Execute the method under test with None user
-        result = SavedMessageService.save(app_model=app, user=None, message_id=message.id)
+        result = SavedMessageService.save(db_session_with_containers, app_model=app, user=None, message_id=message.id)
 
         # Assert: Verify the expected outcomes
         assert result is None
@@ -471,7 +476,7 @@ class TestSavedMessageService:
         )
 
         # Act: Execute the method under test
-        SavedMessageService.delete(app_model=app, user=account, message_id=message.id)
+        SavedMessageService.delete(db_session_with_containers, app_model=app, user=account, message_id=message.id)
 
         # Assert: Verify the expected outcomes
         # Check if saved message was deleted from database
@@ -501,7 +506,7 @@ class TestSavedMessageService:
 
         mock_external_service_dependencies["message_service"].get_message.return_value = message
 
-        SavedMessageService.save(app_model=app, user=end_user, message_id=message.id)
+        SavedMessageService.save(db_session_with_containers, app_model=app, user=end_user, message_id=message.id)
 
         saved = (
             db_session_with_containers.query(SavedMessage)
@@ -522,9 +527,9 @@ class TestSavedMessageService:
         mock_external_service_dependencies["message_service"].get_message.return_value = message
 
         # Save once
-        SavedMessageService.save(app_model=app, user=account, message_id=message.id)
+        SavedMessageService.save(db_session_with_containers, app_model=app, user=account, message_id=message.id)
         # Save again
-        SavedMessageService.save(app_model=app, user=account, message_id=message.id)
+        SavedMessageService.save(db_session_with_containers, app_model=app, user=account, message_id=message.id)
 
         count = (
             db_session_with_containers.query(SavedMessage)
@@ -547,7 +552,7 @@ class TestSavedMessageService:
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
 
-        SavedMessageService.delete(app_model=app, user=None, message_id=message.id)
+        SavedMessageService.delete(db_session_with_containers, app_model=app, user=None, message_id=message.id)
 
         # Should still exist
         assert (
@@ -566,7 +571,7 @@ class TestSavedMessageService:
         # Should not raise — use a valid UUID that doesn't exist in DB
         from uuid import uuid4
 
-        SavedMessageService.delete(app_model=app, user=account, message_id=str(uuid4()))
+        SavedMessageService.delete(db_session_with_containers, app_model=app, user=account, message_id=str(uuid4()))
 
     def test_delete_for_end_user(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """Test deleting a saved message for an EndUser."""
@@ -580,7 +585,7 @@ class TestSavedMessageService:
         db_session_with_containers.add(saved)
         db_session_with_containers.commit()
 
-        SavedMessageService.delete(app_model=app, user=end_user, message_id=message.id)
+        SavedMessageService.delete(db_session_with_containers, app_model=app, user=end_user, message_id=message.id)
 
         assert (
             db_session_with_containers.query(SavedMessage)
@@ -610,7 +615,7 @@ class TestSavedMessageService:
         db_session_with_containers.commit()
 
         # Delete only account1's saved message
-        SavedMessageService.delete(app_model=app, user=account1, message_id=message.id)
+        SavedMessageService.delete(db_session_with_containers, app_model=app, user=account1, message_id=message.id)
 
         # Account's saved message should be gone
         assert (

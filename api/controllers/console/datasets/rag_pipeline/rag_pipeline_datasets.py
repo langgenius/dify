@@ -1,12 +1,13 @@
-from flask_restx import Resource, marshal
+from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.common.schema import register_schema_model
+from controllers.common.schema import JsonResponseWithStatus, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
+from controllers.console.datasets.rag_pipeline.rag_pipeline_import import RagPipelineImportResponse
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
@@ -15,7 +16,8 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from extensions.ext_database import db
-from fields.dataset_fields import dataset_detail_fields
+from fields.dataset_fields import DatasetDetailResponse
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.dataset import DatasetPermissionEnum
@@ -28,19 +30,25 @@ class RagPipelineDatasetImportPayload(BaseModel):
     yaml_content: str
 
 
-register_schema_model(console_ns, RagPipelineDatasetImportPayload)
+register_schema_models(console_ns, RagPipelineDatasetImportPayload)
+register_response_schema_models(console_ns, DatasetDetailResponse, RagPipelineImportResponse)
 
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
     @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
+    @console_ns.response(
+        201,
+        "RAG pipeline dataset import started",
+        console_ns.models[RagPipelineImportResponse.__name__],
+    )
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account):
+    def post(self, current_tenant_id: str, current_user: Account) -> JsonResponseWithStatus:
         payload = RagPipelineDatasetImportPayload.model_validate(console_ns.payload or {})
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
@@ -74,18 +82,19 @@ class CreateRagPipelineDatasetApi(Resource):
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return import_info, 201
+        return dump_response(RagPipelineImportResponse, import_info), 201
 
 
 @console_ns.route("/rag/pipeline/empty-dataset")
 class CreateEmptyRagPipelineDatasetApi(Resource):
+    @console_ns.response(201, "RAG pipeline dataset created", console_ns.models[DatasetDetailResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     @with_current_user
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, current_user: Account):
+    def post(self, current_tenant_id: str, current_user: Account) -> JsonResponseWithStatus:
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
@@ -103,4 +112,4 @@ class CreateEmptyRagPipelineDatasetApi(Resource):
                 partial_member_list=None,
             ),
         )
-        return marshal(dataset, dataset_detail_fields), 201
+        return dump_response(DatasetDetailResponse, dataset), 201

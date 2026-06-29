@@ -14,7 +14,7 @@ import PromptToast from './prompt-toast'
 import { GeneratorType } from './types'
 import VersionSelector from './version-selector'
 
-type Props = {
+type Props = Readonly<{
   isBasicMode?: boolean
   nodeId?: string
   current: GenRes
@@ -23,7 +23,7 @@ type Props = {
   versions: GenRes[]
   onApply: () => void
   generatorType: GeneratorType
-}
+}>
 
 const Result: FC<Props> = ({
   isBasicMode,

@@ -40,12 +40,12 @@ const runningPlugins = [
   createPlugin('r2', 'Anthropic', { status: TaskStatus.running }),
 ]
 
-const successPlugins = [
-  createPlugin('s1', 'Google', { status: TaskStatus.success }),
-]
-
 const errorPlugins = [
   createPlugin('e1', 'DALLE', { status: TaskStatus.failed, plugin_id: 'org/dalle' }),
+]
+
+const successPlugins = [
+  createPlugin('s1', 'Google', { status: TaskStatus.success }),
 ]
 
 describe('PluginTaskList', () => {
@@ -65,84 +65,56 @@ describe('PluginTaskList', () => {
 
   describe('Rendering', () => {
     it('should render empty container when no plugins', () => {
-      const { container } = render(<PluginTaskList {...defaultProps} />)
-      const wrapper = container.firstElementChild!
-      expect(wrapper)!.toBeInTheDocument()
-      expect(wrapper.children).toHaveLength(0)
+      render(<PluginTaskList {...defaultProps} />)
+      expect(screen.queryByText(/plugin\.task\.runningPlugins/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/plugin\.task\.successPlugins/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/plugin\.task\.errorPlugins/)).not.toBeInTheDocument()
     })
 
     it('should render running section when running plugins exist', () => {
-      const { container } = render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
+      render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
 
-      // Header contains the title text
-      const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
-      expect(headers).toHaveLength(1)
-      expect(headers[0]!.textContent).toContain('plugin.task.installing')
+      expect(screen.getByText(/plugin\.task\.runningPlugins/)).toBeInTheDocument()
       expect(screen.getByText('OpenAI'))!.toBeInTheDocument()
       expect(screen.getByText('Anthropic'))!.toBeInTheDocument()
     })
 
-    it('should render success section when success plugins exist', () => {
-      const { container } = render(<PluginTaskList {...defaultProps} successPlugins={successPlugins} />)
+    it('should render success plugins in the dropdown', () => {
+      render(<PluginTaskList {...defaultProps} successPlugins={successPlugins} />)
 
-      const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
-      expect(headers).toHaveLength(1)
-      expect(headers[0]!.textContent).toContain('plugin.task.installed')
+      expect(screen.getByText(/plugin\.task\.successPlugins/)).toBeInTheDocument()
       expect(screen.getByText('Google'))!.toBeInTheDocument()
     })
 
     it('should render error section when error plugins exist', () => {
-      const { container } = render(<PluginTaskList {...defaultProps} errorPlugins={errorPlugins} />)
+      render(<PluginTaskList {...defaultProps} errorPlugins={errorPlugins} />)
 
-      const headers = container.querySelectorAll('.system-sm-semibold-uppercase')
-      expect(headers).toHaveLength(1)
-      expect(headers[0]!.textContent).toContain('plugin.task.installedError')
+      expect(screen.getByText(/plugin\.task\.errorPlugins/)).toBeInTheDocument()
       expect(screen.getByText('DALLE'))!.toBeInTheDocument()
     })
 
-    it('should render all three sections simultaneously', () => {
+    it('should render separate running and error sections when both exist', () => {
       render(
         <PluginTaskList
           {...defaultProps}
           runningPlugins={runningPlugins}
-          successPlugins={successPlugins}
           errorPlugins={errorPlugins}
         />,
       )
 
       expect(screen.getByText('OpenAI'))!.toBeInTheDocument()
-      expect(screen.getByText('Google'))!.toBeInTheDocument()
+      expect(screen.queryByText('Google'))!.not.toBeInTheDocument()
       expect(screen.getByText('DALLE'))!.toBeInTheDocument()
+      expect(screen.getByText(/plugin\.task\.runningPlugins/)).toBeInTheDocument()
+      expect(screen.getByText(/plugin\.task\.errorPlugins/)).toBeInTheDocument()
     })
   })
 
   describe('Clear actions', () => {
-    it('should show Clear all button in success section', () => {
-      render(<PluginTaskList {...defaultProps} successPlugins={successPlugins} />)
-
-      const clearButtons = screen.getAllByText(/plugin\.task\.clearAll/)
-      expect(clearButtons).toHaveLength(1)
-    })
-
-    it('should call onClearAll when success section Clear all is clicked', () => {
-      const onClearAll = vi.fn()
-      render(
-        <PluginTaskList
-          {...defaultProps}
-          successPlugins={successPlugins}
-          onClearAll={onClearAll}
-        />,
-      )
-
-      fireEvent.click(screen.getByText(/plugin\.task\.clearAll/))
-      expect(onClearAll).toHaveBeenCalledTimes(1)
-    })
-
     it('should show Clear all button in error section', () => {
       render(<PluginTaskList {...defaultProps} errorPlugins={errorPlugins} />)
 
-      const clearButtons = screen.getAllByText(/plugin\.task\.clearAll/)
-      expect(clearButtons).toHaveLength(1)
+      expect(screen.getByRole('button', { name: /plugin\.task\.errorPlugins.*plugin\.task\.clearAll/ })).toBeInTheDocument()
     })
 
     it('should call onClearErrors when error section Clear all is clicked', () => {
@@ -155,27 +127,21 @@ describe('PluginTaskList', () => {
         />,
       )
 
-      fireEvent.click(screen.getByText(/plugin\.task\.clearAll/))
+      fireEvent.click(screen.getByRole('button', { name: /plugin\.task\.errorPlugins.*plugin\.task\.clearAll/ }))
       expect(onClearErrors).toHaveBeenCalledTimes(1)
     })
 
-    it('should call onClearSingle from success section clear button', () => {
-      const onClearSingle = vi.fn()
+    it('should expose section-specific Clear all button names when success and error sections coexist', () => {
       render(
         <PluginTaskList
           {...defaultProps}
           successPlugins={successPlugins}
-          onClearSingle={onClearSingle}
+          errorPlugins={errorPlugins}
         />,
       )
 
-      // The × close button from PluginItem (rendered inside PluginSection)
-      const closeButtons = screen.getAllByRole('button')
-      const clearItemBtn = closeButtons.find(btn => !btn.textContent?.includes('plugin.task'))
-      if (clearItemBtn)
-        fireEvent.click(clearItemBtn)
-
-      expect(onClearSingle).toHaveBeenCalledWith('task-1', 's1')
+      expect(screen.getByRole('button', { name: /plugin\.task\.successPlugins.*plugin\.task\.clearAll/ })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /plugin\.task\.errorPlugins.*plugin\.task\.clearAll/ })).toBeInTheDocument()
     })
   })
 
@@ -183,38 +149,6 @@ describe('PluginTaskList', () => {
     it('should not render clear buttons for running plugins', () => {
       render(<PluginTaskList {...defaultProps} runningPlugins={runningPlugins} />)
 
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
-      // Running section has no headerAction and no onClearSingle
       expect(screen.queryByText(/plugin\.task\.clearAll/)).not.toBeInTheDocument()
     })
 
@@ -238,14 +172,7 @@ describe('PluginTaskList', () => {
         />,
       )
 
-      // Find the × close button inside error items (not the "Clear all" button)
-      const allButtons = screen.getAllByRole('button')
-      const clearItemBtn = allButtons.find(btn =>
-        !btn.textContent?.includes('plugin.task')
-        && !btn.textContent?.includes('installFrom'),
-      )
-      if (clearItemBtn)
-        fireEvent.click(clearItemBtn)
+      fireEvent.click(screen.getByRole('button', { name: /Clear DALLE/i }))
 
       expect(onClearSingle).toHaveBeenCalledWith('task-1', 'e1')
     })
@@ -253,16 +180,16 @@ describe('PluginTaskList', () => {
 
   describe('Edge Cases', () => {
     it('should not render sections for empty plugin arrays', () => {
-      const { container } = render(
+      render(
         <PluginTaskList
           {...defaultProps}
           runningPlugins={[]}
-          successPlugins={[]}
           errorPlugins={[]}
         />,
       )
 
-      expect(container.querySelector('.w-\\[360px\\]')!.children).toHaveLength(0)
+      expect(screen.queryByText(/plugin\.task\.runningPlugins/)).not.toBeInTheDocument()
+      expect(screen.queryByText(/plugin\.task\.errorPlugins/)).not.toBeInTheDocument()
     })
 
     it('should render error section with multiple error plugins', () => {

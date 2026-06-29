@@ -3,7 +3,9 @@ from __future__ import annotations
 from flask import request
 from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
-from controllers.openapi.auth.data import AuthData
+from configs import dify_config
+from controllers.common.wraps import enforce_rbac_access
+from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
 from libs.oauth_bearer import Scope, TokenType
 from services.account_service import AccountService, TenantService
@@ -38,12 +40,36 @@ def check_workspace_mismatch(data: AuthData) -> None:
 
 
 def check_workspace_role(data: AuthData) -> None:
+    if dify_config.RBAC_ENABLED and data.rbac is not None:
+        # fine-grained permission check is performed by RBAC
+        return
     if data.allowed_roles is None:
         return
     if data.tenant_role is None:
         raise NotFound("workspace not found")
     if data.tenant_role not in data.allowed_roles:
         raise Forbidden("insufficient workspace role")
+
+
+def check_rbac_permission(data: AuthData) -> None:
+    req = data.rbac
+    if req is None:
+        return
+    if not dify_config.RBAC_ENABLED:
+        return
+    # Only account callers are subject to RBAC; end_user access is scope-controlled.
+    if data.caller_kind != CallerKind.ACCOUNT:
+        return
+    if data.account_id is None or data.tenant is None:
+        raise Forbidden("rbac context missing")
+    enforce_rbac_access(
+        tenant_id=str(data.tenant.id),
+        account_id=str(data.account_id),
+        resource_type=req.resource_type,
+        scene=req.scene,
+        resource_required=req.resource_required,
+        path_args=dict(data.path_params),
+    )
 
 
 def check_app_api_enabled(data: AuthData) -> None:

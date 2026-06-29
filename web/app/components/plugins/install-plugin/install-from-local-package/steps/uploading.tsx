@@ -43,7 +43,7 @@ function getUploadFailureMessage(response: unknown): string | undefined {
   return (response as UploadFailureResponse).message
 }
 
-type Props = {
+type Props = Readonly<{
   isBundle: boolean
   file: File
   onCancel: () => void
@@ -53,7 +53,7 @@ type Props = {
   }) => void
   onBundleUploaded: (result: Dependency[]) => void
   onFailed: (errorMsg: string) => void
-}
+}>
 
 const Uploading: FC<Props> = ({
   isBundle,

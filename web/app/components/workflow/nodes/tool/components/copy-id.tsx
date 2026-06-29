@@ -6,9 +6,9 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   content: string
-}
+}>
 
 const prefixEmbedded = 'overview.appInfo.embedded'
 

@@ -3,6 +3,7 @@ import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/c
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import { expectLoadingButton } from '@/test/button'
 import { encryptPassword } from '@/utils/encryption'
 import InstallForm from './installForm'
 
@@ -135,7 +136,7 @@ describe('InstallForm', () => {
     fireEvent.click(button)
 
     await waitFor(() => {
-      expect(button).toBeDisabled()
+      expectLoadingButton(button)
     })
 
     fireEvent.click(button)

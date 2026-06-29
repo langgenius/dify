@@ -12,7 +12,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration, MCPProviderEntity
+from core.entities.mcp_provider import IdentityMode, MCPAuthentication, MCPConfiguration, MCPProviderEntity
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.mcp.auth.auth_flow import auth
@@ -136,6 +136,7 @@ class MCPToolManageService:
         configuration: MCPConfiguration,
         authentication: MCPAuthentication | None = None,
         headers: dict[str, str] | None = None,
+        identity_mode: IdentityMode = IdentityMode.OFF,
     ) -> ToolProviderApiEntity:
         """Create a new MCP provider."""
         # Validate URL format
@@ -171,6 +172,7 @@ class MCPToolManageService:
             sse_read_timeout=configuration.sse_read_timeout,
             encrypted_headers=encrypted_headers,
             encrypted_credentials=encrypted_credentials,
+            identity_mode=identity_mode,
         )
 
         self._session.add(mcp_tool)
@@ -194,6 +196,7 @@ class MCPToolManageService:
         configuration: MCPConfiguration,
         authentication: MCPAuthentication | None = None,
         validation_result: ServerUrlValidationResult | None = None,
+        identity_mode: IdentityMode = IdentityMode.OFF,
     ) -> None:
         """
         Update an MCP provider.
@@ -254,6 +257,11 @@ class MCPToolManageService:
             # Update credentials if provided
             if authentication and authentication.client_id:
                 mcp_provider.encrypted_credentials = self._process_credentials(authentication, mcp_provider, tenant_id)
+
+            # Update user-identity forwarding mode. The controller has already
+            # resolved "leave unchanged" and applied the ENTERPRISE_ENABLED gate,
+            # so this is always a concrete, vetted value.
+            mcp_provider.identity_mode = identity_mode
 
             # Flush changes to database
             self._session.flush()

@@ -1,3 +1,4 @@
+import type { HumanInputFormSubmitData } from '@/app/components/base/chat/chat/answer/human-input-content/type'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -9,6 +10,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import ReasoningPanel from '@/app/components/base/chat/chat/answer/reasoning-panel'
 import Loading from '@/app/components/base/loading'
 import { submitHumanInputForm } from '@/service/workflow'
 import {
@@ -97,7 +99,7 @@ const WorkflowPreview = () => {
     }
   }, [resize, stopResizing])
 
-  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: any) => {
+  const handleSubmitHumanInputForm = useCallback(async (formToken: string, formData: HumanInputFormSubmitData) => {
     await submitHumanInputForm(formToken, formData)
   }, [])
 
@@ -200,6 +202,17 @@ const WorkflowPreview = () => {
               {humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
                 <HumanInputFilledFormList
                   humanInputFilledFormDataList={humanInputFilledFormDataList}
+                />
+              )}
+              {workflowRunningData?.reasoningContent && Object.values(workflowRunningData.reasoningContent).some(Boolean) && (
+                <ReasoningPanel
+                  content={workflowRunningData.reasoningContent}
+                  // freeze the timer once the answer starts streaming — reasoningFinished and status only flip at run end
+                  done={
+                    !!workflowRunningData?.resultText?.trim()
+                    || !!workflowRunningData?.reasoningFinished
+                    || workflowRunningData?.result?.status !== WorkflowRunningStatus.Running
+                  }
                 />
               )}
               <ResultText

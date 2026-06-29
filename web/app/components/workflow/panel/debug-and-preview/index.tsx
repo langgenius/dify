@@ -19,11 +19,11 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
 import { useStore } from '@/app/components/workflow/store'
-import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import {
   useWorkflowInteractions,
 } from '../../hooks'
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
+import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
 import ChatWrapper from './chat-wrapper'
 
@@ -55,10 +55,10 @@ const DebugAndPreview = () => {
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const panelWidth = useStore(s => s.previewPanelWidth)
   const setPanelWidth = useStore(s => s.setPreviewPanelWidth)
-  const setPanelWidthStorage = useSetLocalStorage<string>('debug-and-preview-panel-width', { raw: true })
+  const setPanelWidthStorage = useSetDebugPreviewPanelWidth()
   const handleResize = useCallback((width: number, source: 'user' | 'system' = 'user') => {
     if (source === 'user')
-      setPanelWidthStorage(`${width}`)
+      setPanelWidthStorage(width)
     setPanelWidth(width)
   }, [setPanelWidth, setPanelWidthStorage])
   const maxPanelWidth = useMemo(() => {

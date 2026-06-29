@@ -162,6 +162,7 @@ class TestFileApiPost:
         mock_file.preview_url = "http://example.com/preview/file-id-123"
         mock_file.source_url = "http://example.com/source/file-id-123"
         mock_file.original_url = None
+        mock_file.reference = None
         mock_file.user_id = "user-123"
         mock_file.tenant_id = "tenant-123"
         mock_file.conversation_id = None
@@ -198,6 +199,7 @@ class TestFileApiPost:
         mock_file.preview_url = None
         mock_file.source_url = None
         mock_file.original_url = None
+        mock_file.reference = None
         mock_file.user_id = "user-456"
         mock_file.tenant_id = "tenant-456"
         mock_file.conversation_id = None

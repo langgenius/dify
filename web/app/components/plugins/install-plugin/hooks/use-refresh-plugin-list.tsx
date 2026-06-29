@@ -1,6 +1,6 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useInvalidateDefaultModel, useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useProviderContext } from '@/context/provider-context'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import { useInvalidDataSourceList } from '@/service/use-pipeline'
@@ -10,11 +10,26 @@ import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalid
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { PluginCategoryEnum } from '../../types'
 
+type PluginCategoryPayload = {
+  category: PluginCategoryEnum | string
+}
+
+const SYSTEM_MODEL_TYPES = [
+  ModelTypeEnum.textGeneration,
+  ModelTypeEnum.textEmbedding,
+  ModelTypeEnum.rerank,
+  ModelTypeEnum.speech2text,
+  ModelTypeEnum.tts,
+]
+
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const { mutate: refetchLLMModelList } = useModelList(ModelTypeEnum.textGeneration)
   const { mutate: refetchEmbeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { mutate: refetchRerankModelList } = useModelList(ModelTypeEnum.rerank)
+  const { mutate: refetchSpeech2textModelList } = useModelList(ModelTypeEnum.speech2text)
+  const { mutate: refetchTTSModelList } = useModelList(ModelTypeEnum.tts)
+  const invalidateDefaultModel = useInvalidateDefaultModel()
   const { refreshModelProviders } = useProviderContext()
 
   const invalidateAllToolProviders = useInvalidateAllToolProviders()
@@ -29,7 +44,7 @@ const useRefreshPluginList = () => {
 
   const invalidateRAGRecommendedPlugins = useInvalidateRAGRecommendedPlugins()
   return {
-    refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | null, refreshAllType?: boolean) => {
+    refreshPluginList: (manifest?: PluginManifestInMarket | Plugin | PluginDeclaration | PluginCategoryPayload | null, refreshAllType?: boolean) => {
       // installed list
       invalidateInstalledPluginList()
 
@@ -55,6 +70,9 @@ const useRefreshPluginList = () => {
         refetchLLMModelList()
         refetchEmbeddingModelList()
         refetchRerankModelList()
+        refetchSpeech2textModelList()
+        refetchTTSModelList()
+        SYSTEM_MODEL_TYPES.forEach(type => invalidateDefaultModel(type))
       }
 
       // agent select

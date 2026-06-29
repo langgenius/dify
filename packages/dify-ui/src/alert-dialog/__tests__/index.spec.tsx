@@ -26,6 +26,7 @@ describe('AlertDialog wrapper', () => {
 
       await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('Confirm Delete')
       await expect.element(screen.getByRole('alertdialog')).toHaveTextContent('This action cannot be undone.')
+      await expect.element(document.body.querySelector('.bg-background-overlay') as HTMLElement).toHaveClass('absolute', 'inset-0', 'z-50')
     })
 
     it('should not render content when dialog is closed', async () => {

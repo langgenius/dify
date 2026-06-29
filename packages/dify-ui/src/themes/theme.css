@@ -163,6 +163,20 @@
   --color-components-main-nav-nav-button-bg-active: var(--color-components-main-nav-nav-button-bg-active);
   --color-components-main-nav-nav-button-border: var(--color-components-main-nav-nav-button-border);
   --color-components-main-nav-nav-button-bg-hover: var(--color-components-main-nav-nav-button-bg-hover);
+  --color-components-main-nav-glass-text-glow: var(--color-components-main-nav-glass-text-glow);
+  --color-components-main-nav-glass-surface-first: var(--color-components-main-nav-glass-surface-first);
+  --color-components-main-nav-glass-surface-middle-1: var(--color-components-main-nav-glass-surface-middle-1);
+  --color-components-main-nav-glass-surface-middle-2: var(--color-components-main-nav-glass-surface-middle-2);
+  --color-components-main-nav-glass-surface-end: var(--color-components-main-nav-glass-surface-end);
+  --color-components-main-nav-glass-edge-highlight-first: var(--color-components-main-nav-glass-edge-highlight-first);
+  --color-components-main-nav-glass-edge-highlight-middle: var(--color-components-main-nav-glass-edge-highlight-middle);
+  --color-components-main-nav-glass-edge-highlight-end: var(--color-components-main-nav-glass-edge-highlight-end);
+  --color-components-main-nav-glass-edge-reflection-first: var(--color-components-main-nav-glass-edge-reflection-first);
+  --color-components-main-nav-glass-edge-reflection-middle: var(--color-components-main-nav-glass-edge-reflection-middle);
+  --color-components-main-nav-glass-edge-reflection-end: var(--color-components-main-nav-glass-edge-reflection-end);
+  --color-components-main-nav-glass-inner-glow: var(--color-components-main-nav-glass-inner-glow);
+  --color-components-main-nav-glass-shadow-reflection: var(--color-components-main-nav-glass-shadow-reflection);
+  --color-components-main-nav-glass-shadow-reflection-glow: var(--color-components-main-nav-glass-shadow-reflection-glow);
 
   --color-components-main-nav-nav-user-border: var(--color-components-main-nav-nav-user-border);
 

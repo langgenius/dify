@@ -6,13 +6,13 @@ import * as React from 'react'
 import Divider from '@/app/components/base/divider'
 
 type Status = 'success' | 'error' | 'warning' | 'info'
-type Props = {
+type Props = Readonly<{
   type?: Status
   description: string
   actionText?: string
   onAction?: () => void
   disabled?: boolean
-}
+}>
 
 const IconMap = {
   success: {

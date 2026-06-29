@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import * as React from 'react'
 import { render } from 'vitest-browser-react'
 import { FieldItem, FieldLabel, FieldRoot } from '../../field'
 import { FieldsetLegend, FieldsetRoot } from '../../fieldset'
@@ -12,7 +12,7 @@ const clickElement = (element: HTMLElement | SVGElement) => {
 describe('RadioGroup', () => {
   it('should manage a controlled single selection', async () => {
     function StorageDemo() {
-      const [value, setValue] = useState('ssd')
+      const [value, setValue] = React.useState('ssd')
 
       return (
         <FieldRoot name="storageType">

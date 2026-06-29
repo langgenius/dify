@@ -11,12 +11,12 @@ import { useTranslation } from 'react-i18next'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
 import { MittProvider, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
 
-type Props = {
+type Props = Readonly<{
   isShow: boolean
   schema: SchemaRoot
   rootName: string
   onClose: () => void
-}
+}>
 
 const SchemaModal: FC<Props> = ({
   isShow,

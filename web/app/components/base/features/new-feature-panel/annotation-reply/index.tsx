@@ -15,10 +15,10 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { ANNOTATION_DEFAULT } from '@/config'
 import { usePathname, useRouter } from '@/next/navigation'
 
-type Props = {
+type Props = Readonly<{
   disabled?: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const AnnotationReply = ({
   disabled,

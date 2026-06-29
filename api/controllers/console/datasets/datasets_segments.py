@@ -28,11 +28,16 @@ from controllers.console.datasets.error import (
     InvalidActionError,
 )
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_rate_limit_check,
     cloud_edition_billing_resource_check,
+    rbac_permission_required,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -51,7 +56,8 @@ from fields.segment_fields import (
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response, escape_like_pattern
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
+from models import Account
 from models.dataset import ChildChunk, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService, SegmentService
@@ -164,9 +170,10 @@ class DatasetDocumentSegmentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: UUID, document_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         dataset_id_str = str(dataset_id)
         document_id_str = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -174,7 +181,7 @@ class DatasetDocumentSegmentListApi(Resource):
             raise NotFound("Dataset not found.")
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
@@ -274,9 +281,9 @@ class DatasetDocumentSegmentListApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT)
     @console_ns.doc(params=query_params_from_model(SegmentIdListQuery))
     @console_ns.response(204, "Segments deleted successfully")
-    def delete(self, dataset_id: UUID, document_id: UUID):
-        current_user, _ = current_account_with_tenant()
-
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def delete(self, current_user: Account, dataset_id: UUID, document_id: UUID):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -295,7 +302,7 @@ class DatasetDocumentSegmentListApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segments(segment_ids, document, dataset)
@@ -312,9 +319,17 @@ class DatasetDocumentSegmentApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def patch(self, dataset_id: UUID, document_id: UUID, action: Literal["enable", "disable"]):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def patch(
+        self,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        action: Literal["enable", "disable"],
+    ):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if not dataset:
@@ -330,7 +345,7 @@ class DatasetDocumentSegmentApi(Resource):
             raise Forbidden()
 
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         if dataset.indexing_technique == IndexTechniqueType.HIGH_QUALITY:
@@ -373,9 +388,10 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[SegmentCreatePayload.__name__])
     @console_ns.response(200, "Segment created successfully", console_ns.models[SegmentDetailResponse.__name__])
-    def post(self, dataset_id: UUID, document_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -405,7 +421,7 @@ class DatasetDocumentSegmentAddApi(Resource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -431,9 +447,12 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[SegmentUpdatePayload.__name__])
     @console_ns.response(200, "Segment updated successfully", console_ns.models[SegmentDetailResponse.__name__])
-    def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def patch(
+        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -475,7 +494,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -500,9 +519,12 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_SEGMENT)
     @console_ns.response(204, "Segment deleted successfully")
-    def delete(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def delete(
+        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -528,7 +550,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         SegmentService.delete_segment(segment, document, dataset)
@@ -548,9 +570,10 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[BatchImportPayload.__name__])
-    def post(self, dataset_id: UUID, document_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def post(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -595,6 +618,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
     def get(self, job_id=None, dataset_id: UUID | None = None, document_id: UUID | None = None):
         if job_id is None:
             raise NotFound("The job does not exist.")
@@ -619,9 +643,12 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.expect(console_ns.models[ChildChunkCreatePayload.__name__])
     @console_ns.response(200, "Child chunk created successfully", console_ns.models[ChildChunkDetailResponse.__name__])
-    def post(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def post(
+        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -660,7 +687,7 @@ class ChildChunkAddApi(Resource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -677,9 +704,9 @@ class ChildChunkAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
-        _, current_tenant_id = current_account_with_tenant()
-
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    def get(self, current_tenant_id: str, dataset_id: UUID, document_id: UUID, segment_id: UUID):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -731,9 +758,12 @@ class ChildChunkAddApi(Resource):
         console_ns.models[ChildChunkBatchUpdateResponse.__name__],
     )
     @console_ns.expect(console_ns.models[ChildChunkBatchUpdatePayload.__name__])
-    def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def patch(
+        self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID, segment_id: UUID
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -759,7 +789,7 @@ class ChildChunkAddApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
@@ -781,9 +811,18 @@ class ChildChunkUpdateApi(Resource):
     @cloud_edition_billing_rate_limit_check("knowledge")
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_CHILD_CHUNK)
     @console_ns.response(204, "Child chunk deleted successfully")
-    def delete(self, dataset_id: UUID, document_id: UUID, segment_id: UUID, child_chunk_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def delete(
+        self,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
+        child_chunk_id: UUID,
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -823,7 +862,7 @@ class ChildChunkUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         try:
@@ -840,9 +879,18 @@ class ChildChunkUpdateApi(Resource):
     @console_ns.doc(params=SegmentDocParams.DATASET_DOCUMENT_CHILD_CHUNK)
     @console_ns.expect(console_ns.models[ChildChunkUpdatePayload.__name__])
     @console_ns.response(200, "Child chunk updated successfully", console_ns.models[ChildChunkDetailResponse.__name__])
-    def patch(self, dataset_id: UUID, document_id: UUID, segment_id: UUID, child_chunk_id: UUID):
-        current_user, current_tenant_id = current_account_with_tenant()
-
+    @with_current_user
+    @with_current_tenant_id
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_EDIT)
+    def patch(
+        self,
+        current_tenant_id: str,
+        current_user: Account,
+        dataset_id: UUID,
+        document_id: UUID,
+        segment_id: UUID,
+        child_chunk_id: UUID,
+    ):
         # check dataset
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -882,7 +930,7 @@ class ChildChunkUpdateApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
         try:
-            DatasetService.check_dataset_permission(dataset, current_user)
+            DatasetService.check_dataset_permission(dataset, current_user, db.session)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args

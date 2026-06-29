@@ -1,4 +1,4 @@
-import * as React from 'react'
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { usePluginPageContext } from '../context'
 import CategoriesFilter from './category-filter'
@@ -12,12 +12,21 @@ export type FilterState = {
 }
 
 type FilterManagementProps = {
+  hideCategoryFilter?: boolean
+  hideTagFilter?: boolean
   onFilterChange: (filters: FilterState) => void
+  rightSlot?: ReactNode
 }
 
-const FilterManagement: React.FC<FilterManagementProps> = ({ onFilterChange }) => {
+const FilterManagement = ({
+  hideCategoryFilter,
+  hideTagFilter,
+  onFilterChange,
+  rightSlot,
+}: FilterManagementProps) => {
   const initFilters = usePluginPageContext(v => v.filters) as FilterState
   const [filters, setFilters] = useState<FilterState>(initFilters)
+  const showRightSlot = rightSlot !== undefined && rightSlot !== null
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
     const updatedFilters = { ...filters, ...newFilters }
@@ -26,19 +35,28 @@ const FilterManagement: React.FC<FilterManagementProps> = ({ onFilterChange }) =
   }
 
   return (
-    <div className="flex items-center gap-2 self-stretch">
-      <CategoriesFilter
-        value={filters.categories}
-        onChange={categories => updateFilters({ categories })}
-      />
-      <TagFilter
-        value={filters.tags}
-        onChange={tags => updateFilters({ tags })}
-      />
+    <div className="flex w-full items-center gap-2 self-stretch">
+      {!hideCategoryFilter && (
+        <CategoriesFilter
+          value={filters.categories}
+          onChange={categories => updateFilters({ categories })}
+        />
+      )}
+      {!hideTagFilter && (
+        <TagFilter
+          value={filters.tags}
+          onChange={tags => updateFilters({ tags })}
+        />
+      )}
       <SearchBox
         searchQuery={filters.searchQuery}
         onChange={searchQuery => updateFilters({ searchQuery })}
       />
+      {showRightSlot && (
+        <div className="ml-auto shrink-0">
+          {rightSlot}
+        </div>
+      )}
     </div>
   )
 }

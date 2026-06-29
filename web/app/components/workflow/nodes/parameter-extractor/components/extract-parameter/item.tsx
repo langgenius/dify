@@ -11,11 +11,11 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
-type Props = {
+type Props = Readonly<{
   payload: Param
   onEdit: () => void
   onDelete: () => void
-}
+}>
 
 const Item: FC<Props> = ({
   payload,

@@ -13,6 +13,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react'
 import { ConfigurationMethodEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
+import { expectLoadingButton } from '@/test/button'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { PreviewPanel } from '../components/preview-panel'
 import { StepTwoFooter } from '../components/step-two-footer'
@@ -1773,14 +1774,14 @@ describe('StepTwoFooter', () => {
       render(<StepTwoFooter {...defaultProps} isCreating={true} />)
 
       const nextButton = screen.getByText(/nextStep/i).closest('button')
-      expect(nextButton)!.toBeDisabled()
+      expectLoadingButton(nextButton)
     })
 
     it('should show loading state on Save button when creating in setting mode', () => {
       render(<StepTwoFooter {...defaultProps} isSetting={true} isCreating={true} />)
 
       const saveButton = screen.getByText(/save/i).closest('button')
-      expect(saveButton)!.toBeDisabled()
+      expectLoadingButton(saveButton)
     })
   })
 })

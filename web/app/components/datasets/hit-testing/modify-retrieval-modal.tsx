@@ -17,13 +17,13 @@ import { useDocLink } from '@/context/i18n'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
 import { checkShowMultiModalTip } from '../settings/utils'
 
-type Props = {
+type Props = Readonly<{
   indexMethod: string
   value: RetrievalConfig
   isShow: boolean
   onHide: () => void
   onSave: (value: RetrievalConfig) => void
-}
+}>
 const ModifyRetrievalModal: FC<Props> = ({ indexMethod, value, isShow, onHide, onSave }) => {
   const ref = useRef(null)
   const { t } = useTranslation()

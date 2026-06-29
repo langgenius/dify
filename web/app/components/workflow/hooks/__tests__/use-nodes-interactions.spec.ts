@@ -20,6 +20,7 @@ const mockHandleNodeLoopChildrenCopy = vi.hoisted(() => vi.fn(() => ({
   copyChildren: [],
   newIdMapping: {},
 })))
+const mockCreateInlineAgentBinding = vi.hoisted(() => vi.fn())
 const runtimeNodesMetaDataMap = vi.hoisted(() => ({
   value: {} as Record<string, unknown>,
 }))
@@ -78,6 +79,12 @@ vi.mock('../use-inspect-vars-crud', () => ({
   }),
 }))
 
+vi.mock('../../nodes/agent-v2/hooks', () => ({
+  useCreateInlineAgentBinding: () => ({
+    createInlineAgentBinding: mockCreateInlineAgentBinding,
+  }),
+}))
+
 vi.mock('../../nodes/iteration/use-interactions', () => ({
   useNodeIterationInteractions: () => ({
     handleNodeIterationChildDrag: () => ({ restrictPosition: {} }),
@@ -107,6 +114,17 @@ describe('useNodesInteractions', () => {
     resetReactFlowMockState()
     runtimeState.nodesReadOnly = false
     runtimeState.workflowReadOnly = false
+    mockCreateInlineAgentBinding.mockImplementation((_nodeId: string, options?: { onSuccess?: (binding: {
+      binding_type: 'inline_agent'
+      agent_id: string
+      current_snapshot_id: string
+    }) => void }) => {
+      options?.onSuccess?.({
+        binding_type: 'inline_agent',
+        agent_id: 'inline-agent-1',
+        current_snapshot_id: 'inline-snapshot-1',
+      })
+    })
     currentNodes = [
       createNode({
         id: 'node-1',
@@ -450,6 +468,84 @@ describe('useNodesInteractions', () => {
 
     expect(rfState.setNodes).not.toHaveBeenCalled()
     expect(rfState.setEdges).not.toHaveBeenCalled()
+  })
+
+  it('creates an inline agent binding before syncing an added Agent v2 node', () => {
+    currentNodes = [
+      createNode({
+        id: 'node-1',
+        width: 100,
+        data: {
+          type: BlockEnum.Code,
+          title: 'Code',
+          desc: '',
+        },
+      }),
+    ]
+    rfState.nodes = currentNodes as unknown as typeof rfState.nodes
+    rfState.edges = []
+    rfState.setNodes.mockImplementation((nextNodes) => {
+      rfState.nodes = nextNodes
+    })
+    rfState.setEdges.mockImplementation((nextEdges) => {
+      rfState.edges = nextEdges
+    })
+    runtimeNodesMetaDataMap.value = {
+      [BlockEnum.AgentV2]: {
+        defaultValue: {
+          type: BlockEnum.AgentV2,
+          title: 'Agent',
+          desc: '',
+          agent_node_kind: 'dify_agent',
+          version: '2',
+        },
+        metaData: {
+          isSingleton: false,
+        },
+      },
+    }
+
+    const { result, store } = renderWorkflowHook(() => useNodesInteractions(), {
+      historyStore: {
+        nodes: currentNodes,
+        edges: [],
+      },
+    })
+
+    act(() => {
+      result.current.handleNodeAdd(
+        {
+          nodeType: BlockEnum.AgentV2,
+          pluginDefaultValue: {
+            agent_binding: {
+              binding_type: 'inline_agent',
+            },
+            agent_node_kind: 'dify_agent',
+            version: '2',
+          },
+        },
+        { prevNodeId: 'node-1' },
+      )
+    })
+
+    const agentNode = rfState.nodes.find(node => node.data.type === BlockEnum.AgentV2)
+    const firstSetNodesPayload = rfState.setNodes.mock.calls[0]?.[0]
+    const pendingAgentNode = firstSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+    const finalSetNodesPayload = rfState.setNodes.mock.calls.at(-1)?.[0]
+    const finalAgentNode = finalSetNodesPayload.find((node: Node) => node.data.type === BlockEnum.AgentV2)
+
+    expect(pendingAgentNode?.data._isTempNode).toBe(true)
+    expect(agentNode?.data.agent_binding).toEqual({
+      binding_type: 'inline_agent',
+      agent_id: 'inline-agent-1',
+      current_snapshot_id: 'inline-snapshot-1',
+    })
+    expect(finalAgentNode?.data._isTempNode).toBeUndefined()
+    expect(mockCreateInlineAgentBinding).toHaveBeenCalledWith(agentNode?.id, expect.objectContaining({
+      onSuccess: expect.any(Function),
+    }))
+    expect(store.getState().openInlineAgentPanelNodeId).toBe(agentNode?.id)
+    expect(mockHandleSyncWorkflowDraft).toHaveBeenCalledWith(true, true)
   })
 
   it('cancels selection state with collaborative nodes snapshot', () => {

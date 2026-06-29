@@ -1,7 +1,7 @@
 'use client'
 
 import type { Radio as BaseRadioNS } from '@base-ui/react/radio'
-import type { HTMLAttributes } from 'react'
+import type * as React from 'react'
 import { Radio as BaseRadio } from '@base-ui/react/radio'
 import { cn } from '../cn'
 
@@ -9,7 +9,7 @@ const radioRootClassName = cn(
   'inline-flex size-4 shrink-0 touch-manipulation items-center justify-center rounded-full p-0 transition-colors motion-reduce:transition-none',
   'border border-components-radio-border bg-components-radio-bg shadow-xs shadow-shadow-shadow-3',
   'hover:border-components-radio-border-hover hover:bg-components-radio-bg-hover',
-  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-components-input-border-hover focus-visible:ring-offset-0',
+  'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-offset-0',
   'data-checked:border-[5px] data-checked:border-components-radio-border-checked data-checked:hover:border-components-radio-border-checked-hover',
   'data-disabled:cursor-not-allowed data-disabled:border-components-radio-border-disabled data-disabled:bg-components-radio-bg-disabled',
   'data-disabled:hover:border-components-radio-border-disabled data-disabled:hover:bg-components-radio-bg-disabled',
@@ -87,7 +87,7 @@ export function Radio<Value = string>({
 }
 
 export type RadioSkeletonProps
-  = Omit<HTMLAttributes<HTMLDivElement>, 'className'>
+  = Omit<React.ComponentProps<'div'>, 'className'>
     & {
       className?: string
     }

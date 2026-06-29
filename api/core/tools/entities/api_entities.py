@@ -54,6 +54,9 @@ class ToolProviderApiEntity(BaseModel):
     configuration: MCPConfiguration | None = Field(
         default=None, description="The timeout and sse_read_timeout of the MCP tool"
     )
+    # M3 — user-identity forwarding selector. Round-tripped through the
+    # console API so the create/edit modal can hydrate the toggle state.
+    identity_mode: str = Field(default="off", description="Identity-forwarding mechanism: 'off' or 'idp_token'")
     # Workflow
     workflow_app_id: str | None = Field(default=None, description="The app id of the workflow tool")
 
@@ -92,6 +95,9 @@ class ToolProviderApiEntity(BaseModel):
                 optional_fields.update(self.optional_field("is_dynamic_registration", self.is_dynamic_registration))
                 optional_fields.update(self.optional_field("masked_headers", self.masked_headers))
                 optional_fields.update(self.optional_field("original_headers", self.original_headers))
+                # M3 — forwarding selector. Always emit ("off" is a valid
+                # value that the UI must hydrate, not skip).
+                optional_fields["identity_mode"] = self.identity_mode
             case ToolProviderType.WORKFLOW:
                 optional_fields.update(self.optional_field("workflow_app_id", self.workflow_app_id))
             case _:

@@ -4,6 +4,8 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/console/api` | (string & {})
 }
 
+export type SchemaDefinitionsResponse = unknown
+
 export type GetSpecSchemaDefinitionsData = {
   body?: never
   path?: never
@@ -12,9 +14,7 @@ export type GetSpecSchemaDefinitionsData = {
 }
 
 export type GetSpecSchemaDefinitionsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SchemaDefinitionsResponse
 }
 
 export type GetSpecSchemaDefinitionsResponse

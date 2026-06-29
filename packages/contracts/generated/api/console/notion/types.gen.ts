@@ -8,15 +8,30 @@ export type TextContentResponse = {
   content: string
 }
 
-export type NotionEstimatePayload = {
-  doc_form?: string
-  doc_language?: string
-  notion_info_list: Array<{
-    [key: string]: unknown
-  }>
-  process_rule: {
-    [key: string]: unknown
-  }
+export type NotionIntegrateInfoListResponse = {
+  notion_info: Array<NotionIntegrateWorkspaceResponse>
+}
+
+export type NotionIntegrateWorkspaceResponse = {
+  pages: Array<NotionIntegratePageResponse>
+  workspace_icon: string | null
+  workspace_id: string | null
+  workspace_name: string | null
+}
+
+export type NotionIntegratePageResponse = {
+  is_bound: boolean
+  page_icon: DataSourceIntegrateIconResponse | null
+  page_id: string
+  page_name: string
+  parent_id: string | null
+  type: string
+}
+
+export type DataSourceIntegrateIconResponse = {
+  emoji?: string | null
+  type?: string | null
+  url?: string | null
 }
 
 export type GetNotionPagesByPageIdByPageTypePreviewData = {
@@ -25,7 +40,9 @@ export type GetNotionPagesByPageIdByPageTypePreviewData = {
     page_id: string
     page_type: string
   }
-  query?: never
+  query: {
+    credential_id: string
+  }
   url: '/notion/pages/{page_id}/{page_type}/preview'
 }
 
@@ -36,36 +53,18 @@ export type GetNotionPagesByPageIdByPageTypePreviewResponses = {
 export type GetNotionPagesByPageIdByPageTypePreviewResponse
   = GetNotionPagesByPageIdByPageTypePreviewResponses[keyof GetNotionPagesByPageIdByPageTypePreviewResponses]
 
-export type PostNotionPagesByPageIdByPageTypePreviewData = {
-  body: NotionEstimatePayload
-  path: {
-    page_id: string
-    page_type: string
-  }
-  query?: never
-  url: '/notion/pages/{page_id}/{page_type}/preview'
-}
-
-export type PostNotionPagesByPageIdByPageTypePreviewResponses = {
-  200: {
-    [key: string]: unknown
-  }
-}
-
-export type PostNotionPagesByPageIdByPageTypePreviewResponse
-  = PostNotionPagesByPageIdByPageTypePreviewResponses[keyof PostNotionPagesByPageIdByPageTypePreviewResponses]
-
 export type GetNotionPreImportPagesData = {
   body?: never
   path?: never
-  query?: never
+  query: {
+    credential_id: string
+    dataset_id?: string
+  }
   url: '/notion/pre-import/pages'
 }
 
 export type GetNotionPreImportPagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: NotionIntegrateInfoListResponse
 }
 
 export type GetNotionPreImportPagesResponse

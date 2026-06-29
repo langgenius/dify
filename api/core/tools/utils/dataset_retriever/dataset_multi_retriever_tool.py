@@ -1,4 +1,5 @@
 import threading
+from typing import override
 
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
@@ -46,6 +47,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
             name=f"dataset_{tenant_id.replace('-', '_')}", tenant_id=tenant_id, dataset_ids=dataset_ids, **kwargs
         )
 
+    @override
     def _run(self, query: str) -> str:
         threads = []
         all_documents: list[RagDocument] = []

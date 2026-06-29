@@ -7,7 +7,9 @@ import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import ANY, MagicMock, Mock
 
 import pytest
@@ -27,7 +29,7 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.workflow.human_input_policy import HumanInputSurface
+from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
@@ -43,7 +45,6 @@ from repositories.api_workflow_node_execution_repository import WorkflowNodeExec
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from services.app_generate_service import AppGenerateService
 from services.workflow_event_snapshot_service import _build_snapshot_events
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 class _DummyRateLimit:
@@ -156,24 +157,30 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_reasons: Sequence[HumanInputRequired]
 
     @property
+    @override
     def id(self) -> str:
         return self.pause_id
 
     @property
+    @override
     def workflow_execution_id(self) -> str:
         return self.workflow_run_id
 
+    @override
     def get_state(self) -> bytes:
         raise AssertionError("state is not required for snapshot tests")
 
     @property
+    @override
     def resumed_at(self) -> datetime | None:
         return None
 
     @property
+    @override
     def paused_at(self) -> datetime:
         return self.paused_at_value
 
+    @override
     def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
         return self.pause_reasons
 
@@ -268,8 +275,8 @@ class TestHitlServiceApi:
         monkeypatch.setattr(workflow_events_module, "WorkflowAppGenerator", lambda: workflow_generator)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context("/workflow/run-1/events?user=u1&continue_on_pause=true", method="GET"):
@@ -303,8 +310,8 @@ class TestHitlServiceApi:
         monkeypatch.setattr(workflow_events_module, "build_workflow_event_stream", snapshot_builder)
 
         api = WorkflowEventsApi()
-        handler = _unwrap(api.get)
-        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW.value)
+        handler = unwrap(api.get)
+        app_model = SimpleNamespace(id="app-1", tenant_id="tenant-1", mode=AppMode.WORKFLOW)
         end_user = SimpleNamespace(id="end-user-1")
 
         with app.test_request_context(
@@ -585,15 +592,21 @@ class TestHitlServiceApi:
         monkeypatch.setattr(workflow_response_converter, "db", SimpleNamespace(engine=object()))
         monkeypatch.setattr(
             workflow_response_converter,
-            "load_form_tokens_by_form_id",
-            lambda form_ids, session=None, surface=None: {"form-1": "token"},
+            "load_form_dispositions_by_form_id",
+            lambda form_ids, session=None, surface=None: {
+                "form-1": FormDisposition(form_token="token", approval_channels=[])
+            },
         )
 
         reason = HumanInputRequired(
             form_id="form-1",
             form_content="Rendered",
             inputs=[
-                ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="field", default=None),
+                ParagraphInputConfig(
+                    type=FormInputType.PARAGRAPH,
+                    output_variable_name="field",
+                    default=None,
+                ),
             ],
             actions=[UserActionConfig(id="approve", title="Approve")],
             display_in_ui=True,
@@ -607,7 +620,7 @@ class TestHitlServiceApi:
             paused_nodes=["node-id"],
         )
 
-        runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0)
+        runtime_state = SimpleNamespace(total_tokens=0, node_run_steps=0, variable_pool=VariablePool())
         responses = converter.workflow_pause_to_stream_response(
             event=queue_event,
             task_id="task",
@@ -641,8 +654,10 @@ class TestHitlServiceApi:
         snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
         resumption_context = _build_resumption_context("task-ctx")
         monkeypatch.setattr(
-            "services.workflow_event_snapshot_service.load_form_tokens_by_form_id",
-            lambda form_ids, session=None, surface=None: {"form-1": "wtok"},
+            "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
+            lambda form_ids, session=None, surface=None: {
+                "form-1": FormDisposition(form_token="wtok", approval_channels=[])
+            },
         )
 
         class _SessionContext:

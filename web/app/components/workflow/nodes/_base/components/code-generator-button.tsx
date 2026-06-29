@@ -12,13 +12,13 @@ import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { AppModeEnum } from '@/types/app'
 import { useHooksStore } from '../../../hooks-store'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   currentCode?: string
   className?: string
   onGenerated?: (prompt: string) => void
   codeLanguages: CodeLanguage
-}
+}>
 
 const CodeGenerateBtn: FC<Props> = ({
   nodeId,

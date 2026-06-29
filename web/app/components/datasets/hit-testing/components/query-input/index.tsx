@@ -38,6 +38,7 @@ type QueryInputProps = {
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
   isEconomy: boolean
+  canRunRetrievalRecall?: boolean
   onSubmit?: () => void
   hitTestingMutation: UseMutateAsyncFunction<HitTestingResponse, Error, HitTestingRequest, unknown>
   externalKnowledgeBaseHitTestingMutation: UseMutateAsyncFunction<
@@ -59,6 +60,7 @@ const QueryInput = ({
   onClickRetrievalMethod,
   retrievalConfig,
   isEconomy,
+  canRunRetrievalRecall = true,
   onSubmit: _onSubmit,
   hitTestingMutation,
   externalKnowledgeBaseHitTestingMutation,
@@ -143,6 +145,9 @@ const QueryInput = ({
   }, [queries, setQueries])
 
   const onSubmit = useCallback(async () => {
+    if (!canRunRetrievalRecall)
+      return
+
     await hitTestingMutation({
       query: text,
       attachment_ids: images.map(image => image.uploadedId),
@@ -158,9 +163,12 @@ const QueryInput = ({
           _onSubmit()
       },
     })
-  }, [text, retrievalConfig, isEconomy, hitTestingMutation, onUpdateList, _onSubmit, images, setHitResult])
+  }, [canRunRetrievalRecall, text, retrievalConfig, isEconomy, hitTestingMutation, onUpdateList, _onSubmit, images, setHitResult])
 
   const externalRetrievalTestingOnSubmit = useCallback(async () => {
+    if (!canRunRetrievalRecall)
+      return
+
     await externalKnowledgeBaseHitTestingMutation({
       query: text,
       external_retrieval_model: {
@@ -174,7 +182,7 @@ const QueryInput = ({
         onUpdateList?.()
       },
     })
-  }, [text, externalRetrievalSettings, externalKnowledgeBaseHitTestingMutation, onUpdateList, setExternalHitResult])
+  }, [canRunRetrievalRecall, text, externalRetrievalSettings, externalKnowledgeBaseHitTestingMutation, onUpdateList, setExternalHitResult])
 
   const retrievalMethod = isEconomy ? RETRIEVE_METHOD.keywordSearch : retrievalConfig.search_method
   const icon = <img className="size-3.5 text-util-colors-purple-purple-600" src={getIcon(retrievalMethod)} alt="" />
@@ -192,14 +200,14 @@ const QueryInput = ({
         onClick={isExternal ? externalRetrievalTestingOnSubmit : onSubmit}
         variant="primary"
         loading={loading}
-        disabled={(text.length === 0 && images.length === 0) || text.length > 200 || (images.length > 0 && !isAllUploaded)}
+        disabled={!canRunRetrievalRecall || (text.length === 0 && images.length === 0) || text.length > 200 || (images.length > 0 && !isAllUploaded)}
         className="w-[88px]"
       >
         <RiPlayCircleLine className="mr-1 size-4" />
         {t('input.testing', { ns: 'datasetHitTesting' })}
       </Button>
     )
-  }, [isExternal, externalRetrievalTestingOnSubmit, onSubmit, text, loading, t, images, isAllUploaded])
+  }, [isExternal, externalRetrievalTestingOnSubmit, onSubmit, canRunRetrievalRecall, text, loading, t, images, isAllUploaded])
 
   return (
     <div className={cn('relative flex h-80 shrink-0 flex-col overflow-hidden rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>

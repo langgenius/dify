@@ -4,12 +4,12 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { languages } from '@/i18n-config/language'
 
-type Props = {
+type Props = Readonly<{
   currentModel: any
   language: string
   voice: string
   onChange: (language: string, voice: string) => void
-}
+}>
 
 const supportedLanguages = languages.filter(item => item.supported)
 

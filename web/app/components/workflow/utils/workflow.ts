@@ -8,7 +8,6 @@ import {
 import {
   getOutgoers,
 } from 'reactflow'
-import { v4 as uuid4 } from 'uuid'
 import {
   BlockEnum,
 } from '../types'
@@ -27,6 +26,7 @@ export const canRunBySingle = (nodeType: BlockEnum, isChildNode: boolean) => {
     || nodeType === BlockEnum.ParameterExtractor
     || nodeType === BlockEnum.Iteration
     || nodeType === BlockEnum.Agent
+    || nodeType === BlockEnum.AgentV2
     || nodeType === BlockEnum.DocExtractor
     || nodeType === BlockEnum.Loop
     || nodeType === BlockEnum.Start
@@ -157,32 +157,6 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
     maxDepth,
   }
 }
-
-export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
-  const idMap = nodes.reduce((acc, node) => {
-    acc[node.id] = uuid4()
-
-    return acc
-  }, {} as Record<string, string>)
-
-  const newNodes = nodes.map((node) => {
-    return {
-      ...node,
-      id: idMap[node.id],
-    }
-  })
-
-  const newEdges = edges.map((edge) => {
-    return {
-      ...edge,
-      source: idMap[edge.source],
-      target: idMap[edge.target],
-    }
-  })
-
-  return [newNodes, newEdges] as [Node[], Edge[]]
-}
-
 export const hasErrorHandleNode = (nodeType?: BlockEnum) => {
-  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.Agent
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code || nodeType === BlockEnum.Agent || nodeType === BlockEnum.AgentV2
 }

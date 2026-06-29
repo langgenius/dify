@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_vikingdb.vikingdb_vector import VikingDBConfig, VikingDBVector
 
 from core.rag.datasource.vdb.vector_integration_test_support import AbstractVectorTest, get_example_text
@@ -20,14 +22,17 @@ class VikingDBVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def search_by_vector(self):
         hits_by_vector = self.vector.search_by_vector(query_vector=self.example_embedding)
         assert len(hits_by_vector) == 1
 
+    @override
     def search_by_full_text(self):
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value="test_document_id")
         assert len(ids) > 0

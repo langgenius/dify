@@ -4,6 +4,7 @@ import { CheckboxList } from '..'
 
 describe('checkbox list component', () => {
   const selectAllName = 'common.operation.selectAll'
+  const getSearchInput = () => screen.getByRole('searchbox', { name: 'common.operation.search' })
   const options = [
     { label: 'Option 1', value: 'option1' },
     { label: 'Option 2', value: 'option2' },
@@ -30,7 +31,7 @@ describe('checkbox list component', () => {
   it('filters options by label', async () => {
     render(<CheckboxList options={options} />)
 
-    const input = screen.getByRole('textbox')
+    const input = getSearchInput()
     await userEvent.type(input, 'app')
 
     expect(screen.getByText('Apple'))!.toBeInTheDocument()
@@ -116,7 +117,7 @@ describe('checkbox list component', () => {
 
   it('hides select-all checkbox when searching', async () => {
     render(<CheckboxList options={options} />)
-    await userEvent.type(screen.getByRole('textbox'), 'app')
+    await userEvent.type(getSearchInput(), 'app')
     expect(screen.queryByRole('checkbox', { name: selectAllName })).not.toBeInTheDocument()
   })
 
@@ -182,7 +183,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox')
+    const input = getSearchInput()
     await userEvent.type(input, 'ban')
     await userEvent.click(screen.getByText('common.operation.resetKeywords'))
     expect(input)!.toHaveValue('')
@@ -293,7 +294,7 @@ describe('checkbox list component', () => {
   it('filters options correctly when searching', async () => {
     render(<CheckboxList options={options} />)
 
-    const input = screen.getByRole('textbox')
+    const input = getSearchInput()
     await userEvent.type(input, 'option')
 
     expect(screen.getByText('Option 1'))!.toBeInTheDocument()
@@ -305,7 +306,7 @@ describe('checkbox list component', () => {
   it('shows no data message when no options match search', async () => {
     render(<CheckboxList options={options} />)
 
-    const input = screen.getByRole('textbox')
+    const input = getSearchInput()
     await userEvent.type(input, 'xyz')
 
     expect(screen.getByText(/common.operation.noSearchResults/i))!.toBeInTheDocument()
@@ -372,7 +373,7 @@ describe('checkbox list component', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox')
+    const input = getSearchInput()
     await userEvent.type(input, 'opt')
 
     expect(screen.getByText(/operation.searchCount/i))!.toBeInTheDocument()

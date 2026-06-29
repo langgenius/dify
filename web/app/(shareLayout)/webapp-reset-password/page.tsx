@@ -6,7 +6,7 @@ import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import { emailRegex } from '@/config'
 import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -23,6 +23,7 @@ export default function CheckCode() {
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
   const locale = useLocale()
+  const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const handleGetEMailVerificationCode = async () => {
     try {
@@ -38,7 +39,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
-        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+        setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))

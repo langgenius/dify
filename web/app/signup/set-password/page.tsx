@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import Cookies from 'js-cookie'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import { useLocale } from '@/context/i18n'
@@ -78,10 +78,10 @@ const ChangePasswordForm = () => {
       if (result === 'success') {
         const utmInfo = parseUtmInfo()
         rememberCreateAppExternalAttribution({ utmInfo })
-        trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
-          method: 'email',
-          ...utmInfo,
-        })
+        // Defer the Amplitude event until the user ID is attached. It is flushed in
+        // AppContextProvider after setUserId runs once the redirect lands on /apps.
+        // Firing it here would record it under an anonymous Amplitude profile.
+        rememberRegistrationSuccess({ method: 'email', utmInfo })
 
         sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',

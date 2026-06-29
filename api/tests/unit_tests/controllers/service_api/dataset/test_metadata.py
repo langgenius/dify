@@ -16,7 +16,8 @@ Decorator strategy:
 """
 
 import uuid
-from unittest.mock import Mock, patch
+from inspect import unwrap
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
@@ -29,7 +30,6 @@ from controllers.service_api.dataset.metadata import (
     DatasetMetadataServiceApi,
     DocumentMetadataEditServiceApi,
 )
-from tests.unit_tests.controllers.service_api.conftest import _unwrap
 
 
 @pytest.fixture
@@ -65,7 +65,7 @@ class TestDatasetMetadataCreatePost:
 
     @staticmethod
     def _call_post(api, **kwargs):
-        return _unwrap(api.post)(api, **kwargs)
+        return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -195,7 +195,7 @@ class TestDatasetMetadataServiceApiPatch:
 
     @staticmethod
     def _call_patch(api, **kwargs):
-        return _unwrap(api.patch)(api, **kwargs)
+        return unwrap(api.patch)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -267,7 +267,7 @@ class TestDatasetMetadataServiceApiDelete:
 
     @staticmethod
     def _call_delete(api, **kwargs):
-        return _unwrap(api.delete)(api, **kwargs)
+        return unwrap(api.delete)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -376,7 +376,7 @@ class TestDatasetMetadataBuiltInFieldAction:
 
     @staticmethod
     def _call_post(api, **kwargs):
-        return _unwrap(api.post)(api, **kwargs)
+        return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -408,7 +408,7 @@ class TestDatasetMetadataBuiltInFieldAction:
 
         assert status == 200
         assert response["result"] == "success"
-        mock_meta_svc.enable_built_in_field.assert_called_once_with(mock_dataset)
+        mock_meta_svc.enable_built_in_field.assert_called_once_with(ANY, mock_dataset)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -439,7 +439,7 @@ class TestDatasetMetadataBuiltInFieldAction:
             )
 
         assert status == 200
-        mock_meta_svc.disable_built_in_field.assert_called_once_with(mock_dataset)
+        mock_meta_svc.disable_built_in_field.assert_called_once_with(ANY, mock_dataset)
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     def test_action_dataset_not_found(
@@ -479,7 +479,7 @@ class TestDocumentMetadataEditPost:
 
     @staticmethod
     def _call_post(api, **kwargs):
-        return _unwrap(api.post)(api, **kwargs)
+        return unwrap(api.post)(api, **kwargs)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")

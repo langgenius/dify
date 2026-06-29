@@ -24,6 +24,7 @@ describe('variable-modal sections', () => {
         />
         <DescriptionSection
           description="original description"
+          maxLength={255}
           onChange={onDescriptionChange}
           placeholder="description-placeholder"
           title="Description"
@@ -41,6 +42,20 @@ describe('variable-modal sections', () => {
     expect(onNameChange).toHaveBeenCalled()
     expect(onNameBlur).toHaveBeenCalledWith('updated-query')
     expect(onDescriptionChange).toHaveBeenCalledWith('updated-description')
+  })
+
+  it('should show description length against the configured limit', () => {
+    render(
+      <DescriptionSection
+        description="abc"
+        maxLength={255}
+        onChange={vi.fn()}
+        placeholder="description-placeholder"
+        title="Description"
+      />,
+    )
+
+    expect(screen.getByText('3/255')).toBeInTheDocument()
   })
 
   it('renders type and value sections and forwards toggle and value changes', async () => {

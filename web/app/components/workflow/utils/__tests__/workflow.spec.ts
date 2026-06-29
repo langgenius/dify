@@ -2,7 +2,6 @@ import { createEdge, createNode, resetFixtureCounters } from '../../__tests__/fi
 import { BlockEnum } from '../../types'
 import {
   canRunBySingle,
-  changeNodesAndEdgesId,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getValidTreeNodes,
   hasErrorHandleNode,
@@ -388,36 +387,5 @@ describe('getValidTreeNodes', () => {
     expect(result.validNodes.map(n => n.id)).toContain('start1')
     expect(result.validNodes.map(n => n.id)).toContain('start2')
     expect(result.validNodes.map(n => n.id)).toContain('shared')
-  })
-})
-
-describe('changeNodesAndEdgesId', () => {
-  it('should replace all node and edge ids with new uuids', () => {
-    const nodes = [
-      createNode({ id: 'old-1', data: { type: BlockEnum.Start, title: '', desc: '' } }),
-      createNode({ id: 'old-2', data: { type: BlockEnum.Code, title: '', desc: '' } }),
-    ]
-    const edges = [
-      createEdge({ source: 'old-1', target: 'old-2' }),
-    ]
-
-    const [newNodes, newEdges] = changeNodesAndEdgesId(nodes, edges)
-
-    expect(newNodes[0]!.id).not.toBe('old-1')
-    expect(newNodes[1]!.id).not.toBe('old-2')
-    expect(newEdges[0]!.source).toBe(newNodes[0]!.id)
-    expect(newEdges[0]!.target).toBe(newNodes[1]!.id)
-  })
-
-  it('should generate unique ids for all nodes', () => {
-    const nodes = [
-      createNode({ id: 'a' }),
-      createNode({ id: 'b' }),
-      createNode({ id: 'c' }),
-    ]
-
-    const [newNodes] = changeNodesAndEdgesId(nodes, [])
-    const ids = new Set(newNodes.map(n => n.id))
-    expect(ids.size).toBe(3)
   })
 })

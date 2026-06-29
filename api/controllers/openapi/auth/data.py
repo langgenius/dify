@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import uuid
 from enum import StrEnum
-from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import InternalServerError
 
 from configs import dify_config
+from core.rbac import RBACPermission, RBACResourceScope
 from libs.oauth_bearer import Scope, TokenType
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
@@ -18,6 +18,11 @@ class Edition(StrEnum):
     CE = "ce"
     EE = "ee"
     SAAS = "saas"
+
+
+class CallerKind(StrEnum):
+    ACCOUNT = "account"
+    END_USER = "end_user"
 
 
 def current_edition() -> Edition:
@@ -35,6 +40,14 @@ class ExternalIdentity(BaseModel):
     issuer: str | None = None
 
 
+class RBACRequirement(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    resource_type: RBACResourceScope
+    scene: RBACPermission
+    resource_required: bool = True
+
+
 class RequestContext(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -43,6 +56,7 @@ class RequestContext(BaseModel):
     path_params: dict[str, str]
     workspace_membership: bool = False
     allowed_roles: frozenset[TenantAccountRole] | None = None
+    rbac: RBACRequirement | None = None
 
 
 class AuthData(BaseModel):
@@ -59,6 +73,7 @@ class AuthData(BaseModel):
     path_params: dict[str, str] = Field(default_factory=dict)
 
     allowed_roles: frozenset[TenantAccountRole] | None = None
+    rbac: RBACRequirement | None = None
 
     app: App | None = None
     tenant: Tenant | None = None
@@ -67,9 +82,9 @@ class AuthData(BaseModel):
     tenant_role: TenantAccountRole | None = None
 
     caller: Account | EndUser | None = None
-    caller_kind: Literal["account", "end_user"] | None = None
+    caller_kind: CallerKind | None = None
 
-    def require_app_context(self) -> tuple[App, Account | EndUser, Literal["account", "end_user"]]:
+    def require_app_context(self) -> tuple[App, Account | EndUser, CallerKind]:
         if self.app is None or self.caller is None or self.caller_kind is None:
             raise InternalServerError("pipeline_invariant_violated: app context missing")
         return self.app, self.caller, self.caller_kind

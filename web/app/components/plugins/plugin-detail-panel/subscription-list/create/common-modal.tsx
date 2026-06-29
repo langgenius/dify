@@ -22,12 +22,12 @@ import {
   useCommonModalState,
 } from './hooks/use-common-modal-state'
 
-type Props = {
+type Props = Readonly<{
   open?: boolean
   onClose: () => void
   createType: SupportedCreationMethods
   builder?: TriggerSubscriptionBuilder
-}
+}>
 
 export const CommonCreateModal = ({ open = true, onClose, createType, builder }: Props) => {
   return (

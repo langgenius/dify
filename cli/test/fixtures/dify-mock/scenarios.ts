@@ -14,6 +14,11 @@ export type Scenario
     | 'server-version-empty'
     | 'server-version-unsupported'
     | 'run-422-stale'
+    | 'workflow-think'
+    | 'chat-reasoning'
+    | 'workflow-reasoning'
+    | 'import-pending'
+    | 'import-failed'
 
 export type AccountFixture = {
   id: string
@@ -64,18 +69,18 @@ export const ACCOUNT: AccountFixture = {
   email: 'tester@dify.ai',
   name: 'Test Tester',
   is_external: false,
-  current_workspace_id: 'ws-1',
+  current_workspace_id: '550e8400-e29b-41d4-a716-446655440000',
 }
 
 export const WORKSPACES: WorkspaceFixture[] = [
-  { id: 'ws-1', name: 'Default', role: 'owner', status: 'normal', is_current: true },
-  { id: 'ws-2', name: 'Other', role: 'normal', status: 'normal', is_current: false },
+  { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner', status: 'normal', is_current: true },
+  { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Other', role: 'normal', status: 'normal', is_current: false },
 ]
 
 export const APPS: AppFixture[] = [
   {
     id: 'app-1',
-    workspace_id: 'ws-1',
+    workspace_id: '550e8400-e29b-41d4-a716-446655440000',
     workspace_name: 'Default',
     name: 'Greeter',
     mode: 'chat',
@@ -98,7 +103,7 @@ export const APPS: AppFixture[] = [
   },
   {
     id: 'app-4',
-    workspace_id: 'ws-2',
+    workspace_id: '550e8400-e29b-41d4-a716-446655440001',
     workspace_name: 'Other',
     name: 'Researcher',
     mode: 'agent-chat',
@@ -113,7 +118,7 @@ export const APPS: AppFixture[] = [
   },
   {
     id: 'app-2',
-    workspace_id: 'ws-1',
+    workspace_id: '550e8400-e29b-41d4-a716-446655440000',
     workspace_name: 'Default',
     name: 'Workflow',
     mode: 'workflow',
@@ -127,7 +132,7 @@ export const APPS: AppFixture[] = [
   },
   {
     id: 'app-3',
-    workspace_id: 'ws-2',
+    workspace_id: '550e8400-e29b-41d4-a716-446655440001',
     workspace_name: 'Other',
     name: 'OtherWS Bot',
     mode: 'chat',
@@ -140,6 +145,13 @@ export const APPS: AppFixture[] = [
     service_api_enabled: false,
   },
 ]
+
+export const DSL_YAML = `app:
+  description: A simple greeting bot
+  mode: chat
+  name: Greeter
+version: '0.1.4'
+`
 
 export const SESSIONS: SessionFixture[] = [
   {

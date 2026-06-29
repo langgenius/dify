@@ -17,7 +17,12 @@ def _request():
                 model_provider="openai",
                 model="gpt-test",
             ),
-            execution_context=DifyExecutionContextLayerConfig(tenant_id="tenant-1", invoke_from="workflow_run"),
+            execution_context=DifyExecutionContextLayerConfig(
+                tenant_id="tenant-1",
+                user_from="account",
+                agent_mode="workflow_run",
+                invoke_from="debugger",
+            ),
             workflow_node_job_prompt="Do the task.",
             user_prompt="hello",
         )
@@ -65,18 +70,18 @@ def test_fake_client_cancel_run_returns_cancelled_status():
     assert cancelled.status == "cancelled"
 
 
-def test_fake_client_paused_scenario_returns_paused_status_and_event():
-    """The paused scenario exists for HITL-style flows; both ``wait_run`` and
-    the event stream must report the pause so consumers can branch on it."""
+def test_fake_client_paused_scenario_returns_deferred_tool_call_success_event():
+    """The API pause scenario follows the Dify Agent deferred-tool wire shape."""
     client = FakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.PAUSED)
 
     status = client.wait_run("fake-run-1")
     events = list(client.stream_events("fake-run-1"))
 
-    assert status.status == "paused"
+    assert status.status == "succeeded"
     assert status.error is None
-    assert events[-1].type == "run_paused"
-    assert events[-1].data.reason == "human_input_required"
+    assert events[-1].type == "run_succeeded"
+    assert events[-1].data.deferred_tool_call is not None
+    assert events[-1].data.deferred_tool_call.tool_name == "ask_human"
 
 
 def test_fake_client_success_wait_run_returns_succeeded_status():

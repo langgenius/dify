@@ -1,3 +1,5 @@
+from typing import override
+
 """Tencent APM tracing with idempotent client cleanup."""
 
 import inspect
@@ -56,6 +58,7 @@ class TencentDataTrace(BaseTraceInstance):
             metrics_export_interval_sec=5,
         )
 
+    @override
     def trace(self, trace_info: BaseTraceInfo) -> None:
         """Main tracing entry point - coordinates different trace types."""
         match trace_info:

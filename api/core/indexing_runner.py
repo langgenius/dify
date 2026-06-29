@@ -316,6 +316,7 @@ class IndexingRunner:
         qa_preview_texts: list[QAPreviewDetail] = []
 
         total_segments = 0
+        deleted_preview_images = False
         # doc_form represents the segmentation method (general, parent-child, QA)
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
@@ -368,6 +369,10 @@ class IndexingRunner:
                             upload_file_id,
                         )
                     db.session.delete(image_file)
+                    deleted_preview_images = True
+
+        if deleted_preview_images:
+            db.session.commit()
 
         if doc_form and doc_form == "qa_model":
             return IndexingEstimate(total_segments=total_segments * 20, qa_preview=qa_preview_texts, preview=[])

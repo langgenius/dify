@@ -4,8 +4,11 @@ import { base } from './fetch'
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     add: vi.fn(),
+    error: vi.fn(),
   },
 }))
+
+const { toast } = await import('@langgenius/dify-ui/toast')
 
 describe('base', () => {
   beforeEach(() => {
@@ -47,6 +50,49 @@ describe('base', () => {
         message: 'Unauthorized',
         status: 401,
       })
+    })
+
+    it('should display the response error field when message is absent', async () => {
+      const errorResponse = new Response(
+        JSON.stringify({
+          code: 'invalid_param',
+          error: 'Invalid DSL kind',
+          status: 400,
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
+
+      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+
+      expect(toast.error).toHaveBeenCalledWith('Invalid DSL kind')
+    })
+
+    it('should not display an empty error toast when message and error are absent', async () => {
+      const errorResponse = new Response(
+        JSON.stringify({
+          code: 'invalid_param',
+          status: 400,
+        }),
+        {
+          status: 400,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        },
+      )
+
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(errorResponse)
+
+      await expect(base('/imports')).rejects.toBeInstanceOf(Response)
+
+      expect(toast.error).not.toHaveBeenCalled()
     })
   })
 })

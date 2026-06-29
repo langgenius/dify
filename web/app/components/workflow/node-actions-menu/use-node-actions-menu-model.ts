@@ -3,13 +3,13 @@ import { useCallback, useMemo } from 'react'
 import { useEdges } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import {
-  useNodeDataUpdate,
   useNodeMetaData,
   useNodesInteractions,
   useNodesReadOnly,
-  useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useHooksStore } from '@/app/components/workflow/hooks-store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import { canRunBySingle } from '@/app/components/workflow/utils'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
@@ -34,14 +34,15 @@ export function useNodeActionsMenuModel({
     handleNodeSelect,
     handleNodesCopy,
   } = useNodesInteractions()
-  const { handleNodeDataUpdate } = useNodeDataUpdate()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
+  const canRunWorkflow = useHooksStore(s => s.accessControl.canRun)
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
   const { data: workflowTools } = useAllWorkflowTools()
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
-  const canRun = canRunBySingle(data.type, isChildNode)
+  const canRun = canRunWorkflow && !nodesReadOnly && canRunBySingle(data.type, isChildNode)
+  const isSingleRunning = data._singleRunningStatus === NodeRunningStatus.Running
   const canChangeBlock = !nodeMetaData.isTypeFixed && !nodeMetaData.isUndeletable && !nodesReadOnly
   const sourceHandle = useMemo(() => {
     return edges.find(edge => edge.target === id)?.sourceHandle || 'source'
@@ -60,11 +61,15 @@ export function useNodeActionsMenuModel({
   }, [data.provider_id, data.provider_type, data.type, workflowTools])
 
   const handleRun = useCallback(() => {
+    const store = workflowStore.getState()
+    store.setInitShowLastRunTab(true)
+    store.setPendingSingleRun({
+      nodeId: id,
+      action: isSingleRunning ? 'stop' : 'run',
+    })
     handleNodeSelect(id)
-    handleNodeDataUpdate({ id, data: { _isSingleRun: true } })
-    handleSyncWorkflowDraft(true)
     onClose()
-  }, [handleNodeDataUpdate, handleNodeSelect, handleSyncWorkflowDraft, id, onClose])
+  }, [handleNodeSelect, id, isSingleRunning, onClose, workflowStore])
 
   const handleCopy = useCallback(() => {
     onClose()
@@ -96,6 +101,7 @@ export function useNodeActionsMenuModel({
     helpLinkUri: showHelpLink ? nodeMetaData.helpLinkUri : undefined,
     id,
     isSingleton: nodeMetaData.isSingleton,
+    isSingleRunning,
     isUndeletable: nodeMetaData.isUndeletable,
     nodesReadOnly,
     sourceHandle,

@@ -91,7 +91,16 @@ describe('EventDetailDrawer', () => {
     it('should render drawer', () => {
       render(<EventDetailDrawer eventInfo={mockEventInfo} providerInfo={mockProviderInfo} onClose={mockOnClose} />)
 
-      expect(screen.getByRole('dialog'))!.toBeInTheDocument()
+      const dialog = screen.getByRole('dialog')
+
+      expect(dialog)!.toBeInTheDocument()
+      expect(dialog).toHaveClass(
+        'data-[swipe-direction=right]:top-2',
+        'data-[swipe-direction=right]:bottom-2',
+        'data-[swipe-direction=right]:h-[calc(100dvh-16px)]',
+        'data-[swipe-direction=right]:w-[400px]',
+        'data-[swipe-direction=right]:max-w-[calc(100vw-1rem)]',
+      )
     })
 
     it('should render event title', () => {

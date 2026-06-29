@@ -153,8 +153,8 @@ describe('app-card-utils', () => {
       appInfo: baseAppInfo,
       cardType: 'webapp',
       currentWorkflow: null,
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
 
     expect(state.isApp).toBe(true)
@@ -168,8 +168,8 @@ describe('app-card-utils', () => {
       appInfo: { ...baseAppInfo, mode: AppModeEnum.WORKFLOW },
       cardType: 'webapp',
       currentWorkflow: null,
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
     expect(unpublishedState.appUnpublished).toBe(true)
     expect(unpublishedState.toggleDisabled).toBe(true)
@@ -182,8 +182,8 @@ describe('app-card-utils', () => {
           nodes: [{ data: { type: BlockEnum.Answer } }],
         },
       },
-      isCurrentWorkspaceEditor: true,
-      isCurrentWorkspaceManager: true,
+      canManageWebApp: true,
+      canManageApi: true,
     })
     expect(missingStartState.missingStartNode).toBe(true)
     expect(missingStartState.runningStatus).toBe(false)
@@ -210,13 +210,13 @@ describe('app-card-utils', () => {
     expect(getAppCardOperationKeys({
       cardType: 'api',
       appMode: AppModeEnum.COMPLETION,
-      isCurrentWorkspaceEditor: true,
+      canManageSettings: true,
     })).toEqual(['develop'])
 
     expect(getAppCardOperationKeys({
       cardType: 'webapp',
       appMode: AppModeEnum.CHAT,
-      isCurrentWorkspaceEditor: false,
+      canManageSettings: false,
     })).toEqual(['launch', 'embedded', 'customize'])
   })
 
@@ -283,6 +283,18 @@ describe('app-card-utils', () => {
 
     expect(snippet).toContain('// You can define the inputs from the Start node here')
     expect(snippet).not.toContain('isDev: true')
+  })
+
+  it('should generate an agent embedded script route when requested', () => {
+    const snippet = getEmbeddedScriptSnippet({
+      url: 'https://example.com',
+      token: 'agent-token',
+      webAppRoute: 'agent',
+      primaryColor: '#1C64F2',
+      inputValues: {},
+    })
+
+    expect(snippet).toContain('routeSegment: \'agent\'')
   })
 
   it('should compress and encode base64 using CompressionStream when available', async () => {

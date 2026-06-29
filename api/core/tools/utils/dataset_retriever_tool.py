@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -85,6 +85,7 @@ class DatasetRetrieverTool(Tool):
 
         return tools
 
+    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,
@@ -105,9 +106,11 @@ class DatasetRetrieverTool(Tool):
             ),
         ]
 
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.DATASET_RETRIEVAL
 
+    @override
     def _invoke(
         self,
         user_id: str,

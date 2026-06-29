@@ -7,11 +7,11 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AgentLogDetail from './detail'
 
-type AgentLogModalProps = {
+type AgentLogModalProps = Readonly<{
   currentLogItem?: IChatItem
   width: number
   onCancel: () => void
-}
+}>
 const AgentLogModal: FC<AgentLogModalProps> = ({
   currentLogItem,
   width,

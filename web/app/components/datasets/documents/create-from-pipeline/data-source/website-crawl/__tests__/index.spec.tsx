@@ -21,6 +21,9 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock modal context - context provider requires mocking
 const mockSetShowAccountSettingModal = vi.fn()
 vi.mock('@/context/modal-context', () => ({
+  useModalContext: () => ({
+    setShowAccountSettingModal: mockSetShowAccountSettingModal,
+  }),
   useModalContextSelector: (selector: (s: { setShowAccountSettingModal: typeof mockSetShowAccountSettingModal }) => unknown) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
 

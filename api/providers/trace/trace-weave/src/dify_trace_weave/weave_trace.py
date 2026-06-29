@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import Any, cast
+from typing import Any, cast, override
 
 import wandb
 import weave
@@ -78,6 +78,7 @@ class WeaveDataTrace(BaseTraceInstance):
             logger.debug("Weave get run url failed: %s", str(e))
             raise ValueError(f"Weave get run url failed: {str(e)}")
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         logger.debug("Trace info: %s", trace_info)
         match trace_info:

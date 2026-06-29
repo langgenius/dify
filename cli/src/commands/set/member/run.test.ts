@@ -10,8 +10,7 @@ function active(): ActiveContext {
     email: 'me@example.com',
     ctx: {
       account: { id: 'acct-1', email: 'me@example.com', name: 'Me' },
-      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-      available_workspaces: [{ id: 'ws-1', name: 'Default', role: 'owner' }],
+      workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
     },
   }
 }
@@ -34,11 +33,11 @@ describe('runSetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.updateRole).toHaveBeenCalledExactlyOnceWith('ws-1', 'acct-2', { role: 'admin' })
+    expect(client.updateRole).toHaveBeenCalledExactlyOnceWith('550e8400-e29b-41d4-a716-446655440000', 'acct-2', { role: 'admin' })
     expect(result.data.text()).toMatch(/Set acct-2 role to admin/)
     expect(result.data.name()).toBe('acct-2')
     expect(result.data.json()).toEqual({ id: 'acct-2', role: 'admin' })
-    expect(result.workspaceId).toBe('ws-1')
+    expect(result.workspaceId).toBe('550e8400-e29b-41d4-a716-446655440000')
   })
 
   it('rejects unknown role before any HTTP call', async () => {
@@ -75,7 +74,7 @@ describe('runSetMember', () => {
   it('-w flag overrides resolved workspace', async () => {
     const client = fakeClient()
     await runSetMember(
-      { memberId: 'acct-2', role: 'normal', workspace: 'ws-9' },
+      { memberId: 'acct-2', role: 'normal', workspace: '550e8400-e29b-41d4-a716-446655440008' },
       {
         active: active(),
         http: {} as HttpClient,
@@ -83,6 +82,6 @@ describe('runSetMember', () => {
         membersFactory: () => client as never,
       },
     )
-    expect(client.updateRole).toHaveBeenCalledWith('ws-9', 'acct-2', { role: 'normal' })
+    expect(client.updateRole).toHaveBeenCalledWith('550e8400-e29b-41d4-a716-446655440008', 'acct-2', { role: 'normal' })
   })
 })

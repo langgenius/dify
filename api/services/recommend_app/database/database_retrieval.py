@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import Any, NotRequired, TypedDict, override
 
 from sqlalchemy import select
 
@@ -22,6 +22,7 @@ class RecommendedAppItemDict(TypedDict):
     categories: list[str]
     position: int
     is_listed: bool
+    can_trial: NotRequired[bool]
 
 
 class RecommendedAppsResultDict(TypedDict):
@@ -43,14 +44,22 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
     Retrieval recommended app from database
     """
 
+    @override
     def get_recommended_apps_and_categories(self, language: str) -> RecommendedAppsResultDict:
         result = self.fetch_recommended_apps_from_db(language)
         return result
 
+    @override
+    def get_learn_dify_apps(self, language: str) -> RecommendedAppsResultDict:
+        result = self.fetch_learn_dify_apps_from_db(language)
+        return result
+
+    @override
     def get_recommend_app_detail(self, app_id: str) -> RecommendedAppDetailDict | None:
         result = self.fetch_recommended_app_detail_from_db(app_id)
         return result
 
+    @override
     def get_type(self) -> str:
         return RecommendAppType.DATABASE
 
@@ -61,14 +70,47 @@ class DatabaseRecommendAppRetrieval(RecommendAppRetrievalBase):
         :param language: language
         :return:
         """
-        recommended_apps = db.session.scalars(
-            select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == language)
-        ).all()
+        recommended_apps = cls._fetch_listed_recommended_apps(language)
 
         if len(recommended_apps) == 0:
-            recommended_apps = db.session.scalars(
-                select(RecommendedApp).where(RecommendedApp.is_listed == True, RecommendedApp.language == languages[0])
-            ).all()
+            recommended_apps = cls._fetch_listed_recommended_apps(languages[0])
+
+        return cls._format_recommended_apps(recommended_apps, language)
+
+    @classmethod
+    def fetch_learn_dify_apps_from_db(cls, language: str) -> RecommendedAppsResultDict:
+        """
+        Fetch listed recommended apps explicitly marked for the Learn Dify section.
+        :param language: language
+        :return:
+        """
+        recommended_apps = cls._fetch_listed_recommended_apps(language, is_learn_dify=True)
+
+        if len(recommended_apps) == 0 and language != languages[0]:
+            recommended_apps = cls._fetch_listed_recommended_apps(languages[0], is_learn_dify=True)
+
+        return cls._format_recommended_apps(recommended_apps, language)
+
+    @classmethod
+    def _fetch_listed_recommended_apps(
+        cls, language: str, *, is_learn_dify: bool | None = None
+    ) -> list[RecommendedApp]:
+        filters = [RecommendedApp.is_listed.is_(True), RecommendedApp.language == language]
+        if is_learn_dify is not None:
+            filters.append(RecommendedApp.is_learn_dify.is_(is_learn_dify))
+
+        return list(db.session.scalars(select(RecommendedApp).where(*filters)).all())
+
+    @classmethod
+    def _format_recommended_apps(
+        cls, recommended_apps: list[RecommendedApp], language: str
+    ) -> RecommendedAppsResultDict:
+        """
+        Serialize DB recommended app rows into the Explore list response shape.
+        :param recommended_apps: recommended app rows
+        :param language: language used for category ordering
+        :return:
+        """
 
         categories = set()
         recommended_apps_result: list[RecommendedAppItemDict] = []

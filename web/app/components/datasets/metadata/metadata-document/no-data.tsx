@@ -5,9 +5,9 @@ import { RiArrowRightLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
-type Props = {
+type Props = Readonly<{
   onStart: () => void
-}
+}>
 
 const NoData: FC<Props> = ({
   onStart,

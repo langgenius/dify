@@ -5,12 +5,13 @@ from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.controller_schemas import SavedMessageCreatePayload, SavedMessageListQuery
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import with_current_user
+from extensions.ext_database import db
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from models import Account
@@ -19,12 +20,13 @@ from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
 register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)
-register_response_schema_models(console_ns, ResultResponse)
+register_response_schema_models(console_ns, ResultResponse, SavedMessageInfiniteScrollPagination)
 
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/saved-messages", endpoint="installed_app_saved_messages")
 class SavedMessageListApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[SavedMessageListQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(SavedMessageListQuery))
+    @console_ns.response(200, "Success", console_ns.models[SavedMessageInfiniteScrollPagination.__name__])
     @with_current_user
     def get(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
@@ -36,6 +38,7 @@ class SavedMessageListApi(InstalledAppResource):
         args = SavedMessageListQuery.model_validate(request.args.to_dict())
 
         pagination = SavedMessageService.pagination_by_last_id(
+            db.session(),
             app_model,
             current_user,
             str(args.last_id) if args.last_id else None,
@@ -62,7 +65,7 @@ class SavedMessageListApi(InstalledAppResource):
         payload = SavedMessageCreatePayload.model_validate(console_ns.payload or {})
 
         try:
-            SavedMessageService.save(app_model, current_user, str(payload.message_id))
+            SavedMessageService.save(db.session(), app_model, current_user, str(payload.message_id))
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
@@ -85,6 +88,6 @@ class SavedMessageApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        SavedMessageService.delete(app_model, current_user, message_id_str)
+        SavedMessageService.delete(db.session(), app_model, current_user, message_id_str)
 
         return "", 204
