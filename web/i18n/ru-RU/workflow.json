@@ -1199,6 +1199,8 @@
   "panel.goTo": "Перейти к",
   "panel.goToFix": "Перейти к исправлению",
   "panel.helpLink": "Помощь",
+  "panel.locateNodeNotFound": "Узел не найден: {{nodeId}}",
+  "panel.locateNodeSuccess": "Узел найден: {{title}}",
   "panel.nextStep": "Следующий шаг",
   "panel.openWorkflow": "Открыть рабочий процесс",
   "panel.optional": "(необязательно)",
