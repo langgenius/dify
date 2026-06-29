@@ -13,11 +13,13 @@ from __future__ import annotations
 import sys
 from typing import cast
 
+import click
 import typer
 from typer.main import get_command
 
 from dify_agent.agent_stub.cli._agent_stub import connect_from_environment
 from dify_agent.agent_stub.cli._config import (
+    CONFIG_PUSH_COMMAND_HELP,
     manifest_from_environment,
     pull_config_env_from_environment,
     pull_config_files_from_environment,
@@ -110,7 +112,7 @@ def config_manifest() -> None:
     _run_config_manifest()
 
 
-@config_app.command("push")
+@config_app.command("push", help=CONFIG_PUSH_COMMAND_HELP)
 def config_push(
     from_path: str | None = typer.Option(
         None,
@@ -118,31 +120,6 @@ def config_push(
         help="JSON spec file path. Omit or pass - to read the spec from stdin.",
     ),
 ) -> None:
-    """Update the current build-draft Agent config from one local spec.
-
-    Recommended usage reads the JSON spec from stdin:
-
-    \b
-        cat <<'JSON' | dify-agent config push
-        {
-          "files": [
-            {"name": "guide.txt", "path": "./.dify_conf/files/guide.txt"},
-            {"name": "old.txt"}
-          ],
-          "skills": [
-            {"name": "alpha", "path": "./.dify_conf/skills/alpha"},
-            {"name": "old-skill"}
-          ],
-          "env": "./.dify_conf/.env",
-          "note": "./.dify_conf/note.md"
-        }
-        JSON
-
-    By default, pull/edit files live under ./.dify_conf/: files in ./.dify_conf/files/, skills in
-    ./.dify_conf/skills/, env in ./.dify_conf/.env, and note in ./.dify_conf/note.md.
-    For files and skills, a string or {name, path} uploads or updates that entry. A {name} object without path deletes
-    that entry. env and note point to local text files whose contents replace the config env/note.
-    """
     _run_config_push(from_path=from_path)
 
 
@@ -277,6 +254,25 @@ def _show_root_help() -> None:
     command = get_command(app)
     context = command.make_context("dify-agent", [], resilient_parsing=True)
     typer.echo(command.get_help(context))
+
+
+def render_agent_stub_cli_help(args: tuple[str, ...]) -> str:
+    """Render Click help for one known ``dify-agent`` subcommand without executing a shell."""
+    command: click.Command = get_command(app)
+    parent_context: click.Context | None = None
+    command_path = ["dify-agent"]
+    for name in args:
+        if not isinstance(command, click.Group):
+            raise ValueError(f"dify-agent {' '.join(args)} is not a command group")
+        next_command = command.commands.get(name)
+        if next_command is None:
+            raise ValueError(f"unknown dify-agent command path: {' '.join(args)}")
+        current_context = click.Context(command, info_name=command_path[-1], parent=parent_context)
+        parent_context = current_context
+        command = next_command
+        command_path.append(name)
+    context = click.Context(command, info_name=command_path[-1], parent=parent_context)
+    return command.get_help(context).strip()
 
 
 def _run_connect(*, argv: list[str], json_output: bool) -> None:

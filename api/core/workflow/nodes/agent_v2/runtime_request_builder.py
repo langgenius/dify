@@ -8,7 +8,12 @@ from typing import Any, Literal, Protocol, assert_never, cast
 from agenton.compositor import CompositorSessionSnapshot
 from dify_agent.agent_stub.protocol import AgentStubFileMapping
 from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
-from dify_agent.layers.config import DifyConfigLayerConfig
+from dify_agent.layers.config import (
+    DifyConfigFileConfig,
+    DifyConfigLayerConfig,
+    DifyConfigSkillConfig,
+    DifyConfigVersionConfig,
+)
 from dify_agent.layers.execution_context import (
     DifyExecutionContextInvokeFrom,
     DifyExecutionContextLayerConfig,
@@ -203,7 +208,12 @@ class WorkflowAgentRuntimeRequestBuilder:
         config_layer_config: DifyConfigLayerConfig | None = None
         soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(agent_soul)
+            config_layer_config, config_warnings = build_config_layer_config(
+                agent_soul,
+                agent_id=context.agent.id,
+                config_version_id=context.snapshot.id,
+                config_version_kind="snapshot",
+            )
             append_runtime_warnings(metadata, config_warnings)
             soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
@@ -764,7 +774,13 @@ def build_config_aware_soul_mention_resolver(agent_soul: AgentSoulConfig):
     return _resolve
 
 
-def build_config_layer_config(agent_soul: AgentSoulConfig) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
+def build_config_layer_config(
+    agent_soul: AgentSoulConfig,
+    *,
+    agent_id: str | None = None,
+    config_version_id: str | None = None,
+    config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
+) -> tuple[DifyConfigLayerConfig | None, list[dict[str, str]]]:
     """Derive prompt-mentioned eager-pull names from Agent Soul."""
 
     ordered_mentions = list(
@@ -804,11 +820,41 @@ def build_config_layer_config(agent_soul: AgentSoulConfig) -> tuple[DifyConfigLa
 
     return (
         DifyConfigLayerConfig(
+            agent_id=agent_id,
+            config_version=DifyConfigVersionConfig(
+                id=config_version_id,
+                kind=config_version_kind,
+                writable=config_version_kind == "build_draft",
+            ),
+            skills=[
+                DifyConfigSkillConfig(
+                    name=skill.name,
+                    description=skill.description,
+                    size=skill.size,
+                    mime_type=skill.mime_type,
+                )
+                for skill in agent_soul.config_skills
+            ],
+            files=[
+                DifyConfigFileConfig(
+                    name=file_ref.name,
+                    size=file_ref.size,
+                    mime_type=file_ref.mime_type,
+                )
+                for file_ref in agent_soul.config_files
+            ],
+            env_keys=_agent_soul_config_env_keys(agent_soul),
+            note=agent_soul.config_note,
             mentioned_skill_names=mentioned_skill_names,
             mentioned_file_names=mentioned_file_names,
         ),
         warnings,
     )
+
+
+def _agent_soul_config_env_keys(agent_soul: AgentSoulConfig) -> list[str]:
+    keys = [item.key or item.name or item.env_name or item.variable for item in agent_soul.env.variables]
+    return [key for key in keys if key]
 
 
 def _cli_tool_enabled(item: object) -> bool:

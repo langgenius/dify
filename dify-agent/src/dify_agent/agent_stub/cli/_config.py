@@ -2,15 +2,16 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 import json
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import Any, Final
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from dify_agent.agent_stub._drive_materialization import (
     DriveMaterializationTransferError,
@@ -66,13 +67,92 @@ class ConfigFilePullResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ConfigPushSpec(BaseModel):
-    files: list[str | dict[str, Any]] = []
-    skills: list[str | dict[str, Any]] = []
-    env: str | None = None
-    note: str | None = None
+class ConfigPushEntrySpec(BaseModel):
+    """One file or skill entry in a local config push spec."""
+
+    name: str | None = Field(
+        default=None,
+        description=(
+            "Config asset name. Required when deleting an entry or when the path basename should not be inferred."
+        ),
+    )
+    path: str | None = Field(
+        default=None,
+        description=(
+            "Local path to upload or update. Omit path and provide name to delete the existing config entry."
+        ),
+    )
 
     model_config = ConfigDict(extra="forbid")
+
+
+class ConfigPushSpec(BaseModel):
+    files: list[str | ConfigPushEntrySpec] = Field(
+        default_factory=list,
+        description=(
+            "Config files to upload/update/delete. A string is a local file path. An object with {name, path} "
+            "uploads or updates that config file. An object with {name} and no path deletes that config file."
+        ),
+    )
+    skills: list[str | ConfigPushEntrySpec] = Field(
+        default_factory=list,
+        description=(
+            "Config skills to upload/update/delete. A string is a local skill directory path. An object with "
+            "{name, path} uploads or updates that skill. An object with {name} and no path deletes that skill."
+        ),
+    )
+    env: str | None = Field(
+        default=None,
+        description=(
+            "Local dotenv file path. When present, the file contents replace the visible config env variables."
+        ),
+    )
+    note: str | None = Field(
+        default=None,
+        description="Local text or markdown file path. When present, the file contents replace the config note.",
+    )
+
+    model_config = ConfigDict(extra="forbid")
+
+
+CONFIG_PUSH_SPEC_SEMANTICS: Final[str] = (
+    "Read the JSON spec from stdin with `cat <<'JSON' | dify-agent config push` unless a file path is explicitly "
+    "needed. Put editable files under ./.dify_conf/ by default: files in ./.dify_conf/files/, skills in "
+    "./.dify_conf/skills/, env in ./.dify_conf/.env, and note in ./.dify_conf/note.md. File entries point to "
+    "regular files. Skill entries point to directories containing SKILL.md; the skill name must match the directory "
+    "name when both are provided. A string entry uploads or updates using the path basename as the name. An object "
+    "with {name, path} uploads or updates that named entry. An object with {name} and no path deletes that entry. "
+    "The env file replaces config env variables, and the note file replaces the config note."
+)
+CONFIG_PUSH_SPEC_EXAMPLE: Final[dict[str, object]] = {
+    "files": [
+        {"name": "guide.txt", "path": "./.dify_conf/files/guide.txt"},
+        {"name": "old.txt"},
+    ],
+    "skills": [
+        {"name": "alpha", "path": "./.dify_conf/skills/alpha"},
+        {"name": "old-skill"},
+    ],
+    "env": "./.dify_conf/.env",
+    "note": "./.dify_conf/note.md",
+}
+CONFIG_PUSH_SPEC_JSON_SCHEMA: Final[dict[str, Any]] = ConfigPushSpec.model_json_schema()
+CONFIG_PUSH_SPEC_JSON_SCHEMA_TEXT: Final[str] = json.dumps(
+    CONFIG_PUSH_SPEC_JSON_SCHEMA,
+    indent=2,
+    sort_keys=True,
+)
+CONFIG_PUSH_SPEC_EXAMPLE_TEXT: Final[str] = json.dumps(CONFIG_PUSH_SPEC_EXAMPLE, indent=2)
+CONFIG_PUSH_COMMAND_HELP: Final[str] = f"""Update the current build-draft Agent config from one local spec.
+
+Recommended usage reads the JSON spec from stdin:
+
+\b
+    cat <<'JSON' | dify-agent config push
+    {CONFIG_PUSH_SPEC_EXAMPLE_TEXT.replace(chr(10), chr(10) + "    ")}
+    JSON
+
+{CONFIG_PUSH_SPEC_SEMANTICS}"""
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,17 +285,21 @@ def _read_push_spec(spec_path: str | None) -> str:
     return Path(spec_path).expanduser().read_text(encoding="utf-8")
 
 
-def _prepare_push_items(entries: list[str | dict[str, Any]], *, kind: str) -> list[_PreparedPushItem]:
+def _prepare_push_items(entries: list[str | ConfigPushEntrySpec], *, kind: str) -> list[_PreparedPushItem]:
     prepared: list[_PreparedPushItem] = []
     for entry in entries:
         if isinstance(entry, str):
             path = Path(entry).expanduser().resolve()
             prepared.append(_PreparedPushItem(name=_infer_name_from_path(path), path=path))
             continue
-        if not isinstance(entry, dict):
+        if isinstance(entry, ConfigPushEntrySpec):
+            path_value = entry.path
+            name = (entry.name or "").strip()
+        elif isinstance(entry, Mapping):
+            path_value = entry.get("path")
+            name = str(entry.get("name") or "").strip()
+        else:
             raise AgentStubValidationError(f"invalid config {kind} push entry")
-        path_value = entry.get("path")
-        name = str(entry.get("name") or "").strip()
         if not path_value:
             if not name:
                 raise AgentStubValidationError(f"config {kind} delete entries require a name")
