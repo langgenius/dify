@@ -30,6 +30,7 @@ import { logout } from './logout/orpc.gen'
 import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
+import { onboarding } from './onboarding/orpc.gen'
 import { rag } from './rag/orpc.gen'
 import { refreshToken } from './refresh-token/orpc.gen'
 import { remoteFiles } from './remote-files/orpc.gen'
@@ -81,6 +82,7 @@ export const contract = {
   notification,
   notion,
   oauth,
+  onboarding,
   rag,
   refreshToken,
   remoteFiles,
