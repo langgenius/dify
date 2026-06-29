@@ -665,6 +665,30 @@ class TestDifyNodeFactoryCreateNode:
         assert "file_reference_factory" not in kwargs
         factory._build_human_input_hitl_callback.assert_called_once()
 
+    def test_human_input_node_data_for_callback_only_for_human_input(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        factory,
+    ) -> None:
+        created_node = object()
+        constructor = _node_constructor(return_value=created_node)
+        factory._build_dify_human_input_node_data_for_callback = MagicMock(
+            return_value=sentinel.callback_node_data
+        )
+        monkeypatch.setattr(
+            factory,
+            "_resolve_node_class",
+            MagicMock(return_value=constructor),
+        )
+
+        result = factory.create_node({"id": "start-node", "data": {"type": BuiltinNodeTypes.START}})
+
+        assert result is created_node
+        factory._build_dify_human_input_node_data_for_callback.assert_not_called()
+        kwargs = constructor.call_args.kwargs
+        assert kwargs["node_id"] == "start-node"
+        _assert_constructor_node_data(kwargs["data"], node_id="start-node", node_type=BuiltinNodeTypes.START)
+
     def test_human_input_callback_builder_receives_dify_node_data_via_real_node_class_path(
         self,
         monkeypatch: pytest.MonkeyPatch,
