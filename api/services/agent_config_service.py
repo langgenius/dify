@@ -4,8 +4,11 @@ This service is the single API-side control plane for Agent config assets. It
 resolves the requested config version (published snapshot, shared draft, or
 per-user build draft), reads only from ``AgentSoulConfig.config_skills``,
 ``config_files``, ``env.variables``, and ``config_note``, and mutates only the
-target Soul JSON. It intentionally does not manage object-storage lifecycle:
-removing or replacing a config asset drops the Soul reference only.
+target Soul JSON. Source file refs are tenant-scoped rather than user-scoped:
+config writes can be owned by a build-draft Account while the uploaded
+``ToolFile`` came from an end-user execution context. It intentionally does not
+manage object-storage lifecycle: removing or replacing a config asset drops the
+Soul reference only.
 """
 
 from __future__ import annotations
@@ -613,7 +616,6 @@ class AgentConfigService:
                 agent_soul.config_files = self._apply_file_updates(
                     session,
                     tenant_id=tenant_id,
-                    user_id=user_id,
                     current=agent_soul.config_files,
                     updates=payload.files,
                 )
@@ -860,7 +862,6 @@ class AgentConfigService:
         session: Session,
         *,
         tenant_id: str,
-        user_id: str,
         current: list[AgentConfigFileRefConfig],
         updates: list[ConfigPushFileItem],
     ) -> list[AgentConfigFileRefConfig]:
@@ -874,7 +875,6 @@ class AgentConfigService:
             size, hash_value, mime_type = self._validate_source_ref(
                 session,
                 tenant_id=tenant_id,
-                user_id=user_id,
                 file_ref=update.file_ref,
             )
             if name not in order:
@@ -935,7 +935,6 @@ class AgentConfigService:
             tool_file = self._require_tool_file_source(
                 session,
                 tenant_id=tenant_id,
-                user_id=user_id,
                 file_id=update.file_ref.id,
             )
             archive_bytes = storage.load_once(tool_file.file_key)
@@ -959,14 +958,12 @@ class AgentConfigService:
         session: Session,
         *,
         tenant_id: str,
-        user_id: str,
         file_ref: DriveFileRef,
     ) -> tuple[int | None, str | None, str | None]:
         if file_ref.kind == "tool_file":
             tool_file = self._require_tool_file_source(
                 session,
                 tenant_id=tenant_id,
-                user_id=user_id,
                 file_id=file_ref.id,
             )
             return tool_file.size, None, tool_file.mimetype
@@ -978,7 +975,6 @@ class AgentConfigService:
         session: Session,
         *,
         tenant_id: str,
-        user_id: str,
         file_id: str,
     ) -> ToolFile:
         try:
@@ -986,7 +982,6 @@ class AgentConfigService:
                 select(ToolFile).where(
                     ToolFile.id == file_id,
                     ToolFile.tenant_id == tenant_id,
-                    ToolFile.user_id == user_id,
                 )
             )
         except (DataError, SQLAlchemyError) as exc:
@@ -995,7 +990,7 @@ class AgentConfigService:
         if tool_file is None:
             raise AgentConfigServiceError(
                 "source_not_found",
-                "source ToolFile not found for this tenant/user",
+                "source ToolFile not found for this tenant",
                 status_code=404,
             )
         return tool_file

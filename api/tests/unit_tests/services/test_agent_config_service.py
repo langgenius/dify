@@ -201,6 +201,71 @@ def test_push_for_console_allows_shared_draft_mutations() -> None:
     session.commit.assert_called_once()
 
 
+def test_push_accepts_tenant_scoped_tool_file_sources_from_different_upload_owner() -> None:
+    session = MagicMock()
+    service = AgentConfigService()
+    target = _target(kind=AgentConfigVersionKind.BUILD_DRAFT, writable=True)
+    file_source = SimpleNamespace(
+        id="tool-file-file",
+        tenant_id=TENANT,
+        user_id="end-user-1",
+        size=7,
+        mimetype="text/plain",
+        file_key="file-key",
+        name="guide.txt",
+    )
+    skill_source = SimpleNamespace(
+        id="tool-file-skill",
+        tenant_id=TENANT,
+        user_id="end-user-1",
+        size=123,
+        mimetype="application/zip",
+        file_key="skill-key",
+        name="alpha.zip",
+    )
+    skill_ref = AgentConfigSkillRefConfig(
+        name="alpha",
+        description="Alpha skill",
+        file_id="normalized-skill-file",
+        size=321,
+        mime_type="application/zip",
+    )
+
+    with (
+        patch(f"{MODULE}.session_factory.create_session", return_value=_session_cm(session)),
+        patch.object(service, "_resolve_target_in_session", return_value=target),
+        patch.object(service, "_require_tool_file_source", side_effect=[file_source, skill_source]) as require_source,
+        patch(f"{MODULE}.storage.load_once", return_value=b"skill-archive"),
+        patch.object(service._skill_normalizer, "normalize", return_value=(skill_ref, object())),
+    ):
+        manifest = service.push(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            user_id=USER,
+            config_version_id="build-draft-1",
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            payload=ConfigPushPayload.model_validate(
+                {
+                    "files": [{"name": "guide.txt", "file_ref": {"kind": "tool_file", "id": "tool-file-file"}}],
+                    "skills": [{"name": "alpha", "file_ref": {"kind": "tool_file", "id": "tool-file-skill"}}],
+                }
+            ),
+        )
+
+    assert [call.args for call in require_source.call_args_list] == [(session,), (session,)]
+    assert [call.kwargs for call in require_source.call_args_list] == [
+        {"tenant_id": TENANT, "file_id": "tool-file-file"},
+        {"tenant_id": TENANT, "file_id": "tool-file-skill"},
+    ]
+    files = manifest["files"]
+    skills = manifest["skills"]
+    assert isinstance(files, dict)
+    assert isinstance(skills, dict)
+    assert files["items"][0]["file_id"] == "tool-file-file"
+    assert skills["items"][0]["file_id"] == "normalized-skill-file"
+    session.commit.assert_called_once()
+
+
 def test_push_file_for_console_rejects_snapshot_writes() -> None:
     session = MagicMock()
     service = AgentConfigService()
