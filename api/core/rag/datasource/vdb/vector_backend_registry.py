@@ -18,7 +18,7 @@ from __future__ import annotations
 import importlib
 import logging
 from importlib.metadata import entry_points
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -49,7 +49,7 @@ def _load_plugin_factory(vector_type: str) -> type[AbstractVectorFactory] | None
         except Exception:
             logger.exception("Failed to load vector backend entry point %s", ep.name)
             raise
-        return loaded  # type: ignore[return-value]
+        return cast("type[AbstractVectorFactory]", loaded)
     return None
 
 
@@ -69,7 +69,7 @@ def _load_builtin_factory(vector_type: str) -> type[AbstractVectorFactory]:
         raise _unsupported(vector_type)
     module_path, _, attr = target.partition(":")
     module = importlib.import_module(module_path)
-    return getattr(module, attr)  # type: ignore[no-any-return]
+    return cast("type[AbstractVectorFactory]", getattr(module, attr))
 
 
 def get_vector_factory_class(vector_type: str) -> type[AbstractVectorFactory]:
