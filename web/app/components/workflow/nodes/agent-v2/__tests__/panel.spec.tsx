@@ -408,7 +408,10 @@ describe('agent/panel', () => {
     const panel = screen.getByRole('dialog', { name: 'Nadia' })
     expect(panel).toBeInTheDocument()
     expect(within(panel).getByText('Researcher')).toBeInTheDocument()
-    expect(within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })).toHaveAttribute('href', '/roster/agent/agent-1/configure')
+    const consoleLink = within(panel).getByRole('link', { name: 'workflow.nodes.agent.roster.editInConsole' })
+    expect(consoleLink).toHaveAttribute('href', '/roster/agent/agent-1/configure')
+    expect(consoleLink).toHaveAttribute('target', '_blank')
+    expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     expect(within(panel).getByRole('button', { name: 'workflow.nodes.agent.roster.makeCopy' })).toBeInTheDocument()
     expect(within(panel).getByRole('region', { name: 'readonly-roster-orchestrate-panel' })).toBeInTheDocument()
     expect(mockOrchestratePanelContentProps.at(-1)).toMatchObject({

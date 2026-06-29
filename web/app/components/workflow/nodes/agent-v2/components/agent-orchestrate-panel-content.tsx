@@ -359,6 +359,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   }, [rebaseComposerDraft])
   const buildDraftActions = useAgentConfigureBuildDraftActions({
     agentId,
+    buildDraftAgentSoulConfig: buildDraft.agentSoulConfig,
     isActive: buildDraft.isActive,
     normalAgentSoulConfig: agentSoulConfig,
     rebaseComposerDraft: rebaseComposerDraftFromSoulConfig,
