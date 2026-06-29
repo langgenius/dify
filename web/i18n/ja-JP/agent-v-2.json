@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "破棄",
   "agentDetail.configure.buildDraft.modeBadge": "ビルドモード",
   "agentDetail.configure.buildDraft.modeDescription": "ビルドモードです。右側のチャットでこの設定を調整してから適用してください。",
-  "agentDetail.configure.buildDraft.noChanges": "適用する変更はありません",
+  "agentDetail.configure.buildDraft.noChanges": "変更はありません",
   "agentDetail.configure.buildDraft.title": "ビルドドラフト",
   "agentDetail.configure.chatFeatures.description": "Web app やチャット画面でのエンドユーザー向けチャット体験を設定します。",
   "agentDetail.configure.chatFeatures.title": "チャット機能",

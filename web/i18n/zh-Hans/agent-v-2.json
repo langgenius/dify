@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "放弃",
   "agentDetail.configure.buildDraft.modeBadge": "构建模式",
   "agentDetail.configure.buildDraft.modeDescription": "你正在使用构建模式。通过右侧聊天调整此配置，然后应用。",
-  "agentDetail.configure.buildDraft.noChanges": "没有待应用的更改",
+  "agentDetail.configure.buildDraft.noChanges": "没有更改",
   "agentDetail.configure.buildDraft.title": "Build 草稿",
   "agentDetail.configure.chatFeatures.description": "配置 Web app 和聊天界面的终端用户聊天体验。",
   "agentDetail.configure.chatFeatures.title": "Chat 功能",

@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "رد کردن",
   "agentDetail.configure.buildDraft.modeBadge": "حالت ساخت",
   "agentDetail.configure.buildDraft.modeDescription": "شما در حالت ساخت هستید. این تنظیمات را از طریق چت سمت راست شکل دهید، سپس اعمال کنید.",
-  "agentDetail.configure.buildDraft.noChanges": "تغییری برای اعمال وجود ندارد",
+  "agentDetail.configure.buildDraft.noChanges": "تغییری وجود ندارد",
   "agentDetail.configure.buildDraft.title": "پیش نویس ساخت",
   "agentDetail.configure.chatFeatures.description": "تجربه چت کاربر نهایی را در Web app و سطوح چت خود شکل دهید.",
   "agentDetail.configure.chatFeatures.title": "ویژگی‌های چت",

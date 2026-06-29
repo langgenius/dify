@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "ทิ้ง",
   "agentDetail.configure.buildDraft.modeBadge": "โหมด Build",
   "agentDetail.configure.buildDraft.modeDescription": "คุณอยู่ในโหมด Build ปรับแต่งการตั้งค่านี้ผ่านแชททางขวา แล้วกดนำไปใช้",
-  "agentDetail.configure.buildDraft.noChanges": "ไม่มีการเปลี่ยนแปลงที่ต้องใช้",
+  "agentDetail.configure.buildDraft.noChanges": "ไม่มีการเปลี่ยนแปลง",
   "agentDetail.configure.buildDraft.title": "ฉบับร่าง Build",
   "agentDetail.configure.chatFeatures.description": "กำหนดประสบการณ์การแชทของผู้ใช้ปลายทางบน Web app และหน้าจอแชท",
   "agentDetail.configure.chatFeatures.title": "ฟีเจอร์แชท",

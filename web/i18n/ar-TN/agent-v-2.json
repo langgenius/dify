@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "تجاهل",
   "agentDetail.configure.buildDraft.modeBadge": "وضع البناء",
   "agentDetail.configure.buildDraft.modeDescription": "أنت في وضع البناء. شكّل هذا الإعداد عبر الدردشة على اليمين، ثم طبّق.",
-  "agentDetail.configure.buildDraft.noChanges": "لا توجد تغييرات للتطبيق",
+  "agentDetail.configure.buildDraft.noChanges": "لا توجد تغييرات",
   "agentDetail.configure.buildDraft.title": "مسودة البناء",
   "agentDetail.configure.chatFeatures.description": "شكّل تجربة الدردشة للمستخدم النهائي على Web app وأسطح الدردشة.",
   "agentDetail.configure.chatFeatures.title": "ميزات الدردشة",

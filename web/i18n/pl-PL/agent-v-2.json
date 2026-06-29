@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "Odrzuć",
   "agentDetail.configure.buildDraft.modeBadge": "Tryb budowania",
   "agentDetail.configure.buildDraft.modeDescription": "Jesteś w trybie budowania. Dostosuj tę konfigurację przez czat po prawej, a następnie zastosuj.",
-  "agentDetail.configure.buildDraft.noChanges": "Brak zmian do zastosowania",
+  "agentDetail.configure.buildDraft.noChanges": "Brak zmian",
   "agentDetail.configure.buildDraft.title": "Szkic budowania",
   "agentDetail.configure.chatFeatures.description": "Ukształtuj doświadczenie czatu użytkownika końcowego w aplikacji webowej i powierzchniach czatu.",
   "agentDetail.configure.chatFeatures.title": "Funkcje czatu",

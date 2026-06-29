@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "Ignorer",
   "agentDetail.configure.buildDraft.modeBadge": "Mode build",
   "agentDetail.configure.buildDraft.modeDescription": "Vous êtes en mode build. Ajustez cette configuration avec le chat à droite, puis appliquez.",
-  "agentDetail.configure.buildDraft.noChanges": "Aucune modification à appliquer",
+  "agentDetail.configure.buildDraft.noChanges": "Aucune modification",
   "agentDetail.configure.buildDraft.title": "Brouillon de build",
   "agentDetail.configure.chatFeatures.description": "Façonnez l’expérience de chat de l’utilisateur final sur votre webapp et vos surfaces de chat.",
   "agentDetail.configure.chatFeatures.title": "Fonctionnalités de chat",

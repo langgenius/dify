@@ -68,7 +68,7 @@
   "agentDetail.configure.buildDraft.discard": "Buang",
   "agentDetail.configure.buildDraft.modeBadge": "Mode build",
   "agentDetail.configure.buildDraft.modeDescription": "Anda berada dalam mode build. Bentuk pengaturan ini lewat chat di kanan, lalu terapkan.",
-  "agentDetail.configure.buildDraft.noChanges": "Tidak ada perubahan untuk diterapkan",
+  "agentDetail.configure.buildDraft.noChanges": "Tidak ada perubahan",
   "agentDetail.configure.buildDraft.title": "Draf build",
   "agentDetail.configure.chatFeatures.description": "Bentuk pengalaman chat pengguna akhir di Web app dan permukaan chat Anda.",
   "agentDetail.configure.chatFeatures.title": "Fitur Chat",

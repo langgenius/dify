@@ -30,7 +30,7 @@ describe('AgentBuildDraftBar', () => {
     expect(onDiscard).not.toHaveBeenCalled()
   })
 
-  it('should keep discard disabled while apply is pending', () => {
+  it('should disable both actions while apply is pending', () => {
     render(
       <AgentBuildDraftBar
         changesCount={1}
@@ -40,11 +40,11 @@ describe('AgentBuildDraftBar', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'custom.apply' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toBeDisabled()
   })
 
-  it('should keep apply disabled while discard is pending', () => {
+  it('should disable both actions while discard is pending', () => {
     render(
       <AgentBuildDraftBar
         changesCount={1}
@@ -55,6 +55,35 @@ describe('AgentBuildDraftBar', () => {
     )
 
     expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toBeDisabled()
+  })
+
+  it('should only disable apply when there are no build draft changes', async () => {
+    const user = userEvent.setup()
+    const onApply = vi.fn()
+    const onDiscard = vi.fn()
+
+    render(
+      <AgentBuildDraftBar
+        changesCount={0}
+        onApply={onApply}
+        onDiscard={onDiscard}
+      />,
+    )
+
+    const discardButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })
+    const applyButton = screen.getByRole('button', { name: 'custom.apply' })
+    const buttons = screen.getAllByRole('button')
+
+    expect(buttons[0]).toBe(discardButton)
+    expect(buttons[1]).toBe(applyButton)
+    expect(discardButton).toBeEnabled()
+    expect(applyButton).toBeDisabled()
+
+    await user.click(discardButton)
+    await user.click(applyButton)
+
+    expect(onDiscard).toHaveBeenCalledTimes(1)
+    expect(onApply).not.toHaveBeenCalled()
   })
 })
