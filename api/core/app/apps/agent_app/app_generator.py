@@ -9,13 +9,15 @@ dify-agent backend rather than an in-process LLM/ReAct loop.
 from __future__ import annotations
 
 import contextvars
+import json
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal
 
 from flask import Flask, current_app
+from pydantic import JsonValue
 from sqlalchemy import and_, or_, select
 
 from clients.agent_backend import AgentBackendRunEventAdapter
@@ -61,6 +63,13 @@ class AgentAppGeneratorError(ValueError):
     """Raised when an Agent App turn cannot be set up."""
 
 
+def _append_prompt_file_mappings(query: str, prompt_file_mappings: Sequence[JsonValue]) -> str:
+    """Append raw request file references to the backend user prompt."""
+    if not prompt_file_mappings:
+        return query
+    return f"{query}\n{json.dumps(list(prompt_file_mappings), ensure_ascii=False)}"
+
+
 class AgentAppGenerator(MessageBasedAppGenerator):
     def generate(
         self,
@@ -79,6 +88,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             raise AgentAppGeneratorError("query is required")
         query = query.replace("\x00", "")
         inputs = args["inputs"]
+        prompt_file_mappings = args.get("files") or []
 
         # Resolve the bound roster Agent + its current Agent Soul snapshot.
         agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
@@ -122,6 +132,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             ),
             query=query,
             files=[],
+            prompt_file_mappings=prompt_file_mappings,
             parent_message_id=(
                 args.get("parent_message_id")
                 if invoke_from not in {InvokeFrom.SERVICE_API, InvokeFrom.OPENAPI}
@@ -355,6 +366,10 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     )
                     if handled:
                         return
+                    query = _append_prompt_file_mappings(
+                        query=query,
+                        prompt_file_mappings=application_generate_entity.prompt_file_mappings,
+                    )
 
                 dify_context = DifyRunContext(
                     tenant_id=app_config.tenant_id,
