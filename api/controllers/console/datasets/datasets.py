@@ -146,8 +146,8 @@ class IndexingEstimatePayload(BaseModel):
 
 
 class ConsoleDatasetListQuery(BaseModel):
-    page: int = Field(default=1, description="Page number")
-    limit: int = Field(default=20, description="Number of items per page")
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Number of items per page")
     keyword: str | None = Field(default=None, description="Search keyword")
     include_all: bool = Field(default=False, description="Include all datasets")
     ids: list[str] = Field(default_factory=list, description="Filter by dataset IDs")
