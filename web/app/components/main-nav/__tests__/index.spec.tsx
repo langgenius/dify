@@ -668,7 +668,7 @@ describe('MainNav', () => {
 
     renderMainNav()
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-[248px]')
+    expect(screen.getByRole('complementary')).toHaveClass('w-62')
     expect(screen.getByRole('complementary')).toHaveClass('p-1')
     expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
     expect(screen.getByTestId('snippet-detail-top')).toHaveAttribute('data-expand', 'true')

@@ -5,7 +5,7 @@ import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { toast } from '@langgenius/dify-ui/toast'
 import { isEqual } from 'es-toolkit/predicate'
-import { memo, useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropdown'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
@@ -150,13 +150,3 @@ export const SnippetSidebarContent = ({
     </div>
   )
 }
-
-const SnippetSidebar = (props: SnippetSidebarProps) => {
-  return (
-    <aside className="flex h-full w-90 shrink-0 flex-col overflow-hidden rounded-tl-2xl border-r border-divider-subtle bg-background-default">
-      <SnippetSidebarContent {...props} />
-    </aside>
-  )
-}
-
-export default memo(SnippetSidebar)

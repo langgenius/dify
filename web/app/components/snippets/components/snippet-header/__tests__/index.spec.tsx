@@ -35,6 +35,7 @@ describe('SnippetHeader', () => {
       <SnippetHeader
         snippetId="snippet-1"
         canSave
+        canEdit
         isPublishing={false}
         onPublish={mockPublish}
       />,
@@ -56,6 +57,7 @@ describe('SnippetHeader', () => {
       <SnippetHeader
         snippetId="snippet-1"
         canSave
+        canEdit
         isPublishing={false}
         onPublish={mockPublish}
       />,
@@ -71,6 +73,7 @@ describe('SnippetHeader', () => {
       <SnippetHeader
         snippetId="snippet-1"
         canSave={false}
+        canEdit
         isPublishing={false}
         onPublish={mockPublish}
       />,
@@ -84,6 +87,7 @@ describe('SnippetHeader', () => {
       <SnippetHeader
         snippetId="snippet-1"
         canSave
+        canEdit
         isPublishing
         onPublish={mockPublish}
       />,

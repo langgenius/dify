@@ -3,7 +3,7 @@ import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { toast } from '@langgenius/dify-ui/toast'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
-import SnippetSidebar from '../snippet-sidebar'
+import { SnippetSidebarContent } from '../snippet-sidebar'
 
 let capturedVarListProps: {
   list: InputVar[]
@@ -82,7 +82,7 @@ const fields: SnippetInputField[] = [
   },
 ]
 
-describe('SnippetSidebar', () => {
+describe('SnippetSidebarContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     capturedVarListProps = undefined
@@ -92,7 +92,7 @@ describe('SnippetSidebar', () => {
   it('should ignore unchanged VarList updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -108,7 +108,7 @@ describe('SnippetSidebar', () => {
   it('should forward changed VarList updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -133,7 +133,7 @@ describe('SnippetSidebar', () => {
 
   it('should hide input field operations when readonly', () => {
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly
@@ -153,7 +153,7 @@ describe('SnippetSidebar', () => {
   it('should add a new input field from the config variable modal', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
@@ -182,7 +182,7 @@ describe('SnippetSidebar', () => {
   it('should reject duplicate variable and label updates', () => {
     const onFieldsChange = vi.fn()
     render(
-      <SnippetSidebar
+      <SnippetSidebarContent
         snippet={snippet}
         fields={fields}
         readonly={false}
