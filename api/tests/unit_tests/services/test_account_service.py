@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from configs import dify_config
 from models.account import Account, AccountStatus, TenantAccountRole, TenantStatus
+from models.base import TypeBase
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -22,9 +23,14 @@ from services.errors.account import (
 
 
 @pytest.fixture
-def sqlite_session() -> Iterator[Session]:
+def sqlite_session(request: pytest.FixtureRequest) -> Iterator[Session]:
+    try:
+        models: tuple[type[TypeBase], ...] = request.param
+    except AttributeError:
+        models = (Account,)
     engine = create_engine("sqlite:///:memory:")
-    Account.metadata.create_all(engine, tables=[Account.metadata.tables[Account.__tablename__]])
+    tables = [model.metadata.tables[model.__tablename__] for model in models]
+    Account.metadata.create_all(engine, tables=tables)
     with Session(engine, expire_on_commit=False) as session:
         yield session
 
