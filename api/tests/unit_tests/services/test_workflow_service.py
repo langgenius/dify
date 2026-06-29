@@ -2839,7 +2839,7 @@ class TestWorkflowServiceFreeNodeExecution:
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
         with patch(
-            "graphon.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
+            "services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")
         ):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})
