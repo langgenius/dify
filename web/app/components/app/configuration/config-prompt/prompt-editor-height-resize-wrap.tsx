@@ -5,7 +5,7 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   height: number
   minHeight: number
@@ -13,7 +13,7 @@ type Props = {
   children: React.JSX.Element
   footer?: React.JSX.Element
   hideResize?: boolean
-}
+}>
 
 const PromptEditorHeightResizeWrap: FC<Props> = ({
   className,

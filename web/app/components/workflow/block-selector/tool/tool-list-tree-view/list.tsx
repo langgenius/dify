@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
 import Item from './item'
 
-type Props = {
+type Props = Readonly<{
   payload: Record<string, ToolWithProvider[]>
   previewCardHandle: ToolActionPreviewCardHandle
   hasSearchText: boolean
@@ -17,7 +17,7 @@ type Props = {
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
-}
+}>
 
 const ToolListTreeView: FC<Props> = ({
   payload,

@@ -66,6 +66,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           - `url` ファイルのURL。（転送方法が `remote_url` の場合のみ）。
           - `upload_file_id` アップロードされたファイルID。（転送方法が `local_file` の場合のみ）。
       </Property>
+      <Property name='trace_session_id' type='string' key='trace_session_id'>
+        （オプション）可観測性のグルーピングに使用するトレースセッションID。セッションのグルーピングに対応するトレースプロバイダーは、この値をエクスポートされるセッション識別子として使用できます。conversation_id、workflow_run_id、trace_id、または span の関係は変更しません。以下の3つの方法で渡すことができ、優先順位は次のとおりです：<br/>
+        - Header：HTTPヘッダー <code>X-Trace-Session-Id</code> で渡す（最優先）。<br/>
+        - クエリパラメータ：URLクエリパラメータ <code>trace_session_id</code> で渡す。<br/>
+        - リクエストボディ：リクエストボディの <code>trace_session_id</code> フィールドで渡す（本フィールド）。<br/>
+      </Property>
     </Properties>
 
     ### レスポンス

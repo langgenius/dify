@@ -1,3 +1,4 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Args, Flags } from '@/framework/flags'
@@ -6,6 +7,8 @@ import { runSetMember } from './run'
 
 export default class SetMember extends DifyCommand {
   static override description = 'Change a member\'s role in the active (or specified) workspace'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> set member acct-1 --role admin',

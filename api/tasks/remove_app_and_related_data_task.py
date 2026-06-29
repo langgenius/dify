@@ -22,6 +22,7 @@ from models import (
     AppDatasetJoin,
     AppMCPServer,
     AppModelConfig,
+    AppStar,
     AppTrigger,
     Conversation,
     EndUser,
@@ -64,6 +65,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_mcp_servers(tenant_id, app_id)
         _delete_app_api_tokens(tenant_id, app_id)
         _delete_installed_apps(tenant_id, app_id)
+        _delete_app_stars(tenant_id, app_id)
         _delete_recommended_apps(tenant_id, app_id)
         _delete_app_annotation_data(tenant_id, app_id)
         _delete_app_dataset_joins(tenant_id, app_id)
@@ -170,6 +172,18 @@ def _delete_installed_apps(tenant_id: str, app_id: str):
         {"tenant_id": tenant_id, "app_id": app_id},
         del_installed_app,
         "installed app",
+    )
+
+
+def _delete_app_stars(tenant_id: str, app_id: str):
+    def del_app_star(session, app_star_id: str):
+        session.execute(delete(AppStar).where(AppStar.id == app_star_id).execution_options(synchronize_session=False))
+
+    _delete_records(
+        """select id from app_stars where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_app_star,
+        "app star",
     )
 
 

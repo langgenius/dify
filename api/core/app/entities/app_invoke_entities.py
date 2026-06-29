@@ -47,6 +47,14 @@ class InvokeFrom(StrEnum):
         }
         return source_mapping.get(self, "dev")
 
+    def runs_as_account(self) -> bool:
+        """Whether a run from this entry point is attributed to a workspace
+        Account rather than an end user. Console contexts (debugger/explore)
+        run as the signed-in Account; webapp/service-api/trigger run as an
+        EndUser. Single source of truth for the created-by-role / user-type
+        split shared by the app runners and MCP identity forwarding."""
+        return self in (InvokeFrom.DEBUGGER, InvokeFrom.EXPLORE)
+
 
 class DifyRunContext(BaseModel):
     tenant_id: str
@@ -54,6 +62,7 @@ class DifyRunContext(BaseModel):
     user_id: str
     user_from: UserFrom
     invoke_from: InvokeFrom
+    trace_session_id: str | None = None
 
 
 def build_dify_run_context(
@@ -63,6 +72,7 @@ def build_dify_run_context(
     user_id: str,
     user_from: UserFrom,
     invoke_from: InvokeFrom,
+    trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """
@@ -78,6 +88,7 @@ def build_dify_run_context(
         user_id=user_id,
         user_from=user_from,
         invoke_from=invoke_from,
+        trace_session_id=trace_session_id,
     )
     return run_context
 
@@ -213,6 +224,7 @@ class AgentAppGenerateEntity(ChatAppGenerateEntity):
 
     agent_id: str
     agent_config_snapshot_id: str
+    agent_runtime_session_snapshot_id: str | None = None
 
 
 class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):

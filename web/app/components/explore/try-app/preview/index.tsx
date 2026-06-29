@@ -6,8 +6,8 @@ import BasicAppPreview from './basic-app-preview'
 import FlowAppPreview from './flow-app-preview'
 
 type Props = {
-  appId: string
-  appDetail: TryAppInfo
+  readonly appId: string
+  readonly appDetail: TryAppInfo
 }
 
 const Preview: FC<Props> = ({

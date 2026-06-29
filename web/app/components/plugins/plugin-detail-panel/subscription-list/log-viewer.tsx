@@ -16,10 +16,10 @@ import { useTranslation } from 'react-i18next'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
-type Props = {
+type Props = Readonly<{
   logs: TriggerLogEntity[]
   className?: string
-}
+}>
 
 enum LogTypeEnum {
   REQUEST = 'request',

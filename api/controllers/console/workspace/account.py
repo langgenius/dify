@@ -6,7 +6,7 @@ from typing import Any, Literal
 import pytz
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, RootModel, field_validator, model_validator
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
@@ -42,6 +42,8 @@ from controllers.console.wraps import (
     enterprise_license_required,
     only_edition_cloud,
     setup_required,
+    with_current_tenant_id,
+    with_current_user,
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
@@ -49,8 +51,8 @@ from fields.member_fields import Account as AccountResponse
 from graphon.file import helpers as file_helpers
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, dump_response, extract_remote_ip, timezone, to_timestamp
-from libs.login import current_account_with_tenant, login_required
-from models import AccountIntegrate, InvitationCode
+from libs.login import login_required
+from models import Account, AccountIntegrate, InvitationCode
 from models.account import AccountStatus, InvitationCodeStatus
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -234,6 +236,10 @@ class EducationAutocompleteResponse(ResponseModel):
     has_next: bool | None = None
 
 
+class EducationActivateResponse(RootModel[dict[str, Any]]):
+    root: dict[str, Any]
+
+
 register_schema_models(
     console_ns,
     AccountIntegrateResponse,
@@ -246,6 +252,7 @@ register_response_schema_models(
     console_ns,
     AccountResponse,
     AvatarUrlResponse,
+    EducationActivateResponse,
     SimpleResultDataResponse,
     SimpleResultResponse,
     VerificationTokenResponse,
@@ -258,9 +265,8 @@ class AccountInitApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @setup_required
     @login_required
-    def post(self):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    def post(self, account: Account):
         if account.status == "active":
             raise AccountAlreadyInitedError()
 
@@ -306,8 +312,8 @@ class AccountProfileApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
     @enterprise_license_required
-    def get(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def get(self, current_user: Account):
         return _serialize_account(current_user)
 
 
@@ -318,11 +324,11 @@ class AccountNameApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
-        updated_account = AccountService.update_account(current_user, name=args.name)
+        updated_account = AccountService.update_account(current_user, session=db.session, name=args.name)
 
         return _serialize_account(updated_account)
 
@@ -336,8 +342,9 @@ class AccountAvatarApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self):
-        current_user, current_tenant_id = current_account_with_tenant()
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, current_tenant_id: str, current_user: Account):
         args = AccountAvatarQuery.model_validate(request.args.to_dict(flat=True))
         avatar = args.avatar
 
@@ -362,12 +369,12 @@ class AccountAvatarApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountAvatarPayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, avatar=args.avatar)
+        updated_account = AccountService.update_account(current_user, session=db.session, avatar=args.avatar)
 
         return _serialize_account(updated_account)
 
@@ -379,12 +386,14 @@ class AccountInterfaceLanguageApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountInterfaceLanguagePayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
+        updated_account = AccountService.update_account(
+            current_user, session=db.session, interface_language=args.interface_language
+        )
 
         return _serialize_account(updated_account)
 
@@ -396,12 +405,14 @@ class AccountInterfaceThemeApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountInterfaceThemePayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, interface_theme=args.interface_theme)
+        updated_account = AccountService.update_account(
+            current_user, session=db.session, interface_theme=args.interface_theme
+        )
 
         return _serialize_account(updated_account)
 
@@ -413,12 +424,12 @@ class AccountTimezoneApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountTimezonePayload.model_validate(payload)
 
-        updated_account = AccountService.update_account(current_user, timezone=args.timezone)
+        updated_account = AccountService.update_account(current_user, session=db.session, timezone=args.timezone)
 
         return _serialize_account(updated_account)
 
@@ -430,13 +441,14 @@ class AccountPasswordApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = AccountPasswordPayload.model_validate(payload)
 
         try:
-            AccountService.update_account_password(current_user, args.password, args.new_password)
+            assert args.password is not None
+            AccountService.update_account_password(current_user, args.password, args.new_password, session=db.session)
         except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
@@ -449,9 +461,8 @@ class AccountIntegrateApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountIntegrateListResponse.__name__])
-    def get(self):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    def get(self, account: Account):
         account_integrates = db.session.scalars(
             select(AccountIntegrate).where(AccountIntegrate.account_id == account.id)
         ).all()
@@ -495,9 +506,8 @@ class AccountDeleteVerifyApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultDataResponse.__name__])
-    def get(self):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    def get(self, account: Account):
         token, code = AccountService.generate_account_deletion_verification_code(account)
         AccountService.send_account_deletion_verification_email(account, code)
 
@@ -511,9 +521,8 @@ class AccountDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    def post(self, account: Account):
         payload = console_ns.payload or {}
         args = AccountDeletePayload.model_validate(payload)
 
@@ -547,9 +556,8 @@ class EducationVerifyApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     @console_ns.response(200, "Success", console_ns.models[EducationVerifyResponse.__name__])
-    def get(self):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    def get(self, account: Account):
         return EducationVerifyResponse.model_validate(
             BillingService.EducationIdentity.verify(account.id, account.email) or {}
         ).model_dump(mode="json")
@@ -558,14 +566,14 @@ class EducationVerifyApi(Resource):
 @console_ns.route("/account/education")
 class EducationApi(Resource):
     @console_ns.expect(console_ns.models[EducationActivatePayload.__name__])
+    @console_ns.response(200, "Success", console_ns.models[EducationActivateResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_cloud
     @cloud_edition_billing_enabled
-    def post(self):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    def post(self, account: Account):
         payload = console_ns.payload or {}
         args = EducationActivatePayload.model_validate(payload)
 
@@ -577,9 +585,8 @@ class EducationApi(Resource):
     @only_edition_cloud
     @cloud_edition_billing_enabled
     @console_ns.response(200, "Success", console_ns.models[EducationStatusResponse.__name__])
-    def get(self):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    def get(self, account: Account):
         res = BillingService.EducationIdentity.status(account.id) or {}
         # convert expire_at to UTC timestamp from isoformat
         if res and "expire_at" in res:
@@ -589,7 +596,7 @@ class EducationApi(Resource):
 
 @console_ns.route("/account/education/autocomplete")
 class EducationAutoCompleteApi(Resource):
-    @console_ns.expect(console_ns.models[EducationAutocompleteQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(EducationAutocompleteQuery))
     @setup_required
     @login_required
     @account_initialization_required
@@ -613,8 +620,8 @@ class ChangeEmailSendEmailApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = ChangeEmailSendPayload.model_validate(payload)
 
@@ -673,8 +680,8 @@ class ChangeEmailCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def post(self):
-        current_user, _ = current_account_with_tenant()
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = ChangeEmailValidityPayload.model_validate(payload)
 
@@ -720,7 +727,8 @@ class ChangeEmailResetApi(Resource):
     @login_required
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AccountResponse.__name__])
-    def post(self):
+    @with_current_user
+    def post(self, current_user: Account):
         payload = console_ns.payload or {}
         args = ChangeEmailResetPayload.model_validate(payload)
         normalized_new_email = args.new_email.lower()
@@ -728,10 +736,9 @@ class ChangeEmailResetApi(Resource):
         if AccountService.is_account_in_freeze(normalized_new_email):
             raise AccountInFreezeError()
 
-        if not AccountService.check_email_unique(normalized_new_email):
+        if not AccountService.check_email_unique(normalized_new_email, session=db.session):
             raise EmailAlreadyInUseError()
 
-        current_user, _ = current_account_with_tenant()
         reset_data = AccountService.get_change_email_data(args.token)
         if not reset_data:
             raise InvalidTokenError()
@@ -753,7 +760,9 @@ class ChangeEmailResetApi(Resource):
         # legitimately verified token.
         AccountService.revoke_change_email_token(args.token)
 
-        updated_account = AccountService.update_account_email(current_user, email=normalized_new_email)
+        updated_account = AccountService.update_account_email(
+            current_user, email=normalized_new_email, session=db.session
+        )
 
         AccountService.send_change_email_completed_notify_email(
             email=normalized_new_email,
@@ -773,6 +782,6 @@ class CheckEmailUnique(Resource):
         normalized_email = args.email.lower()
         if AccountService.is_account_in_freeze(normalized_email):
             raise AccountInFreezeError()
-        if not AccountService.check_email_unique(normalized_email):
+        if not AccountService.check_email_unique(normalized_email, session=db.session):
             raise EmailAlreadyInUseError()
         return {"result": "success"}

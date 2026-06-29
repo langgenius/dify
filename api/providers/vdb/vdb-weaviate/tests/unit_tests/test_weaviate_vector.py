@@ -1,3 +1,5 @@
+from typing import override
+
 """Unit tests for Weaviate vector database implementation.
 
 Focuses on verifying that doc_type is properly handled in:
@@ -23,6 +25,7 @@ from core.rag.models.document import Document
 class TestWeaviateVector(unittest.TestCase):
     """Tests for WeaviateVector class with focus on doc_type metadata handling."""
 
+    @override
     def setUp(self):
         weaviate_vector_module._weaviate_client = None
         self.config = WeaviateConfig(
@@ -33,6 +36,7 @@ class TestWeaviateVector(unittest.TestCase):
         self.collection_name = "Test_Collection_Node"
         self.attributes = ["doc_id", "dataset_id", "document_id", "doc_hash", "doc_type"]
 
+    @override
     def tearDown(self):
         weaviate_vector_module._weaviate_client = None
 
@@ -264,9 +268,11 @@ class TestWeaviateVector(unittest.TestCase):
         wv._client = MagicMock()
         wv._client.collections.exists.side_effect = RuntimeError("create failed")
 
-        with patch.object(weaviate_vector_module.logger, "exception") as mock_exception:
-            with pytest.raises(RuntimeError, match="create failed"):
-                wv._create_collection()
+        with (
+            patch.object(weaviate_vector_module.logger, "exception") as mock_exception,
+            pytest.raises(RuntimeError, match="create failed"),
+        ):
+            wv._create_collection()
 
         mock_exception.assert_called_once()
 
@@ -831,9 +837,11 @@ class TestWeaviateVector(unittest.TestCase):
         wv._client.collections.use.return_value = mock_col
         mock_col.data.delete_by_id.side_effect = FakeUnexpectedStatusCodeError(500)
 
-        with patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError):
-            with pytest.raises(FakeUnexpectedStatusCodeError, match="status=500"):
-                wv.delete_by_ids(["bad-id"])
+        with (
+            patch.object(weaviate_vector_module, "UnexpectedStatusCodeError", FakeUnexpectedStatusCodeError),
+            pytest.raises(FakeUnexpectedStatusCodeError, match="status=500"),
+        ):
+            wv.delete_by_ids(["bad-id"])
 
     def test_json_serializable_converts_datetime(self):
         wv = WeaviateVector.__new__(WeaviateVector)

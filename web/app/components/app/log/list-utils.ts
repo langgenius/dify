@@ -33,11 +33,6 @@ type ConversationLogDetail = {
   name?: string
 }
 
-type ConversationFeedbackStats = {
-  dislike?: number
-  like?: number
-}
-
 const getUserInputVariable = (item: UserInputFormItem) => {
   const variable = Object.values(item)[0]?.variable
 
@@ -264,18 +259,6 @@ export const applyAnnotationRemoved = (items: IChatItem[], index: number) => ite
 
   return item
 })
-
-export const buildConversationUrl = (pathname: string, searchParams: string, conversationId?: string) => {
-  const params = new URLSearchParams(searchParams)
-  if (conversationId)
-    params.set('conversation_id', conversationId)
-  else
-    params.delete('conversation_id')
-
-  const queryString = params.toString()
-  return queryString ? `${pathname}?${queryString}` : pathname
-}
-
 export const isNearTopLoadMore = ({
   clientHeight,
   scrollHeight,
@@ -338,6 +321,3 @@ export const getCompletionMessageFiles = (detail: ConversationLogDetail, isChatM
 
   return messageFiles.flatMap(item => item.url ? [item.url] : [])
 }
-
-export const hasConversationFeedback = (stats?: ConversationFeedbackStats | null) =>
-  Boolean(stats?.like || stats?.dislike)

@@ -8,10 +8,11 @@ import { useTheme } from 'next-themes'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_MODAL_ACTION, ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useIntegrationsSetting } from '@/app/components/header/account-setting/use-integrations-setting'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { IS_CLOUD_EDITION } from '@/config'
-import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useSearchParams } from '@/next/navigation'
@@ -37,6 +38,9 @@ export type PopupProps = {
   inputValue: string
   modelList: Model[]
   scopeFeatures?: ModelFeatureEnum[]
+  hideProviderSettingsFooter?: boolean
+  providerSettingsSource?: 'agent'
+  onConfigureEmptyState?: () => void
   onInputValueChange: (value: string) => void
   onHide: () => void
 }
@@ -45,6 +49,9 @@ function Popup({
   inputValue,
   modelList,
   scopeFeatures = [],
+  hideProviderSettingsFooter,
+  providerSettingsSource,
+  onConfigureEmptyState,
   onInputValueChange,
   onHide,
 }: PopupProps) {
@@ -54,7 +61,7 @@ function Popup({
   const language = useLanguage()
   const previewCardHandle = useMemo(() => createPreviewCardHandle<ModelSelectorPreviewPayload>(), [])
   const [marketplaceCollapsed, setMarketplaceCollapsed] = useState(false)
-  const { setShowAccountSettingModal } = useModalContext()
+  const openIntegrationsSetting = useIntegrationsSetting()
   const { modelProviders } = useProviderContext()
   const { data: enableMarketplace } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -66,6 +73,7 @@ function Popup({
   } = useMarketplaceAllPlugins(modelProviders, '', enableMarketplace)
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const { refreshPluginList } = useRefreshPluginList()
+  const { canInstallPlugin } = useWorkspacePluginInstallPermission()
   const [installingProvider, setInstallingProvider] = useState<ModelProviderQuotaGetPaid | null>(null)
   const { isExhausted: isCreditsExhausted } = useTrialCredits()
   const { data: trialModels = [] } = useQuery(consoleQuery.trialModels.get.queryOptions({
@@ -94,7 +102,7 @@ function Popup({
   })
 
   const handleInstallPlugin = useCallback(async (key: ModelProviderQuotaGetPaid) => {
-    if (!enableMarketplace || !allPlugins || isMarketplacePluginsLoading || installingProvider)
+    if (!enableMarketplace || !canInstallPlugin || !allPlugins || isMarketplacePluginsLoading || installingProvider)
       return
     const pluginId = providerKeyToPluginId[key]
     const plugin = allPlugins.find(p => p.plugin_id === pluginId)
@@ -115,7 +123,7 @@ function Popup({
     finally {
       setInstallingProvider(null)
     }
-  }, [allPlugins, enableMarketplace, installPackageFromMarketPlace, installingProvider, isMarketplacePluginsLoading, refreshPluginList])
+  }, [allPlugins, enableMarketplace, canInstallPlugin, installPackageFromMarketPlace, installingProvider, isMarketplacePluginsLoading, refreshPluginList])
 
   const installedModelList = useMemo(() => {
     const modelMap = new Map(modelList.map(model => [model.provider, model]))
@@ -169,13 +177,14 @@ function Popup({
 
   const handleOpenSettings = useCallback(() => {
     onHide()
-    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-  }, [onHide, setShowAccountSettingModal])
+    openIntegrationsSetting({ payload: ACCOUNT_SETTING_TAB.PROVIDER, source: providerSettingsSource })
+  }, [onHide, openIntegrationsSetting, providerSettingsSource])
   const handleClosePreviewCard = useCallback(() => {
     previewCardHandle.close()
   }, [previewCardHandle])
   const isProviderSettingsCurrentPage = searchParams?.get('action') === ACCOUNT_SETTING_MODAL_ACTION
     && searchParams?.get('tab') === ACCOUNT_SETTING_TAB.PROVIDER
+  const handleConfigureEmptyState = onConfigureEmptyState ?? (isProviderSettingsCurrentPage ? onHide : handleOpenSettings)
 
   return (
     <ModelSelectorPopupFrame>
@@ -206,12 +215,12 @@ function Popup({
         <div className="pb-1">
           {!filteredModelList.length && !installedModelList.length && (
             <ModelSelectorEmptyState
-              onConfigure={handleOpenSettings}
+              onConfigure={handleConfigureEmptyState}
             />
           )}
           {!filteredModelList.length && installedModelList.length > 0 && (
             <div className="px-3 py-1.5 text-center text-xs/4.5 break-all text-text-tertiary">
-              {`No model found for \u201C${inputValue}\u201D`}
+              {t('modelProvider.selector.noModelFoundForSearch', { ns: 'common', query: inputValue })}
             </div>
           )}
           {scopeFeatures.length > 0 && (
@@ -223,6 +232,7 @@ function Popup({
               marketplaceCollapsed={marketplaceCollapsed}
               installingProvider={installingProvider}
               isMarketplacePluginsLoading={isMarketplacePluginsLoading}
+              canInstallPlugin={canInstallPlugin}
               theme={theme}
               onMarketplaceCollapsedChange={setMarketplaceCollapsed}
               onInstallPlugin={handleInstallPlugin}
@@ -239,7 +249,7 @@ function Popup({
           />
         )}
       </PreviewCard>
-      {!isProviderSettingsCurrentPage && (
+      {!hideProviderSettingsFooter && !isProviderSettingsCurrentPage && (
         <ModelProviderSettingsFooter onOpenSettings={handleOpenSettings} />
       )}
     </ModelSelectorPopupFrame>

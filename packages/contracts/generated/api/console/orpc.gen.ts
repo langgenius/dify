@@ -2,7 +2,7 @@
 
 import { account } from './account/orpc.gen'
 import { activate } from './activate/orpc.gen'
-import { agents } from './agents/orpc.gen'
+import { agent } from './agent/orpc.gen'
 import { allWorkspaces } from './all-workspaces/orpc.gen'
 import { apiBasedExtension } from './api-based-extension/orpc.gen'
 import { apiKeyAuth } from './api-key-auth/orpc.gen'
@@ -27,7 +27,6 @@ import { installedApps } from './installed-apps/orpc.gen'
 import { instructionGenerate } from './instruction-generate/orpc.gen'
 import { login } from './login/orpc.gen'
 import { logout } from './logout/orpc.gen'
-import { mcp } from './mcp/orpc.gen'
 import { notification } from './notification/orpc.gen'
 import { notion } from './notion/orpc.gen'
 import { oauth } from './oauth/orpc.gen'
@@ -38,6 +37,7 @@ import { resetPassword } from './reset-password/orpc.gen'
 import { ruleCodeGenerate } from './rule-code-generate/orpc.gen'
 import { ruleGenerate } from './rule-generate/orpc.gen'
 import { ruleStructuredOutputGenerate } from './rule-structured-output-generate/orpc.gen'
+import { snippets } from './snippets/orpc.gen'
 import { spec } from './spec/orpc.gen'
 import { systemFeatures } from './system-features/orpc.gen'
 import { tagBindings } from './tag-bindings/orpc.gen'
@@ -46,13 +46,14 @@ import { test } from './test/orpc.gen'
 import { trialApps } from './trial-apps/orpc.gen'
 import { trialModels } from './trial-models/orpc.gen'
 import { website } from './website/orpc.gen'
+import { workflowGenerate } from './workflow-generate/orpc.gen'
 import { workflow } from './workflow/orpc.gen'
 import { workspaces } from './workspaces/orpc.gen'
 
 export const contract = {
   account,
   activate,
-  agents,
+  agent,
   allWorkspaces,
   apiBasedExtension,
   apiKeyAuth,
@@ -77,7 +78,6 @@ export const contract = {
   instructionGenerate,
   login,
   logout,
-  mcp,
   notification,
   notion,
   oauth,
@@ -88,6 +88,7 @@ export const contract = {
   ruleCodeGenerate,
   ruleGenerate,
   ruleStructuredOutputGenerate,
+  snippets,
   spec,
   systemFeatures,
   tagBindings,
@@ -97,5 +98,6 @@ export const contract = {
   trialModels,
   website,
   workflow,
+  workflowGenerate,
   workspaces,
 }

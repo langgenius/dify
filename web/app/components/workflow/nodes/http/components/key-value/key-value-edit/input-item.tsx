@@ -10,7 +10,7 @@ import RemoveButton from '@/app/components/workflow/nodes/_base/components/remov
 import { VarType } from '@/app/components/workflow/types'
 import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   instanceId?: string
   nodeId: string
@@ -22,7 +22,7 @@ type Props = {
   readOnly?: boolean
   isSupportFile?: boolean
   insertVarTipToLeft?: boolean
-}
+}>
 
 const InputItem: FC<Props> = ({
   className,

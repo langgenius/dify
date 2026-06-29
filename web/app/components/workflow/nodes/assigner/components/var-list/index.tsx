@@ -20,7 +20,7 @@ import { VarType } from '@/app/components/workflow/types'
 import { AssignerNodeInputType, WriteMode } from '../../types'
 import OperationSelector from '../operation-selector'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   list: AssignerNodeOperation[]
@@ -33,7 +33,7 @@ type Props = {
   writeModeTypes?: WriteMode[]
   writeModeTypesArr?: WriteMode[]
   writeModeTypesNum?: WriteMode[]
-}
+}>
 
 const VarList: FC<Props> = ({
   readonly,

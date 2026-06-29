@@ -71,7 +71,17 @@ class MessageListItem(ResponseModel):
 
 
 class WebMessageListItem(MessageListItem):
-    metadata: JSONValueType | None = Field(default=None, validation_alias="message_metadata_dict")
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
+
+
+class ExploreMessageListItem(MessageListItem):
+    metadata: JSONValueType | None = Field(
+        default=None,
+        validation_alias="message_metadata_dict",
+    )
 
 
 class MessageInfiniteScrollPagination(ResponseModel):
@@ -84,6 +94,12 @@ class WebMessageInfiniteScrollPagination(ResponseModel):
     limit: int
     has_more: bool
     data: list[WebMessageListItem]
+
+
+class ExploreMessageInfiniteScrollPagination(ResponseModel):
+    limit: int
+    has_more: bool
+    data: list[ExploreMessageListItem]
 
 
 class SavedMessageItem(ResponseModel):

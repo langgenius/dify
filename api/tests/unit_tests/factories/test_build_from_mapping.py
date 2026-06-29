@@ -421,3 +421,29 @@ def test_disallowed_extensions(mock_upload_file):
 
     with pytest.raises(ValueError, match="File validation failed"):
         build_from_mapping(mapping=mapping, tenant_id=TEST_TENANT_ID, config=restricted_config)
+
+
+def test_custom_file_type_uses_extension_validation_under_strict_mode(mock_upload_file):
+    """Custom form uploads are classified by the configured extension list."""
+    mock_upload_file.return_value.extension = "txt"
+    mock_upload_file.return_value.name = "notes.txt"
+    mock_upload_file.return_value.mime_type = "text/plain"
+
+    custom_config = FileUploadConfig(
+        allowed_file_types=[FileType.CUSTOM],
+        allowed_file_extensions=[".txt"],
+    )
+    mapping = {
+        "transfer_method": "local_file",
+        "upload_file_id": TEST_UPLOAD_FILE_ID,
+        "type": "custom",
+    }
+
+    file = build_from_mapping(
+        mapping=mapping,
+        tenant_id=TEST_TENANT_ID,
+        config=custom_config,
+        strict_type_validation=True,
+    )
+
+    assert file.type == FileType.CUSTOM

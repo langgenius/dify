@@ -2,12 +2,18 @@ import type { ReactElement } from 'react'
 import type { MockedFunction } from 'vitest'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import Cookies from 'js-cookie'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLocale } from '@/context/i18n'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { useMailRegister } from '@/service/use-common'
 import { getBrowserTimezone } from '@/utils/timezone'
 import ChangePasswordForm from '../page'
+
+const { mockRememberRegistrationSuccess, mockSendGAEvent } = vi.hoisted(() => ({
+  mockRememberRegistrationSuccess: vi.fn(),
+  mockSendGAEvent: vi.fn(),
+}))
 
 vi.mock('@/context/i18n', () => ({
   useLocale: vi.fn(),
@@ -27,11 +33,11 @@ vi.mock('@/utils/timezone', () => ({
 }))
 
 vi.mock('@/utils/gtag', () => ({
-  sendGAEvent: vi.fn(),
+  sendGAEvent: (...args: unknown[]) => mockSendGAEvent(...args),
 }))
 
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
+vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
+  rememberRegistrationSuccess: (...args: unknown[]) => mockRememberRegistrationSuccess(...args),
 }))
 
 vi.mock('@/utils/create-app-tracking', () => ({
@@ -64,6 +70,7 @@ const renderWithQueryClient = (ui: ReactElement) => {
 describe('Signup Set Password Page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    Cookies.remove('utm_info')
     mockUseLocale.mockReturnValue('zh-Hans')
     mockUseSearchParams.mockReturnValue(new URLSearchParams('token=register-token') as unknown as ReturnType<typeof useSearchParams>)
     mockUseRouter.mockReturnValue({ replace: mockReplace } as unknown as ReturnType<typeof useRouter>)
@@ -96,6 +103,58 @@ describe('Signup Set Password Page', () => {
           timezone: 'Asia/Shanghai',
         })
       })
+    })
+  })
+
+  // On successful registration the Amplitude event is deferred (remembered) so it can
+  // fire after the user ID is attached, while the GA event still fires immediately.
+  describe('Registration success tracking', () => {
+    const fillAndSubmit = () => {
+      fireEvent.change(screen.getByLabelText('common.account.newPassword'), {
+        target: { value: 'ValidPass123!' },
+      })
+      fireEvent.change(screen.getByLabelText('common.account.confirmPassword'), {
+        target: { value: 'ValidPass123!' },
+      })
+      fireEvent.click(screen.getByRole('button', { name: 'login.changePasswordBtn' }))
+    }
+
+    it('should defer the amplitude event and fire GA immediately when registration succeeds', async () => {
+      mockRegister.mockResolvedValue({ result: 'success', data: {} })
+
+      renderWithQueryClient(<ChangePasswordForm />)
+      fillAndSubmit()
+
+      await waitFor(() => {
+        expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
+          method: 'email',
+          utmInfo: null,
+        })
+      })
+      expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success', {
+        method: 'email',
+      })
+      expect(mockReplace).toHaveBeenCalledWith('/')
+    })
+
+    it('should remember the utm event and clear the utm cookie when a utm_info cookie is present', async () => {
+      Cookies.set('utm_info', JSON.stringify({ utm_source: 'twitter' }))
+      mockRegister.mockResolvedValue({ result: 'success', data: {} })
+
+      renderWithQueryClient(<ChangePasswordForm />)
+      fillAndSubmit()
+
+      await waitFor(() => {
+        expect(mockRememberRegistrationSuccess).toHaveBeenCalledWith({
+          method: 'email',
+          utmInfo: { utm_source: 'twitter' },
+        })
+      })
+      expect(mockSendGAEvent).toHaveBeenCalledWith('user_registration_success_with_utm', {
+        method: 'email',
+        utm_source: 'twitter',
+      })
+      expect(Cookies.get('utm_info')).toBeUndefined()
     })
   })
 })

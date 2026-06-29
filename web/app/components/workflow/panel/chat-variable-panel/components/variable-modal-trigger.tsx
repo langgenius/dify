@@ -7,14 +7,14 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
   showTip: boolean
   chatVar?: ConversationVariable
   onClose: () => void
   onSave: (env: ConversationVariable) => void
-}
+}>
 
 const VariableModalTrigger = ({
   open,

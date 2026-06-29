@@ -11,10 +11,10 @@ import FeatureCard from '@/app/components/base/features/new-feature-panel/featur
 import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
-type Props = {
+type Props = Readonly<{
   disabled: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const FileUpload = ({
   disabled,

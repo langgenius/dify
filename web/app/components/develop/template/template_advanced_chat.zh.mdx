@@ -80,6 +80,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - Query 参数：通过 URL 查询参数 <code>trace_id</code> 传递。<br/>
         - Request Body：通过请求体字段 <code>trace_id</code> 传递（即本字段）。<br/>
       </Property>
+      <Property name='trace_session_id' type='string' key='trace_session_id'>
+      （选填）用于可观测性分组的链路会话 ID。支持会话分组的追踪提供商可将该值用作导出的会话标识。它不会改变 conversation_id、workflow_run_id、trace_id 或 span 关系。支持以下三种方式传递，具体优先级依次为：<br/>
+        - Header：通过 HTTP Header <code>X-Trace-Session-Id</code> 传递，优先级最高。<br/>
+        - Query 参数：通过 URL 查询参数 <code>trace_session_id</code> 传递。<br/>
+        - Request Body：通过请求体字段 <code>trace_session_id</code> 传递（即本字段）。<br/>
+      </Property>
     </Properties>
 
     ### Response

@@ -40,7 +40,7 @@ describe('AppInfoTrigger', () => {
   it('should render app icon with small size when collapsed', () => {
     render(<AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />)
     const icon = screen.getByTestId('app-icon')
-    expect(icon).toHaveAttribute('data-size', 'small')
+    expect(icon).toHaveAttribute('data-size', 'medium')
   })
 
   it('should show app name when expanded', () => {
@@ -77,18 +77,18 @@ describe('AppInfoTrigger', () => {
     const { container, rerender } = render(
       <AppInfoTrigger appDetail={createAppDetail()} expand onClick={vi.fn()} />,
     )
-    expect(container.querySelector('svg')).toBeInTheDocument()
+    expect(container.querySelector('.i-ri-equalizer-2-line')).toBeInTheDocument()
 
     rerender(<AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />)
-    expect(container.querySelector('svg')).toBeInTheDocument()
+    expect(container.querySelector('.i-ri-equalizer-2-line')).not.toBeInTheDocument()
   })
 
-  it('should apply ml-1 class to icon wrapper when collapsed', () => {
+  it('should center the icon wrapper when collapsed', () => {
     render(
       <AppInfoTrigger appDetail={createAppDetail()} expand={false} onClick={vi.fn()} />,
     )
     const iconWrapper = screen.getByTestId('app-icon').parentElement
-    expect(iconWrapper).toHaveClass('ml-1')
+    expect(iconWrapper?.parentElement).toHaveClass('items-center')
   })
 
   it('should not apply ml-1 class when expanded', () => {

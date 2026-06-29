@@ -417,10 +417,12 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
 
         conversation_id = self._system_variables().get(SystemVariableKey.CONVERSATION_ID.value)
         external_trace_id = None
+        trace_session_id = None
         parent_trace_context = None
         if isinstance(self._application_generate_entity, (WorkflowAppGenerateEntity, AdvancedChatAppGenerateEntity)):
             extras = self._application_generate_entity.extras
             external_trace_id = extras.get("external_trace_id")
+            trace_session_id = extras.get("trace_session_id")
             parent_trace_context = extras.get("parent_trace_context")
             if isinstance(parent_trace_context, ParentTraceContext):
                 parent_trace_context = parent_trace_context.model_dump(exclude_none=True)
@@ -431,6 +433,7 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             conversation_id=conversation_id,
             user_id=self._trace_manager.user_id,
             external_trace_id=external_trace_id,
+            trace_session_id=trace_session_id,
             parent_trace_context=parent_trace_context,
         )
         self._trace_manager.add_trace_task(trace_task)

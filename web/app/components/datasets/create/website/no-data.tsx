@@ -10,10 +10,10 @@ import s from './index.module.css'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   onConfig: () => void
   provider: DataSourceProvider
-}
+}>
 
 const NoData: FC<Props> = ({
   onConfig,

@@ -20,7 +20,7 @@ export type TagBindingRemovePayload = {
   type: TagType
 }
 
-export type TagType = 'app' | 'knowledge'
+export type TagType = 'app' | 'knowledge' | 'snippet'
 
 export type PostTagBindingsData = {
   body: TagBindingPayload

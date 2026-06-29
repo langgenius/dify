@@ -200,6 +200,19 @@ def test_variable_cannot_large_than_200_kb():
         )
 
 
+def test_conversation_variable_description_cannot_exceed_255_chars():
+    with pytest.raises(VariableError, match="description of variable 'test_text' is too long"):
+        variable_factory.build_conversation_variable_from_mapping(
+            {
+                "id": str(uuid4()),
+                "value_type": "string",
+                "name": "test_text",
+                "value": "value",
+                "description": "a" * 256,
+            }
+        )
+
+
 def test_array_none_variable():
     var = variable_factory.build_segment([None, None, None, None])
     assert isinstance(var, ArrayAnySegment)

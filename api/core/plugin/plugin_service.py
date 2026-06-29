@@ -4,11 +4,19 @@ This module owns plugin daemon management calls that are shared by API services
 and core runtimes. Plugin model provider discovery is cached here, alongside
 plugin install, uninstall, and upgrade invalidation, so all cache mutations for
 plugin-owned provider metadata stay tenant-scoped and in one place.
+
+The console plugin list also normalizes endpoint setup counters against live
+endpoint records. Some plugin daemon builds return stale ``endpoints_*``
+aggregates in ``management/list`` even while plugin-scoped endpoint queries are
+current, so the API reconciles those counts before serving workspace plugin
+metadata.
 """
 
 import logging
+import time
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
+from typing import ClassVar
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from redis import RedisError
@@ -23,6 +31,7 @@ from core.helper.marketplace import download_plugin_pkg
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
+    PluginCategory,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -33,11 +42,13 @@ from core.plugin.entities.plugin_daemon import (
     PluginInstallTask,
     PluginInstallTaskStatus,
     PluginListResponse,
+    PluginListWithoutTotalResponse,
     PluginModelProviderEntity,
     PluginVerification,
 )
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
+from core.plugin.impl.endpoint import PluginEndpointClient
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
 from extensions.ext_database import db
@@ -57,6 +68,8 @@ _provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list
 
 
 class PluginService:
+    _plugin_model_providers_memory_cache: ClassVar[dict[str, tuple[int, float, tuple[ProviderEntity, ...]]]] = {}
+
     class LatestPluginCache(BaseModel):
         plugin_id: str
         version: str
@@ -68,11 +81,22 @@ class PluginService:
     REDIS_KEY_PREFIX = "plugin_service:latest_plugin:"
     REDIS_TTL = 60 * 5  # 5 minutes
     PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX = "plugin_model_providers:tenant_id:"
+    PLUGIN_MODEL_PROVIDERS_GENERATION_REDIS_KEY_PREFIX = "plugin_model_providers_generation:tenant_id:"
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
+    # Mirror the detail-panel endpoint query size so list reconciliation and
+    # the visible endpoint drawer exercise the same daemon pagination path.
+    ENDPOINT_RECONCILIATION_PAGE_SIZE = 100
 
     @classmethod
-    def _get_plugin_model_providers_cache_key(cls, tenant_id: str) -> str:
-        return f"{cls.PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX}{tenant_id}"
+    def _get_plugin_model_providers_cache_key(cls, tenant_id: str, generation: int | None = None) -> str:
+        if generation is None:
+            return f"{cls.PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX}{tenant_id}"
+
+        return f"{cls.PLUGIN_MODEL_PROVIDERS_REDIS_KEY_PREFIX}{tenant_id}:generation:{generation}"
+
+    @classmethod
+    def _get_plugin_model_providers_generation_cache_key(cls, tenant_id: str) -> str:
+        return f"{cls.PLUGIN_MODEL_PROVIDERS_GENERATION_REDIS_KEY_PREFIX}{tenant_id}"
 
     @staticmethod
     def _get_provider_short_name_alias(provider: PluginModelProviderEntity) -> str:
@@ -105,29 +129,133 @@ class PluginService:
         return declaration
 
     @classmethod
-    def _load_cached_plugin_model_providers(cls, tenant_id: str) -> tuple[ProviderEntity, ...] | None:
-        cache_key = cls._get_plugin_model_providers_cache_key(tenant_id)
+    def _copy_provider_entities(cls, providers: Sequence[ProviderEntity]) -> tuple[ProviderEntity, ...]:
+        return tuple(provider.model_copy(deep=True) for provider in providers)
+
+    @classmethod
+    def _load_plugin_model_providers_generation(cls, tenant_id: str) -> int | None:
+        cache_key = cls._get_plugin_model_providers_generation_cache_key(tenant_id)
         try:
-            cached_providers = redis_client.get(cache_key)
+            cached_generation = redis_client.get(cache_key)
+        except (RedisError, RuntimeError):
+            logger.warning("Failed to read plugin model provider generation for tenant %s.", tenant_id, exc_info=True)
+            return None
+
+        if cached_generation is None:
+            return 0
+
+        try:
+            return int(cached_generation)
+        except (TypeError, ValueError):
+            logger.warning(
+                "Invalid plugin model provider generation for tenant %s; deleting cache marker.",
+                tenant_id,
+                exc_info=True,
+            )
+            try:
+                redis_client.delete(cache_key)
+            except (RedisError, RuntimeError):
+                logger.warning(
+                    "Failed to delete invalid plugin model provider generation for tenant %s.",
+                    tenant_id,
+                    exc_info=True,
+                )
+            return None
+
+    @classmethod
+    def _load_in_memory_plugin_model_providers(
+        cls, memory_cache_key: str, generation: int
+    ) -> tuple[ProviderEntity, ...] | None:
+        cached_entry = cls._plugin_model_providers_memory_cache.get(memory_cache_key)
+        if cached_entry is None:
+            return None
+
+        cached_generation, expires_at, providers = cached_entry
+        if cached_generation != generation or time.monotonic() >= expires_at:
+            cls._plugin_model_providers_memory_cache.pop(memory_cache_key, None)
+            return None
+
+        return cls._copy_provider_entities(providers)
+
+    @classmethod
+    def _store_in_memory_plugin_model_providers(
+        cls, memory_cache_key: str, generation: int, providers: Sequence[ProviderEntity]
+    ) -> None:
+        ttl = dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL
+        if ttl <= 0:
+            cls._plugin_model_providers_memory_cache.pop(memory_cache_key, None)
+            return
+
+        cls._plugin_model_providers_memory_cache[memory_cache_key] = (
+            generation,
+            time.monotonic() + ttl,
+            cls._copy_provider_entities(providers),
+        )
+
+    @classmethod
+    def _load_cached_plugin_model_providers(
+        cls, tenant_id: str, *, client: PluginModelClient | None = None
+    ) -> tuple[ProviderEntity, ...] | None:
+        generation = cls._load_plugin_model_providers_generation(tenant_id)
+        if generation is not None:
+            in_memory_cached_providers = cls._load_in_memory_plugin_model_providers(tenant_id, generation)
+            if in_memory_cached_providers is not None:
+                return in_memory_cached_providers
+
+        cache_keys = []
+        if generation is not None:
+            cache_keys.append(cls._get_plugin_model_providers_cache_key(tenant_id, generation))
+            if generation == 0:
+                cache_keys.append(cls._get_plugin_model_providers_cache_key(tenant_id))
+
+        if not cache_keys:
+            return None
+
+        try:
+            cached_provider_entries = redis_client.mget(cache_keys)
         except (RedisError, RuntimeError):
             logger.warning("Failed to read cached plugin model providers for tenant %s.", tenant_id, exc_info=True)
             return None
 
-        if not cached_providers:
+        if len(cached_provider_entries) != len(cache_keys):
+            logger.warning(
+                "Unexpected cached plugin model providers response size for tenant %s.",
+                tenant_id,
+            )
             return None
 
-        try:
-            return tuple(_provider_entities_adapter.validate_json(cached_providers))
-        except (TypeError, ValueError, ValidationError):
-            logger.warning(
-                "Invalid cached plugin model providers for tenant %s; deleting cache.", tenant_id, exc_info=True
-            )
-            cls.invalidate_plugin_model_providers_cache(tenant_id)
-            return None
+        for cache_key, cached_providers in zip(cache_keys, cached_provider_entries):
+            if not cached_providers:
+                continue
+
+            try:
+                providers = tuple(_provider_entities_adapter.validate_json(cached_providers))
+                if generation is not None:
+                    cls._store_in_memory_plugin_model_providers(tenant_id, generation, providers)
+                return providers
+            except (TypeError, ValueError, ValidationError):
+                logger.warning(
+                    "Invalid cached plugin model providers for tenant %s; deleting cache key %s.",
+                    tenant_id,
+                    cache_key,
+                    exc_info=True,
+                )
+                try:
+                    redis_client.delete(cache_key)
+                except (RedisError, RuntimeError):
+                    logger.warning(
+                        "Failed to delete invalid cached plugin model providers for tenant %s.",
+                        tenant_id,
+                        exc_info=True,
+                    )
+
+        return None
 
     @classmethod
-    def _store_cached_plugin_model_providers(cls, tenant_id: str, providers: Sequence[ProviderEntity]) -> None:
-        cache_key = cls._get_plugin_model_providers_cache_key(tenant_id)
+    def _store_cached_plugin_model_providers(
+        cls, tenant_id: str, generation: int, providers: Sequence[ProviderEntity]
+    ) -> None:
+        cache_key = cls._get_plugin_model_providers_cache_key(tenant_id, generation)
         try:
             payload = _provider_entities_adapter.dump_json(list(providers)).decode("utf-8")
             redis_client.setex(cache_key, dify_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL, payload)
@@ -136,9 +264,15 @@ class PluginService:
 
     @classmethod
     def invalidate_plugin_model_providers_cache(cls, tenant_id: str) -> None:
-        """Delete the tenant-scoped plugin model provider list cache."""
+        """Invalidate tenant-scoped provider metadata across Redis and worker-local mirrors."""
+        cls._plugin_model_providers_memory_cache.pop(tenant_id, None)
+        cache_key = cls._get_plugin_model_providers_cache_key(tenant_id)
+        generation_key = cls._get_plugin_model_providers_generation_cache_key(tenant_id)
         try:
-            redis_client.delete(cls._get_plugin_model_providers_cache_key(tenant_id))
+            pipe = redis_client.pipeline(transaction=False)
+            pipe.delete(cache_key)
+            pipe.incr(generation_key)
+            pipe.execute()
         except (RedisError, RuntimeError):
             logger.warning("Failed to invalidate plugin model providers cache for tenant %s.", tenant_id, exc_info=True)
 
@@ -153,7 +287,7 @@ class PluginService:
         are intentionally owned by this service so tenant isolation and cache
         expiry are handled in one place.
         """
-        cached_providers = cls._load_cached_plugin_model_providers(tenant_id)
+        cached_providers = cls._load_cached_plugin_model_providers(tenant_id, client=client)
         if cached_providers is not None:
             return cached_providers
 
@@ -161,7 +295,12 @@ class PluginService:
         providers = tuple(
             cls._to_provider_entity(provider) for provider in model_client.fetch_model_providers(tenant_id)
         )
-        cls._store_cached_plugin_model_providers(tenant_id, providers)
+        if not providers:
+            return providers
+        generation = cls._load_plugin_model_providers_generation(tenant_id)
+        if generation is not None:
+            cls._store_in_memory_plugin_model_providers(tenant_id, generation, providers)
+            cls._store_cached_plugin_model_providers(tenant_id, generation, providers)
         return providers
 
     @staticmethod
@@ -287,13 +426,116 @@ class PluginService:
         return plugins
 
     @staticmethod
-    def list_with_total(tenant_id: str, page: int, page_size: int) -> PluginListResponse:
-        """
-        list all plugins of the tenant
+    def list_with_total(tenant_id: str, user_id: str, page: int, page_size: int) -> PluginListResponse:
+        """List tenant plugins with endpoint counts reconciled from live records.
+
+        The plugin daemon's ``management/list`` payload is tenant-scoped, but
+        some daemon builds undercount or stale-cache plugin endpoint aggregates.
+        The list response therefore refreshes counters from the daemon's
+        tenant-scoped endpoint records before returning workspace plugin metadata.
         """
         manager = PluginInstaller()
         plugins = manager.list_plugins_with_total(tenant_id, page, page_size)
+        PluginService._reconcile_endpoint_counts(tenant_id, user_id, plugins.list)
         return plugins
+
+    @staticmethod
+    def list_by_category(
+        tenant_id: str, category: PluginCategory, page: int, page_size: int
+    ) -> PluginListWithoutTotalResponse:
+        """
+        List plugins in one category with a has-more cursor signal and without calculating total.
+
+        The daemon scans tenant installations in the existing list order and stops once it finds one extra match.
+        This keeps pagination usable before category is persisted on installation rows.
+        """
+        manager = PluginInstaller()
+        return manager.list_plugins_by_category(tenant_id, category, page, page_size)
+
+    @staticmethod
+    def _normalize_endpoint_count(value: object) -> int:
+        """Convert daemon endpoint counters to safe non-negative integers.
+
+        Some daemon builds use ``-1`` as an "unknown / not synced yet" sentinel
+        for endpoint counters. That value is acceptable internally as a daemon
+        transport detail, but it must never leak through the console API because
+        the UI displays these counters directly.
+        """
+        if value is None:
+            return 0
+
+        if isinstance(value, bool):
+            return int(value)
+
+        if isinstance(value, int):
+            return max(0, value)
+
+        if isinstance(value, str):
+            try:
+                return max(0, int(value))
+            except ValueError:
+                return 0
+
+        return 0
+
+    @classmethod
+    def _normalize_plugin_endpoint_counts(cls, plugin: PluginEntity) -> None:
+        """Clamp endpoint counters on plugin entities before returning them."""
+        plugin.endpoints_setups = cls._normalize_endpoint_count(plugin.endpoints_setups)
+        plugin.endpoints_active = cls._normalize_endpoint_count(plugin.endpoints_active)
+
+    @classmethod
+    def _reconcile_endpoint_counts(cls, tenant_id: str, user_id: str, plugins: Sequence[PluginEntity]) -> None:
+        """Refresh endpoint counters from live plugin endpoint records.
+
+        ``management/list`` is the source of truth for plugin installations, but
+        some daemon versions lag when populating ``endpoints_setups`` and
+        ``endpoints_active``. The plugin-scoped endpoint listing is the same
+        tenant-scoped source the console detail panel uses after reinstall flows,
+        so the list view recomputes counts per plugin instead of trusting stale
+        daemon aggregates.
+        """
+        endpoint_client = PluginEndpointClient()
+
+        for plugin in plugins:
+            cls._normalize_plugin_endpoint_counts(plugin)
+
+            if plugin.declaration.endpoint is None:
+                continue
+
+            page = 1
+            endpoints_setups = 0
+            endpoints_active = 0
+
+            try:
+                while True:
+                    endpoints = endpoint_client.list_endpoints_for_single_plugin(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        plugin_id=plugin.plugin_id,
+                        page=page,
+                        page_size=cls.ENDPOINT_RECONCILIATION_PAGE_SIZE,
+                    )
+                    endpoints_setups += len(endpoints)
+                    endpoints_active += sum(int(endpoint.enabled) for endpoint in endpoints)
+
+                    if len(endpoints) < cls.ENDPOINT_RECONCILIATION_PAGE_SIZE:
+                        break
+                    page += 1
+            except Exception:
+                logger.warning(
+                    (
+                        "Failed to reconcile live endpoint counters for tenant %s plugin %s; "
+                        "falling back to daemon plugin stats."
+                    ),
+                    tenant_id,
+                    plugin.plugin_id,
+                    exc_info=True,
+                )
+                continue
+
+            plugin.endpoints_setups = cls._normalize_endpoint_count(endpoints_setups)
+            plugin.endpoints_active = cls._normalize_endpoint_count(endpoints_active)
 
     @staticmethod
     def list_installations_from_ids(tenant_id: str, ids: Sequence[str]) -> Sequence[PluginInstallation]:

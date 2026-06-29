@@ -50,7 +50,7 @@ function LabelSelector({
             'data-popup-open:bg-components-input-bg-hover data-popup-open:hover:bg-components-input-bg-hover',
           )}
         >
-          <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
+          <div className={cn('grow truncate text-[13px] leading-4.5 text-text-secondary', !value.length && 'text-text-quaternary!')}>
             {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
             {!!value.length && selectedLabels}
           </div>
@@ -88,7 +88,7 @@ function LabelSelector({
                     className="shrink-0"
                     value={label.name}
                   />
-                  <div title={label.label} className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
+                  <div className="grow truncate text-sm/5 text-text-secondary">{label.label}</div>
                 </label>
               ))}
               {!filteredLabelList.length && (

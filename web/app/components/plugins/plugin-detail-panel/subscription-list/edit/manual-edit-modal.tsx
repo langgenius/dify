@@ -15,11 +15,11 @@ import { useUpdateTriggerSubscription } from '@/service/use-triggers'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
 
-type Props = {
+type Props = Readonly<{
   onClose: () => void
   subscription: TriggerSubscription
   pluginDetail?: PluginDetail
-}
+}>
 
 const normalizeFormType = (type: string): FormTypeEnum => {
   switch (type) {

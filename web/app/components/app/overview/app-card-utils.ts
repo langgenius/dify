@@ -11,6 +11,7 @@ type OverviewCardType = 'api' | 'webapp'
 
 export type OverviewOperationKey = 'launch' | 'embedded' | 'customize' | 'settings' | 'develop'
 export type WorkflowLaunchInputValue = string | boolean
+export type EmbeddedWebAppRoute = 'chatbot' | 'agent'
 export type WorkflowHiddenStartVariable = Pick<
   InputVar,
   'default' | 'hide' | 'label' | 'max_length' | 'options' | 'required' | 'type' | 'variable'
@@ -156,12 +157,14 @@ ${entries.map(([key, value]) => `    ${key}: ${JSON.stringify(value)},`).join('\
 export const getEmbeddedScriptSnippet = ({
   url,
   token,
+  webAppRoute = 'chatbot',
   primaryColor,
   isTestEnv,
   inputValues,
 }: {
   url: string
   token: string
+  webAppRoute?: EmbeddedWebAppRoute
   primaryColor: string
   isTestEnv?: boolean
   inputValues: Record<string, WorkflowLaunchInputValue>
@@ -174,6 +177,9 @@ export const getEmbeddedScriptSnippet = ({
     : ''}${IS_CE_EDITION
     ? `,
   baseUrl: '${url}${basePath}'`
+    : ''}${webAppRoute !== 'chatbot'
+    ? `,
+  routeSegment: '${webAppRoute}'`
     : ''},
   inputs: ${getScriptInputsContent(inputValues)},
   systemVariables: {
@@ -221,22 +227,22 @@ export const getAppCardDisplayState = ({
   appInfo,
   cardType,
   currentWorkflow,
-  isCurrentWorkspaceEditor,
-  isCurrentWorkspaceManager,
+  canManageWebApp,
+  canManageApi,
   triggerModeDisabled = false,
 }: {
   appInfo: AppInfo
   cardType: OverviewCardType
   currentWorkflow: WorkflowLike
-  isCurrentWorkspaceEditor: boolean
-  isCurrentWorkspaceManager: boolean
+  canManageWebApp: boolean
+  canManageApi: boolean
   triggerModeDisabled?: boolean
 }): AppCardDisplayState => {
   const isApp = cardType === 'webapp'
   const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
   const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
   const missingStartNode = isWorkflowApp && !hasWorkflowStartNode(currentWorkflow)
-  const hasInsufficientPermissions = isApp ? !isCurrentWorkspaceEditor : !isCurrentWorkspaceManager
+  const hasInsufficientPermissions = isApp ? !canManageWebApp : !canManageApi
   const toggleDisabled = hasInsufficientPermissions || appUnpublished || missingStartNode || triggerModeDisabled
   const runningStatus = (appUnpublished || missingStartNode) ? false : (isApp ? appInfo.enable_site : appInfo.enable_api)
   const appMode = getCardAppMode(appInfo.mode)
@@ -269,11 +275,11 @@ export const isAppAccessConfigured = (appDetail: AppDetailResponse | null | unde
 export const getAppCardOperationKeys = ({
   cardType,
   appMode,
-  isCurrentWorkspaceEditor,
+  canManageSettings,
 }: {
   cardType: OverviewCardType
   appMode: AppModeEnum
-  isCurrentWorkspaceEditor: boolean
+  canManageSettings: boolean
 }): OverviewOperationKey[] => {
   if (cardType === 'api')
     return ['develop']
@@ -283,7 +289,7 @@ export const getAppCardOperationKeys = ({
     operationKeys.push('embedded')
 
   operationKeys.push('customize')
-  if (isCurrentWorkspaceEditor)
+  if (canManageSettings)
     operationKeys.push('settings')
 
   return operationKeys

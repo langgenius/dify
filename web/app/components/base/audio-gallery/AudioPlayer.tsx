@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
-type AudioPlayerProps = {
+type AudioPlayerProps = Readonly<{
   src?: string // Keep backward compatibility
   srcs?: string[] // Support multiple sources
-}
+}>
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   const { t } = useTranslation()
   const [isPlaying, setIsPlaying] = useState(false)

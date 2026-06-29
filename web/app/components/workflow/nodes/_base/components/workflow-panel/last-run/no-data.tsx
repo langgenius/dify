@@ -6,10 +6,10 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 
-type Props = {
+type Props = Readonly<{
   canSingleRun: boolean
   onSingleRun: () => void
-}
+}>
 
 const NoData: FC<Props> = ({
   canSingleRun,

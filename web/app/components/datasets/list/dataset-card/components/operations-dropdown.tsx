@@ -5,25 +5,46 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@langgenius/dify-ui/dropdown-menu'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import * as React from 'react'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../operations'
 
 type OperationsDropdownProps = {
   dataset: DataSet
-  isCurrentWorkspaceDatasetOperator: boolean
   openRenameModal: () => void
   handleExportPipeline: (include?: boolean) => void
   detectIsUsedByApp: () => void
+  openAccessConfig: () => void
 }
 
 const OperationsDropdown = ({
   dataset,
-  isCurrentWorkspaceDatasetOperator,
   openRenameModal,
   handleExportPipeline,
   detectIsUsedByApp,
+  openAccessConfig,
 }: OperationsDropdownProps) => {
   const [open, setOpen] = React.useState(false)
+  const currentUserId = useAppContextWithSelector(state => state.userProfile?.id)
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
+  const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
+  const isRbacEnabled = systemFeatures.rbac_enabled
+  const datasetACLCapabilities = React.useMemo(() => getDatasetACLCapabilities(dataset.permission_keys, {
+    currentUserId,
+    resourceMaintainer: dataset.maintainer,
+    workspacePermissionKeys,
+    isRbacEnabled,
+  }), [dataset.maintainer, dataset.permission_keys, currentUserId, isRbacEnabled, workspacePermissionKeys])
+  const canShowOperations = datasetACLCapabilities.canEdit
+    || datasetACLCapabilities.canImportExportDSL
+    || datasetACLCapabilities.canAccessConfig
+    || datasetACLCapabilities.canDelete
+
+  if (!canShowOperations)
+    return null
 
   return (
     <div
@@ -53,11 +74,14 @@ const OperationsDropdown = ({
           popupClassName="min-w-[186px]"
         >
           <Operations
-            showDelete={!isCurrentWorkspaceDatasetOperator}
-            showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
+            showEdit={datasetACLCapabilities.canEdit}
+            showDelete={datasetACLCapabilities.canDelete}
+            showExportPipeline={dataset.runtime_mode === 'rag_pipeline' && datasetACLCapabilities.canImportExportDSL}
+            showAccessConfig={datasetACLCapabilities.canAccessConfig}
             openRenameModal={openRenameModal}
             handleExportPipeline={handleExportPipeline}
             detectIsUsedByApp={detectIsUsedByApp}
+            openAccessConfig={openAccessConfig}
           />
         </DropdownMenuContent>
       </DropdownMenu>

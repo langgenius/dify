@@ -18,7 +18,7 @@ import ConfigPromptItem from './config-prompt-item'
 
 const i18nPrefix = 'nodes.llm'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   filterVar: (payload: Var, selector: ValueSelector) => boolean
@@ -35,7 +35,7 @@ type Props = {
   varList?: Variable[]
   handleAddVariable: (payload: any) => void
   modelConfig: ModelConfig
-}
+}>
 
 const ConfigPrompt: FC<Props> = ({
   readOnly,

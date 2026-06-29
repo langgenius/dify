@@ -18,7 +18,7 @@ import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/com
 import { VarInInspectType } from '@/types/workflow'
 import { useToolIcon } from '../hooks'
 
-type Props = {
+type Props = Readonly<{
   nodeData?: NodeWithVar
   currentVar?: currentVarType
   varType: VarInInspectType
@@ -26,7 +26,7 @@ type Props = {
   handleSelect: (state: any) => void
   handleView?: () => void
   handleClear?: () => void
-}
+}>
 
 const Group = ({
   nodeData,

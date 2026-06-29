@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -8,6 +8,7 @@ from core.tools.utils.web_reader_tool import get_url
 
 
 class WebscraperTool(BuiltinTool):
+    @override
     def _invoke(
         self,
         user_id: str,

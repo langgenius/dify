@@ -3,7 +3,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/pop
 import { RiInformation2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from '@/app/components/base/divider'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
 import NoLinkedAppsPanel from '../no-linked-apps-panel'
 
@@ -24,19 +23,19 @@ const Statistics = ({
   const hasRelatedApps = relatedApps?.data && relatedApps.data.length > 0
 
   return (
-    <div className="flex items-center gap-x-0.5 p-2 pb-0">
-      <div className="flex grow flex-col px-2 pt-1 pb-1.5">
+    <div className="flex items-start gap-x-0.5 px-1 pt-2">
+      <div className="flex min-w-0 flex-col rounded-lg px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {documentCount ?? '--'}
         </div>
-        <div className="system-2xs-medium-uppercase text-text-tertiary">
+        <div className="truncate system-2xs-medium-uppercase text-text-tertiary">
           {t('datasetMenus.documents', { ns: 'common' })}
         </div>
       </div>
-      <div className="py-2 pr-1.5 pl-0.5">
-        <Divider className="text-test-divider-regular h-full w-fit" />
+      <div className="flex h-[42px] w-[15px] shrink-0 items-center justify-center">
+        <div className="h-7 w-px rotate-[15deg] bg-divider-subtle" />
       </div>
-      <div className="flex grow flex-col px-2 pt-1 pb-1.5">
+      <div className="flex min-w-0 flex-col rounded-lg px-2 pt-1 pb-1.5">
         <div className="system-md-semibold-uppercase text-text-secondary">
           {relatedAppsTotal ?? '--'}
         </div>
@@ -47,10 +46,10 @@ const Statistics = ({
             render={(
               <button
                 type="button"
-                className="flex cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
+                className="flex max-w-full cursor-pointer items-center gap-x-0.5 rounded-sm system-2xs-medium-uppercase text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-1 focus-visible:ring-components-input-border-hover"
               >
-                <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
-                <RiInformation2Line className="size-3" />
+                <span className="truncate">{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
+                <RiInformation2Line className="size-3 shrink-0" />
               </button>
             )}
           />

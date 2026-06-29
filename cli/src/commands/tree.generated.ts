@@ -17,15 +17,15 @@ import CreateMember from '@/commands/create/member/index'
 import DeleteMember from '@/commands/delete/member/index'
 import DescribeApp from '@/commands/describe/app/index'
 import EnvList from '@/commands/env/list/index'
+import ExportStudioApp from '@/commands/export/studio-app/index'
 import GetApp from '@/commands/get/app/index'
 import GetMember from '@/commands/get/member/index'
 import GetWorkspace from '@/commands/get/workspace/index'
-import HelpAccount from '@/commands/help/account/index'
-import HelpEnvironment from '@/commands/help/environment/index'
-import HelpExternal from '@/commands/help/external/index'
+import ImportStudioApp from '@/commands/import/studio-app/index'
 import ResumeApp from '@/commands/resume/app/index'
 import RunApp from '@/commands/run/app/index'
 import SetMember from '@/commands/set/member/index'
+import SkillsInstall from '@/commands/skills/install/index'
 import UseAccount from '@/commands/use/account/index'
 import UseHost from '@/commands/use/host/index'
 import UseWorkspace from '@/commands/use/workspace/index'
@@ -75,6 +75,11 @@ export const commandTree: CommandTree = {
       list: { command: EnvList, subcommands: {} },
     },
   },
+  export: {
+    subcommands: {
+      'studio-app': { command: ExportStudioApp, subcommands: {} },
+    },
+  },
   get: {
     subcommands: {
       app: { command: GetApp, subcommands: {} },
@@ -82,11 +87,9 @@ export const commandTree: CommandTree = {
       workspace: { command: GetWorkspace, subcommands: {} },
     },
   },
-  help: {
+  import: {
     subcommands: {
-      account: { command: HelpAccount, subcommands: {} },
-      environment: { command: HelpEnvironment, subcommands: {} },
-      external: { command: HelpExternal, subcommands: {} },
+      'studio-app': { command: ImportStudioApp, subcommands: {} },
     },
   },
   resume: {
@@ -102,6 +105,11 @@ export const commandTree: CommandTree = {
   set: {
     subcommands: {
       member: { command: SetMember, subcommands: {} },
+    },
+  },
+  skills: {
+    subcommands: {
+      install: { command: SkillsInstall, subcommands: {} },
     },
   },
   use: {

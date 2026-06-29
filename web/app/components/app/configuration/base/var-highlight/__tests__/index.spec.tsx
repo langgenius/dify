@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import VarHighlight, { varHighlightHTML } from '../index'
+import VarHighlight from '../index'
 
 describe('VarHighlight', () => {
   beforeEach(() => {
@@ -33,34 +33,6 @@ describe('VarHighlight', () => {
 
       // Assert
       expect(container.firstChild).toHaveClass('mt-2')
-    })
-  })
-
-  // Escaping HTML via helper
-  describe('varHighlightHTML', () => {
-    it('should escape dangerous characters before returning HTML string', () => {
-      // Arrange
-      const props = { name: '<script>alert(\'xss\')</script>' }
-
-      // Act
-      const html = varHighlightHTML(props)
-
-      // Assert
-      expect(html).toContain('&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;')
-      expect(html).not.toContain('<script>')
-    })
-
-    it('should include custom class names in the wrapper element', () => {
-      // Arrange
-      const props = { name: 'data', className: 'text-primary' }
-
-      // Act
-      const html = varHighlightHTML(props)
-
-      // Assert
-      // CSS modules add a hash to class names, so the class attribute may contain _item_xxx
-      expect(html).toContain('text-primary')
-      expect(html).toContain('item')
     })
   })
 })

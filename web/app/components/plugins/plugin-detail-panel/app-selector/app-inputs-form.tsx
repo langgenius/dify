@@ -6,12 +6,12 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 import Input from '@/app/components/base/input'
 import { InputVarType } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   inputsForms: any[]
   inputs: Record<string, any>
   inputsRef: any
   onFormChange: (value: Record<string, any>) => void
-}
+}>
 const AppInputsForm = ({
   inputsForms,
   inputs,

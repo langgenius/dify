@@ -7,6 +7,7 @@ from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.common.controller_schemas import TextToAudioPayload as TextToAudioPayloadBase
+from controllers.common.fields import AudioBinaryResponse, AudioTranscriptResponse
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -21,6 +22,7 @@ from controllers.web.error import (
 )
 from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_database import db
 from graphon.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from models.model import App, EndUser
@@ -32,7 +34,7 @@ from services.errors.audio import (
     UnsupportedAudioTypeServiceError,
 )
 
-from ..common.schema import register_schema_models
+from ..common.schema import register_response_schema_models, register_schema_models
 
 
 class TextToAudioPayload(TextToAudioPayloadBase):
@@ -45,6 +47,7 @@ class TextToAudioPayload(TextToAudioPayloadBase):
 
 
 register_schema_models(web_ns, TextToAudioPayload)
+register_response_schema_models(web_ns, AudioBinaryResponse, AudioTranscriptResponse)
 
 logger = logging.getLogger(__name__)
 
@@ -69,6 +72,7 @@ class AudioApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[AudioTranscriptResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Convert audio to text"""
         file = request.files["file"]
@@ -117,6 +121,7 @@ class TextApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
+    @web_ns.response(200, "Success", web_ns.models[AudioBinaryResponse.__name__])
     def post(self, app_model: App, end_user: EndUser):
         """Convert text to audio"""
         try:
@@ -126,7 +131,12 @@ class TextApi(WebApiResource):
             text = payload.text
             voice = payload.voice
             response = AudioService.transcript_tts(
-                app_model=app_model, text=text, voice=voice, end_user=end_user.external_user_id, message_id=message_id
+                app_model=app_model,
+                session=db.session,
+                text=text,
+                voice=voice,
+                end_user=end_user.external_user_id,
+                message_id=message_id,
             )
 
             return response

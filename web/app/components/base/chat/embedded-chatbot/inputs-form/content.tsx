@@ -11,9 +11,9 @@ import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useEmbeddedChatbotContext } from '../context'
 
-type Props = {
+type Props = Readonly<{
   showTip?: boolean
-}
+}>
 
 const InputsFormContent = ({ showTip }: Props) => {
   const { t } = useTranslation()

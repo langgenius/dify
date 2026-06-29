@@ -186,6 +186,20 @@ describe('SettingBuiltInTool', () => {
     expect(screen.getByTestId('mock-form')).toBeInTheDocument()
   })
 
+  it('should render a masked drawer with balanced vertical offsets', async () => {
+    const { baseElement } = renderComponent()
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-form')).toBeInTheDocument()
+    })
+
+    expect(baseElement.querySelector('.bg-background-overlay')).toBeInTheDocument()
+    const drawerPopup = baseElement.querySelector('[role="dialog"]')
+    expect(drawerPopup).toHaveClass(
+      'data-[swipe-direction=right]:top-6',
+      'data-[swipe-direction=right]:bottom-6',
+    )
+  })
+
   it('should call onSave with updated values when save button clicked', async () => {
     const { onSave } = renderComponent()
     await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())

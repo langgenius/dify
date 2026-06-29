@@ -29,7 +29,7 @@ import { basePath } from '@/utils/var'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '../../../header/account-setting/model-provider-page/hooks'
 
 type Props = {
-  appId: string
+  readonly appId: string
 }
 
 const defaultModelConfig = {

@@ -12,10 +12,10 @@ import MemberSelector from './member-selector'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   data: RecipientData
   onChange: (data: RecipientData) => void
-}
+}>
 
 const Recipient = ({
   data,

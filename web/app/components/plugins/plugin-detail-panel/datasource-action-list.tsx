@@ -10,9 +10,9 @@ import { useTranslation } from 'react-i18next'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
 import { useDataSourceList } from '@/service/use-pipeline'
 
-type Props = {
+type Props = Readonly<{
   detail: PluginDetail
-}
+}>
 
 const ActionList = ({
   detail,

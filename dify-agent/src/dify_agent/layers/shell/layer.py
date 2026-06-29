@@ -1,108 +1,101 @@
-"""Shellctl-backed Dify shell layer.
+"""Shell layer backed by the shell adapter provisioner/executor mechanism.
 
 ``DifyShellLayer`` is a stateful pydantic-ai tool layer that exposes exactly
-``shell.run``, ``shell.wait``, ``shell.input``, and ``shell.interrupt``. The
+``shell_run``, ``shell_wait``, ``shell_input``, and ``shell_interrupt``. The
 layer persists only JSON-safe shell session state in ``runtime_state`` and keeps
-its live shellctl HTTP client on the layer instance only while
+its live ``ShellctlHandle`` on the layer instance only while
 ``resource_context()`` is active. Agenton enters that resource scope before
 ``on_context_create`` or ``on_context_resume`` and exits it after
 ``on_context_suspend`` or ``on_context_delete``, so business hooks and shell
-tools can rely on a live client without ever serializing it into snapshots.
+tools can rely on live resources without ever serializing them into snapshots.
 
-The runtime state tracks shellctl job ids for both user-visible shell jobs and
-internal lifecycle jobs such as workspace mkdir/cleanup commands. Those internal
-jobs are intentionally not deleted ad hoc; shellctl job-state deletion is
-centralized in ``on_context_delete`` so one lifecycle hook owns exit-time
-cleanup for successful create/resume flows. If ``on_context_create`` or a later
-side-effecting ``on_context_resume`` attempt fails after issuing shellctl jobs,
-Agenton still exits ``resource_context()`` but never transitions the layer to
-``ACTIVE``. In that failed-enter path, normal suspend/delete hooks do not run,
-so the enter hook itself must perform best-effort business compensation before
-re-raising the failure.
+The layer delegates workspace lifecycle to ``ShellProvisionProtocol``:
+``provision`` allocates a fresh workspace, ``reattach`` rebuilds a live handle
+for an existing workspace from a serialized descriptor, and ``destroy`` tears
+the workspace down. User-facing shell tools call the shellctl client obtained
+from the handle directly; trusted server-owned scripts go through
+``ShellctlExecutor`` which auto-cleans completed jobs.
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Callable, Sequence
 from contextlib import asynccontextmanager
+import json
 import logging
 import re
-import secrets
-import time
 from dataclasses import dataclass
-from typing import ClassVar, NotRequired, Protocol, TypedDict
+from typing import ClassVar, NotRequired, Protocol, TypedDict, cast
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validator, model_validator
 from pydantic_ai import Tool
-from shell_session_manager.shellctl.client import ShellctlClient, ShellctlClientError
+from shell_session_manager.shellctl.client import ShellctlClientError
 from shell_session_manager.shellctl.shared import (
     DEFAULT_TERMINATE_GRACE_SECONDS,
     DEFAULT_TIMEOUT_SECONDS,
-    DeleteJobResponse,
     JobResult,
     JobStatusView,
 )
 from typing_extensions import Self, override
 
-from agenton.layers import NoLayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
+from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
+from dify_agent.adapters.shell.protocols import ShellProvisionProtocol
+from dify_agent.adapters.shell.shellctl import ShellctlEnvironmentDescriptor, ShellctlExecutor, ShellctlHandle
+from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
+from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 
 
 logger = logging.getLogger(__name__)
 
 _WORKSPACE_ROOT = "~/workspace"
-_WORKSPACE_COLLISION_EXIT_CODE = 17
-_SESSION_TIME_HEX_MASK = 0xFFFFF
-_SESSION_RANDOM_HEX_LENGTH = 2
-_SESSION_ID_ATTEMPT_LIMIT = 256
-_SESSION_ID_PATTERN = re.compile(r"^[0-9a-f]{7}$")
 _SHELL_LAYER_PREFIX_PROMPT = """You have access to a shell layer. It provides four tools:
 
-1. shell.run
+1. shell_run
    Start a new shell job in the current isolated workspace.
    Use it to execute commands or scripts.
 
-2. shell.wait
+2. shell_wait
    Wait for more output or completion from an existing shell job.
-   Use it when shell.run returns done=false.
+   Use it when shell_run returns done=false.
 
-3. shell.input
+3. shell_input
    Send stdin text to a running shell job, then wait for new output.
    Use it for interactive commands that are waiting for input.
 
-4. shell.interrupt
+4. shell_interrupt
    Interrupt a running shell job.
    Use it to stop a long-running, stuck, or no-longer-needed command.
 
 Common arguments:
 
 - script:
-  The command or script to execute. Used by shell.run.
+  The command or script to execute. Used by shell_run.
 
 - job_id:
-  The id of a shell job returned by shell.run.
-  Use it with shell.wait, shell.input, and shell.interrupt.
+  The id of a shell job returned by shell_run.
+  Use it with shell_wait, shell_input, and shell_interrupt.
   Never invent a job_id.
 
 - timeout:
   Maximum time, in seconds, to wait for output or completion for this tool call.
-  A timeout does not necessarily mean the job has stopped; if done=false, use shell.wait again.
+  A timeout does not necessarily mean the job has stopped; if done=false, use shell_wait again.
 
 - text:
-  Text to send to the running process stdin. Used by shell.input.
+  Text to send to the running process stdin. Used by shell_input.
   Include "\\n" if the process expects Enter.
 
 - grace_seconds:
-  Time to wait after interrupting before forceful cleanup. Used by shell.interrupt.
+  Time to wait after interrupting before forceful cleanup. Used by shell_interrupt.
 
 Usage rules:
 
-- Start with shell.run.
-- If shell.run returns done=false, call shell.wait with the returned job_id.
-- Use shell.input only when the job is running and waiting for stdin.
-- Use shell.interrupt when a job is stuck or should be stopped.
+- Start with shell_run.
+- If shell_run returns done=false, call shell_wait with the returned job_id.
+- Use shell_input only when the job is running and waiting for stdin.
+- Use shell_interrupt when a job is stuck or should be stopped.
 
-The script argument of shell.run can be a normal shell script, or a shebang script.
+The script argument of shell_run can be a normal shell script, or a shebang script.
 If the first line is a shebang, the shell layer executes the script directly.
 
 Tips:
@@ -161,6 +154,17 @@ type ShellRunToolResult = ShellJobObservation | ShellToolErrorObservation
 type ShellInterruptToolResult = ShellJobStatusObservation | ShellToolErrorObservation
 
 
+class DifyShellLayerDeps(LayerDeps):
+    """Optional direct-layer dependencies used by the shell runtime layer.
+
+    The execution context supplies the token principal. The drive ref used for
+    Agent Stub CLI commands is passed through config so the drive layer can
+    depend on shell for eager materialization without a dependency cycle.
+    """
+
+    execution_context: DifyExecutionContextLayer | None  # pyright: ignore[reportUninitializedInstanceVariable]
+
+
 class ShellctlClientProtocol(Protocol):
     """Boundary that the shell layer needs from a shellctl client."""
 
@@ -169,6 +173,7 @@ class ShellctlClientProtocol(Protocol):
         script: str,
         *,
         cwd: str | None = None,
+        env: dict[str, str] | None = None,
         timeout: float = DEFAULT_TIMEOUT_SECONDS,
     ) -> JobResult: ...
 
@@ -201,7 +206,7 @@ class ShellctlClientProtocol(Protocol):
         *,
         force: bool = False,
         grace_seconds: float | None = None,
-    ) -> DeleteJobResponse: ...
+    ) -> object: ...
 
     async def close(self) -> None: ...
 
@@ -217,12 +222,9 @@ class DifyShellRuntimeState(BaseModel):
     created before suspension. Callers should replace the stored list/dict values
     rather than mutating them in place so Pydantic assignment validation keeps
     guarding the serialized state. Hydrated public snapshots must keep
-    ``session_id`` in the proposal's safe lowercase-hex format and must keep
-    ``workspace_cwd`` exactly aligned with ``~/workspace/<session_id>`` so resume
-    and delete paths cannot escape the isolated workspace root or inject shell
-    syntax into lifecycle commands. Shellctl job ids remain opaque strings here;
-    the layer only enforces uniqueness plus the invariant that any stored offset
-    entry must belong to a tracked job id in the same runtime state.
+    ``session_id`` and ``workspace_cwd`` consistent with the descriptor returned
+    by the shell provisioner, so resume and delete paths cannot escape the
+    isolated workspace root or inject shell syntax into lifecycle commands.
     """
 
     session_id: str | None = None
@@ -235,10 +237,12 @@ class DifyShellRuntimeState(BaseModel):
     @field_validator("session_id")
     @classmethod
     def validate_session_id(cls, value: str | None) -> str | None:
-        """Accept only the short lowercase-hex session ids defined by the proposal."""
+        """Reject session ids that could escape the workspace root or inject shell syntax."""
         if value is None:
             return value
-        return _validated_session_id(value)
+        if not re.fullmatch(r"[0-9a-f]{7,16}", value):
+            raise ValueError("session_id must be 7 to 16 lowercase hex characters (got an invalid value).")
+        return value
 
     @field_validator("job_ids")
     @classmethod
@@ -264,50 +268,72 @@ class DifyShellRuntimeState(BaseModel):
         return self
 
 
-@dataclass(slots=True)
-class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, DifyShellRuntimeState]):
-    """Shell tool layer backed by a live shellctl client while active.
+@dataclass(frozen=True, slots=True)
+class RemoteCommandResult:
+    """Completed remote sandbox command returned to server-owned callers.
 
-    The mutable serializable state lives in ``runtime_state``; the live client is
-    intentionally kept off-snapshot in ``_shellctl_client``. Tool methods update
+    Only fields with live consumers are kept: ``output``/``exit_code`` (read by
+    every caller), ``truncated`` (drive pull treats a truncated result as a
+    failure because it needs the command's full output), and ``status`` (used in
+    drive's human-readable error message). shellctl paging details such as the
+    job id, completion flag, byte offset, and output path are intentionally not
+    surfaced here, since no caller reads them.
+    """
+
+    status: str
+    exit_code: int | None
+    output: str
+    truncated: bool
+
+
+@dataclass(slots=True)
+class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerConfig, DifyShellRuntimeState]):
+    """Shell tool layer backed by the shell provisioner/executor mechanism.
+
+    The mutable serializable state lives in ``runtime_state``; the live
+    ``ShellctlHandle`` is intentionally kept off-snapshot. Tool methods update
     tracked job ids and output offsets after every successful shellctl response so
-    later ``shell.wait``/``shell.input`` calls can resume from the last known
+    later ``shell_wait``/``shell_input`` calls can resume from the last known
     offset without exposing offsets as model-controlled inputs.
     """
 
     type_id: ClassVar[str | None] = DIFY_SHELL_LAYER_TYPE_ID
 
     config: DifyShellLayerConfig
-    shellctl_entrypoint: str
-    shellctl_client_factory: ShellctlClientFactory
-    _shellctl_client: ShellctlClientProtocol | None = None
+    shell_provisioner: ShellProvisionProtocol[ShellctlEnvironmentDescriptor]
+    agent_stub_api_base_url: str | None = None
+    agent_stub_token_factory: ShellAgentStubTokenFactory | None = None
+    _shell_handle: ShellctlHandle | None = None
 
     @classmethod
     @override
     def from_config(cls, config: DifyShellLayerConfig) -> Self:
-        """Reject construction that omits server-injected shellctl settings."""
+        """Reject construction that omits the shell provisioner."""
         del config
-        raise TypeError("DifyShellLayer requires server-side shellctl settings and must use a provider factory.")
+        raise TypeError("DifyShellLayer requires a shell provisioner and must use a provider factory.")
 
     @classmethod
     def from_config_with_settings(
         cls,
         config: DifyShellLayerConfig,
         *,
-        shellctl_entrypoint: str | None,
-        shellctl_client_factory: ShellctlClientFactory,
+        shell_provisioner: ShellProvisionProtocol[ShellctlEnvironmentDescriptor] | None,
+        agent_stub_api_base_url: str | None = None,
+        agent_stub_token_factory: ShellAgentStubTokenFactory | None = None,
     ) -> Self:
-        """Create the layer from public config plus server-only shellctl settings."""
-        normalized_entrypoint = (shellctl_entrypoint or "").strip()
-        if not normalized_entrypoint:
+        """Create the layer from public config plus shell provisioner settings."""
+        if shell_provisioner is None:
             raise ValueError(
-                "DifyShellLayer requires a non-empty DIFY_AGENT_SHELLCTL_ENTRYPOINT when the 'dify.shell' layer is used."
+                "DifyShellLayer requires a non-null shell provisioner when the 'dify.shell' layer is used."
             )
-        return cls(
+        layer = cls(
             config=config,
-            shellctl_entrypoint=normalized_entrypoint,
-            shellctl_client_factory=shellctl_client_factory,
+            shell_provisioner=shell_provisioner,
+            agent_stub_api_base_url=agent_stub_api_base_url,
+            agent_stub_token_factory=agent_stub_token_factory,
         )
+        layer.bind_deps({})
+        return layer
 
     @property
     @override
@@ -318,121 +344,110 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     @override
     def tools(self) -> Sequence[PydanticAITool[object]]:
         return [
-            Tool(self._tool_run, name="shell.run"),
-            Tool(self._tool_wait, name="shell.wait"),
-            Tool(self._tool_input, name="shell.input"),
-            Tool(self._tool_interrupt, name="shell.interrupt"),
+            Tool(self._tool_run, name="shell_run"),
+            Tool(self._tool_wait, name="shell_wait"),
+            Tool(self._tool_input, name="shell_input"),
+            Tool(self._tool_interrupt, name="shell_interrupt"),
         ]
 
     @override
     @asynccontextmanager
     async def resource_context(self) -> AsyncGenerator[None]:
-        """Hold one live shellctl client for one active Agenton layer scope.
+        """Hold the live shell handle scope.
 
-        The shellctl client is a non-serializable live resource, so Agenton owns
-        only the timing of this scope, not the client itself. Business hooks and
-        tools should call ``_require_client()`` to ensure they are running inside
-        an active resource scope.
+        The actual handle is set in ``on_context_create`` /
+        ``on_context_resume``. This scope ensures cleanup if a lifecycle hook
+        fails before the handle is set.
         """
-        if self._shellctl_client is not None:
-            raise RuntimeError("DifyShellLayer resource_context() is already active for this layer instance.")
-
-        client = self.shellctl_client_factory(self.shellctl_entrypoint)
-        self._shellctl_client = client
         try:
             yield
         finally:
-            self._shellctl_client = None
-            await client.close()
+            self._shell_handle = None
 
     @override
     async def on_context_create(self) -> None:
-        """Allocate a new workspace session using the active live shellctl client.
+        """Provision a new workspace session using the shell provisioner.
 
-        If workspace setup partially succeeds and this hook later raises, the
-        layer never becomes ``ACTIVE``. In that path Agenton still exits
-        ``resource_context()``, but ``on_context_delete()`` will not run, so this
-        hook must clean up any tracked shellctl job artifacts before re-raising.
+        The provisioner allocates the workspace directory and returns a
+        ``ShellctlHandle``. The layer then bootstraps the workspace with Agent
+        Soul env exports and CLI tool install commands. If workspace setup
+        partially succeeds and this hook later raises, the layer never becomes
+        ``ACTIVE``. In that path Agenton still exits ``resource_context()``, but
+        ``on_context_delete()`` will not run, so this hook must clean up any
+        tracked artifacts before re-raising.
         """
         try:
-            _ = self._require_client()
-            session_id, workspace_cwd = await self._allocate_workspace()
+            handle = cast(ShellctlHandle, await self.shell_provisioner.provision())
+            self._shell_handle = handle
+            descriptor = handle.descriptor()
+            await self._bootstrap_workspace(descriptor.workspace_cwd)
         except BaseException:
             await self._cleanup_create_failure()
             raise
         self.runtime_state = DifyShellRuntimeState.model_validate(
             {
                 **self.runtime_state.model_dump(mode="python"),
-                "session_id": session_id,
-                "workspace_cwd": workspace_cwd,
+                "session_id": descriptor.session_id,
+                "workspace_cwd": descriptor.workspace_cwd,
             }
         )
 
     @override
     async def on_context_resume(self) -> None:
-        """Resume an existing serialized shell session inside an active resource scope.
+        """Reattach to an existing serialized shell session.
 
+        Builds a ``ShellEnvironmentDescriptor`` from the persisted runtime state
+        and asks the provisioner to reattach without allocating a new workspace.
         If a future resume path adds self-heal side effects before raising, this
         hook must compensate for them itself because failed resume attempts never
-        transition the slot back to ``ACTIVE`` and therefore do not receive a
-        normal suspend/delete hook.
+        transition the slot back to ``ACTIVE``.
         """
-        _ = self._require_client()
-        _ = self._require_session_identity()
+        session_id, workspace_cwd = self._require_session_identity()
+        descriptor = ShellctlEnvironmentDescriptor(
+            workspace_cwd=workspace_cwd,
+            session_id=session_id,
+        )
+        handle = cast(ShellctlHandle, await self.shell_provisioner.reattach(descriptor))
+        self._shell_handle = handle
 
     @override
     async def on_context_suspend(self) -> None:
-        """Preserve workspace and job state while the live client remains active.
+        """Close the live client so it does not leak across snapshot boundaries.
 
-        ``resource_context()`` owns client teardown after this hook returns.
+        ``reattach`` on the next resume creates a fresh client pointing at the
+        same workspace. ``resource_context()`` clears the handle reference after
+        this hook returns.
         """
-        _ = self._require_client()
+        handle = self._shell_handle
+        if handle is not None:
+            await handle.client.close()
 
     @override
     async def on_context_delete(self) -> None:
-        """Best-effort cleanup for workspace deletion and tracked shellctl jobs.
+        """Best-effort cleanup for tracked shellctl jobs and workspace deletion.
 
-        Workspace removal must happen before tracked shellctl job deletion because
-        the cleanup itself is implemented as an internal shellctl run. That means
-        deleting job state first would prevent the layer from issuing the
-        proposal-required ``rm -rf`` cleanup job and then cleaning up that final
-        job record along with the rest of the session's tracked shellctl state.
-        ``resource_context()`` closes the live client only after this hook
-        finishes.
+        Tracked shellctl jobs are force-deleted on a best-effort basis before the
+        handle is destroyed, since job records may outlive the workspace. The
+        provisioner's ``destroy`` handles workspace removal and client close.
         """
-        _ = self._require_client()
-
-        cleanup_job_id: str | None = None
-        identity = self._try_session_identity()
-        if identity is not None:
-            session_id, _workspace_cwd = identity
-            try:
-                cleanup_result = await self._run_internal_job_to_completion(
-                    _workspace_cleanup_script(session_id=session_id),
-                    cwd=None,
-                )
-                cleanup_job_id = cleanup_result["job_id"]
-                if cleanup_result["exit_code"] != 0:
-                    logger.warning(
-                        "Shell workspace cleanup job %s for session %s exited with code %s.",
-                        cleanup_job_id,
-                        session_id,
-                        cleanup_result["exit_code"],
-                    )
-            except (RuntimeError, ValueError, ShellctlClientError) as exc:
-                logger.warning("Failed to remove shell workspace for session %s: %s", session_id, exc)
-
-        tracked_job_ids = _deduplicate_preserving_order(
-            [*self.runtime_state.job_ids, *([cleanup_job_id] if cleanup_job_id is not None else [])]
-        )
-        await self._delete_tracked_jobs_best_effort(tracked_job_ids)
+        handle = self._shell_handle
+        if handle is None:
+            return
+        await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
         self._clear_tracked_jobs()
+        await self.shell_provisioner.destroy(handle)
+        self._shell_handle = None
 
     async def _tool_run(self, script: str, timeout: float = DEFAULT_TIMEOUT_SECONDS) -> ShellRunToolResult:
         """Start a new shell job inside the session workspace."""
         try:
             client = self._require_client()
-            result = await client.run(script, cwd=self._require_workspace_cwd(), timeout=timeout)
+            result = await client.run(
+                _wrap_user_script(script, self.config),
+                cwd=self._require_workspace_cwd(),
+                env=self._build_user_shell_run_env(),
+                timeout=timeout,
+            )
             self._track_job_result(result)
             return _job_result_observation(result)
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
@@ -475,39 +490,88 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
         except (RuntimeError, ValueError, ShellctlClientError) as exc:
             return _tool_error(str(exc), job_id=job_id)
 
-    async def _allocate_workspace(self) -> tuple[str, str]:
-        """Allocate a unique ``~/workspace/<session_id>`` directory by mkdir collision checks."""
-        for _attempt in range(_SESSION_ID_ATTEMPT_LIMIT):
-            session_id = _generate_session_id()
-            mkdir_result = await self._run_internal_job_to_completion(
-                _workspace_mkdir_script(session_id=session_id),
-                cwd=None,
+    async def run_remote_script(
+        self,
+        script: str,
+        *,
+        timeout: float = DEFAULT_TIMEOUT_SECONDS,
+        inject_agent_stub_env: bool = False,
+    ) -> RemoteCommandResult:
+        """Run one trusted server-side script inside the sandbox workspace.
+
+        The sandbox file service uses this boundary for fixed list/read/upload
+        helpers. Execution, output draining, and transient shellctl job cleanup
+        are delegated to ``ShellctlExecutor`` from the shell adapter; the layer
+        owns only the optional Agent Stub env injection and the
+        ``RemoteCommandResult`` mapping.
+
+        Unlike model-visible ``shell.run``, this server-owned boundary does not
+        inject Agent Soul shell env. Keeping the user-controlled shell env out
+        of this path prevents sandbox code from clobbering trusted Agent Stub
+        env values before ``dify-agent file upload`` executes.
+        """
+        env = None
+        if inject_agent_stub_env:
+            env = self._build_user_shell_run_env()
+            if env is None:
+                raise RuntimeError("Agent Stub environment injection is not available for this shell session.")
+        handle = self._require_handle()
+        executor = ShellctlExecutor(
+            client=handle.client,  # pyright: ignore[reportArgumentType]
+            workspace_cwd=self._require_workspace_cwd(),
+            timeout=timeout,
+        )
+        result = await executor.execute(script, env=env)
+        return RemoteCommandResult(
+            status="exited" if not result.truncated() else "running",
+            exit_code=result.exit_code(),
+            output=result.stdout(),
+            truncated=result.truncated(),
+        )
+
+    def environment_descriptor(self) -> ShellctlEnvironmentDescriptor:
+        """Return the serializable workspace seed for the shell adapter.
+
+        Bridges this layer's ``runtime_state`` to
+        ``dify_agent.adapters.shell``: the returned descriptor identifies the
+        session workspace so an adapter ``ShellProvisionProtocol.reattach`` can
+        rebuild a live handle pointing at it without re-allocating, and without
+        re-entering this layer. Raises ``ValueError`` if the session identity is
+        missing or inconsistent.
+        """
+        session_id, workspace_cwd = self._require_session_identity()
+        return ShellctlEnvironmentDescriptor(workspace_cwd=workspace_cwd, session_id=session_id)
+
+    async def _bootstrap_workspace(self, workspace_cwd: str) -> None:
+        """Apply Agent Soul shell config to the freshly-created workspace."""
+        bootstrap_script = _workspace_bootstrap_script(self.config)
+        if not bootstrap_script:
+            return
+        result = await self._run_internal_job_to_completion(bootstrap_script, cwd=workspace_cwd)
+        if result["exit_code"] != 0:
+            raise RuntimeError(
+                f"Failed to bootstrap shell workspace {workspace_cwd}: {result['status']} exit_code={result['exit_code']}"
             )
-            if mkdir_result["exit_code"] == _WORKSPACE_COLLISION_EXIT_CODE:
-                continue
-            if mkdir_result["exit_code"] != 0:
-                raise RuntimeError(
-                    f"Failed to create shell workspace {_workspace_cwd(session_id)}: {mkdir_result['status']} exit_code={mkdir_result['exit_code']}"
-                )
-            return session_id, _workspace_cwd(session_id)
-        raise RuntimeError("Failed to allocate a unique shell workspace session id after 256 attempts.")
 
     async def _cleanup_create_failure(self) -> None:
-        """Best-effort shellctl job cleanup for create failures before ACTIVE state.
+        """Best-effort cleanup for create failures before ACTIVE state.
 
         Agenton only calls ``on_context_delete`` for layers that successfully
-        entered ``ACTIVE``. If ``on_context_create`` fails after issuing one or
-        more internal shellctl jobs, those tracked job artifacts would otherwise
-        leak because no later lifecycle hook owns them. ``resource_context()``
-        still closes the live client for this failed enter attempt after the hook
-        unwinds.
+        entered ``ACTIVE``. If ``on_context_create`` fails after issuing
+        internal jobs, those tracked job artifacts would otherwise leak because
+        no later lifecycle hook owns them. The provisioner's ``destroy`` handles
+        workspace removal and client close.
         """
-        if not self.runtime_state.job_ids:
+        handle = self._shell_handle
+        if handle is None:
             return
-        try:
-            await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
-        finally:
-            self._clear_tracked_jobs()
+        if self.runtime_state.job_ids:
+            try:
+                await self._delete_tracked_jobs_best_effort(self.runtime_state.job_ids)
+            finally:
+                self._clear_tracked_jobs()
+        await self.shell_provisioner.destroy(handle)
+        self._shell_handle = None
 
     async def _run_internal_job_to_completion(
         self,
@@ -517,7 +581,7 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
     ) -> ShellJobObservation:
         """Run an internal lifecycle command, track it, and wait for completion."""
         client = self._require_client()
-        result = await client.run(script, cwd=cwd, timeout=DEFAULT_TIMEOUT_SECONDS)
+        result = await client.run(script, cwd=cwd, env=None, timeout=DEFAULT_TIMEOUT_SECONDS)
         self._track_job_result(result)
         while not result.done:
             result = await client.wait(
@@ -528,14 +592,18 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
             self._track_job_result(result)
         return _job_result_observation(result)
 
-    def _require_client(self) -> ShellctlClientProtocol:
-        """Return the live client or reject tool/lifecycle use without one."""
-        if self._shellctl_client is None:
+    def _require_handle(self) -> ShellctlHandle:
+        """Return the live handle or reject tool/lifecycle use without one."""
+        if self._shell_handle is None:
             raise RuntimeError(
-                "DifyShellLayer requires an active shellctl client inside resource_context(); "
+                "DifyShellLayer requires an active shell handle inside resource_context(); "
                 + "enter the layer through Agenton or wrap direct hook/tool usage in resource_context()."
             )
-        return self._shellctl_client
+        return self._shell_handle
+
+    def _require_client(self) -> ShellctlClientProtocol:
+        """Return the live shellctl client from the handle."""
+        return cast(ShellctlClientProtocol, self._require_handle().client)
 
     def _require_workspace_cwd(self) -> str:
         """Return the configured workspace directory for user-facing shell jobs."""
@@ -599,44 +667,60 @@ class DifyShellLayer(PydanticAILayer[NoLayerDeps, object, DifyShellLayerConfig, 
 
     async def _delete_tracked_jobs_best_effort(self, job_ids: Sequence[str]) -> None:
         """Force-delete tracked shellctl jobs, ignoring already-missing ones."""
-        client = self._require_client()
         for job_id in _deduplicate_preserving_order(job_ids):
-            try:
-                _ = await client.delete(job_id, force=True)
-            except ShellctlClientError as exc:
-                if exc.code == "job_not_found":
-                    continue
-                logger.warning(
-                    "Failed to delete shellctl job %s for session %s: %s",
-                    job_id,
-                    self.runtime_state.session_id,
-                    exc,
-                )
-            except RuntimeError as exc:
-                logger.warning(
-                    "Failed to delete shellctl job %s for session %s: %s",
-                    job_id,
-                    self.runtime_state.session_id,
-                    exc,
-                )
+            await self._delete_job_best_effort(job_id)
 
     def _clear_tracked_jobs(self) -> None:
         self.runtime_state.job_offsets = {}
         self.runtime_state.job_ids = []
 
+    async def _delete_job_best_effort(self, job_id: str) -> None:
+        client = self._require_client()
+        try:
+            _ = await client.delete(job_id, force=True)
+        except ShellctlClientError as exc:
+            if exc.code == "job_not_found":
+                return
+            logger.warning(
+                "Failed to delete shellctl job %s for session %s: %s",
+                job_id,
+                self.runtime_state.session_id,
+                exc,
+            )
+        except RuntimeError as exc:
+            logger.warning(
+                "Failed to delete shellctl job %s for session %s: %s",
+                job_id,
+                self.runtime_state.session_id,
+                exc,
+            )
+
+    def _forget_tracked_job(self, job_id: str) -> None:
+        if job_id not in self.runtime_state.job_ids and job_id not in self.runtime_state.job_offsets:
+            return
+        job_offsets = dict(self.runtime_state.job_offsets)
+        _ = job_offsets.pop(job_id, None)
+        self.runtime_state.job_offsets = job_offsets
+        self.runtime_state.job_ids = [
+            tracked_job_id for tracked_job_id in self.runtime_state.job_ids if tracked_job_id != job_id
+        ]
+
+    def _build_user_shell_run_env(self) -> dict[str, str] | None:
+        """Build per-command Agent Stub env only for user-visible ``shell.run``."""
+        execution_context_layer = self.deps.execution_context
+        execution_context = execution_context_layer.config if execution_context_layer is not None else None
+        return build_shell_agent_stub_env(
+            agent_stub_api_base_url=self.agent_stub_api_base_url,
+            agent_stub_drive_ref=self.config.agent_stub_drive_ref,
+            execution_context=execution_context,
+            token_factory=self.agent_stub_token_factory,
+            session_id=self.runtime_state.session_id,
+        )
+
 
 def _shell_layer_prefix_prompt() -> str:
     """Return the static model-facing shell tool usage guidance."""
     return _SHELL_LAYER_PREFIX_PROMPT
-
-
-def create_shellctl_client_factory(*, token: str) -> ShellctlClientFactory:
-    """Return the default shellctl client factory used by server-side providers."""
-
-    def factory(entrypoint: str) -> ShellctlClientProtocol:
-        return ShellctlClient(entrypoint, token=token)
-
-    return factory
 
 
 def _job_result_observation(result: JobResult) -> ShellJobObservation:
@@ -669,46 +753,54 @@ def _tool_error(message: str, *, job_id: str | None = None) -> ShellToolErrorObs
     return result
 
 
-def _generate_session_id() -> str:
-    time_component = int(time.time()) & _SESSION_TIME_HEX_MASK
-    random_component = secrets.token_hex(1)
-    if len(random_component) != _SESSION_RANDOM_HEX_LENGTH:
-        raise RuntimeError("Expected a one-byte random hex suffix for Dify shell session ids.")
-    return f"{time_component:05x}{random_component}"
-
-
 def _workspace_cwd(session_id: str) -> str:
-    return f"{_WORKSPACE_ROOT}/{_validated_session_id(session_id)}"
+    return f"{_WORKSPACE_ROOT}/{session_id}"
 
 
-def _workspace_mkdir_script(*, session_id: str) -> str:
-    """Return the internal mkdir command used for proposal-defined collision checks.
+def _workspace_bootstrap_script(config: DifyShellLayerConfig) -> str:
+    """Return the workspace bootstrap script for CLI tool declarations."""
+    install_commands = [command for tool in config.cli_tools for command in tool.install_commands]
+    if not install_commands:
+        return ""
 
-    The parent ``$HOME/workspace`` directory is created with ``mkdir -p`` so it
-    can already exist, but the final session directory intentionally uses plain
-    ``mkdir``. That second call is the collision detector: when the target
-    already exists, the script maps that case to ``_WORKSPACE_COLLISION_EXIT_CODE``
-    so ``on_context_create()`` can retry with a different random suffix instead
-    of silently reusing another session's workspace.
-    """
-    safe_session_id = _validated_session_id(session_id)
-    workspace_dir = f"$HOME/workspace/{safe_session_id}"
-    return (
-        'mkdir -p "$HOME/workspace"; '
-        f'if mkdir "{workspace_dir}"; then exit 0; fi; '
-        f'if [ -e "{workspace_dir}" ]; then exit {_WORKSPACE_COLLISION_EXIT_CODE}; fi; '
-        "exit 1"
-    )
+    lines: list[str] = ["set -eu", *_shell_config_export_lines(config), *install_commands]
+    return "\n".join(lines)
 
 
-def _workspace_cleanup_script(*, session_id: str) -> str:
-    return f'rm -rf -- "$HOME/workspace/{_validated_session_id(session_id)}"'
+def _shell_config_export_lines(config: DifyShellLayerConfig) -> list[str]:
+    """Return ephemeral Agent Soul shell exports for one shellctl command."""
+    lines: list[str] = []
+    for env_var in config.env:
+        lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
+    for secret_ref in config.secret_refs:
+        # Secret refs are resolved outside this public DTO. Preserve the env var
+        # name without inventing a value so host-provided env can flow through.
+        lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
+    for tool in config.cli_tools:
+        for env_var in tool.env:
+            lines.append(f"export {env_var.name}={_shquote(env_var.value)}")
+        for secret_ref in tool.secret_refs:
+            lines.append(f'export {secret_ref.name}="${{{secret_ref.name}:-}}"')
+    if config.sandbox is not None:
+        if config.sandbox.provider:
+            lines.append(f"export DIFY_SANDBOX_PROVIDER={_shquote(config.sandbox.provider)}")
+        if config.sandbox.config:
+            sandbox_config = json.dumps(config.sandbox.config, ensure_ascii=True, sort_keys=True)
+            lines.append(f"export DIFY_SANDBOX_CONFIG_JSON={_shquote(sandbox_config)}")
+    return lines
 
 
-def _validated_session_id(session_id: str) -> str:
-    if not _SESSION_ID_PATTERN.fullmatch(session_id):
-        raise ValueError("session_id must match the 5+2 lowercase hex format '<5 hex><2 hex>'.")
-    return session_id
+def _wrap_user_script(script: str, config: DifyShellLayerConfig) -> str:
+    """Inject Agent Soul env before executing a model-requested shell command."""
+    lines = _shell_config_export_lines(config)
+    if not lines:
+        return script
+    return "\n".join([*lines, script])
+
+
+def _shquote(value: str) -> str:
+    """Single-quote a value for POSIX shells, escaping embedded single quotes."""
+    return "'" + value.replace("'", "'\\''") + "'"
 
 
 def _deduplicate_preserving_order(values: Sequence[str]) -> list[str]:
@@ -723,9 +815,9 @@ def _deduplicate_preserving_order(values: Sequence[str]) -> list[str]:
 
 
 __all__ = [
+    "DifyShellLayerDeps",
     "DifyShellLayer",
     "DifyShellRuntimeState",
-    "ShellctlClientFactory",
+    "RemoteCommandResult",
     "ShellctlClientProtocol",
-    "create_shellctl_client_factory",
 ]

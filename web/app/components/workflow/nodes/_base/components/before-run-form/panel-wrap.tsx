@@ -8,11 +8,11 @@ import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'singleRun'
 
-type Props = {
+type Props = Readonly<{
   nodeName: string
   onHide: () => void
   children: React.ReactNode
-}
+}>
 
 const PanelWrap: FC<Props> = ({
   nodeName,

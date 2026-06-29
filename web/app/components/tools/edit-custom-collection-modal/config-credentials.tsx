@@ -23,12 +23,12 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { AuthHeaderPrefix, AuthType } from '@/app/components/tools/types'
 
-type Props = {
+type Props = Readonly<{
   positionCenter?: boolean
   credential: Credential
   onChange: (credential: Credential) => void
   onHide: () => void
-}
+}>
 
 type ItemProps = {
   text: string

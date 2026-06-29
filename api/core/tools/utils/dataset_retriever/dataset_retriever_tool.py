@@ -1,4 +1,4 @@
-from typing import Any, cast
+from typing import Any, cast, override
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -56,6 +56,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             **kwargs,
         )
 
+    @override
     def _run(self, query: str) -> str:
         dataset_stmt = select(Dataset).where(Dataset.tenant_id == self.tenant_id, Dataset.id == self.dataset_id)
         dataset = db.session.scalar(dataset_stmt)

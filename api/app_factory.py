@@ -1,7 +1,7 @@
 import logging
 import time
 
-import socketio  # type: ignore[reportMissingTypeStubs]
+import socketio
 from flask import request
 from opentelemetry.trace import get_current_span
 from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID

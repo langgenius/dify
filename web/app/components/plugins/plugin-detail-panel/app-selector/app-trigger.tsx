@@ -36,7 +36,7 @@ export function AppTrigger({
       )}
       {appDetail
         ? (
-            <span title={appDetail.name} className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
+            <span className="min-w-0 grow truncate system-sm-medium text-components-input-text-filled">
               {appDetail.name}
             </span>
           )

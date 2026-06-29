@@ -4,9 +4,13 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { RiHistoryLine } from '@remixicon/react'
 import {
   useCallback,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
 import { useInvalidAllLastRun, useResetWorkflowVersionHistory, useRestoreWorkflow } from '@/service/use-workflow'
 import { FlowType } from '@/types/common'
@@ -32,6 +36,8 @@ const HeaderInRestoring = ({
 }: HeaderInRestoringProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const [isRestorePlanUpgradeModalOpen, setIsRestorePlanUpgradeModalOpen] = useState(false)
+  const { plan, enableBilling } = useProviderContext()
   const workflowStore = useWorkflowStore()
   const userProfile = useAppContextSelector(s => s.userProfile)
   const configsMap = useHooksStore(s => s.configsMap)
@@ -49,6 +55,7 @@ const HeaderInRestoring = ({
   const { mutateAsync: restoreWorkflow } = useRestoreWorkflow()
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const canRestore = !!currentVersion?.id && !!configsMap?.flowId && currentVersion.version !== WorkflowVersion.Draft
+  const canUseWorkflowVersionAction = !enableBilling || plan.type !== Plan.sandbox
   const canEmitCollaborationEvents = configsMap?.flowType === FlowType.appFlow
 
   const handleCancelRestore = useCallback(() => {
@@ -62,6 +69,8 @@ const HeaderInRestoring = ({
       return ''
     if (configsMap.flowType === FlowType.ragPipeline)
       return `/rag/pipelines/${configsMap.flowId}/workflows/${versionId}/restore`
+    if (configsMap.flowType === FlowType.snippet)
+      return `/snippets/${configsMap.flowId}/workflows/${versionId}/restore`
     return `/apps/${configsMap.flowId}/workflows/${versionId}/restore`
   }, [configsMap?.flowId, configsMap?.flowType])
 
@@ -114,6 +123,11 @@ const HeaderInRestoring = ({
     if (!canRestore || !currentVersion)
       return
 
+    if (!canUseWorkflowVersionAction) {
+      setIsRestorePlanUpgradeModalOpen(true)
+      return
+    }
+
     setShowWorkflowVersionHistoryPanel(false)
     await emitRestoreIntent()
 
@@ -136,7 +150,7 @@ const HeaderInRestoring = ({
       resetWorkflowVersionHistory()
       onRestoreSettled?.()
     }
-  }, [canRestore, currentVersion, setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory, onRestoreSettled])
+  }, [canRestore, currentVersion, canUseWorkflowVersionAction, setShowWorkflowVersionHistoryPanel, emitRestoreIntent, restoreWorkflow, restoreVersionUrl, workflowStore, handleRefreshWorkflowDraft, t, deleteAllInspectVars, invalidAllLastRun, emitRestoreComplete, emitWorkflowUpdate, resetWorkflowVersionHistory, onRestoreSettled])
 
   return (
     <>
@@ -168,6 +182,14 @@ const HeaderInRestoring = ({
           </div>
         </Button>
       </div>
+      {isRestorePlanUpgradeModalOpen && (
+        <PlanUpgradeModal
+          show
+          onClose={() => setIsRestorePlanUpgradeModalOpen(false)}
+          title={t('upgrade.workflowRestore.title', { ns: 'billing' })!}
+          description={t('upgrade.workflowRestore.description', { ns: 'billing' })!}
+        />
+      )}
     </>
   )
 }

@@ -10,7 +10,6 @@ import {
   getDaysInMonth,
   getHourIn12Hour,
   isDayjsObject,
-  parseDateWithFormat,
   toDayjs,
 } from '../dayjs'
 
@@ -253,42 +252,6 @@ describe('toDayjs', () => {
     })
     expect(result?.isValid()).toBe(true)
     expect(result?.utcOffset()).toBe(dayjs.tz('2024-05-01', 'America/New_York').utcOffset())
-  })
-})
-
-// ── parseDateWithFormat ────────────────────────────────────────────────────
-describe('parseDateWithFormat', () => {
-  it('returns null for empty string', () => {
-    expect(parseDateWithFormat('')).toBeNull()
-  })
-
-  it('parses with explicit format', () => {
-    // Use YYYY/MM/DD which is unambiguous
-    const result = parseDateWithFormat('2024/05/01', 'YYYY/MM/DD')
-    expect(result?.format('YYYY-MM-DD')).toBe('2024-05-01')
-  })
-
-  it('returns null for invalid string with explicit format', () => {
-    expect(parseDateWithFormat('not-a-date', 'YYYY-MM-DD')).toBeNull()
-  })
-
-  it('parses using common formats (YYYY-MM-DD)', () => {
-    const result = parseDateWithFormat('2024-05-01')
-    expect(result?.format('YYYY-MM-DD')).toBe('2024-05-01')
-  })
-
-  it('parses using common formats (YYYY/MM/DD)', () => {
-    const result = parseDateWithFormat('2024/05/01')
-    expect(result?.format('YYYY-MM-DD')).toBe('2024-05-01')
-  })
-
-  it('parses ISO datetime strings via common formats', () => {
-    const result = parseDateWithFormat('2024-05-01T14:30:00')
-    expect(result?.hour()).toBe(14)
-  })
-
-  it('returns null for completely unparseable string', () => {
-    expect(parseDateWithFormat('ZZZZ-ZZ-ZZ')).toBeNull()
   })
 })
 

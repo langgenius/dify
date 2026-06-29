@@ -99,12 +99,25 @@ class TestWatercrawlAuth:
             auth_instance.validate_credentials()
         assert str(exc_info.value) == f"Failed to authorize. Status code: {status_code}. Error: {error_message}"
 
+    @patch("services.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    def test_should_handle_http_error_with_non_json_text_response(self, mock_get, auth_instance):
+        """Test handling of known HTTP errors with non-JSON text response."""
+        mock_response = MagicMock()
+        mock_response.status_code = 402
+        mock_response.text = "Payment required"
+        mock_response.json.side_effect = ValueError("Not JSON")
+        mock_get.return_value = mock_response
+
+        with pytest.raises(Exception) as exc_info:
+            auth_instance.validate_credentials()
+        assert str(exc_info.value) == "Failed to authorize. Status code: 402. Error: Payment required"
+
     @pytest.mark.parametrize(
         ("status_code", "response_text", "has_json_error", "expected_error_contains"),
         [
             (403, '{"error": "Forbidden"}', True, "Failed to authorize. Status code: 403. Error: Forbidden"),
             (404, "", True, "Unexpected error occurred while trying to authorize. Status code: 404"),
-            (401, "Not JSON", True, "Expecting value"),  # JSON decode error
+            (401, "Not JSON", True, "Failed to authorize. Status code: 401. Error: Not JSON"),
         ],
     )
     @patch("services.auth.watercrawl.watercrawl.httpx.get", autospec=True)
