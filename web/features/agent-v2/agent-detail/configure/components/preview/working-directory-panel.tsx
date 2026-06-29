@@ -1,26 +1,14 @@
 'use client'
 
-import type { SandboxFileEntryResponse, SandboxListResponse } from '@dify/contracts/api/console/agent/types.gen'
+import type { SandboxFileEntryResponse, SandboxListResponse, SandboxReadResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentFileNode } from '@/features/agent-v2/agent-composer/form-state'
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerCloseButton,
-  DrawerContent,
-  DrawerDescription,
-  DrawerPopup,
-  DrawerPortal,
-  DrawerTitle,
-  DrawerViewport,
-} from '@langgenius/dify-ui/drawer'
-import { FileTreeFile } from '@langgenius/dify-ui/file-tree'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { skipToken, useQueries, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Loading from '@/app/components/base/loading'
 import { consoleQuery } from '@/service/client'
 import { getFileIconType } from '../orchestrate/files/file-icon'
-import { AgentFileTree } from '../orchestrate/files/tree'
+import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 
 type AgentWorkingDirectoryPanelProps = {
   agentId: string
@@ -131,6 +119,15 @@ function findReadableFile(files: AgentFileNode[], fileId?: string): AgentFileNod
   }
 }
 
+function countReadableFiles(files: AgentFileNode[]): number {
+  return files.reduce((count, file) => {
+    if (file.icon === 'folder')
+      return count + countReadableFiles(file.children ?? [])
+
+    return count + 1
+  }, 0)
+}
+
 async function isNoActiveSessionError(error: unknown) {
   if (!(error instanceof Response) || error.status !== 404)
     return false
@@ -143,6 +140,8 @@ async function isNoActiveSessionError(error: unknown) {
     return false
   }
 }
+
+const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
 export function AgentWorkingDirectoryPanel({
   agentId,
@@ -222,146 +221,98 @@ export function AgentWorkingDirectoryPanel({
   const workingDirectoryFiles = expandedFolderQueries.reduce((files, query) => {
     return mergeSandboxFileTree(files, buildSandboxFileTree(query.data?.entries, query.data?.path))
   }, buildSandboxFileTree(fileListQuery.data?.entries, fileListQuery.data?.path))
-  const selectedWorkingDirectoryFileId = findReadableFile(workingDirectoryFiles, selectedFileId)?.id
-    ?? findFirstReadableFile(workingDirectoryFiles)?.id
+  const selectedWorkingDirectoryFile = findReadableFile(workingDirectoryFiles, selectedFileId)
+    ?? findFirstReadableFile(workingDirectoryFiles)
   const isFileListLoading = !!conversationId && fileListQuery.isPending
   const loadingFolderPaths = new Set(loadedFolderPaths.filter((path, index) => expandedFolderQueries[index]?.isPending))
   const loadedFolderPathIndexes = new Map(loadedFolderPaths.map((path, index) => [path, index]))
-  const fileReadQuery = useQuery(consoleQuery.agent.byAgentId.sandbox.files.read.get.queryOptions({
-    input: conversationId && selectedWorkingDirectoryFileId
+  const fileReadQueryOptions = consoleQuery.agent.byAgentId.sandbox.files.read.get.queryOptions({
+    input: conversationId && selectedWorkingDirectoryFile?.id
       ? {
           params: {
             agent_id: agentId,
           },
           query: {
             conversation_id: conversationId,
-            path: selectedWorkingDirectoryFileId,
+            path: selectedWorkingDirectoryFile.id,
           },
         }
       : skipToken,
-  }))
+    context: {
+      silent: true,
+    },
+  })
+  const fileReadQuery = useQuery({
+    ...fileReadQueryOptions,
+    enabled: open && !!selectedWorkingDirectoryFile,
+    queryFn: async (context): Promise<SandboxReadResponse> => {
+      try {
+        return await fileReadQueryOptions.queryFn(context)
+      }
+      catch (error) {
+        if (isNotFoundResponse(error)) {
+          return {
+            binary: false,
+            path: selectedWorkingDirectoryFile?.id ?? '',
+            text: null,
+            truncated: false,
+          }
+        }
+
+        throw error
+      }
+    },
+    retry: false,
+  })
+  const isFileReadLoading = !!selectedWorkingDirectoryFile && fileReadQuery.isPending
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} swipeDirection="right">
-      <DrawerPortal>
-        <DrawerBackdrop forceRender className="fixed bg-transparent" />
-        <DrawerViewport>
-          <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-auto data-[swipe-direction=right]:w-[360px]">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
-              <div className="flex shrink-0 items-start gap-2 px-4 pt-3 pb-2">
-                <div className="min-w-0 flex-1">
-                  <DrawerTitle className="truncate system-xl-semibold text-text-primary">
-                    {t('agentDetail.configure.workingDirectory.title')}
-                  </DrawerTitle>
-                  <DrawerDescription className="body-xs-regular text-text-tertiary">
-                    {t('agentDetail.configure.workingDirectory.description')}
-                  </DrawerDescription>
-                </div>
-                <DrawerCloseButton
-                  aria-label={tCommon('operation.close')}
-                  className="size-6 rounded-md p-0.5"
-                />
-              </div>
-              <div className="flex min-h-0 flex-1 flex-col">
-                {isFileListLoading
-                  ? (
-                      <div className="flex min-h-0 flex-1 items-center justify-center">
-                        <Loading type="area" />
-                      </div>
-                    )
-                  : fileListQuery.isError
-                    ? (
-                        <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center system-sm-regular text-text-tertiary">
-                          {t('agentDetail.configure.files.preview.failed')}
-                        </div>
-                      )
-                    : workingDirectoryFiles.length
-                      ? (
-                          <AgentFileTree
-                            files={workingDirectoryFiles}
-                            selectedFileId={selectedWorkingDirectoryFileId}
-                            treeLabel={t('agentDetail.configure.workingDirectory.treeLabel')}
-                            className="min-h-0 flex-1 px-3 py-1"
-                            scrollAreaClassName="flex-1"
-                            rootClassName="p-0"
-                            listClassName="gap-px"
-                            folderOpenState={({ file }) => {
-                              const queryIndex = loadedFolderPathIndexes.get(file.id)
-                              const folderLoaded = queryIndex !== undefined && expandedFolderQueries[queryIndex]?.isSuccess
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <AgentSkillDetailDialog
+        skillName={t('agentDetail.configure.workingDirectory.title')}
+        detail={{
+          description: t('agentDetail.configure.workingDirectory.description'),
+          fileCount: countReadableFiles(workingDirectoryFiles),
+          files: workingDirectoryFiles,
+          filePreview: {
+            binary: fileReadQuery.data?.binary,
+            content: fileReadQuery.data?.text ?? undefined,
+            fileName: selectedWorkingDirectoryFile?.name,
+            isError: fileListQuery.isError || fileReadQuery.isError,
+            isLoading: isFileListLoading || isFileReadLoading,
+          },
+          folderOpenState: ({ file }) => {
+            const queryIndex = loadedFolderPathIndexes.get(file.id)
+            const folderLoaded = queryIndex !== undefined && expandedFolderQueries[queryIndex]?.isSuccess
 
-                              return openFolderPaths.includes(file.id)
-                                || (pendingOpenFolderPaths.includes(file.id) && !!folderLoaded)
-                            }}
-                            onFolderOpenChange={({ file, open }) => {
-                              if (loadingFolderPaths.has(file.id))
-                                return
+            return openFolderPaths.includes(file.id)
+              || (pendingOpenFolderPaths.includes(file.id) && !!folderLoaded)
+          },
+          onFolderOpenChange: ({ file, open }) => {
+            if (loadingFolderPaths.has(file.id))
+              return
 
-                              if (open && !loadedFolderPaths.includes(file.id)) {
-                                setLoadedFolderPaths(paths => [...paths, file.id])
-                                setPendingOpenFolderPaths(paths => paths.includes(file.id) ? paths : [...paths, file.id])
-                                return
-                              }
+            if (open && !loadedFolderPaths.includes(file.id)) {
+              setLoadedFolderPaths(paths => [...paths, file.id])
+              setPendingOpenFolderPaths(paths => paths.includes(file.id) ? paths : [...paths, file.id])
+              return
+            }
 
-                              setPendingOpenFolderPaths(paths => paths.filter(path => path !== file.id))
-                              setOpenFolderPaths(paths => open
-                                ? (paths.includes(file.id) ? paths : [...paths, file.id])
-                                : paths.filter(path => path !== file.id))
-                            }}
-                            renderFile={({ file, selected, children }) => (
-                              <FileTreeFile
-                                disabled={file.icon === 'folder'}
-                                selected={selected}
-                                onClick={() => setSelectedFileId(file.id)}
-                              >
-                                {children}
-                                {selected && (
-                                  <span aria-hidden className="ms-auto i-ri-more-fill flex size-5 shrink-0 items-center justify-center text-text-tertiary" />
-                                )}
-                              </FileTreeFile>
-                            )}
-                            renderFolderSuffix={({ file }) => loadingFolderPaths.has(file.id)
-                              ? (
-                                  <span aria-label={tCommon('loading')} className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary" />
-                                )
-                              : null}
-                          />
-                        )
-                      : (
-                          <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-center system-sm-regular text-text-tertiary">
-                            {tCommon('noData')}
-                          </div>
-                        )}
-                {selectedWorkingDirectoryFileId && (
-                  <div className="max-h-40 shrink-0 border-t border-divider-subtle p-3">
-                    <div className="mb-2 truncate system-xs-semibold text-text-secondary">
-                      {selectedWorkingDirectoryFileId}
-                    </div>
-                    {fileReadQuery.isPending
-                      ? <Loading type="area" />
-                      : fileReadQuery.isError
-                        ? (
-                            <p className="system-sm-regular text-text-tertiary">
-                              {t('agentDetail.configure.files.preview.failed')}
-                            </p>
-                          )
-                        : fileReadQuery.data?.text
-                          ? (
-                              <pre className="max-h-24 overflow-auto rounded-md bg-background-section p-2 system-xs-regular break-words whitespace-pre-wrap text-text-secondary">
-                                {fileReadQuery.data.text}
-                              </pre>
-                            )
-                          : (
-                              <p className="system-sm-regular text-text-tertiary">
-                                {t('agentDetail.configure.files.preview.empty')}
-                              </p>
-                            )}
-                  </div>
-                )}
-              </div>
-            </DrawerContent>
-          </DrawerPopup>
-        </DrawerViewport>
-      </DrawerPortal>
-    </Drawer>
+            setPendingOpenFolderPaths(paths => paths.filter(path => path !== file.id))
+            setOpenFolderPaths(paths => open
+              ? (paths.includes(file.id) ? paths : [...paths, file.id])
+              : paths.filter(path => path !== file.id))
+          },
+          onSelectFile: selectedFile => setSelectedFileId(selectedFile.id),
+          renderFolderSuffix: ({ file }) => loadingFolderPaths.has(file.id)
+            ? (
+                <span aria-label={tCommon('loading')} className="ms-auto i-ri-loader-4-line size-4 shrink-0 animate-spin text-text-tertiary" />
+              )
+            : null,
+          selectedFileId: selectedWorkingDirectoryFile?.id,
+          sections: [],
+        }}
+      />
+    </Dialog>
   )
 }
