@@ -895,6 +895,95 @@ describe('AgentConfigurePage', () => {
       expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
     })
 
+    it('should not keep a stale build draft action lock after the composer content remounts', async () => {
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      mocks.queryState.buildDraft = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'build prompt',
+            },
+          },
+          draft: {},
+          variant: 'agent_app',
+        },
+        dataUpdatedAt: 1,
+        error: null,
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
+
+      fireEvent.click(screen.getByRole('button', { name: 'send build message' }))
+      await act(async () => {
+        await Promise.resolve()
+      })
+
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeDisabled()
+
+      mocks.queryState.composer = {
+        data: undefined,
+        isFetching: true,
+        isError: false,
+        isPending: true,
+        isSuccess: false,
+        refetch: vi.fn(),
+      }
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+      expect(screen.queryByRole('region', { name: 'build-draft-bar' })).not.toBeInTheDocument()
+
+      mocks.queryState.composer = {
+        data: {
+          agent_soul: {
+            prompt: {
+              system_prompt: 'draft prompt',
+            },
+          },
+        },
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('button', { name: 'apply build draft' })).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'discard build draft' })).toBeEnabled()
+    })
+
     it('should settle build draft actions when the build completion refresh fails', async () => {
       vi.useFakeTimers()
       const queryClient = new QueryClient()

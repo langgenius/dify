@@ -29,7 +29,6 @@ import { invalidateAgentWorkingDirectoryFiles, useAgentWorkingDirectoryPanel } f
 import { AgentConfigureRightPanelChat } from '@/features/agent-v2/agent-detail/configure/components/preview/right-panel-chat'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from '@/features/agent-v2/agent-detail/configure/components/workspace'
 import {
-  agentConfigureBuildDraftActionsDisabledAtom,
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelChatModeAtom,
   agentConfigureScopedAtoms,
@@ -256,7 +255,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
   const composerState = inlineComposerState
-  const buildDraftActionsDisabled = useAtomValue(agentConfigureBuildDraftActionsDisabledAtom)
+  const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
@@ -265,7 +264,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     conversationId: conversationIds[rightPanelChatMode],
   })
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
-  const setBuildDraftActionsDisabled = useSetAtom(agentConfigureBuildDraftActionsDisabledAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
   const { currentModel, setConfigureModel, textGenerationModelList } = useAgentOrchestrateModelOptions()

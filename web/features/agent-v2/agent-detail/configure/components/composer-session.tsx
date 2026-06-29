@@ -13,7 +13,6 @@ import { rebaseAgentComposerDraftAtom } from '@/features/agent-v2/agent-composer
 import { consoleQuery } from '@/service/client'
 import { useAgentConfigureModelOptions } from '../hooks'
 import {
-  agentConfigureBuildDraftActionsDisabledAtom,
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelChatModeAtom,
   agentConfigureRightPanelModeAtom,
@@ -215,7 +214,7 @@ function AgentConfigurePageComposerContent({
     activeConfigSnapshot,
     agentSoulConfig,
   } = configureData
-  const buildDraftActionsDisabled = useAtomValue(agentConfigureBuildDraftActionsDisabledAtom)
+  const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
@@ -226,7 +225,6 @@ function AgentConfigurePageComposerContent({
   const showChatFeatures = useAtomValue(agentConfigureShowChatFeaturesAtom)
   const showPreviewVersions = useAtomValue(agentConfigureShowPreviewVersionsAtom)
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
-  const setBuildDraftActionsDisabled = useSetAtom(agentConfigureBuildDraftActionsDisabledAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const setRightPanelMode = useSetAtom(agentConfigureRightPanelModeAtom)
   const setShowChatFeatures = useSetAtom(agentConfigureShowChatFeaturesAtom)
