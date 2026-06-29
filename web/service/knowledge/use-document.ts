@@ -132,6 +132,22 @@ export const useSyncWebsite = () => {
   })
 }
 
+export const useBatchSyncNotion = () => {
+  return useMutation({
+    mutationFn: ({ datasetId }: { datasetId: string }) => {
+      return get<CommonResponse>(`/datasets/${datasetId}/notion/sync`)
+    },
+  })
+}
+
+export const useBatchSyncWebsite = () => {
+  return useMutation({
+    mutationFn: ({ datasetId }: { datasetId: string }) => {
+      return get<CommonResponse>(`/datasets/${datasetId}/website-sync`)
+    },
+  })
+}
+
 const useDocumentDetailKey = [NAME_SPACE, 'documentDetail', 'withoutMetaData']
 type DocumentDetailRefetchInterval = UseQueryOptions<DocumentDetailResponse>['refetchInterval']
 

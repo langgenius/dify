@@ -10,6 +10,8 @@
   "batchAction.download": "ダウンロード",
   "batchAction.enable": "有効にする",
   "batchAction.reIndex": "再インデックス",
+  "batchAction.sync": "同期",
+  "batchAction.syncAll": "全て同期",
   "batchAction.selected": "選択済み",
   "chunkingMode.general": "汎用",
   "chunkingMode.graph": "グラフ",

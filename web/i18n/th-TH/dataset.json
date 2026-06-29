@@ -10,6 +10,8 @@
   "batchAction.download": "ดาวน์โหลด",
   "batchAction.enable": "เปิด",
   "batchAction.reIndex": "สร้างดัชนีใหม่",
+  "batchAction.sync": "ซิงค์",
+  "batchAction.syncAll": "ซิงค์ทั้งหมด",
   "batchAction.selected": "เลือก",
   "chunkingMode.general": "ทั่วไป",
   "chunkingMode.graph": "กราฟ",

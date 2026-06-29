@@ -26,6 +26,15 @@ export const useDocumentSelection = ({
       .map(doc => doc.id)
   }, [documents, selectedIds])
 
+  const syncableSelectedDocs = useMemo(() => {
+    const selectedSet = new Set(selectedIds)
+    return documents.filter(doc =>
+      selectedSet.has(doc.id)
+      && !doc.archived
+      && (doc.data_source_type === DataSourceType.NOTION || doc.data_source_type === DataSourceType.WEB),
+    )
+  }, [documents, selectedIds])
+
   const clearSelection = useCallback(() => {
     onSelectedIdChange([])
   }, [onSelectedIdChange])
@@ -33,6 +42,7 @@ export const useDocumentSelection = ({
   return {
     hasErrorDocumentsSelected,
     downloadableSelectedIds,
+    syncableSelectedDocs,
     clearSelection,
   }
 }

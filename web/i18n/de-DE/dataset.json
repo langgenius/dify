@@ -10,6 +10,8 @@
   "batchAction.download": "Herunterladen",
   "batchAction.enable": "Ermöglichen",
   "batchAction.reIndex": "Neu indexieren",
+  "batchAction.sync": "Synchronisieren",
+  "batchAction.syncAll": "Alle synchronisieren",
   "batchAction.selected": "Ausgewählt",
   "chunkingMode.general": "Allgemein",
   "chunkingMode.graph": "Graph",

@@ -410,6 +410,30 @@ class DataSourceNotionDatasetSyncApi(Resource):
         return {"result": "success"}, 200
 
 
+@console_ns.route("/datasets/<uuid:dataset_id>/website-sync")
+class DataSourceWebsiteDatasetSyncApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT)
+    def get(self, dataset_id: UUID) -> tuple[dict[str, str], int]:
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+
+        documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
+        for document in documents:
+            if document.data_source_type != "website_crawl" or document.archived:
+                continue
+            try:
+                DocumentService.sync_website_document(dataset_id_str, document)
+            except ValueError:
+                pass
+        return {"result": "success"}, 200
+
+
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync")
 class DataSourceNotionDocumentSyncApi(Resource):
     @setup_required

@@ -10,6 +10,8 @@
   "batchAction.download": "Завантажити",
   "batchAction.enable": "Вмикати",
   "batchAction.reIndex": "Повторно індексувати",
+  "batchAction.sync": "Синхронізувати",
+  "batchAction.syncAll": "Синхронізувати все",
   "batchAction.selected": "Вибрані",
   "chunkingMode.general": "Загальне",
   "chunkingMode.graph": "Графік",

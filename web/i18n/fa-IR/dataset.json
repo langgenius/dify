@@ -10,6 +10,8 @@
   "batchAction.download": "دانلود",
   "batchAction.enable": "فعال",
   "batchAction.reIndex": "بازفهرست‌گذاری",
+  "batchAction.sync": "همگام‌سازی",
+  "batchAction.syncAll": "همگام‌سازی همه",
   "batchAction.selected": "انتخاب",
   "chunkingMode.general": "عمومی",
   "chunkingMode.graph": "گراف",

@@ -10,6 +10,8 @@
   "batchAction.download": "Tải xuống",
   "batchAction.enable": "Kích hoạt",
   "batchAction.reIndex": "Tái lập chỉ mục",
+  "batchAction.sync": "Đồng bộ",
+  "batchAction.syncAll": "Đồng bộ tất cả",
   "batchAction.selected": "Chọn",
   "chunkingMode.general": "Tổng quát",
   "chunkingMode.graph": "Đồ thị",

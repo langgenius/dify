@@ -65,9 +65,9 @@ const DocumentList = ({
   const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const datasetACLCapabilities = useMemo(() => getDatasetACLCapabilities(datasetConfig?.permission_keys, {
     currentUserId,
-    resourceMaintainer: datasetConfig?.maintainer,
+    resourceMaintainer: datasetConfig?.maintainer ?? datasetConfig?.created_by,
     workspacePermissionKeys,
-  }), [datasetConfig?.maintainer, datasetConfig?.permission_keys, currentUserId, workspacePermissionKeys])
+  }), [datasetConfig?.maintainer, datasetConfig?.created_by, datasetConfig?.permission_keys, currentUserId, workspacePermissionKeys])
   const chunkingMode = datasetConfig?.doc_form
   const isGeneralMode = chunkingMode !== ChunkingMode.parentChild
   const isQAMode = chunkingMode === ChunkingMode.qa
@@ -82,6 +82,7 @@ const DocumentList = ({
   const {
     hasErrorDocumentsSelected,
     downloadableSelectedIds,
+    syncableSelectedDocs,
     clearSelection,
   } = useDocumentSelection({
     documents,
@@ -91,10 +92,11 @@ const DocumentList = ({
   const documentIds = useMemo(() => documents.map(doc => doc.id), [documents])
 
   // Actions
-  const { handleAction, handleBatchReIndex, handleBatchDownload } = useDocumentActions({
+  const { handleAction, handleBatchReIndex, handleBatchDownload, handleBatchSync } = useDocumentActions({
     datasetId,
     selectedIds,
     downloadableSelectedIds,
+    syncableSelectedDocs,
     onUpdate,
     onClearSelection: clearSelection,
   })
@@ -211,6 +213,7 @@ const DocumentList = ({
           onBatchDelete={datasetACLCapabilities.canDeleteFile ? handleAction(DocumentActionType.delete) : undefined}
           onEditMetadata={datasetACLCapabilities.canEdit ? showEditModal : undefined}
           onBatchReIndex={datasetACLCapabilities.canEdit && hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
+          onBatchSync={datasetACLCapabilities.canEdit && syncableSelectedDocs.length > 0 ? handleBatchSync : undefined}
           onCancel={clearSelection}
         />
       )}
