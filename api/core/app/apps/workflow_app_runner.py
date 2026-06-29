@@ -40,6 +40,7 @@ from core.workflow.node_factory import (
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
+from core.workflow.human_input import session_binding
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,
@@ -702,8 +703,9 @@ class WorkflowBasedAppRunner:
             if not reason.form_id:
                 continue
             try:
+                resolved_form_id = session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
                 dispatch_human_input_email_task.apply_async(
-                    kwargs={"form_id": reason.form_id, "node_title": reason.node_title},
+                    kwargs={"form_id": resolved_form_id, "node_title": reason.node_title},
                     queue="mail",
                 )
             except Exception:  # pragma: no cover - defensive logging

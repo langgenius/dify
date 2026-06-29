@@ -54,6 +54,7 @@ from core.trigger.trigger_manager import TriggerManager
 from core.workflow.human_input_forms import (
     load_form_dispositions_by_form_id,
 )
+from core.workflow.human_input import session_binding
 from core.workflow.human_input_policy import (
     FormDisposition,
     HumanInputSurface,
@@ -234,6 +235,14 @@ class WorkflowResponseConverter:
         converter = WorkflowRuntimeTypeConverter()
         return converter.to_json_encodable(outputs)
 
+    @staticmethod
+    def _serialize_human_input_inputs(inputs: Sequence[Any]) -> list[Mapping[str, Any]]:
+        return [input_config.model_dump(mode="json") for input_config in inputs]
+
+    @staticmethod
+    def _serialize_human_input_actions(actions: Sequence[Any]) -> list[Mapping[str, Any]]:
+        return [action.model_dump(mode="json") for action in actions]
+
     def workflow_start_to_stream_response(
         self,
         *,
@@ -340,7 +349,12 @@ class WorkflowResponseConverter:
             variable_pool=variable_pool,
         )
         pause_reasons = [reason.model_dump(mode="json") for reason in resolved_reasons]
-        human_input_form_ids = [reason.form_id for reason in resolved_reasons if isinstance(reason, HumanInputRequired)]
+        form_ids_by_session_id = {
+            reason.form_id: session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
+            for reason in resolved_reasons
+            if isinstance(reason, HumanInputRequired)
+        }
+        human_input_form_ids = list(form_ids_by_session_id.values())
         expiration_times_by_form_id: dict[str, datetime] = {}
         display_in_ui_by_form_id: dict[str, bool] = {}
         dispositions_by_form_id: dict[str, FormDisposition] = {}
@@ -369,10 +383,14 @@ class WorkflowResponseConverter:
         # otherwise clients see schema drift after resume.
         pause_reasons = enrich_human_input_pause_reasons(
             pause_reasons,
-            dispositions_by_form_id=dispositions_by_form_id,
+            dispositions_by_form_id={
+                session_id: dispositions_by_form_id.get(form_id)
+                for session_id, form_id in form_ids_by_session_id.items()
+            },
             expiration_times_by_form_id={
-                form_id: int(expiration_time.timestamp())
-                for form_id, expiration_time in expiration_times_by_form_id.items()
+                session_id: int(expiration_times_by_form_id[form_id].timestamp())
+                for session_id, form_id in form_ids_by_session_id.items()
+                if form_id in expiration_times_by_form_id
             },
         )
 
@@ -380,10 +398,11 @@ class WorkflowResponseConverter:
 
         for reason in resolved_reasons:
             if isinstance(reason, HumanInputRequired):
-                expiration_time = expiration_times_by_form_id.get(reason.form_id)
+                resolved_form_id = form_ids_by_session_id[reason.form_id]
+                expiration_time = expiration_times_by_form_id.get(resolved_form_id)
                 if expiration_time is None:
-                    raise ValueError(f"HumanInputForm not found for pause reason, form_id={reason.form_id}")
-                disposition = dispositions_by_form_id.get(reason.form_id)
+                    raise ValueError(f"HumanInputForm not found for pause reason, form_id={resolved_form_id}")
+                disposition = dispositions_by_form_id.get(resolved_form_id)
                 responses.append(
                     HumanInputRequiredResponse(
                         task_id=task_id,
@@ -393,9 +412,9 @@ class WorkflowResponseConverter:
                             node_id=reason.node_id,
                             node_title=reason.node_title,
                             form_content=reason.form_content,
-                            inputs=reason.inputs,
-                            actions=reason.actions,
-                            display_in_ui=display_in_ui_by_form_id.get(reason.form_id, False),
+                            inputs=self._serialize_human_input_inputs(reason.inputs),
+                            actions=self._serialize_human_input_actions(reason.actions),
+                            display_in_ui=display_in_ui_by_form_id.get(resolved_form_id, False),
                             form_token=disposition.form_token if disposition else None,
                             approval_channels=list(disposition.approval_channels) if disposition else [],
                             resolved_default_values=reason.resolved_default_values,

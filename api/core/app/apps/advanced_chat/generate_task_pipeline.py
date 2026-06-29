@@ -74,6 +74,7 @@ from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.repositories.human_input_repository import HumanInputFormRepositoryImpl
 from core.workflow.file_reference import resolve_file_record_id
+from core.workflow.human_input import session_binding
 from core.workflow.system_variables import build_system_variables
 from extensions.ext_database import db
 from graphon.entities.pause_reason import HumanInputRequired
@@ -704,7 +705,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         for reason in event.reasons:
             if isinstance(reason, HumanInputRequired):
-                self._persist_human_input_extra_content(form_id=reason.form_id, node_id=reason.node_id)
+                self._persist_human_input_extra_content(
+                    form_id=session_binding.resolve_form_id_from_session_id(session_id=reason.form_id),
+                    node_id=reason.node_id,
+                )
         yield from responses
         resolved_state: GraphRuntimeState | None = None
         try:
