@@ -1360,5 +1360,11 @@
   "workflowGenerator.reload": "재장전",
   "workflowGenerator.studioApply": "용",
   "workflowGenerator.studioButton": "생성",
-  "workflowGenerator.title": "{{mode}} 생성"
+  "workflowGenerator.title": "{{mode}} 생성",
+  "workflowGenerator.examples.refresh": "More ideas",
+  "workflowGenerator.regenerate": "Regenerate",
+  "workflowGenerator.appliedRefineHint": "Applied — refine anytime with ⌘K → /refine",
+  "workflowGenerator.diff.summary": "Added {{added}} · Removed {{removed}} · Changed {{changed}}",
+  "workflowGenerator.errors.atNode": "Affected node: {{node}}",
+  "workflowGenerator.errors.installTools": "Install tools"
 }

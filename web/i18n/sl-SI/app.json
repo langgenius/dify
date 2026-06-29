@@ -290,5 +290,7 @@
   "types.all": "Vse",
   "types.chatbot": "Klepetalnik",
   "types.completion": "Dopolnjevanje",
-  "types.workflow": "Potek dela"
+  "types.workflow": "Potek dela",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description"
 }

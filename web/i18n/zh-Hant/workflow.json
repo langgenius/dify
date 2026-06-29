@@ -1360,5 +1360,11 @@
   "workflowGenerator.reload": "重新載入",
   "workflowGenerator.studioApply": "申請",
   "workflowGenerator.studioButton": "產生",
-  "workflowGenerator.title": "產生 {{mode}}"
+  "workflowGenerator.title": "產生 {{mode}}",
+  "workflowGenerator.examples.refresh": "換一批",
+  "workflowGenerator.regenerate": "重新生成",
+  "workflowGenerator.appliedRefineHint": "已套用 — 隨時用 ⌘K → /refine 優化",
+  "workflowGenerator.diff.summary": "新增 {{added}} · 刪除 {{removed}} · 變更 {{changed}}",
+  "workflowGenerator.errors.atNode": "受影響的節點：{{node}}",
+  "workflowGenerator.errors.installTools": "安裝工具"
 }

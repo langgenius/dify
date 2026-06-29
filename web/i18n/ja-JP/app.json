@@ -290,5 +290,7 @@
   "types.all": "全て",
   "types.chatbot": "チャットボット",
   "types.completion": "テキスト生成",
-  "types.workflow": "ワークフロー"
+  "types.workflow": "ワークフロー",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description"
 }

@@ -290,5 +290,7 @@
   "types.all": "Alle",
   "types.chatbot": "Chatbot",
   "types.completion": "Vervollständigung",
-  "types.workflow": "Arbeitsablauf"
+  "types.workflow": "Arbeitsablauf",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description"
 }

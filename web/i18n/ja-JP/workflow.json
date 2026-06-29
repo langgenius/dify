@@ -1360,5 +1360,11 @@
   "workflowGenerator.reload": "リロード",
   "workflowGenerator.studioApply": "申し込む",
   "workflowGenerator.studioButton": "生成する",
-  "workflowGenerator.title": "{{mode}} を生成する"
+  "workflowGenerator.title": "{{mode}} を生成する",
+  "workflowGenerator.examples.refresh": "More ideas",
+  "workflowGenerator.regenerate": "Regenerate",
+  "workflowGenerator.appliedRefineHint": "Applied — refine anytime with ⌘K → /refine",
+  "workflowGenerator.diff.summary": "Added {{added}} · Removed {{removed}} · Changed {{changed}}",
+  "workflowGenerator.errors.atNode": "Affected node: {{node}}",
+  "workflowGenerator.errors.installTools": "Install tools"
 }

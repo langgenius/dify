@@ -1360,5 +1360,11 @@
   "workflowGenerator.reload": "Перезавантажити",
   "workflowGenerator.studioApply": "Застосувати",
   "workflowGenerator.studioButton": "Генерувати",
-  "workflowGenerator.title": "Створити {{mode}}"
+  "workflowGenerator.title": "Створити {{mode}}",
+  "workflowGenerator.examples.refresh": "More ideas",
+  "workflowGenerator.regenerate": "Regenerate",
+  "workflowGenerator.appliedRefineHint": "Applied — refine anytime with ⌘K → /refine",
+  "workflowGenerator.diff.summary": "Added {{added}} · Removed {{removed}} · Changed {{changed}}",
+  "workflowGenerator.errors.atNode": "Affected node: {{node}}",
+  "workflowGenerator.errors.installTools": "Install tools"
 }

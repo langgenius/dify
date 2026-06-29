@@ -1360,5 +1360,11 @@
   "workflowGenerator.reload": "Załaduj ponownie",
   "workflowGenerator.studioApply": "Zastosuj",
   "workflowGenerator.studioButton": "Wygeneruj",
-  "workflowGenerator.title": "Wygeneruj {{mode}}"
+  "workflowGenerator.title": "Wygeneruj {{mode}}",
+  "workflowGenerator.examples.refresh": "More ideas",
+  "workflowGenerator.regenerate": "Regenerate",
+  "workflowGenerator.appliedRefineHint": "Applied — refine anytime with ⌘K → /refine",
+  "workflowGenerator.diff.summary": "Added {{added}} · Removed {{removed}} · Changed {{changed}}",
+  "workflowGenerator.errors.atNode": "Affected node: {{node}}",
+  "workflowGenerator.errors.installTools": "Install tools"
 }

@@ -290,5 +290,7 @@
   "types.all": "全部",
   "types.chatbot": "聊天助手",
   "types.completion": "文字生成",
-  "types.workflow": "工作流"
+  "types.workflow": "工作流",
+  "gotoAnything.actions.createAuto": "自動",
+  "gotoAnything.actions.createAutoDesc": "讓 AI 根據你的描述自動選擇 Workflow 或 Chatflow"
 }
