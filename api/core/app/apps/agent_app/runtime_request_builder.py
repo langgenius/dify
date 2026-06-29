@@ -127,7 +127,12 @@ class AgentAppRuntimeRequestBuilder:
         config_layer_config = None
         soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            config_layer_config, config_warnings = build_config_layer_config(agent_soul)
+            config_layer_config, config_warnings = build_config_layer_config(
+                agent_soul,
+                agent_id=context.agent_id,
+                config_version_id=context.agent_config_snapshot_id,
+                config_version_kind=context.agent_config_version_kind,
+            )
             append_runtime_warnings(metadata, config_warnings)
             soul_prompt_resolver = build_config_aware_soul_mention_resolver(agent_soul)
         knowledge_config = build_knowledge_layer_config(agent_soul)

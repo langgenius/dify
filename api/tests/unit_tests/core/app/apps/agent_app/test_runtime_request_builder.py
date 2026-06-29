@@ -294,6 +294,14 @@ class TestAgentAppConfigLayer:
         config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
         assert config.type == "dify.config"
         assert config.deps == {"shell": DIFY_SHELL_LAYER_ID}
+        assert config.config.agent_id == "agent-1"
+        assert config.config.config_version is not None
+        assert config.config.config_version.id == "snap-1"
+        assert config.config.config_version.kind == "snapshot"
+        assert config.config.config_version.writable is False
+        assert [skill.name for skill in config.config.skills] == ["tender-analyzer"]
+        assert [file_ref.name for file_ref in config.config.files] == ["sample.pdf"]
+        assert config.config.note == "Read the proposal first."
         assert config.config.mentioned_skill_names == ["tender-analyzer"]
         assert config.config.mentioned_file_names == []
         # shell enters first; config uses that shell to materialize mentioned targets.
@@ -318,7 +326,7 @@ class TestAgentAppConfigLayer:
         assert layers[DIFY_SHELL_LAYER_ID].deps == {"execution_context": "execution_context"}
         assert layers[DIFY_SHELL_LAYER_ID].config.agent_stub_drive_ref is None
 
-    def test_config_layer_for_build_draft_only_contains_mentions(self, monkeypatch: pytest.MonkeyPatch):
+    def test_config_layer_for_build_draft_marks_config_writable(self, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(
             "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", True
         )
@@ -331,6 +339,19 @@ class TestAgentAppConfigLayer:
 
         config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
         assert config.config.model_dump(mode="json") == {
+            "agent_id": "agent-1",
+            "config_version": {"id": "snap-1", "kind": "build_draft", "writable": True},
+            "skills": [
+                {
+                    "name": "tender-analyzer",
+                    "description": "Parses RFPs.",
+                    "size": None,
+                    "mime_type": "application/zip",
+                }
+            ],
+            "files": [{"name": "sample.pdf", "size": None, "mime_type": None}],
+            "env_keys": [],
+            "note": "Read the proposal first.",
             "mentioned_skill_names": ["tender-analyzer"],
             "mentioned_file_names": [],
         }

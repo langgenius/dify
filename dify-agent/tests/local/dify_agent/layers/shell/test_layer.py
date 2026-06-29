@@ -226,10 +226,10 @@ def test_shell_prefix_prompt_describes_workspace_persistence_rules() -> None:
     assert "current workspace cwd is stable during this agent run" in prompt
     assert "Do not use the current workspace cwd as persistent storage" in prompt
     assert "$HOME outside the current workspace cwd is persistent storage" in prompt
-    assert "`dify-agent config manifest` reports" in prompt
+    assert "Agent config context reports" in prompt
     assert "`config_version.kind` as `build_draft`" in prompt
     assert "`config_version.writable` as true" in prompt
-    assert "otherwise those changes are rolled back" in prompt
+    assert "In non-build-draft modes, those changes are rolled back" in prompt
     assert "requires a config push" in prompt
 
 

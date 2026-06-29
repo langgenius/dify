@@ -94,9 +94,9 @@ Workspace persistence rules:
 
 - The current workspace cwd is stable during this agent run, but it is temporary and may be deleted later.
 - Do not use the current workspace cwd as persistent storage.
-- $HOME outside the current workspace cwd is persistent storage. When `dify-agent config manifest` reports
+- $HOME outside the current workspace cwd is persistent storage. In build draft mode, when Agent config context reports
   `config_version.kind` as `build_draft` and `config_version.writable` as true, changes there can be persisted for
-  later runs; otherwise those changes are rolled back.
+  later runs. In non-build-draft modes, those changes are rolled back.
 - Saving config files, skills, env, or notes still requires a config push; shell file edits alone do not save config.
 
 The script argument of shell_run can be a normal shell script, or a shebang script.

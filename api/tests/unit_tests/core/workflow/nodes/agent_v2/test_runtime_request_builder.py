@@ -1140,12 +1140,24 @@ def _soul_with_config_assets() -> AgentSoulConfig:
     )
 
 
-def test_build_config_layer_config_includes_only_mentions():
+def test_build_config_layer_config_includes_soul_context_and_mentions():
     from core.workflow.nodes.agent_v2.runtime_request_builder import build_config_layer_config
 
-    config, warnings = build_config_layer_config(_soul_with_config_assets())
+    config, warnings = build_config_layer_config(
+        _soul_with_config_assets(),
+        agent_id="agent-1",
+        config_version_id="snapshot-1",
+    )
 
     assert config is not None
+    assert config.agent_id == "agent-1"
+    assert config.config_version is not None
+    assert config.config_version.id == "snapshot-1"
+    assert config.config_version.kind == "snapshot"
+    assert config.config_version.writable is False
+    assert [skill.name for skill in config.skills] == ["tender-analyzer"]
+    assert [file_ref.name for file_ref in config.files] == ["sample.pdf"]
+    assert config.note == "Read the proposal first."
     assert config.mentioned_skill_names == ["tender-analyzer"]
     assert config.mentioned_file_names == ["sample.pdf"]
     assert warnings == []
@@ -1198,6 +1210,19 @@ def test_workflow_run_request_contains_config_layer_when_flag_enabled(monkeypatc
     assert config["type"] == "dify.config"
     assert config["deps"] == {"shell": DIFY_SHELL_LAYER_ID}
     assert config["config"] == {
+        "agent_id": "agent-1",
+        "config_version": {"id": "snapshot-1", "kind": "snapshot", "writable": False},
+        "skills": [
+            {
+                    "name": "tender-analyzer",
+                    "description": "Parses RFPs.",
+                    "size": None,
+                    "mime_type": "application/zip",
+                }
+            ],
+        "files": [{"name": "sample.pdf", "size": None, "mime_type": None}],
+        "env_keys": [],
+        "note": "Read the proposal first.",
         "mentioned_skill_names": ["tender-analyzer"],
         "mentioned_file_names": ["sample.pdf"],
     }
