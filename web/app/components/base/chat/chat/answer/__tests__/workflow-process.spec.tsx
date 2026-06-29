@@ -39,6 +39,75 @@ describe('WorkflowProcessItem', () => {
     expect(screen.getByTestId('workflow-process-title')).toHaveTextContent('Invalid upload file')
   })
 
+  it('should keep collapsed title compact when failed with tracing and workflow error', () => {
+    render(
+      <WorkflowProcessItem
+        data={{
+          status: WorkflowRunningStatus.Failed,
+          tracing: [
+            { id: '1', title: 'Start' },
+            { id: '2', title: 'LLM' },
+          ],
+          error: 'Provider returned HTTP 500 with a very long error payload',
+        } as WorkflowProcess}
+        expand={false}
+      />,
+    )
+
+    expect(screen.getByTestId('workflow-process-title')).toHaveTextContent('LLM')
+    expect(screen.getByTestId('workflow-process-title')).not.toHaveTextContent('Provider returned HTTP 500')
+  })
+
+  it('should prefer latest node error over title in collapsed summary when tracing exists', () => {
+    render(
+      <WorkflowProcessItem
+        data={{
+          status: WorkflowRunningStatus.Failed,
+          tracing: [
+            { id: '1', title: 'LLM', error: 'Rate limit exceeded' },
+          ],
+          error: 'Workflow failed',
+        } as WorkflowProcess}
+        expand={false}
+      />,
+    )
+
+    expect(screen.getByTestId('workflow-process-title')).toHaveTextContent('Rate limit exceeded')
+  })
+
+  it('should show workflow error in expanded panel when tracing exists', () => {
+    render(
+      <WorkflowProcessItem
+        data={{
+          status: WorkflowRunningStatus.Failed,
+          tracing: [{ id: '1', title: 'LLM' }],
+          error: 'Invalid upload file',
+        } as WorkflowProcess}
+        expand={true}
+      />,
+    )
+
+    expect(screen.getByTestId('workflow-process-error')).toHaveTextContent('Invalid upload file')
+  })
+
+  it('should preserve multiline workflow errors in expanded panel', () => {
+    render(
+      <WorkflowProcessItem
+        data={{
+          status: WorkflowRunningStatus.Failed,
+          tracing: [{ id: '1', title: 'LLM' }],
+          error: 'line one\nline two',
+        } as WorkflowProcess}
+        expand={true}
+      />,
+    )
+
+    const errorPanel = screen.getByTestId('workflow-process-error')
+    expect(errorPanel).toHaveTextContent('line one')
+    expect(errorPanel).toHaveTextContent('line two')
+    expect(errorPanel.className).toContain('whitespace-pre-wrap')
+  })
+
   it('should render "Workflow Process" title and TracingPanel when expanded', () => {
     // We expect t('common.workflowProcess', { ns: 'workflow' }) to be called
     render(<WorkflowProcessItem data={mockData as WorkflowProcess} expand={true} />)
