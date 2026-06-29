@@ -13,6 +13,12 @@ import { ChangeType } from '@/app/components/workflow/types'
 import { hasDuplicateStr } from '@/utils/var'
 import VarItem from './var-item'
 
+const getComparableLabels = (list: InputVar[]) => {
+  return list
+    .map(item => (typeof item.label === 'string' ? item.label.trim() : ''))
+    .filter(Boolean)
+}
+
 type Props = Readonly<{
   readonly: boolean
   list: InputVar[]
@@ -37,7 +43,7 @@ const VarList: FC<Props> = ({
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.varName'
       }
-      else if (hasDuplicateStr(newList.map(item => item.label as string))) {
+      else if (hasDuplicateStr(getComparableLabels(newList))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.labelName'
       }
