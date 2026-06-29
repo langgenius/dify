@@ -41,7 +41,7 @@ type SupportedType = typeof SUPPORTED_TYPES[keyof typeof SUPPORTED_TYPES]
 
 const SUPPORTED_TYPES_SET = new Set<string>(Object.values(SUPPORTED_TYPES))
 
-const SAFE_NAME_RE = /^[a-z][\w-]*$/i
+const SAFE_NAME_RE = /^\p{L}[\p{L}\p{M}\p{N}_-]*$/u
 const PROTOTYPE_POISON_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 function isSafeName(name: unknown): name is string {

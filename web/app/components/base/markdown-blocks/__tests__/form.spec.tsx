@@ -532,6 +532,29 @@ describe('MarkdownForm', () => {
     })
   })
 
+  // Unicode letters should be valid form field names.
+  describe('Unicode name support', () => {
+    it('should include Unicode-named fields in submission output', async () => {
+      const user = userEvent.setup()
+      const node = createRootNode(
+        [
+          createElementNode('input', { type: 'text', name: '用户名', value: 'Alice' }),
+          createElementNode('input', { type: 'text', name: 'café', value: 'Latte' }),
+          createElementNode('button', {}, [createTextNode('Submit')]),
+        ],
+        { dataFormat: 'json' },
+      )
+
+      render(<MarkdownForm node={node} />)
+
+      await user.click(screen.getByRole('button', { name: 'Submit' }))
+
+      await waitFor(() => {
+        expect(mockOnSend).toHaveBeenCalledWith('{"用户名":"Alice","café":"Latte"}')
+      })
+    })
+  })
+
   // Double-click protection: button disables after the first submit.
   describe('Double submit prevention', () => {
     it('should disable submit button after first click', async () => {
