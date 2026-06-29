@@ -116,7 +116,7 @@ const WorkflowProcessItem = ({
             {
               failed && data.error && (
                 <div
-                  className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular text-text-destructive whitespace-pre-wrap break-words"
+                  className="mb-1.5 rounded-lg border-[0.5px] border-state-destructive-border bg-state-destructive-hover px-2 py-1.5 system-xs-regular break-words whitespace-pre-wrap text-text-destructive"
                   data-testid="workflow-process-error"
                 >
                   {data.error}
