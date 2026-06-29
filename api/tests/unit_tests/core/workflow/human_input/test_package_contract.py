@@ -2,6 +2,7 @@ import importlib
 from datetime import timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from libs.datetime_utils import naive_utc_now
 
@@ -178,3 +179,54 @@ def test_human_input_package_rejects_invalid_payload_shapes(
             form_data={input_definition["output_variable_name"]: submitted_value},
         )
 
+
+def test_human_input_package_requires_extensions_when_custom_file_type_is_allowed() -> None:
+    module = _load_human_input_package()
+
+    with pytest.raises(ValidationError, match="allowed_file_extensions"):
+        module.FileInputConfig.model_validate(
+            {
+                "type": "file",
+                "output_variable_name": "attachment",
+                "allowed_file_types": ["document", "custom"],
+                "allowed_file_upload_methods": ["remote_url"],
+            }
+        )
+
+
+def test_human_input_package_rejects_disallowed_custom_file_extensions() -> None:
+    module = _load_human_input_package()
+    definition = module.FormDefinition.model_validate(
+        {
+            "form_content": "Upload one custom file",
+            "inputs": [
+                {
+                    "type": "file",
+                    "output_variable_name": "attachment",
+                    "allowed_file_types": ["custom"],
+                    "allowed_file_extensions": [".txt"],
+                    "allowed_file_upload_methods": ["remote_url"],
+                }
+            ],
+            "user_actions": [{"id": "submit", "title": "Submit"}],
+            "rendered_content": "<p>Upload one custom file</p>",
+            "expiration_time": naive_utc_now() + timedelta(hours=1),
+        }
+    )
+
+    with pytest.raises(module.HumanInputSubmissionValidationError, match="attachment"):
+        module.validate_human_input_submission(
+            inputs=definition.inputs,
+            user_actions=definition.user_actions,
+            selected_action_id="submit",
+            form_data={
+                "attachment": {
+                    "type": "custom",
+                    "transfer_method": "remote_url",
+                    "remote_url": "https://example.com/archive.exe",
+                    "filename": "archive.exe",
+                    "extension": ".exe",
+                    "mime_type": "application/octet-stream",
+                }
+            },
+        )
