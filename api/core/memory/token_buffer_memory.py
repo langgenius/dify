@@ -27,6 +27,28 @@ from repositories.factory import DifyAPIRepositoryFactory
 _file_access_controller = DatabaseFileAccessController()
 
 
+def _split_prompt_messages_into_turns(prompt_messages: Sequence[PromptMessage]) -> list[list[PromptMessage]]:
+    turns: list[list[PromptMessage]] = []
+    current_turn: list[PromptMessage] = []
+
+    for prompt_message in prompt_messages:
+        if prompt_message.role == PromptMessageRole.USER:
+            if current_turn:
+                turns.append(current_turn)
+            current_turn = [prompt_message]
+            continue
+
+        if current_turn:
+            current_turn.append(prompt_message)
+        else:
+            turns.append([prompt_message])
+
+    if current_turn:
+        turns.append(current_turn)
+
+    return turns
+
+
 class TokenBufferMemory:
     def __init__(
         self,
@@ -196,13 +218,20 @@ class TokenBufferMemory:
         if not prompt_messages:
             return []
 
-        # prune the chat message if it exceeds the max token limit
+        # Prune optional history by complete turns. Dropping a single prompt
+        # message can leave an orphan assistant/user message and make agent
+        # history harder to reason about.
         curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
+        if curr_message_tokens <= max_token_limit:
+            return prompt_messages
 
-        if curr_message_tokens > max_token_limit:
-            while curr_message_tokens > max_token_limit and len(prompt_messages) > 1:
-                prompt_messages.pop(0)
-                curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
+        turns = _split_prompt_messages_into_turns(prompt_messages)
+        while turns and curr_message_tokens > max_token_limit:
+            turns.pop(0)
+            prompt_messages = [prompt_message for turn in turns for prompt_message in turn]
+            if not prompt_messages:
+                return []
+            curr_message_tokens = self.model_instance.get_llm_num_tokens(prompt_messages)
 
         return prompt_messages
 
