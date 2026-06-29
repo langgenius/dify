@@ -321,3 +321,56 @@ def test_guard_no_external_identity_when_subject_email_absent(app):
             view()
 
     assert received["data"].external_identity is None
+
+
+# --- auth-failure mapping (no raw 500 leak) ---
+
+
+def test_guard_expired_token_raises_session_expired_401(app):
+    from controllers.openapi._errors import OpenApiErrorCode, SessionExpired
+    from libs.oauth_bearer import TokenExpiredError
+
+    router = _make_router()
+
+    with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+        ):
+            mock_auth.return_value.authenticate.side_effect = TokenExpiredError("token_expired")
+
+            @router.guard(scope=Scope.FULL)
+            def view(*, auth_data):
+                pass
+
+            with pytest.raises(SessionExpired) as exc:
+                view()
+
+    assert exc.value.code == 401
+    assert exc.value.error_code == OpenApiErrorCode.TOKEN_EXPIRED
+
+
+def test_guard_invalid_token_raises_unified_401_not_500(app):
+    from controllers.openapi._errors import InvalidBearer, OpenApiErrorCode
+    from libs.oauth_bearer import InvalidBearerError
+
+    router = _make_router()
+
+    with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.current_edition", return_value=Edition.CE),
+        ):
+            mock_auth.return_value.authenticate.side_effect = InvalidBearerError("invalid_bearer")
+
+            @router.guard(scope=Scope.FULL)
+            def view(*, auth_data):
+                pass
+
+            with pytest.raises(InvalidBearer) as exc:
+                view()
+
+    assert exc.value.code == 401
+    assert exc.value.error_code == OpenApiErrorCode.UNAUTHORIZED

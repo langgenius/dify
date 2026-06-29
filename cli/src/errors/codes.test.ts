@@ -35,7 +35,6 @@ describe('error codes', () => {
     [ErrorCode.AuthExpired, ExitCode.Auth],
     [ErrorCode.TokenExpired, ExitCode.Auth],
     [ErrorCode.AccessDenied, ExitCode.Auth],
-    [ErrorCode.ExpiredToken, ExitCode.Auth],
     [ErrorCode.VersionSkew, ExitCode.VersionCompat],
     [ErrorCode.UnsupportedEndpoint, ExitCode.VersionCompat],
     [ErrorCode.ConfigSchemaUnsupported, ExitCode.VersionCompat],

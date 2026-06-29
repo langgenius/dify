@@ -423,6 +423,7 @@ export const zOpenApiErrorCode = z.enum([
   'rate_limit_error',
   'recipient_surface_mismatch',
   'request_entity_too_large',
+  'token_expired',
   'too_many_files',
   'too_many_requests',
   'unauthorized',
