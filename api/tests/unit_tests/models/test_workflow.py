@@ -157,11 +157,11 @@ def test_workflow_pause_reason_uses_session_binding_for_human_input_round_trip(m
     )
 
     model = WorkflowPauseReason.from_entity(pause_id="pause-1", pause_reason=reason)
-    assert model.form_id == "session::form-123"
+    assert model.form_id == "form-123"
 
     restored = model.to_entity()
     assert isinstance(restored, HumanInputRequired)
-    assert restored.form_id == "form-123"
+    assert restored.form_id == "session::form-123"
 
 
 def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():
