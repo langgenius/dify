@@ -33,6 +33,7 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from libs.login import login_required
 from models.account import Account
@@ -285,6 +286,10 @@ def _resolve_console_version(
             draft = state.get("draft") or {}
             draft_id = draft.get("id")
             if isinstance(draft_id, str) and draft_id:
+                # load_agent_composer creates the normal draft on first access.
+                # Config asset services use their own SQLAlchemy session, so the
+                # draft must be visible before we hand its id across that boundary.
+                db.session.commit()
                 return draft_id, AgentConfigVersionKind.DRAFT
     except AgentVersionNotFoundError as exc:
         raise AgentConfigServiceError(
