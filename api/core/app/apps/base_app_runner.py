@@ -340,6 +340,24 @@ class AppRunner:
         except GenerateTaskStoppedError:
             # Explicitly close provider stream to stop in-flight token generation ASAP.
             invoke_result.close()
+            # Persist partially generated content so it is not lost when the user stops.
+            if text and message_id:
+                try:
+                    from sqlalchemy import select
+
+                    from extensions.ext_database import db
+                    from libs.datetime_utils import naive_utc_now
+                    from models.model import Message
+
+                    stmt = select(Message).where(Message.id == message_id)
+                    message = db.session.scalar(stmt)
+                    if message and not message.answer:
+                        message.answer = text
+                        message.updated_at = naive_utc_now()
+                        db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    _logger.exception("Failed to persist partial answer for message %s", message_id)
             raise
 
         if usage is None:
