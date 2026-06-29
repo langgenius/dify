@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from flask import Flask
 from werkzeug.datastructures import FileStorage
-from werkzeug.exceptions import Unauthorized
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 import services
 from controllers.common.errors import (
@@ -30,7 +30,7 @@ from controllers.console.workspace.workspace import (
 )
 from enums.cloud_plan import CloudPlan
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant, TenantCustomConfigDict, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountRole, TenantCustomConfigDict, TenantStatus
 
 
 def make_account(account_id: str = "u1") -> Account:
@@ -662,6 +662,69 @@ class TestWebappLogoWorkspaceApi:
 
 
 class TestWorkspaceInfoApi:
+    def test_post_rejects_normal_member_without_mutating_workspace(self, app: Flask):
+        tenant = make_tenant("t1", name="Original Name")
+        current_user = make_account_with_tenant(tenant)
+        current_user.status = AccountStatus.ACTIVE
+        current_user.role = TenantAccountRole.NORMAL
+        current_user_proxy = MagicMock()
+        current_user_proxy._get_current_object.return_value = current_user
+
+        with (
+            app.test_request_context("/workspaces/info", method="POST", json={"name": "Normal Rename"}),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", False),
+            patch("libs.login.current_user", current_user_proxy),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(current_user, "t1"),
+            ),
+            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant) as get_tenant_mock,
+            patch("controllers.console.workspace.workspace.db.session.commit") as commit_mock,
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={"name": "Normal Rename", "role": "normal"},
+            ),
+        ):
+            with pytest.raises(Forbidden):
+                WorkspaceInfoApi().post()
+
+        get_tenant_mock.assert_not_called()
+        commit_mock.assert_not_called()
+        assert tenant.name == "Original Name"
+
+    def test_post_allows_owner_to_mutate_workspace(self, app: Flask):
+        tenant = make_tenant("t1", name="Original Name")
+        current_user = make_account_with_tenant(tenant)
+        current_user.status = AccountStatus.ACTIVE
+        current_user.role = TenantAccountRole.OWNER
+        current_user_proxy = MagicMock()
+        current_user_proxy._get_current_object.return_value = current_user
+
+        with (
+            app.test_request_context("/workspaces/info", method="POST", json={"name": "Owner Rename"}),
+            patch("libs.login.dify_config.LOGIN_DISABLED", True),
+            patch("controllers.console.wraps.dify_config.EDITION", "CLOUD"),
+            patch("controllers.console.wraps.dify_config.RBAC_ENABLED", False),
+            patch("libs.login.current_user", current_user_proxy),
+            patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(current_user, "t1"),
+            ),
+            patch("controllers.console.workspace.workspace.db.get_or_404", return_value=tenant),
+            patch("controllers.console.workspace.workspace.db.session.commit") as commit_mock,
+            patch(
+                "controllers.console.workspace.workspace.WorkspaceService.get_tenant_info",
+                return_value={"name": "Owner Rename", "role": "owner"},
+            ),
+        ):
+            result = WorkspaceInfoApi().post()
+
+        assert result["result"] == "success"
+        assert tenant.name == "Owner Rename"
+        commit_mock.assert_called_once()
+
     def test_post_success(self, app: Flask):
         api = WorkspaceInfoApi()
         method = inspect.unwrap(api.post)
