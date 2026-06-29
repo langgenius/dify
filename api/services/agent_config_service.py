@@ -11,11 +11,13 @@ removing or replacing a config asset drops the Soul reference only.
 from __future__ import annotations
 
 import io
+import urllib.parse
 import zipfile
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Literal
 
+from core.app.file_access.controller import DatabaseFileAccessController
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
@@ -25,6 +27,7 @@ from sqlalchemy.orm import Session
 from core.db.session_factory import session_factory
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
+from factories import file_factory
 from models.agent import Agent, AgentConfigDraft, AgentConfigDraftType, AgentConfigSnapshot
 from models.agent_config_entities import (
     AgentConfigFileRefConfig,
@@ -109,6 +112,8 @@ class ConfigDownload:
 class AgentConfigService:
     """Read and update Agent Soul-backed config assets for one version target."""
 
+    PREVIEW_MAX_BYTES = 64 * 1024
+
     def __init__(
         self,
         *,
@@ -163,6 +168,50 @@ class AgentConfigService:
         )
         return self._manifest_for_target(target)
 
+    def list_skills(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        user_id: str | None = None,
+    ) -> dict[str, object]:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        return {
+            "agent_id": target.agent_id,
+            "config_version": self._config_version_payload(target),
+            "items": [self._serialize_skill_item(skill) for skill in target.agent_soul.config_skills],
+        }
+
+    def list_files(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        user_id: str | None = None,
+    ) -> dict[str, object]:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        return {
+            "agent_id": target.agent_id,
+            "config_version": self._config_version_payload(target),
+            "items": [self._serialize_file_item(file_ref) for file_ref in target.agent_soul.config_files],
+        }
+
     def pull_skill(
         self,
         *,
@@ -184,6 +233,29 @@ class AgentConfigService:
         payload, mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
         return ConfigDownload(filename=f"{skill.name}.zip", mime_type=mime_type or "application/zip", payload=payload)
 
+    def download_skill_url(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        user_id: str | None = None,
+    ) -> str:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        skill = self._require_skill(target.agent_soul, name=name)
+        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=skill.file_kind, file_id=skill.file_id)
+        if url is None:
+            raise AgentConfigServiceError("config_skill_not_found", "config skill payload is missing", status_code=404)
+        return url
+
     def inspect_skill(
         self,
         *,
@@ -204,21 +276,105 @@ class AgentConfigService:
         skill = self._require_skill(target.agent_soul, name=name)
         archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=skill.file_id)
         try:
-            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
-                files = sorted(info.filename for info in archive.infolist() if not info.is_dir())
-                skill_md = archive.read("SKILL.md").decode("utf-8")
-        except (KeyError, OSError, ValueError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
+            archive_items, skill_md = self._inspect_skill_archive(archive_bytes)
+        except (OSError, ValueError, zipfile.BadZipFile) as exc:
             raise AgentConfigServiceError(
                 "skill_archive_invalid",
                 "stored config skill archive is invalid",
                 status_code=500,
             ) from exc
         return {
-            "name": skill.name,
-            "description": skill.description,
-            "files": files,
+            **self._serialize_skill_item(skill),
+            "source": "config_skill_zip",
+            "files": archive_items,
             "skill_md": skill_md,
+            "warnings": [],
         }
+
+    def preview_skill_file(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        path: str,
+        user_id: str | None = None,
+    ) -> dict[str, object]:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        skill = self._require_skill(target.agent_soul, name=name)
+        member_path = self._normalize_archive_member_path(path)
+        payload = self._load_skill_archive_member(
+            tenant_id=tenant_id,
+            file_id=skill.file_id,
+            path=member_path,
+        )
+        return self._preview_bytes(path=member_path, size=len(payload), payload=payload)
+
+    def pull_skill_file(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        path: str,
+        user_id: str | None = None,
+    ) -> ConfigDownload:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        skill = self._require_skill(target.agent_soul, name=name)
+        member_path = self._normalize_archive_member_path(path)
+        payload = self._load_skill_archive_member(
+            tenant_id=tenant_id,
+            file_id=skill.file_id,
+            path=member_path,
+        )
+        return ConfigDownload(
+            filename=member_path.rsplit("/", 1)[-1],
+            mime_type="application/octet-stream",
+            payload=payload,
+        )
+
+    def resolve_skill_file_member_path(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        path: str,
+        user_id: str | None = None,
+    ) -> str:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        skill = self._require_skill(target.agent_soul, name=name)
+        member_path = self._normalize_archive_member_path(path)
+        self._load_skill_archive_member(
+            tenant_id=tenant_id,
+            file_id=skill.file_id,
+            path=member_path,
+        )
+        return member_path
 
     def pull_file(
         self,
@@ -244,6 +400,29 @@ class AgentConfigService:
             file_id=file_ref.file_id,
         )
         return ConfigDownload(filename=filename or file_ref.name, mime_type=mime_type or "application/octet-stream", payload=payload)
+
+    def download_file_url(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        config_version_id: str,
+        config_version_kind: AgentConfigVersionKind,
+        name: str,
+        user_id: str | None = None,
+    ) -> str:
+        target = self.resolve_target(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            config_version_id=config_version_id,
+            config_version_kind=config_version_kind,
+            user_id=user_id,
+        )
+        file_ref = self._require_file(target.agent_soul, name=name)
+        url = self._resolve_download_url(tenant_id=tenant_id, file_kind=file_ref.file_kind, file_id=file_ref.file_id)
+        if url is None:
+            raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
+        return url
 
     def upload_skill(
         self,
@@ -328,7 +507,10 @@ class AgentConfigService:
             target.version.config_snapshot = agent_soul
             session.commit()
             target.agent_soul = agent_soul
-            return self._manifest_for_target(target)
+            return {
+                "skill": self._serialize_skill_item(skill_ref),
+                "config_version": self._config_version_payload(target),
+            }
 
     def push(
         self,
@@ -399,7 +581,11 @@ class AgentConfigService:
             target.version.config_snapshot = agent_soul
             session.commit()
             target.agent_soul = agent_soul
-            return self._manifest_for_target(target)
+            file_ref = self._require_file(agent_soul, name=upload_file.name)
+            return {
+                "file": self._serialize_file_item(file_ref),
+                "config_version": self._config_version_payload(target),
+            }
 
     def _push(
         self,
@@ -471,7 +657,7 @@ class AgentConfigService:
             file_kind=file_ref.file_kind,
             file_id=file_ref.file_id,
         )
-        return self._preview_bytes(key=filename or file_ref.name, size=file_ref.size, payload=payload)
+        return self._preview_bytes(path=filename or file_ref.name, size=file_ref.size, payload=payload, field_name="name")
 
     def update_env(
         self,
@@ -927,41 +1113,61 @@ class AgentConfigService:
     def _manifest_for_target(target: AgentConfigTarget) -> dict[str, object]:
         return {
             "agent_id": target.agent_id,
-            "config_version": {
-                "id": target.version_id,
-                "kind": target.kind.value,
-                "writable": target.writable,
-            },
-            "skills": [
-                {
-                    "name": skill.name,
-                    "description": skill.description,
-                    "size": skill.size,
-                    "hash": skill.hash,
-                    "mime_type": skill.mime_type,
-                }
-                for skill in target.agent_soul.config_skills
-            ],
-            "files": [
-                {
-                    "name": file_ref.name,
-                    "size": file_ref.size,
-                    "hash": file_ref.hash,
-                    "mime_type": file_ref.mime_type,
-                }
-                for file_ref in target.agent_soul.config_files
-            ],
+            "config_version": AgentConfigService._config_version_payload(target),
+            "skills": {"items": [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]},
+            "files": {"items": [AgentConfigService._serialize_file_item(file_ref) for file_ref in target.agent_soul.config_files]},
             "env_keys": AgentConfigService._env_keys(target.agent_soul),
             "note": target.agent_soul.config_note,
         }
 
     @staticmethod
-    def _preview_bytes(*, key: str, size: int | None, payload: bytes) -> dict[str, object]:
-        preview_max_bytes = 16384
-        truncated = len(payload) > preview_max_bytes
-        sample = payload[:preview_max_bytes]
+    def _config_version_payload(target: AgentConfigTarget) -> dict[str, object]:
+        return {
+            "id": target.version_id,
+            "kind": target.kind.value,
+            "writable": AgentConfigService._is_console_writable(target),
+        }
+
+    @staticmethod
+    def _is_console_writable(target: AgentConfigTarget) -> bool:
+        return target.writable or target.kind == AgentConfigVersionKind.DRAFT
+
+    @staticmethod
+    def _serialize_skill_item(skill: AgentConfigSkillRefConfig) -> dict[str, object]:
+        return {
+            "id": skill.name,
+            "name": skill.name,
+            "file_id": skill.file_id,
+            "description": skill.description,
+            "size": skill.size,
+            "hash": skill.hash,
+            "mime_type": skill.mime_type,
+        }
+
+    @staticmethod
+    def _serialize_file_item(file_ref: AgentConfigFileRefConfig) -> dict[str, object]:
+        return {
+            "id": file_ref.name,
+            "name": file_ref.name,
+            "file_id": file_ref.file_id,
+            "size": file_ref.size,
+            "hash": file_ref.hash,
+            "mime_type": file_ref.mime_type,
+        }
+
+    @classmethod
+    def _preview_bytes(
+        cls,
+        *,
+        path: str,
+        size: int | None,
+        payload: bytes,
+        field_name: Literal["name", "path"] = "path",
+    ) -> dict[str, object]:
+        truncated = len(payload) > cls.PREVIEW_MAX_BYTES
+        sample = payload[: cls.PREVIEW_MAX_BYTES]
         if b"\x00" in sample:
-            return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
+            return {field_name: path, "size": size, "truncated": truncated, "binary": True, "text": None}
         try:
             text = sample.decode("utf-8")
         except UnicodeDecodeError:
@@ -969,10 +1175,88 @@ class AgentConfigService:
                 try:
                     text = sample[:-3].decode("utf-8", errors="strict")
                 except UnicodeDecodeError:
-                    return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
+                    return {field_name: path, "size": size, "truncated": truncated, "binary": True, "text": None}
             else:
-                return {"key": key, "size": size, "truncated": truncated, "binary": True, "text": None}
-        return {"key": key, "size": size, "truncated": truncated, "binary": False, "text": text}
+                return {field_name: path, "size": size, "truncated": truncated, "binary": True, "text": None}
+        return {field_name: path, "size": size, "truncated": truncated, "binary": False, "text": text}
+
+    @classmethod
+    def _normalize_archive_member_path(cls, path: str) -> str:
+        normalized = path.replace("\\", "/").strip("/")
+        if not normalized:
+            raise AgentConfigServiceError("config_skill_file_invalid", "config skill file path is invalid", status_code=400)
+        if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
+            raise AgentConfigServiceError("config_skill_file_invalid", "config skill file path is invalid", status_code=400)
+        segments = normalized.split("/")
+        if any(not segment or segment in {".", ".."} for segment in segments):
+            raise AgentConfigServiceError("config_skill_file_invalid", "config skill file path is invalid", status_code=400)
+        return "/".join(segments)
+
+    @classmethod
+    def _inspect_skill_archive(cls, archive_bytes: bytes) -> tuple[list[dict[str, object]], dict[str, object]]:
+        with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+            members: list[dict[str, object]] = []
+            directories: set[str] = set()
+            skill_md_preview: dict[str, object] | None = None
+            for info in archive.infolist():
+                normalized_path = cls._normalize_archive_member_path(info.filename)
+                segments = normalized_path.split("/")
+                for index in range(1, len(segments)):
+                    directories.add("/".join(segments[:index]))
+                if info.is_dir():
+                    directories.add(normalized_path)
+                    continue
+                members.append(
+                    {
+                        "path": normalized_path,
+                        "name": segments[-1],
+                        "type": "file",
+                        "previewable": True,
+                        "downloadable": True,
+                    }
+                )
+                if normalized_path == "SKILL.md":
+                    payload = archive.read(info)
+                    skill_md_preview = cls._preview_bytes(path="SKILL.md", size=info.file_size, payload=payload)
+            if skill_md_preview is None or skill_md_preview["binary"]:
+                raise ValueError("skill archive is missing a text SKILL.md")
+
+        directory_items = [
+            {
+                "path": path,
+                "name": path.rsplit("/", 1)[-1],
+                "type": "directory",
+                "previewable": False,
+                "downloadable": False,
+            }
+            for path in sorted(directories)
+        ]
+        files = sorted([*directory_items, *members], key=lambda item: (item["path"], item["type"]))
+        return files, skill_md_preview
+
+    def _load_skill_archive_member(self, *, tenant_id: str, file_id: str, path: str) -> bytes:
+        archive_bytes, _mime_type = self._load_tool_file_bytes(tenant_id=tenant_id, file_id=file_id)
+        normalized_path = self._normalize_archive_member_path(path)
+        try:
+            with zipfile.ZipFile(io.BytesIO(archive_bytes)) as archive:
+                for info in archive.infolist():
+                    candidate_path = self._normalize_archive_member_path(info.filename)
+                    if candidate_path != normalized_path:
+                        continue
+                    if info.is_dir():
+                        raise AgentConfigServiceError(
+                            "config_skill_file_not_found",
+                            "config skill file not found",
+                            status_code=404,
+                        )
+                    return archive.read(info)
+        except zipfile.BadZipFile as exc:
+            raise AgentConfigServiceError(
+                "skill_archive_invalid",
+                "stored config skill archive is invalid",
+                status_code=500,
+            ) from exc
+        raise AgentConfigServiceError("config_skill_file_not_found", "config skill file not found", status_code=404)
 
     @staticmethod
     def _require_skill(agent_soul: AgentSoulConfig, *, name: str) -> AgentConfigSkillRefConfig:
@@ -1018,6 +1302,34 @@ class AgentConfigService:
         if upload_file is None:
             raise AgentConfigServiceError("config_file_not_found", "config file payload is missing", status_code=404)
         return storage.load_once(upload_file.key), upload_file.name, upload_file.mime_type
+
+    @staticmethod
+    def _resolve_download_url(*, tenant_id: str, file_kind: Literal["upload_file", "tool_file"], file_id: str) -> str | None:
+        controller = DatabaseFileAccessController()
+        from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+
+        runtime = DifyWorkflowFileRuntime(file_access_controller=controller)
+        try:
+            if file_kind == "upload_file":
+                return runtime.resolve_upload_file_url(
+                    upload_file_id=file_id,
+                    for_external=True,
+                    as_attachment=True,
+                )
+            file = file_factory.build_from_mapping(
+                mapping={"transfer_method": "tool_file", "tool_file_id": file_id},
+                tenant_id=tenant_id,
+                access_controller=controller,
+            )
+            url = runtime.resolve_file_url(file=file, for_external=True)
+            if not url:
+                return None
+            parsed = urllib.parse.urlsplit(url)
+            query = urllib.parse.parse_qsl(parsed.query, keep_blank_values=True)
+            query.append(("as_attachment", "true"))
+            return urllib.parse.urlunsplit(parsed._replace(query=urllib.parse.urlencode(query)))
+        except ValueError:
+            return None
 
 
 __all__ = [

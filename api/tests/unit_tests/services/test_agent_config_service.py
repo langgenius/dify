@@ -9,7 +9,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from models.agent_config_entities import AgentConfigSkillRefConfig, AgentEnvVariableConfig, AgentSoulConfig
+from models.agent_config_entities import AgentConfigFileRefConfig, AgentConfigSkillRefConfig, AgentEnvVariableConfig, AgentSoulConfig
 from services.agent.skill_package_service import SkillPackageError
 from services.agent_config_service import (
     AgentConfigService,
@@ -243,7 +243,7 @@ def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> 
         patch.object(service, "_resolve_target_in_session", return_value=target),
         patch.object(service, "_require_console_upload_file_source", return_value=upload_file),
     ):
-        manifest = service.push_file_for_console(
+        response = service.push_file_for_console(
             tenant_id=TENANT,
             agent_id=AGENT,
             user_id=USER,
@@ -252,14 +252,21 @@ def test_push_file_for_console_uses_service_owned_upload_lookup_and_naming() -> 
             upload_file_id="upload-1",
         )
 
-    assert manifest["files"] == [
-        {
+    assert response == {
+        "file": {
+            "id": "guide.txt",
             "name": "guide.txt",
+            "file_id": "upload-1",
             "size": 7,
             "hash": "sha256:abc",
             "mime_type": "text/plain",
-        }
-    ]
+        },
+        "config_version": {
+            "id": "version-1",
+            "kind": "draft",
+            "writable": True,
+        },
+    }
     session.commit.assert_called_once()
 
 
@@ -365,3 +372,209 @@ def test_inspect_skill_maps_invalid_archives_to_service_errors(archive_bytes: by
 
     assert exc_info.value.code == "skill_archive_invalid"
     assert exc_info.value.status_code == 500
+
+
+def test_manifest_uses_items_shape_without_download_urls() -> None:
+    target = _target(
+        kind=AgentConfigVersionKind.DRAFT,
+        writable=False,
+        soul=_soul(
+            config_skills=[AgentConfigSkillRefConfig(name="alpha", description="Alpha skill", file_id="tool-file-1")],
+            config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id="upload-file-1")],
+            config_note="Use the guide.",
+        ),
+    )
+
+    manifest = AgentConfigService._manifest_for_target(target)
+
+    assert manifest == {
+        "agent_id": AGENT,
+        "config_version": {
+            "id": "version-1",
+            "kind": "draft",
+            "writable": True,
+        },
+        "skills": {
+            "items": [
+                {
+                    "id": "alpha",
+                    "name": "alpha",
+                    "file_id": "tool-file-1",
+                    "description": "Alpha skill",
+                    "size": None,
+                    "hash": None,
+                    "mime_type": "application/zip",
+                }
+            ]
+        },
+        "files": {
+            "items": [
+                {
+                    "id": "guide.txt",
+                    "name": "guide.txt",
+                    "file_id": "upload-file-1",
+                    "size": None,
+                    "hash": None,
+                    "mime_type": None,
+                }
+            ]
+        },
+        "env_keys": [],
+        "note": "Use the guide.",
+    }
+
+
+def test_preview_skill_file_returns_text_preview() -> None:
+    service = AgentConfigService()
+    target = _target(
+        kind=AgentConfigVersionKind.BUILD_DRAFT,
+        writable=True,
+        soul=_soul(config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id="tool-file-1")]),
+    )
+    archive_bytes = _zip_bytes(
+        {
+            "SKILL.md": b"# Alpha\n",
+            "references/guide.md": b"hello world",
+        }
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch.object(service, "_load_tool_file_bytes", return_value=(archive_bytes, "application/zip")),
+    ):
+        preview = service.preview_skill_file(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="build-draft-1",
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            name="alpha",
+            path="references/guide.md",
+            user_id=USER,
+        )
+
+    assert preview == {
+        "path": "references/guide.md",
+        "size": 11,
+        "truncated": False,
+        "binary": False,
+        "text": "hello world",
+    }
+
+
+def test_preview_skill_file_marks_binary_and_truncated_payloads() -> None:
+    service = AgentConfigService()
+    target = _target(
+        kind=AgentConfigVersionKind.BUILD_DRAFT,
+        writable=True,
+        soul=_soul(config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id="tool-file-1")]),
+    )
+    archive_bytes = _zip_bytes(
+        {
+            "SKILL.md": b"# Alpha\n",
+            "bin/data.bin": b"\x00" + (b"x" * (AgentConfigService.PREVIEW_MAX_BYTES + 10)),
+        }
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch.object(service, "_load_tool_file_bytes", return_value=(archive_bytes, "application/zip")),
+    ):
+        preview = service.preview_skill_file(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="build-draft-1",
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            name="alpha",
+            path="bin/data.bin",
+            user_id=USER,
+        )
+
+    assert preview == {
+        "path": "bin/data.bin",
+        "size": AgentConfigService.PREVIEW_MAX_BYTES + 11,
+        "truncated": True,
+        "binary": True,
+        "text": None,
+    }
+
+
+def test_resolve_skill_file_member_path_requires_existing_member() -> None:
+    service = AgentConfigService()
+    target = _target(
+        kind=AgentConfigVersionKind.BUILD_DRAFT,
+        writable=True,
+        soul=_soul(config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id="tool-file-1")]),
+    )
+    archive_bytes = _zip_bytes(
+        {
+            "SKILL.md": b"# Alpha\n",
+            "references/guide.md": b"hello world",
+        }
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch.object(service, "_load_tool_file_bytes", return_value=(archive_bytes, "application/zip")),
+    ):
+        assert service.resolve_skill_file_member_path(
+            tenant_id=TENANT,
+            agent_id=AGENT,
+            config_version_id="build-draft-1",
+            config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+            name="alpha",
+            path="references/guide.md",
+            user_id=USER,
+        ) == "references/guide.md"
+
+        with pytest.raises(AgentConfigServiceError, match="config skill file not found") as exc_info:
+            service.resolve_skill_file_member_path(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                config_version_id="build-draft-1",
+                config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                name="alpha",
+                path="references/missing.md",
+                user_id=USER,
+            )
+
+    assert exc_info.value.code == "config_skill_file_not_found"
+    assert exc_info.value.status_code == 404
+
+
+def test_download_url_helpers_use_shared_url_resolution() -> None:
+    service = AgentConfigService()
+    target = _target(
+        kind=AgentConfigVersionKind.BUILD_DRAFT,
+        writable=True,
+        soul=_soul(
+            config_skills=[AgentConfigSkillRefConfig(name="alpha", file_id="tool-file-1")],
+            config_files=[AgentConfigFileRefConfig(name="guide.txt", file_kind="upload_file", file_id="upload-file-1")],
+        ),
+    )
+
+    with (
+        patch.object(service, "resolve_target", return_value=target),
+        patch.object(service, "_resolve_download_url", side_effect=["https://example.com/alpha.zip", "https://example.com/guide.txt"]),
+    ):
+        assert (
+            service.download_skill_url(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                config_version_id="build-draft-1",
+                config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                name="alpha",
+                user_id=USER,
+            )
+            == "https://example.com/alpha.zip"
+        )
+        assert (
+            service.download_file_url(
+                tenant_id=TENANT,
+                agent_id=AGENT,
+                config_version_id="build-draft-1",
+                config_version_kind=AgentConfigVersionKind.BUILD_DRAFT,
+                name="guide.txt",
+                user_id=USER,
+            )
+            == "https://example.com/guide.txt"
+        )
