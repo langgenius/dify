@@ -62,9 +62,9 @@ def oracle_module(monkeypatch: pytest.MonkeyPatch):
 
 def _config(module, **overrides):
     values = {
-        "user": "system",
-        "password": "oracle",
-        "dsn": "oracle:1521/freepdb1",
+        "user": "test_user",
+        "password": "test_password",
+        "dsn": "test-db.example:1521/testpdb",
         "is_autonomous": False,
     }
     values.update(overrides)
@@ -101,12 +101,16 @@ def test_oracle_config_validation_pool_settings(oracle_module):
     assert config.pool_min == 1
     assert config.pool_max == 5
     assert config.pool_increment == 1
+    assert config.pool_ping_interval == 0
 
     with pytest.raises(ValidationError, match="pool_min must be less than or equal to pool_max"):
         _config(oracle_module, pool_min=6, pool_max=5)
 
     with pytest.raises(ValidationError, match="pool_increment must be greater than 0"):
         _config(oracle_module, pool_increment=0)
+
+    with pytest.raises(ValidationError, match="pool_ping_interval must be greater than or equal to 0"):
+        _config(oracle_module, pool_ping_interval=-1)
 
 
 def test_oracle_config_validation_autonomous_requirements(oracle_module):
@@ -124,6 +128,41 @@ def test_init_and_get_type(oracle_module, monkeypatch: pytest.MonkeyPatch):
     assert vector.get_type() == "oracle"
     assert vector.table_name == "embedding_collection_1"
     assert vector.pool is pool
+
+
+def test_init_reuses_pool_for_matching_config(oracle_module, monkeypatch: pytest.MonkeyPatch):
+    pool = MagicMock()
+    create_pool = MagicMock(return_value=pool)
+    monkeypatch.setattr(oracle_module.oracledb, "create_pool", create_pool)
+
+    first = oracle_module.OracleVector("collection_1", _config(oracle_module))
+    second = oracle_module.OracleVector("collection_2", _config(oracle_module))
+
+    assert first.pool is pool
+    assert second.pool is pool
+    create_pool.assert_called_once_with(
+        user="test_user",
+        password="test_password",
+        dsn="test-db.example:1521/testpdb",
+        min=1,
+        max=5,
+        increment=1,
+        ping_interval=0,
+    )
+
+
+def test_init_uses_different_pools_for_different_configs(oracle_module, monkeypatch: pytest.MonkeyPatch):
+    first_pool = MagicMock()
+    second_pool = MagicMock()
+    create_pool = MagicMock(side_effect=[first_pool, second_pool])
+    monkeypatch.setattr(oracle_module.oracledb, "create_pool", create_pool)
+
+    first = oracle_module.OracleVector("collection_1", _config(oracle_module))
+    second = oracle_module.OracleVector("collection_2", _config(oracle_module, dsn="other:1521/pdb"))
+
+    assert first.pool is first_pool
+    assert second.pool is second_pool
+    assert create_pool.call_count == 2
 
 
 def test_init_rejects_unsafe_collection_names(oracle_module, monkeypatch: pytest.MonkeyPatch):
@@ -212,6 +251,39 @@ def test_get_connection_releases_pool_after_errors(oracle_module):
     pool.release.assert_called_once_with(connection)
 
 
+def test_get_connection_drops_closed_connections(oracle_module):
+    pool = MagicMock()
+    connection = MagicMock()
+    pool.acquire.return_value = connection
+
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.pool = pool
+
+    with pytest.raises(RuntimeError, match="DPY-4011"):
+        with vector._get_connection():
+            raise RuntimeError("DPY-4011: the database or network closed the connection")
+
+    connection.rollback.assert_not_called()
+    pool.drop.assert_called_once_with(connection)
+    pool.release.assert_not_called()
+
+
+def test_get_connection_drops_connection_when_release_reports_it_closed(oracle_module):
+    pool = MagicMock()
+    connection = MagicMock()
+    pool.acquire.return_value = connection
+    pool.release.side_effect = RuntimeError("DPY-4011: the database or network closed the connection")
+
+    vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
+    vector.pool = pool
+
+    with vector._get_connection() as conn:
+        assert conn is connection
+
+    pool.release.assert_called_once_with(connection)
+    pool.drop.assert_called_once_with(connection)
+
+
 def test_get_connection_releases_pool_when_rollback_fails(oracle_module):
     pool = MagicMock()
     connection = MagicMock()
@@ -236,7 +308,13 @@ def test_create_connection_pool_supports_standard_and_autonomous_paths(oracle_mo
     vector = oracle_module.OracleVector.__new__(oracle_module.OracleVector)
     assert vector._create_connection_pool(_config(oracle_module, pool_min=2, pool_max=8, pool_increment=2)) == "pool"
     create_pool.assert_called_with(
-        user="system", password="oracle", dsn="oracle:1521/freepdb1", min=2, max=8, increment=2
+        user="test_user",
+        password="test_password",
+        dsn="test-db.example:1521/testpdb",
+        min=2,
+        max=8,
+        increment=2,
+        ping_interval=0,
     )
 
     config = _config(
@@ -662,9 +740,9 @@ def test_oracle_factory_init_vector_uses_existing_or_generated_collection(
     dataset_without_index = SimpleNamespace(id="dataset-2", index_struct_dict=None, index_struct=None)
 
     monkeypatch.setattr(oracle_module.Dataset, "gen_collection_name_by_id", lambda _id: "AUTO_COLLECTION")
-    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_USER", "system")
-    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_PASSWORD", "oracle")
-    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_DSN", "oracle:1521/freepdb1")
+    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_USER", "test_user")
+    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_PASSWORD", "test_password")
+    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_DSN", "test-db.example:1521/testpdb")
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_CONFIG_DIR", None)
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_WALLET_LOCATION", None)
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_WALLET_PASSWORD", None)
@@ -672,6 +750,7 @@ def test_oracle_factory_init_vector_uses_existing_or_generated_collection(
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_POOL_MIN", 2, raising=False)
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_POOL_MAX", 8, raising=False)
     monkeypatch.setattr(oracle_module.dify_config, "ORACLE_POOL_INCREMENT", 2, raising=False)
+    monkeypatch.setattr(oracle_module.dify_config, "ORACLE_POOL_PING_INTERVAL", 0, raising=False)
 
     with patch.object(oracle_module, "OracleVector", return_value="vector") as vector_cls:
         result_1 = factory.init_vector(dataset_with_index, attributes=[], embeddings=MagicMock())
@@ -683,5 +762,6 @@ def test_oracle_factory_init_vector_uses_existing_or_generated_collection(
     assert vector_cls.call_args_list[0].kwargs["config"].pool_min == 2
     assert vector_cls.call_args_list[0].kwargs["config"].pool_max == 8
     assert vector_cls.call_args_list[0].kwargs["config"].pool_increment == 2
+    assert vector_cls.call_args_list[0].kwargs["config"].pool_ping_interval == 0
     assert vector_cls.call_args_list[1].kwargs["collection_name"] == "AUTO_COLLECTION"
     assert dataset_without_index.index_struct is not None

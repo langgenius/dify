@@ -5,6 +5,7 @@ import re
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
+from threading import Lock
 from typing import Any, TypedDict, override
 
 import jieba.posseg as pseg  # type: ignore
@@ -57,6 +58,7 @@ ORACLE_TEXT_RESERVED_TOKENS = {
 }
 ORACLE_TEXT_PARSER_ERROR_CODES = ("DRG-50901", "DRG-50902", "DRG-50906", "DRG-50907")
 ORACLE_IN_CLAUSE_BATCH_SIZE = 900
+ORACLE_CLOSED_CONNECTION_ERROR_CODES = ("DPY-4011", "DPY-1001", "DPI-1010")
 
 
 class _OraclePoolParams(TypedDict, total=False):
@@ -66,6 +68,7 @@ class _OraclePoolParams(TypedDict, total=False):
     min: int
     max: int
     increment: int
+    ping_interval: int
     config_dir: str | None
     wallet_location: str | None
     wallet_password: str | None
@@ -82,6 +85,7 @@ class OracleVectorConfig(BaseModel):
     pool_min: int = 1
     pool_max: int = 5
     pool_increment: int = 1
+    pool_ping_interval: int = 0
 
     @model_validator(mode="before")
     @classmethod
@@ -110,9 +114,42 @@ class OracleVectorConfig(BaseModel):
             raise ValueError("pool_max must be greater than 0")
         if self.pool_increment <= 0:
             raise ValueError("pool_increment must be greater than 0")
+        if self.pool_ping_interval < 0:
+            raise ValueError("pool_ping_interval must be greater than or equal to 0")
         if self.pool_min > self.pool_max:
             raise ValueError("pool_min must be less than or equal to pool_max")
         return self
+
+
+OraclePoolKey = tuple[str, str, str, str | None, str | None, str | None, bool, int, int, int, int]
+_ORACLE_POOL_LOCK = Lock()
+_ORACLE_POOLS: dict[OraclePoolKey, Any] = {}
+
+
+def oracle_pool_key(config: OracleVectorConfig) -> OraclePoolKey:
+    return (
+        config.user,
+        config.password,
+        config.dsn,
+        config.config_dir,
+        config.wallet_location,
+        config.wallet_password,
+        config.is_autonomous,
+        config.pool_min,
+        config.pool_max,
+        config.pool_increment,
+        config.pool_ping_interval,
+    )
+
+
+def is_closed_connection_error(exc: Exception) -> bool:
+    candidates = (exc, *getattr(exc, "args", ()))
+    for candidate in candidates:
+        full_code = str(getattr(candidate, "full_code", ""))
+        message = str(candidate)
+        if any(code == full_code or code in message for code in ORACLE_CLOSED_CONNECTION_ERROR_CODES):
+            return True
+    return False
 
 
 SQL_CREATE_TABLE = """
@@ -274,7 +311,7 @@ class OracleVector(BaseVector):
         self.table_name = validate_identifier(f"embedding_{collection_name}", "table_name")
         self.text_index_name = text_index_name_for_table(self.table_name)
         self.config = config
-        self.pool = self._create_connection_pool(config)
+        self.pool = self._get_or_create_connection_pool(config)
 
     @override
     def get_type(self) -> str:
@@ -316,16 +353,44 @@ class OracleVector(BaseVector):
     @contextmanager
     def _get_connection(self) -> Iterator[Connection]:
         conn = self.pool.acquire()
+        drop_connection = False
         try:
             yield conn
-        except Exception:
-            try:
-                conn.rollback()
-            except Exception:
-                logger.exception("Failed to roll back Oracle pooled connection before release")
+        except Exception as exc:
+            drop_connection = is_closed_connection_error(exc)
+            if not drop_connection:
+                try:
+                    conn.rollback()
+                except Exception:
+                    logger.exception("Failed to roll back Oracle pooled connection before release")
             raise
         finally:
-            self.pool.release(conn)
+            if drop_connection:
+                logger.warning("Dropping a closed Oracle connection from the pool")
+                try:
+                    self.pool.drop(conn)
+                except Exception:
+                    logger.exception("Failed to drop a closed Oracle connection from the pool")
+            else:
+                try:
+                    self.pool.release(conn)
+                except Exception as exc:
+                    if not is_closed_connection_error(exc):
+                        raise
+                    logger.warning("Oracle connection closed during pool release; dropping it")
+                    try:
+                        self.pool.drop(conn)
+                    except Exception:
+                        logger.exception("Failed to drop an Oracle connection after release failed")
+
+    def _get_or_create_connection_pool(self, config: OracleVectorConfig):
+        key = oracle_pool_key(config)
+        with _ORACLE_POOL_LOCK:
+            pool = _ORACLE_POOLS.get(key)
+            if pool is None:
+                pool = self._create_connection_pool(config)
+                _ORACLE_POOLS[key] = pool
+            return pool
 
     def _create_connection_pool(self, config: OracleVectorConfig):
         pool_params = _OraclePoolParams(
@@ -335,6 +400,7 @@ class OracleVector(BaseVector):
             min=config.pool_min,
             max=config.pool_max,
             increment=config.pool_increment,
+            ping_interval=config.pool_ping_interval,
         )
         if config.is_autonomous:
             pool_params["config_dir"] = config.config_dir
@@ -598,5 +664,6 @@ class OracleVectorFactory(AbstractVectorFactory):
                 pool_min=getattr(dify_config, "ORACLE_POOL_MIN", 1),
                 pool_max=getattr(dify_config, "ORACLE_POOL_MAX", 5),
                 pool_increment=getattr(dify_config, "ORACLE_POOL_INCREMENT", 1),
+                pool_ping_interval=getattr(dify_config, "ORACLE_POOL_PING_INTERVAL", 0),
             ),
         )
