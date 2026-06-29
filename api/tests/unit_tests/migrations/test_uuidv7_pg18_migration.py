@@ -33,10 +33,9 @@ def _load_migration():
     return module
 
 
-def _make_bind(dialect_name, native_uuidv7=None):
+def _make_bind(dialect_name):
     bind = mock.MagicMock()
     bind.dialect.name = dialect_name
-    bind.execute.return_value.scalar.return_value = native_uuidv7
     return bind
 
 
@@ -51,7 +50,9 @@ def migration():
 
 def test_upgrade_creates_both_functions_when_native_uuidv7_absent(migration):
     # PostgreSQL 13 to 17: no native pg_catalog.uuidv7(), so both functions are created.
-    bind = _make_bind("postgresql", native_uuidv7=None)
+    # The DO block contains the CREATE FUNCTION guarded by IF NOT EXISTS, and
+    # uuidv7_boundary is created unconditionally.
+    bind = _make_bind("postgresql")
     with mock.patch.object(migration, "op") as fake_op:
         fake_op.get_bind.return_value = bind
         migration.upgrade()
@@ -62,21 +63,23 @@ def test_upgrade_creates_both_functions_when_native_uuidv7_absent(migration):
 
 
 def test_upgrade_skips_uuidv7_but_keeps_boundary_when_native_present(migration):
-    # PostgreSQL 18: native pg_catalog.uuidv7() exists, so we must not recreate it, but
+    # PostgreSQL 18: native pg_catalog.uuidv7() exists, so the DO block must guard
+    # the CREATE FUNCTION with an IF NOT EXISTS check against pg_catalog.
     # uuidv7_boundary is still missing and has to be created unconditionally.
-    bind = _make_bind("postgresql", native_uuidv7=1)
+    bind = _make_bind("postgresql")
     with mock.patch.object(migration, "op") as fake_op:
         fake_op.get_bind.return_value = bind
         migration.upgrade()
 
     sql = _executed_sql(fake_op)
-    assert not any("CREATE FUNCTION uuidv7()" in stmt for stmt in sql)
+    # The DO block must contain the pg_catalog existence check.
+    do_block = next((stmt for stmt in sql if "DO $do$" in stmt), None)
+    assert do_block is not None
+    assert "pg_catalog" in do_block
+    assert "uuidv7" in do_block
+    assert "IF NOT EXISTS" in do_block
+    # uuidv7_boundary is always created (not guarded by the DO block).
     assert any("CREATE FUNCTION uuidv7_boundary(timestamptz)" in stmt for stmt in sql)
-
-    # The presence check must look up uuidv7 in the pg_catalog schema.
-    probe_sql = str(bind.execute.call_args.args[0])
-    assert "pg_catalog" in probe_sql
-    assert "uuidv7" in probe_sql
 
 
 def test_upgrade_is_noop_on_non_postgres(migration):
@@ -86,7 +89,6 @@ def test_upgrade_is_noop_on_non_postgres(migration):
         migration.upgrade()
 
     fake_op.execute.assert_not_called()
-    bind.execute.assert_not_called()
 
 
 def test_downgrade_uses_if_exists_and_public_schema(migration):
