@@ -2868,11 +2868,14 @@ class TestWorkflowServiceFreeNodeExecution:
                 return_value=sentinel.adapted_node_data,
             ) as mock_adapt_node_data,
             patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
+            patch("services.workflow_service.build_dify_human_input_hitl_callback", create=True) as mock_build_hitl_callback,
             patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
             patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
-            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):
+            mock_build_hitl_callback.return_value = sentinel.hitl_callback
+            mock_file_reference_factory_cls.return_value = sentinel.file_reference_factory
+            mock_runtime_cls.return_value = sentinel.runtime
             mock_node_cls.validate_node_data.return_value = sentinel.node_data
             node = service._build_human_input_node_for_debugging(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
@@ -2885,16 +2888,18 @@ class TestWorkflowServiceFreeNodeExecution:
                 run_context=mock_build_dify_run_context.return_value,
                 call_depth=0,
             )
-            mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
-            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
             mock_adapt_node_data.assert_called_once_with(node_config["data"])
             mock_node_cls.validate_node_data.assert_called_once_with(sentinel.adapted_node_data)
-            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
+            mock_build_hitl_callback.assert_called_once_with(
+                workflow_id="wf-1",
+                app_id="app-1",
+                node_id="n-1",
+                node_data=sentinel.node_data,
+            )
             mock_node_cls.assert_called_once_with(
                 node_id="n-1",
                 data=sentinel.node_data,
                 graph_init_params=mock_graph_init_context_cls.return_value.to_graph_init_params.return_value,
                 graph_runtime_state=ANY,
-                file_reference_factory=mock_file_reference_factory_cls.return_value,
-                runtime=mock_runtime_cls.return_value,
+                hitl_callback=sentinel.hitl_callback,
             )
