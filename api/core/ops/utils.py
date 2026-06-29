@@ -5,8 +5,8 @@ from urllib.parse import urlparse
 
 from pydantic import TypeAdapter
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
-from models.engine import db
 from models.model import Message
 
 JSON_DICT_ADAPTER: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
@@ -24,8 +24,8 @@ def filter_none_values(data: dict[str, Any]) -> dict[str, Any]:
     return new_data
 
 
-def get_message_data(message_id: str):
-    return db.session.scalar(select(Message).where(Message.id == message_id))
+def get_message_data(message_id: str, session: scoped_session):
+    return session.scalar(select(Message).where(Message.id == message_id))
 
 
 @contextmanager
