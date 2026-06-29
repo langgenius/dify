@@ -750,14 +750,6 @@
       "count": 5
     }
   },
-  "web/app/components/app/configuration/debug/hooks.tsx": {
-    "no-restricted-globals": {
-      "count": 2
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/app/configuration/debug/index.tsx": {
     "react/set-state-in-effect": {
       "count": 1
