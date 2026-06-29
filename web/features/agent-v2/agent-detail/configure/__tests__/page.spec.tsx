@@ -230,6 +230,7 @@ vi.mock('../components/preview/build-chat', async () => {
 
   return {
     AgentBuildChat: (props: {
+      clearChatList?: boolean
       conversationId?: string | null
       onConversationComplete?: (conversationId: string) => void
       onConversationIdChange?: (conversationId: string) => void
@@ -240,6 +241,7 @@ vi.mock('../components/preview/build-chat', async () => {
       return (
         <div role="region" aria-label="build-chat">
           <span>{`build:${props.conversationId ?? 'none'}`}</span>
+          <span>{`clear:${props.clearChatList ? 'yes' : 'no'}`}</span>
           <span>{`sent:${messageSent ? 'yes' : 'no'}`}</span>
           <button type="button" onClick={() => props.onConversationIdChange?.('build-conversation-new')}>
             save build conversation
@@ -455,6 +457,74 @@ describe('AgentConfigurePage', () => {
 
       expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
       expect(screen.queryByRole('region', { name: 'preview-chat' })).not.toBeInTheDocument()
+    })
+
+    it('should not keep a stale clear command after the composer content remounts', async () => {
+      const user = userEvent.setup()
+      const queryClient = new QueryClient()
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+
+      const view = render(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:debug-conversation-old')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:no')
+
+      await user.click(screen.getByRole('button', { name: 'restart preview' }))
+
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:none')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:yes')
+
+      mocks.queryState.agent = {
+        ...mocks.queryState.agent,
+        data: {
+          ...mocks.queryState.agent.data,
+          debug_conversation_has_messages: true,
+          debug_conversation_id: 'debug-conversation-new',
+          debug_conversation_message_count: 1,
+        },
+      }
+      mocks.queryState.composer = {
+        data: undefined,
+        isFetching: true,
+        isError: false,
+        isPending: true,
+        isSuccess: false,
+        refetch: vi.fn(),
+      }
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+      expect(screen.queryByRole('region', { name: 'build-chat' })).not.toBeInTheDocument()
+
+      mocks.queryState.composer = {
+        data: {},
+        isFetching: false,
+        isError: false,
+        isPending: false,
+        isSuccess: true,
+        refetch: vi.fn(),
+      }
+      view.rerender(
+        <QueryClientProvider client={queryClient}>
+          <AgentConfigurePage agentId="agent-1" />
+        </QueryClientProvider>,
+      )
+
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('build:debug-conversation-new')
+      expect(screen.getByRole('region', { name: 'build-chat' })).toHaveTextContent('clear:no')
     })
 
     it('should keep preview disabled', async () => {

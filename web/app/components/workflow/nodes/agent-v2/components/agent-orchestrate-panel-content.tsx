@@ -30,7 +30,6 @@ import { AgentConfigureRightPanelChat } from '@/features/agent-v2/agent-detail/c
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from '@/features/agent-v2/agent-detail/configure/components/workspace'
 import {
   agentConfigureBuildDraftActionsDisabledAtom,
-  agentConfigureClearPreviewChatAtom,
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelChatModeAtom,
   agentConfigureScopedAtoms,
@@ -258,7 +257,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const jotaiStore = useJotaiStore()
   const composerState = inlineComposerState
   const buildDraftActionsDisabled = useAtomValue(agentConfigureBuildDraftActionsDisabledAtom)
-  const clearPreviewChat = useAtomValue(agentConfigureClearPreviewChatAtom)
+  const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
@@ -267,7 +266,6 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   })
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setBuildDraftActionsDisabled = useSetAtom(agentConfigureBuildDraftActionsDisabledAtom)
-  const setClearPreviewChat = useSetAtom(agentConfigureClearPreviewChatAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const rebaseComposerDraft = useSetAtom(rebaseAgentComposerDraftAtom)
   const { currentModel, setConfigureModel, textGenerationModelList } = useAgentOrchestrateModelOptions()
@@ -476,6 +474,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 
     void refreshDebugConversationAsync().catch(() => undefined)
     resetConversation(rightPanelChatMode)
+    setClearPreviewChat(true)
   }
 
   return (

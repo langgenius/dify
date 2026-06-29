@@ -10,7 +10,6 @@ export const agentConfigureSoulSourceOverrideAtom = atom<AgentConfigureSoulSourc
 
 export const agentConfigureShowChatFeaturesAtom = atom(false)
 export const agentConfigureShowPreviewVersionsAtom = atom(false)
-export const agentConfigureClearPreviewChatAtom = atom(false)
 export const agentConfigureRightPanelModeAtom = atom<AgentConfigureRightPanelMode>('build')
 export const agentConfigureBuildDraftActionsDisabledAtom = atom(false)
 export const agentConfigureConversationIdsAtom = atom<AgentConfigureConversationIds>({
@@ -51,7 +50,6 @@ export const resetAgentConfigureConversationAtom = atom(null, (get, set, mode: A
     ...get(agentConfigureConversationIdsAtom),
     [mode]: null,
   })
-  set(agentConfigureClearPreviewChatAtom, true)
 })
 
 export const agentConfigureScopedAtoms = [
@@ -60,7 +58,6 @@ export const agentConfigureScopedAtoms = [
   agentConfigureSoulSourceOverrideAtom,
   agentConfigureShowChatFeaturesAtom,
   agentConfigureShowPreviewVersionsAtom,
-  agentConfigureClearPreviewChatAtom,
   agentConfigureRightPanelModeAtom,
   agentConfigureBuildDraftActionsDisabledAtom,
   agentConfigureConversationIdsAtom,

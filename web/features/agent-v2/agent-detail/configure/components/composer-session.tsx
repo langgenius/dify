@@ -5,7 +5,7 @@ import type { useAgentConfigureData } from '../hooks'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { ScopeProvider } from 'jotai-scope'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
@@ -14,7 +14,6 @@ import { consoleQuery } from '@/service/client'
 import { useAgentConfigureModelOptions } from '../hooks'
 import {
   agentConfigureBuildDraftActionsDisabledAtom,
-  agentConfigureClearPreviewChatAtom,
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelChatModeAtom,
   agentConfigureRightPanelModeAtom,
@@ -217,7 +216,7 @@ function AgentConfigurePageComposerContent({
     agentSoulConfig,
   } = configureData
   const buildDraftActionsDisabled = useAtomValue(agentConfigureBuildDraftActionsDisabledAtom)
-  const clearPreviewChat = useAtomValue(agentConfigureClearPreviewChatAtom)
+  const [clearPreviewChat, setClearPreviewChat] = useState(false)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
@@ -228,7 +227,6 @@ function AgentConfigurePageComposerContent({
   const showPreviewVersions = useAtomValue(agentConfigureShowPreviewVersionsAtom)
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setBuildDraftActionsDisabled = useSetAtom(agentConfigureBuildDraftActionsDisabledAtom)
-  const setClearPreviewChat = useSetAtom(agentConfigureClearPreviewChatAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
   const setRightPanelMode = useSetAtom(agentConfigureRightPanelModeAtom)
   const setShowChatFeatures = useSetAtom(agentConfigureShowChatFeaturesAtom)
@@ -304,6 +302,7 @@ function AgentConfigurePageComposerContent({
       onRefreshDebugConversation()
 
     resetConversation(rightPanelChatMode)
+    setClearPreviewChat(true)
   }
 
   return (

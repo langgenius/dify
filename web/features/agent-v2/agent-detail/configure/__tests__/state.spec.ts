@@ -1,7 +1,6 @@
 import { createStore } from 'jotai'
 import { describe, expect, it } from 'vitest'
 import {
-  agentConfigureClearPreviewChatAtom,
   agentConfigureComposerRebaseRevisionAtom,
   agentConfigureConversationIdsAtom,
   agentConfigureRightPanelChatModeAtom,
@@ -63,7 +62,6 @@ describe('agent configure state graph', () => {
       build: null,
       preview: 'preview-conversation-1',
     })
-    expect(store.get(agentConfigureClearPreviewChatAtom)).toBe(true)
   })
 
   it('tracks composer rebase as a workflow command', () => {
