@@ -30,7 +30,9 @@ export type AgentAppDetailWithSite = {
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_has_messages?: boolean
   debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
   deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean
@@ -205,7 +207,9 @@ export type AgentAppCopyPayload = {
 }
 
 export type AgentDebugConversationRefreshResponse = {
+  debug_conversation_has_messages?: boolean
   debug_conversation_id: string
+  debug_conversation_message_count?: number
 }
 
 export type AgentDriveListResponse = {
@@ -1690,7 +1694,9 @@ export type AgentAppDetailWithSiteWritable = {
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
+  debug_conversation_has_messages?: boolean
   debug_conversation_id?: string | null
+  debug_conversation_message_count?: number
   deleted_tools?: Array<DeletedTool>
   description?: string | null
   enable_api: boolean

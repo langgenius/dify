@@ -96,7 +96,9 @@ export const zSimpleResultResponse = z.object({
  * AgentDebugConversationRefreshResponse
  */
 export const zAgentDebugConversationRefreshResponse = z.object({
+  debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string(),
+  debug_conversation_message_count: z.int().optional().default(0),
 })
 
 /**
@@ -864,7 +866,9 @@ export const zAgentAppDetailWithSite = z.object({
   bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string().nullish(),
+  debug_conversation_message_count: z.int().optional().default(0),
   deleted_tools: z.array(zDeletedTool).optional(),
   description: z.string().nullish(),
   enable_api: z.boolean(),
@@ -2435,7 +2439,9 @@ export const zAgentAppDetailWithSiteWritable = z.object({
   bound_agent_id: z.string().nullish(),
   created_at: z.int().nullish(),
   created_by: z.string().nullish(),
+  debug_conversation_has_messages: z.boolean().optional().default(false),
   debug_conversation_id: z.string().nullish(),
+  debug_conversation_message_count: z.int().optional().default(0),
   deleted_tools: z.array(zDeletedTool).optional(),
   description: z.string().nullish(),
   enable_api: z.boolean(),

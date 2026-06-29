@@ -2366,6 +2366,16 @@ def test_agent_app_debug_conversation_create_reuse_and_recreate():
     assert recreate_session.commits == 1
 
 
+def test_agent_app_debug_conversation_message_count():
+    session = FakeSession(scalar=[3])
+
+    count = AgentRosterService(session).count_agent_app_debug_conversation_messages(
+        conversation_id="debug-conversation-1",
+    )
+
+    assert count == 3
+
+
 def test_agent_app_debug_conversation_requires_app_binding():
     agent = Agent(
         id="agent-1",
