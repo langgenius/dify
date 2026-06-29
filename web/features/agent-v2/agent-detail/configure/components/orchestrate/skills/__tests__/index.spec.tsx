@@ -1,3 +1,4 @@
+import type { AgentConfigApiContext } from '../../config-context'
 import { toast } from '@langgenius/dify-ui/toast'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -8,7 +9,6 @@ import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/c
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
-import type { AgentConfigApiContext } from '../../config-context'
 import { AgentConfigApiContextProvider } from '../../config-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentSkills } from '../index'

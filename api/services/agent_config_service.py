@@ -18,15 +18,16 @@ import urllib.parse
 import zipfile
 from dataclasses import dataclass
 from enum import StrEnum
+from operator import itemgetter
 from typing import Literal
 
-from core.app.file_access.controller import DatabaseFileAccessController
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 from sqlalchemy.exc import DataError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
+from core.app.file_access.controller import DatabaseFileAccessController
 from core.db.session_factory import session_factory
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
@@ -661,7 +662,9 @@ class AgentConfigService:
             file_kind=file_ref.file_kind,
             file_id=file_ref.file_id,
         )
-        return self._preview_bytes(path=filename or file_ref.name, size=file_ref.size, payload=payload, field_name="name")
+        return self._preview_bytes(
+            path=filename or file_ref.name, size=file_ref.size, payload=payload, field_name="name"
+        )
 
     def update_env(
         self,
@@ -1117,8 +1120,14 @@ class AgentConfigService:
         return {
             "agent_id": target.agent_id,
             "config_version": AgentConfigService._config_version_payload(target),
-            "skills": {"items": [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]},
-            "files": {"items": [AgentConfigService._serialize_file_item(file_ref) for file_ref in target.agent_soul.config_files]},
+            "skills": {
+                "items": [AgentConfigService._serialize_skill_item(skill) for skill in target.agent_soul.config_skills]
+            },
+            "files": {
+                "items": [
+                    AgentConfigService._serialize_file_item(file_ref) for file_ref in target.agent_soul.config_files
+                ]
+            },
             "env_keys": AgentConfigService._env_keys(target.agent_soul),
             "note": target.agent_soul.config_note,
         }
@@ -1187,12 +1196,18 @@ class AgentConfigService:
     def _normalize_archive_member_path(cls, path: str) -> str:
         normalized = path.replace("\\", "/").strip("/")
         if not normalized:
-            raise AgentConfigServiceError("config_skill_file_invalid", "config skill file path is invalid", status_code=400)
+            raise AgentConfigServiceError(
+                "config_skill_file_invalid", "config skill file path is invalid", status_code=400
+            )
         if "\x00" in normalized or any(ord(ch) < 0x20 for ch in normalized):
-            raise AgentConfigServiceError("config_skill_file_invalid", "config skill file path is invalid", status_code=400)
+            raise AgentConfigServiceError(
+                "config_skill_file_invalid", "config skill file path is invalid", status_code=400
+            )
         segments = normalized.split("/")
         if any(not segment or segment in {".", ".."} for segment in segments):
-            raise AgentConfigServiceError("config_skill_file_invalid", "config skill file path is invalid", status_code=400)
+            raise AgentConfigServiceError(
+                "config_skill_file_invalid", "config skill file path is invalid", status_code=400
+            )
         return "/".join(segments)
 
     @classmethod
@@ -1204,8 +1219,7 @@ class AgentConfigService:
             for info in archive.infolist():
                 normalized_path = cls._normalize_archive_member_path(info.filename)
                 segments = normalized_path.split("/")
-                for index in range(1, len(segments)):
-                    directories.add("/".join(segments[:index]))
+                directories.update("/".join(segments[:index]) for index in range(1, len(segments)))
                 if info.is_dir():
                     directories.add(normalized_path)
                     continue
@@ -1224,7 +1238,7 @@ class AgentConfigService:
             if skill_md_preview is None or skill_md_preview["binary"]:
                 raise ValueError("skill archive is missing a text SKILL.md")
 
-        directory_items = [
+        directory_items: list[dict[str, object]] = [
             {
                 "path": path,
                 "name": path.rsplit("/", 1)[-1],
@@ -1234,7 +1248,7 @@ class AgentConfigService:
             }
             for path in sorted(directories)
         ]
-        files = sorted([*directory_items, *members], key=lambda item: (item["path"], item["type"]))
+        files = sorted([*directory_items, *members], key=itemgetter("path", "type"))
         return files, skill_md_preview
 
     def _load_skill_archive_member(self, *, tenant_id: str, file_id: str, path: str) -> bytes:
@@ -1309,7 +1323,9 @@ class AgentConfigService:
         return storage.load_once(upload_file.key), upload_file.name, upload_file.mime_type
 
     @staticmethod
-    def _resolve_download_url(*, tenant_id: str, file_kind: Literal["upload_file", "tool_file"], file_id: str) -> str | None:
+    def _resolve_download_url(
+        *, tenant_id: str, file_kind: Literal["upload_file", "tool_file"], file_id: str
+    ) -> str | None:
         controller = DatabaseFileAccessController()
         from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
 
