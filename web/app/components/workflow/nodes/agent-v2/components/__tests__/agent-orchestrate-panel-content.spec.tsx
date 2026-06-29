@@ -82,7 +82,7 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
   return {
     AgentBuildChat: (props: {
       conversationId?: string | null
-      onConversationComplete?: () => void
+      onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
       onConversationIdChange?: (conversationId: string) => void
       onSendInterrupted?: () => void
       onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
@@ -107,7 +107,7 @@ vi.mock('@/features/agent-v2/agent-detail/configure/components/preview/build-cha
           >
             send build message
           </button>
-          <button type="button" onClick={() => props.onConversationComplete?.()}>
+          <button type="button" onClick={() => props.onConversationComplete?.('build-conversation-new', 'workflow-run-1')}>
             complete build conversation
           </button>
           <button
@@ -232,6 +232,41 @@ vi.mock('@/service/client', () => ({
     },
     apps: {
       byAppId: {
+        workflowRuns: {
+          byWorkflowRunId: {
+            agentNodes: {
+              byNodeId: {
+                sandbox: {
+                  files: {
+                    get: {
+                      key: () => ['workflow-agent-node-sandbox-files'],
+                      queryOptions: () => ({
+                        queryKey: ['workflow-agent-node-sandbox-files'],
+                        queryFn: () => Promise.resolve({
+                          entries: [{
+                            name: 'result.txt',
+                            type: 'file',
+                          }],
+                          path: '.',
+                        }),
+                      }),
+                    },
+                    read: {
+                      get: {
+                        queryOptions: () => ({
+                          queryKey: ['workflow-agent-node-sandbox-file'],
+                          queryFn: () => Promise.resolve({
+                            text: 'result',
+                          }),
+                        }),
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
         workflows: {
           draft: {
             nodes: {
@@ -379,6 +414,9 @@ describe('WorkflowInlineAgentConfigureWorkspace', () => {
         }),
       })
 
+      fireEvent.click(await screen.findByRole('button', {
+        name: 'complete build conversation',
+      }))
       fireEvent.click(await screen.findByRole('button', {
         name: 'agentV2.agentDetail.configure.workingDirectory.open',
       }))

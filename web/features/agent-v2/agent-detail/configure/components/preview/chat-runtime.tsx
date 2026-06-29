@@ -23,7 +23,7 @@ import { Avatar } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { skipToken, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
@@ -285,6 +285,16 @@ const getAgentDebugMessageAnswer = (message: MessageDetailResponse) => {
   return message.answer ?? ''
 }
 
+function getLastWorkflowRunId(messages: MessageDetailResponse[]) {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const workflowRunId = messages[index]?.workflow_run_id
+    if (workflowRunId)
+      return workflowRunId
+  }
+
+  return null
+}
+
 function getFormattedAgentDebugChatTree(messages: MessageDetailResponse[]): ChatItemInTree[] {
   const chatList: IChatItem[] = []
 
@@ -441,8 +451,9 @@ export type AgentChatRuntimeProps = {
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
-  onConversationComplete?: (conversationId: string) => void
+  onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
+  onWorkflowRunIdChange?: (workflowRunId: string | null) => void
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
   onSendInterrupted?: () => void
 }
@@ -463,6 +474,7 @@ export function AgentChatRuntime({
   onClearChatListChange,
   onConversationComplete,
   onConversationIdChange,
+  onWorkflowRunIdChange,
   onSendInterrupted,
   onSaveDraftBeforeRun,
 }: AgentChatRuntimeProps) {
@@ -489,6 +501,12 @@ export function AgentChatRuntime({
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
+  useEffect(() => {
+    if (!conversationId || !historyQuery.data)
+      return
+
+    onWorkflowRunIdChange?.(getLastWorkflowRunId(historyQuery.data.data ?? []))
+  }, [conversationId, historyQuery.data, onWorkflowRunIdChange])
 
   if (conversationId && historyQuery.isPending && !conversationBelongsToCurrentSession) {
     return (
@@ -562,7 +580,7 @@ function AgentPreviewChatSession({
   sendButtonLabel?: string
   renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
-  onConversationComplete?: (conversationId: string) => void
+  onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onConversationIdChange?: (conversationId: string) => void
   onCurrentSessionConversationIdChange: (conversationId: string) => void
   onSaveDraftBeforeRun?: () => Promise<AgentSoulConfig | void>
@@ -666,11 +684,11 @@ function AgentPreviewChatSession({
             })
           },
           onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
-          onConversationComplete: (completedConversationId) => {
+          onConversationComplete: (completedConversationId, workflowRunId) => {
             if (completedConversationId && completedConversationId !== conversationId)
               onCurrentSessionConversationIdChange(completedConversationId)
             onConversationIdChange?.(completedConversationId)
-            onConversationComplete?.(completedConversationId)
+            onConversationComplete?.(completedConversationId, workflowRunId)
           },
           onSendSettled: (hasError) => {
             if (hasError)

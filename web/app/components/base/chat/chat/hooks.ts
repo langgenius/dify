@@ -51,7 +51,7 @@ type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
   onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
-  onConversationComplete?: (conversationId: string) => void
+  onConversationComplete?: (conversationId: string, workflowRunId?: string) => void
   onSendSettled?: (hasError?: boolean) => void
   isPublicAPI?: boolean
 }
@@ -318,7 +318,7 @@ export const useChat = (
             return
 
           if (onConversationComplete)
-            onConversationComplete(conversationIdRef.current)
+            onConversationComplete(conversationIdRef.current, workflowRunId)
 
           if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
             try {
@@ -831,8 +831,7 @@ export const useChat = (
           if (hasError)
             return
 
-          if (onConversationComplete)
-            onConversationComplete(conversationIdRef.current)
+          let completedWorkflowRunId = responseItem.workflow_run_id
 
           if (conversationIdRef.current && !hasStopRespondedRef.current && onGetConversationMessages) {
             const { data }: any = await onGetConversationMessages(
@@ -840,8 +839,9 @@ export const useChat = (
               newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
             )
             const newResponseItem = data.find((item: any) => item.id === responseItem.id)
+            completedWorkflowRunId = newResponseItem?.workflow_run_id ?? completedWorkflowRunId
             if (!newResponseItem)
-              return
+              return onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
 
             const isUseAgentThought = newResponseItem.agent_thoughts?.length > 0 && newResponseItem.agent_thoughts[newResponseItem.agent_thoughts?.length - 1].thought === newResponseItem.answer
             updateChatTreeNode(responseItem.id, {
@@ -872,6 +872,9 @@ export const useChat = (
               },
             })
           }
+
+          onConversationComplete?.(conversationIdRef.current, completedWorkflowRunId)
+
           if (config?.suggested_questions_after_answer?.enabled && !hasStopRespondedRef.current && onGetSuggestedQuestions) {
             try {
               const { data }: any = await onGetSuggestedQuestions(

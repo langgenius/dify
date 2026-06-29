@@ -11,10 +11,21 @@ import { getFileIconType } from '../orchestrate/files/file-icon'
 import { AgentSkillDetailDialog } from '../orchestrate/skills/detail-dialog'
 
 type AgentWorkingDirectoryPanelProps = {
-  agentId: string
-  conversationId?: string | null
+  source: AgentWorkingDirectorySource
   onOpenChange: (open: boolean) => void
   open: boolean
+}
+
+export type AgentWorkingDirectorySource = {
+  type: 'agent'
+  agentId: string
+  conversationId?: string | null
+} | {
+  type: 'workflow-node'
+  appId?: string
+  conversationId?: string | null
+  nodeId: string
+  workflowRunId?: string | null
 }
 
 type SandboxErrorPayload = {
@@ -160,8 +171,7 @@ async function isNoActiveSessionError(error: unknown) {
 const isNotFoundResponse = (error: unknown) => error instanceof Response && error.status === 404
 
 export function AgentWorkingDirectoryPanel({
-  agentId,
-  conversationId,
+  source,
   onOpenChange,
   open,
 }: AgentWorkingDirectoryPanelProps) {
@@ -171,22 +181,46 @@ export function AgentWorkingDirectoryPanel({
   const [loadedFolderPaths, setLoadedFolderPaths] = useState<string[]>([])
   const [openFolderPaths, setOpenFolderPaths] = useState<string[]>([])
   const [pendingOpenFolderPaths, setPendingOpenFolderPaths] = useState<string[]>([])
-  const getFileListQueryOptions = (path: string) => consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
-    input: conversationId
-      ? {
-          params: {
-            agent_id: agentId,
-          },
-          query: {
-            conversation_id: conversationId,
-            path,
-          },
-        }
-      : skipToken,
-    context: {
-      silent: true,
-    },
-  })
+  const workflowNodeRunId = source.type === 'workflow-node'
+    ? (source.workflowRunId ?? source.conversationId)
+    : undefined
+  const hasWorkingDirectorySource = source.type === 'agent'
+    ? !!source.conversationId
+    : !!source.appId && !!workflowNodeRunId
+  const getFileListQueryOptions = (path: string) => source.type === 'agent'
+    ? consoleQuery.agent.byAgentId.sandbox.files.get.queryOptions({
+        input: source.conversationId
+          ? {
+              params: {
+                agent_id: source.agentId,
+              },
+              query: {
+                conversation_id: source.conversationId,
+                path,
+              },
+            }
+          : skipToken,
+        context: {
+          silent: true,
+        },
+      })
+    : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.get.queryOptions({
+        input: source.appId && workflowNodeRunId
+          ? {
+              params: {
+                app_id: source.appId,
+                workflow_run_id: workflowNodeRunId,
+                node_id: source.nodeId,
+              },
+              query: {
+                path,
+              },
+            }
+          : skipToken,
+        context: {
+          silent: true,
+        },
+      })
   const fileListQueryOptions = getFileListQueryOptions('.')
   const fileListQuery = useQuery({
     ...fileListQueryOptions,
@@ -208,7 +242,7 @@ export function AgentWorkingDirectoryPanel({
     retry: false,
   })
   const expandedFolderQueries = useQueries({
-    queries: conversationId
+    queries: hasWorkingDirectorySource
       ? loadedFolderPaths.map((path) => {
           const queryOptions = getFileListQueryOptions(path)
 
@@ -239,25 +273,43 @@ export function AgentWorkingDirectoryPanel({
   }, buildSandboxFileTree(fileListQuery.data?.entries, fileListQuery.data?.path))
   const selectedWorkingDirectoryFile = findReadableFile(workingDirectoryFiles, selectedFileId)
     ?? findFirstReadableFile(workingDirectoryFiles)
-  const isFileListLoading = !!conversationId && fileListQuery.isPending
+  const isFileListLoading = hasWorkingDirectorySource && fileListQuery.isPending
   const loadingFolderPaths = new Set(loadedFolderPaths.filter((path, index) => expandedFolderQueries[index]?.isPending))
   const loadedFolderPathIndexes = new Map(loadedFolderPaths.map((path, index) => [path, index]))
-  const fileReadQueryOptions = consoleQuery.agent.byAgentId.sandbox.files.read.get.queryOptions({
-    input: conversationId && selectedWorkingDirectoryFile?.id
-      ? {
-          params: {
-            agent_id: agentId,
-          },
-          query: {
-            conversation_id: conversationId,
-            path: selectedWorkingDirectoryFile.id,
-          },
-        }
-      : skipToken,
-    context: {
-      silent: true,
-    },
-  })
+  const fileReadQueryOptions = source.type === 'agent'
+    ? consoleQuery.agent.byAgentId.sandbox.files.read.get.queryOptions({
+        input: source.conversationId && selectedWorkingDirectoryFile?.id
+          ? {
+              params: {
+                agent_id: source.agentId,
+              },
+              query: {
+                conversation_id: source.conversationId,
+                path: selectedWorkingDirectoryFile.id,
+              },
+            }
+          : skipToken,
+        context: {
+          silent: true,
+        },
+      })
+    : consoleQuery.apps.byAppId.workflowRuns.byWorkflowRunId.agentNodes.byNodeId.sandbox.files.read.get.queryOptions({
+        input: source.appId && workflowNodeRunId && selectedWorkingDirectoryFile?.id
+          ? {
+              params: {
+                app_id: source.appId,
+                workflow_run_id: workflowNodeRunId,
+                node_id: source.nodeId,
+              },
+              query: {
+                path: selectedWorkingDirectoryFile.id,
+              },
+            }
+          : skipToken,
+        context: {
+          silent: true,
+        },
+      })
   const fileReadQuery = useQuery({
     ...fileReadQueryOptions,
     enabled: open && !!selectedWorkingDirectoryFile,

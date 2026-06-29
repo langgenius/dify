@@ -257,11 +257,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const composerState = inlineComposerState
   const [buildDraftActionsDisabled, setBuildDraftActionsDisabled] = useState(false)
   const [clearPreviewChat, setClearPreviewChat] = useState(false)
+  const [workflowRunId, setWorkflowRunId] = useState<string | null>(null)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
   const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
     agentId,
+    appId,
     conversationId: conversationIds[rightPanelChatMode],
+    nodeId,
+    workflowRunId,
   })
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setConversationId = useSetAtom(setAgentConfigureConversationIdAtom)
@@ -344,8 +348,9 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const resetBuildChatSession = useCallback(async () => {
     await refreshDebugConversationAsync().catch(() => undefined)
     setConversationId({ mode: 'build', conversationId: null })
+    setWorkflowRunId(null)
     setClearPreviewChat(true)
-  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId])
+  }, [refreshDebugConversationAsync, setClearPreviewChat, setConversationId, setWorkflowRunId])
   const rebaseComposerDraftFromSoulConfig = useCallback((agentSoulConfig?: AgentSoulConfig) => {
     rebaseComposerDraft({
       draft: agentSoulConfigToFormState(agentSoulConfig),
@@ -558,12 +563,16 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               draftType="debug_build"
               mode={rightPanelChatMode}
               onClearChatListChange={setClearPreviewChat}
-              onConversationComplete={(mode, completedConversationId) => {
+              onConversationComplete={(mode, completedConversationId, completedWorkflowRunId) => {
                 if (mode === 'build') {
+                  setWorkflowRunId(completedWorkflowRunId ?? completedConversationId)
                   invalidateAgentWorkingDirectoryFiles({
                     agentId,
+                    appId,
                     conversationId: completedConversationId,
+                    nodeId,
                     queryClient,
+                    workflowRunId: completedWorkflowRunId ?? completedConversationId,
                   })
                   buildDraftActions.refreshBuildDraftAfterBuildChat(() => setBuildDraftActionsDisabled(false))
                 }
@@ -571,8 +580,13 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               onConversationIdChange={(mode, conversationId) => {
                 setConversationId({ mode, conversationId })
               }}
+              onWorkflowRunIdChange={(nextWorkflowRunId) => {
+                if (nextWorkflowRunId)
+                  setWorkflowRunId(nextWorkflowRunId)
+              }}
               onSaveDraftBeforeRun={async () => {
                 setBuildDraftActionsDisabled(true)
+                setWorkflowRunId(null)
                 try {
                   return await prepareInlineBuildDraftBeforeRun()
                 }
