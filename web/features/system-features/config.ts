@@ -53,6 +53,7 @@ export const defaultSystemFeatures = {
   enable_trial_app: false,
   enable_explore_banner: false,
   enable_learn_app: true,
+  enable_step_by_step_tour: false,
 } satisfies GetSystemFeaturesResponse
 
 export const cloudSystemFeatures = {
@@ -103,5 +104,6 @@ export const cloudSystemFeatures = {
   enable_trial_app: env.NEXT_PUBLIC_ENABLE_TRIAL_APP,
   enable_explore_banner: env.NEXT_PUBLIC_ENABLE_EXPLORE_BANNER,
   enable_learn_app: env.NEXT_PUBLIC_ENABLE_LEARN_APP,
+  enable_step_by_step_tour: env.NEXT_PUBLIC_ENABLE_STEP_BY_STEP_TOUR,
   rbac_enabled: env.NEXT_PUBLIC_RBAC_ENABLED,
 } satisfies GetSystemFeaturesResponse
