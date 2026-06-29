@@ -25,7 +25,7 @@ import { AgentOrchestratePanel } from '@/features/agent-v2/agent-detail/configur
 import { AgentBuildDraftBar } from '@/features/agent-v2/agent-detail/configure/components/orchestrate/build-draft-bar'
 import { AgentBuildPanelBackground } from '@/features/agent-v2/agent-detail/configure/components/preview/build-background'
 import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
-import { useAgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/hook/use-working-directory-panel'
+import { invalidateAgentWorkingDirectoryFiles, useAgentWorkingDirectoryPanel } from '@/features/agent-v2/agent-detail/configure/components/preview/hook/use-working-directory-panel'
 import { AgentConfigureRightPanelChat } from '@/features/agent-v2/agent-detail/configure/components/preview/right-panel-chat'
 import { AgentConfigurePreviewSurface, AgentConfigureWorkspace } from '@/features/agent-v2/agent-detail/configure/components/workspace'
 import {
@@ -246,12 +246,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
   const { t } = useTranslation('common')
   const queryClient = useQueryClient()
   const jotaiStore = useJotaiStore()
-  const workingDirectoryPanel = useAgentWorkingDirectoryPanel()
   const composerState = inlineComposerState
   const buildDraftActionsDisabled = useAtomValue(agentConfigureBuildDraftActionsDisabledAtom)
   const clearPreviewChat = useAtomValue(agentConfigureClearPreviewChatAtom)
   const conversationIds = useAtomValue(agentConfigureConversationIdsAtom)
   const rightPanelChatMode = useAtomValue(agentConfigureRightPanelChatModeAtom)
+  const workingDirectoryPanel = useAgentWorkingDirectoryPanel({
+    agentId,
+    conversationId: conversationIds[rightPanelChatMode],
+  })
   const resetConversation = useSetAtom(resetAgentConfigureConversationAtom)
   const setBuildDraftActionsDisabled = useSetAtom(agentConfigureBuildDraftActionsDisabledAtom)
   const setClearPreviewChat = useSetAtom(agentConfigureClearPreviewChatAtom)
@@ -519,9 +522,15 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
               draftType="debug_build"
               mode={rightPanelChatMode}
               onClearChatListChange={setClearPreviewChat}
-              onConversationComplete={(mode) => {
-                if (mode === 'build')
+              onConversationComplete={(mode, completedConversationId) => {
+                if (mode === 'build') {
+                  invalidateAgentWorkingDirectoryFiles({
+                    agentId,
+                    conversationId: completedConversationId,
+                    queryClient,
+                  })
                   buildDraftActions.refreshBuildDraftAfterBuildChat(() => setBuildDraftActionsDisabled(false))
+                }
               }}
               onConversationIdChange={(mode, conversationId) => {
                 setConversationId({ mode, conversationId })
