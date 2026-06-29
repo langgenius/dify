@@ -24,7 +24,7 @@ from services.errors.account import (
 @pytest.fixture
 def sqlite_session() -> Iterator[Session]:
     engine = create_engine("sqlite:///:memory:")
-    Account.__table__.create(engine)
+    Account.metadata.create_all(engine, tables=[Account.metadata.tables[Account.__tablename__]])
     with Session(engine, expire_on_commit=False) as session:
         yield session
 
