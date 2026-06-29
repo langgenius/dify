@@ -90,6 +90,7 @@ const createComposerState = (overrides: Partial<AgentComposerMutationResponse> =
     status: 'active',
   },
   agent_soul: {
+    config_note: '',
     schema_version: 1,
   },
   hidden_app_backed: false,
@@ -119,8 +120,11 @@ const createWorkflowComposerState = (overrides: Partial<WorkflowAgentComposerMut
     status: 'active',
   },
   agent_soul: {
+    config_note: '',
     schema_version: 1,
   },
+  debug_conversation_has_messages: overrides.debug_conversation_has_messages ?? false,
+  debug_conversation_message_count: overrides.debug_conversation_message_count ?? 0,
   hidden_app_backed: false,
   binding: {
     agent_id: 'agent-1',
