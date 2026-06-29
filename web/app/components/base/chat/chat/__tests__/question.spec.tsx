@@ -2,7 +2,7 @@ import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import type { ChatConfig, ChatItem, OnRegenerate } from '../../types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
 import * as React from 'react'
@@ -48,9 +48,6 @@ vi.mock('../content-switch', () => ({
   },
 }))
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
-vi.mock('@/app/components/base/markdown', () => ({
-  Markdown: ({ content }: { content: string }) => <div className="markdown-body">{content}</div>,
-}))
 
 // Mock ResizeObserver and capture lifecycle for targeted coverage
 const observeMock = vi.fn()
@@ -132,11 +129,21 @@ describe('Question component', () => {
   it('should render the question content container and default avatar when hideAvatar is false', () => {
     const { container } = renderWithProvider(makeItem())
 
-    const markdown = container.querySelector('.markdown-body')
-    expect(markdown).toBeInTheDocument()
+    expect(screen.getByTestId('question-content')).toHaveTextContent('This is the question content')
 
     const avatar = container.querySelector('.size-10') || container.querySelector('.size-10.shrink-0')
     expect(avatar).toBeTruthy()
+  })
+
+  it('should render user supplied HTML as plain text', () => {
+    const content = '<button class="primary-button">Confirm</button>'
+    renderWithProvider(makeItem({ content }))
+
+    const contentContainer = screen.getByTestId('question-content')
+
+    expect(contentContainer).toHaveTextContent(content)
+    expect(within(contentContainer).queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
+    expect(contentContainer.querySelector('.primary-button')).not.toBeInTheDocument()
   })
 
   it('should hide avatar when hideAvatar is true', () => {
@@ -223,9 +230,9 @@ describe('Question component', () => {
     })
   })
 
-  it('should cancel editing and revert to original markdown when cancel is clicked', async () => {
+  it('should cancel editing and revert to original text when cancel is clicked', async () => {
     const user = userEvent.setup()
-    const { container } = renderWithProvider(makeItem())
+    renderWithProvider(makeItem())
 
     const editBtn = screen.getByRole('button', { name: 'common.operation.edit' })
     await user.click(editBtn)
@@ -239,8 +246,7 @@ describe('Question component', () => {
 
     await waitFor(() => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-      const md = container.querySelector('.markdown-body')
-      expect(md).toBeInTheDocument()
+      expect(screen.getByTestId('question-content')).toHaveTextContent('This is the question content')
     })
   })
 

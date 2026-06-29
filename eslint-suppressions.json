@@ -1236,11 +1236,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/chat/chat/question.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
   "web/app/components/base/chat/chat/type.ts": {
     "ts/no-explicit-any": {
       "count": 5
