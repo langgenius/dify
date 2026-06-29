@@ -2145,12 +2145,14 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     @classmethod
     def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
+        from core.workflow.human_input import session_binding
+
         match pause_reason:
             case HumanInputRequired():
                 return cls(
                     pause_id=pause_id,
                     type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
-                    form_id=pause_reason.form_id,
+                    form_id=session_binding.resolve_form_id_from_session_id(session_id=pause_reason.form_id),
                     node_id=pause_reason.node_id,
                 )
             case SchedulingPause():
@@ -2159,9 +2161,11 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
                 raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
     def to_entity(self) -> PauseReason:
+        from core.workflow.human_input import session_binding
+
         if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
             return HumanInputRequired(
-                form_id=self.form_id,
+                form_id=session_binding.issue_session_id_for_form(form_id=self.form_id),
                 form_content="",
                 node_id=self.node_id,
                 node_title="",

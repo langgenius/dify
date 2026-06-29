@@ -23,6 +23,7 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.workflow.human_input_forms import load_form_tokens_by_form_id as _load_form_tokens_by_form_id
+from core.workflow.human_input import session_binding
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from fields.workflow_run_fields import (
@@ -476,8 +477,13 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
         pause_reasons = pause_entity.get_pause_reasons() if pause_entity else []
+        resolved_form_id_by_session_id = {
+            reason.form_id: session_binding.resolve_form_id_from_session_id(session_id=reason.form_id)
+            for reason in pause_reasons
+            if isinstance(reason, HumanInputRequired)
+        }
         form_tokens_by_form_id = _load_form_tokens_by_form_id(
-            [reason.form_id for reason in pause_reasons if isinstance(reason, HumanInputRequired)]
+            list(resolved_form_id_by_session_id.values())
         )
 
         # Build response
@@ -493,7 +499,9 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
                         pause_type=HumanInputPauseTypeResponse(
                             type="human_input",
                             form_id=reason.form_id,
-                            backstage_input_url=_build_backstage_input_url(form_tokens_by_form_id.get(reason.form_id)),
+                            backstage_input_url=_build_backstage_input_url(
+                                form_tokens_by_form_id.get(resolved_form_id_by_session_id[reason.form_id])
+                            ),
                         ),
                     )
                 )
