@@ -103,7 +103,7 @@ def _agent_soul_config_json(agent_soul: AgentSoulConfig | dict[str, Any]) -> dic
 class AgentComposerService:
     @classmethod
     def load_workflow_composer(
-        cls, *, tenant_id: str, app_id: str, node_id: str, snapshot_id: str | None = None
+        cls, *, tenant_id: str, app_id: str, node_id: str, account_id: str | None = None, snapshot_id: str | None = None
     ) -> dict[str, Any]:
         workflow = cls._get_draft_workflow(tenant_id=tenant_id, app_id=app_id)
         binding = cls._get_workflow_binding(tenant_id=tenant_id, workflow_id=workflow.id, node_id=node_id)
@@ -119,7 +119,7 @@ class AgentComposerService:
             agent=agent,
             snapshot_id=snapshot_id,
         )
-        return cls._serialize_workflow_state(binding=binding, agent=agent, version=version)
+        return cls._serialize_workflow_state(binding=binding, agent=agent, version=version, account_id=account_id)
 
     @classmethod
     def _workflow_composer_version(
@@ -1849,6 +1849,7 @@ class AgentComposerService:
         binding: WorkflowAgentNodeBinding,
         agent: Agent | None,
         version: AgentConfigSnapshot | None,
+        account_id: str | None = None,
     ) -> dict[str, Any]:
         locked = bool(agent and agent.scope == AgentScope.ROSTER)
         save_options = [ComposerSaveStrategy.NODE_JOB_ONLY.value]
@@ -1862,6 +1863,12 @@ class AgentComposerService:
             )
         else:
             save_options.append(ComposerSaveStrategy.SAVE_TO_ROSTER.value)
+        debug_conversation_id = cls._workflow_inline_debug_conversation_id(
+            tenant_id=binding.tenant_id,
+            binding=binding,
+            agent=agent,
+            account_id=account_id,
+        )
         return {
             "variant": ComposerVariant.WORKFLOW.value,
             "agent": cls._serialize_agent(agent) if agent else None,
@@ -1896,9 +1903,34 @@ class AgentComposerService:
             "backing_app_id": agent.backing_app_id if agent else None,
             "hidden_app_backed": bool(agent and agent.scope == AgentScope.WORKFLOW_ONLY and agent.backing_app_id),
             "chat_endpoint": f"/console/api/agent/{agent.id}/chat-messages" if agent else None,
+            "debug_conversation_id": debug_conversation_id,
             "workflow_id": binding.workflow_id,
             "node_id": binding.node_id,
         }
+
+    @staticmethod
+    def _workflow_inline_debug_conversation_id(
+        *,
+        tenant_id: str,
+        binding: WorkflowAgentNodeBinding,
+        agent: Agent | None,
+        account_id: str | None,
+    ) -> str | None:
+        if (
+            not account_id
+            or not agent
+            or binding.binding_type != WorkflowAgentBindingType.INLINE_AGENT
+            or agent.scope != AgentScope.WORKFLOW_ONLY
+        ):
+            return None
+
+        from services.agent.roster_service import AgentRosterService
+
+        return AgentRosterService(db.session).get_or_create_agent_app_debug_conversation_id(
+            tenant_id=tenant_id,
+            agent_id=agent.id,
+            account_id=account_id,
+        )
 
     @classmethod
     def _serialize_agent(cls, agent: Agent) -> dict[str, Any]:

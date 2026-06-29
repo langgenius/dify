@@ -3659,6 +3659,7 @@ export const zWorkflowAgentComposerResponse = z.object({
   backing_app_id: z.string().nullish(),
   binding: zAgentComposerBindingResponse.nullish(),
   chat_endpoint: z.string().nullish(),
+  debug_conversation_id: z.string().nullish(),
   effective_declared_outputs: z.array(zDeclaredOutputConfig).optional(),
   hidden_app_backed: z.boolean().optional().default(false),
   impact_summary: zAgentComposerImpactResponse.nullish(),

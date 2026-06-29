@@ -975,6 +975,7 @@ export type WorkflowAgentComposerResponse = {
   backing_app_id?: string | null
   binding?: AgentComposerBindingResponse | null
   chat_endpoint?: string | null
+  debug_conversation_id?: string | null
   effective_declared_outputs?: Array<DeclaredOutputConfig>
   hidden_app_backed?: boolean
   impact_summary?: AgentComposerImpactResponse | null
