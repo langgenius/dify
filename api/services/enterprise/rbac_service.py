@@ -745,6 +745,7 @@ def _inner_call(
         account_id=account_id,
         json=json,
         params=params,
+        timeout=dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
     )
 
 
