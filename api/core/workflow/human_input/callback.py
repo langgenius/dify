@@ -14,6 +14,8 @@ from core.repositories.human_input_repository import FormCreateParams, HumanInpu
 from core.workflow.human_input import (
     HumanInputFormStatus,
     HumanInputNodeData,
+    ParagraphInputConfig,
+    ValueSourceType,
     render_form_content_before_submission,
     render_form_content_with_outputs,
     restore_submitted_data,
@@ -131,6 +133,11 @@ class DifyHumanInputCallback:
     def _resolve_default_values(self, *, context: HITLContext) -> dict[str, Any]:
         default_values: dict[str, Any] = {}
         for form_input in self._node_data.inputs:
+            if isinstance(form_input, ParagraphInputConfig) and form_input.default is not None:
+                if form_input.default.type == ValueSourceType.CONSTANT:
+                    default_values[form_input.output_variable_name] = form_input.default.value
+                    continue
+
             resolved_default = form_input.resolve_default_value(context.variable_pool)
             if resolved_default is None:
                 continue
