@@ -34,6 +34,12 @@ class EnterpriseFeatureConfig(BaseSettings):
         default=False,
     )
 
+    ENTERPRISE_RBAC_REQUEST_TIMEOUT: int = Field(
+        ge=1,
+        description="Maximum timeout in seconds for inner RBAC requests.",
+        default=30,
+    )
+
 
 class EnterpriseTelemetryConfig(BaseSettings):
     """
