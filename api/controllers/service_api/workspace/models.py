@@ -1,4 +1,5 @@
-from flask_login import current_user
+from controllers.service_api.wraps import with_current_user
+from models.account import Account
 from flask_restx import Resource
 
 from controllers.common.schema import register_response_schema_models
@@ -51,12 +52,16 @@ class ModelProviderAvailableModelApi(Resource):
         service_api_ns.models[ProviderWithModelsListResponse.__name__],
     )
     @validate_dataset_token
-    def get(self, _, model_type: str):
+
+    @with_current_user
+    def get(self, current_user: Account, _, model_type: str):
         """Get available models by model type.
 
         Returns a list of available models for the specified model type.
         """
         tenant_id = current_user.current_tenant_id
+        if not tenant_id:
+            raise ValueError("tenant_id is required")
 
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(tenant_id=tenant_id, model_type=model_type)

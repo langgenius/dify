@@ -29,7 +29,7 @@ from core.app.apps.pipeline.pipeline_generator import PipelineGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.base import ResponseModel
 from libs import helper
-from libs.login import current_user
+from controllers.service_api.wraps import with_current_user
 from models import Account
 from models.dataset import Dataset, Pipeline
 from models.engine import db
@@ -141,7 +141,8 @@ class DatasourcePluginsApi(DatasetApiResource):
         "Datasource plugins retrieved successfully",
         service_api_ns.models[DatasourcePluginListResponse.__name__],
     )
-    def get(self, tenant_id: str, dataset_id: UUID):
+    @with_current_user
+    def get(self, current_user: Account, tenant_id: str, dataset_id: UUID):
         """Resource for getting datasource plugins."""
         dataset_id_str = str(dataset_id)
         # Verify dataset ownership
@@ -192,7 +193,8 @@ class DatasourceNodeRunApi(DatasetApiResource):
         "Datasource node run successfully",
         service_api_ns.models[GeneratedAppResponse.__name__],
     )
-    def post(self, tenant_id: str, dataset_id: UUID, node_id: str):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str, dataset_id: UUID, node_id: str):
         """Resource for getting datasource plugins."""
         dataset_id_str = str(dataset_id)
         # Verify dataset ownership
@@ -264,7 +266,8 @@ class PipelineRunApi(DatasetApiResource):
         "Pipeline run successfully",
         service_api_ns.models[GeneratedAppResponse.__name__],
     )
-    def post(self, tenant_id: str, dataset_id: UUID):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str, dataset_id: UUID):
         """Resource for running a rag pipeline."""
         dataset_id_str = str(dataset_id)
         # Verify dataset ownership
@@ -330,7 +333,8 @@ class KnowledgebasePipelineFileUploadApi(DatasetApiResource):
         "File uploaded successfully",
         service_api_ns.models[PipelineUploadFileResponse.__name__],
     )
-    def post(self, tenant_id: str):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id: str):
         """Upload a file for use in conversations.
 
         Accepts a single file upload via multipart/form-data.

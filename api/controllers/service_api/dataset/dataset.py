@@ -37,7 +37,7 @@ from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse
 from graphon.model_runtime.entities.model_entities import ModelType
 from libs.helper import dump_response
-from libs.login import current_user
+from controllers.service_api.wraps import with_current_user
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.enums import TagType
@@ -401,7 +401,8 @@ class DatasetListApi(DatasetApiResource):
         "Datasets retrieved successfully",
         service_api_ns.models[DatasetListResponse.__name__],
     )
-    def get(self, tenant_id):
+    @with_current_user
+    def get(self, current_user: Account, tenant_id):
         """Resource for getting datasets."""
         query_params: dict[str, str | list[str]] = dict(request.args.to_dict())
         if "tag_ids" in request.args:
@@ -481,7 +482,8 @@ class DatasetListApi(DatasetApiResource):
         service_api_ns.models[DatasetDetailResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def post(self, tenant_id):
+    @with_current_user
+    def post(self, current_user: Account, tenant_id):
         """Resource for creating datasets."""
         payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
 
@@ -559,7 +561,8 @@ class DatasetApi(DatasetApiResource):
         "Dataset retrieved successfully",
         service_api_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
     )
-    def get(self, _, dataset_id: UUID):
+    @with_current_user
+    def get(self, current_user: Account, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -633,7 +636,8 @@ class DatasetApi(DatasetApiResource):
         service_api_ns.models[DatasetDetailWithPartialMembersResponse.__name__],
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def patch(self, _, dataset_id: UUID):
+    @with_current_user
+    def patch(self, current_user: Account, _, dataset_id: UUID):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -726,7 +730,8 @@ class DatasetApi(DatasetApiResource):
         }
     )
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
-    def delete(self, _, dataset_id: UUID):
+    @with_current_user
+    def delete(self, current_user: Account, _, dataset_id: UUID):
         """
         Deletes a dataset given its ID.
 
@@ -793,7 +798,8 @@ class DocumentStatusApi(DatasetApiResource):
         }
     )
     @service_api_ns.expect(service_api_ns.models[DocumentStatusPayload.__name__])
-    def patch(self, tenant_id, dataset_id: UUID, action: Literal["enable", "disable", "archive", "un_archive"]):
+    @with_current_user
+    def patch(self, current_user: Account, tenant_id, dataset_id: UUID, action: Literal["enable", "disable", "archive", "un_archive"]):
         """
         Batch update document status.
 
@@ -863,7 +869,8 @@ class DatasetTagsApi(DatasetApiResource):
         "Tags retrieved successfully",
         service_api_ns.models[KnowledgeTagListResponse.__name__],
     )
-    def get(self, _):
+    @with_current_user
+    def get(self, current_user: Account, _):
         """Get all knowledge type tags."""
         assert isinstance(current_user, Account)
         cid = current_user.current_tenant_id
@@ -894,7 +901,8 @@ class DatasetTagsApi(DatasetApiResource):
         "Tag created successfully",
         service_api_ns.models[KnowledgeTagResponse.__name__],
     )
-    def post(self, _):
+    @with_current_user
+    def post(self, current_user: Account, _):
         """Add a knowledge type tag."""
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -932,7 +940,8 @@ class DatasetTagsApi(DatasetApiResource):
         "Tag updated successfully",
         service_api_ns.models[KnowledgeTagResponse.__name__],
     )
-    def patch(self, _):
+    @with_current_user
+    def patch(self, current_user: Account, _):
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
@@ -968,7 +977,8 @@ class DatasetTagsApi(DatasetApiResource):
         }
     )
     @edit_permission_required
-    def delete(self, _):
+    @with_current_user
+    def delete(self, current_user: Account, _):
         """Delete a knowledge type tag."""
         payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
         TagService.delete_tag(payload.tag_id, db.session)
@@ -996,7 +1006,8 @@ class DatasetTagBindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    def post(self, _):
+    @with_current_user
+    def post(self, current_user: Account, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -1031,7 +1042,8 @@ class DatasetTagUnbindingApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    def post(self, _):
+    @with_current_user
+    def post(self, current_user: Account, _):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         assert isinstance(current_user, Account)
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
@@ -1070,7 +1082,8 @@ class DatasetTagsBindingStatusApi(DatasetApiResource):
         "Tags retrieved successfully",
         service_api_ns.models[DatasetBoundTagListResponse.__name__],
     )
-    def get(self, _, *args, **kwargs):
+    @with_current_user
+    def get(self, current_user: Account, _, *args, **kwargs):
         """Get all knowledge type tags."""
         dataset_id = kwargs.get("dataset_id")
         assert isinstance(current_user, Account)

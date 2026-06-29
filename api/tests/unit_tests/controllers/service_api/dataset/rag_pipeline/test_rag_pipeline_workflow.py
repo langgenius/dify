@@ -23,6 +23,15 @@ from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
+
+@pytest.fixture(autouse=True)
+def mock_current_account_with_tenant_fixture(mocker):
+    from unittest.mock import Mock
+    mock_account = Mock()
+    mock_account.id = "user-1"
+    mock_account.current_tenant_id = "tenant-1"
+    mocker.patch("controllers.service_api.wraps.current_account_with_tenant", return_value=(mock_account, "tenant-1"))
+
 from flask import Flask
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden, NotFound
@@ -325,11 +334,11 @@ class TestPipelineRunApiEntity:
     def test_entity_missing_required_field(self):
         """Test entity raises on missing required field."""
         with pytest.raises(ValueError):
-            PipelineRunApiEntity(
-                inputs={},
-                datasource_type="online_document",
+            PipelineRunApiEntity(**{
+                "inputs": {},
+                "datasource_type": "online_document",
                 # missing datasource_info_list, start_node_id, etc.
-            )
+            })
 
 
 class TestDatasourceNodeRunApiEntity:
@@ -434,13 +443,14 @@ class TestDatasourceNodeRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.helper")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerator")
     @patch(
-        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        "controllers.service_api.wraps.current_account_with_tenant",
         new_callable=lambda: Mock(spec=Account),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
-    def test_post_success(self, mock_ns, mock_db, mock_svc_cls, mock_current_user, mock_gen, mock_helper, app: Flask):
+    def test_post_success(self, mock_ns, mock_db, mock_svc_cls, mock_current_account_with_tenant, mock_gen, mock_helper, app: Flask):
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, 'tenant-1')
         """Test successful datasource node run."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
@@ -484,8 +494,8 @@ class TestDatasourceNodeRunApiPost:
                 api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()), node_id="n1")
 
     @patch(
-        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
-        new="not_account",
+        "controllers.service_api.wraps.current_account_with_tenant",
+        return_value=("not_account", "tenant-1"),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
@@ -510,15 +520,16 @@ class TestPipelineRunApiPost:
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.helper")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.PipelineGenerateService")
     @patch(
-        "controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user",
+        "controllers.service_api.wraps.current_account_with_tenant",
         new_callable=lambda: Mock(spec=Account),
     )
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.RagPipelineService")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
     def test_post_success_streaming(
-        self, mock_ns, mock_db, mock_svc_cls, mock_current_user, mock_gen_svc, mock_helper, app
+        self, mock_ns, mock_db, mock_svc_cls, mock_current_account_with_tenant, mock_gen_svc, mock_helper, app
     ):
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, 'tenant-1')
         """Test successful pipeline run with streaming response."""
         tenant_id = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
@@ -559,7 +570,7 @@ class TestPipelineRunApiPost:
             with pytest.raises(NotFound):
                 api.post(tenant_id=str(uuid.uuid4()), dataset_id=str(uuid.uuid4()))
 
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user", new="not_account")
+    @patch("controllers.service_api.wraps.current_account_with_tenant", return_value=("not_account", "tenant-1"))
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.service_api_ns")
     def test_post_forbidden_non_account_user(self, mock_ns, mock_db, app: Flask):
@@ -584,11 +595,12 @@ class TestFileUploadApiPost:
     """Tests for KnowledgebasePipelineFileUploadApi.post()."""
 
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.FileService")
-    @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.current_user")
+    @patch("controllers.service_api.wraps.current_account_with_tenant")
     @patch("controllers.service_api.dataset.rag_pipeline.rag_pipeline_workflow.db")
-    def test_upload_success(self, mock_db, mock_current_user, mock_file_svc_cls, app: Flask):
+    def test_upload_success(self, mock_db, mock_current_account_with_tenant, mock_file_svc_cls, app: Flask):
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, 'tenant-1')
         """Test successful file upload."""
-        mock_current_user.__bool__ = Mock(return_value=True)
+        mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.return_value = (mock_current_account_with_tenant, "tenant-1"); mock_current_account_with_tenant.__bool__ = Mock(return_value=True)
 
         mock_upload = Mock()
         mock_upload.id = str(uuid.uuid4())
