@@ -1,14 +1,30 @@
 import type {
+  RetryCondition,
+  RetryConditionOperator,
+} from './types'
+import type {
   Node,
 } from '@/app/components/workflow/types'
 import { FieldsetLegend, FieldsetRoot } from '@langgenius/dify-ui/fieldset'
 import { Slider } from '@langgenius/dify-ui/slider'
 import { Switch } from '@langgenius/dify-ui/switch'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useRetryConfig } from './hooks'
+import { RetryConditionOperator as OperatorEnum } from './types'
 import s from './style.module.css'
+
+const OPERATOR_OPTIONS: { value: RetryConditionOperator; labelKey: string }[] = [
+  { value: OperatorEnum.contains, labelKey: 'nodes.common.retry.condition.contains' },
+  { value: OperatorEnum.notContains, labelKey: 'nodes.common.retry.condition.notContains' },
+  { value: OperatorEnum.startsWith, labelKey: 'nodes.common.retry.condition.startsWith' },
+  { value: OperatorEnum.endsWith, labelKey: 'nodes.common.retry.condition.endsWith' },
+  { value: OperatorEnum.equals, labelKey: 'nodes.common.retry.condition.equals' },
+  { value: OperatorEnum.notEquals, labelKey: 'nodes.common.retry.condition.notEquals' },
+  { value: OperatorEnum.regex, labelKey: 'nodes.common.retry.condition.regex' },
+]
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({
@@ -16,8 +32,8 @@ const RetryOnPanel = ({
   data,
 }: RetryOnPanelProps) => {
   const { t } = useTranslation()
-  const { handleRetryConfigChange } = useRetryConfig(id)
-  const { retry_config } = data
+  const { handleRetryConfigChange, handleRetryConditionChange } = useRetryConfig(id)
+  const { retry_config, retry_condition } = data
   const maxRetriesLabel = t('nodes.common.retry.maxRetries', { ns: 'workflow' })
   const retryIntervalLabel = t('nodes.common.retry.retryInterval', { ns: 'workflow' })
 
@@ -52,6 +68,39 @@ const RetryOnPanel = ({
       retry_interval: value,
     })
   }
+
+  const handleConditionEnabledChange = useCallback((enabled: boolean) => {
+    const condition: RetryCondition = {
+      enabled,
+      error_filter: retry_condition?.error_filter || {
+        operator: OperatorEnum.contains,
+        value: '',
+      },
+    }
+    handleRetryConditionChange(condition)
+  }, [handleRetryConditionChange, retry_condition])
+
+  const handleConditionOperatorChange = useCallback((operator: RetryConditionOperator) => {
+    const condition: RetryCondition = {
+      enabled: retry_condition?.enabled ?? true,
+      error_filter: {
+        operator,
+        value: retry_condition?.error_filter?.value || '',
+      },
+    }
+    handleRetryConditionChange(condition)
+  }, [handleRetryConditionChange, retry_condition])
+
+  const handleConditionValueChange = useCallback((value: string) => {
+    const condition: RetryCondition = {
+      enabled: retry_condition?.enabled ?? true,
+      error_filter: {
+        operator: retry_condition?.error_filter?.operator || OperatorEnum.contains,
+        value,
+      },
+    }
+    handleRetryConditionChange(condition)
+  }, [handleRetryConditionChange, retry_condition])
 
   return (
     <>
@@ -116,6 +165,44 @@ const RetryOnPanel = ({
                   className={s.input}
                 />
               </FieldsetRoot>
+              {/* Conditional Retry */}
+              <div className="mt-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="system-xs-medium-uppercase text-text-secondary">
+                    {t('nodes.common.retry.condition.title', { ns: 'workflow' })}
+                  </div>
+                  <Switch
+                    size="sm"
+                    checked={retry_condition?.enabled ?? false}
+                    onCheckedChange={handleConditionEnabledChange}
+                  />
+                </div>
+                {retry_condition?.enabled && (
+                  <div className="space-y-2">
+                    <div className="system-xs-regular text-text-tertiary">
+                      {t('nodes.common.retry.condition.description', { ns: 'workflow' })}
+                    </div>
+                    <select
+                      className="w-full rounded-md border border-components-input-border bg-components-input-bg-normal px-2 py-1.5 text-[13px] text-text-secondary outline-none"
+                      value={retry_condition?.error_filter?.operator || OperatorEnum.contains}
+                      onChange={e => handleConditionOperatorChange(e.target.value as RetryConditionOperator)}
+                      aria-label={t('nodes.common.retry.condition.operator', { ns: 'workflow' })}
+                    >
+                      {OPERATOR_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>
+                          {t(opt.labelKey, { ns: 'workflow' })}
+                        </option>
+                      ))}
+                    </select>
+                    <Input
+                      aria-label={t('nodes.common.retry.condition.errorPattern', { ns: 'workflow' })}
+                      placeholder={t('nodes.common.retry.condition.errorPatternPlaceholder', { ns: 'workflow' }) || ''}
+                      value={retry_condition?.error_filter?.value || ''}
+                      onChange={e => handleConditionValueChange(e.currentTarget.value)}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )
         }
