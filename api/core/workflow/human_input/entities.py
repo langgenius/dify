@@ -14,8 +14,8 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file import FileUploadConfig
 from graphon.file.enums import FileTransferMethod, FileType
+from graphon.runtime import VariablePool
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
 
@@ -281,7 +281,7 @@ def extract_output_field_names(form_content: str) -> list[str]:
 def render_form_content_before_submission(
     *,
     form_content: str,
-    variable_pool: ReadOnlyVariablePool | None,
+    variable_pool: VariablePool | None,
 ) -> str:
     """Render runtime variables while leaving output placeholders intact."""
     if variable_pool is None:
