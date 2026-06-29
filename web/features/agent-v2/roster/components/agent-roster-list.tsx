@@ -182,7 +182,7 @@ function AgentRosterItem({
                   />
                 )
               : (
-                  <div className="flex shrink-0 items-center gap-1">
+                  <div className="flex h-4 shrink-0 items-center gap-1">
                     <span aria-hidden className="i-custom-vender-agent-v2-plan size-3 shrink-0 text-text-tertiary" />
                     <span className="system-xs-regular text-text-tertiary">{referenceCount}</span>
                   </div>
