@@ -1,4 +1,4 @@
-from pydantic import Field, PositiveInt
+from pydantic import Field, NonNegativeInt, PositiveInt
 from pydantic_settings import BaseSettings
 
 
@@ -56,4 +56,9 @@ class OracleConfig(BaseSettings):
     ORACLE_POOL_INCREMENT: PositiveInt = Field(
         description="Number of Oracle connections to add when the pool needs to grow",
         default=1,
+    )
+
+    ORACLE_POOL_PING_INTERVAL: NonNegativeInt = Field(
+        description="Seconds before a pooled Oracle connection is pinged on acquire; 0 validates every checkout",
+        default=0,
     )
