@@ -12,6 +12,7 @@ Owns the Agent V2 configure runtime used by the Agent App configure page and wor
 - agent-detail/configure/components/orchestrate
 - agent-detail/configure/components/preview
 - agent-detail/configure/components/workspace
+- agent-detail/configure/model-compatibility
 
 ## External Modules
 

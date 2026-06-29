@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "اكتب التعليمات هنا،",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} غير موجود",
   "agentDetail.configure.prompt.tip": "عرّف دور الوكيل وصف مهمته المعتادة. استخدم / للإشارة صراحةً إلى المهارات والملفات والأدوات واسترجاع المعرفة.",
   "agentDetail.configure.publishBar.draft": "مسودة",
   "agentDetail.configure.publishBar.publishUpdate": "نشر التحديث",

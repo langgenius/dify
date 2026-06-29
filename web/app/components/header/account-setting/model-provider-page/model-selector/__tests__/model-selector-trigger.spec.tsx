@@ -242,6 +242,20 @@ describe('ModelSelectorTrigger', () => {
 
       expect(await screen.findByText('common.modelProvider.selector.incompatibleTip')).toBeInTheDocument()
     })
+
+    it('should show incompatible badge when selected model fails the compatibility predicate', () => {
+      const { container } = render(
+        <ModelSelectorTrigger
+          currentProvider={createModel()}
+          currentModel={createModelItem()}
+          isModelCompatible={false}
+        />,
+      )
+
+      expect(screen.getByText('common.modelProvider.selector.incompatible')).toBeInTheDocument()
+      expect(screen.queryByText('CHAT')).not.toBeInTheDocument()
+      expect(container.querySelector('.i-ri-arrow-down-s-line')).toBeInTheDocument()
+    })
   })
 
   describe('Edge Cases', () => {

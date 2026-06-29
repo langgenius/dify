@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "ここに指示を記述してください、",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} は存在しません",
   "agentDetail.configure.prompt.tip": "エージェントの役割を定義し、通常のタスクを説明します。/ を使ってスキル、ファイル、ツール、ナレッジ検索を明示的に参照してください。",
   "agentDetail.configure.publishBar.draft": "ドラフト",
   "agentDetail.configure.publishBar.publishUpdate": "更新を公開",

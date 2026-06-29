@@ -1,6 +1,6 @@
 import type { ComboboxRootChangeEventDetails } from '@langgenius/dify-ui/combobox'
 import type { DefaultModel, Model, ModelFeatureEnum, ModelItem } from '../declarations'
-import type { ModelSelectorValue } from './types'
+import type { ModelSelectorModelPredicate, ModelSelectorValue } from './types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Combobox, ComboboxContent, ComboboxTrigger } from '@langgenius/dify-ui/combobox'
 import { useCallback, useMemo, useState } from 'react'
@@ -35,6 +35,7 @@ type ModelSelectorProps = {
   onConfigureEmptyState?: () => void
   providerSettingsSource?: 'agent'
   showModelMeta?: boolean
+  modelPredicate?: ModelSelectorModelPredicate
 }
 function ModelSelector({
   defaultModel,
@@ -51,6 +52,7 @@ function ModelSelector({
   onConfigureEmptyState,
   providerSettingsSource,
   showModelMeta,
+  modelPredicate,
 }: ModelSelectorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -153,6 +155,7 @@ function ModelSelector({
           deprecatedClassName={deprecatedClassName}
           showDeprecatedWarnIcon={showDeprecatedWarnIcon}
           showModelMeta={showModelMeta}
+          isModelCompatible={currentProvider && currentModel ? modelPredicate?.(currentProvider, currentModel) : undefined}
         />
       </ComboboxTrigger>
       <ComboboxContent
@@ -167,6 +170,7 @@ function ModelSelector({
           scopeFeatures={scopeFeatures}
           hideProviderSettingsFooter={hideProviderSettingsFooter}
           providerSettingsSource={providerSettingsSource}
+          modelPredicate={modelPredicate}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
           onInputValueChange={setInputValue}
           onHide={handleHide}

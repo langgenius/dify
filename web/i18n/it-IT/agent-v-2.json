@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "Scrivi le istruzioni qui,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} non esiste",
   "agentDetail.configure.prompt.tip": "Definisci il ruolo dell’agente e descrivi la sua attività tipica. Usa / per fare riferimento esplicito a abilità, file, strumenti e recuperi di conoscenza.",
   "agentDetail.configure.publishBar.draft": "Bozza",
   "agentDetail.configure.publishBar.publishUpdate": "Pubblica aggiornamento",

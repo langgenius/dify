@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "Talimatları buraya yazın,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} mevcut değil",
   "agentDetail.configure.prompt.tip": "Aracının rolünü tanımlayın ve tipik görevini açıklayın. Skills, Files, Tools ve Knowledge Retrievals için açık referans vermek üzere / kullanın.",
   "agentDetail.configure.publishBar.draft": "Taslak",
   "agentDetail.configure.publishBar.publishUpdate": "Güncellemeyi yayınla",

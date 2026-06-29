@@ -579,6 +579,7 @@ describe('useChat', () => {
           answer_tokens: 10,
           message_tokens: 5,
           provider_response_latency: 0.5,
+          workflow_run_id: 'workflow-run-from-history',
           inputs: {},
           query: 'hi',
         }],
@@ -613,7 +614,7 @@ describe('useChat', () => {
 
       expect(onGetConversationMessages).toHaveBeenCalled()
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
-      expect(onConversationComplete).toHaveBeenCalledWith('c-1')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-1', 'workflow-run-from-history')
 
       const updatedResponse = result.current.chatList[1]
       expect(updatedResponse!.content).toBe('Updated answer from history') // Fetched from mock
@@ -1321,7 +1322,7 @@ describe('useChat', () => {
         await callbacks.onCompleted()
       })
 
-      expect(onConversationComplete).toHaveBeenCalledWith('c-resume')
+      expect(onConversationComplete).toHaveBeenCalledWith('c-resume', 'wr-1')
       expect(onGetSuggestedQuestions).toHaveBeenCalled()
       expect(result.current.suggestedQuestions).toEqual([])
     })

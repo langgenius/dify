@@ -4,6 +4,7 @@ import type { DefaultModel, Model } from '@/app/components/header/account-settin
 import { FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
 import { useTranslation } from 'react-i18next'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { isAgentCompatibleModel } from '../../../model-compatibility'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
 type AgentModelFieldProps = {
@@ -33,20 +34,16 @@ export function AgentModelField({
               </div>
             )
           : (
-              <>
-                <ModelSelector
-                  defaultModel={currentModel}
-                  modelList={textGenerationModelList}
-                  triggerClassName="h-8! w-full rounded-lg! pr-10! [&_.i-ri-arrow-down-s-line]:hidden"
-                  popupClassName="w-(--anchor-width) max-w-[min(var(--anchor-width),var(--available-width),calc(100vw-32px))]"
-                  providerSettingsSource="agent"
-                  showModelMeta={false}
-                  onSelect={onSelect}
-                />
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex w-8 items-center justify-center rounded-r-lg bg-components-button-tertiary-bg">
-                  <span aria-hidden="true" className="i-ri-equalizer-2-line size-4 text-text-tertiary" />
-                </div>
-              </>
+              <ModelSelector
+                defaultModel={currentModel}
+                modelList={textGenerationModelList}
+                triggerClassName="h-8! w-full rounded-lg! [&_.i-ri-arrow-down-s-line]:hidden"
+                popupClassName="w-(--anchor-width) max-w-[min(var(--anchor-width),var(--available-width),calc(100vw-32px))]"
+                providerSettingsSource="agent"
+                showModelMeta={false}
+                modelPredicate={isAgentCompatibleModel}
+                onSelect={onSelect}
+              />
             )}
       </div>
     </FieldRoot>

@@ -64,6 +64,7 @@ export type VariableBlockType = {
 export type RosterReferenceBlockType = {
   show?: boolean
   renderIcon?: (token: RosterReferenceToken) => React.ReactNode
+  getWarning?: (token: RosterReferenceToken) => string | undefined
 }
 
 export type ExternalToolBlockType = {

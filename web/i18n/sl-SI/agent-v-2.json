@@ -145,6 +145,7 @@
   "agentDetail.configure.prompt.mention.davidHayes": "David Hayes",
   "agentDetail.configure.prompt.mention.priyaRamanathan": "Priya Ramanathan",
   "agentDetail.configure.prompt.placeholder": "Tukaj napišite navodila,",
+  "agentDetail.configure.prompt.referenceMissing": "{{name}} ne obstaja",
   "agentDetail.configure.prompt.tip": "Določite vlogo agenta in opišite njegovo tipično opravilo. Uporabite / za izrecno sklicevanje na veščine, datoteke, orodja in pridobivanje znanja.",
   "agentDetail.configure.publishBar.draft": "Osnutek",
   "agentDetail.configure.publishBar.publishUpdate": "Objavi posodobitev",

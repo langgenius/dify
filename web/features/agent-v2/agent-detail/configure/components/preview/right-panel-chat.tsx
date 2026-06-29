@@ -17,7 +17,7 @@ export function AgentConfigureRightPanelChat({
   agentSoulConfig?: AgentSoulConfig
   conversationIds: AgentConfigureConversationIds
   mode: AgentConfigureRightPanelMode
-  onConversationComplete?: (mode: AgentConfigureRightPanelMode, conversationId: string) => void
+  onConversationComplete?: (mode: AgentConfigureRightPanelMode, conversationId: string, workflowRunId?: string) => void
   onConversationIdChange: (mode: AgentConfigureRightPanelMode, conversationId: string) => void
 }) {
   const previewAgentSoulConfig = useAgentPreviewSoulConfig(agentSoulConfig)
@@ -25,8 +25,8 @@ export function AgentConfigureRightPanelChat({
   const handleConversationIdChange = (newConversationId: string) => {
     onConversationIdChange(mode, newConversationId)
   }
-  const handleConversationComplete = (completedConversationId: string) => {
-    onConversationComplete?.(mode, completedConversationId)
+  const handleConversationComplete = (completedConversationId: string, workflowRunId?: string) => {
+    onConversationComplete?.(mode, completedConversationId, workflowRunId)
   }
 
   return mode === 'build'

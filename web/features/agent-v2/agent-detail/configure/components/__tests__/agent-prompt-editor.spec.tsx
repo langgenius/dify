@@ -15,6 +15,7 @@ import { AgentPromptSlashMenu } from '../orchestrate/prompt-editor/slash'
 const mockPromptEditor = vi.hoisted(() => vi.fn())
 const mockCopy = vi.hoisted(() => vi.fn())
 const mockReset = vi.hoisted(() => vi.fn())
+const mockUseClipboard = vi.hoisted(() => vi.fn())
 const mockBuiltInTools = vi.hoisted(() => [
   {
     id: 'duckduckgo',
@@ -71,11 +72,7 @@ vi.mock('@/app/components/base/infotip', () => ({
 }))
 
 vi.mock('foxact/use-clipboard', () => ({
-  useClipboard: () => ({
-    copied: false,
-    copy: mockCopy,
-    reset: mockReset,
-  }),
+  useClipboard: mockUseClipboard,
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -171,6 +168,11 @@ const renderAgentPromptEditor = (
 describe('AgentPromptEditor', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockUseClipboard.mockReturnValue({
+      copied: false,
+      copy: mockCopy,
+      reset: mockReset,
+    })
   })
 
   // Prompt actions should expose the designed copy control and copy the current draft prompt.
@@ -181,6 +183,18 @@ describe('AgentPromptEditor', () => {
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
 
       expect(mockCopy).toHaveBeenCalledWith('Review these tenders')
+    })
+
+    it('should let clipboard timeout restore the copied state instead of resetting on mouse leave', () => {
+      renderAgentPromptEditor('Review these tenders')
+
+      expect(mockUseClipboard).toHaveBeenCalledWith(expect.objectContaining({
+        timeout: 2000,
+      }))
+
+      fireEvent.mouseLeave(screen.getByRole('button', { name: /agentDetail\.configure\.prompt\.copy/i }))
+
+      expect(mockReset).not.toHaveBeenCalled()
     })
 
     it('should update knowledge reference labels when the retrieval title changes', () => {
