@@ -798,6 +798,12 @@ Stop a running Agent App chat message generation
 | draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
 | version_id | query | Published snapshot ID for read-only version view | No | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -2005,6 +2011,12 @@ Run draft workflow for advanced chat application
 | draft_type | query | Editable draft surface: omit or 'draft' for normal draft, 'debug_build' for build draft | No | string, <br>**Available values:** "debug_build", "draft" |
 | node_id | query | Workflow node ID (workflow composer variant) | No | string |
 | version_id | query | Published snapshot ID for read-only version view | No | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary }<br> |
 
 #### Responses
 
