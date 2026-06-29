@@ -102,6 +102,7 @@ export const seedSystemFeatures = (
 ): GetSystemFeaturesResponse => {
   const data = buildSystemFeatures(overrides)
   queryClient.setQueryData(consoleQuery.systemFeatures.get.queryKey(), data)
+  queryClient.setQueryData(['webapp', 'system-features'], data)
   return data
 }
 
