@@ -568,13 +568,13 @@ describe('MarkdownForm', () => {
 
       const submittedPayload = JSON.parse(mockOnSend.mock.calls[0]![0]) as Record<string, unknown>
       expect(submittedPayload).toMatchObject({
-        '用户名': 'Alice',
-        '密码': 'secret',
-        '内容': 'Hello',
-        '日期': 'formatted-date',
-        '日期时间': 'formatted-datetime',
-        'café': 'hello',
-        '同意条款': true,
+        用户名: 'Alice',
+        密码: 'secret',
+        内容: 'Hello',
+        日期: 'formatted-date',
+        日期时间: 'formatted-datetime',
+        café: 'hello',
+        同意条款: true,
       })
       expect(submittedPayload).toHaveProperty('时间')
     })
