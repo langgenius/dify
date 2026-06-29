@@ -77,7 +77,7 @@ async def test_dify_api_handler_manifest_success(monkeypatch: pytest.MonkeyPatch
     def handler(request: httpx.Request) -> httpx.Response:
         assert str(request.url) == (
             "https://api.example.com/inner/api/agent-config/agent-1/manifest"
-            "?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft"
+            "?tenant_id=tenant-1&config_version_id=cfg-1&config_version_kind=build_draft&user_id=user-1"
         )
         assert request.headers["X-Inner-Api-Key"] == "inner-secret"
         return httpx.Response(200, json=_manifest_payload())
@@ -102,6 +102,7 @@ async def test_dify_api_handler_pull_endpoints_return_bytes(monkeypatch: pytest.
     original_async_client = httpx.AsyncClient
 
     def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.params["user_id"] == "user-1"
         if request.url.path.endswith("/skills/alpha/pull"):
             return httpx.Response(200, content=b"zip-bytes")
         if request.url.path.endswith("/files/guide.txt/pull"):
