@@ -1,7 +1,7 @@
 import type { SnippetInputField } from '@/models/snippet'
 import { act, renderHook } from '@testing-library/react'
 import { PipelineInputVarType } from '@/models/pipeline'
-import { useSnippetDetailStore } from '../../store'
+import { useSnippetDraftStore } from '../../draft-store'
 import { useNodesSyncDraft } from '../use-nodes-sync-draft'
 
 const mockGetNodes = vi.fn()
@@ -112,9 +112,7 @@ describe('snippet/use-nodes-sync-draft', () => {
     mockSetSyncWorkflowDraftHash.mockImplementation((hash: string) => {
       workflowStoreState.syncWorkflowDraftHash = hash
     })
-    useSnippetDetailStore.setState({
-      fields: [createInputField('topic')],
-    })
+    useSnippetDraftStore.getState().setInputFields([createInputField('topic')])
   })
 
   it('should include current input_fields when syncing the draft graph', async () => {
@@ -137,6 +135,18 @@ describe('snippet/use-nodes-sync-draft', () => {
       },
     })
     expect(mockUseNodesReadOnlyByCanEdit).toHaveBeenCalledWith(true)
+  })
+
+  it('should keep draft input_fields when the navigation store is reset during route leave', () => {
+    const { result } = renderHook(() => useNodesSyncDraft('snippet-1'))
+
+    act(() => {
+      result.current.syncWorkflowDraftWhenPageClose()
+    })
+
+    expect(mockPostWithKeepalive).toHaveBeenCalledWith('/api/snippets/snippet-1/workflows/draft', expect.objectContaining({
+      input_fields: [createInputField('topic')],
+    }))
   })
 
   it('should snapshot graph before queued draft sync executes', async () => {

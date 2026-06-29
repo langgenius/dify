@@ -12,6 +12,7 @@ from flask_restx import Resource
 from flask_restx.utils import merge
 from pydantic import BaseModel
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from configs import dify_config
@@ -269,8 +270,8 @@ def cloud_edition_billing_rate_limit_check[**P, R](
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
-                        db.session.add(rate_limit_log)
-                        db.session.commit()
+                        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+                            session.add(rate_limit_log)
                         raise Forbidden(
                             "Sorry, you have reached the knowledge base request rate limit of your subscription."
                         )
