@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from typing import Literal
 
@@ -1092,6 +1092,16 @@ class HomepageConfig(BaseSettings):
     ENABLE_LEARN_APP: bool = Field(
         description="Enable Learn App",
         default=True,
+    )
+
+    ENABLE_STEP_BY_STEP_TOUR: bool = Field(
+        description="Enable account-level Step-by-step Tour eligibility checks",
+        default=False,
+    )
+
+    STEP_BY_STEP_TOUR_ROLLOUT_STARTED_AT: datetime | None = Field(
+        description="UTC timestamp after which newly initialized accounts are eligible for Step-by-step Tour",
+        default=None,
     )
 
 
