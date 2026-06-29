@@ -408,6 +408,11 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
         lambda _self, **kwargs: "debug-conversation-detail",
     )
     monkeypatch.setattr(
+        roster_controller.AgentRosterService,
+        "count_agent_app_debug_conversation_messages",
+        lambda _self, **kwargs: 2,
+    )
+    monkeypatch.setattr(
         roster_controller.FeatureService,
         "get_system_features",
         lambda: SimpleNamespace(webapp_auth=SimpleNamespace(enabled=False)),
@@ -431,6 +436,8 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert detail["id"] == agent_id
     assert detail["app_id"] == "app-1"
     assert detail["debug_conversation_id"] == "debug-conversation-detail"
+    assert detail["debug_conversation_has_messages"] is True
+    assert detail["debug_conversation_message_count"] == 2
     assert detail["role"] == "Resolved role"
     assert detail["active_config_is_published"] is False
     assert "bound_agent_id" not in detail
@@ -445,6 +452,8 @@ def test_agent_app_detail_update_delete_resolve_app_from_agent_id(
     assert updated["id"] == agent_id
     assert updated["app_id"] == "app-1"
     assert updated["debug_conversation_id"] == "debug-conversation-detail"
+    assert updated["debug_conversation_has_messages"] is True
+    assert updated["debug_conversation_message_count"] == 2
     assert updated["role"] == "Resolved role"
     assert updated["active_config_is_published"] is False
     assert "bound_agent_id" not in updated
@@ -529,7 +538,11 @@ def test_agent_debug_conversation_refresh_uses_current_user(
             agent_id,
         )
 
-    assert response == {"debug_conversation_id": "new-debug-conversation-id"}
+    assert response == {
+        "debug_conversation_id": "new-debug-conversation-id",
+        "debug_conversation_has_messages": False,
+        "debug_conversation_message_count": 0,
+    }
     assert captured == {
         "tenant_id": "tenant-1",
         "agent_id": agent_id,
