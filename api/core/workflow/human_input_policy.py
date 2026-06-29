@@ -4,9 +4,8 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import Any, NamedTuple
 
+from core.workflow.human_input import FormInputConfig, SelectInputConfig, ValueSourceType
 from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType
-from graphon.nodes.human_input.entities import FormInputConfig, SelectInputConfig
-from graphon.nodes.human_input.enums import ValueSourceType
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
 from models.human_input import ApprovalChannel, RecipientType
@@ -128,12 +127,12 @@ def resolve_variable_select_input_options(
         return list(inputs)
 
     for form_input in inputs:
-        if not isinstance(form_input, SelectInputConfig):
+        if str(getattr(form_input, "type", "")) != "select":
             resolved_inputs.append(form_input)
             continue
 
         option_source = form_input.option_source
-        if option_source.type != ValueSourceType.VARIABLE:
+        if str(option_source.type) != ValueSourceType.VARIABLE:
             resolved_inputs.append(form_input)
             continue
 

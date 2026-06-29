@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from core.db.session_factory import session_factory
+from core.workflow.human_input import FormDefinition, HumanInputFormKind, HumanInputFormStatus, HumanInputNodeData
 from core.workflow.human_input_adapter import (
     BoundRecipient,
     DeliveryChannelConfig,
@@ -17,8 +18,6 @@ from core.workflow.human_input_adapter import (
     InteractiveSurfaceDeliveryMethod,
     is_human_input_webapp_enabled,
 )
-from graphon.nodes.human_input.entities import FormDefinition, HumanInputNodeData
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from models.account import Account, TenantAccountJoin

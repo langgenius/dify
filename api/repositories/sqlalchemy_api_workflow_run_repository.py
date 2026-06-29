@@ -34,9 +34,9 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
+from core.workflow.human_input import FormDefinition
 from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from graphon.nodes.human_input.entities import FormDefinition
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination

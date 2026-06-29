@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any, override
@@ -18,9 +17,12 @@ from core.entities.execution_extra_content import (
 from core.entities.execution_extra_content import (
     HumanInputContent as HumanInputContentDomainModel,
 )
-from graphon.nodes.human_input.entities import FormDefinition
-from graphon.nodes.human_input.enums import HumanInputFormStatus
-from graphon.nodes.human_input.human_input_node import HumanInputNode
+from core.workflow.human_input import (
+    FormDefinition,
+    HumanInputFormStatus,
+    extract_output_field_names,
+    render_form_content_with_outputs,
+)
 from models.execution_extra_content import (
     ExecutionExtraContent as ExecutionExtraContentModel,
 )
@@ -31,15 +33,6 @@ from models.human_input import HumanInputFormRecipient, RecipientType
 from repositories.execution_extra_content_repository import ExecutionExtraContentRepository
 
 logger = logging.getLogger(__name__)
-
-_OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
-
-
-def _extract_output_field_names(form_content: str) -> list[str]:
-    if not form_content:
-        return []
-    return [match.group("field_name") for match in _OUTPUT_VARIABLE_PATTERN.finditer(form_content)]
-
 
 class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository):
     def __init__(self, session_maker: sessionmaker[Session]):
@@ -166,10 +159,10 @@ class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository)
                 logger.warning("Failed to load submitted data for HumanInputContent(id=%s)", model.id)
                 return None
 
-        rendered_content = HumanInputNode.render_form_content_with_outputs(
+        rendered_content = render_form_content_with_outputs(
             form.rendered_content,
             submitted_data,
-            _extract_output_field_names(form_definition.form_content),
+            extract_output_field_names(form_definition.form_content),
             form_definition.inputs,
         )
 

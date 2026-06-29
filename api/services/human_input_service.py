@@ -14,22 +14,22 @@ from core.repositories.human_input_repository import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.human_input_policy import resolve_variable_select_input_options
-from factories.file_factory import build_from_mapping, build_from_mappings
-from graphon.file import FileUploadConfig
-from graphon.nodes.human_input.entities import (
+from core.workflow.human_input import (
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
     FormInputConfig,
+    HumanInputFormKind,
+    HumanInputFormStatus,
     HumanInputSubmissionValidationError,
     SelectInputConfig,
     UserActionConfig,
+    ValueSourceType,
+    validate_human_input_submission,
 )
-from graphon.nodes.human_input.entities import (
-    validate_human_input_submission as graphon_validate_human_input_submission,
-)
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.human_input_policy import resolve_variable_select_input_options
+from factories.file_factory import build_from_mapping, build_from_mappings
+from graphon.file import FileUploadConfig
 from graphon.runtime import GraphRuntimeState
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from libs.datetime_utils import ensure_naive_utc, naive_utc_now
@@ -342,17 +342,14 @@ class HumanInputService:
         form_data: Mapping[str, Any],
     ) -> dict[str, JsonValue]:
         """
-        Normalize Dify-owned runtime payloads before delegating shape validation to graphon.
-
-        graphon owns the form schema and validation rules, while Dify owns tenant-aware file
-        reconstruction and persistence compatibility for submitted payloads.
+        Normalize runtime payloads, then validate them against Dify-owned form semantics.
         """
         normalized_form_data = cls.normalize_submission_data(
             tenant_id=tenant_id,
             form_definition=form_definition,
             form_data=form_data,
         )
-        graphon_validate_human_input_submission(
+        validate_human_input_submission(
             inputs=form_definition.inputs,
             user_actions=form_definition.user_actions,
             selected_action_id=selected_action_id,
