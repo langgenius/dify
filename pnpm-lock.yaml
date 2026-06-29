@@ -10060,7 +10060,7 @@ snapshots:
 
   '@amplitude/rrweb-packer@2.0.0-alpha.40':
     dependencies:
-      '@amplitude/rrweb-types': 2.0.0-alpha.40
+      '@amplitude/rrweb-types': 2.1.0
       fflate: 0.4.8
 
   '@amplitude/rrweb-plugin-console-record@2.0.0-alpha.40(@amplitude/rrweb@2.1.1)':
@@ -10346,7 +10346,7 @@ snapshots:
   '@code-inspector/core@1.6.2':
     dependencies:
       '@vue/compiler-dom': 3.5.39
-      chalk: 4.1.1
+      chalk: 4.1.2
       dotenv: 16.6.1
       launch-ide: 1.4.3
       portfinder: 1.0.38
@@ -15943,7 +15943,7 @@ snapshots:
 
   launch-ide@1.4.3:
     dependencies:
-      chalk: 4.1.1
+      chalk: 4.1.2
       dotenv: 16.6.1
 
   layout-base@1.0.2: {}
@@ -16751,7 +16751,7 @@ snapshots:
   normalize-package-data@8.0.0:
     dependencies:
       hosted-git-info: 9.0.3
-      semver: 7.8.1
+      semver: 7.8.5
       validate-npm-package-license: 3.0.4
 
   normalize-wheel@1.0.1: {}
