@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import calendar
 import math
+import os
 from datetime import date
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
@@ -22,12 +23,14 @@ from core.tools.builtin_tool.providers.time.tools.localtime_to_timestamp import 
 from core.tools.builtin_tool.providers.time.tools.timestamp_to_localtime import TimestampToLocaltimeTool
 from core.tools.builtin_tool.providers.time.tools.timezone_conversion import TimezoneConversionTool
 from core.tools.builtin_tool.providers.time.tools.weekday import WeekdayTool
+from core.tools.builtin_tool.providers.twelvelabs.tools.analyze import TwelveLabsAnalyzeTool
+from core.tools.builtin_tool.providers.twelvelabs.twelvelabs import TwelveLabsToolProvider
 from core.tools.builtin_tool.providers.webscraper.tools.webscraper import WebscraperTool
 from core.tools.builtin_tool.providers.webscraper.webscraper import WebscraperProvider
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
-from core.tools.errors import ToolInvokeError
+from core.tools.errors import ToolInvokeError, ToolProviderCredentialValidationError
 from graphon.file import FileType
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey
 
@@ -342,3 +345,108 @@ def test_provider_classes_and_builtin_sort(monkeypatch: pytest.MonkeyPatch):
     )
     sorted_providers = BuiltinToolProviderSort.sort(providers)
     assert [p.name for p in sorted_providers] == ["a", "b"]
+
+
+def _build_twelvelabs_tool(credentials: dict[str, str]) -> TwelveLabsAnalyzeTool:
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="mohit-twelvelabs",
+            name="analyze",
+            label=I18nObject(en_US="Analyze Video"),
+            provider="twelvelabs",
+        ),
+        parameters=[],
+    )
+    runtime = ToolRuntime(tenant_id="tenant-1", credentials=credentials, invoke_from=InvokeFrom.DEBUGGER)
+    return TwelveLabsAnalyzeTool(provider="twelvelabs", entity=entity, runtime=runtime)
+
+
+def test_twelvelabs_provider_and_tool_load():
+    # Real YAML-driven __init__ exercises provider identity + tool loading.
+    provider = TwelveLabsToolProvider()
+    assert provider.entity.identity.name == "twelvelabs"
+    tool_names = {tool.entity.identity.name for tool in provider.get_tools()}
+    assert "analyze" in tool_names
+    # api_key is a required secret credential.
+    schema = {c.name: c for c in provider.get_credentials_schema()}
+    assert schema["api_key"].required is True
+
+
+def test_twelvelabs_missing_credentials():
+    tool = _build_twelvelabs_tool(credentials={})
+    with pytest.raises(ToolProviderCredentialValidationError):
+        list(tool.invoke(user_id="u", tool_parameters={"video_id": "v", "prompt": "p"}))
+
+
+def test_twelvelabs_missing_params():
+    tool = _build_twelvelabs_tool(credentials={"api_key": "k"})
+    no_video = list(tool.invoke(user_id="u", tool_parameters={"prompt": "p"}))[0].message.text
+    assert "video_id" in no_video
+    no_prompt = list(tool.invoke(user_id="u", tool_parameters={"video_id": "v"}))[0].message.text
+    assert "prompt" in no_prompt
+
+
+def test_twelvelabs_analyze_no_network(monkeypatch: pytest.MonkeyPatch):
+    tool = _build_twelvelabs_tool(credentials={"api_key": "k"})
+    captured: dict[str, object] = {}
+
+    class _Resp:
+        status_code = 200
+
+        @staticmethod
+        def json() -> dict[str, object]:
+            return {"id": "abc", "data": "A calm forest scene.", "finish_reason": "stop"}
+
+    def _fake_post(url: str, **kwargs: object) -> _Resp:
+        captured["url"] = url
+        captured["headers"] = kwargs.get("headers")
+        captured["json"] = kwargs.get("json")
+        return _Resp()
+
+    monkeypatch.setattr("core.tools.builtin_tool.providers.twelvelabs.tools.analyze.ssrf_proxy.post", _fake_post)
+    messages = list(
+        tool.invoke(
+            user_id="u",
+            tool_parameters={"video_id": "vid123", "prompt": "Describe.", "temperature": 0.3},
+        )
+    )
+    assert messages[0].message.text == "A calm forest scene."
+    assert captured["url"] == "https://api.twelvelabs.io/v1.3/analyze"
+    assert captured["headers"]["x-api-key"] == "k"  # type: ignore[index]
+    assert captured["json"]["video_id"] == "vid123"  # type: ignore[index]
+    assert captured["json"]["stream"] is False  # type: ignore[index]
+
+
+def test_twelvelabs_analyze_http_error(monkeypatch: pytest.MonkeyPatch):
+    tool = _build_twelvelabs_tool(credentials={"api_key": "k"})
+
+    class _Resp:
+        status_code = 404
+        text = "not found"
+
+    monkeypatch.setattr(
+        "core.tools.builtin_tool.providers.twelvelabs.tools.analyze.ssrf_proxy.post",
+        lambda *a, **k: _Resp(),
+    )
+    with pytest.raises(ToolInvokeError, match="404"):
+        list(tool.invoke(user_id="u", tool_parameters={"video_id": "v", "prompt": "p"}))
+
+
+@pytest.mark.skipif(not os.environ.get("TWELVELABS_API_KEY"), reason="requires TWELVELABS_API_KEY")
+def test_twelvelabs_analyze_live():
+    """Live smoke test: validates credentials against the real TwelveLabs API.
+
+    Set TWELVELABS_API_KEY (and optionally TWELVELABS_VIDEO_ID for a full analyze run).
+    """
+    api_key = os.environ["TWELVELABS_API_KEY"]
+    provider = TwelveLabsToolProvider()
+    provider._validate_credentials("u", {"api_key": api_key})  # raises on a bad key
+
+    video_id = os.environ.get("TWELVELABS_VIDEO_ID")
+    if not video_id:
+        pytest.skip("set TWELVELABS_VIDEO_ID to run a full analyze call")
+    tool = _build_twelvelabs_tool(credentials={"api_key": api_key})
+    text = list(tool.invoke(user_id="u", tool_parameters={"video_id": video_id, "prompt": "Summarize this video."}))[
+        0
+    ].message.text
+    assert text
