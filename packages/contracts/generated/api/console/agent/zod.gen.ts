@@ -93,6 +93,46 @@ export const zSimpleResultResponse = z.object({
 })
 
 /**
+ * AgentConfigFileUploadPayload
+ */
+export const zAgentConfigFileUploadPayload = z.object({
+  upload_file_id: z.string(),
+})
+
+/**
+ * AgentConfigManifestResponse
+ */
+export const zAgentConfigManifestResponse = z.object({
+  agent_id: z.string(),
+  config_version: z.record(z.string(), z.unknown()),
+  env_keys: z.array(z.string()).optional(),
+  files: z.array(z.record(z.string(), z.unknown())).optional(),
+  note: z.string().optional().default(''),
+  skills: z.array(z.record(z.string(), z.unknown())).optional(),
+})
+
+/**
+ * AgentConfigPreviewResponse
+ */
+export const zAgentConfigPreviewResponse = z.object({
+  binary: z.boolean(),
+  key: z.string(),
+  size: z.int().nullish(),
+  text: z.string().nullish(),
+  truncated: z.boolean(),
+})
+
+/**
+ * AgentConfigSkillInspectResponse
+ */
+export const zAgentConfigSkillInspectResponse = z.object({
+  description: z.string().optional().default(''),
+  files: z.array(z.string()).optional(),
+  name: z.string(),
+  skill_md: z.string(),
+})
+
+/**
  * AgentDebugConversationRefreshResponse
  */
 export const zAgentDebugConversationRefreshResponse = z.object({
@@ -1018,6 +1058,35 @@ export const zAppVariableConfig = z.object({
   name: z.string().min(1).max(255),
   required: z.boolean().optional().default(false),
   type: z.string().min(1).max(64),
+})
+
+/**
+ * AgentConfigFileRefConfig
+ *
+ * Stable Agent Soul reference to one config file payload.
+ */
+export const zAgentConfigFileRefConfig = z.object({
+  file_id: z.string().min(1).max(255),
+  file_kind: z.enum(['tool_file', 'upload_file']),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish(),
+  name: z.string().min(1).max(255),
+  size: z.int().nullish(),
+})
+
+/**
+ * AgentConfigSkillRefConfig
+ *
+ * Stable Agent Soul reference to one normalized skill archive.
+ */
+export const zAgentConfigSkillRefConfig = z.object({
+  description: z.string().optional().default(''),
+  file_id: z.string().min(1).max(255),
+  file_kind: z.literal('tool_file').optional().default('tool_file'),
+  hash: z.string().nullish(),
+  mime_type: z.string().nullish().default('application/zip'),
+  name: z.string().min(1).max(255),
+  size: z.int().nullish(),
 })
 
 /**
@@ -2159,6 +2228,9 @@ export const zAgentSoulKnowledgeConfig = z.object({
 export const zAgentSoulConfig = z.object({
   app_features: zAgentSoulAppFeaturesConfig.optional(),
   app_variables: z.array(zAppVariableConfig).optional(),
+  config_files: z.array(zAgentConfigFileRefConfig).optional(),
+  config_note: z.string().optional().default(''),
+  config_skills: z.array(zAgentConfigSkillRefConfig).optional(),
   env: zAgentSoulEnvConfig.optional(),
   files: zAgentSoulFilesConfig.optional(),
   human: zAgentSoulHumanConfig.optional(),
@@ -2718,6 +2790,75 @@ export const zPostAgentByAgentIdComposerValidatePath = z.object({
  * Agent app composer validation result
  */
 export const zPostAgentByAgentIdComposerValidateResponse = zAgentComposerValidateResponse
+
+export const zPostAgentByAgentIdConfigFilesBody = zAgentConfigFileUploadPayload
+
+export const zPostAgentByAgentIdConfigFilesPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zPostAgentByAgentIdConfigFilesQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Updated config manifest
+ */
+export const zPostAgentByAgentIdConfigFilesResponse = zAgentConfigManifestResponse
+
+export const zGetAgentByAgentIdConfigFilesByNamePreviewPath = z.object({
+  agent_id: z.uuid(),
+  name: z.string(),
+})
+
+/**
+ * Preview
+ */
+export const zGetAgentByAgentIdConfigFilesByNamePreviewResponse = zAgentConfigPreviewResponse
+
+export const zGetAgentByAgentIdConfigManifestPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zGetAgentByAgentIdConfigManifestQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Agent config manifest
+ */
+export const zGetAgentByAgentIdConfigManifestResponse = zAgentConfigManifestResponse
+
+export const zPostAgentByAgentIdConfigSkillsUploadPath = z.object({
+  agent_id: z.uuid(),
+})
+
+export const zPostAgentByAgentIdConfigSkillsUploadQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Updated config manifest
+ */
+export const zPostAgentByAgentIdConfigSkillsUploadResponse = zAgentConfigManifestResponse
+
+export const zGetAgentByAgentIdConfigSkillsByNameInspectPath = z.object({
+  agent_id: z.uuid(),
+  name: z.string(),
+})
+
+export const zGetAgentByAgentIdConfigSkillsByNameInspectQuery = z.object({
+  draft_type: z.enum(['debug_build', 'draft']).optional(),
+  version_id: z.string().optional(),
+})
+
+/**
+ * Config skill inspect view
+ */
+export const zGetAgentByAgentIdConfigSkillsByNameInspectResponse = zAgentConfigSkillInspectResponse
 
 export const zPostAgentByAgentIdCopyBody = zAgentAppCopyPayload
 

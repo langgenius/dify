@@ -291,7 +291,11 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
     enabled: open && !!agentSoulConfig && !buildDraft.isActive,
   })
   const refreshDebugConversationMutation = useMutation(consoleQuery.agent.byAgentId.debugConversation.refresh.post.mutationOptions({
-    onSuccess: ({ debug_conversation_id }) => {
+    onSuccess: ({
+      debug_conversation_has_messages,
+      debug_conversation_id,
+      debug_conversation_message_count,
+    }) => {
       queryClient.setQueryData<AgentAppDetailWithSite | undefined>(
         consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } }),
         (agentDetail) => {
@@ -300,9 +304,32 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
 
           return {
             ...agentDetail,
+            debug_conversation_has_messages,
             debug_conversation_id,
+            debug_conversation_message_count,
           }
         },
+      )
+      if (!appId)
+        return
+
+      queryClient.setQueryData<WorkflowAgentComposerResponse | undefined>(
+        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
+          input: {
+            params: {
+              app_id: appId,
+              node_id: nodeId,
+            },
+          },
+        }),
+        composerState => composerState
+          ? {
+              ...composerState,
+              debug_conversation_has_messages,
+              debug_conversation_id,
+              debug_conversation_message_count,
+            }
+          : composerState,
       )
     },
   }))
@@ -431,7 +458,8 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       toast.error(t('api.actionFailed'))
     }
   }
-  const hasRestartCurrentChatTarget = !!conversationIds[rightPanelChatMode] || buildDraft.isActive
+  const hasRestartCurrentChatTarget = (inlineComposerState?.debug_conversation_has_messages ?? false)
+    || buildDraft.isActive
   const isRestartCurrentChatDisabled = !hasRestartCurrentChatTarget
     || buildDraftActionsDisabled
     || isApplyingInlineBuildDraft
@@ -446,6 +474,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
       return
     }
 
+    void refreshDebugConversationAsync().catch(() => undefined)
     resetConversation(rightPanelChatMode)
   }
 
