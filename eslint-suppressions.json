@@ -458,6 +458,14 @@
       "count": 1
     }
   },
+  "web/app/components/app/app-access-control/access-control-item.tsx": {
+    "jsx-a11y/click-events-have-key-events": {
+      "count": 1
+    },
+    "jsx-a11y/no-static-element-interactions": {
+      "count": 1
+    }
+  },
   "web/app/components/app/app-publisher/sections.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -878,19 +886,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/overview/customize/index.tsx": {
-    "jsx-a11y/anchor-has-content": {
-      "count": 3
-    }
-  },
-  "web/app/components/app/overview/settings/index.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/app/overview/workflow-hidden-input-fields.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -1203,14 +1198,6 @@
       "count": 1
     }
   },
-  "web/app/components/base/chat/chat/chat-input-area/index.tsx": {
-    "jsx-a11y/no-autofocus": {
-      "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 3
-    }
-  },
   "web/app/components/base/chat/chat/check-input-forms-hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1239,14 +1226,6 @@
     },
     "ts/no-explicit-any": {
       "count": 17
-    }
-  },
-  "web/app/components/base/chat/chat/index.tsx": {
-    "ts/no-explicit-any": {
-      "count": 2
-    },
-    "ts/no-non-null-asserted-optional-chain": {
-      "count": 1
     }
   },
   "web/app/components/base/chat/chat/log/index.tsx": {
@@ -1957,6 +1936,9 @@
   },
   "web/app/components/base/markdown-blocks/form.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "prefer-regex-literals": {
       "count": 1
     }
   },
@@ -4473,11 +4455,6 @@
       "count": 1
     }
   },
-  "web/app/components/tools/provider/detail.tsx": {
-    "jsx-a11y/anchor-has-content": {
-      "count": 1
-    }
-  },
   "web/app/components/tools/provider/tool-item.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 1
@@ -4559,9 +4536,6 @@
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 2
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-init.ts": {
@@ -6288,9 +6262,6 @@
   "web/app/components/workflow/operator/add-block.tsx": {
     "no-restricted-imports": {
       "count": 1
-    },
-    "ts/no-explicit-any": {
-      "count": 1
     }
   },
   "web/app/components/workflow/operator/hooks.ts": {
@@ -6344,9 +6315,6 @@
     },
     "ts/no-explicit-any": {
       "count": 5
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {
@@ -7125,6 +7093,11 @@
       "count": 1
     }
   },
+  "web/service/access-control/__tests__/index.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
   "web/service/access-control/__tests__/use-app-access-control.spec.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -7146,6 +7119,11 @@
     }
   },
   "web/service/access-control/__tests__/use-workspace-access-rules.spec.tsx": {
+    "no-restricted-imports": {
+      "count": 1
+    }
+  },
+  "web/service/access-control/index.ts": {
     "no-restricted-imports": {
       "count": 1
     }

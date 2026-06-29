@@ -17,9 +17,9 @@ import { SkeletonContainer, SkeletonRectangle } from '@/app/components/base/skel
 import { useSetGotoAnythingOpen } from '@/app/components/goto-anything/atoms'
 import Link from '@/next/link'
 import { usePathname, useRouter } from '@/next/navigation'
-import { DeploymentActionsMenu } from '../components/deployment-actions'
-import { TitleTooltip } from '../components/title-tooltip'
+import { DeploymentActionsMenu } from '../deployment-actions'
 import { deploymentRouteAppInstanceIdAtom } from '../route-state'
+import { TitleTooltip } from '../shared/components/title-tooltip'
 import { deploymentDetailAppInstanceQueryAtom } from './state'
 
 type TabDef = {
@@ -164,7 +164,7 @@ function DeploymentDetailInstanceInfo({ appInstanceId, expand }: {
                       )}
                     </div>
                     <DeploymentActionsMenu
-                      appInstanceId={appInstanceId}
+                      appInstance={app}
                       placement="bottom-end"
                       sideOffset={4}
                       className="shrink-0"

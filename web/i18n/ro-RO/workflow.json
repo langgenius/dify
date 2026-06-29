@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Sarcina agentului",
   "nodes.agent.task.mention": "Menționează",
   "nodes.agent.task.placeholder": "Descrieți ce ar trebui să facă acest agent...",
-  "nodes.agent.task.tooltip": "Definiți instrucțiunile sarcinii pe care acest agent trebuie să le urmeze în acest workflow.",
+  "nodes.agent.task.tooltip": "Prompt suplimentar pentru a ajuta agentul să gestioneze exact acest nod. Folosește / pentru a face referire explicită la variabile.\nDacă este configurat corect, ai putea avea încredere că agentul își va da seama singur ce are de făcut.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Neautorizat",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} nu este instalat",
   "nodes.agent.toolbox": "cutie de scule",

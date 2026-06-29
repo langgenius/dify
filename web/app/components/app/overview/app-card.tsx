@@ -19,6 +19,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { AccessMode } from '@/models/access-control'
 import { usePathname, useRouter } from '@/next/navigation'
 import { useAppWhiteListSubjects } from '@/service/access-control/use-app-access-control'
+import { fetchAppDetail } from '@/service/apps'
 import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
@@ -83,6 +84,7 @@ function AppCard({
   const { data: currentWorkflow } = useAppWorkflow(shouldFetchWorkflow ? appInfo.id : '')
   const docLink = useDocLink()
   const appDetail = useAppStore(state => state.appDetail)
+  const setAppDetail = useAppStore(state => state.setAppDetail)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
@@ -157,13 +159,15 @@ function AppCard({
       return
 
     try {
-      await queryClient.invalidateQueries({ queryKey: [...appDetailQueryKeyPrefix, appDetail.id] })
+      const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
+      setAppDetail({ ...res })
       setShowAccessControl(false)
     }
     catch (error) {
       console.error('Failed to fetch app detail:', error)
     }
-  }, [appDetail, queryClient])
+  }, [appDetail, queryClient, setAppDetail])
 
   const operationKeys = useMemo(() => getAppCardOperationKeys({
     cardType,

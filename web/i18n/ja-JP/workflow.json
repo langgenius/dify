@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Agent タスク",
   "nodes.agent.task.mention": "メンション",
   "nodes.agent.task.placeholder": "この Agent が行うべきことを記述してください...",
-  "nodes.agent.task.tooltip": "この Agent がこのワークフロー内で従うべきタスク指示を定義します。",
+  "nodes.agent.task.tooltip": "このノードを処理するためにエージェントを補助する追加プロンプトです。変数を明示的に参照するには / を使用します。\n適切に設定されていれば、エージェントが自分で判断して進められると信頼できるようになります。",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} 認可されていません",
   "nodes.agent.toolNotInstallTooltip": "{{tool}}はインストールされていません",
   "nodes.agent.toolbox": "ツールボックス",

@@ -72,7 +72,7 @@ const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-mod
 const DSLExportConfirmModal = dynamic(() => import('@/app/components/workflow/dsl-export-confirm-modal'), {
   ssr: false,
 })
-const AccessControl = dynamic(() => import('@/app/components/app/app-access-control').then(mod => mod.AccessControl), {
+const AccessControl = dynamic(() => import('@/app/components/app/app-access-control'), {
   ssr: false,
 })
 

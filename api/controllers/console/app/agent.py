@@ -13,7 +13,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     RBACPermission,
@@ -351,7 +351,7 @@ class AgentSkillUploadByAgentApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         return _upload_skill_for_app(current_user=current_user, app_model=app_model)
 
 
@@ -394,7 +394,7 @@ class AgentDriveFilesByAgentApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         return _commit_drive_file_for_app(current_user=current_user, app_model=app_model, allow_node_id=False)
 
     @console_ns.doc("delete_agent_drive_file_by_agent")
@@ -407,7 +407,7 @@ class AgentDriveFilesByAgentApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def delete(self, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         return _delete_drive_file_for_app(current_user=current_user, app_model=app_model, allow_node_id=False)
 
 
@@ -454,7 +454,7 @@ class AgentSkillByAgentApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def delete(self, tenant_id: str, current_user: Account, agent_id: UUID, slug: str):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         return _delete_skill_for_app(current_user=current_user, app_model=app_model, slug=slug, allow_node_id=False)
 
 
@@ -494,7 +494,7 @@ class AgentSkillInferToolsByAgentApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, agent_id: UUID, slug: str):
-        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
         return _infer_skill_tools_for_app(app_model=app_model, slug=slug)
 
 

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import Loading from '@/app/components/base/loading'
 import List from '@/app/components/plugins/marketplace/list'
+import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useRouter } from '@/next/navigation'
 import { getMarketplaceUrl } from '@/utils/var'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
@@ -35,6 +36,7 @@ const Marketplace = ({
   const { t } = useTranslation()
   const { theme } = useTheme()
   const router = useRouter()
+  const { canInstallPlugin } = usePluginSettingsAccess()
   const {
     isLoading,
     marketplaceCollections,
@@ -127,7 +129,7 @@ const Marketplace = ({
                 marketplaceCollections={marketplaceCollections || []}
                 marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
                 plugins={plugins}
-                showInstallButton
+                showInstallButton={canInstallPlugin}
                 cardContainerClassName={cardContainerClassName}
                 onCollectionMoreClick={handleCollectionMoreClick}
               />
