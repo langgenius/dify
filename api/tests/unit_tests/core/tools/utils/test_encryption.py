@@ -16,7 +16,7 @@ from core.tools.utils.encryption import create_tool_provider_encrypter
 class NoopCache:
     """Simple cache stub: always returns None, does nothing for set/delete."""
 
-    def get(self) -> Any | None:
+    def get(self) -> Any:
         return None
 
     def set(self, config: Any) -> None:

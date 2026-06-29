@@ -48,7 +48,7 @@ class PaginationQuery(BaseModel):
 
 class WorkflowDraftVariablePatchPayload(BaseModel):
     name: str | None = None
-    value: Any | None = None
+    value: Any = None
 
 
 register_schema_models(console_ns, PaginationQuery, WorkflowDraftVariablePatchPayload)

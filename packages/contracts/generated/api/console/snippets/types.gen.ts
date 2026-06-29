@@ -194,7 +194,7 @@ export type WorkflowDraftVariable = {
 
 export type WorkflowDraftVariableUpdatePayload = {
   name?: string | null
-  value?: unknown | null
+  value?: unknown
 }
 
 export type PublishWorkflowPayload = {

@@ -191,7 +191,7 @@ class WorkflowAgentOutputAdapter:
         *,
         declared_output: DeclaredOutputConfig,
         tenant_id: str | None = None,
-    ) -> Any | None:
+    ) -> Any:
         if declared_output.type == DeclaredOutputType.FILE and isinstance(value, Mapping):
             return self._file_segment_from_payload(value, tenant_id=tenant_id)
         if (

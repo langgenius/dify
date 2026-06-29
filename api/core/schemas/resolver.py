@@ -53,7 +53,7 @@ class QueueItem:
     """Represents an item in the BFS queue"""
 
     current: Any
-    parent: Any | None
+    parent: Any
     key: str | int | None
     depth: int
     ref_path: set[str]

@@ -76,7 +76,7 @@ class WorkflowDraftVariableListQuery(BaseModel):
 
 class WorkflowDraftVariableUpdatePayload(BaseModel):
     name: str | None = Field(default=None, description="Variable name")
-    value: Any | None = Field(default=None, description="Variable value")
+    value: Any = Field(default=None, description="Variable value")
 
 
 class ConversationVariableUpdatePayload(BaseModel):

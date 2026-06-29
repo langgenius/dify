@@ -852,7 +852,7 @@ export type HitTestingChildChunk = {
 
 export type HitTestingDocument = {
   data_source_type: string
-  doc_metadata: unknown | null
+  doc_metadata: unknown
   doc_type: string | null
   id: string
   name: string
@@ -888,7 +888,7 @@ export type HitTestingRecord = {
   score: number | null
   segment: HitTestingSegment
   summary: string | null
-  tsne_position: unknown | null
+  tsne_position: unknown
 }
 
 export type HitTestingResponse = {

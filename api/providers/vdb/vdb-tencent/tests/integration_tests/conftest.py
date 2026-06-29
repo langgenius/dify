@@ -22,7 +22,7 @@ class MockTcvectordbClass:
         key="",
         read_consistency: ReadConsistency = ReadConsistency.EVENTUAL_CONSISTENCY,
         timeout=10,
-        adapter: Any | None = None,
+        adapter: Any = None,
         pool_size: int = 2,
         proxies: dict | None = None,
         password: str | None = None,

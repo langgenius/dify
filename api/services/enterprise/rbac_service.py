@@ -724,7 +724,7 @@ def _inner_call(
     *,
     tenant_id: str,
     account_id: str | None = None,
-    json: Any | None = None,
+    json: Any = None,
     params: dict[str, Any] | None = None,
 ) -> Any:
     """Thin wrapper around `EnterpriseRequest.send_inner_rbac_request`.

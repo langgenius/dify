@@ -69,7 +69,7 @@ class BaseRequest:
         cls,
         method: str,
         endpoint: str,
-        json: Any | None = None,
+        json: Any = None,
         params: Mapping[str, Any] | None = None,
         *,
         timeout: float | httpx.Timeout | None = None,
@@ -164,7 +164,7 @@ class EnterpriseRequest(BaseRequest):
         *,
         tenant_id: str,
         account_id: str | None = None,
-        json: Any | None = None,
+        json: Any = None,
         params: Mapping[str, Any] | None = None,
         timeout: float | httpx.Timeout | None = None,
     ) -> Any:

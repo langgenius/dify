@@ -311,7 +311,7 @@ export type WorkflowDraftVariable = {
 
 export type WorkflowDraftVariablePatchPayload = {
   name?: string | null
-  value?: unknown | null
+  value?: unknown
 }
 
 export type RagPipelineWorkflowPublishResponse = {

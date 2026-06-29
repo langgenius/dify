@@ -21,7 +21,7 @@ class MockBaiduVectorDBClass:
     def mock_vector_db_client(
         self,
         config=None,
-        adapter: Any | None = None,
+        adapter: Any = None,
     ):
         self.conn = MagicMock()
         self._config = MagicMock()

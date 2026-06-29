@@ -741,7 +741,7 @@ class TraceTask:
         workflow_execution: "WorkflowExecution | None" = None,
         conversation_id: str | None = None,
         user_id: str | None = None,
-        timer: Any | None = None,
+        timer: Any = None,
         **kwargs,
     ):
         self.trace_type = trace_type

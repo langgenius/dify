@@ -10,7 +10,7 @@ from core.helper.trace_id_helper import ParentTraceContext
 
 class BaseTraceInfo(BaseModel):
     message_id: str | None = None
-    message_data: Any | None = None
+    message_data: Any = None
     inputs: Union[str, dict[str, Any], list[Any]] | None = None
     outputs: Union[str, dict[str, Any], list[Any]] | None = None
     start_time: datetime | None = None
@@ -113,7 +113,7 @@ class MessageTraceInfo(BaseTraceInfo):
     total_tokens: int
     error: str | None = None
     file_list: Union[str, dict[str, Any], list[Any]] | None = None
-    message_file_data: Any | None = None
+    message_file_data: Any = None
     conversation_mode: str
     gen_ai_server_time_to_first_token: float | None = None
     llm_streaming_time_to_generate: float | None = None

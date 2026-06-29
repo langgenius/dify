@@ -67,7 +67,7 @@ class _ProviderUpdateValues(BaseModel):
     """Values to update in Provider records."""
 
     last_used: datetime | None = None
-    quota_used: Any | None = None  # Can be Provider.quota_used + int expression
+    quota_used: Any = None  # Can be Provider.quota_used + int expression
 
 
 class _ProviderUpdateOperation(BaseModel):

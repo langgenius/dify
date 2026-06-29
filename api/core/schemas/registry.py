@@ -91,7 +91,7 @@ class SchemaRegistry:
         except (OSError, json.JSONDecodeError) as e:
             self.logger.warning("Failed to load schema %s/%s: %s", version, schema_name, e)
 
-    def get_schema(self, uri: str) -> Any | None:
+    def get_schema(self, uri: str) -> Any:
         """Retrieves a schema by URI with version support"""
         version, schema_name = self._parse_uri(uri)
         if not version or not schema_name:

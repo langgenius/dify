@@ -1003,7 +1003,7 @@ export const zHitTestingChildChunk = z.object({
  */
 export const zHitTestingDocument = z.object({
   data_source_type: z.string(),
-  doc_metadata: z.unknown().nullable(),
+  doc_metadata: z.unknown(),
   doc_type: z.string().nullable(),
   id: z.string(),
   name: z.string(),
@@ -1066,7 +1066,7 @@ export const zHitTestingRecord = z.object({
   score: z.number().nullable(),
   segment: zHitTestingSegment,
   summary: z.string().nullable(),
-  tsne_position: z.unknown().nullable(),
+  tsne_position: z.unknown(),
 })
 
 /**

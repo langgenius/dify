@@ -19,7 +19,7 @@ class ExtensionModule(StrEnum):
 
 
 class ModuleExtension(BaseModel):
-    extension_class: Any | None = None
+    extension_class: Any = None
     name: str
     label: dict[str, Any] | None = None
     form_schema: list[dict[str, Any]] | None = None

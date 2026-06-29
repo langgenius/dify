@@ -430,7 +430,7 @@ class WorkflowConverter:
         )
 
         role_prefix = None
-        prompts: Any | None = None
+        prompts: Any = None
 
         # Chat Model
         if model_config.mode == LLMMode.CHAT:

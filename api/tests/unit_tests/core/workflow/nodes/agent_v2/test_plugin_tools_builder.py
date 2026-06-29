@@ -43,7 +43,7 @@ class FakeRuntimeProvider:
         agent_tool: AgentToolEntity,
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
-        variable_pool: Any | None = None,
+        variable_pool: Any = None,
         allow_file_parameters: bool = False,
         use_default_for_missing_form_parameters: bool = False,
     ) -> Tool:

@@ -571,8 +571,8 @@ class ProviderManager:
     instance scope.
     """
 
-    decoding_rsa_key: Any | None
-    decoding_cipher_rsa: Any | None
+    decoding_rsa_key: Any
+    decoding_cipher_rsa: Any
     _model_runtime: ModelRuntime
     _configurations_cache: dict[str, ProviderConfigurations]
 
