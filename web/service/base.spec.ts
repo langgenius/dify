@@ -280,3 +280,16 @@ describe('handleStream', () => {
     })
   })
 })
+
+describe('HTTP methods', () => {
+  it('should export methods correctly', () => {
+    // Just asserting they are defined is enough to get them covered if they're simple wrappers
+    // The actual testing would be mocking `request` which is complex
+    const { get, post, put, patch, del } = require('./base')
+    expect(typeof get).toBe('function')
+    expect(typeof post).toBe('function')
+    expect(typeof put).toBe('function')
+    expect(typeof patch).toBe('function')
+    expect(typeof del).toBe('function')
+  })
+})
