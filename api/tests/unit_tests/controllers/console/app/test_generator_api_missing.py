@@ -8,7 +8,7 @@ from graphon.model_runtime.errors.invoke import InvokeError
 
 def unwrap(func):
     """Unwrap a decorated function to test it directly."""
-    while hasattr(func, '__wrapped__'):
+    while hasattr(func, "__wrapped__"):
         func = func.__wrapped__
     return func
 
@@ -34,6 +34,7 @@ def test_rule_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
+
         def _raise(*_args, _err=err_to_raise, **_kwargs):
             raise _err
 
@@ -46,7 +47,7 @@ def test_rule_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -
         ):
             with pytest.raises(expected_exception):
                 method(api, "t1")
-                
+
 
 def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.RuleCodeGenerateApi()
@@ -59,6 +60,7 @@ def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPat
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
+
         def _raise(*_args, _err=err_to_raise, **_kwargs):
             raise _err
 
@@ -71,7 +73,7 @@ def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPat
         ):
             with pytest.raises(expected_exception):
                 method(api, "t1")
-                
+
 
 def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     api = generator_module.RuleStructuredOutputGenerateApi()
@@ -85,6 +87,7 @@ def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.M
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
+
         def _raise(*_args, _err=err_to_raise, **_kwargs):
             raise _err
 
@@ -103,6 +106,7 @@ def test_instruction_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyP
     api = generator_module.InstructionGenerateApi()
     method = unwrap(api.post)
     from types import SimpleNamespace
+
     session = SimpleNamespace()
 
     exceptions_to_test = [
@@ -113,6 +117,7 @@ def test_instruction_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyP
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
+
         def _raise(*_args, _err=err_to_raise, **_kwargs):
             raise _err
 
@@ -126,7 +131,7 @@ def test_instruction_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyP
                 "node_id": "",
                 "current": "old",
                 "instruction": "do it",
-                "model_config": _model_config_payload()
+                "model_config": _model_config_payload(),
             },
         ):
             with pytest.raises(expected_exception):
