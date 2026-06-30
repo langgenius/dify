@@ -87,7 +87,7 @@ class TestRagPipelineServiceGetPipeline:
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
     ) -> None:
         """get_pipeline raises ValueError when dataset does not exist."""
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         with pytest.raises(ValueError, match="Dataset not found"):
             service.get_pipeline(tenant_id=str(uuid4()), dataset_id=str(uuid4()))
@@ -101,7 +101,7 @@ class TestRagPipelineServiceGetPipeline:
         dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=None)
         db_session_with_containers.flush()
 
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         with pytest.raises(ValueError, match="(Dataset not found|Pipeline not found)"):
             service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
@@ -117,7 +117,7 @@ class TestRagPipelineServiceGetPipeline:
         dataset = self._create_dataset(db_session_with_containers, tenant_id, created_by, pipeline_id=pipeline.id)
         db_session_with_containers.flush()
 
-        service = self._make_service(flask_app_with_containers)
+        service = self._make_service(flask_app_with_containers, db_session_with_containers)
 
         result = service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset.id)
 
