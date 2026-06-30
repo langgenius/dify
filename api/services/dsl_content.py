@@ -5,9 +5,20 @@ from remote URLs. The import boundary should apply the same byte-size limit to
 both forms before YAML parsing or Redis persistence.
 """
 
-from typing import Final
+from typing import Any, Final
+
+from core.helper.download import DownloadSizeLimitExceededError, download_with_size_limit
 
 DEFAULT_DSL_MAX_SIZE: Final = 10 * 1024 * 1024  # 10MB
+
+__all__ = [
+    "DEFAULT_DSL_MAX_SIZE",
+    "DownloadSizeLimitExceededError",
+    "decode_dsl_content",
+    "dsl_content_size",
+    "exceeds_dsl_size_limit",
+    "fetch_dsl_content_from_url",
+]
 
 
 def dsl_content_size(content: str | bytes) -> int:
@@ -27,3 +38,8 @@ def decode_dsl_content(content: str | bytes) -> str:
     if isinstance(content, str):
         return content
     return content.decode()
+
+
+def fetch_dsl_content_from_url(url: str, max_size: int, **kwargs: Any) -> bytes:
+    """Fetch remote DSL content while enforcing the same byte limit during download."""
+    return download_with_size_limit(url, max_size, **kwargs)

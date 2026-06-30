@@ -16,6 +16,7 @@ from core.plugin.entities.plugin_daemon import (
 )
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from services.errors.plugin import PluginInstallationForbiddenError
 
 MODULE = "core.plugin.plugin_service"
 
@@ -783,12 +784,23 @@ class TestPluginModelProviderCacheInvalidation:
         invalidate_cache.assert_called_once_with("tenant-1")
 
     def test_install_from_resolved_marketplace_identifiers_uses_marketplace_meta(self) -> None:
-        """Resolved marketplace installs centralize daemon meta construction and cache invalidation."""
+        """Resolved marketplace installs share policy checks, daemon meta construction, and cache invalidation."""
         with (
+            patch(f"{MODULE}.dify_config") as mock_config,
+            patch(f"{MODULE}.FeatureService") as feature_service,
+            patch(f"{MODULE}.PluginService._check_plugin_installation_scope") as check_scope,
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
         ):
+            mock_config.MARKETPLACE_ENABLED = True
+            feature_service.get_system_features.return_value = SimpleNamespace(
+                plugin_installation_permission=SimpleNamespace(restrict_to_marketplace_only=False)
+            )
             installer = installer_cls.return_value
+            installer.fetch_plugin_manifest.return_value = MagicMock()
+            decode_response = MagicMock()
+            decode_response.verification = None
+            installer.decode_plugin_from_identifier.return_value = decode_response
             installer.install_from_identifiers.return_value = "task-id"
 
             from core.plugin.plugin_service import PluginService
@@ -800,11 +812,55 @@ class TestPluginModelProviderCacheInvalidation:
         assert result == "task-id"
         installer.install_from_identifiers.assert_called_once_with(
             "tenant-1",
-            ["langgenius/openai:1.0.0@abc"],
+            ("langgenius/openai:1.0.0@abc",),
             PluginInstallationSource.Marketplace,
-            [MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier="langgenius/openai:1.0.0@abc")],
+            (MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier="langgenius/openai:1.0.0@abc"),),
         )
+        installer.fetch_plugin_manifest.assert_called_once_with("tenant-1", "langgenius/openai:1.0.0@abc")
+        installer.decode_plugin_from_identifier.assert_called_once_with("tenant-1", "langgenius/openai:1.0.0@abc")
+        check_scope.assert_called_once_with(None)
         invalidate_cache.assert_called_once_with("tenant-1")
+
+    def test_install_from_resolved_marketplace_identifiers_requires_marketplace_enabled(self) -> None:
+        """Resolved marketplace installs must not bypass marketplace disabled mode."""
+        with (
+            patch(f"{MODULE}.dify_config") as mock_config,
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+        ):
+            mock_config.MARKETPLACE_ENABLED = False
+
+            from core.plugin.plugin_service import PluginService
+
+            with pytest.raises(ValueError, match="marketplace is not enabled"):
+                PluginService.install_from_resolved_marketplace_identifiers("tenant-1", ["langgenius/openai:1.0.0@abc"])
+
+        installer_cls.return_value.install_from_identifiers.assert_not_called()
+
+    def test_install_from_resolved_marketplace_identifiers_enforces_scope(self) -> None:
+        """Resolved marketplace installs must not bypass plugin installation scope policy."""
+        with (
+            patch(f"{MODULE}.dify_config") as mock_config,
+            patch(f"{MODULE}.FeatureService") as feature_service,
+            patch(f"{MODULE}.PluginService._check_plugin_installation_scope") as check_scope,
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+        ):
+            mock_config.MARKETPLACE_ENABLED = True
+            feature_service.get_system_features.return_value = SimpleNamespace(
+                plugin_installation_permission=SimpleNamespace(restrict_to_marketplace_only=False)
+            )
+            check_scope.side_effect = PluginInstallationForbiddenError("Installing plugins is not allowed")
+            installer = installer_cls.return_value
+            installer.fetch_plugin_manifest.return_value = MagicMock()
+            decode_response = MagicMock()
+            decode_response.verification = None
+            installer.decode_plugin_from_identifier.return_value = decode_response
+
+            from core.plugin.plugin_service import PluginService
+
+            with pytest.raises(PluginInstallationForbiddenError):
+                PluginService.install_from_resolved_marketplace_identifiers("tenant-1", ["langgenius/openai:1.0.0@abc"])
+
+        installer.install_from_identifiers.assert_not_called()
 
     def test_uninstall_invalidates_model_provider_cache_for_tenant(self) -> None:
         """Successful uninstall invalidates only the mutated tenant provider cache."""

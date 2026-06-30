@@ -535,6 +535,7 @@ class PluginMigration:
         try:
             response = cls.handle_plugin_instance_install(fake_tenant_id, plugin_identifier_by_id)
             failed_plugin_ids.extend(response.failed_plugin_ids)
+            preinstall_failed_plugin_ids = response.failed_plugin_ids
 
             # Read line by line, and install plugins for each tenant.
             futures: list[Future[TenantPluginInstallOutcome]] = []
@@ -542,7 +543,11 @@ class PluginMigration:
                 with open(extracted_plugins) as f:
                     for line in f:
                         record = TenantPluginRecord.model_validate_json(line)
-                        plan = TenantPluginInstallPlan.from_record(record, plugin_identifier_by_id)
+                        plan = TenantPluginInstallPlan.from_record(
+                            record,
+                            plugin_identifier_by_id,
+                            excluded_plugin_ids=preinstall_failed_plugin_ids,
+                        )
 
                         if plan.unresolved_plugin_ids:
                             not_installed.append(plan.to_not_installed_record())
@@ -580,6 +585,8 @@ class PluginMigration:
         try:
             response = cls.handle_plugin_instance_install(fake_tenant_id, plugin_identifier_by_id)
             failed_plugin_ids.extend(response.failed_plugin_ids)
+            preinstall_failed_plugin_ids = tuple(response.failed_plugin_ids)
+            has_global_install_failures = bool(unresolved_plugin_ids or preinstall_failed_plugin_ids)
 
             page = 1
             futures: list[Future[TenantPluginInstallOutcome]] = []
@@ -592,7 +599,11 @@ class PluginMigration:
 
                     for tenant in tenants:
                         tenant_id = tenant.id
-                        plan = TenantPluginInstallPlan.from_resolved_identifiers(tenant_id, plugin_identifier_by_id)
+                        plan = TenantPluginInstallPlan.from_resolved_identifiers(
+                            tenant_id,
+                            plugin_identifier_by_id,
+                            excluded_plugin_ids=preinstall_failed_plugin_ids,
+                        )
                         futures.append(thread_pool.submit(cls._install_resolved_plugins_for_tenant, plan))
 
                     page += 1
@@ -601,7 +612,7 @@ class PluginMigration:
             total_failed_tenant = 0
             for future in futures:
                 outcome = future.result()
-                if outcome.succeeded and not unresolved_plugin_ids:
+                if outcome.succeeded and not has_global_install_failures:
                     total_success_tenant += 1
                 else:
                     total_failed_tenant += 1

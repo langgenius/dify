@@ -12,7 +12,6 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.helper import ssrf_proxy
 from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_redis import redis_client
 from graphon.enums import BuiltinNodeTypes
@@ -20,7 +19,13 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
-from services.dsl_content import DEFAULT_DSL_MAX_SIZE, decode_dsl_content, exceeds_dsl_size_limit
+from services.dsl_content import (
+    DEFAULT_DSL_MAX_SIZE,
+    DownloadSizeLimitExceededError,
+    decode_dsl_content,
+    exceeds_dsl_size_limit,
+    fetch_dsl_content_from_url,
+)
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
 
@@ -139,14 +144,13 @@ class SnippetDslService:
                         status=ImportStatus.FAILED,
                         error="Invalid URL scheme, only http and https are allowed",
                     )
-                response = ssrf_proxy.get(yaml_url, timeout=(10, 30))
-                if response.status_code != 200:
-                    return SnippetImportInfo(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error=f"Failed to fetch YAML from URL: {response.status_code}",
-                    )
-                raw_content = response.content
+                raw_content = fetch_dsl_content_from_url(yaml_url, DSL_MAX_SIZE, timeout=(10, 30))
+            except DownloadSizeLimitExceededError:
+                return SnippetImportInfo(
+                    id=import_id,
+                    status=ImportStatus.FAILED,
+                    error=f"YAML content size exceeds maximum limit of {DSL_MAX_SIZE} bytes",
+                )
             except Exception as e:
                 logger.exception("Failed to fetch YAML from URL")
                 return SnippetImportInfo(

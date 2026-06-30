@@ -12,9 +12,12 @@ current, so the API reconciles those counts before serving workspace plugin
 metadata.
 """
 
+from __future__ import annotations
+
 import logging
 import time
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from mimetypes import guess_type
 from typing import Any, ClassVar
 
@@ -71,6 +74,12 @@ from services.feature_service import FeatureService, PluginInstallationScope
 
 logger = logging.getLogger(__name__)
 _provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list[ProviderEntity])
+
+
+@dataclass(frozen=True, slots=True)
+class _MarketplaceIdentifierInstallPreparation:
+    plugin_unique_identifiers: tuple[str, ...]
+    metas: tuple[PluginInstallIdentifierMeta, ...]
 
 
 class PluginService:
@@ -922,47 +931,18 @@ class PluginService:
         Install plugin from marketplace package files,
         returns installation task id
         """
-        if not dify_config.MARKETPLACE_ENABLED:
-            raise ValueError("marketplace is not enabled")
-
         manager = PluginInstaller()
-
-        # collect actual plugin_unique_identifiers
-        actual_plugin_unique_identifiers: list[str] = []
-        metas: list[PluginInstallIdentifierMeta] = []
-        features = FeatureService.get_system_features()
-
-        # check if already downloaded
-        for plugin_unique_identifier in plugin_unique_identifiers:
-            try:
-                manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
-                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-                # check if the plugin is available to install
-                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-                # already downloaded, skip
-                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append(MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=plugin_unique_identifier))
-            except Exception:
-                # plugin not installed, download and upload pkg
-                pkg = download_plugin_pkg(plugin_unique_identifier)
-                response = manager.upload_pkg(
-                    tenant_id,
-                    pkg,
-                    verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
-                )
-                # check if the plugin is available to install
-                PluginService._check_plugin_installation_scope(response.verification)
-                # use response plugin_unique_identifier
-                actual_plugin_unique_identifiers.append(response.unique_identifier)
-                metas.append(
-                    MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=response.unique_identifier)
-                )
+        prepared_install = PluginService._prepare_marketplace_identifier_install(
+            tenant_id,
+            plugin_unique_identifiers,
+            manager,
+        )
 
         result = manager.install_from_identifiers(
             tenant_id,
-            actual_plugin_unique_identifiers,
+            prepared_install.plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
-            metas,
+            prepared_install.metas,
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
@@ -975,17 +955,63 @@ class PluginService:
         Install already-resolved marketplace plugin identifiers and refresh tenant plugin caches.
         """
         manager = PluginInstaller()
-        result = manager.install_from_identifiers(
+        prepared_install = PluginService._prepare_marketplace_identifier_install(
             tenant_id,
             plugin_unique_identifiers,
+            manager,
+            require_exact_identifiers=True,
+        )
+        result = manager.install_from_identifiers(
+            tenant_id,
+            prepared_install.plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
-            [
-                MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=plugin_unique_identifier)
-                for plugin_unique_identifier in plugin_unique_identifiers
-            ],
+            prepared_install.metas,
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
+
+    @staticmethod
+    def _prepare_marketplace_identifier_install(
+        tenant_id: str,
+        plugin_unique_identifiers: Sequence[str],
+        manager: PluginInstaller,
+        *,
+        require_exact_identifiers: bool = False,
+    ) -> _MarketplaceIdentifierInstallPreparation:
+        if not dify_config.MARKETPLACE_ENABLED:
+            raise ValueError("marketplace is not enabled")
+
+        features = FeatureService.get_system_features()
+        actual_plugin_unique_identifiers: list[str] = []
+        metas: list[PluginInstallIdentifierMeta] = []
+
+        for plugin_unique_identifier in plugin_unique_identifiers:
+            try:
+                manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
+                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
+                actual_plugin_unique_identifier = plugin_unique_identifier
+            except Exception:
+                pkg = download_plugin_pkg(plugin_unique_identifier)
+                plugin_decode_response = manager.upload_pkg(
+                    tenant_id,
+                    pkg,
+                    verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+                )
+                actual_plugin_unique_identifier = plugin_decode_response.unique_identifier
+
+            PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+            if require_exact_identifiers and actual_plugin_unique_identifier != plugin_unique_identifier:
+                raise ValueError("resolved marketplace identifier changed after package upload")
+
+            actual_plugin_unique_identifiers.append(actual_plugin_unique_identifier)
+            metas.append(
+                MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=actual_plugin_unique_identifier)
+            )
+
+        return _MarketplaceIdentifierInstallPreparation(
+            plugin_unique_identifiers=tuple(actual_plugin_unique_identifiers),
+            metas=tuple(metas),
+        )
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:

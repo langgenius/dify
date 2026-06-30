@@ -320,9 +320,9 @@ class TestAppDslService:
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
     ):
         monkeypatch.setattr(
-            app_dsl_service.remote_fetcher,
-            "make_request",
-            lambda _method, _url, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
+            app_dsl_service,
+            "fetch_dsl_content_from_url",
+            lambda _url, _max_size, **_kw: (_ for _ in ()).throw(RuntimeError("boom")),
         )
 
         service = AppDslService(db_session_with_containers)
@@ -337,10 +337,11 @@ class TestAppDslService:
     def test_import_app_yaml_url_empty_content_returns_failed(
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
     ):
-        response = MagicMock()
-        response.content = b""
-        response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
+        monkeypatch.setattr(
+            app_dsl_service,
+            "fetch_dsl_content_from_url",
+            lambda _url, _max_size, **_kw: b"",
+        )
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -354,10 +355,13 @@ class TestAppDslService:
     def test_import_app_yaml_url_file_too_large_returns_failed(
         self, db_session_with_containers: Session, monkeypatch: pytest.MonkeyPatch
     ):
-        response = MagicMock()
-        response.content = b"x" * (DSL_MAX_SIZE + 1)
-        response.raise_for_status.return_value = None
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", lambda _method, _url, **_kw: response)
+        monkeypatch.setattr(
+            app_dsl_service,
+            "fetch_dsl_content_from_url",
+            lambda _url, _max_size, **_kw: (_ for _ in ()).throw(
+                app_dsl_service.DownloadSizeLimitExceededError("Max file size reached")
+            ),
+        )
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -376,15 +380,12 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_make_request(method: str, url: str, **kwargs):
-            assert method == "GET"
+        def fake_fetch_dsl_content(url: str, max_size: int, **kwargs):
+            assert max_size == DSL_MAX_SIZE
             requested_urls.append(url)
-            response = MagicMock()
-            response.content = yaml_bytes
-            response.raise_for_status.return_value = None
-            return response
+            return yaml_bytes
 
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
+        monkeypatch.setattr(app_dsl_service, "fetch_dsl_content_from_url", fake_fetch_dsl_content)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(
@@ -406,16 +407,13 @@ class TestAppDslService:
 
         requested_urls: list[str] = []
 
-        def fake_make_request(method: str, url: str, **kwargs):
-            assert method == "GET"
+        def fake_fetch_dsl_content(url: str, max_size: int, **kwargs):
+            assert max_size == DSL_MAX_SIZE
             requested_urls.append(url)
             assert url == raw_url
-            response = MagicMock()
-            response.content = yaml_bytes
-            response.raise_for_status.return_value = None
-            return response
+            return yaml_bytes
 
-        monkeypatch.setattr(app_dsl_service.remote_fetcher, "make_request", fake_make_request)
+        monkeypatch.setattr(app_dsl_service, "fetch_dsl_content_from_url", fake_fetch_dsl_content)
 
         service = AppDslService(db_session_with_containers)
         result = service.import_app(

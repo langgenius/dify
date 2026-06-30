@@ -17,6 +17,7 @@ from services.app_dsl_service import (
     TRIGGER_WEBHOOK_NODE_TYPE,
     AppDslService,
 )
+from services.dsl_content import DownloadSizeLimitExceededError
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.errors.app import WorkflowNotFoundError
 
@@ -126,16 +127,13 @@ class TestAppDslServiceImportApp:
     @patch("services.app_dsl_service.WorkflowService")
     @patch("services.app_dsl_service.WorkflowDraftVariableService")
     @patch.object(AppDslService, "_create_or_update_app")
-    @patch("core.file.remote_fetcher.make_request")
+    @patch("services.app_dsl_service.fetch_dsl_content_from_url")
     def test_import_app_yaml_url_success(
         self, mock_fetch, mock_create_app, mock_draft_svc, mock_wf_svc, mock_redis, dsl_service, factory
     ):
         """Test YAML URL import fetches raw GitHub content."""
         # Arrange
-        mock_response = Mock()
-        mock_response.content = TEST_YAML_CONTENT.encode("utf-8")
-        mock_response.raise_for_status = Mock()
-        mock_fetch.return_value = mock_response
+        mock_fetch.return_value = TEST_YAML_CONTENT.encode("utf-8")
 
         mock_create_app.return_value = factory.create_workflow_app_mock()
 
@@ -188,8 +186,12 @@ class TestAppDslServiceImportApp:
         assert result.status == ImportStatus.FAILED
 
     @patch("services.app_dsl_service.redis_client")
-    def test_import_app_url_fetch_failed(self, mock_redis, dsl_service, factory):
+    @patch("services.app_dsl_service.fetch_dsl_content_from_url")
+    def test_import_app_url_fetch_failed(self, mock_fetch, mock_redis, dsl_service, factory):
         """Test network error fails URL import."""
+        # Arrange
+        mock_fetch.side_effect = RuntimeError("network down")
+
         # Act
         result = dsl_service.import_app(
             account=factory.create_account_mock(),
@@ -199,6 +201,7 @@ class TestAppDslServiceImportApp:
 
         # Assert
         assert result.status == ImportStatus.FAILED
+        assert result.error == "Error fetching YAML from URL: network down"
 
     @patch("services.app_dsl_service.redis_client")
     def test_import_app_version_pending(self, mock_redis, dsl_service, factory):
@@ -1155,14 +1158,11 @@ class TestAppDslServiceImportAppValidation:
         assert "yaml_url is required" in result.error
 
     @patch("services.app_dsl_service.redis_client")
-    @patch("core.file.remote_fetcher.make_request")
+    @patch("services.app_dsl_service.fetch_dsl_content_from_url")
     def test_import_app_yaml_url_file_too_large(self, mock_fetch, mock_redis, dsl_service, factory):
         """Test URL import fails when content exceeds max size."""
         # Arrange
-        mock_response = Mock()
-        mock_response.content = b"a" * (10 * 1024 * 1024 + 1)
-        mock_response.raise_for_status = Mock()
-        mock_fetch.return_value = mock_response
+        mock_fetch.side_effect = DownloadSizeLimitExceededError("Max file size reached")
 
         # Act
         result = dsl_service.import_app(
@@ -1176,14 +1176,11 @@ class TestAppDslServiceImportAppValidation:
         assert "File size exceeds the limit" in result.error
 
     @patch("services.app_dsl_service.redis_client")
-    @patch("core.file.remote_fetcher.make_request")
+    @patch("services.app_dsl_service.fetch_dsl_content_from_url")
     def test_import_app_yaml_url_empty_content(self, mock_fetch, mock_redis, dsl_service, factory):
         """Test URL import fails when the fetched content is empty."""
         # Arrange
-        mock_response = Mock()
-        mock_response.content = b""
-        mock_response.raise_for_status = Mock()
-        mock_fetch.return_value = mock_response
+        mock_fetch.return_value = b""
 
         # Act
         result = dsl_service.import_app(
@@ -1280,16 +1277,13 @@ class TestAppDslServiceImportAppValidation:
     @patch("services.app_dsl_service.WorkflowService")
     @patch("services.app_dsl_service.WorkflowDraftVariableService")
     @patch.object(AppDslService, "_create_or_update_app")
-    @patch("core.file.remote_fetcher.make_request")
+    @patch("services.app_dsl_service.fetch_dsl_content_from_url")
     def test_import_app_yaml_url_non_github(
         self, mock_fetch, mock_create_app, mock_draft_svc, mock_wf_svc, mock_redis, dsl_service, factory
     ):
         """Test YAML URL import does not transform non-GitHub URLs."""
         # Arrange
-        mock_response = Mock()
-        mock_response.content = TEST_YAML_CONTENT.encode("utf-8")
-        mock_response.raise_for_status = Mock()
-        mock_fetch.return_value = mock_response
+        mock_fetch.return_value = TEST_YAML_CONTENT.encode("utf-8")
 
         mock_wf_svc.return_value.get_draft_workflow.return_value = None
         mock_create_app.return_value = factory.create_workflow_app_mock()

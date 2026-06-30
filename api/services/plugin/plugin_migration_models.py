@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import NamedTuple
@@ -123,12 +123,17 @@ class TenantPluginInstallPlan:
 
     @classmethod
     def from_record(
-        cls, record: TenantPluginRecord, plugin_identifier_by_id: Mapping[str, str]
+        cls,
+        record: TenantPluginRecord,
+        plugin_identifier_by_id: Mapping[str, str],
+        *,
+        excluded_plugin_ids: Collection[str] = (),
     ) -> TenantPluginInstallPlan:
+        excluded_plugin_id_set = set(excluded_plugin_ids)
         installable_identifier_by_id = {
             plugin_id: plugin_identifier_by_id[plugin_id]
             for plugin_id in record.plugin_ids
-            if plugin_id in plugin_identifier_by_id
+            if plugin_id in plugin_identifier_by_id and plugin_id not in excluded_plugin_id_set
         }
         unresolved_plugin_ids = tuple(
             plugin_id for plugin_id in record.plugin_ids if plugin_id not in plugin_identifier_by_id
@@ -142,9 +147,18 @@ class TenantPluginInstallPlan:
 
     @classmethod
     def from_resolved_identifiers(
-        cls, tenant_id: str, plugin_identifier_by_id: Mapping[str, str]
+        cls,
+        tenant_id: str,
+        plugin_identifier_by_id: Mapping[str, str],
+        *,
+        excluded_plugin_ids: Collection[str] = (),
     ) -> TenantPluginInstallPlan:
-        identifier_by_id = dict(plugin_identifier_by_id)
+        excluded_plugin_id_set = set(excluded_plugin_ids)
+        identifier_by_id = {
+            plugin_id: identifier
+            for plugin_id, identifier in plugin_identifier_by_id.items()
+            if plugin_id not in excluded_plugin_id_set
+        }
         return cls(
             tenant_id=tenant_id,
             plugin_ids=tuple(identifier_by_id),
