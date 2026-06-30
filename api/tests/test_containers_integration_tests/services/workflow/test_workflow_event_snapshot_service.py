@@ -18,8 +18,9 @@ from core.workflow.human_input import (
     StringListSource,
     UserActionConfig,
     ValueSourceType,
+    session_binding,
 )
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
@@ -35,7 +36,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
     workflow_run_id: str
     paused_at_value: datetime
-    pause_reasons: Sequence[HumanInputRequired]
+    pause_reasons: Sequence[HitlRequired]
 
     @property
     @override
@@ -62,7 +63,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
         return self.paused_at_value
 
     @override
-    def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
+    def get_pause_reasons(self) -> Sequence[HitlRequired]:
         return self.pause_reasons
 
 
@@ -136,20 +137,8 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
     db_session_with_containers.commit()
     db_session_with_containers.refresh(form)
 
-    reason = HumanInputRequired(
-        form_id=form.id,
-        form_content="Rendered",
-        inputs=[
-            SelectInputConfig(
-                output_variable_name="decision",
-                option_source=StringListSource(
-                    type=ValueSourceType.VARIABLE,
-                    selector=["start", "options"],
-                    value=[],
-                ),
-            )
-        ],
-        actions=[UserActionConfig(id="approve", title="Approve")],
+    reason = HitlRequired(
+        session_id=session_binding.issue_session_id_for_form(form_id=form.id),
         node_id="node-id",
         node_title="Human Input",
     )
@@ -173,6 +162,7 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
 
     human_input_events = [event for event in events if event.get("event") == "human_input_required"]
     assert len(human_input_events) == 1
+    assert human_input_events[0]["data"]["form_id"] == form.id
     assert human_input_events[0]["data"]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
 
     db_session_with_containers.execute(delete(HumanInputForm).where(HumanInputForm.id == form.id))

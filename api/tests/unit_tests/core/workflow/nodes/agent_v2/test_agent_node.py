@@ -16,7 +16,7 @@ from clients.agent_backend import (
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
-from core.workflow.human_input import UserActionConfig, session_binding
+from core.workflow.human_input import session_binding
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.ask_human_resume import AskHumanResumeOutcome
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingBundle, WorkflowAgentBindingResolver
@@ -29,7 +29,7 @@ from core.workflow.nodes.agent_v2.session_store import (
     WorkflowAgentSessionScope,
 )
 from graphon.entities import GraphInitParams
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
@@ -510,7 +510,7 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot(mon
     node = _node(scenario=FakeAgentBackendScenario.PAUSED, session_store=store)
 
     # ENG-636: the PAUSED scenario emits a dify.ask_human deferred call, so the
-    # node now builds a HITL form and pauses with HumanInputRequired. Stub the
+    # node now builds a HITL form and pauses with HitlRequired. Stub the
     # form repository so the unit test stays DB-free.
     fake_repo = MagicMock()
     fake_repo.create_form.return_value = MagicMock(id="form-1")
@@ -522,8 +522,8 @@ def test_agent_node_paused_run_requests_workflow_pause_and_persists_snapshot(mon
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
-    assert events[0].reason.form_id == "form-1"
+    assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].reason.session_id == "form-1"
     assert events[0].reason.node_id == "agent-node"
     fake_repo.create_form.assert_called_once()
     mapping.assert_called_once_with(session_id="form-1")
@@ -584,11 +584,8 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
     store = FakeSessionStore(snapshot=snapshot)
     store.loaded_session = _pending_session(snapshot)
 
-    repause = HumanInputRequired(
-        form_id="form-1",
-        form_content="Approve?",
-        inputs=[],
-        actions=[UserActionConfig(id="ok", title="OK")],
+    repause = HitlRequired(
+        session_id=session_binding.issue_session_id_for_form(form_id="form-1"),
         node_id="agent-node",
         node_title="Budget review",
     )
@@ -604,7 +601,8 @@ def test_agent_node_repauses_when_resumed_form_still_waiting(monkeypatch):
 
     assert len(events) == 1
     assert isinstance(events[0], PauseRequestedEvent)
-    assert isinstance(events[0].reason, HumanInputRequired)
+    assert isinstance(events[0].reason, HitlRequired)
+    assert events[0].reason.session_id == repause.session_id
     assert client.request is None  # no second Agent run was created
 
 

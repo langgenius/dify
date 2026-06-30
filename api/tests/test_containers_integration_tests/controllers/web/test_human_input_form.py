@@ -21,10 +21,11 @@ from core.workflow.human_input import (
     StringListSource,
     UserActionConfig,
     ValueSourceType,
+    session_binding,
 )
 from core.workflow.human_input_adapter import DeliveryMethodType
 from graphon.entities import WorkflowExecution
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
@@ -210,11 +211,8 @@ def test_get_human_input_form_resolves_runtime_select_options(
         workflow_run=workflow_run,
         options=["approve", "reject"],
     )
-    reason = HumanInputRequired(
-        form_id=form.id,
-        form_content="Choose",
-        inputs=[configured_input],
-        actions=[UserActionConfig(id="approve", title="Approve")],
+    reason = HitlRequired(
+        session_id=session_binding.issue_session_id_for_form(form_id=form.id),
         node_id="human-node",
         node_title="Human Input",
     )
@@ -241,6 +239,7 @@ def test_get_human_input_form_resolves_runtime_select_options(
 
     assert response.status_code == 200, response.get_data(as_text=True)
     body = json.loads(response.get_data(as_text=True))
+    assert body["form_id"] == form.id
     assert body["inputs"][0]["option_source"]["type"] == "variable"
     assert body["inputs"][0]["option_source"]["selector"] == ["start", "options"]
     assert body["inputs"][0]["option_source"]["value"] == ["approve", "reject"]

@@ -12,11 +12,18 @@ import pytest
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.human_input import FormDefinition, FormInputType, HumanInputFormStatus, ParagraphInputConfig, UserActionConfig
+from core.workflow.human_input import (
+    FormDefinition,
+    FormInputType,
+    HumanInputFormStatus,
+    ParagraphInputConfig,
+    UserActionConfig,
+    session_binding,
+)
 from core.workflow.human_input_adapter import DeliveryMethodType
 from extensions.ext_storage import storage
 from graphon.entities import WorkflowExecution
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
@@ -735,12 +742,10 @@ class TestBuildHumanInputRequiredReason:
             [backstage_recipient, console_recipient, web_app_recipient],
         )
 
-        assert isinstance(reason, HumanInputRequired)
+        assert isinstance(reason, HitlRequired)
+        assert reason.session_id == session_binding.issue_session_id_for_form(form_id=form_model.id)
+        assert reason.node_id == "node-1"
         assert reason.node_title == "Ask Name"
-        assert reason.form_content == "content"
-        assert reason.inputs[0].output_variable_name == "name"
-        assert reason.actions[0].id == "approve"
-        assert reason.resolved_default_values == {"name": "Alice"}
         assert not hasattr(reason, "form_token")
 
     def test_falls_back_to_console_token_when_web_app_token_missing(
@@ -828,5 +833,6 @@ class TestBuildHumanInputRequiredReason:
 
         reason = _build_human_input_required_reason(reason_model, form_model, [backstage_recipient, console_recipient])
 
-        assert isinstance(reason, HumanInputRequired)
+        assert isinstance(reason, HitlRequired)
+        assert reason.session_id == session_binding.issue_session_id_for_form(form_id=form_model.id)
         assert not hasattr(reason, "form_token")
