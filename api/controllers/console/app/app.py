@@ -1098,8 +1098,16 @@ class AppTraceApi(Resource):
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_TRACING_CONFIG)
     @get_app_model
     def post(self, app_model: App):
-        # add app trace
-        args = AppTracePayload.model_validate(console_ns.payload)
+        payload = console_ns.payload
+        # When the UI toggles tracing on without specifying a provider,
+        # fall back to the currently configured provider so the toggle
+        # works after initial provider setup.
+        if payload.get("enabled") and not payload.get("tracing_provider"):
+            existing = OpsTraceManager.get_app_tracing_config(app_model.id, db.session)
+            if existing.get("tracing_provider"):
+                payload["tracing_provider"] = existing["tracing_provider"]
+
+        args = AppTracePayload.model_validate(payload)
 
         OpsTraceManager.update_app_tracing_config(
             app_id=app_model.id,

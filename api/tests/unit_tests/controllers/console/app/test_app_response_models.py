@@ -470,6 +470,61 @@ def test_app_pagination_aliases_per_page_and_has_next(app_models):
     assert serialized["data"][1]["icon_url"] is None
 
 
+def test_trace_toggle_falls_back_to_existing_provider(app_module, monkeypatch):
+    """When the UI sends enabled=True without tracing_provider, the endpoint
+    should fall back to the currently configured provider instead of
+    raising a validation error (issue #37174)."""
+    payload = {"enabled": True}
+    app_model = SimpleNamespace(id="app-1")
+
+    # Stub OpsTraceManager to return an existing provider config
+    trace_manager = MagicMock()
+    trace_manager.get_app_tracing_config.return_value = {
+        "enabled": False,
+        "tracing_provider": "langfuse",
+    }
+    trace_manager.update_app_tracing_config.return_value = None
+    monkeypatch.setattr(app_module, "OpsTraceManager", trace_manager)
+
+    # Stub db.session used by the fallback lookup
+    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=MagicMock()))
+
+    app_module.console_ns.payload = payload
+    try:
+        _unwrap(app_module.AppTraceApi().post)(app_model)
+    finally:
+        app_module.console_ns.payload = None
+
+    # The update should be called with the existing provider, not None
+    trace_manager.update_app_tracing_config.assert_called_once_with(
+        app_id="app-1",
+        enabled=True,
+        tracing_provider="langfuse",
+    )
+
+
+def test_trace_toggle_without_existing_provider_still_validates(app_module, monkeypatch):
+    """When enabled=True and no existing provider is configured, the
+    validation error should still be raised (no silent misconfiguration)."""
+    payload = {"enabled": True}
+    app_model = SimpleNamespace(id="app-2")
+
+    trace_manager = MagicMock()
+    trace_manager.get_app_tracing_config.return_value = {
+        "enabled": False,
+        "tracing_provider": None,
+    }
+    monkeypatch.setattr(app_module, "OpsTraceManager", trace_manager)
+    monkeypatch.setattr(app_module, "db", SimpleNamespace(session=MagicMock()))
+
+    app_module.console_ns.payload = payload
+    try:
+        with pytest.raises(ValidationError):
+            _unwrap(app_module.AppTraceApi().post)(app_model)
+    finally:
+        app_module.console_ns.payload = None
+
+
 def test_app_list_uses_injected_session_for_draft_workflows(
     app: Flask, app_module: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
