@@ -47,12 +47,13 @@ def test_get_workflow(mocker: MockerFixture, invoke_from, workflow, expected_err
     rag_pipeline_service.get_published_workflow.return_value = workflow
 
     pipeline = cast(Pipeline, SimpleNamespace(id="pipeline-1"))
+    session = mocker.Mock()
 
     if expected_error:
         with pytest.raises(ValueError, match=expected_error):
-            PipelineGenerateService._get_workflow(pipeline, invoke_from)
+            PipelineGenerateService._get_workflow(pipeline, invoke_from, session)
     else:
-        result = PipelineGenerateService._get_workflow(pipeline, invoke_from)
+        result = PipelineGenerateService._get_workflow(pipeline, invoke_from, session)
         assert result == workflow
 
 
@@ -123,8 +124,9 @@ def test_generate_single_iteration_delegates(mocker: MockerFixture) -> None:
 
     pipeline = cast(Pipeline, SimpleNamespace(id="p1"))
     user = cast(Account, SimpleNamespace(id="u1"))
+    session = mocker.Mock()
 
-    result = PipelineGenerateService.generate_single_iteration(pipeline, user, "node-1", {"key": "val"})
+    result = PipelineGenerateService.generate_single_iteration(pipeline, user, "node-1", {"key": "val"}, session)
 
     assert result == "stream-iter"
     generator_instance.single_iteration_generate.assert_called_once()
@@ -143,8 +145,9 @@ def test_generate_single_loop_delegates(mocker: MockerFixture) -> None:
 
     pipeline = cast(Pipeline, SimpleNamespace(id="p1"))
     user = cast(Account, SimpleNamespace(id="u1"))
+    session = mocker.Mock()
 
-    result = PipelineGenerateService.generate_single_loop(pipeline, user, "node-1", {"key": "val"})
+    result = PipelineGenerateService.generate_single_loop(pipeline, user, "node-1", {"key": "val"}, session)
 
     assert result == "stream-loop"
     generator_instance.single_loop_generate.assert_called_once()

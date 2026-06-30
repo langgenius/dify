@@ -208,7 +208,7 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
-                session=MagicMock(),
+                session=mock_db.session,
             )
 
         assert updated_app.name == "Iris"
@@ -267,7 +267,7 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
-                session=MagicMock(),
+                session=mock_db.session,
             )
 
         assert backing_agent.role == "research assistant"
@@ -319,7 +319,7 @@ class TestAgentAppType:
                     "use_icon_as_answer_icon": False,
                     "max_active_requests": 0,
                 },
-                session=MagicMock(),
+                session=mock_db.session,
             )
 
         assert backing_agent.role == ""

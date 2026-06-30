@@ -1187,7 +1187,11 @@ class TestTenantService:
 
         with pytest.raises(NoPermissionError):
             TenantService.check_member_permission(
-                mock_tenant, mock_operator, mock_member, "remove", session=mock_db.session
+                mock_tenant,
+                mock_operator,
+                mock_member,
+                "remove",
+                session=mock_db_dependencies["db"].session,
             )
 
     def test_rbac_member_can_remove_non_owner_member(self):
@@ -1262,7 +1266,7 @@ class TestTenantService:
             patch("services.account_service.RBACService.Roles", mock_rbac_roles),
         ):
             owner_account_id = AccountService.get_rbac_workspace_owner_account_id(
-                "tenant-1", "acct-1", session=mock_db.session
+                "tenant-1", "acct-1", session=MagicMock()
             )
 
         assert owner_account_id == "owner-account"

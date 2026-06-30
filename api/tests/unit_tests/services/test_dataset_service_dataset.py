@@ -614,7 +614,7 @@ class TestDatasetServiceCreationAndUpdate:
         assert dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM
         assert dataset.updated_by == "user-1"
         assert dataset.updated_at is now
-        get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id)
+        get_external_knowledge_api.assert_called_once_with("api-1", dataset.tenant_id, session=mock_db.session)
         update_binding.assert_called_once_with("dataset-1", "knowledge-1", "api-1", mock_db.session)
         mock_db.session.add.assert_called_once_with(dataset)
         mock_db.session.commit.assert_called_once()
@@ -654,7 +654,7 @@ class TestDatasetServiceCreationAndUpdate:
                     mock_db.session,
                 )
 
-        get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id)
+        get_external_knowledge_api.assert_called_once_with("foreign-api", dataset.tenant_id, session=mock_db.session)
         update_binding.assert_not_called()
         mock_db.session.commit.assert_not_called()
 

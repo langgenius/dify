@@ -327,25 +327,27 @@ def test_batch_failure_does_not_delete_old_storage_before_commit():
     _commit("doc.txt", tf1, owned=True)
 
     with patch("services.agent_drive_service.storage") as storage_mock:
-        with pytest.raises(AgentDriveError):
-            AgentDriveService().commit(
-                tenant_id=TENANT,
-                user_id=USER,
-                agent_id=AGENT,
-                items=[
-                    DriveCommitItem(
-                        key="doc.txt",
-                        file_ref={"kind": "tool_file", "id": tf2},
-                        value_owned_by_drive=True,
-                    ),
-                    DriveCommitItem(
-                        key="bad.txt",
-                        file_ref={"kind": "tool_file", "id": "44444444-4444-4444-4444-444444444444"},
-                        value_owned_by_drive=True,
-                    ),
-                ],
-                session=session_factory.create_session(),
-            )
+        with session_factory.create_session() as session:
+            with pytest.raises(AgentDriveError):
+                AgentDriveService().commit(
+                    tenant_id=TENANT,
+                    user_id=USER,
+                    agent_id=AGENT,
+                    items=[
+                        DriveCommitItem(
+                            key="doc.txt",
+                            file_ref={"kind": "tool_file", "id": tf2},
+                            value_owned_by_drive=True,
+                        ),
+                        DriveCommitItem(
+                            key="bad.txt",
+                            file_ref={"kind": "tool_file", "id": "44444444-4444-4444-4444-444444444444"},
+                            value_owned_by_drive=True,
+                        ),
+                    ],
+                    session=session,
+                )
+            session.rollback()
         storage_mock.delete.assert_not_called()
 
     with session_factory.create_session() as session:

@@ -465,13 +465,16 @@ class TestAsyncWorkflowServiceGetWorkflow:
         workflow_service.get_published_workflow_by_id.return_value = workflow
 
         # Act
+        session = MagicMock()
         result = AsyncWorkflowService._get_workflow(
-            workflow_service, app_model, workflow_id="workflow-123", session=MagicMock()
+            workflow_service, app_model, workflow_id="workflow-123", session=session
         )
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow_by_id.assert_called_once_with(app_model, "workflow-123", session=None)
+        workflow_service.get_published_workflow_by_id.assert_called_once_with(
+            app_model, "workflow-123", session=session
+        )
         workflow_service.get_published_workflow.assert_not_called()
 
     def test_should_raise_when_specific_workflow_id_not_found(self):
@@ -497,11 +500,12 @@ class TestAsyncWorkflowServiceGetWorkflow:
         workflow_service.get_published_workflow.return_value = workflow
 
         # Act
-        result = AsyncWorkflowService._get_workflow(workflow_service, app_model, session=MagicMock())
+        session = MagicMock()
+        result = AsyncWorkflowService._get_workflow(workflow_service, app_model, session=session)
 
         # Assert
         assert result == workflow
-        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=None)
+        workflow_service.get_published_workflow.assert_called_once_with(app_model, session=session)
         workflow_service.get_published_workflow_by_id.assert_not_called()
 
     def test_should_raise_when_default_published_workflow_not_found(self):

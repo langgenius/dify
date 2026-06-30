@@ -17,6 +17,8 @@ from services.workflow_ref_service import WorkflowRef
 
 @pytest.fixture
 def rag_pipeline_service(mocker) -> RagPipelineService:
+    mock_db = mocker.patch("services.rag_pipeline.rag_pipeline.db")
+    mock_db.session = mocker.Mock()
     mocker.patch(
         "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
         return_value=MockRepo(),
@@ -25,7 +27,7 @@ def rag_pipeline_service(mocker) -> RagPipelineService:
         "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
         return_value=MockRepo(),
     )
-    return RagPipelineService(session_maker=sessionmaker())
+    return RagPipelineService(session=mock_db.session, session_maker=sessionmaker())
 
 
 class MockRepo:
@@ -1822,7 +1824,7 @@ def test_init_uses_default_sessionmaker_when_none(mocker: MockerFixture) -> None
         "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_run_repository"
     )
 
-    RagPipelineService(session_maker=None)
+    RagPipelineService(session=mocker.Mock(), session_maker=None)
 
     create_exec_repo.assert_called_once_with(default_session_maker)
     create_run_repo.assert_called_once_with(default_session_maker)

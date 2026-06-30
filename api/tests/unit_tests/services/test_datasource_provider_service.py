@@ -679,12 +679,12 @@ class TestDatasourceProviderService:
             ds.provider = "prov"
             ds.plugin_id = "org/plug"
             ds.declaration.identity.label.model_dump.return_value = {"en_US": "Label"}
-        mock_mgr.return_value.fetch_installed_datasource_providers.return_value = [ds]
-        cred = {"credential": {"k": "v"}, "is_default": True}
-        with patch.object(service, "list_datasource_credentials", return_value=[cred]):
-            session = MagicMock()
-            session.scalar.return_value = 0
-            results = service.get_all_datasource_credentials("t1", session=session)
+            mock_mgr.return_value.fetch_installed_datasource_providers.return_value = [ds]
+            cred = {"credential": {"k": "v"}, "is_default": True}
+            with patch.object(service, "list_datasource_credentials", return_value=[cred]):
+                session = MagicMock()
+                session.scalar.return_value = 0
+                results = service.get_all_datasource_credentials("t1", session=session)
         assert len(results) == 1
 
     def test_should_include_oauth_schema_for_hardcoded_plugin_ids(self, service, mock_db_session):
