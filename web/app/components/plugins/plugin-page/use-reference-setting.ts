@@ -59,7 +59,9 @@ export const usePluginSettingsAccess = () => {
   const canInstallPlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
   const canUpdatePlugin = hasPermission(workspacePermissionKeys, 'plugin.install') && legacyCanInstallPlugin
   const canDeletePlugin = hasPermission(workspacePermissionKeys, 'plugin.delete') && legacyCanInstallPlugin
-  const canDebugPlugin = hasPermission(workspacePermissionKeys, 'plugin.debug') && legacyCanDebugPlugin
+  const canDebugPlugin = rbacEnabled
+    ? hasPermission(workspacePermissionKeys, 'plugin.debug')
+    : legacyCanDebugPlugin
 
   return {
     permission: permissions,
