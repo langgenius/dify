@@ -12,6 +12,7 @@ import {
   ACCOUNT_SETTING_TAB,
 } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -59,7 +60,7 @@ export default function AccountSetting({
   const isRbacEnabled = systemFeatures.rbac_enabled
   const canManageWorkspaceRoles = isRbacEnabled && hasPermission(workspacePermissionKeys, 'workspace.role.manage')
   const canViewBilling = enableBilling && hasPermission(workspacePermissionKeys, BillingPermission.View)
-  const canViewWorkflowLogArchives = isCurrentWorkspaceManager || canManageWorkspaceRoles
+  const canViewWorkflowLogArchives = IS_CLOUD_EDITION && isCurrentWorkspaceManager
   // Keep legacy `language` deep links opening Preferences during the tab rename migration.
   const normalizedActiveTab = activeTab === ACCOUNT_SETTING_TAB.LANGUAGE ? ACCOUNT_SETTING_TAB.PREFERENCES : activeTab
   const activeMenu = (() => {

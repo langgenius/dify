@@ -33,6 +33,20 @@ vi.mock('@/next/navigation', () => ({
   }),
 }))
 
+vi.mock('@/config', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/config')>()
+  return {
+    ...actual,
+    IS_CLOUD_EDITION: true,
+  }
+})
+
+vi.mock('@/context/app-context', () => ({
+  useAppContext: () => ({
+    isCurrentWorkspaceManager: true,
+  }),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))

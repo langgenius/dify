@@ -2,11 +2,17 @@
 
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { IS_CLOUD_EDITION } from '@/config'
+import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
 
 export function ArchivedLogsNotice() {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
+
+  if (!IS_CLOUD_EDITION || !isCurrentWorkspaceManager)
+    return null
 
   return (
     <div className="mb-3 flex items-start gap-2 rounded-lg border border-util-colors-warning-warning-200 bg-util-colors-warning-warning-50 px-3 py-2">
