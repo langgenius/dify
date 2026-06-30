@@ -13,6 +13,7 @@ Focus on:
 - Service method interfaces
 """
 
+from unittest.mock import MagicMock
 import sys
 import uuid
 from datetime import UTC, datetime
@@ -263,7 +264,7 @@ class TestAppGenerateServiceWorkflow:
     """Test AppGenerateService workflow integration."""
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_accepts_workflow_args(self, mock_generate):
+    def test_generate_accepts_workflow_args(self, mock_generate: MagicMock):
         """Test generate accepts workflow-specific args."""
         mock_generate.return_value = {"result": "success"}
 
@@ -272,6 +273,7 @@ class TestAppGenerateServiceWorkflow:
             user=Mock(),
             args={"inputs": {"key": "value"}, "workflow_id": "workflow_123"},
             invoke_from=Mock(),
+            session=MagicMock(),
             streaming=False,
         )
 
@@ -279,7 +281,7 @@ class TestAppGenerateServiceWorkflow:
         mock_generate.assert_called_once()
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_workflow_not_found_error(self, mock_generate):
+    def test_generate_raises_workflow_not_found_error(self, mock_generate: MagicMock):
         """Test generate raises WorkflowNotFoundError."""
         mock_generate.side_effect = WorkflowNotFoundError("Workflow not found")
 
@@ -289,11 +291,12 @@ class TestAppGenerateServiceWorkflow:
                 user=Mock(),
                 args={"workflow_id": "invalid_id"},
                 invoke_from=Mock(),
+                session=MagicMock(),
                 streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_raises_is_draft_workflow_error(self, mock_generate):
+    def test_generate_raises_is_draft_workflow_error(self, mock_generate: MagicMock):
         """Test generate raises IsDraftWorkflowError."""
         mock_generate.side_effect = IsDraftWorkflowError("Workflow is draft")
 
@@ -303,11 +306,12 @@ class TestAppGenerateServiceWorkflow:
                 user=Mock(),
                 args={"workflow_id": "draft_workflow"},
                 invoke_from=Mock(),
+                session=MagicMock(),
                 streaming=False,
             )
 
     @patch.object(AppGenerateService, "generate")
-    def test_generate_supports_streaming_mode(self, mock_generate):
+    def test_generate_supports_streaming_mode(self, mock_generate: MagicMock):
         """Test generate supports streaming response mode."""
         mock_stream = Mock()
         mock_generate.return_value = mock_stream
@@ -317,6 +321,7 @@ class TestAppGenerateServiceWorkflow:
             user=Mock(),
             args={"inputs": {}, "response_mode": "streaming"},
             invoke_from=Mock(),
+            session=MagicMock(),
             streaming=True,
         )
 
