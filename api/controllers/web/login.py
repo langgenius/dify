@@ -146,8 +146,8 @@ class LoginStatusApi(Resource):
                 "app_logged_in": False,
             }
         app_id = AppService.get_app_id_by_code(app_code, session=db.session)
-        is_public = not dify_config.ENTERPRISE_ENABLED or not WebAppAuthService.is_app_require_permission_check(db.session(),
-            app_id=app_id
+        is_public = not dify_config.ENTERPRISE_ENABLED or not WebAppAuthService.is_app_require_permission_check(
+            db.session(), app_id=app_id
         )
         user_logged_in = False
 
