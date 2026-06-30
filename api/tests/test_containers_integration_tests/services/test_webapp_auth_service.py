@@ -750,7 +750,7 @@ class TestWebAppAuthService:
         # Arrange: Setup test with private access mode
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(access_mode="private")
+        result = WebAppAuthService.is_app_require_permission_check(db_session_with_containers, access_mode="private")
 
         # Assert: Verify correct result
         assert result is True
@@ -769,7 +769,7 @@ class TestWebAppAuthService:
         # Arrange: Setup test with public access mode
 
         # Act: Execute permission check requirement test
-        result = WebAppAuthService.is_app_require_permission_check(access_mode="public")
+        result = WebAppAuthService.is_app_require_permission_check(db_session_with_containers, access_mode="public")
 
         # Assert: Verify correct result
         assert result is False
