@@ -492,7 +492,9 @@ class TestExternalDatasetServiceCreateAPI:
 
         # Act & Assert
         with pytest.raises(ValueError, match="settings is required"):
-            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, session=mock_db.session)
+            ExternalDatasetService.create_external_knowledge_api(
+                "tenant-123", "user-123", args, session=mock_db.session
+            )
 
     @patch("services.external_knowledge_service.db")
     def test_create_external_knowledge_api_none_settings(self, mock_db, factory: ExternalDatasetServiceTestDataFactory):
@@ -502,7 +504,9 @@ class TestExternalDatasetServiceCreateAPI:
 
         # Act & Assert
         with pytest.raises(ValueError, match="settings is required"):
-            ExternalDatasetService.create_external_knowledge_api("tenant-123", "user-123", args, session=mock_db.session)
+            ExternalDatasetService.create_external_knowledge_api(
+                "tenant-123", "user-123", args, session=mock_db.session
+            )
 
     @patch("services.external_knowledge_service.db")
     @patch("services.external_knowledge_service.ExternalDatasetService.check_endpoint_and_api_key")
@@ -1037,7 +1041,9 @@ class TestExternalDatasetServiceAPIUseCheck:
         mock_db.session.scalar.return_value = 1
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id, tenant_id, session=mock_db.session)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(
+            api_id, tenant_id, session=mock_db.session
+        )
 
         # Assert
         assert in_use is True
@@ -1056,7 +1062,9 @@ class TestExternalDatasetServiceAPIUseCheck:
         mock_db.session.scalar.return_value = 10
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id, tenant_id, session=mock_db.session)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(
+            api_id, tenant_id, session=mock_db.session
+        )
 
         # Assert
         assert in_use is True
@@ -1072,7 +1080,9 @@ class TestExternalDatasetServiceAPIUseCheck:
         mock_db.session.scalar.return_value = 0
 
         # Act
-        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(api_id, tenant_id, session=mock_db.session)
+        in_use, count = ExternalDatasetService.external_knowledge_api_use_check(
+            api_id, tenant_id, session=mock_db.session
+        )
 
         # Assert
         assert in_use is False
@@ -1142,7 +1152,9 @@ class TestExternalDatasetServiceDocumentValidate:
         process_parameter = {"param1": "value1", "param2": "value2"}
 
         # Act & Assert - should not raise
-        ExternalDatasetService.document_create_args_validate(tenant_id, api_id, process_parameter, session=mock_db.session)
+        ExternalDatasetService.document_create_args_validate(
+            tenant_id, api_id, process_parameter, session=mock_db.session
+        )
 
     @patch("services.external_knowledge_service.db")
     def test_document_create_args_validate_missing_required_param(
