@@ -34,6 +34,7 @@ from core.workflow.human_input import (
     UserActionConfig,
     ValueSourceType,
 )
+from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
 from core.workflow.human_input_adapter import (
     DeliveryMethodType,
     EmailDeliveryConfig,
@@ -170,13 +171,19 @@ def _build_human_input_node(
         node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
     )
     runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
+    hitl_callback = build_dify_human_input_hitl_callback(
+        node_data=typed_node_data,
+        repository=runtime.build_form_repository(),
+        file_value_restorer=lambda mapping: runtime._file_reference_factory.build_from_mapping(mapping=mapping),  # type: ignore[attr-defined]
+        delivery_methods=runtime._resolve_delivery_methods(node_data=typed_node_data),  # type: ignore[attr-defined]
+        display_in_ui=runtime._display_in_ui(node_data=typed_node_data),  # type: ignore[attr-defined]
+    )
     return HumanInputNode(
         node_id=node_id,
         data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        file_reference_factory=_TestFileReferenceFactory(),
-        runtime=runtime,
+        hitl_callback=hitl_callback,
     )
 
 
@@ -520,8 +527,11 @@ class TestHumanInputNodeVariableResolution:
         pause_event = next(run_result)
 
         assert isinstance(pause_event, PauseRequestedEvent)
-        expected_values = {"user_name": "Jane Doe"}
-        assert pause_event.reason.resolved_default_values == expected_values
+        expected_values = {
+            "user_name": "Jane Doe",
+            "user_email": "foo@example.com",
+        }
+        assert pause_event.reason.session_id == "form-1"
 
         params = mock_repo.create_form.call_args.args[0]
         assert params.resolved_default_values == expected_values

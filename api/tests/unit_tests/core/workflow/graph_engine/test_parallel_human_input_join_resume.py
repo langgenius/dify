@@ -19,6 +19,7 @@ from core.workflow.human_input import (
     UserActionConfig,
     ValueSourceType,
 )
+from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
@@ -189,27 +190,33 @@ def _build_graph(runtime_state: GraphRuntimeState, repo: HumanInputFormRepositor
     human_a_config = {"id": "human_a", "data": human_data.model_dump()}
     human_a_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
     human_a_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
+    human_a_callback = build_dify_human_input_hitl_callback(
+        node_data=human_data,
+        repository=repo,
+        file_value_restorer=lambda mapping: human_a_runtime._file_reference_factory.build_from_mapping(mapping=mapping),  # type: ignore[attr-defined]
+    )
     human_a = HumanInputNode(
         node_id=human_a_config["id"],
         data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
-        form_repository=repo,
-        file_reference_factory=_TestFileReferenceFactory(),
-        runtime=human_a_runtime,
+        hitl_callback=human_a_callback,
     )
 
     human_b_config = {"id": "human_b", "data": human_data.model_dump()}
     human_b_runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
     human_b_runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
+    human_b_callback = build_dify_human_input_hitl_callback(
+        node_data=human_data,
+        repository=repo,
+        file_value_restorer=lambda mapping: human_b_runtime._file_reference_factory.build_from_mapping(mapping=mapping),  # type: ignore[attr-defined]
+    )
     human_b = HumanInputNode(
         node_id=human_b_config["id"],
         data=human_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=runtime_state,
-        form_repository=repo,
-        file_reference_factory=_TestFileReferenceFactory(),
-        runtime=human_b_runtime,
+        hitl_callback=human_b_callback,
     )
 
     end_data = EndNodeData(
