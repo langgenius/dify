@@ -14,15 +14,6 @@ from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, 
 MODULE = "core.plugin.plugin_service"
 
 
-@pytest.fixture(autouse=True)
-def clear_plugin_model_provider_memory_cache() -> None:
-    from core.plugin.plugin_service import PluginService
-
-    PluginService._plugin_model_providers_memory_cache.clear()
-    yield
-    PluginService._plugin_model_providers_memory_cache.clear()
-
-
 class _FakeSession:
     def __init__(self) -> None:
         self.execute = Mock()
@@ -143,11 +134,10 @@ class TestPluginModelProviderCache:
         cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider]).decode("utf-8")
         generation_key = _provider_generation_key("tenant-1")
         cache_key = _provider_cache_key("tenant-1", 0)
-        legacy_cache_key = _provider_cache_key("tenant-1")
 
         with patch(f"{MODULE}.redis_client") as redis_client:
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [cached_payload, None]
+            redis_client.mget.return_value = [cached_payload]
 
             from core.plugin.plugin_service import PluginService
 
@@ -158,20 +148,18 @@ class TestPluginModelProviderCache:
         client.fetch_model_providers.assert_not_called()
         redis_client.setex.assert_not_called()
         redis_client.get.assert_called_once_with(generation_key)
-        redis_client.mget.assert_called_once_with([cache_key, legacy_cache_key])
+        redis_client.mget.assert_called_once_with([cache_key])
 
     def test_fetch_plugin_model_providers_deletes_invalid_cache_and_refetches(self) -> None:
         """Invalid generation-scoped cache payloads are removed before falling back to the daemon."""
         generation_key = _provider_generation_key("tenant-1")
         cache_key = _provider_cache_key("tenant-1", 0)
-        legacy_cache_key = _provider_cache_key("tenant-1")
         with (
             patch(f"{MODULE}.redis_client") as redis_client,
             patch(f"{MODULE}.dify_config") as mock_config,
         ):
             redis_client.get.side_effect = [None, None, None]
-            redis_client.mget.side_effect = [["not-json", None], [None, None]]
-            redis_client.lock.return_value.acquire.return_value = True
+            redis_client.mget.side_effect = [["not-json"], [None]]
             mock_config.PLUGIN_MODEL_PROVIDERS_CACHE_TTL = 86400
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
@@ -187,8 +175,8 @@ class TestPluginModelProviderCache:
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
         redis_client.get.assert_has_calls([call(generation_key), call(generation_key), call(generation_key)])
         assert redis_client.mget.call_args_list == [
-            call([cache_key, legacy_cache_key]),
-            call([cache_key, legacy_cache_key]),
+            call([cache_key]),
+            call([cache_key]),
         ]
 
     def test_fetch_plugin_model_providers_refetches_when_cache_read_fails(self) -> None:
@@ -208,7 +196,6 @@ class TestPluginModelProviderCache:
     def test_fetch_plugin_model_providers_refetches_when_cached_payload_batch_read_fails(self) -> None:
         """Redis mget failures do not block provider discovery for the tenant."""
         cache_key = _provider_cache_key("tenant-1", 0)
-        legacy_cache_key = _provider_cache_key("tenant-1")
         with patch(f"{MODULE}.redis_client") as redis_client:
             redis_client.get.return_value = None
             redis_client.mget.side_effect = RedisError("redis unavailable")
@@ -220,14 +207,14 @@ class TestPluginModelProviderCache:
             result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
 
         client.fetch_model_providers.assert_called_once_with("tenant-1")
-        redis_client.mget.assert_called_once_with([cache_key, legacy_cache_key])
+        redis_client.mget.assert_called_once_with([cache_key])
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
 
     def test_fetch_plugin_model_providers_returns_fresh_result_when_cache_write_fails(self) -> None:
         """Redis write failures are non-fatal after fresh provider data has been fetched."""
         with patch(f"{MODULE}.redis_client") as redis_client:
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [None, None]
+            redis_client.mget.return_value = [None]
             redis_client.setex.side_effect = RedisError("redis unavailable")
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
@@ -244,12 +231,13 @@ class TestPluginModelProviderCache:
         cached_provider = _build_provider_entity()
         cached_payload = TypeAdapter(list[ProviderEntity]).dump_json([cached_provider]).decode("utf-8")
         cache_key = _provider_cache_key("tenant-1", 0)
-        legacy_cache_key = _provider_cache_key("tenant-1")
 
-        with patch(f"{MODULE}.redis_client") as redis_client:
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.monotonic", return_value=100.0),
+        ):
             redis_client.get.return_value = None
-            redis_client.mget.side_effect = [[None, None], [cached_payload, None]]
-            redis_client.lock.return_value.acquire.return_value = True
+            redis_client.mget.side_effect = [[None], [cached_payload]]
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider(provider="anthropic")]
 
@@ -267,10 +255,10 @@ class TestPluginModelProviderCache:
             blocking_timeout=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT,
         )
         assert redis_client.mget.call_args_list == [
-            call([cache_key, legacy_cache_key]),
-            call([cache_key, legacy_cache_key]),
+            call([cache_key]),
+            call([cache_key]),
         ]
-        redis_client.lock.return_value.release.assert_called_once_with()
+        redis_client.lock.return_value.release.assert_called_once()
         client.fetch_model_providers.assert_not_called()
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
 
@@ -279,9 +267,10 @@ class TestPluginModelProviderCache:
         with (
             patch(f"{MODULE}.redis_client") as redis_client,
             patch(f"{MODULE}.PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT", 0),
+            patch(f"{MODULE}.time.monotonic", return_value=100.0),
         ):
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [None, None]
+            redis_client.mget.return_value = [None]
             redis_client.lock.return_value.acquire.return_value = False
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
@@ -304,14 +293,13 @@ class TestPluginModelProviderCache:
         """Waiters re-read provider generation before trying to become the next refresh owner."""
         generation_key = _provider_generation_key("tenant-1")
         stale_cache_key = _provider_cache_key("tenant-1", 0)
-        legacy_cache_key = _provider_cache_key("tenant-1")
         new_cache_key = _provider_cache_key("tenant-1", 1)
         with (
             patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.monotonic", side_effect=[100.0, 100.0, 100.5, 101.0]),
         ):
             redis_client.get.side_effect = [None, b"1", b"1", b"1", b"1"]
-            redis_client.mget.side_effect = [[None, None], [None], [None], [None]]
-            redis_client.lock.return_value.acquire.side_effect = [True, True]
+            redis_client.mget.side_effect = [[None], [None], [None], [None]]
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider(provider="anthropic")]
 
@@ -327,7 +315,7 @@ class TestPluginModelProviderCache:
             call(generation_key),
         ]
         assert redis_client.mget.call_args_list == [
-            call([stale_cache_key, legacy_cache_key]),
+            call([stale_cache_key]),
             call([new_cache_key]),
             call([new_cache_key]),
             call([new_cache_key]),
@@ -345,8 +333,8 @@ class TestPluginModelProviderCache:
             ),
         ]
         assert redis_client.lock.return_value.acquire.call_args_list == [
-            call(blocking=True, blocking_timeout=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT),
-            call(blocking=True, blocking_timeout=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT),
+            call(blocking=True, blocking_timeout=2.0),
+            call(blocking=True, blocking_timeout=1.5),
         ]
         assert redis_client.lock.return_value.release.call_count == 2
         client.fetch_model_providers.assert_called_once_with("tenant-1")
@@ -354,15 +342,54 @@ class TestPluginModelProviderCache:
         assert redis_client.setex.call_args.args[0] == new_cache_key
         assert [provider.provider for provider in result] == ["langgenius/anthropic/anthropic"]
 
+    def test_fetch_plugin_model_providers_fails_when_generation_retries_exhaust_wait_budget(self) -> None:
+        """Generation retry loops share one request-local lock wait deadline."""
+        generation_key = _provider_generation_key("tenant-1")
+        stale_cache_key = _provider_cache_key("tenant-1", 0)
+        new_cache_key = _provider_cache_key("tenant-1", 1)
+
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.monotonic", side_effect=[100.0, 100.0, 102.1]),
+        ):
+            redis_client.get.side_effect = [None, b"1", b"1"]
+            redis_client.mget.side_effect = [[None], [None], [None]]
+            client = Mock()
+
+            from core.plugin.plugin_service import PluginService
+
+            with pytest.raises(RuntimeError, match="Timed out waiting for plugin model providers refresh lock"):
+                PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert redis_client.get.call_args_list == [
+            call(generation_key),
+            call(generation_key),
+            call(generation_key),
+        ]
+        assert redis_client.mget.call_args_list == [
+            call([stale_cache_key]),
+            call([new_cache_key]),
+            call([new_cache_key]),
+        ]
+        redis_client.lock.assert_called_once_with(
+            PluginService._get_plugin_model_providers_lock_key("tenant-1", 0),
+            timeout=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_TTL,
+            sleep=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL,
+        )
+        redis_client.lock.return_value.acquire.assert_called_once_with(blocking=True, blocking_timeout=2.0)
+        redis_client.lock.return_value.release.assert_called_once()
+        client.fetch_model_providers.assert_not_called()
+
     def test_fetch_plugin_model_providers_releases_owned_refresh_lock_after_store(self) -> None:
         """The refresh owner releases only its token after storing provider metadata."""
         cache_key = _provider_cache_key("tenant-1", 0)
-        legacy_cache_key = _provider_cache_key("tenant-1")
 
-        with patch(f"{MODULE}.redis_client") as redis_client:
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.monotonic", return_value=100.0),
+        ):
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [None, None]
-            redis_client.lock.return_value.acquire.return_value = True
+            redis_client.mget.return_value = [None]
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
 
@@ -380,11 +407,86 @@ class TestPluginModelProviderCache:
             blocking_timeout=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT,
         )
         assert redis_client.mget.call_args_list == [
-            call([cache_key, legacy_cache_key]),
-            call([cache_key, legacy_cache_key]),
+            call([cache_key]),
+            call([cache_key]),
         ]
-        redis_client.lock.return_value.release.assert_called_once_with()
+        redis_client.lock.return_value.release.assert_called_once()
         redis_client.eval.assert_not_called()
+        client.fetch_model_providers.assert_called_once_with("tenant-1")
+        assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
+
+    def test_fetch_plugin_model_providers_returns_fresh_result_when_refresh_lock_release_fails(self) -> None:
+        """Release failures are logged, not allowed to hide a successful daemon refresh."""
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.monotonic", return_value=100.0),
+        ):
+            redis_client.get.return_value = None
+            redis_client.mget.return_value = [None]
+            redis_client.lock.return_value.release.side_effect = RedisError("release failed")
+            client = Mock()
+            client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert redis_client.mget.call_args_list == [
+            call([cache_key]),
+            call([cache_key]),
+        ]
+        client.fetch_model_providers.assert_called_once_with("tenant-1")
+        redis_client.setex.assert_called_once()
+        redis_client.lock.return_value.release.assert_called_once()
+        assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
+
+    def test_fetch_plugin_model_providers_releases_owned_refresh_lock_when_fetch_fails(self) -> None:
+        """Release failures must not hide the daemon failure that happened while owning the lock."""
+        cache_key = _provider_cache_key("tenant-1", 0)
+
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.monotonic", return_value=100.0),
+        ):
+            redis_client.get.return_value = None
+            redis_client.mget.return_value = [None]
+            redis_client.lock.return_value.release.side_effect = RedisError("release failed")
+            client = Mock()
+            client.fetch_model_providers.side_effect = RuntimeError("daemon failed")
+
+            from core.plugin.plugin_service import PluginService
+
+            with pytest.raises(RuntimeError, match="daemon failed"):
+                PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert redis_client.mget.call_args_list == [
+            call([cache_key]),
+            call([cache_key]),
+        ]
+        client.fetch_model_providers.assert_called_once_with("tenant-1")
+        redis_client.setex.assert_not_called()
+        redis_client.lock.return_value.release.assert_called_once()
+
+    def test_fetch_plugin_model_providers_falls_back_when_refresh_lock_acquire_fails(self) -> None:
+        """Redis acquire failures degrade to a direct daemon fetch instead of hiding provider data."""
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.monotonic", return_value=100.0),
+        ):
+            redis_client.get.return_value = None
+            redis_client.mget.return_value = [None]
+            redis_client.lock.return_value.acquire.side_effect = RedisError("redis unavailable")
+            client = Mock()
+            client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        redis_client.lock.return_value.acquire.assert_called_once()
+        redis_client.lock.return_value.release.assert_not_called()
         client.fetch_model_providers.assert_called_once_with("tenant-1")
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
 
@@ -395,7 +497,7 @@ class TestPluginModelProviderCache:
             patch(f"{MODULE}.time.sleep") as sleep,
         ):
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [None, None]
+            redis_client.mget.return_value = [None]
             redis_client.lock.side_effect = RedisError("redis unavailable")
             redis_client.set.side_effect = AssertionError("raw redis set must not be used for refresh locks")
             client = Mock()
@@ -415,8 +517,7 @@ class TestPluginModelProviderCache:
         cache_key = _provider_cache_key("tenant-1", 0)
         with patch(f"{MODULE}.redis_client") as redis_client:
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [None, None]
-            redis_client.lock.return_value.acquire.return_value = True
+            redis_client.mget.return_value = [None]
             client = Mock()
             client.fetch_model_providers.return_value = []
 
@@ -427,14 +528,13 @@ class TestPluginModelProviderCache:
         assert result == ()
         redis_client.setex.assert_called_once()
         assert redis_client.setex.call_args.args[0] == cache_key
-        redis_client.lock.return_value.release.assert_called_once_with()
+        redis_client.lock.return_value.release.assert_called_once()
 
     def test_fetch_plugin_model_providers_skips_cache_write_when_generation_changes_during_refresh(self) -> None:
         """A refresh that started before invalidation must not populate the newer generation cache."""
         with patch(f"{MODULE}.redis_client") as redis_client:
             redis_client.get.side_effect = [None, None, "1"]
-            redis_client.mget.return_value = [None, None]
-            redis_client.lock.return_value.acquire.return_value = True
+            redis_client.mget.return_value = [None]
             client = Mock()
             client.fetch_model_providers.return_value = []
 
@@ -445,17 +545,16 @@ class TestPluginModelProviderCache:
         assert result == ()
         client.fetch_model_providers.assert_called_once_with("tenant-1")
         redis_client.setex.assert_not_called()
-        redis_client.lock.return_value.release.assert_called_once_with()
+        redis_client.lock.return_value.release.assert_called_once()
 
     def test_fetch_plugin_model_providers_reuses_cached_empty_provider_list(self) -> None:
         """A cached empty list should prevent repeated daemon fetches for tenants without plugin models."""
         empty_payload = TypeAdapter(list[ProviderEntity]).dump_json([]).decode("utf-8")
         cache_key = _provider_cache_key("tenant-1", 0)
-        legacy_cache_key = _provider_cache_key("tenant-1")
 
         with patch(f"{MODULE}.redis_client") as redis_client:
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [empty_payload, None]
+            redis_client.mget.return_value = [empty_payload]
             client = Mock()
 
             from core.plugin.plugin_service import PluginService
@@ -463,7 +562,7 @@ class TestPluginModelProviderCache:
             result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
 
         assert result == ()
-        redis_client.mget.assert_called_once_with([cache_key, legacy_cache_key])
+        redis_client.mget.assert_called_once_with([cache_key])
         client.fetch_model_providers.assert_not_called()
 
     def test_fetch_plugin_model_providers_creates_default_client_on_cache_miss(self) -> None:
@@ -473,7 +572,7 @@ class TestPluginModelProviderCache:
             patch(f"{MODULE}.PluginModelClient") as client_cls,
         ):
             redis_client.get.return_value = None
-            redis_client.mget.return_value = [None, None]
+            redis_client.mget.return_value = [None]
             client = client_cls.return_value
             client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
 
@@ -484,35 +583,6 @@ class TestPluginModelProviderCache:
         client_cls.assert_called_once_with()
         client.fetch_model_providers.assert_called_once_with("tenant-1")
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
-
-    def test_fetch_plugin_model_providers_reuses_process_local_cache(self) -> None:
-        generation_key = _provider_generation_key("tenant-1")
-        with (
-            patch(f"{MODULE}.redis_client") as redis_client,
-            patch(f"{MODULE}.PluginModelClient") as client_cls,
-        ):
-            redis_client.get.return_value = None
-            redis_client.mget.return_value = [None, None]
-            client = client_cls.return_value
-            client.fetch_model_providers.return_value = [_build_plugin_model_provider()]
-
-            from core.plugin.plugin_service import PluginService
-
-            first_result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
-            redis_client.get.reset_mock()
-            redis_client.mget.reset_mock()
-            redis_client.setex.reset_mock()
-            client.fetch_model_providers.reset_mock()
-
-            second_result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1")
-
-        redis_client.get.assert_called_once_with(generation_key)
-        redis_client.mget.assert_not_called()
-        redis_client.setex.assert_not_called()
-        client.fetch_model_providers.assert_not_called()
-        assert [provider.provider for provider in second_result] == ["langgenius/openai/openai"]
-        assert second_result[0] == first_result[0]
-        assert second_result[0] is not first_result[0]
 
     def test_invalidate_plugin_model_providers_cache_uses_redis_pipeline(self) -> None:
         with patch(f"{MODULE}.redis_client") as redis_client:
@@ -541,34 +611,17 @@ class TestPluginModelProviderCache:
         pipe.incr.assert_called_once_with(_provider_generation_key("tenant-1"))
         pipe.execute.assert_called_once_with()
 
-    def test_invalidate_plugin_model_providers_cache_clears_process_local_cache(self) -> None:
-        with patch(f"{MODULE}.redis_client") as redis_client:
-            pipe = redis_client.pipeline.return_value
-
-            from core.plugin.plugin_service import PluginService
-
-            PluginService._store_in_memory_plugin_model_providers("tenant-1", 0, [_build_provider_entity()])
-            PluginService.invalidate_plugin_model_providers_cache("tenant-1")
-
-        assert PluginService._plugin_model_providers_memory_cache == {}
-        redis_client.pipeline.assert_called_once_with(transaction=False)
-        pipe.delete.assert_called_once_with(_provider_cache_key("tenant-1"))
-        pipe.incr.assert_called_once_with(_provider_generation_key("tenant-1"))
-        pipe.execute.assert_called_once_with()
-
-    def test_fetch_plugin_model_providers_ignores_stale_process_local_cache_after_generation_bump(self) -> None:
+    def test_fetch_plugin_model_providers_uses_new_generation_cache_after_generation_bump(self) -> None:
         generation_key = _provider_generation_key("tenant-1")
         new_cache_key = _provider_cache_key("tenant-1", 1)
         with patch(f"{MODULE}.redis_client") as redis_client:
             redis_client.get.side_effect = [b"1", b"1", b"1"]
             redis_client.mget.return_value = [None]
-            redis_client.lock.return_value.acquire.return_value = True
             client = Mock()
             client.fetch_model_providers.return_value = [_build_plugin_model_provider(provider="anthropic")]
 
             from core.plugin.plugin_service import PluginService
 
-            PluginService._store_in_memory_plugin_model_providers("tenant-1", 0, [_build_provider_entity()])
             result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
 
         client.fetch_model_providers.assert_called_once_with("tenant-1")
@@ -579,7 +632,8 @@ class TestPluginModelProviderCache:
         ]
         redis_client.setex.assert_called_once()
         assert redis_client.setex.call_args.args[0] == new_cache_key
-        assert PluginService._plugin_model_providers_memory_cache["tenant-1"][0] == 1
+        redis_client.lock.return_value.acquire.assert_called_once()
+        redis_client.lock.return_value.release.assert_called_once()
         assert [provider.provider for provider in result] == ["langgenius/anthropic/anthropic"]
 
 
