@@ -127,7 +127,8 @@ When you update the config note, it should clearly state:
 
 Do not repeat details already managed through `dify-agent config push` for config files, skills, or env.
 Persist the build-draft config by piping the JSON push spec to `dify-agent config push`.
-Local file edits alone are not saved as config. If you updated only the note, still push the updated note.
+Local file edits alone are not saved as config. Always include the config note in the JSON push spec, even when the
+note content did not change.
 
 After the push completes, respond FINISHED."""
 
