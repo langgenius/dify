@@ -18,6 +18,7 @@ from services.app_dsl_service import (
     AppDslService,
 )
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.errors.app import WorkflowNotFoundError
 
 TEST_TENANT_ID = "test-tenant-123"
 TEST_USER_ID = "test-user-123"
@@ -997,7 +998,7 @@ class TestAppDslServiceExportDslErrors:
         # Act & Assert
         with patch("services.app_dsl_service.WorkflowService") as mock_wf_svc:
             mock_wf_svc.return_value.get_draft_workflow.return_value = None
-            with pytest.raises(ValueError, match="Missing draft workflow configuration"):
+            with pytest.raises(WorkflowNotFoundError, match="Missing draft workflow configuration"):
                 AppDslService._append_workflow_export_data(
                     export_data={},
                     app_model=app_model,
