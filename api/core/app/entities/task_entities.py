@@ -8,7 +8,6 @@ from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.rag.entities import RetrievalSourceMetadata
 from core.workflow.human_input import FormInputConfig, UserActionConfig
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 
@@ -307,7 +306,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     ``human_input_required`` events are available.
     """
 
-    TYPE: Literal[PauseReasonType.HITL_REQUIRED] = PauseReasonType.HITL_REQUIRED
+    TYPE: Literal["human_input_required"] = "human_input_required"
     form_id: str
     node_id: str
     node_title: str

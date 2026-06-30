@@ -167,7 +167,7 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert response.data.paused_nodes == ["node-1"]
         assert response.data.reasons == [
             {
-                "TYPE": "hitl_required",
+                "TYPE": "human_input_required",
                 "form_id": "form-1",
                 "node_id": "node-1",
                 "node_title": "Approval",

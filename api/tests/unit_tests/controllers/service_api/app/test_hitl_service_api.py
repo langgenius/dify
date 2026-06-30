@@ -115,7 +115,7 @@ def _build_advanced_chat_paused_blocking_response() -> AdvancedChatPausedBlockin
         paused_nodes=["node-1"],
         reasons=[
             {
-                "type": PauseReasonType.HITL_REQUIRED,
+                "type": "human_input_required",
                 "form_id": "form-1",
                 "expiration_time": 100,
             }
@@ -144,7 +144,7 @@ def _build_workflow_paused_blocking_response() -> WorkflowAppPausedBlockingRespo
             created_at=1,
             finished_at=None,
             paused_nodes=["node-1"],
-            reasons=[{"TYPE": "hitl_required", "form_id": "form-1", "expiration_time": 100}],
+            reasons=[{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 100}],
         ),
     )
 
@@ -398,7 +398,7 @@ class TestHitlServiceApi:
         assert response["event"] == "workflow_paused"
         assert response["workflow_run_id"] == "run-1"
         assert response["answer"] == "partial"
-        assert response["data"]["reasons"][0]["type"] == PauseReasonType.HITL_REQUIRED
+        assert response["data"]["reasons"][0]["type"] == "human_input_required"
         assert response["data"]["reasons"][0]["expiration_time"] == 100
         assert "human_input_forms" not in response["data"]
 
@@ -412,7 +412,9 @@ class TestHitlServiceApi:
         assert response["workflow_run_id"] == "r1"
         assert response["data"]["status"] == WorkflowExecutionStatus.PAUSED
         assert response["data"]["paused_nodes"] == ["node-1"]
-        assert response["data"]["reasons"] == [{"TYPE": "hitl_required", "form_id": "form-1", "expiration_time": 100}]
+        assert response["data"]["reasons"] == [
+            {"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 100}
+        ]
         assert "human_input_forms" not in response["data"]
 
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:

@@ -77,5 +77,6 @@ def test_pause_reason_payload_carries_approval_channels_through_factory():
     )
     payload = HumanInputRequiredPauseReasonPayload.from_response_data(data)
 
+    assert payload.TYPE == "human_input_required"
     assert payload.approval_channels == ["console"]
     assert payload.form_token is None

@@ -144,7 +144,7 @@ def test_form_definition_preserves_legacy_actions_and_default_values() -> None:
 
 def test_human_input_required_pause_reason_accepts_current_serialized_payload() -> None:
     payload = {
-        "TYPE": "hitl_required",
+        "TYPE": "human_input_required",
         "form_id": "form-1",
         "form_content": "Please confirm",
         "inputs": _legacy_form_input_payloads(),
@@ -161,7 +161,7 @@ def test_human_input_required_pause_reason_accepts_current_serialized_payload() 
     restored = _validate_legacy_json(HumanInputRequiredPauseReasonPayload, payload)
     assert restored.inputs[1].output_variable_name == "decision"
     assert restored.actions[0].id == "approve"
-    assert restored.TYPE == "hitl_required"
+    assert restored.TYPE == "human_input_required"
     assert restored.form_id == "form-1"
 
 
