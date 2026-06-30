@@ -1438,8 +1438,11 @@ def test_build_chat_finalization_helper_runs_stateless_debug_build_push_prompt(
     assert args["conversation_id"] == "debug-conversation-1"
     assert args["inputs"] == {}
     query = cast(str, args["query"])
-    assert query == completion_controller._BUILD_CHAT_FINALIZATION_QUERY
+    assert "Update the config note with useful new build context when available" in query
+    assert "This is required" not in query
     assert "piping the JSON push spec to `dify-agent config push`" in query
+    assert "what you installed or configured outside the workspace" in query
+    assert "Do not repeat details already managed through `dify-agent config push`" in query
     assert "After the push completes, respond FINISHED." in query
 
 
