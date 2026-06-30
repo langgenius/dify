@@ -4,8 +4,11 @@ import json
 from datetime import UTC, datetime
 
 from pydantic import TypeAdapter
+import pytest
 
+from core.workflow.nodes.human_input._exc import ExtensionsNotSetErrorValueError
 from core.workflow.nodes.human_input.entities import (
+    FileInputConfig,
     FormDefinition,
     ParagraphInputConfig,
     SelectInputConfig,
@@ -16,6 +19,7 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.nodes.human_input.enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired, PauseReasonType
 from core.workflow.nodes.human_input.session_binding import SessionBinding
+from graphon.file import FileType
 
 
 def test_session_binding_identity_mapping() -> None:
@@ -126,3 +130,12 @@ def test_form_definition_dump_keeps_public_json_shape() -> None:
     assert payload["expiration_time"] == "2024-01-01T00:00:00Z"
     assert payload["user_actions"][0]["id"] == "approve"
     assert payload["inputs"][0]["type"] == "paragraph"
+
+
+def test_custom_file_input_requires_extensions() -> None:
+    with pytest.raises(ExtensionsNotSetErrorValueError):
+        FileInputConfig(
+            output_variable_name="attachment",
+            allowed_file_types=[FileType.CUSTOM],
+            allowed_file_extensions=[],
+        )

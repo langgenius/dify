@@ -25,6 +25,7 @@ def _build_form_model() -> SimpleNamespace:
         id="form-1",
         node_id="node-1",
         form_definition=definition.model_dump_json(),
+        rendered_content="rendered",
         expiration_time=expiration_time,
     )
 
@@ -45,6 +46,7 @@ def test_build_human_input_required_reason_prefers_standalone_web_app_token() ->
     )
 
     assert reason.node_title == "Ask Name"
+    assert reason.form_content == "rendered"
     assert reason.resolved_default_values == {"name": "Alice"}
     assert not hasattr(reason, "form_token")
 

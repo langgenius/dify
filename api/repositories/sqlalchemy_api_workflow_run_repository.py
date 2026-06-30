@@ -131,7 +131,7 @@ def _build_human_input_required_reason(
             definition = None
 
         if definition is not None:
-            form_content = definition.form_content
+            form_content = form_model.rendered_content or definition.rendered_content or definition.form_content
             inputs = list(definition.inputs)
             actions = list(definition.user_actions)
             resolved_default_values = dict(definition.default_values)

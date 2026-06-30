@@ -161,7 +161,7 @@ class _FileInputCommonConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_extensions(self) -> Self:
-        if self.allowed_file_types != FileType.CUSTOM:
+        if FileType.CUSTOM not in self.allowed_file_types:
             return self
         if not self.allowed_file_extensions:
             raise exc.ExtensionsNotSetErrorValueError
