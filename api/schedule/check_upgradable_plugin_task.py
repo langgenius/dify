@@ -34,8 +34,7 @@ def check_upgradable_plugin_task():
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day >= now_seconds_of_day,
             TenantPluginAutoUpgradeStrategy.upgrade_time_of_day
             < now_seconds_of_day + AUTO_UPGRADE_MINIMAL_CHECKING_INTERVAL,
-            TenantPluginAutoUpgradeStrategy.strategy_setting
-            != TenantPluginAutoUpgradeStrategySetting.DISABLED,
+            TenantPluginAutoUpgradeStrategy.strategy_setting != TenantPluginAutoUpgradeStrategySetting.DISABLED,
         )
     ).all()
 

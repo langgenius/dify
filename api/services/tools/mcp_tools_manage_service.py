@@ -463,9 +463,7 @@ class MCPToolManageService:
         from core.tools.utils.encryption import create_provider_encrypter
 
         # Create config for secret fields
-        config = [
-            BasicProviderConfig(type=ProviderConfigType.SECRET_INPUT, name=field) for field in secret_fields
-        ]
+        config = [BasicProviderConfig(type=ProviderConfigType.SECRET_INPUT, name=field) for field in secret_fields]
 
         encrypter_instance, _ = create_provider_encrypter(
             tenant_id=tenant_id,

@@ -205,9 +205,7 @@ class TestBackfillStrategyCategories:
         assert tool_strategy.upgrade_time_of_day == expected_time
         created_strategies = [call.args[0] for call in session.add.call_args_list]
         model_strategy = next(
-            strategy
-            for strategy in created_strategies
-            if strategy.category == TenantPluginAutoUpgradeCategory.MODEL
+            strategy for strategy in created_strategies if strategy.category == TenantPluginAutoUpgradeCategory.MODEL
         )
         assert model_strategy.strategy_setting == TenantPluginAutoUpgradeStrategySetting.LATEST
         assert model_strategy.upgrade_time_of_day == expected_time
