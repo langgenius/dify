@@ -85,7 +85,7 @@ const ChatWrapper = () => {
     } as ChatConfig
   }, [appParams, currentConversationItem?.introduction])
   const timezone = appSourceType === AppSourceType.webApp
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
+    ? new Intl.DateTimeFormat().resolvedOptions().timeZone
     : undefined
   const {
     chatList,

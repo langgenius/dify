@@ -244,8 +244,8 @@ describe('TagSearchContent', () => {
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()
   })
 
-  it('renders snippet management action with snippets management permission', () => {
-    mockWorkspacePermissionKeys.value = ['snippets.management']
+  it('renders snippet management action with snippets create-and-modify permission', () => {
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
 
     render(
       <PanelHarness

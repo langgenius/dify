@@ -435,6 +435,7 @@ _LEGACY_APP_EDITOR_KEYS: list[str] = [
     "app.acl.delete",
     "app.acl.release_and_version",
     "app.acl.monitor",
+    "app.acl.log_and_annotation",
     "app.acl.access_config",
 ]
 
@@ -743,6 +744,7 @@ def _inner_call(
         account_id=account_id,
         json=json,
         params=params,
+        timeout=dify_config.ENTERPRISE_RBAC_REQUEST_TIMEOUT,
     )
 
 

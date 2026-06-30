@@ -31,8 +31,8 @@ vi.mock('@/app/components/workflow/store', () => ({
   }),
 }))
 
-vi.mock('../../store', () => ({
-  useSnippetDetailStore: {
+vi.mock('../../draft-store', () => ({
+  useSnippetDraftStore: {
     setState: (...args: unknown[]) => mockSnippetSetState(...args),
   },
 }))
@@ -75,7 +75,7 @@ describe('useSnippetRefreshDraft', () => {
     })
     expect(mockFetchSnippetDraftWorkflow).toHaveBeenCalledWith('snippet-1')
     expect(mockSnippetSetState).toHaveBeenCalledWith({
-      fields: [],
+      inputFields: [],
     })
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('draft-hash')
     expect(mockSetDraftUpdatedAt).toHaveBeenCalledWith(1_712_345_678)
