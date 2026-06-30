@@ -246,6 +246,18 @@ class FormDefinition(BaseModel):
     node_title: str | None = None
     display_in_ui: bool | None = None
 
+    @model_validator(mode="before")
+    @classmethod
+    def _restore_legacy_field_names(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        normalized_data = dict(data)
+        if "user_actions" not in normalized_data and "actions" in normalized_data:
+            normalized_data["user_actions"] = normalized_data["actions"]
+        if "default_values" not in normalized_data and "resolved_default_values" in normalized_data:
+            normalized_data["default_values"] = normalized_data["resolved_default_values"]
+        return normalized_data
+
 
 class HumanInputSubmissionValidationError(ValueError):
     pass
