@@ -121,7 +121,7 @@ class PipelineTemplateDetailApi(Resource):
     @enterprise_license_required
     def get(self, template_id: str) -> JsonResponseWithStatus:
         query = PipelineTemplateDetailQuery.model_validate(request.args.to_dict(flat=True))
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         pipeline_template = rag_pipeline_service.get_pipeline_template_detail(
             template_id, query.type, session=db.session()
         )
@@ -187,7 +187,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, pipeline_id: str) -> tuple[str, int]:
         payload = CustomizedPipelineTemplatePayload.model_validate(console_ns.payload or {})
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         rag_pipeline_service.publish_customized_pipeline_template(
             pipeline_id, payload.model_dump(), current_user, current_tenant_id, session=db.session()
         )

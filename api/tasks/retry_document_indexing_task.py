@@ -4,6 +4,7 @@ import time
 import click
 from celery import shared_task
 from sqlalchemy import delete, select
+from extensions.ext_database import db
 
 from core.db.session_factory import session_factory
 from core.indexing_runner import IndexingRunner
@@ -101,7 +102,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     session.commit()
 
                     if dataset.runtime_mode == "rag_pipeline":
-                        rag_pipeline_service = RagPipelineService()
+                        rag_pipeline_service = RagPipelineService(db.session)
                         rag_pipeline_service.retry_error_document(dataset, document, user)
                     else:
                         indexing_runner = IndexingRunner()

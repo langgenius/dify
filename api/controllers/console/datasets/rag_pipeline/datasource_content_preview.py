@@ -1,4 +1,5 @@
 from typing import Any
+from extensions.ext_database import db
 
 from flask_restx import (  # type: ignore
     Resource,  # type: ignore
@@ -46,7 +47,7 @@ class DataSourceContentPreviewApi(Resource):
 
         inputs = args.inputs
         datasource_type = args.datasource_type
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(db.session)
         preview_content = rag_pipeline_service.run_datasource_node_preview(
             pipeline=pipeline,
             node_id=node_id,
