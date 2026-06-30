@@ -827,20 +827,6 @@ export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url'
 
 export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
-  | ({
-    type: 'select'
-  } & SelectInputConfig)
-  | ({
-    type: 'file'
-  } & FileInputConfig)
-  | ({
-    type: 'file-list'
-  } & FileListInputConfig)
-
 export type GeneratedAppResponse = JsonValue
 
 export type HitTestingChildChunk = {
@@ -937,7 +923,20 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<FormInputConfig>
+  inputs?: Array<
+    | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+    | ({
+      type: 'select'
+    } & SelectInputConfig)
+    | ({
+      type: 'file'
+    } & FileInputConfig)
+    | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+  >
   node_id: string
   node_title: string
   resolved_default_values?: {

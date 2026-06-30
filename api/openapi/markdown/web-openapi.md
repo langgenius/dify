@@ -1043,11 +1043,9 @@ Returns Server-Sent Events stream.
 
 #### ButtonStyle
 
-Button styles for user actions.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ButtonStyle | string | Button styles for user actions. |  |
+| ButtonStyle | string |  |  |
 
 #### ChatMessagePayload
 
@@ -1130,7 +1128,7 @@ Button styles for user actions.
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 | output_variable_name | string |  | Yes |
-| type | string |  | No |
+| type | string, <br>**Default:** file |  | No |
 
 #### FileListInputConfig
 
@@ -1141,7 +1139,7 @@ Button styles for user actions.
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
 | number_limits | integer |  | No |
 | output_variable_name | string |  | Yes |
-| type | string |  | No |
+| type | string, <br>**Default:** file-list |  | No |
 
 #### FileResponse
 
@@ -1211,12 +1209,6 @@ Button styles for user actions.
 | email | string |  | Yes |
 | language | string |  | No |
 
-#### FormInputConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
-
 #### GeneratedAppResponse
 
 | Name | Type | Description | Required |
@@ -1251,7 +1243,7 @@ Parsed multipart form fields for HITL uploads.
 | form_content | string |  | Yes |
 | form_id | string |  | Yes |
 | form_token | string |  | No |
-| inputs | [ [FormInputConfig](#forminputconfig) ] |  | No |
+| inputs | [  ] |  | No |
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | resolved_default_values | object |  | No |
@@ -1405,13 +1397,11 @@ Parsed multipart form fields for HITL uploads.
 
 #### ParagraphInputConfig
 
-Form input definition.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | default | [StringSource](#stringsource) |  | No |
 | output_variable_name | string |  | Yes |
-| type | string |  | No |
+| type | string, <br>**Default:** paragraph |  | No |
 
 #### Parameters
 
@@ -1535,7 +1525,7 @@ Form input definition.
 | ---- | ---- | ----------- | -------- |
 | option_source | [StringListSource](#stringlistsource) |  | Yes |
 | output_variable_name | string |  | Yes |
-| type | string |  | No |
+| type | string, <br>**Default:** select |  | No |
 
 #### SimpleConversation
 
@@ -1577,8 +1567,6 @@ Form input definition.
 | value | [ string ] |  | No |
 
 #### StringSource
-
-Default configuration for form inputs.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -1641,8 +1629,6 @@ Default configuration for form inputs.
 
 #### UserActionConfig
 
-User action configuration.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | button_style | [ButtonStyle](#buttonstyle) |  | No |
@@ -1651,12 +1637,9 @@ User action configuration.
 
 #### ValueSourceType
 
-ValueSourceType records whether the value comes from a static setting
-in form definiton, or a variable while the workflow is running.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| ValueSourceType | string | ValueSourceType records whether the value comes from a static setting in form definiton, or a variable while the workflow is running. |  |
+| ValueSourceType | string |  |  |
 
 #### VerificationTokenResponse
 

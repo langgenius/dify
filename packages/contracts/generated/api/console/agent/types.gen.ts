@@ -1192,7 +1192,20 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<FormInputConfig>
+  inputs?: Array<
+    | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+    | ({
+      type: 'select'
+    } & SelectInputConfig)
+    | ({
+      type: 'file'
+    } & FileInputConfig)
+    | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+  >
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -1505,19 +1518,34 @@ export type UserActionConfig = {
   title: string
 }
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
-  | ({
-    type: 'select'
-  } & SelectInputConfig)
-  | ({
-    type: 'file'
-  } & FileInputConfig)
-  | ({
-    type: 'file-list'
-  } & FileListInputConfig)
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
 
 export type JsonValue2 = unknown
 
@@ -1570,34 +1598,21 @@ export type DeclaredOutputRetryConfig = {
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
-export type ParagraphInputConfig = {
-  default?: StringSource | null
-  output_variable_name: string
-  type?: 'paragraph'
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
 }
 
-export type SelectInputConfig = {
-  option_source: StringListSource
-  output_variable_name: string
-  type?: 'select'
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
 }
 
-export type FileInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  output_variable_name: string
-  type?: 'file'
-}
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
-export type FileListInputConfig = {
-  allowed_file_extensions?: Array<string>
-  allowed_file_types?: Array<FileType>
-  allowed_file_upload_methods?: Array<FileTransferMethod>
-  number_limits?: number
-  output_variable_name: string
-  type?: 'file-list'
-}
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
 export type AgentKnowledgeMetadataConditions = {
   conditions?: Array<AgentKnowledgeMetadataCondition>
@@ -1631,21 +1646,7 @@ export type AgentKnowledgeWeightedScoreConfig = {
   [key: string]: unknown
 }
 
-export type StringSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: string
-}
-
-export type StringListSource = {
-  selector?: Array<string>
-  type: ValueSourceType
-  value?: Array<string>
-}
-
-export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
-
-export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+export type ValueSourceType = 'constant' | 'variable'
 
 export type AgentKnowledgeMetadataCondition = {
   comparison_operator:
@@ -1670,8 +1671,6 @@ export type AgentKnowledgeMetadataCondition = {
   name: string
   value?: string | Array<string> | number | null
 }
-
-export type ValueSourceType = 'constant' | 'variable'
 
 export type AgentAppPaginationWritable = {
   data: Array<AgentAppPartialWritable>

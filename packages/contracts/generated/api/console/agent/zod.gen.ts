@@ -1942,20 +1942,54 @@ export const zWorkflowNodeJobConfig = z.object({
 
 /**
  * ButtonStyle
- *
- * Button styles for user actions.
  */
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 
 /**
  * UserActionConfig
- *
- * User action configuration.
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
   id: z.string().max(20),
   title: z.string().max(100),
+})
+
+/**
+ * FileType
+ */
+export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+
+/**
+ * FileTransferMethod
+ */
+export const zFileTransferMethod = z.enum([
+  'datasource_file',
+  'local_file',
+  'remote_url',
+  'tool_file',
+])
+
+/**
+ * FileInputConfig
+ */
+export const zFileInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  output_variable_name: z.string(),
+  type: z.literal('file').optional().default('file'),
+})
+
+/**
+ * FileListInputConfig
+ */
+export const zFileListInputConfig = z.object({
+  allowed_file_extensions: z.array(z.string()).optional(),
+  allowed_file_types: z.array(zFileType).optional(),
+  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
+  number_limits: z.int().gte(0).optional().default(0),
+  output_variable_name: z.string(),
+  type: z.literal('file-list').optional().default('file-list'),
 })
 
 /**
@@ -2026,41 +2060,135 @@ export const zAgentKnowledgeRetrievalConfig = z.object({
 })
 
 /**
- * FileType
+ * ValueSourceType
  */
-export const zFileType = z.enum(['audio', 'custom', 'document', 'image', 'video'])
+export const zValueSourceType = z.enum(['constant', 'variable'])
 
 /**
- * FileTransferMethod
+ * StringSource
  */
-export const zFileTransferMethod = z.enum([
-  'datasource_file',
-  'local_file',
-  'remote_url',
-  'tool_file',
-])
-
-/**
- * FileInputConfig
- */
-export const zFileInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  output_variable_name: z.string(),
-  type: z.literal('file').optional().default('file'),
+export const zStringSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.string().optional().default(''),
 })
 
 /**
- * FileListInputConfig
+ * ParagraphInputConfig
  */
-export const zFileListInputConfig = z.object({
-  allowed_file_extensions: z.array(z.string()).optional(),
-  allowed_file_types: z.array(zFileType).optional(),
-  allowed_file_upload_methods: z.array(zFileTransferMethod).optional(),
-  number_limits: z.int().gte(0).optional().default(0),
+export const zParagraphInputConfig = z.object({
+  default: zStringSource.nullish(),
   output_variable_name: z.string(),
-  type: z.literal('file-list').optional().default('file-list'),
+  type: z.literal('paragraph').optional().default('paragraph'),
+})
+
+/**
+ * StringListSource
+ */
+export const zStringListSource = z.object({
+  selector: z.array(z.string()).optional(),
+  type: zValueSourceType,
+  value: z.array(z.string()).optional(),
+})
+
+/**
+ * SelectInputConfig
+ */
+export const zSelectInputConfig = z.object({
+  option_source: zStringListSource,
+  output_variable_name: z.string(),
+  type: z.literal('select').optional().default('select'),
+})
+
+/**
+ * HumanInputFormDefinition
+ */
+export const zHumanInputFormDefinition = z.object({
+  actions: z.array(zUserActionConfig).optional(),
+  display_in_ui: z.boolean().optional().default(false),
+  expiration_time: z.int(),
+  form_content: z.string(),
+  form_id: z.string(),
+  form_token: z.string().nullish(),
+  inputs: z
+    .array(
+      z.union([
+        z
+          .object({
+            type: z.literal('paragraph'),
+          })
+          .and(zParagraphInputConfig),
+        z
+          .object({
+            type: z.literal('select'),
+          })
+          .and(zSelectInputConfig),
+        z
+          .object({
+            type: z.literal('file'),
+          })
+          .and(zFileInputConfig),
+        z
+          .object({
+            type: z.literal('file-list'),
+          })
+          .and(zFileListInputConfig),
+      ]),
+    )
+    .optional(),
+  node_id: z.string(),
+  node_title: z.string(),
+  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
+})
+
+/**
+ * HumanInputContent
+ */
+export const zHumanInputContent = z.object({
+  form_definition: zHumanInputFormDefinition.nullish(),
+  form_submission_data: zHumanInputFormSubmissionData.nullish(),
+  submitted: z.boolean(),
+  type: zExecutionContentType.optional().default('human_input'),
+  workflow_run_id: z.string(),
+})
+
+/**
+ * MessageDetailResponse
+ */
+export const zMessageDetailResponse = z.object({
+  agent_thoughts: z.array(zAgentThought).optional(),
+  annotation: zConversationAnnotation.nullish(),
+  annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
+  answer: z.string(),
+  answer_tokens: z.int().nullish(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  error: z.string().nullish(),
+  extra_contents: z.array(zHumanInputContent).optional(),
+  feedbacks: z.array(zFeedback).optional(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  from_source: z.string(),
+  id: z.string(),
+  inputs: z.record(z.string(), zJsonValue),
+  message: zJsonValue.nullish(),
+  message_files: z.array(zMessageFile).optional(),
+  message_tokens: z.int().nullish(),
+  metadata: zJsonValue.nullish(),
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number().nullish(),
+  query: z.string(),
+  status: z.string(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * MessageInfiniteScrollPaginationResponse
+ */
+export const zMessageInfiniteScrollPaginationResponse = z.object({
+  data: z.array(zMessageDetailResponse),
+  has_more: z.boolean(),
+  limit: z.int(),
 })
 
 /**
@@ -2221,127 +2349,6 @@ export const zAgentConfigSnapshotDetailResponse = z.object({
   summary: z.string().nullish(),
   version: z.int(),
   version_note: z.string().nullish(),
-})
-
-/**
- * ValueSourceType
- *
- * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
- */
-export const zValueSourceType = z.enum(['constant', 'variable'])
-
-/**
- * StringSource
- *
- * Default configuration for form inputs.
- */
-export const zStringSource = z.object({
-  selector: z.array(z.string()).optional(),
-  type: zValueSourceType,
-  value: z.string().optional().default(''),
-})
-
-/**
- * ParagraphInputConfig
- *
- * Form input definition.
- */
-export const zParagraphInputConfig = z.object({
-  default: zStringSource.nullish(),
-  output_variable_name: z.string(),
-  type: z.literal('paragraph').optional().default('paragraph'),
-})
-
-/**
- * StringListSource
- */
-export const zStringListSource = z.object({
-  selector: z.array(z.string()).optional(),
-  type: zValueSourceType,
-  value: z.array(z.string()).optional(),
-})
-
-/**
- * SelectInputConfig
- */
-export const zSelectInputConfig = z.object({
-  option_source: zStringListSource,
-  output_variable_name: z.string(),
-  type: z.literal('select').optional().default('select'),
-})
-
-export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
-])
-
-/**
- * HumanInputFormDefinition
- */
-export const zHumanInputFormDefinition = z.object({
-  actions: z.array(zUserActionConfig).optional(),
-  display_in_ui: z.boolean().optional().default(false),
-  expiration_time: z.int(),
-  form_content: z.string(),
-  form_id: z.string(),
-  form_token: z.string().nullish(),
-  inputs: z.array(zFormInputConfig).optional(),
-  node_id: z.string(),
-  node_title: z.string(),
-  resolved_default_values: z.record(z.string(), z.unknown()).optional(),
-})
-
-/**
- * HumanInputContent
- */
-export const zHumanInputContent = z.object({
-  form_definition: zHumanInputFormDefinition.nullish(),
-  form_submission_data: zHumanInputFormSubmissionData.nullish(),
-  submitted: z.boolean(),
-  type: zExecutionContentType.optional().default('human_input'),
-  workflow_run_id: z.string(),
-})
-
-/**
- * MessageDetailResponse
- */
-export const zMessageDetailResponse = z.object({
-  agent_thoughts: z.array(zAgentThought).optional(),
-  annotation: zConversationAnnotation.nullish(),
-  annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
-  answer: z.string(),
-  answer_tokens: z.int().nullish(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  error: z.string().nullish(),
-  extra_contents: z.array(zHumanInputContent).optional(),
-  feedbacks: z.array(zFeedback).optional(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  from_source: z.string(),
-  id: z.string(),
-  inputs: z.record(z.string(), zJsonValue),
-  message: zJsonValue.nullish(),
-  message_files: z.array(zMessageFile).optional(),
-  message_tokens: z.int().nullish(),
-  metadata: zJsonValue.nullish(),
-  parent_message_id: z.string().nullish(),
-  provider_response_latency: z.number().nullish(),
-  query: z.string(),
-  status: z.string(),
-  workflow_run_id: z.string().nullish(),
-})
-
-/**
- * MessageInfiniteScrollPaginationResponse
- */
-export const zMessageInfiniteScrollPaginationResponse = z.object({
-  data: z.array(zMessageDetailResponse),
-  has_more: z.boolean(),
-  limit: z.int(),
 })
 
 /**

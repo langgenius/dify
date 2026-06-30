@@ -243,20 +243,6 @@ export type ForgotPasswordSendPayload = {
   language?: string | null
 }
 
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
-  | ({
-    type: 'select'
-  } & SelectInputConfig)
-  | ({
-    type: 'file'
-  } & FileInputConfig)
-  | ({
-    type: 'file-list'
-  } & FileListInputConfig)
-
 export type GeneratedAppResponse = JsonValue
 
 export type HumanInputContent = {
@@ -278,7 +264,20 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<FormInputConfig>
+  inputs?: Array<
+    | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+    | ({
+      type: 'select'
+    } & SelectInputConfig)
+    | ({
+      type: 'file'
+    } & FileInputConfig)
+    | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+  >
   node_id: string
   node_title: string
   resolved_default_values?: {

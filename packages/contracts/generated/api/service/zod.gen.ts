@@ -120,8 +120,6 @@ export const zBinaryFileResponse = z.custom<Blob | File>()
 
 /**
  * ButtonStyle
- *
- * Button styles for user actions.
  */
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 
@@ -1866,8 +1864,6 @@ export const zUrlResponse = z.object({
 
 /**
  * UserActionConfig
- *
- * User action configuration.
  */
 export const zUserActionConfig = z.object({
   button_style: zButtonStyle.optional().default('default'),
@@ -1877,9 +1873,6 @@ export const zUserActionConfig = z.object({
 
 /**
  * ValueSourceType
- *
- * ValueSourceType records whether the value comes from a static setting
- * in form definiton, or a variable while the workflow is running.
  */
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
@@ -1903,8 +1896,6 @@ export const zSelectInputConfig = z.object({
 
 /**
  * StringSource
- *
- * Default configuration for form inputs.
  */
 export const zStringSource = z.object({
   selector: z.array(z.string()).optional(),
@@ -1914,21 +1905,12 @@ export const zStringSource = z.object({
 
 /**
  * ParagraphInputConfig
- *
- * Form input definition.
  */
 export const zParagraphInputConfig = z.object({
   default: zStringSource.nullish(),
   output_variable_name: z.string(),
   type: z.literal('paragraph').optional().default('paragraph'),
 })
-
-export const zFormInputConfig = z.discriminatedUnion('type', [
-  zParagraphInputConfig.extend({ type: z.literal('paragraph') }),
-  zSelectInputConfig.extend({ type: z.literal('select') }),
-  zFileInputConfig.extend({ type: z.literal('file') }),
-  zFileListInputConfig.extend({ type: z.literal('file-list') }),
-])
 
 /**
  * HumanInputFormDefinition
@@ -1940,7 +1922,32 @@ export const zHumanInputFormDefinition = z.object({
   form_content: z.string(),
   form_id: z.string(),
   form_token: z.string().nullish(),
-  inputs: z.array(zFormInputConfig).optional(),
+  inputs: z
+    .array(
+      z.union([
+        z
+          .object({
+            type: z.literal('paragraph'),
+          })
+          .and(zParagraphInputConfig),
+        z
+          .object({
+            type: z.literal('select'),
+          })
+          .and(zSelectInputConfig),
+        z
+          .object({
+            type: z.literal('file'),
+          })
+          .and(zFileInputConfig),
+        z
+          .object({
+            type: z.literal('file-list'),
+          })
+          .and(zFileListInputConfig),
+      ]),
+    )
+    .optional(),
   node_id: z.string(),
   node_title: z.string(),
   resolved_default_values: z.record(z.string(), z.unknown()).optional(),

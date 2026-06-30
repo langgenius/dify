@@ -310,7 +310,20 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
-  inputs?: Array<FormInputConfig>
+  inputs?: Array<
+    | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+    | ({
+      type: 'select'
+    } & SelectInputConfig)
+    | ({
+      type: 'file'
+    } & FileInputConfig)
+    | ({
+      type: 'file-list'
+    } & FileListInputConfig)
+  >
   node_id: string
   node_title: string
   resolved_default_values?: {
@@ -336,24 +349,6 @@ export type UserActionConfig = {
   id: string
   title: string
 }
-
-export type FormInputConfig
-  = | ({
-    type: 'paragraph'
-  } & ParagraphInputConfig)
-  | ({
-    type: 'select'
-  } & SelectInputConfig)
-  | ({
-    type: 'file'
-  } & FileInputConfig)
-  | ({
-    type: 'file-list'
-  } & FileListInputConfig)
-
-export type JsonValue2 = unknown
-
-export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ParagraphInputConfig = {
   default?: StringSource | null
@@ -383,6 +378,10 @@ export type FileListInputConfig = {
   output_variable_name: string
   type?: 'file-list'
 }
+
+export type JsonValue2 = unknown
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type StringSource = {
   selector?: Array<string>
