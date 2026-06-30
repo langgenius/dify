@@ -386,6 +386,7 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.menus.roster/ })).toHaveAttribute('href', '/roster')
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
+    expect(screen.getByRole('link', { name: /common.enterpriseMarketplace.sidebarTitle/ })).toHaveAttribute('href', '/explore/marketplace')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
   })
 
@@ -531,6 +532,7 @@ describe('MainNav', () => {
     expect(screen.queryByRole('link', { name: /common.menus.roster/ })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: /common.menus.datasets/ })).toHaveAttribute('href', '/datasets')
     expect(screen.getByRole('link', { name: /common.mainNav.integrations/ })).toHaveAttribute('href', '/integrations/model-provider')
+    expect(screen.getByRole('link', { name: /common.enterpriseMarketplace.sidebarTitle/ })).toHaveAttribute('href', '/explore/marketplace')
     expect(screen.getByRole('link', { name: /common.mainNav.marketplace/ })).toHaveAttribute('href', '/marketplace')
     expect(screen.queryByRole('link', { name: /common.menus.deployments/ })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
@@ -855,6 +857,16 @@ describe('MainNav', () => {
 
     const marketplaceLink = screen.getByRole('link', { name: /common.mainNav.marketplace/ })
     expect(marketplaceLink).toHaveClass(activeGradientMaskClassName)
+  })
+
+  it('marks enterprise marketplace active on enterprise marketplace routes', () => {
+    mockPathname = '/explore/marketplace'
+
+    renderMainNav()
+
+    const enterpriseMarketplaceLink = screen.getByRole('link', { name: /common.enterpriseMarketplace.sidebarTitle/ })
+    expect(enterpriseMarketplaceLink).toHaveAttribute('href', '/explore/marketplace')
+    expect(enterpriseMarketplaceLink).toHaveClass(activeGradientMaskClassName)
   })
 
   it('marks roster active on roster routes', () => {
