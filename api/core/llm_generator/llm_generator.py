@@ -709,7 +709,11 @@ class LLMGenerator:
         ideal_output: str | None,
     ):
         last_run: Message | None = db.session.scalar(
-            select(Message).where(Message.app_id == flow_id).order_by(Message.created_at.desc()).limit(1)
+            select(Message)
+            .join(App, App.id == Message.app_id)
+            .where(Message.app_id == flow_id, App.tenant_id == tenant_id)
+            .order_by(Message.created_at.desc())
+            .limit(1)
         )
         if not last_run:
             return LLMGenerator.__instruction_modify_common(
@@ -751,7 +755,7 @@ class LLMGenerator:
     ):
         session = db.session()
 
-        app: App | None = session.scalar(select(App).where(App.id == flow_id).limit(1))
+        app: App | None = session.scalar(select(App).where(App.id == flow_id, App.tenant_id == tenant_id).limit(1))
         if not app:
             raise ValueError("App not found.")
         workflow = workflow_service.get_draft_workflow(app_model=app)

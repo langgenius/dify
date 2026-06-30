@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleDataResponse
@@ -236,7 +237,9 @@ class InstructionGenerateApi(Resource):
         try:
             # Generate from nothing for a workflow node
             if (args.current in (code_template, "")) and args.node_id != "":
-                app = session.get(App, args.flow_id)
+                app = session.scalar(
+                    select(App).where(App.id == args.flow_id, App.tenant_id == current_tenant_id).limit(1)
+                )
                 if not app:
                     return {"error": f"app {args.flow_id} not found"}, 400
                 workflow = WorkflowService().get_draft_workflow(app_model=app, session=session)

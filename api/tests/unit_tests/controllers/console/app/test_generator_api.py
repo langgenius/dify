@@ -71,7 +71,7 @@ def test_instruction_generate_app_not_found(app: Flask, monkeypatch: pytest.Monk
     method = unwrap(api.post)
 
     session = MagicMock()
-    session.get.return_value = None
+    session.scalar.return_value = None
 
     with app.test_request_context(
         "/console/api/instruction-generate",
@@ -87,7 +87,13 @@ def test_instruction_generate_app_not_found(app: Flask, monkeypatch: pytest.Monk
 
     assert status == 400
     assert response["error"] == "app app-1 not found"
-    session.get.assert_called_once_with(generator_module.App, "app-1")
+    stmt = session.scalar.call_args.args[0]
+    compiled = stmt.compile()
+    statement = str(compiled)
+    assert "apps.id" in statement
+    assert "apps.tenant_id" in statement
+    assert "app-1" in compiled.params.values()
+    assert "t1" in compiled.params.values()
 
 
 def test_instruction_generate_workflow_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -95,7 +101,7 @@ def test_instruction_generate_workflow_not_found(app: Flask, monkeypatch: pytest
     method = unwrap(api.post)
 
     app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(get=lambda *_args, **_kwargs: app_model)
+    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
     _install_workflow_service(monkeypatch, workflow=None)
 
     with app.test_request_context(
@@ -119,7 +125,7 @@ def test_instruction_generate_node_missing(app: Flask, monkeypatch: pytest.Monke
     method = unwrap(api.post)
 
     app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(get=lambda *_args, **_kwargs: app_model)
+    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
 
     workflow = SimpleNamespace(graph_dict={"nodes": []})
     _install_workflow_service(monkeypatch, workflow=workflow)
@@ -145,7 +151,7 @@ def test_instruction_generate_code_node(app: Flask, monkeypatch: pytest.MonkeyPa
     method = unwrap(api.post)
 
     app_model = SimpleNamespace(id="app-1")
-    session = SimpleNamespace(get=lambda *_args, **_kwargs: app_model)
+    session = SimpleNamespace(scalar=lambda *_args, **_kwargs: app_model)
 
     workflow = SimpleNamespace(
         graph_dict={
