@@ -105,9 +105,7 @@ class TestPartnerTenants:
             with pytest.raises(BadRequest):
                 method(resource, mock_account, partner_key_encoded)
 
-    def test_put_billing_service_json_decode_error(
-        self, app: Flask, mock_account, mock_billing_service
-    ):
+    def test_put_billing_service_json_decode_error(self, app: Flask, mock_account, mock_billing_service):
         """Test handling of billing service JSON decode error.
 
         When billing service returns non-200 status code with invalid JSON response,

@@ -39,10 +39,10 @@ def load_balancing_module(monkeypatch: pytest.MonkeyPatch):
     def _noop(func):
         return func
 
-    mock_user = MagicMock(current_role='owner')
+    mock_user = MagicMock(current_role="owner")
     monkeypatch.setattr(login, "login_required", _noop)
-    monkeypatch.setattr(login, "current_account_with_tenant", lambda: (mock_user, 'tenant-123'))
-    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (mock_user, 'tenant-123'))
+    monkeypatch.setattr(login, "current_account_with_tenant", lambda: (mock_user, "tenant-123"))
+    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (mock_user, "tenant-123"))
     monkeypatch.setattr(wraps, "setup_required", _noop)
     monkeypatch.setattr(wraps, "account_initialization_required", _noop)
 
@@ -68,6 +68,7 @@ def _prepare_context(module, monkeypatch: pytest.MonkeyPatch, role=TenantAccount
     user = _mock_user(role)
     monkeypatch.setattr("libs.login.current_account_with_tenant", lambda: (user, "tenant-123"))
     from controllers.console import wraps
+
     monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (user, "tenant-123"))
     mock_service = MagicMock()
     monkeypatch.setattr(module, "ModelLoadBalancingService", lambda: mock_service)
