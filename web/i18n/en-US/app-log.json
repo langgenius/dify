@@ -32,6 +32,8 @@
   "archives.table.runs": "Runs",
   "archives.table.size": "Size",
   "archives.title": "Archived logs",
+  "archives.upgradeTip.description": "Upgrade your plan to keep workflow run logs from being deleted going forward. Logs that have already been deleted cannot be recovered.",
+  "archives.upgradeTip.title": "Upgrade to retain future workflow logs",
   "dateTimeFormat": "MM/DD/YYYY hh:mm:ss A",
   "description": "The logs record the running status of the application, including user inputs and AI replies.",
   "detail.annotationTip": "Improvements Marked by {{user}}",

@@ -13,7 +13,10 @@ import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SkeletonRectangle } from '@/app/components/base/skeleton'
-import { API_PREFIX } from '@/config'
+import { Plan } from '@/app/components/billing/type'
+import { API_PREFIX, IS_CLOUD_EDITION } from '@/config'
+import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
 import { consoleQuery } from '@/service/client'
 
 const numberFormatter = new Intl.NumberFormat()
@@ -63,9 +66,13 @@ const tableGridClassName = 'grid-cols-[0.66fr_0.78fr_0.78fr_1fr]'
 
 export default function WorkflowLogArchivesPage() {
   const { t } = useTranslation()
+  const { plan, enableBilling } = useProviderContext()
   const [visibleArchiveMonthCount, setVisibleArchiveMonthCount] = useState(ARCHIVE_MONTH_PAGE_SIZE)
   const loadMoreRef = useRef<HTMLDivElement | null>(null)
-  const archiveListQuery = useQuery(consoleQuery.workflowRunArchives.get.queryOptions())
+  const canViewArchiveContent = IS_CLOUD_EDITION && enableBilling && plan.type !== Plan.sandbox
+  const archiveListQuery = useQuery(consoleQuery.workflowRunArchives.get.queryOptions({
+    enabled: canViewArchiveContent,
+  }))
   const archiveData = archiveListQuery.data
   const archiveMonths = archiveData?.months ?? []
   const visibleArchiveMonths = archiveMonths.slice(0, visibleArchiveMonthCount)
@@ -114,6 +121,14 @@ export default function WorkflowLogArchivesPage() {
       icon: 'i-ri-time-line',
     },
   ]
+
+  if (!canViewArchiveContent) {
+    return (
+      <div data-testid="workflow-log-archives-page" className="pb-6">
+        <ArchivedLogsUpgradeBanner />
+      </div>
+    )
+  }
 
   return (
     <div data-testid="workflow-log-archives-page" className="flex flex-col gap-4 pb-6">
@@ -193,6 +208,27 @@ export default function WorkflowLogArchivesPage() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+function ArchivedLogsUpgradeBanner() {
+  const { t } = useTranslation()
+  const { setShowPricingModal } = useModalContext()
+
+  return (
+    <div className="flex flex-col gap-4 rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-4 pl-6 shadow-lg backdrop-blur-xs sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-1 text-text-primary-on-surface">
+        <div className="title-xl-semi-bold">{t('archives.upgradeTip.title', { ns: 'appLog' })}</div>
+        <div className="system-sm-regular">{t('archives.upgradeTip.description', { ns: 'appLog' })}</div>
+      </div>
+      <button
+        type="button"
+        className="flex h-10 w-[120px] shrink-0 cursor-pointer items-center justify-center rounded-3xl border-none bg-white p-0 system-md-semibold text-text-accent shadow-xs hover:opacity-95"
+        onClick={() => setShowPricingModal()}
+      >
+        {t('upgradeBtn.encourageShort', { ns: 'billing' })}
+      </button>
     </div>
   )
 }
