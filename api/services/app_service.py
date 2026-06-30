@@ -320,7 +320,9 @@ class AppService:
 
         session.delete(existing_star)
 
-    def create_app(self, tenant_id: str, params: CreateAppParams, account: Account) -> App:
+    def create_app(
+        self, tenant_id: str, params: CreateAppParams, account: Account, *, session: Session | scoped_session
+    ) -> App:
         """
         Create app
         :param tenant_id: tenant id
@@ -544,7 +546,7 @@ class AppService:
         role: NotRequired[str | None]
 
     @staticmethod
-    def _get_backing_agent_for_update(app: App) -> Agent | None:
+    def _get_backing_agent_for_update(app: App, *, session: Session | scoped_session) -> Agent | None:
         if app.mode != AppMode.AGENT:
             return None
         return session.scalar(
@@ -576,6 +578,7 @@ class AppService:
         icon_background: str | None = None,
         account_id: str | None = None,
         updated_at: datetime | None = None,
+        session: Session | scoped_session,
     ) -> None:
         """Keep the Roster identity aligned with its Agent App shell.
 
@@ -586,7 +589,7 @@ class AppService:
         Role omission is intentional: ``role=None`` preserves the backing
         Agent's current role, while ``role=""`` explicitly clears it.
         """
-        agent = self._get_backing_agent_for_update(app)
+        agent = self._get_backing_agent_for_update(app, session=session)
         if agent is None:
             return
 
@@ -607,7 +610,7 @@ class AppService:
             agent.updated_at = updated_at
 
     @staticmethod
-    def _commit_app_identity_update(app: App) -> None:
+    def _commit_app_identity_update(app: App, *, session: Session | scoped_session) -> None:
         try:
             session.commit()
         except IntegrityError as exc:
@@ -616,7 +619,7 @@ class AppService:
                 raise AgentNameConflictError() from exc
             raise
 
-    def update_app(self, app: App, args: ArgsDict) -> App:
+    def update_app(self, app: App, args: ArgsDict, *, session: Session | scoped_session) -> App:
         """
         Update app
         :param app: App instance
@@ -651,14 +654,15 @@ class AppService:
             icon_background=app.icon_background,
             account_id=current_user.id,
             updated_at=app.updated_at,
+            session=session,
         )
-        self._commit_app_identity_update(app)
+        self._commit_app_identity_update(app, session=session)
 
         app_was_updated.send(app)
 
         return app
 
-    def update_app_name(self, app: App, name: str) -> App:
+    def update_app_name(self, app: App, name: str, *, session: Session | scoped_session) -> App:
         """
         Update app name
         :param app: App instance
@@ -674,15 +678,22 @@ class AppService:
             name=app.name,
             account_id=current_user.id,
             updated_at=app.updated_at,
+            session=session,
         )
-        self._commit_app_identity_update(app)
+        self._commit_app_identity_update(app, session=session)
 
         app_was_updated.send(app)
 
         return app
 
     def update_app_icon(
-        self, app: App, icon: str, icon_background: str, icon_type: IconType | str | None = None
+        self,
+        app: App,
+        icon: str,
+        icon_background: str,
+        icon_type: IconType | str | None = None,
+        *,
+        session: Session | scoped_session,
     ) -> App:
         """
         Update app icon
@@ -706,6 +717,7 @@ class AppService:
             icon_background=app.icon_background,
             account_id=current_user.id,
             updated_at=app.updated_at,
+            session=session,
         )
         session.commit()
 
@@ -713,7 +725,7 @@ class AppService:
 
         return app
 
-    def update_app_site_status(self, app: App, enable_site: bool) -> App:
+    def update_app_site_status(self, app: App, enable_site: bool, *, session: Session | scoped_session) -> App:
         """
         Update app site status
         :param app: App instance
@@ -732,7 +744,7 @@ class AppService:
 
         return app
 
-    def update_app_api_status(self, app: App, enable_api: bool) -> App:
+    def update_app_api_status(self, app: App, enable_api: bool, *, session: Session | scoped_session) -> App:
         """
         Update app api status
         :param app: App instance
@@ -752,14 +764,14 @@ class AppService:
 
         return app
 
-    def delete_app(self, app: App):
+    def delete_app(self, app: App, *, session: Session | scoped_session) -> None:
         """
         Delete app
         :param app: App instance
         """
         app_was_deleted.send(app)
 
-        backing_agent = self._get_backing_agent_for_update(app)
+        backing_agent = self._get_backing_agent_for_update(app, session=session)
         if backing_agent is not None:
             now = naive_utc_now()
             account_id = getattr(current_user, "id", None)
@@ -782,7 +794,7 @@ class AppService:
         # Trigger asynchronous deletion of app and related data
         remove_app_and_related_data_task.delay(tenant_id=app.tenant_id, app_id=app.id)
 
-    def get_app_meta(self, app_model: App):
+    def get_app_meta(self, app_model: App, *, session: Session | scoped_session):
         """
         Get app meta info
         :param app_model: app model
@@ -845,7 +857,7 @@ class AppService:
         return meta
 
     @staticmethod
-    def get_app_code_by_id(app_id: str) -> str:
+    def get_app_code_by_id(app_id: str, *, session: Session | scoped_session) -> str:
         """
         Get app code by app id
         :param app_id: app id
@@ -857,7 +869,7 @@ class AppService:
         return str(site.code)
 
     @staticmethod
-    def get_app_id_by_code(app_code: str) -> str:
+    def get_app_id_by_code(app_code: str, *, session: Session | scoped_session) -> str:
         """
         Get app id by app code
         :param app_code: app code

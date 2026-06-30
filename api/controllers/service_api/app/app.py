@@ -150,7 +150,7 @@ class AppMetaApi(Resource):
 
         Returns metadata about the application including configuration and settings.
         """
-        return AppService().get_app_meta(app_model)
+        return AppService().get_app_meta(app_model, session=db.session)
 
 
 @service_api_ns.route("/info")

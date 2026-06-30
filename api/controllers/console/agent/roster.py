@@ -559,7 +559,7 @@ class AgentAppListApi(Resource):
             icon_background=args.icon_background,
         )
 
-        app = AppService().create_app(current_tenant_id, params, current_user)
+        app = AppService().create_app(current_tenant_id, params, current_user, session=db.session)
         return _serialize_agent_app_detail(app, current_user=current_user), 201
 
 
@@ -599,7 +599,7 @@ class AgentAppApi(Resource):
             "max_active_requests": args.max_active_requests or 0,
             "role": args.role,
         }
-        updated = AppService().update_app(app_model, args_dict)
+        updated = AppService().update_app(app_model, args_dict, session=db.session)
         return _serialize_agent_app_detail(updated, current_user=current_user)
 
     @console_ns.response(204, "Agent app deleted successfully")
@@ -611,7 +611,7 @@ class AgentAppApi(Resource):
     @with_current_tenant_id
     def delete(self, tenant_id: str, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
-        AppService().delete_app(app_model)
+        AppService().delete_app(app_model, session=db.session)
         return "", 204
 
 
@@ -800,7 +800,7 @@ class AgentApiStatusApi(Resource):
     def post(self, tenant_id: str, agent_id: UUID):
         app_model = _resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         args = AgentApiStatusPayload.model_validate(console_ns.payload)
-        app_model = AppService().update_app_api_status(app_model, args.enable_api)
+        app_model = AppService().update_app_api_status(app_model, args.enable_api, session=db.session)
         return _serialize_agent_api_access(app_model)
 
 

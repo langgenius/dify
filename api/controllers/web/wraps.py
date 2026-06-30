@@ -70,7 +70,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         app_web_auth_enabled = False
         webapp_settings = None
         if system_features.webapp_auth.enabled:
-            app_id = AppService.get_app_id_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code, session=db.session)
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id)
             if not webapp_settings:
                 raise NotFound("Web app settings not found.")
@@ -86,7 +86,7 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         if system_features.webapp_auth.enabled:
             if not app_code:
                 raise Unauthorized("Please re-login to access the web app.")
-            app_id = AppService.get_app_id_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code, session=db.session)
             app_web_auth_enabled = (
                 EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id).access_mode
                 != WebAppAccessMode.PUBLIC
@@ -130,7 +130,7 @@ def _validate_user_accessibility(
             raise WebAppAuthRequiredError("Web app settings not found.")
 
         if WebAppAuthService.is_app_require_permission_check(access_mode=webapp_settings.access_mode):
-            app_id = AppService.get_app_id_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code, session=db.session)
             if not EnterpriseService.WebAppAuth.is_user_allowed_to_access_webapp(user_id, app_id):
                 raise WebAppAuthAccessDeniedError()
 

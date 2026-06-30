@@ -8,6 +8,7 @@ from controllers.console import console_ns
 from controllers.console.app.error import AppUnavailableError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
+from extensions.ext_database import db
 from models.model import AppMode, InstalledApp
 from services.app_service import AppService
 
@@ -59,4 +60,4 @@ class ExploreAppMetaApi(InstalledAppResource):
         app_model = installed_app.app
         if not app_model:
             raise ValueError("App not found")
-        return AppService().get_app_meta(app_model)
+        return AppService().get_app_meta(app_model, session=db.session)

@@ -101,7 +101,9 @@ class AppAnnotationService:
         )
 
     @classmethod
-    def up_insert_app_annotation_from_message(cls, args: UpsertAnnotationArgs, app_id: str) -> MessageAnnotation:
+    def up_insert_app_annotation_from_message(
+        cls, args: UpsertAnnotationArgs, app_id: str, *, session: scoped_session
+    ) -> MessageAnnotation:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
@@ -210,7 +212,9 @@ class AppAnnotationService:
         return {"job_id": job_id, "job_status": "waiting"}
 
     @classmethod
-    def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str):
+    def get_annotation_list_by_app_id(
+        cls, app_id: str, page: int, limit: int, keyword: str, *, session: scoped_session
+    ):
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
@@ -244,7 +248,7 @@ class AppAnnotationService:
         return annotations.items, annotations.total or 0
 
     @classmethod
-    def export_annotation_list_by_app_id(cls, app_id: str):
+    def export_annotation_list_by_app_id(cls, app_id: str, *, session: scoped_session):
         """
         Export all annotations for an app with CSV injection protection.
 
@@ -277,7 +281,9 @@ class AppAnnotationService:
         return annotations
 
     @classmethod
-    def insert_app_annotation_directly(cls, args: InsertAnnotationArgs, app_id: str) -> MessageAnnotation:
+    def insert_app_annotation_directly(
+        cls, args: InsertAnnotationArgs, app_id: str, *, session: scoped_session
+    ) -> MessageAnnotation:
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
@@ -381,7 +387,7 @@ class AppAnnotationService:
             )
 
     @classmethod
-    def delete_app_annotations_in_batch(cls, app_ref: AppRef, annotation_ids: list[str]):
+    def delete_app_annotations_in_batch(cls, app_ref: AppRef, annotation_ids: list[str], *, session: scoped_session):
         # Fetch annotations and their settings in a single query
         annotations_to_delete = session.execute(
             select(MessageAnnotation, AppAnnotationSetting)
@@ -423,7 +429,7 @@ class AppAnnotationService:
         return {"deleted_count": deleted_count}
 
     @classmethod
-    def batch_import_app_annotations(cls, app_id: str, file: FileStorage):
+    def batch_import_app_annotations(cls, app_id: str, file: FileStorage, *, session: scoped_session):
         """
         Batch import annotations from CSV file with enhanced security checks.
 
@@ -557,7 +563,7 @@ class AppAnnotationService:
         return {"job_id": job_id, "job_status": "waiting", "record_count": len(result)}
 
     @classmethod
-    def get_annotation_hit_histories(cls, annotation_ref: AnnotationRef, page, limit):
+    def get_annotation_hit_histories(cls, annotation_ref: AnnotationRef, page, limit, *, session: scoped_session):
         annotation = cls._get_annotation_by_ref(annotation_ref, session)
 
         if not annotation:
@@ -577,7 +583,7 @@ class AppAnnotationService:
         return annotation_hit_histories.items, annotation_hit_histories.total or 0
 
     @classmethod
-    def get_annotation_by_id(cls, annotation_id: str) -> MessageAnnotation | None:
+    def get_annotation_by_id(cls, annotation_id: str, *, session: scoped_session) -> MessageAnnotation | None:
         annotation = session.get(MessageAnnotation, annotation_id)
 
         if not annotation:
@@ -596,7 +602,9 @@ class AppAnnotationService:
         message_id: str,
         from_source: str,
         score: float,
-    ):
+        *,
+        session: scoped_session,
+    ) -> None:
         # add hit count to annotation
         session.execute(
             update(MessageAnnotation)
@@ -619,7 +627,9 @@ class AppAnnotationService:
         session.commit()
 
     @classmethod
-    def get_app_annotation_setting_by_app_id(cls, app_id: str) -> AnnotationSettingDict | AnnotationSettingDisabledDict:
+    def get_app_annotation_setting_by_app_id(
+        cls, app_id: str, *, session: scoped_session
+    ) -> AnnotationSettingDict | AnnotationSettingDisabledDict:
         _, current_tenant_id = current_account_with_tenant()
         # get app info
         app = session.scalar(
@@ -655,7 +665,7 @@ class AppAnnotationService:
 
     @classmethod
     def update_app_annotation_setting(
-        cls, app_id: str, annotation_setting_id: str, args: UpdateAnnotationSettingArgs
+        cls, app_id: str, annotation_setting_id: str, args: UpdateAnnotationSettingArgs, *, session: scoped_session
     ) -> AnnotationSettingDict:
         current_user, current_tenant_id = current_account_with_tenant()
         # get app info
@@ -703,7 +713,7 @@ class AppAnnotationService:
             }
 
     @classmethod
-    def clear_all_annotations(cls, app_id: str):
+    def clear_all_annotations(cls, app_id: str, *, session: scoped_session):
         _, current_tenant_id = current_account_with_tenant()
         app = session.scalar(
             select(App).where(App.id == app_id, App.tenant_id == current_tenant_id, App.status == "normal").limit(1)

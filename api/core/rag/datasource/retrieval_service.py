@@ -212,6 +212,7 @@ class RetrievalService:
             query,
             external_retrieval_model or {},
             metadata_condition=metadata_condition,
+            session=db.session,
         )
         return all_documents
 

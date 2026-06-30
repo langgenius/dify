@@ -201,7 +201,7 @@ class AnnotationListApi(Resource):
         query = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
 
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_model.id, query.page, query.limit, query.keyword
+            app_model.id, query.page, query.limit, query.keyword, session=db.session
         )
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
         response = AnnotationList(
@@ -243,7 +243,7 @@ class AnnotationListApi(Resource):
         """Create a new annotation."""
         payload = AnnotationCreatePayload.model_validate(service_api_ns.payload or {})
         insert_args: InsertAnnotationArgs = {"question": payload.question, "answer": payload.answer}
-        annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id)
+        annotation = AppAnnotationService.insert_app_annotation_directly(insert_args, app_model.id, session=db.session)
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json"), HTTPStatus.CREATED
 

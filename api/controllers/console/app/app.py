@@ -667,7 +667,7 @@ class AppListApi(Resource):
         )
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, params, current_user)
+        app = app_service.create_app(current_tenant_id, params, current_user, session=db.session)
         permission_keys_map = enterprise_rbac_service.RBACService.AppPermissions.batch_get(
             str(current_tenant_id),
             current_user.id,
@@ -817,7 +817,7 @@ class AppApi(Resource):
             "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
             "max_active_requests": args.max_active_requests or 0,
         }
-        app_model = app_service.update_app(app_model, args_dict)
+        app_model = app_service.update_app(app_model, args_dict, session=db.session)
         response_model = AppDetailWithSite.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 
@@ -835,7 +835,7 @@ class AppApi(Resource):
     def delete(self, app_model: App):
         """Delete app"""
         app_service = AppService()
-        app_service.delete_app(app_model)
+        app_service.delete_app(app_model, session=db.session)
 
         return "", 204
 
@@ -985,7 +985,7 @@ class AppNameApi(Resource):
         args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_name(app_model, args.name)
+        app_model = app_service.update_app_name(app_model, args.name, session=db.session)
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 
@@ -1013,6 +1013,7 @@ class AppIconApi(Resource):
             args.icon or "",
             args.icon_background or "",
             args.icon_type,
+            session=db.session,
         )
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
@@ -1036,7 +1037,7 @@ class AppSiteStatus(Resource):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_site_status(app_model, args.enable_site)
+        app_model = app_service.update_app_site_status(app_model, args.enable_site, session=db.session)
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 
@@ -1059,7 +1060,7 @@ class AppApiStatus(Resource):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_api_status(app_model, args.enable_api)
+        app_model = app_service.update_app_api_status(app_model, args.enable_api, session=db.session)
         response_model = AppDetail.model_validate(app_model, from_attributes=True)
         return response_model.model_dump(mode="json")
 

@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import httpx
 from sqlalchemy import func, select
+from sqlalchemy.orm import Session, scoped_session
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
@@ -57,7 +58,9 @@ class ExternalDatasetService:
             raise ValueError("api_key is required")
 
     @staticmethod
-    def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict[str, Any]) -> ExternalKnowledgeApis:
+    def create_external_knowledge_api(
+        tenant_id: str, user_id: str, args: dict[str, Any], *, session: Session | scoped_session
+    ) -> ExternalKnowledgeApis:
         settings = args.get("settings")
         if settings is None:
             raise ValueError("settings is required")
@@ -103,7 +106,9 @@ class ExternalDatasetService:
             raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
 
     @staticmethod
-    def get_external_knowledge_api(external_knowledge_api_id: str, tenant_id: str) -> ExternalKnowledgeApis:
+    def get_external_knowledge_api(
+        external_knowledge_api_id: str, tenant_id: str, *, session: Session | scoped_session
+    ) -> ExternalKnowledgeApis:
         external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
@@ -114,7 +119,14 @@ class ExternalDatasetService:
         return external_knowledge_api
 
     @staticmethod
-    def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
+    def update_external_knowledge_api(
+        tenant_id: str,
+        user_id: str,
+        external_knowledge_api_id: str,
+        args: dict[str, Any],
+        *,
+        session: Session | scoped_session,
+    ) -> ExternalKnowledgeApis:
         external_knowledge_api: ExternalKnowledgeApis | None = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
@@ -126,9 +138,9 @@ class ExternalDatasetService:
         if settings and settings.get("api_key") == HIDDEN_VALUE and external_knowledge_api.settings_dict:
             settings["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
-        external_knowledge_api.name = args.get("name")
-        external_knowledge_api.description = args.get("description", "")
-        external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
+        external_knowledge_api.name = str(args.get("name"))
+        external_knowledge_api.description = str(args.get("description", ""))
+        external_knowledge_api.settings = json.dumps(settings, ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
         external_knowledge_api.updated_at = naive_utc_now()
         session.commit()
@@ -136,7 +148,9 @@ class ExternalDatasetService:
         return external_knowledge_api
 
     @staticmethod
-    def delete_external_knowledge_api(tenant_id: str, external_knowledge_api_id: str):
+    def delete_external_knowledge_api(
+        tenant_id: str, external_knowledge_api_id: str, *, session: Session | scoped_session
+    ) -> None:
         external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
@@ -149,7 +163,9 @@ class ExternalDatasetService:
         session.commit()
 
     @staticmethod
-    def external_knowledge_api_use_check(external_knowledge_api_id: str, tenant_id: str) -> tuple[bool, int]:
+    def external_knowledge_api_use_check(
+        external_knowledge_api_id: str, tenant_id: str, *, session: Session | scoped_session
+    ) -> tuple[bool, int]:
         """
         Return usage for an external knowledge API within a single tenant.
 
@@ -168,7 +184,9 @@ class ExternalDatasetService:
         return count > 0, count
 
     @staticmethod
-    def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
+    def get_external_knowledge_binding_with_dataset_id(
+        tenant_id: str, dataset_id: str, *, session: Session | scoped_session
+    ) -> ExternalKnowledgeBindings:
         external_knowledge_binding: ExternalKnowledgeBindings | None = session.scalar(
             select(ExternalKnowledgeBindings)
             .where(ExternalKnowledgeBindings.dataset_id == dataset_id, ExternalKnowledgeBindings.tenant_id == tenant_id)
@@ -180,8 +198,12 @@ class ExternalDatasetService:
 
     @staticmethod
     def document_create_args_validate(
-        tenant_id: str, external_knowledge_api_id: str, process_parameter: dict[str, Any]
-    ):
+        tenant_id: str,
+        external_knowledge_api_id: str,
+        process_parameter: dict[str, Any],
+        *,
+        session: Session | scoped_session,
+    ) -> None:
         external_knowledge_api = session.scalar(
             select(ExternalKnowledgeApis)
             .where(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == tenant_id)
@@ -255,7 +277,9 @@ class ExternalDatasetService:
         return ExternalKnowledgeApiSetting.model_validate(settings)
 
     @staticmethod
-    def create_external_dataset(tenant_id: str, user_id: str, args: dict[str, Any]) -> Dataset:
+    def create_external_dataset(
+        tenant_id: str, user_id: str, args: dict[str, Any], *, session: Session | scoped_session
+    ) -> Dataset:
         # check if dataset name already exists
         if session.scalar(
             select(Dataset).where(Dataset.name == args.get("name"), Dataset.tenant_id == tenant_id).limit(1)
@@ -310,6 +334,8 @@ class ExternalDatasetService:
         query: str,
         external_retrieval_parameters: dict[str, Any],
         metadata_condition: MetadataFilteringCondition | None = None,
+        *,
+        session: Session | scoped_session,
     ):
         """Fetch retrieval records from an external knowledge provider.
 

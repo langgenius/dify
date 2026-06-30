@@ -154,7 +154,7 @@ class MessageCycleManager:
         :param event: event
         :return:
         """
-        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
+        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id, session=db.session)
         if annotation:
             account = annotation.account
             self._task_state.metadata.annotation_reply = AnnotationReply(

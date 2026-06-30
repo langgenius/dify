@@ -475,7 +475,7 @@ class DatasetService:
 
         if provider == "external" and external_knowledge_api_id:
             external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(
-                external_knowledge_api_id, tenant_id
+                external_knowledge_api_id, tenant_id, session=session
             )
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
@@ -727,7 +727,7 @@ class DatasetService:
         if not external_knowledge_api_id:
             raise ValueError("External knowledge api id is required.")
         # Ensure the referenced external API template exists and belongs to the dataset tenant.
-        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id)
+        ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id, dataset.tenant_id, session=session)
         # Update metadata fields
         dataset.updated_by = user.id if user else None
         dataset.updated_at = naive_utc_now()

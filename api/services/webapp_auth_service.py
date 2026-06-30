@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
+from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
@@ -145,7 +146,7 @@ class WebAppAuthService:
             raise ValueError("Either app_code or app_id must be provided.")
 
         if app_code:
-            app_id = AppService.get_app_id_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code, session=db.session)
         if not app_id:
             raise ValueError("App ID could not be determined from the provided app_code.")
 
@@ -171,7 +172,7 @@ class WebAppAuthService:
                 return WebAppAuthType.EXTERNAL
 
         if app_code:
-            app_id = AppService.get_app_id_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code, session=db.session)
             webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
 

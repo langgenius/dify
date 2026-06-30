@@ -88,6 +88,7 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                 query=query,
                 external_retrieval_parameters=dataset.retrieval_model,
                 metadata_condition=metadata_condition,
+                session=db.session,
             )
             for external_document in external_documents:
                 document = RetrievalDocument(
