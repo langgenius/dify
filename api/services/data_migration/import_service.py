@@ -418,9 +418,7 @@ class MigrationImportService:
             return None
         return session.scalar(sa.select(App).where(App.id == app_id, App.tenant_id == tenant_id))
 
-    def _create_or_reuse_app_api_token(
-        self, app_id: str, tenant_id: str, *, session: Session | scoped_session
-    ) -> None:
+    def _create_or_reuse_app_api_token(self, app_id: str, tenant_id: str, *, session: Session | scoped_session) -> None:
         existing = session.scalar(
             sa.select(ApiToken).where(
                 ApiToken.type == ApiTokenType.APP,
@@ -585,9 +583,10 @@ class MigrationImportService:
         for workflow_tool_data in package.workflow_tools:
             app_id = self._optional_string(workflow_tool_data.get("app_id"))
             resolved_app_id = id_mapping.get(app_id or "", app_id)
-            if not resolved_app_id or self._find_existing_app(
-                resolved_app_id, target.tenant_id, session=session
-            ) is None:
+            if (
+                not resolved_app_id
+                or self._find_existing_app(resolved_app_id, target.tenant_id, session=session) is None
+            ):
                 report_items.append(
                     ResourceReportItem(
                         ResourceType.WORKFLOW_TOOL,
