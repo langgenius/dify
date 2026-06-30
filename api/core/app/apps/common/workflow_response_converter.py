@@ -363,7 +363,11 @@ class WorkflowResponseConverter:
                 HumanInputForm.id,
                 HumanInputForm.expiration_time,
                 HumanInputForm.form_definition,
-            ).where(HumanInputForm.id.in_(human_input_form_ids))
+            ).where(
+                HumanInputForm.id.in_(human_input_form_ids),
+                HumanInputForm.tenant_id == self._application_generate_entity.app_config.tenant_id,
+                HumanInputForm.app_id == self._application_generate_entity.app_config.app_id,
+            )
             hitl_surface = _INVOKE_FROM_TO_HITL_SURFACE.get(self._application_generate_entity.invoke_from)
             with Session(bind=db.engine) as session:
                 for form_id, expiration_time, form_definition in session.execute(stmt):

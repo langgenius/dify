@@ -8,7 +8,7 @@ of the graph boundary. Graphon only sees the final HITL decision objects
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from typing import Any
+from typing import Any, Protocol
 
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
 from core.workflow.human_input import (
@@ -20,8 +20,14 @@ from core.workflow.human_input import (
     restore_submitted_data,
     session_binding as default_session_binding,
 )
+from core.workflow.human_input.graphon_hitl_adapter import (
+    CompletedDecision,
+    ExpiredDecision,
+    HumanInputDecision,
+    PauseRequestedDecision,
+    to_graphon_hitl_decision,
+)
 from factories.variable_factory import build_segment
-from graphon.nodes.human_input.entities import Completed, Expired, HITLContext, PauseRequested
 from graphon.variables.segments import Segment
 
 _TIMEOUT_HANDLE = "__timeout"
@@ -30,6 +36,13 @@ _RENDERED_CONTENT_OUTPUT = "__rendered_content"
 
 type RepositoryFactory = Callable[[str], HumanInputFormRepository]
 type FileValueRestorer = Callable[[Mapping[str, Any]], Any]
+
+
+class HumanInputCallbackContext(Protocol):
+    workflow_execution_id: str
+    node_id: str
+    node_title: str
+    variable_pool: Any
 
 
 class DifyHumanInputCallback:
@@ -59,7 +72,10 @@ class DifyHumanInputCallback:
         self._display_in_ui = display_in_ui
         self._conversation_id_getter = conversation_id_getter
 
-    def __call__(self, context: HITLContext) -> PauseRequested | Completed | Expired:
+    def __call__(self, context: HumanInputCallbackContext):
+        return to_graphon_hitl_decision(self._decide(context))
+
+    def _decide(self, context: HumanInputCallbackContext) -> HumanInputDecision:
         repository = self._resolve_repository(workflow_execution_id=context.workflow_execution_id)
         form = repository.get_form(context.node_id)
         if form is None:
@@ -78,10 +94,12 @@ class DifyHumanInputCallback:
                     resolved_default_values=self._resolve_default_values(context=context),
                 )
             )
-            return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=created_form.id))
+            return PauseRequestedDecision(
+                session_id=self._session_binding.issue_session_id_for_form(form_id=created_form.id)
+            )
 
         if form.status == HumanInputFormStatus.WAITING:
-            return PauseRequested(session_id=self._session_binding.issue_session_id_for_form(form_id=form.id))
+            return PauseRequestedDecision(session_id=self._session_binding.issue_session_id_for_form(form_id=form.id))
 
         if form.status == HumanInputFormStatus.SUBMITTED:
             restored_values = dict(
@@ -102,14 +120,14 @@ class DifyHumanInputCallback:
             outputs = dict(inputs)
             outputs[_ACTION_ID_OUTPUT] = build_segment(selected_handle)
             outputs[_RENDERED_CONTENT_OUTPUT] = build_segment(rendered_content)
-            return Completed(
+            return CompletedDecision(
                 selected_handle=selected_handle,
                 inputs=inputs,
                 outputs=outputs,
             )
 
         if form.status in {HumanInputFormStatus.TIMEOUT, HumanInputFormStatus.EXPIRED}:
-            return Expired(
+            return ExpiredDecision(
                 selected_handle=_TIMEOUT_HANDLE,
                 outputs={
                     _RENDERED_CONTENT_OUTPUT: build_segment(form.rendered_content),
@@ -129,7 +147,7 @@ class DifyHumanInputCallback:
             return None
         return self._conversation_id_getter()
 
-    def _resolve_default_values(self, *, context: HITLContext) -> dict[str, Any]:
+    def _resolve_default_values(self, *, context: HumanInputCallbackContext) -> dict[str, Any]:
         return resolve_default_values(node_data=self._node_data, variable_pool=context.variable_pool)
 
     @staticmethod

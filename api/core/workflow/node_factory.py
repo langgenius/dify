@@ -465,7 +465,6 @@ class DifyNodeFactory(NodeFactory):
         # Re-validate using the resolved node class so workflow-local node schemas
         # stay explicit and constructors receive the concrete typed payload.
         resolved_node_data = self._validate_resolved_node_data(node_class, node_data)
-        callback_node_data = self._build_dify_human_input_node_data_for_callback(resolved_node_data)
         node_type = node_data.type
         node_init_kwargs_factories: Mapping[NodeType, Callable[[], dict[str, object]]] = {
             BuiltinNodeTypes.CODE: lambda: {
@@ -485,7 +484,7 @@ class DifyNodeFactory(NodeFactory):
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
                 "hitl_callback": self._build_human_input_hitl_callback(
-                    node_data=callback_node_data
+                    node_data=self._build_dify_human_input_node_data_for_callback(resolved_node_data)
                 ),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(

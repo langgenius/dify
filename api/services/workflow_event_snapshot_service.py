@@ -269,7 +269,7 @@ def _build_snapshot_events(
             for reason in iter_hitl_required_reasons(pause_entity.get_pause_reasons())
         }
         for human_input_event in _build_human_input_required_events(
-            workflow_run_id=workflow_run.id,
+            workflow_run=workflow_run,
             task_id=task_id,
             pause_entity=pause_entity,
             session_maker=session_maker,
@@ -358,7 +358,7 @@ def _build_node_started_event(
 
 def _build_human_input_required_events(
     *,
-    workflow_run_id: str,
+    workflow_run: WorkflowRun,
     task_id: str,
     pause_entity: WorkflowPauseEntity,
     session_maker: sessionmaker[Session] | None,
@@ -379,7 +379,9 @@ def _build_human_input_required_events(
     dispositions_by_form_id: dict[str, FormDisposition] = {}
     if human_input_form_ids and session_maker is not None:
         stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
-            HumanInputForm.id.in_(human_input_form_ids)
+            HumanInputForm.id.in_(human_input_form_ids),
+            HumanInputForm.tenant_id == workflow_run.tenant_id,
+            HumanInputForm.app_id == workflow_run.app_id,
         )
         with session_maker() as session:
             for form_id, expiration_time, form_definition in session.execute(stmt):
@@ -418,7 +420,7 @@ def _build_human_input_required_events(
 
         response = HumanInputRequiredResponse(
             task_id=task_id,
-            workflow_run_id=workflow_run_id,
+            workflow_run_id=workflow_run.id,
             data=HumanInputRequiredResponse.Data(
                 form_id=session_id,
                 node_id=reason.node_id,
@@ -529,7 +531,9 @@ def _build_pause_event(
                 surface=human_input_surface,
             )
             stmt = select(HumanInputForm.id, HumanInputForm.expiration_time).where(
-                HumanInputForm.id.in_(human_input_form_ids)
+                HumanInputForm.id.in_(human_input_form_ids),
+                HumanInputForm.tenant_id == workflow_run.tenant_id,
+                HumanInputForm.app_id == workflow_run.app_id,
             )
             for row in session.execute(stmt):
                 form_id, expiration_time, *_rest = row
