@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Generator
 from types import SimpleNamespace
 from typing import Any
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -131,18 +131,25 @@ def test_create_message_files_and_invoke_generator():
         created.append(obj)
         return obj
 
-    with patch("core.tools.tool_engine.MessageFile", side_effect=_message_file_factory):
-        with patch("core.tools.tool_engine.db") as mock_db:
-            ids = ToolEngine._create_message_files(
-                tool_messages=binaries,
-                agent_message=SimpleNamespace(id="msg-1"),
-                invoke_from=InvokeFrom.DEBUGGER,
-                user_id="user-1",
-            )
+    file_session = MagicMock()
+    session_factory = MagicMock()
+    session_factory.begin.return_value.__enter__.return_value = file_session
+    with (
+        patch("core.tools.tool_engine.MessageFile", side_effect=_message_file_factory),
+        patch("core.tools.tool_engine.db") as mock_db,
+        patch("core.tools.tool_engine.sessionmaker", return_value=session_factory) as mock_sessionmaker,
+    ):
+        ids = ToolEngine._create_message_files(
+            tool_messages=binaries,
+            agent_message=SimpleNamespace(id="msg-1"),
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id="user-1",
+        )
 
     assert ids == ["mf-1", "mf-2"]
-    assert mock_db.session.add.call_count == 2
-    mock_db.session.close.assert_called_once()
+    mock_sessionmaker.assert_called_once_with(bind=mock_db.engine, expire_on_commit=False)
+    assert file_session.add.call_count == 2
+    mock_db.session.close.assert_not_called()
 
     tool = _build_tool()
     invoked = list(ToolEngine._invoke(tool, {"a": 1}, user_id="u"))

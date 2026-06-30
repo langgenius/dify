@@ -1937,6 +1937,9 @@
   "web/app/components/base/markdown-blocks/form.tsx": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "prefer-regex-literals": {
+      "count": 1
     }
   },
   "web/app/components/base/markdown-blocks/index.ts": {
@@ -4362,14 +4365,6 @@
       "count": 1
     }
   },
-  "web/app/components/snippet-list/components/snippet-card.tsx": {
-    "jsx-a11y/click-events-have-key-events": {
-      "count": 1
-    },
-    "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
   "web/app/components/snippets/components/snippet-run-panel.tsx": {
     "jsx-a11y/click-events-have-key-events": {
       "count": 5
@@ -4383,11 +4378,6 @@
   },
   "web/app/components/snippets/create-snippet-dialog.tsx": {
     "jsx-a11y/no-autofocus": {
-      "count": 1
-    }
-  },
-  "web/app/components/snippets/hooks/use-nodes-sync-draft.ts": {
-    "no-restricted-imports": {
       "count": 1
     }
   },
@@ -6312,9 +6302,6 @@
     },
     "ts/no-explicit-any": {
       "count": 5
-    },
-    "unicorn/prefer-number-properties": {
-      "count": 2
     }
   },
   "web/app/components/workflow/panel/chat-variable-panel/components/object-value-list.tsx": {

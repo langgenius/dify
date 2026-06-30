@@ -5,6 +5,7 @@ import type { ModalContextState } from '@/context/modal-context'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { IWorkspace } from '@/models/common'
 import type { InstalledApp } from '@/models/explore'
+import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
 import { createTestQueryClient, renderWithSystemFeatures } from '@/__tests__/utils/mock-system-features'
@@ -16,6 +17,7 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 import { useAppContext, useSelector as useAppContextSelector } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { PipelineInputVarType } from '@/models/pipeline'
 import { usePathname, useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
 import { useGetInstalledApps, useUninstallApp, useUpdateAppPinStatus } from '@/service/use-explore'
@@ -26,14 +28,29 @@ import { DETAIL_SIDEBAR_STORAGE_KEY } from '../storage'
 const activeGradientMaskClassName = 'aria-[current=page]:dify-blue-glass-surface'
 const activeStackingClassName = 'aria-[current=page]:z-1'
 
-const { mockIsAgentV2Enabled, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations } = vi.hoisted(() => ({
+type SnippetNavigationTestState = {
+  onFieldsChange?: (fields: SnippetInputField[]) => void
+  readonly: boolean
+  snippet?: SnippetDetail
+}
+
+const { mockIsAgentV2Enabled, mockSnippetFieldsChange, mockSwitchWorkspace, mockToastSuccess, hotkeyRegistrations, snippetDraftState, snippetNavigationState } = vi.hoisted(() => ({
   mockSwitchWorkspace: vi.fn(),
+  mockSnippetFieldsChange: vi.fn(),
   mockToastSuccess: vi.fn(),
   mockIsAgentV2Enabled: vi.fn(() => true),
   hotkeyRegistrations: new Map<string, {
     handler: (event: { preventDefault: () => void }) => void
     options?: { ignoreInputs?: boolean }
   }>(),
+  snippetDraftState: {
+    inputFields: [],
+  } as { inputFields: SnippetInputField[] },
+  snippetNavigationState: {
+    readonly: true,
+    snippet: undefined,
+    onFieldsChange: undefined,
+  } as SnippetNavigationTestState,
 }))
 
 vi.mock('@/features/agent-v2/feature-flag', () => ({
@@ -185,6 +202,42 @@ vi.mock('@/features/deployments/detail/deployment-sidebar', () => ({
   ),
 }))
 
+vi.mock('@/app/components/snippets/store', () => ({
+  useSnippetDetailStore: (selector: (state: SnippetNavigationTestState) => unknown) => selector(snippetNavigationState),
+}))
+
+vi.mock('@/app/components/snippets/draft-store', () => ({
+  useSnippetDraftStore: (selector: (state: typeof snippetDraftState) => unknown) => selector(snippetDraftState),
+}))
+
+vi.mock('@/app/components/snippets/components/snippet-sidebar', () => ({
+  SnippetSidebarContent: ({
+    fields,
+    onFieldsChange,
+    readonly,
+    snippet,
+  }: {
+    fields: SnippetInputField[]
+    onFieldsChange: (fields: SnippetInputField[]) => void
+    readonly: boolean
+    snippet: SnippetDetail
+  }) => (
+    <div data-testid="snippet-sidebar-content" data-readonly={String(readonly)}>
+      <span>{snippet.name}</span>
+      <span>{fields.map(field => field.variable).join(',')}</span>
+      <button type="button" onClick={() => onFieldsChange([])}>change snippet fields</button>
+    </div>
+  ),
+}))
+
+vi.mock('../components/snippet-detail-top', () => ({
+  default: ({ expand, onToggle }: { expand: boolean, onToggle: () => void }) => (
+    <div data-testid="snippet-detail-top" data-expand={expand}>
+      <button type="button" data-testid="snippet-detail-toggle" onClick={onToggle}>Toggle</button>
+    </div>
+  ),
+}))
+
 vi.mock('@/context/i18n', () => ({
   useLocale: () => 'en-US',
   useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
@@ -243,6 +296,24 @@ const createInstalledApp = (overrides: Partial<InstalledApp> = {}): InstalledApp
     use_icon_as_answer_icon: overrides.app?.use_icon_as_answer_icon ?? false,
   },
 })
+
+const snippet: SnippetDetail = {
+  id: 'snippet-1',
+  name: 'Snippet',
+  description: 'Description',
+  updatedAt: '2026-03-29 10:00',
+  usage: '0',
+  tags: [],
+}
+
+const snippetFields: SnippetInputField[] = [
+  {
+    label: 'Query',
+    variable: 'query',
+    type: PipelineInputVarType.textInput,
+    required: true,
+  },
+]
 
 const appContextValue: AppContextValue = {
   userProfile: {
@@ -373,6 +444,10 @@ describe('MainNav', () => {
     })
     mockSwitchWorkspace.mockReturnValue(new Promise(() => {}))
     hotkeyRegistrations.clear()
+    snippetDraftState.inputFields = []
+    snippetNavigationState.onFieldsChange = undefined
+    snippetNavigationState.readonly = true
+    snippetNavigationState.snippet = undefined
     useAppStore.getState().setAppDetail()
   })
 
@@ -584,12 +659,24 @@ describe('MainNav', () => {
     expect(screen.getByRole('link', { name: /common.mainNav.home/ })).not.toHaveAttribute('aria-current')
   })
 
-  it('hides the main menu on snippet detail routes while keeping account settings available', () => {
+  it('replaces global navigation with snippet detail navigation on snippet routes', () => {
     mockPathname = '/snippets/snippet-1/orchestrate'
+    snippetDraftState.inputFields = snippetFields
+    snippetNavigationState.onFieldsChange = mockSnippetFieldsChange
+    snippetNavigationState.readonly = false
+    snippetNavigationState.snippet = snippet
 
     renderMainNav()
 
-    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('w-62')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByRole('complementary')).toHaveClass('bg-background-body')
+    expect(screen.getByTestId('snippet-detail-top')).toHaveAttribute('data-expand', 'true')
+    expect(screen.getByTestId('snippet-sidebar-content')).toHaveAttribute('data-readonly', 'false')
+    expect(screen.getByText(snippet.name)).toBeInTheDocument()
+    expect(screen.getByText('query')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'change snippet fields' }))
+    expect(mockSnippetFieldsChange).toHaveBeenCalledWith([])
     expect(screen.queryByLabelText('Dify')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'common.mainNav.workspace.openMenu' })).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /common.mainNav.home/ })).not.toBeInTheDocument()
@@ -597,6 +684,24 @@ describe('MainNav', () => {
     expect(screen.queryByRole('button', { name: 'explore.sidebar.webApps' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.account.account' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.mainNav.help.openMenu' })).toBeInTheDocument()
+  })
+
+  it('collapses snippet detail navigation from the top-right toggle', () => {
+    mockPathname = '/snippets/snippet-1/orchestrate'
+    snippetDraftState.inputFields = snippetFields
+    snippetNavigationState.onFieldsChange = mockSnippetFieldsChange
+    snippetNavigationState.snippet = snippet
+
+    renderMainNav()
+    fireEvent.click(screen.getByTestId('snippet-detail-toggle'))
+
+    expect(screen.getByRole('complementary')).toHaveClass('w-16')
+    expect(screen.getByRole('complementary')).toHaveClass('p-1')
+    expect(screen.getByTestId('snippet-detail-top')).toHaveAttribute('data-expand', 'false')
+    expect(screen.queryByTestId('snippet-sidebar-content')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Snippet collapsed preview')).toBeInTheDocument()
+    expect(screen.getByLabelText('1 input fields')).toBeInTheDocument()
+    expect(localStorage.getItem(DETAIL_SIDEBAR_STORAGE_KEY)).toBe('collapse')
   })
 
   it('replaces global navigation with app detail navigation on app routes', () => {
