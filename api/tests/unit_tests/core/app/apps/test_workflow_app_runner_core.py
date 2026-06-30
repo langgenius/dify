@@ -23,7 +23,8 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.workflow.system_variables import default_system_variables
-from graphon.entities.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import (
     GraphRunPausedEvent,
@@ -344,10 +345,20 @@ class TestWorkflowBasedAppRunner:
             "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
             _Dispatch(),
         )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.enrich_graph_pause_reasons",
+            lambda **_: [
+                HumanInputRequired(
+                    form_id="form",
+                    form_content="content",
+                    node_id="node-1",
+                    node_title="Node",
+                )
+            ],
+        )
 
-        reason = HumanInputRequired(
-            form_id="form",
-            form_content="content",
+        reason = HitlRequired(
+            session_id="form",
             node_id="node-1",
             node_title="Node",
         )

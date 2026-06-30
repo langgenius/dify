@@ -30,7 +30,13 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
+from core.workflow.nodes.human_input.callback import (
+    DifyHITLCallback,
+    render_form_content_before_submission,
+    resolve_default_values,
+)
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
+from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
@@ -172,13 +178,22 @@ def _build_human_input_node(
         node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
     )
     runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
+    callback = DifyHITLCallback(
+        form_repository=runtime.build_form_repository(),
+        session_binding=SessionBinding(),
+        node_data=typed_node_data,
+        rendered_content=lambda ctx: render_form_content_before_submission(typed_node_data, ctx=ctx),
+        resolved_default_values=lambda ctx: resolve_default_values(typed_node_data, ctx=ctx),
+        delivery_methods=runtime._resolve_delivery_methods(node_data=typed_node_data),
+        display_in_ui=runtime._display_in_ui(node_data=typed_node_data),
+        file_reference_factory=_TestFileReferenceFactory(),
+    )
     return HumanInputNode(
         node_id=node_id,
         data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        file_reference_factory=_TestFileReferenceFactory(),
-        runtime=runtime,
+        hitl_callback=callback,
     )
 
 
@@ -523,7 +538,8 @@ class TestHumanInputNodeVariableResolution:
 
         assert isinstance(pause_event, PauseRequestedEvent)
         expected_values = {"user_name": "Jane Doe"}
-        assert pause_event.reason.resolved_default_values == expected_values
+        create_params = mock_repo.create_form.call_args.args[0]
+        assert create_params.resolved_default_values == expected_values
 
         params = mock_repo.create_form.call_args.args[0]
         assert params.resolved_default_values == expected_values

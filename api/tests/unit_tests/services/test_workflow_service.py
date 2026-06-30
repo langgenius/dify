@@ -2775,6 +2775,8 @@ class TestWorkflowServiceHumanInputOperations:
         workflow = MagicMock()
         workflow.environment_variables = []
         workflow.graph_dict = {}
+        node_data = MagicMock()
+        node_data.extract_variable_selector_to_variable_mapping.return_value = {}
 
         with (
             patch("services.workflow_service.db"),
@@ -2782,12 +2784,16 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.WorkflowDraftVariableService"),
             patch("services.workflow_service.VariablePool") as mock_pool_cls,
             patch("services.workflow_service.DraftVarLoader"),
-            patch("services.workflow_service.HumanInputNode.extract_variable_selector_to_variable_mapping"),
+            patch("services.workflow_service.HumanInputNodeData.model_validate", return_value=node_data),
             patch("services.workflow_service.load_into_variable_pool"),
             patch("services.workflow_service.WorkflowEntry.mapping_user_inputs_to_variable_pool"),
         ):
             service._build_human_input_variable_pool(
-                app_model=MagicMock(), workflow=workflow, node_config={}, manual_inputs={}, user_id="user-1"
+                app_model=MagicMock(),
+                workflow=workflow,
+                node_config={"id": "node-1", "data": {}},
+                manual_inputs={},
+                user_id="user-1",
             )
             mock_pool_cls.assert_called_once()
 
@@ -2839,7 +2845,7 @@ class TestWorkflowServiceFreeNodeExecution:
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
         with patch(
-            "graphon.nodes.human_input.entities.HumanInputNodeData.model_validate", side_effect=Exception("error")
+            "services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")
         ):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})
@@ -2852,49 +2858,24 @@ class TestWorkflowServiceFreeNodeExecution:
     def test_build_human_input_node_for_debugging(self, service: WorkflowService) -> None:
         """Cover _build_human_input_node_for_debugging."""
         workflow = MagicMock()
-        workflow.id = "wf-1"
-        workflow.tenant_id = "t-1"
-        workflow.app_id = "app-1"
         account = MagicMock()
-        account.id = "u-1"
         node_config = {"id": "n-1", "data": {"type": BuiltinNodeTypes.HUMAN_INPUT, "title": "Human Input"}}
         variable_pool = MagicMock()
+        node_data = MagicMock()
+        node_data.title = "Human Input"
 
         with (
-            patch("services.workflow_service.DifyGraphInitContext") as mock_graph_init_context_cls,
-            patch("services.workflow_service.GraphRuntimeState"),
             patch(
                 "services.workflow_service.adapt_human_input_node_data_for_graph",
                 return_value=sentinel.adapted_node_data,
             ) as mock_adapt_node_data,
-            patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
-            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
-            patch("services.workflow_service.DifyHumanInputNodeRuntime") as mock_runtime_cls,
-            patch("services.workflow_service.DifyFileReferenceFactory") as mock_file_reference_factory_cls,
-            patch("services.workflow_service.HumanInputNode") as mock_node_cls,
+            patch("services.workflow_service.HumanInputNodeData.model_validate", return_value=node_data),
         ):
-            mock_node_cls.validate_node_data.return_value = sentinel.node_data
             node = service._build_human_input_node_for_debugging(
                 workflow=workflow, account=account, node_config=node_config, variable_pool=variable_pool
             )
-            assert node == mock_node_cls.return_value
-            mock_node_cls.assert_called_once()
-            mock_graph_init_context_cls.assert_called_once_with(
-                workflow_id="wf-1",
-                graph_config=workflow.graph_dict,
-                run_context=mock_build_dify_run_context.return_value,
-                call_depth=0,
-            )
-            mock_runtime_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
-            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
             mock_adapt_node_data.assert_called_once_with(node_config["data"])
-            mock_node_cls.validate_node_data.assert_called_once_with(sentinel.adapted_node_data)
-            mock_file_reference_factory_cls.assert_called_once_with(mock_build_dify_run_context.return_value)
-            mock_node_cls.assert_called_once_with(
-                node_id="n-1",
-                data=sentinel.node_data,
-                graph_init_params=mock_graph_init_context_cls.return_value.to_graph_init_params.return_value,
-                graph_runtime_state=ANY,
-                file_reference_factory=mock_file_reference_factory_cls.return_value,
-                runtime=mock_runtime_cls.return_value,
-            )
+            assert node.node_id == "n-1"
+            assert node.title == "Human Input"
+            assert node.node_data is node_data
+            assert node.variable_pool is variable_pool

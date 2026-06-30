@@ -13,7 +13,7 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
 
