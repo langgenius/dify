@@ -840,8 +840,9 @@ class RBACService:
             *,
             options: ListOption | None = None,
         ) -> Paginated[RBACRole]:
-            params = (options or ListOption()).to_params({
-                "include_owner": include_owner, "biiling_enabled": biiling_enabled})
+            params = (options or ListOption()).to_params(
+                {"include_owner": include_owner, "biiling_enabled": biiling_enabled}
+            )
             params["dataset_operator_enabled"] = dify_config.DATASET_OPERATOR_ENABLED
             data = _inner_call(
                 "GET",

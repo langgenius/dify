@@ -313,14 +313,16 @@ class RBACRolesApi(Resource):
         query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
         options = query.to_inner_options()
         if not dify_config.RBAC_ENABLED:
-            result = _legacy_workspace_roles(options, include_owner=query.include_owner,
-                                             billing_enabled=dify_config.BILLING_ENABLED)
+            result = _legacy_workspace_roles(
+                options, include_owner=query.include_owner, billing_enabled=dify_config.BILLING_ENABLED
+            )
         else:
             result = svc.RBACService.Roles.list(
-                tenant_id, account_id,
+                tenant_id,
+                account_id,
                 include_owner=query.include_owner,
                 biiling_enabled=dify_config.BILLING_ENABLED,
-                options=options
+                options=options,
             )
 
         return _dump(result)
@@ -346,8 +348,9 @@ class RBACRoleItemApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.RBACRole.__name__])
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.Roles.get(
-            tenant_id, account_id, role_id, billing_enabled=dify_config.BILLING_ENABLED))
+        return _dump(
+            svc.RBACService.Roles.get(tenant_id, account_id, role_id, billing_enabled=dify_config.BILLING_ENABLED)
+        )
 
     @login_required
     @rbac_permission_required(
