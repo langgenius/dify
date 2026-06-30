@@ -15,8 +15,6 @@ import { usePathname, useRouter, useSearchParams } from '@/next/navigation'
 import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import PageTitle from '../log-annotation/page-title'
-import { ArchivedLogsNotice } from './archived-logs-notice'
-import { shouldShowArchivedLogsNotice } from './archived-logs-notice-utils'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
@@ -64,6 +62,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   useEffect(() => {
     const pageFromParams = getPageFromParams()
+    // eslint-disable-next-line react/set-state-in-effect -- URL page changes intentionally resync local pagination state.
     setCurrPage(prev => (prev === pageFromParams ? prev : pageFromParams))
   }, [getPageFromParams])
 
@@ -104,7 +103,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
   const totalPages = total ? Math.max(Math.ceil(total / limit), 1) : 1
-  const showArchivedLogsNotice = shouldShowArchivedLogsNotice(queryParams.period, TIME_PERIOD_MAPPING)
 
   const handleQueryParamsChange = useCallback((next: QueryParam) => {
     setCurrPage(0)
@@ -133,7 +131,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       />
       <div className="flex min-h-0 flex-1 grow flex-col py-4">
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
-        {showArchivedLogsNotice && <ArchivedLogsNotice />}
         {total === undefined
           ? <Loading type="app" />
           : total > 0

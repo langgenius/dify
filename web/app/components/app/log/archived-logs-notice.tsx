@@ -1,17 +1,20 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
+import { Plan } from '@/app/components/billing/type'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { IS_CLOUD_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useModalContextSelector } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
 
 export function ArchivedLogsNotice() {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const { enableBilling, plan } = useProviderContext()
   const setShowAccountSettingModal = useModalContextSelector(state => state.setShowAccountSettingModal)
 
-  if (!IS_CLOUD_EDITION || !isCurrentWorkspaceManager)
+  if (!IS_CLOUD_EDITION || !isCurrentWorkspaceManager || !enableBilling || plan.type === Plan.sandbox)
     return null
 
   return (

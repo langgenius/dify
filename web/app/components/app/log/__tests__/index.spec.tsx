@@ -168,7 +168,7 @@ describe('Logs', () => {
     expect(mockReplace).toHaveBeenCalledWith('/apps/app-1/logs?page=2', { scroll: false })
   })
 
-  it('should show archive notice when the selected period can include archived logs', () => {
+  it('should not show archive notice for non-workflow logs', () => {
     mockUseChatConversations.mockReturnValue({
       data: { total: 0 },
       refetch: vi.fn(),
@@ -187,7 +187,7 @@ describe('Logs', () => {
 
     fireEvent.click(screen.getByText('filter-controls'))
 
-    expect(screen.getByText('archives.notice.description')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'archives.notice.action' })).toBeInTheDocument()
+    expect(screen.queryByText('archives.notice.description')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'archives.notice.action' })).not.toBeInTheDocument()
   })
 })
