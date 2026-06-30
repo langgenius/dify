@@ -16,7 +16,7 @@ CLIENT_SHARED_DTO_DEPENDENCIES = {
 
 SERVER_RUNTIME_DEPENDENCIES = {
     "fastapi==0.136.0",
-    "graphon==0.5.2",
+    "graphon==0.6.0",
     "jsonschema>=4.23.0,<5.0.0",
     "jwcrypto>=1.5.6,<2",
     "logfire[fastapi,httpx,redis]>=4.37.0,<5.0.0",
