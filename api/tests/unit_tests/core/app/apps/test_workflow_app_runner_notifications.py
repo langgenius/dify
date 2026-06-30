@@ -4,7 +4,7 @@ import pytest
 
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.queue_entities import QueueWorkflowPausedEvent
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.graph_events import GraphRunPausedEvent
 
 
@@ -36,11 +36,13 @@ def test_handle_pause_event_enqueues_email_task(monkeypatch: pytest.MonkeyPatch)
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
     workflow_entry = _DummyWorkflowEntry()
 
-    reason = HumanInputRequired(
-        form_id="form-123",
-        form_content="content",
-        inputs=[],
-        actions=[],
+    monkeypatch.setattr(
+        "core.app.apps.workflow_app_runner.session_binding.resolve_form_id_from_session_id",
+        lambda *, session_id: "form-123" if session_id == "session-123" else pytest.fail(session_id),
+    )
+
+    reason = HitlRequired(
+        session_id="session-123",
         node_id="node-1",
         node_title="Review",
     )
@@ -66,11 +68,8 @@ def test_handle_pause_event_resolves_session_id_before_enqueuing_email_task(
     runner = WorkflowBasedAppRunner(queue_manager=queue_manager, app_id="app-id")
     workflow_entry = _DummyWorkflowEntry()
 
-    reason = HumanInputRequired(
-        form_id="session-123",
-        form_content="content",
-        inputs=[],
-        actions=[],
+    reason = HitlRequired(
+        session_id="session-123",
         node_id="node-1",
         node_title="Review",
     )

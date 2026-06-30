@@ -3,7 +3,7 @@ import pytest
 from core.workflow.human_input_policy import FormDisposition, enrich_human_input_pause_reasons
 from graphon.entities.pause_reason import PauseReasonType
 
-_HUMAN_INPUT_REASON = {"TYPE": PauseReasonType.HUMAN_INPUT_REQUIRED, "form_id": "f1"}
+_HITL_REQUIRED_REASON = {"TYPE": PauseReasonType.HITL_REQUIRED, "session_id": "session-1"}
 
 
 @pytest.mark.parametrize(
@@ -17,13 +17,31 @@ _HUMAN_INPUT_REASON = {"TYPE": PauseReasonType.HUMAN_INPUT_REQUIRED, "form_id": 
 )
 def test_enrich_projects_disposition_onto_reason(dispositions, expected_token, expected_channels):
     out = enrich_human_input_pause_reasons(
-        [dict(_HUMAN_INPUT_REASON)],
+        [dict(_HITL_REQUIRED_REASON)],
         dispositions_by_form_id=dispositions,
         expiration_times_by_form_id={},
+        form_ids_by_session_id={"session-1": "f1"},
     )
 
+    assert out[0]["form_id"] == "f1"
     assert out[0]["form_token"] == expected_token
     assert out[0]["approval_channels"] == expected_channels
+    assert "session_id" not in out[0]
+
+
+def test_enrich_hitl_required_without_session_mapping_keeps_no_form_fields():
+    out = enrich_human_input_pause_reasons(
+        [dict(_HITL_REQUIRED_REASON)],
+        dispositions_by_form_id={"f1": FormDisposition(form_token="tok", approval_channels=["console"])},
+        expiration_times_by_form_id={"f1": 123},
+        form_ids_by_session_id={},
+    )
+
+    assert "form_id" not in out[0]
+    assert "form_token" not in out[0]
+    assert "approval_channels" not in out[0]
+    assert "expiration_time" not in out[0]
+    assert "session_id" not in out[0]
 
 
 def test_enrich_leaves_non_human_input_reasons_untouched():

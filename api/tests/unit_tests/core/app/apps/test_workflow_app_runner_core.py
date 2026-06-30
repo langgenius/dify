@@ -23,7 +23,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.workflow.system_variables import default_system_variables
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import BuiltinNodeTypes
 from graphon.graph_events import (
     GraphRunPausedEvent,
@@ -344,10 +344,13 @@ class TestWorkflowBasedAppRunner:
             "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
             _Dispatch(),
         )
+        monkeypatch.setattr(
+            "core.app.apps.workflow_app_runner.session_binding.resolve_form_id_from_session_id",
+            lambda *, session_id: "form" if session_id == "session-form" else pytest.fail(session_id),
+        )
 
-        reason = HumanInputRequired(
-            form_id="form",
-            form_content="content",
+        reason = HitlRequired(
+            session_id="session-form",
             node_id="node-1",
             node_title="Node",
         )
@@ -360,7 +363,8 @@ class TestWorkflowBasedAppRunner:
         assert any(isinstance(event, QueueWorkflowSucceededEvent) for event, _ in published)
         paused_event = next(event for event, _ in published if isinstance(event, QueueWorkflowPausedEvent))
         assert paused_event.paused_nodes == ["node-1"]
-        assert emails
+        assert paused_event.reasons == [reason]
+        assert emails == [{"kwargs": {"form_id": "form", "node_title": "Node"}, "queue": "mail"}]
 
     def test_handle_node_events_publishes_queue_events(self):
         published: list[object] = []

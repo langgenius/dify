@@ -17,7 +17,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import StreamEvent
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import MessageStatus
 from models.execution_extra_content import HumanInputContent
@@ -104,7 +104,7 @@ def test_persist_human_input_extra_content_skips_when_existing(monkeypatch: pyte
     session.add.assert_not_called()
 
 
-def test_handle_workflow_paused_event_persists_human_input_extra_content() -> None:
+def test_handle_workflow_paused_event_persists_human_input_extra_content(monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline = _build_pipeline()
     pipeline._application_generate_entity = SimpleNamespace(task_id="task-1")
     pipeline._workflow_response_converter = mock.Mock()
@@ -122,6 +122,11 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content() -> No
     pipeline._base_task_pipeline = mock.Mock()
     pipeline._base_task_pipeline.queue_manager = mock.Mock()
     pipeline._message_saved_on_pause = False
+    monkeypatch.setattr(
+        pipeline_module.session_binding,
+        "resolve_form_id_from_session_id",
+        mock.Mock(return_value="form-1"),
+    )
 
     @contextmanager
     def fake_session():
@@ -130,14 +135,10 @@ def test_handle_workflow_paused_event_persists_human_input_extra_content() -> No
 
     pipeline._database_session = fake_session  # type: ignore[method-assign]
 
-    reason = HumanInputRequired(
-        form_id="form-1",
-        form_content="content",
-        inputs=[],
-        actions=[],
+    reason = HitlRequired(
+        session_id="session-1",
         node_id="node-1",
         node_title="Approval",
-        resolved_default_values={},
     )
     event = QueueWorkflowPausedEvent(reasons=[reason], outputs={}, paused_nodes=["node-1"])
 
@@ -184,14 +185,10 @@ def test_handle_workflow_paused_event_resolves_session_id_before_persisting_extr
 
     event = QueueWorkflowPausedEvent(
         reasons=[
-            HumanInputRequired(
-                form_id="session-1",
-                form_content="content",
-                inputs=[],
-                actions=[],
+            HitlRequired(
+                session_id="session-1",
                 node_id="node-1",
                 node_title="Approval",
-                resolved_default_values={},
             )
         ],
         outputs={},
