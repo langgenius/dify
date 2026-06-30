@@ -334,6 +334,16 @@ class TestPluginLoading:
                 metas=[GithubPluginInstallIdentifierMeta(repo="owner/repo", version="v1", package="plugin.difypkg")],
             )
 
+    def test_install_from_identifiers_requires_marketplace_meta_matching_identifier(self, plugin_installer):
+        """Test marketplace install request validation rejects mismatched identifier metas."""
+        with pytest.raises(ValueError, match="marketplace meta plugin_unique_identifier"):
+            plugin_installer.install_from_identifiers(
+                tenant_id="test-tenant",
+                identifiers=["plugin1/1.0.0"],
+                source=PluginInstallationSource.Marketplace,
+                metas=[MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier="plugin2/2.0.0")],
+            )
+
     def test_fetch_plugin_installation_task(self, plugin_installer):
         """Test fetching a specific plugin installation task."""
         # Arrange: Mock installation task

@@ -229,6 +229,13 @@ class PluginInstallIdentifiersRequest(BaseModel):
                 raise ValueError(f"installing plugins from {self.source} is not supported")
         if any(not isinstance(meta, expected_meta_cls) for meta in self.metas):
             raise ValueError(f"{self.source} installs require {expected_meta_cls.__name__} metas")
+        if self.source == PluginInstallationSource.Marketplace:
+            for plugin_unique_identifier, meta in zip(self.plugin_unique_identifiers, self.metas, strict=True):
+                if (
+                    isinstance(meta, MarketplacePluginInstallIdentifierMeta)
+                    and meta.plugin_unique_identifier != plugin_unique_identifier
+                ):
+                    raise ValueError("marketplace meta plugin_unique_identifier must match plugin_unique_identifier")
         return self
 
 

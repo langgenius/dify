@@ -1,5 +1,6 @@
 import datetime
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -24,6 +25,14 @@ TEST_OUTPUT_JSON = "test_output.json"
 TEST_FAKE_TENANT_ID = "fake-tenant-id"
 TEST_EXCLUDED_PROVIDER = "time"
 TEST_FLASK_APP = Flask(__name__)
+
+
+@pytest.fixture(autouse=True)
+def isolated_plugin_migration_files(tmp_path, monkeypatch):
+    """Give legacy file-path constants a per-test location so xdist workers never share files."""
+    module = sys.modules[__name__]
+    monkeypatch.setattr(module, "TEST_PLUGINS_JSON", str(tmp_path / "test_plugins.json"))
+    monkeypatch.setattr(module, "TEST_OUTPUT_JSON", str(tmp_path / "test_output.json"))
 
 
 def tenant_plugin_record_json(plugin_ids: list[str]) -> str:
@@ -92,7 +101,7 @@ class TestHandlePluginInstanceInstall:
             )
 
         mock_marketplace.download_plugin_pkg.assert_called_once()
-        install_resolved.assert_called_once_with("tenant1", ["langgenius/openai:1.0.0@abc"])
+        install_resolved.assert_called_once_with("tenant1", ("langgenius/openai:1.0.0@abc",))
         assert result.successful_plugin_ids == ("langgenius/openai",)
         assert result.failed_plugin_ids == ()
 
@@ -120,7 +129,7 @@ class TestHandlePluginInstanceInstall:
 
             PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
 
-        install_resolved.assert_called_once_with("tenant1", ["langgenius/openai:1.0.0@abc"])
+        install_resolved.assert_called_once_with("tenant1", ("langgenius/openai:1.0.0@abc",))
 
 
 class FakeFuture:
@@ -933,15 +942,15 @@ class TestPluginMigrationHandlePluginInstanceInstall:
         """Test handle_plugin_instance_install handles plugin download failure."""
         # Arrange
         m = plugin_migration_mocks
+        m.marketplace.download_plugin_pkg.return_value = None
 
-        def mock_download(identifier):
-            return None
+        # Act
+        res = PluginMigration.handle_plugin_instance_install(TEST_TENANT_ID, {TEST_PLUGIN_ID: TEST_PLUGIN_IDENTIFIER})
 
-        with patch("services.plugin.plugin_migration.marketplace.download_plugin_pkg", side_effect=mock_download):
-            # Act & Assert
-            with pytest.raises(Exception) as excinfo:
-                PluginMigration.handle_plugin_instance_install(TEST_TENANT_ID, {TEST_PLUGIN_ID: TEST_PLUGIN_IDENTIFIER})
-            assert "Failed to download plugin" in str(excinfo.value)
+        # Assert
+        assert res.successful_plugin_ids == ()
+        assert res.failed_plugin_ids == (TEST_PLUGIN_ID,)
+        m.plugin_service.install_from_resolved_marketplace_identifiers.assert_not_called()
 
     def test_handle_plugin_instance_install_poll_task(self, plugin_migration_mocks, factory):
         """Test handle_plugin_instance_install polls installation task status."""
@@ -989,10 +998,42 @@ class TestPluginMigrationHandlePluginInstanceInstall:
         m = plugin_migration_mocks
         m.marketplace.download_plugin_pkg.return_value = None  # Download fails
 
-        # Act & Assert
-        with pytest.raises(Exception) as excinfo:
-            PluginMigration.handle_plugin_instance_install(TEST_TENANT_ID, {TEST_PLUGIN_ID: TEST_PLUGIN_IDENTIFIER})
-        assert "Failed to download plugin" in str(excinfo.value)
+        # Act
+        res = PluginMigration.handle_plugin_instance_install(TEST_TENANT_ID, {TEST_PLUGIN_ID: TEST_PLUGIN_IDENTIFIER})
+
+        # Assert
+        assert res.failed_plugin_ids == (TEST_PLUGIN_ID,)
+        m.plugin_service.install_from_resolved_marketplace_identifiers.assert_not_called()
+
+    def test_handle_plugin_instance_install_records_upload_failure_and_continues(self, plugin_migration_mocks):
+        """Test handle_plugin_instance_install installs uploaded plugins even when another upload fails."""
+        # Arrange
+        m = plugin_migration_mocks
+        failed_plugin_id = f"{TEST_PLUGIN_ID}/failed"
+        failed_identifier = f"{TEST_PLUGIN_IDENTIFIER}/failed"
+        plugin_map = {
+            failed_plugin_id: failed_identifier,
+            TEST_PLUGIN_ID: TEST_PLUGIN_IDENTIFIER,
+        }
+
+        def upload_pkg(_tenant_id, plugin_package, verify_signature):
+            if plugin_package == b"failed-pkg":
+                raise Exception("upload failed")
+
+        m.marketplace.download_plugin_pkg.side_effect = [b"failed-pkg", b"fake-pkg"]
+        m.installer.return_value.upload_pkg.side_effect = upload_pkg
+        m.plugin_service.install_from_resolved_marketplace_identifiers.return_value = MagicMock(all_installed=True)
+
+        # Act
+        res = PluginMigration.handle_plugin_instance_install(TEST_TENANT_ID, plugin_map)
+
+        # Assert
+        assert res.successful_plugin_ids == (TEST_PLUGIN_ID,)
+        assert res.failed_plugin_ids == (failed_plugin_id,)
+        m.plugin_service.install_from_resolved_marketplace_identifiers.assert_called_once_with(
+            TEST_TENANT_ID,
+            (TEST_PLUGIN_IDENTIFIER,),
+        )
 
     def test_handle_plugin_instance_install_task_polling_loop(self, plugin_migration_mocks, factory):
         """Test handle_plugin_instance_install polls task status until completion."""
@@ -1186,6 +1227,46 @@ class TestPluginMigrationInstallPlugins:
         Path(TEST_PLUGINS_JSON).unlink(missing_ok=True)
         Path(TEST_OUTPUT_JSON).unlink(missing_ok=True)
 
+    def test_install_plugins_records_tenant_install_task_failure(self, plugin_migration_mocks, factory):
+        """Test install_plugins waits for tenant install tasks before writing migration output."""
+        # Arrange
+        m = plugin_migration_mocks
+        Path(TEST_PLUGINS_JSON).write_text(
+            tenant_plugin_record_json([TEST_PLUGIN_ID]),
+            encoding="utf-8",
+        )
+        installer = m.installer.return_value
+        installer.list_plugins.return_value = []
+        installer.fetch_plugin_installation_task.return_value = factory.create_mock_install_task_status(
+            PluginInstallTaskStatus.Failed,
+            PluginInstallTaskStatus.Failed,
+        )
+        m.plugin_service.install_from_resolved_marketplace_identifiers.return_value = MagicMock(
+            all_installed=False,
+            task_id="task-1",
+        )
+
+        # Act
+        with (
+            patch.object(
+                PluginMigration,
+                "extract_unique_plugins",
+                return_value=ExtractedPluginIdentifiers(plugins={TEST_PLUGIN_ID: TEST_PLUGIN_IDENTIFIER}),
+            ),
+            patch.object(PluginMigration, "handle_plugin_instance_install", return_value=PluginInstallResult()),
+        ):
+            with TEST_FLASK_APP.app_context():
+                PluginMigration.install_plugins(TEST_PLUGINS_JSON, TEST_OUTPUT_JSON)
+
+        # Assert
+        output = json.loads(Path(TEST_OUTPUT_JSON).read_text(encoding="utf-8"))
+        assert output["plugin_install_failed"] == [TEST_PLUGIN_ID]
+        installer.fetch_plugin_installation_task.assert_called_once_with(TEST_TENANT_ID, "task-1")
+
+        # Cleanup
+        Path(TEST_PLUGINS_JSON).unlink(missing_ok=True)
+        Path(TEST_OUTPUT_JSON).unlink(missing_ok=True)
+
     def test_install_plugins_records_not_installed_plugins(self, plugin_migration_mocks):
         """Test install_plugins records plugins that cannot be resolved to identifiers."""
         # Arrange
@@ -1323,6 +1404,10 @@ class TestPluginMigrationInstallRagPipelinePlugins:
 
         # Assert
         assert Path(TEST_OUTPUT_JSON).exists()
+        output = json.loads(Path(TEST_OUTPUT_JSON).read_text(encoding="utf-8"))
+        assert output["total_success_tenant"] == 0
+        assert output["total_failed_tenant"] == 1
+        assert output["plugin_install_failed"] == [TEST_PLUGIN_ID]
 
         # Cleanup
         Path(TEST_PLUGINS_JSON).unlink(missing_ok=True)
@@ -1410,7 +1495,7 @@ class TestPluginMigrationInstallRagPipelinePlugins:
         mock_paginate = factory.create_mock_paginate([mock_tenant])
         mock_paginate.__iter__.return_value = iter([mock_tenant])
         m.db.paginate.side_effect = [mock_paginate, factory.create_mock_paginate([])]
-        m.plugin_service.install_from_resolved_marketplace_identifiers.return_value = None
+        m.plugin_service.install_from_resolved_marketplace_identifiers.return_value = MagicMock(all_installed=True)
         installer = m.installer.return_value
         installer.list_plugins.return_value = []
 

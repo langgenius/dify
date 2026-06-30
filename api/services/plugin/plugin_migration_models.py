@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import NamedTuple
@@ -67,6 +67,37 @@ class PluginInstallResult:
 
     successful_plugin_ids: tuple[str, ...] = ()
     failed_plugin_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class PluginInstallBatch:
+    """Internal install request for one daemon task, keyed by migration plugin ID."""
+
+    tenant_id: str
+    plugin_ids: tuple[str, ...]
+    identifier_by_id: Mapping[str, str]
+
+    @classmethod
+    def from_plugin_ids(
+        cls,
+        tenant_id: str,
+        plugin_ids: Sequence[str],
+        identifier_by_id: Mapping[str, str],
+    ) -> PluginInstallBatch:
+        batch_identifier_by_id = {plugin_id: identifier_by_id[plugin_id] for plugin_id in plugin_ids}
+        return cls(
+            tenant_id=tenant_id,
+            plugin_ids=tuple(plugin_ids),
+            identifier_by_id=MappingProxyType(batch_identifier_by_id),
+        )
+
+    @property
+    def plugin_unique_identifiers(self) -> tuple[str, ...]:
+        return tuple(self.identifier_by_id[plugin_id] for plugin_id in self.plugin_ids)
+
+    @property
+    def plugin_id_by_identifier(self) -> Mapping[str, str]:
+        return MappingProxyType({identifier: plugin_id for plugin_id, identifier in self.identifier_by_id.items()})
 
 
 @dataclass(frozen=True, slots=True)
