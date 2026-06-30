@@ -217,7 +217,7 @@ class TestWorkflowConverter:
             icon_type="emoji",
             icon="🚀",
             icon_background="#4CAF50",
-            session=db_session_with_containers
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes
@@ -291,7 +291,8 @@ class TestWorkflowConverter:
                 name="Test Workflow App",
                 icon_type="emoji",
                 icon="🚀",
-                icon_background="#4CAF50",session=db_session_with_containers
+                icon_background="#4CAF50",
+                session=db_session_with_containers,
             )
 
         # Verify database state remains unchanged
@@ -325,7 +326,8 @@ class TestWorkflowConverter:
         workflow = workflow_converter.convert_app_model_config_to_workflow(
             app_model=app,
             app_model_config=app.app_model_config,
-            account_id=account.id,session=db_session_with_containers
+            account_id=account.id,
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes
@@ -467,7 +469,8 @@ class TestWorkflowConverter:
         nodes, external_data_variable_node_mapping = workflow_converter._convert_to_http_request_node(
             app_model=app,
             variables=variables,
-            external_data_variables=external_data_variables,session=db_session_with_containers
+            external_data_variables=external_data_variables,
+            session=db_session_with_containers,
         )
 
         # Assert: Verify the expected outcomes
