@@ -2,6 +2,7 @@ import logging
 from collections.abc import Sequence
 
 from sqlalchemy import select, update
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -46,47 +47,52 @@ class DatasetIndexToolCallbackHandler:
             created_by=self._user_id,
         )
 
-        db.session.add(dataset_query)
-        db.session.commit()
+        # Use an independent session so this audit-log side effect does
+        # not commit or close the caller's request-scoped session.
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            session.add(dataset_query)
 
     def on_tool_end(self, documents: list[Document]):
         """Handle tool end."""
-        for document in documents:
-            if document.metadata is not None:
-                document_id = document.metadata["document_id"]
-                dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document_id)
-                dataset_document = db.session.scalar(dataset_document_stmt)
-                if not dataset_document:
-                    _logger.warning(
-                        "Expected DatasetDocument record to exist, but none was found, document_id=%s",
-                        document_id,
-                    )
-                    continue
-                if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
-                    child_chunk_stmt = select(ChildChunk).where(
-                        ChildChunk.index_node_id == document.metadata["doc_id"],
-                        ChildChunk.dataset_id == dataset_document.dataset_id,
-                        ChildChunk.document_id == dataset_document.id,
-                    )
-                    child_chunk = db.session.scalar(child_chunk_stmt)
-                    if child_chunk:
-                        db.session.execute(
-                            update(DocumentSegment)
-                            .where(DocumentSegment.id == child_chunk.segment_id)
-                            .values(hit_count=DocumentSegment.hit_count + 1)
+        # Use an independent session so hit-count updates do not
+        # interfere with the caller's request-scoped session.
+        with Session(db.engine, expire_on_commit=False) as session:
+            for document in documents:
+                if document.metadata is not None:
+                    document_id = document.metadata["document_id"]
+                    dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document_id)
+                    dataset_document = session.scalar(dataset_document_stmt)
+                    if not dataset_document:
+                        _logger.warning(
+                            "Expected DatasetDocument record to exist, but none was found, document_id=%s",
+                            document_id,
                         )
-                else:
-                    conditions = [DocumentSegment.index_node_id == document.metadata["doc_id"]]
+                        continue
+                    if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                        child_chunk_stmt = select(ChildChunk).where(
+                            ChildChunk.index_node_id == document.metadata["doc_id"],
+                            ChildChunk.dataset_id == dataset_document.dataset_id,
+                            ChildChunk.document_id == dataset_document.id,
+                        )
+                        child_chunk = session.scalar(child_chunk_stmt)
+                        if child_chunk:
+                            session.execute(
+                                update(DocumentSegment)
+                                .where(DocumentSegment.id == child_chunk.segment_id)
+                                .values(hit_count=DocumentSegment.hit_count + 1)
+                            )
+                    else:
+                        conditions = [DocumentSegment.index_node_id == document.metadata["doc_id"]]
 
-                    if "dataset_id" in document.metadata:
-                        conditions.append(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                        if "dataset_id" in document.metadata:
+                            conditions.append(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
-                    # add hit count to document segment
-                    db.session.execute(
-                        update(DocumentSegment).where(*conditions).values(hit_count=DocumentSegment.hit_count + 1)
-                    )
+                        # add hit count to document segment
+                        session.execute(
+                            update(DocumentSegment).where(*conditions).values(hit_count=DocumentSegment.hit_count + 1)
+                        )
 
-                db.session.commit()
+            session.commit()
 
     # TODO(-LAN-): Improve type check
     def return_retriever_resource_info(self, resource: Sequence[RetrievalSourceMetadata]):
