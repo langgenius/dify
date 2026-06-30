@@ -12,6 +12,7 @@ import { useRouter } from '@/next/navigation'
 import InputCombined from '../edit-metadata-batch/input-combined'
 import { DatasetMetadataPicker } from '../metadata-dataset/dataset-metadata-picker'
 import { DataType, isShowManageMetadataLocalStorageKey } from '../types'
+import { useSetLocalStorage } from '@/hooks/use-local-storage'
 import Field from './field'
 
 type Props = Readonly<{
@@ -50,9 +51,9 @@ const InfoGroup: FC<Props> = ({
   const router = useRouter()
   const { t } = useTranslation()
   const { formatTime: formatTimestamp } = useTimestamp()
-
+  const setIsShowManageMetadata = useSetLocalStorage<string>(isShowManageMetadataLocalStorageKey, { raw: true })
   const handleMangeMetadata = () => {
-    localStorage.setItem(isShowManageMetadataLocalStorageKey, 'true')
+    setIsShowManageMetadata('true')
     router.push(`/datasets/${dataSetId}/documents`)
   }
 
