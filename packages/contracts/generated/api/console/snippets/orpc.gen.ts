@@ -43,6 +43,9 @@ import {
   zGetSnippetsBySnippetIdWorkflowsPublishResponse,
   zGetSnippetsBySnippetIdWorkflowsQuery,
   zGetSnippetsBySnippetIdWorkflowsResponse,
+  zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdBody,
+  zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdPath,
+  zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse,
   zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdBody,
   zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdPath,
   zPatchSnippetsBySnippetIdWorkflowsDraftVariablesByVariableIdResponse,
@@ -710,7 +713,31 @@ export const restore = {
   post: post8,
 }
 
+/**
+ * Update a published snippet workflow version's display metadata
+ *
+ * Update published snippet workflow attributes
+ */
+export const patch2 = oc
+  .route({
+    description: 'Update published snippet workflow attributes',
+    inputStructure: 'detailed',
+    method: 'PATCH',
+    operationId: 'patchSnippetsBySnippetIdWorkflowsByWorkflowId',
+    path: '/snippets/{snippet_id}/workflows/{workflow_id}',
+    summary: 'Update a published snippet workflow version\'s display metadata',
+    tags: ['console'],
+  })
+  .input(
+    z.object({
+      body: zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdBody,
+      params: zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdPath,
+    }),
+  )
+  .output(zPatchSnippetsBySnippetIdWorkflowsByWorkflowIdResponse)
+
 export const byWorkflowId = {
+  patch: patch2,
   restore,
 }
 

@@ -8,7 +8,14 @@ from typing import cast
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubFileDownloadResponse, AgentStubFileUploadResponse
+from dify_agent.agent_stub.protocol.agent_stub import (
+    AgentStubDriveCommitResponse,
+    AgentStubDriveItem,
+    AgentStubDriveManifestResponse,
+    AgentStubFileDownloadResponse,
+    AgentStubFileUploadResponse,
+)
+from dify_agent.agent_stub.server.agent_stub_drive import AgentStubDriveRequestError, AgentStubDriveRequestHandler
 from dify_agent.agent_stub.server.agent_stub_files import AgentStubFileRequestError, AgentStubFileRequestHandler
 from dify_agent.agent_stub.server.routes.agent_stub import create_agent_stub_http_router
 from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
@@ -261,3 +268,137 @@ def test_agent_stub_file_route_preserves_structured_handler_error_details() -> N
 
     assert response.status_code == 400
     assert response.json()["detail"] == {"detail": "bad request", "code": "inner_api_error"}
+
+
+def test_agent_stub_drive_manifest_route_forwards_authenticated_request() -> None:
+    codec = _token_codec()
+    token = codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
+
+    class FakeDriveHandler:
+        async def get_manifest(self, *, principal, prefix, include_download_url):
+            assert principal.execution_context.user_id == "user-1"
+            assert prefix == "skills/"
+            assert include_download_url is True
+            return AgentStubDriveManifestResponse(
+                items=[
+                    AgentStubDriveItem(
+                        key="skills/example/SKILL.md",
+                        size=12,
+                        hash="sha256:abc",
+                        mime_type="text/markdown",
+                        file_kind="tool_file",
+                        file_id="tool-file-1",
+                        created_at=123,
+                        download_url="https://files.example.com/download",
+                    )
+                ]
+            )
+
+        async def commit(self, *, principal, request):
+            del principal, request
+            raise AssertionError("unexpected commit request")
+
+    drive_handler = cast(AgentStubDriveRequestHandler, cast(object, FakeDriveHandler()))
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec, None, drive_handler))
+    client = TestClient(app)
+
+    response = client.get(
+        "/agent-stub/drive/manifest",
+        headers={"Authorization": f"Bearer {token}"},
+        params={"prefix": "skills/", "include_download_url": "true"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["key"] == "skills/example/SKILL.md"
+
+
+def test_agent_stub_drive_commit_route_forwards_authenticated_request() -> None:
+    codec = _token_codec()
+    token = codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
+
+    class FakeDriveHandler:
+        async def commit(self, *, principal, request):
+            assert principal.execution_context.user_id == "user-1"
+            assert request.items[0].file_ref.id == "tool-file-1"
+            return AgentStubDriveCommitResponse(
+                items=[
+                    AgentStubDriveItem(
+                        key="skills/example/SKILL.md",
+                        size=12,
+                        hash=None,
+                        mime_type="text/markdown",
+                        file_kind="tool_file",
+                        file_id="tool-file-1",
+                        value_owned_by_drive=True,
+                    )
+                ]
+            )
+
+        async def get_manifest(self, *, principal, prefix, include_download_url):
+            del principal, prefix, include_download_url
+            raise AssertionError("unexpected manifest request")
+
+    drive_handler = cast(AgentStubDriveRequestHandler, cast(object, FakeDriveHandler()))
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec, None, drive_handler))
+    client = TestClient(app)
+
+    response = client.post(
+        "/agent-stub/drive/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"items": [{"key": "skills/example/SKILL.md", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}]},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["file_id"] == "tool-file-1"
+
+
+def test_agent_stub_drive_routes_return_503_when_drive_api_is_unconfigured() -> None:
+    codec = _token_codec()
+    token = codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec, None, None))
+    client = TestClient(app)
+
+    manifest_response = client.get(
+        "/agent-stub/drive/manifest",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    commit_response = client.post(
+        "/agent-stub/drive/commit",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"items": [{"key": "skills/example/SKILL.md", "file_ref": {"kind": "tool_file", "id": "tool-file-1"}}]},
+    )
+
+    assert manifest_response.status_code == 503
+    assert commit_response.status_code == 503
+    assert manifest_response.json()["detail"] == "Agent Stub drive API is not configured"
+    assert commit_response.json()["detail"] == "Agent Stub drive API is not configured"
+
+
+def test_agent_stub_drive_route_preserves_structured_handler_error_details() -> None:
+    codec = _token_codec()
+    token = codec.encode_connection_token(_execution_context(), now=int(time.time()) - 1)
+
+    class FakeDriveHandler:
+        async def get_manifest(self, *, principal, prefix, include_download_url):
+            del principal, prefix, include_download_url
+            raise AgentStubDriveRequestError(400, {"code": "invalid_key", "message": "bad request"})
+
+        async def commit(self, *, principal, request):
+            del principal, request
+            raise AssertionError("unexpected commit request")
+
+    drive_handler = cast(AgentStubDriveRequestHandler, cast(object, FakeDriveHandler()))
+    app = FastAPI()
+    app.include_router(create_agent_stub_http_router(codec, None, drive_handler))
+    client = TestClient(app)
+
+    response = client.get(
+        "/agent-stub/drive/manifest",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == {"code": "invalid_key", "message": "bad request"}

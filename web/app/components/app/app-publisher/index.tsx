@@ -1,3 +1,4 @@
+import type { RegisterableHotkey } from '@tanstack/react-hotkeys'
 import type { FormEvent } from 'react'
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '@/app/components/app/overview/app-card-utils'
@@ -8,7 +9,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useHotkey } from '@tanstack/react-hotkeys'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import {
   use,
   useEffect,
@@ -26,6 +27,7 @@ import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { buildInstalledAppPath } from '@/app/components/explore/installed-app/routes'
+import { useCanManageTools } from '@/app/components/tools/hooks/use-tool-permissions'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
 import { useConfigureButton } from '@/app/components/tools/workflow-tool/hooks/use-configure-button'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
@@ -37,13 +39,14 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
-import { fetchAppDetailDirect, publishToCreatorsPlatform } from '@/service/apps'
+import { fetchAppDetail, publishToCreatorsPlatform } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
+import { appDetailQueryKeyPrefix } from '@/service/use-apps'
 import { useInvalidateAppWorkflow } from '@/service/use-workflow'
 import { fetchPublishedWorkflow } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { basePath } from '@/utils/var'
-import { AccessControl } from '../app-access-control'
+import AccessControl from '../app-access-control'
 import {
   PublisherAccessSection,
   PublisherActionsSection,
@@ -80,7 +83,8 @@ export type AppPublisherProps = {
   hasHumanInputNode?: boolean
 }
 
-const PUBLISH_SHORTCUT = ['Mod', 'Shift', 'P']
+const PUBLISH_HOTKEY = 'Mod+Shift+P' satisfies RegisterableHotkey
+const PUBLISH_SHORTCUT = PUBLISH_HOTKEY.split('+')
 
 export type AppPublisherPublishParams = ModelAndParameter | PublishWorkflowParams
 
@@ -126,7 +130,9 @@ export function AppPublisher({
 
   const workflowStore = use(WorkflowContext)
   const appDetail = useAppStore(state => state.appDetail)
-  const setAppDetail = useAppStore(s => s.setAppDetail)
+  const setAppDetail = useAppStore(state => state.setAppDetail)
+  const canManageTools = useCanManageTools()
+  const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
@@ -237,8 +243,9 @@ export function AppPublisher({
     if (!appDetail)
       return
     try {
-      const res = await fetchAppDetailDirect({ url: '/apps', id: appDetail.id })
-      setAppDetail(res)
+      const res = await fetchAppDetail({ url: '/apps', id: appDetail.id })
+      queryClient.setQueryData([...appDetailQueryKeyPrefix, appDetail.id], res)
+      setAppDetail({ ...res })
     }
     finally {
       setShowAppAccessControl(false)
@@ -288,7 +295,7 @@ export function AppPublisher({
     }
   }
 
-  useHotkey('Mod+Shift+P', (e) => {
+  useHotkey(PUBLISH_HOTKEY, (e) => {
     e.preventDefault()
     if (publishDisabled || published)
       return
@@ -319,10 +326,11 @@ export function AppPublisher({
   }, [appDetail?.id, invalidateAppWorkflow, workflowStore])
 
   const hasPublishedVersion = !!publishedAt
+  const workflowToolVisible = appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
+  const workflowToolAvailableForUser = workflowToolAvailable && canManageTools
   const workflowToolMessage = !hasPublishedVersion || !workflowToolAvailable
     ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' })
     : undefined
-  const workflowToolVisible = appDetail?.mode === AppModeEnum.WORKFLOW && !hasHumanInputNode && !hasTriggerNode
   const workflowToolPublished = !!toolPublished
   function closeWorkflowToolDrawer() {
     setWorkflowToolDrawerOpen(false)
@@ -332,7 +340,7 @@ export function AppPublisher({
     background: (appDetail?.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
   }
   const workflowTool = useConfigureButton({
-    enabled: workflowToolVisible,
+    enabled: workflowToolVisible && canManageTools,
     published: workflowToolPublished,
     detailNeedUpdate: workflowToolPublished && published,
     workflowAppId: appDetail?.id ?? '',
@@ -346,6 +354,9 @@ export function AppPublisher({
     onConfigured: closeWorkflowToolDrawer,
   })
   function openWorkflowToolDrawer() {
+    if (!canManageTools)
+      return
+
     handleOpenChange(false)
     setWorkflowToolDrawerOpen(true)
   }
@@ -429,10 +440,9 @@ export function AppPublisher({
               showBatchRunConfig={hiddenLaunchVariables.length > 0 && (appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION)}
               showRunConfig={hiddenLaunchVariables.length > 0}
               toolPublished={toolPublished}
-              workflowToolAvailable={workflowToolAvailable}
+              workflowToolAvailable={workflowToolAvailableForUser}
               workflowToolIsLoading={workflowTool.isLoading}
               workflowToolOutdated={workflowTool.outdated}
-              workflowToolIsCurrentWorkspaceManager={workflowTool.isCurrentWorkspaceManager}
               workflowToolMessage={workflowToolMessage}
               onConfigureWorkflowTool={openWorkflowToolDrawer}
             />
@@ -471,7 +481,7 @@ export function AppPublisher({
           onSubmit={handleWorkflowLaunchConfirm}
         />
       </Popover>
-      {workflowToolDrawerOpen && (
+      {workflowToolDrawerOpen && canManageTools && (
         <WorkflowToolDrawer
           isAdd={!workflowToolPublished}
           payload={workflowTool.payload}

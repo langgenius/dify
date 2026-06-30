@@ -58,6 +58,8 @@ const BuiltinMarketplacePanel = ({
 }
 
 type PluginsPanelResultsProps = {
+  canDeletePlugin: boolean
+  canUpdatePlugin: boolean
   containerRef: RefObject<HTMLDivElement | null>
   contentFrameClassName: string
   contentInset: PluginPageContentInset
@@ -78,6 +80,8 @@ type PluginsPanelResultsProps = {
 }
 
 const PluginsPanelResults = ({
+  canDeletePlugin,
+  canUpdatePlugin,
   containerRef,
   contentFrameClassName,
   contentInset,
@@ -117,7 +121,11 @@ const PluginsPanelResults = ({
         )}
         >
           {(hasVisiblePlugins || hasVisibleBuiltinTools) && (
-            <List pluginList={filteredList}>
+            <List
+              pluginList={filteredList}
+              canDeletePlugin={canDeletePlugin}
+              canUpdatePlugin={canUpdatePlugin}
+            >
               {filteredBuiltinTools.map(collection => (
                 <button
                   key={collection.id}
@@ -156,7 +164,7 @@ const PluginsPanelResults = ({
           )}
         </ScrollAreaContent>
       </ScrollAreaViewport>
-      <ScrollAreaScrollbar className="data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1">
+      <ScrollAreaScrollbar>
         <ScrollAreaThumb />
       </ScrollAreaScrollbar>
     </ScrollAreaRoot>

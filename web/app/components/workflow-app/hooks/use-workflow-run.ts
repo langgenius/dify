@@ -26,7 +26,10 @@ import { stopWorkflowRun } from '@/service/workflow'
 import { AppModeEnum } from '@/types/app'
 import { useSetWorkflowVarsWithValue } from '../../workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useConfigsMap } from './use-configs-map'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import {
+  useNodesSyncDraft,
+  useNodesSyncDraftByCanEdit,
+} from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
   createFinalWorkflowRunCallbacks,
@@ -96,12 +99,13 @@ const getWorkflowTracingCount = (workflowData: unknown) => {
   return Array.isArray(tracing) ? tracing.length : undefined
 }
 
-export const useWorkflowRun = () => {
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+
+const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
   const featuresStore = useFeaturesStore()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
   const pathname = usePathname()
   const configsMap = useConfigsMap()
@@ -134,6 +138,7 @@ export const useWorkflowRun = () => {
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
+    handleWorkflowReasoning,
     handleWorkflowPaused,
   } = useWorkflowRunEvent()
 
@@ -322,6 +327,7 @@ export const useWorkflowRun = () => {
       handleWorkflowAgentLog,
       handleWorkflowTextChunk,
       handleWorkflowTextReplace,
+      handleWorkflowReasoning,
       handleWorkflowPaused,
     }
     const userCallbacks = {
@@ -439,7 +445,7 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowReasoning, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled, handleWorkflowNodeHumanInputFormTimeout])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {
@@ -514,4 +520,16 @@ export const useWorkflowRun = () => {
     handleStopRun,
     handleRestoreFromPublishedWorkflow,
   }
+}
+
+export const useWorkflowRunByCanEdit = (canEdit: boolean) => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+
+  return useWorkflowRunBase(doSyncWorkflowDraft)
+}
+
+export const useWorkflowRun = () => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+
+  return useWorkflowRunBase(doSyncWorkflowDraft)
 }

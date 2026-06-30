@@ -1,6 +1,6 @@
 'use client'
 
-import type { GuideMethod, WorkflowSourceApp } from '@/features/deployments/create-guide/state'
+import type { GuideMethod, WorkflowSourceApp } from '@/features/deployments/create-guide/state/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Input } from '@langgenius/dify-ui/input'
@@ -11,32 +11,38 @@ import { useTranslation } from 'react-i18next'
 import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import AppIcon from '@/app/components/base/app-icon'
 import { SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import { DeploymentStateMessage } from '@/features/deployments/components/empty-state'
-import { TitleTooltip } from '@/features/deployments/components/title-tooltip'
-import { UnsupportedDslNodesAlert } from '@/features/deployments/components/unsupported-dsl-nodes-alert'
 import {
-  continueFromSourceAtom,
   dslFileAtom,
+  effectiveMethodAtom,
+  sourceSearchTextAtom,
+} from '@/features/deployments/create-guide/state/primitives'
+import { unsupportedDslNodesAtom } from '@/features/deployments/create-guide/state/queries'
+import {
   dslReadErrorAtom,
   dslUnsupportedModeAtom,
   effectiveSelectedAppAtom,
   isReadingDslAtom,
-  methodAtom,
+  sourceAppsQueryAtom,
+} from '@/features/deployments/create-guide/state/source'
+import {
+  continueFromSourceAtom,
   selectDslFileAtom,
   selectMethodAtom,
   selectSourceAppAtom,
   setSourceSearchTextAtom,
-  sourceAppsQueryAtom,
   sourceCanGoNextAtom,
-  sourceSearchTextAtom,
-  unsupportedDslNodesAtom,
-} from '@/features/deployments/create-guide/state'
+} from '@/features/deployments/create-guide/state/workflow'
+import { DeploymentStateMessage } from '@/features/deployments/shared/components/empty-state'
+import { TitleTooltip } from '@/features/deployments/shared/components/title-tooltip'
+import { UnsupportedDslNodesAlert } from '@/features/deployments/shared/components/unsupported-dsl-nodes-alert'
+import { isDeploymentDslImportEnabled } from '@/features/deployments/shared/domain/feature-flags'
+import { useInfiniteScroll } from '@/features/deployments/shared/hooks/use-infinite-scroll'
 import { StepShell } from './layout'
 
 const sourceAppSkeletonKeys = ['first-source-app', 'second-source-app', 'third-source-app']
 
 export function SourceStepContent() {
-  const method = useAtomValue(methodAtom)
+  const method = useAtomValue(effectiveMethodAtom)
   const unsupportedDslNodes = useAtomValue(unsupportedDslNodesAtom)
 
   return (
@@ -55,7 +61,7 @@ export function SourceStepContent() {
 
 function SourceMethodSection() {
   const { t } = useTranslation('deployments')
-  const method = useAtomValue(methodAtom)
+  const method = useAtomValue(effectiveMethodAtom)
   const selectMethod = useSetAtom(selectMethodAtom)
 
   return (
@@ -76,12 +82,14 @@ function SourceMethodSection() {
           title={t('createGuide.methods.bindApp.title')}
           description={t('createGuide.methods.bindApp.description')}
         />
-        <SourceMethodCard
-          value="importDsl"
-          icon="i-ri-file-code-line"
-          title={t('createGuide.methods.importDsl.title')}
-          description={t('createGuide.methods.importDsl.description')}
-        />
+        {isDeploymentDslImportEnabled && (
+          <SourceMethodCard
+            value="importDsl"
+            icon="i-ri-file-code-line"
+            title={t('createGuide.methods.importDsl.title')}
+            description={t('createGuide.methods.importDsl.description')}
+          />
+        )}
       </RadioGroup>
     </StepShell>
   )
@@ -184,9 +192,14 @@ function SourceAppList() {
   const sourceAppsQuery = useAtomValue(sourceAppsQueryAtom)
   const sourceApps = (sourceAppsQuery.data?.pages.flatMap(page => page.data) ?? []) as WorkflowSourceApp[]
   const sourceAppsLoading = sourceAppsQuery.isLoading || sourceAppsQuery.isPlaceholderData || (sourceAppsQuery.isFetching && sourceApps.length === 0)
+  const { rootRef, sentinelRef } = useInfiniteScroll<HTMLDivElement>(sourceAppsQuery, {
+    enabled: !sourceAppsLoading,
+    rootMargin: '0px 0px 160px 0px',
+    threshold: 0.1,
+  })
 
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
+    <div ref={rootRef} className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-divider-subtle bg-background-default">
       {sourceAppsLoading
         ? <SourceAppSkeleton />
         : sourceApps.length === 0
@@ -205,20 +218,12 @@ function SourceAppList() {
                     onSelect={() => selectSourceApp(app)}
                   />
                 ))}
-                {sourceAppsQuery.hasNextPage && (
-                  <div className="flex justify-center border-t border-divider-subtle px-3 py-2">
-                    <Button
-                      type="button"
-                      size="small"
-                      disabled={sourceAppsQuery.isFetchingNextPage}
-                      onClick={() => {
-                        void sourceAppsQuery.fetchNextPage()
-                      }}
-                    >
-                      {sourceAppsQuery.isFetchingNextPage ? t('createModal.loadingApps') : t('createModal.loadMoreApps')}
-                    </Button>
+                {sourceAppsQuery.isFetchingNextPage && (
+                  <div className="border-t border-divider-subtle px-3 py-2 text-center system-xs-regular text-text-tertiary">
+                    {t('createModal.loadingApps')}
                   </div>
                 )}
+                {sourceAppsQuery.hasNextPage && <div ref={sentinelRef} aria-hidden="true" className="h-px" />}
               </div>
             )}
     </div>

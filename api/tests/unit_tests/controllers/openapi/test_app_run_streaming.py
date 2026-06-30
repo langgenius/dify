@@ -3,10 +3,36 @@
 from __future__ import annotations
 
 import sys
-from types import SimpleNamespace
+import uuid
 from unittest.mock import Mock
 
+import pytest
+from flask import Flask
+
 from controllers.openapi._models import AppRunRequest
+from models import Account
+from models.model import App, AppMode
+
+_TEST_APP_ID = str(uuid.uuid4())
+_TEST_TENANT_ID = str(uuid.uuid4())
+_TEST_ACCOUNT_ID = str(uuid.uuid4())
+
+
+def _make_app() -> App:
+    app = App()
+    app.id = _TEST_APP_ID
+    app.tenant_id = _TEST_TENANT_ID
+    app.name = "Streaming app"
+    app.mode = AppMode.CHAT
+    app.enable_site = False
+    app.enable_api = True
+    return app
+
+
+def _make_account() -> Account:
+    account = Account(name="OpenAPI caller", email="caller@example.com")
+    account.id = _TEST_ACCOUNT_ID
+    return account
 
 
 def test_app_run_request_has_no_response_mode_field():
@@ -30,20 +56,26 @@ def test_app_run_request_with_query():
     assert req.query == "hello"
 
 
-def test_run_chat_always_calls_generate_with_streaming_true(app, bypass_pipeline, monkeypatch):
+def test_run_chat_always_calls_generate_with_streaming_true(
+    app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch
+):
     """_run_chat must always invoke AppGenerateService.generate with streaming=True."""
     from controllers.openapi.app_run import _run_chat
 
     generate_mock = Mock(return_value=iter([]))
+
+    class GenerateService:
+        generate = generate_mock
+
     monkeypatch.setattr(
         sys.modules["controllers.openapi.app_run"],
         "AppGenerateService",
-        SimpleNamespace(generate=generate_mock),
+        GenerateService,
     )
-    with app.test_request_context("/openapi/v1/apps/app-1/run", method="POST"):
+    with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/run", method="POST"):
         _run_chat(
-            SimpleNamespace(id="app-1", tenant_id="t-1"),
-            SimpleNamespace(id="acct-1"),
+            _make_app(),
+            _make_account(),
             AppRunRequest(inputs={}, query="hello"),
         )
     _, kwargs = generate_mock.call_args
@@ -56,7 +88,7 @@ def test_stop_task_endpoint_registered(openapi_app):
     assert "/openapi/v1/apps/<string:app_id>/tasks/<string:task_id>/stop" in rules
 
 
-def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, monkeypatch):
+def test_stop_task_calls_queue_manager_and_graph_engine(app: Flask, bypass_pipeline, monkeypatch: pytest.MonkeyPatch):
     import uuid
 
     from controllers.openapi.app_run import AppRunTaskStopApi
@@ -75,11 +107,11 @@ def test_stop_task_calls_queue_manager_and_graph_engine(app, bypass_pipeline, mo
 
     auth_data = AuthData.model_construct(
         token_type=TokenType.OAUTH_ACCOUNT,
-        account_id=uuid.uuid4(),
+        account_id=uuid.UUID(_TEST_ACCOUNT_ID),
         token_hash="test",
         scopes=frozenset({Scope.FULL}),
-        app=SimpleNamespace(id="app-1", tenant_id="t-1"),
-        caller=SimpleNamespace(id="acct-1"),
+        app=_make_app(),
+        caller=_make_account(),
         caller_kind="account",
     )
 

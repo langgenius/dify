@@ -1,13 +1,14 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Literal, Protocol, assert_never, cast
 
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.agent_stub.protocol import AgentStubFileMapping
 from dify_agent.layers.ask_human import DifyAskHumanLayerConfig
 from dify_agent.layers.drive import (
-    DifyDriveFileConfig,
     DifyDriveLayerConfig,
     DifyDriveSkillConfig,
 )
@@ -16,7 +17,16 @@ from dify_agent.layers.execution_context import (
     DifyExecutionContextLayerConfig,
     DifyExecutionContextUserFrom,
 )
-from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig, DifyKnowledgeRetrievalConfig
+from dify_agent.layers.knowledge import (
+    DifyKnowledgeBaseLayerConfig,
+    DifyKnowledgeDatasetConfig,
+    DifyKnowledgeMetadataFilteringConfig,
+    DifyKnowledgeModelConfig,
+    DifyKnowledgeQueryConfig,
+    DifyKnowledgeRerankingModelConfig,
+    DifyKnowledgeRetrievalConfig,
+    DifyKnowledgeSetConfig,
+)
 from dify_agent.layers.shell import (
     DifyShellCliToolConfig,
     DifyShellEnvVarConfig,
@@ -25,7 +35,7 @@ from dify_agent.layers.shell import (
     DifyShellSecretRefConfig,
 )
 from dify_agent.protocol import CreateRunRequest, DeferredToolResultsPayload
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from clients.agent_backend import (
     AgentBackendModelConfig,
@@ -37,11 +47,13 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
-from graphon.file import FileTransferMethod
+from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
-    AgentKnowledgeQueryConfig,
+    AgentKnowledgeMetadataFilteringConfig,
+    AgentKnowledgeModelConfig,
+    AgentKnowledgeRetrievalConfig,
     AgentSoulConfig,
     DeclaredArrayItem,
     DeclaredOutputChildConfig,
@@ -55,14 +67,20 @@ from models.agent_config_entities import (
 )
 from models.provider_ids import ModelProviderID
 from services.agent.prompt_mentions import (
+    MentionKind,
     build_node_job_mention_resolver,
     build_soul_mention_resolver,
     expand_prompt_mentions,
+    extract_workflow_node_output_selectors,
+    normalize_previous_node_output_selector,
+    parse_prompt_mentions,
+    workflow_previous_node_output_refs_from_selectors,
 )
+from services.agent_drive_service import AgentDriveService, decode_drive_mention_ref
 
 from .output_failure_orchestrator import retry_idempotency_key
 from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
-from .runtime_feature_manifest import build_runtime_feature_manifest, list_configured_knowledge_dataset_ids
+from .runtime_feature_manifest import build_runtime_feature_manifest
 
 _DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
 _DANGEROUS_FLAG_KEYS = ("dangerous", "dangerous_command", "requires_confirmation")
@@ -72,6 +90,13 @@ _DANGEROUS_ACK_KEYS = (
     "risk_accepted",
     "approved",
 )
+type AgentStubFileTransferMethod = Literal["local_file", "tool_file", "datasource_file", "remote_url"]
+_AGENT_STUB_FILE_TRANSFER_METHODS: Mapping[FileTransferMethod, AgentStubFileTransferMethod] = {
+    FileTransferMethod.LOCAL_FILE: "local_file",
+    FileTransferMethod.TOOL_FILE: "tool_file",
+    FileTransferMethod.DATASOURCE_FILE: "datasource_file",
+    FileTransferMethod.REMOTE_URL: "remote_url",
+}
 
 
 class WorkflowAgentRuntimeRequestBuildError(ValueError):
@@ -124,6 +149,9 @@ class WorkflowAgentRuntimeRequest:
 class WorkflowAgentRuntimeRequestBuilder:
     """Build public Dify Agent run requests from workflow Agent v2 runtime state."""
 
+    _WORKFLOW_USER_PROMPT_FALLBACK = "Use the current workflow context."
+    _WORKFLOW_JOB_PROMPT_FALLBACK = "Use the workflow user prompt for this run."
+
     def __init__(
         self,
         *,
@@ -145,18 +173,13 @@ class WorkflowAgentRuntimeRequestBuilder:
             )
 
         metadata = self._build_metadata(context, agent_soul, node_job)
-        workflow_context_prompt = self._build_workflow_context_prompt(context, node_job)
-        # ENG-616: expand slash-menu mention tokens into model-readable names.
-        # node_output mentions expand to their reference name only — the value
-        # stays in the Workflow context block (user_prompt) below.
-        workflow_job_prompt = (
-            expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
-            or "Run this workflow Agent Node for the current run."
+        effective_node_job = node_job.model_copy(
+            update={"previous_node_output_refs": self._effective_previous_node_output_refs(node_job)}
         )
-        soul_prompt = expand_prompt_mentions(
-            agent_soul.prompt.system_prompt, build_soul_mention_resolver(agent_soul)
-        ).strip()
-        user_prompt = workflow_context_prompt.strip() or "Use the current workflow context."
+        workflow_task_prompt = self._build_workflow_task_prompt(context, effective_node_job)
+        workflow_context_prompt = self._build_workflow_context_prompt(context, effective_node_job)
+        workflow_job_prompt = workflow_task_prompt or self._WORKFLOW_JOB_PROMPT_FALLBACK
+        user_prompt = workflow_context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
             tools_layer = self._plugin_tools_builder.build(
@@ -182,9 +205,20 @@ class WorkflowAgentRuntimeRequestBuilder:
             }
 
         drive_config: DifyDriveLayerConfig | None = None
+        soul_prompt_resolver = build_soul_mention_resolver(agent_soul)
         if dify_config.AGENT_DRIVE_MANIFEST_ENABLED:
-            drive_config, drive_warnings = build_drive_layer_config(agent_soul, agent_id=context.agent.id)
+            drive_config, drive_warnings = build_drive_layer_config(
+                agent_soul,
+                tenant_id=context.dify_context.tenant_id,
+                agent_id=context.agent.id,
+            )
             append_runtime_warnings(metadata, drive_warnings)
+            soul_prompt_resolver = build_drive_aware_soul_mention_resolver(
+                agent_soul,
+                tenant_id=context.dify_context.tenant_id,
+                agent_id=context.agent.id,
+            )
+        soul_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         knowledge_config = build_knowledge_layer_config(agent_soul)
 
         request = self._request_builder.build_for_workflow_node(
@@ -255,7 +289,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     def _plugin_daemon_plugin_id(*, plugin_id: str, model_provider: str) -> str:
         """Return the transport plugin id expected by plugin-daemon headers."""
         if plugin_id.count("/") == 1:
-            return plugin_id
+            return plugin_id.split(":", 1)[0].split("@", 1)[0]
         if plugin_id:
             return ModelProviderID(plugin_id).plugin_id
         return ModelProviderID(model_provider).plugin_id
@@ -292,10 +326,7 @@ class WorkflowAgentRuntimeRequestBuilder:
             "agent_config_snapshot_id": context.snapshot.id,
             "binding_id": context.binding.id,
             "workflow_node_job_mode": node_job.mode.value,
-            "runtime_support": build_runtime_feature_manifest(
-                agent_soul,
-                drive_manifest_enabled=dify_config.AGENT_DRIVE_MANIFEST_ENABLED,
-            ),
+            "runtime_support": build_runtime_feature_manifest(agent_soul),
         }
 
     def _build_workflow_context_prompt(
@@ -303,15 +334,19 @@ class WorkflowAgentRuntimeRequestBuilder:
         context: WorkflowAgentRuntimeBuildContext,
         node_job: WorkflowNodeJobConfig,
     ) -> str:
-        lines = ["Workflow context loaded for this run:"]
+        lines: list[str] = []
         query = get_system_text(context.variable_pool, SystemVariableKey.QUERY)
-        if query:
-            lines.append(f"- User query: {query}")
-
         resolved_outputs = self._resolve_previous_node_outputs(
             context.variable_pool,
             node_job.previous_node_output_refs,
         )
+        if not query and not resolved_outputs:
+            return ""
+
+        lines.append("Workflow context loaded for this run:")
+        if query:
+            lines.append(f"- User query: {query}")
+
         if resolved_outputs:
             lines.append("- Previous node outputs:")
             for item in resolved_outputs:
@@ -320,6 +355,31 @@ class WorkflowAgentRuntimeRequestBuilder:
         lines.append("The above workflow context is run-specific. Do not treat it as Agent Soul or persistent memory.")
         return "\n".join(lines)
 
+    def _build_workflow_task_prompt(
+        self,
+        context: WorkflowAgentRuntimeBuildContext,
+        node_job: WorkflowNodeJobConfig,
+    ) -> str:
+        del context
+        return expand_prompt_mentions(node_job.workflow_prompt, build_node_job_mention_resolver(node_job)).strip()
+
+    def _effective_previous_node_output_refs(
+        self,
+        node_job: WorkflowNodeJobConfig,
+    ) -> list[WorkflowPreviousNodeOutputRef]:
+        """Derive effective refs from the current frontend task markers.
+
+        The task text is the source of truth for previous-node context. When
+        the prompt has no frontend markers, stale persisted refs are discarded
+        instead of being carried forward into workflow context.
+        """
+        if not node_job.workflow_prompt:
+            return list(node_job.previous_node_output_refs)
+
+        return workflow_previous_node_output_refs_from_selectors(
+            extract_workflow_node_output_selectors(node_job.workflow_prompt)
+        )
+
     def _resolve_previous_node_outputs(
         self,
         variable_pool: VariablePoolReader,
@@ -327,7 +387,7 @@ class WorkflowAgentRuntimeRequestBuilder:
     ) -> list[dict[str, Any]]:
         resolved: list[dict[str, Any]] = []
         for ref in refs:
-            selector = self._selector_from_ref(ref)
+            selector = normalize_previous_node_output_selector(ref)
             if not selector:
                 raise WorkflowAgentRuntimeRequestBuildError(
                     "invalid_previous_node_output_ref",
@@ -349,23 +409,71 @@ class WorkflowAgentRuntimeRequestBuilder:
         return resolved
 
     @staticmethod
-    def _selector_from_ref(ref: WorkflowPreviousNodeOutputRef) -> list[str] | None:
-        for key in ("selector", "variable_selector", "value_selector"):
-            value = ref.get(key)
-            if isinstance(value, list) and all(isinstance(item, str) for item in value):
-                return value
-        node_id = ref.get("node_id")
-        output_name = ref.get("output") or ref.get("name") or ref.get("variable") or ref.get("key")
-        if isinstance(node_id, str) and isinstance(output_name, str):
-            return [node_id, output_name]
-        return None
-
-    @staticmethod
     def _summarize_value(value: Any) -> str:
+        prompt_payload, used_download_mapping = WorkflowAgentRuntimeRequestBuilder._resolve_prompt_payload_value(value)
+        if used_download_mapping:
+            return json.dumps(prompt_payload, ensure_ascii=False, separators=(",", ":"))
+
         text = str(value)
         if len(text) > 2000:
             return text[:2000] + "...[truncated]"
         return text
+
+    @classmethod
+    def _resolve_prompt_payload_value(cls, value: Any) -> tuple[Any, bool]:
+        # File-valued workflow context must surface as Agent Stub download
+        # mappings so the model can materialize those inputs with
+        # `dify-agent file download --mapping ...` inside the sandbox.
+        download_mapping = cls._agent_stub_download_mapping(value)
+        if download_mapping is not None:
+            return download_mapping, True
+
+        if isinstance(value, list | tuple):
+            changed = False
+            resolved_items: list[Any] = []
+            for item in value:
+                resolved_item, item_changed = cls._resolve_prompt_payload_value(item)
+                resolved_items.append(resolved_item)
+                changed = changed or item_changed
+            return resolved_items, changed
+
+        if isinstance(value, Mapping):
+            changed = False
+            resolved_items_by_key: dict[str, Any] = {}
+            for key, item in value.items():
+                resolved_item, item_changed = cls._resolve_prompt_payload_value(item)
+                resolved_items_by_key[str(key)] = resolved_item
+                changed = changed or item_changed
+            return resolved_items_by_key, changed
+
+        return value, False
+
+    @staticmethod
+    def _agent_stub_download_mapping(value: Any) -> dict[str, Any] | None:
+        try:
+            if isinstance(value, File):
+                transfer_method = _AGENT_STUB_FILE_TRANSFER_METHODS.get(value.transfer_method)
+                if transfer_method is None:
+                    return None
+                if value.transfer_method == FileTransferMethod.REMOTE_URL:
+                    url = value.remote_url
+                    if not isinstance(url, str) or not url:
+                        return None
+                    mapping = AgentStubFileMapping(transfer_method=transfer_method, url=url)
+                else:
+                    reference = value.reference
+                    if not isinstance(reference, str) or not reference:
+                        return None
+                    mapping = AgentStubFileMapping(transfer_method=transfer_method, reference=reference)
+                return mapping.model_dump(mode="json", exclude_none=True)
+
+            if isinstance(value, Mapping):
+                mapping = AgentStubFileMapping.model_validate(value)
+                return mapping.model_dump(mode="json", exclude_none=True)
+        except ValidationError:
+            return None
+
+        return None
 
     @staticmethod
     def _build_output_config(declared_outputs: Sequence[DeclaredOutputConfig]) -> AgentBackendOutputConfig | None:
@@ -540,42 +648,84 @@ def build_shell_layer_config(agent_soul: AgentSoulConfig) -> DifyShellLayerConfi
 
 
 def build_knowledge_layer_config(agent_soul: AgentSoulConfig) -> DifyKnowledgeBaseLayerConfig | None:
-    """Map Agent Soul knowledge config into the fixed Dify knowledge-base layer.
+    """Map Agent Soul knowledge sets into one Dify knowledge-base layer.
 
-    Normalization intentionally matches the current dify-agent runtime contract:
-
-    - blank or missing dataset ids are ignored;
-    - if no valid dataset ids remain, no knowledge layer is injected;
-    - retrieval mode is always forced to ``multiple`` in this first wiring pass;
-    - ``top_k`` falls back to a stable runtime default when the soul omits it;
-    - ``score_threshold`` is only forwarded when the product config explicitly
-      enables it, otherwise the layer keeps the disabled/default ``0.0`` value;
-    - metadata filtering stays at the layer DTO default (disabled).
+    Agent Soul DTO validation owns malformed set rejection. Runtime mapping is
+    intentionally lossless: every configured set is forwarded with its query
+    policy, dataset refs, retrieval controls, and metadata-filtering controls.
+    ``score_threshold=None`` means disabled threshold filtering and maps to the
+    inner retrieval request's ``0.0`` default through the Agent backend DTO.
     """
-    dataset_ids = list_configured_knowledge_dataset_ids(agent_soul)
-    if not dataset_ids:
+    if not agent_soul.knowledge.sets:
         return None
 
-    query_config = agent_soul.knowledge.query_config
     return DifyKnowledgeBaseLayerConfig(
-        dataset_ids=dataset_ids,
-        retrieval=DifyKnowledgeRetrievalConfig(
-            mode="multiple",
-            top_k=_knowledge_top_k(query_config),
-            score_threshold=_knowledge_score_threshold(query_config),
-        ),
+        sets=[
+            DifyKnowledgeSetConfig(
+                id=knowledge_set.id,
+                name=knowledge_set.name,
+                description=knowledge_set.description,
+                datasets=[
+                    DifyKnowledgeDatasetConfig(
+                        id=dataset.id or "",
+                        name=dataset.name,
+                        description=dataset.description,
+                    )
+                    for dataset in knowledge_set.datasets
+                ],
+                query=DifyKnowledgeQueryConfig(
+                    mode=cast(Literal["user_query", "generated_query"], knowledge_set.query.mode.value),
+                    value=knowledge_set.query.value,
+                ),
+                retrieval=_knowledge_retrieval_config(knowledge_set.retrieval),
+                metadata_filtering=_knowledge_metadata_filtering_config(knowledge_set.metadata_filtering),
+            )
+            for knowledge_set in agent_soul.knowledge.sets
+        ],
     )
 
 
-def _knowledge_top_k(query_config: AgentKnowledgeQueryConfig) -> int:
-    top_k = query_config.top_k
-    return top_k if isinstance(top_k, int) and top_k >= 1 else 4
+def _knowledge_retrieval_config(retrieval: AgentKnowledgeRetrievalConfig) -> DifyKnowledgeRetrievalConfig:
+    return DifyKnowledgeRetrievalConfig(
+        mode=retrieval.mode,
+        top_k=retrieval.top_k,
+        score_threshold=retrieval.score_threshold or 0.0,
+        reranking_mode=retrieval.reranking_mode,
+        reranking_enable=retrieval.reranking_enable,
+        reranking_model=DifyKnowledgeRerankingModelConfig(
+            provider=retrieval.reranking_model.provider,
+            model=retrieval.reranking_model.model,
+        )
+        if retrieval.reranking_model is not None
+        else None,
+        weights=cast(dict[str, Any], retrieval.weights.model_dump(mode="json", exclude_none=True))
+        if retrieval.weights is not None
+        else None,
+        model=_knowledge_model_config(retrieval.model),
+    )
 
 
-def _knowledge_score_threshold(query_config: AgentKnowledgeQueryConfig) -> float:
-    if query_config.score_threshold_enabled and query_config.score_threshold is not None:
-        return query_config.score_threshold
-    return 0.0
+def _knowledge_metadata_filtering_config(
+    metadata_filtering: AgentKnowledgeMetadataFilteringConfig,
+) -> DifyKnowledgeMetadataFilteringConfig:
+    return DifyKnowledgeMetadataFilteringConfig(
+        mode=metadata_filtering.mode,
+        model_config=_knowledge_model_config(metadata_filtering.metadata_model_config),
+        conditions=cast(Any, metadata_filtering.conditions.model_dump(mode="json"))
+        if metadata_filtering.conditions is not None
+        else None,
+    )
+
+
+def _knowledge_model_config(model: AgentKnowledgeModelConfig | None) -> DifyKnowledgeModelConfig | None:
+    if model is None:
+        return None
+    return DifyKnowledgeModelConfig(
+        provider=model.provider,
+        name=model.name,
+        mode=model.mode,
+        completion_params=model.completion_params,
+    )
 
 
 def build_ask_human_layer_config(agent_soul: AgentSoulConfig) -> DifyAskHumanLayerConfig | None:
@@ -603,76 +753,107 @@ def append_runtime_warnings(metadata: dict[str, Any], warnings: list[dict[str, s
             existing.extend(warnings)
 
 
+def build_drive_aware_soul_mention_resolver(
+    agent_soul: AgentSoulConfig,
+    *,
+    tenant_id: str,
+    agent_id: str,
+):
+    """Resolve skill/file mentions against the agent drive and everything else via Agent Soul."""
+
+    base_resolver = build_soul_mention_resolver(agent_soul)
+    drive_service = AgentDriveService()
+    skill_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
+    skill_names_by_key = {skill["skill_md_key"]: skill["name"] for skill in skill_catalog}
+    drive_keys = {item["key"] for item in drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)}
+
+    def _resolve(mention: object) -> str | None:
+        if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
+            return None
+        kind = cast(MentionKind, mention.kind)
+        ref_id = cast(str, mention.ref_id)
+        label = cast(str | None, getattr(mention, "label", None))
+        if kind == MentionKind.SKILL:
+            decoded_key = decode_drive_mention_ref(ref_id)
+            return skill_names_by_key.get(decoded_key) or label or decoded_key
+        if kind == MentionKind.FILE:
+            decoded_key = decode_drive_mention_ref(ref_id)
+            if decoded_key in drive_keys:
+                return decoded_key.rsplit("/", 1)[-1]
+            return label or decoded_key
+        return base_resolver(cast(Any, mention))
+
+    return _resolve
+
+
 def build_drive_layer_config(
     agent_soul: AgentSoulConfig,
     *,
+    tenant_id: str,
     agent_id: str | None,
 ) -> tuple[DifyDriveLayerConfig | None, list[dict[str, str]]]:
-    """Catalog the soul's drive-backed Skills & Files into the dify.drive declaration.
+    """Derive drive runtime catalog + prompt-mentioned eager-pull keys from the drive."""
 
-    Returns ``(config, warnings)`` — ``config is None`` means nothing to inject
-    (no skills/files configured, or no agent identity to address the drive by).
-    Refs that predate standardization (no drive key) are skipped with a warning
-    instead of failing the run, so historic souls keep running.
-    """
-    skill_refs = agent_soul.skills_files.skills
-    file_refs = agent_soul.skills_files.files
-    if not skill_refs and not file_refs:
-        return None, []
-
-    warnings: list[dict[str, str]] = []
+    mentioned_drive_refs = [
+        decode_drive_mention_ref(mention.ref_id)
+        for mention in parse_prompt_mentions(agent_soul.prompt.system_prompt)
+        if mention.kind in {MentionKind.SKILL, MentionKind.FILE}
+    ]
+    ordered_mentions = list(dict.fromkeys(ref for ref in mentioned_drive_refs if ref))
     if not agent_id:
+        if not ordered_mentions:
+            return None, []
+        return None, [
+            {
+                "section": "agent_soul.prompt.system_prompt",
+                "code": "drive_ref_dangling",
+                "message": "drive mentions are configured but the run has no bound agent to address a drive by.",
+            }
+        ]
+
+    drive_service = AgentDriveService()
+    skills_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
+    manifest_items = drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)
+    manifest_by_key = {item["key"]: item for item in manifest_items}
+    skill_keys = {skill["skill_md_key"] for skill in skills_catalog}
+    warnings: list[dict[str, str]] = []
+    mentioned_skill_keys: list[str] = []
+    mentioned_file_keys: list[str] = []
+    for drive_key in ordered_mentions:
+        if drive_key in skill_keys:
+            mentioned_skill_keys.append(drive_key)
+            continue
+        if drive_key in manifest_by_key:
+            mentioned_file_keys.append(drive_key)
+            continue
         warnings.append(
             {
-                "section": "agent_soul.skills_files",
-                "code": "skill_ref_dangling",
-                "message": "skills_files is configured but the run has no bound agent to address a drive by.",
+                "section": "agent_soul.prompt.system_prompt",
+                "code": "mention_target_missing",
+                "message": f"drive mention '{drive_key}' has no matching drive entry.",
             }
         )
-        return None, warnings
 
-    skills: list[DifyDriveSkillConfig] = []
-    for skill in skill_refs:
-        if not skill.skill_md_key:
-            warnings.append(
-                {
-                    "section": "agent_soul.skills_files",
-                    "code": "skill_ref_dangling",
-                    "message": (
-                        f"skill_ref_dangling: skill '{skill.name or skill.id or 'unknown'}' has no drive key; "
-                        "re-standardize it to expose it at runtime."
-                    ),
-                }
-            )
-            continue
-        skills.append(
-            DifyDriveSkillConfig(
-                name=skill.name or skill.skill_md_key.split("/", 1)[0],
-                description=skill.description or "",
-                skill_md_key=skill.skill_md_key,
-                archive_key=skill.full_archive_key,
-            )
+    skills = [
+        DifyDriveSkillConfig(
+            path=skill["path"],
+            name=skill["name"],
+            description=skill["description"],
+            skill_md_key=skill["skill_md_key"],
+            archive_key=skill["archive_key"],
         )
+        for skill in skills_catalog
+    ]
 
-    files: list[DifyDriveFileConfig] = []
-    for file in file_refs:
-        if not file.drive_key:
-            # Plain upload references (pre-ENG-625) are not drive-backed; they are
-            # simply invisible to the manifest rather than a defect worth warning on.
-            continue
-        size = file.get("size")
-        files.append(
-            DifyDriveFileConfig(
-                name=file.name or file.drive_key.rsplit("/", 1)[-1],
-                key=file.drive_key,
-                size=size if isinstance(size, int) else None,
-                mime_type=file.type,
-            )
-        )
-
-    if not skills and not files:
-        return None, warnings
-    return DifyDriveLayerConfig(drive_ref=f"agent-{agent_id}", skills=skills, files=files), warnings
+    return (
+        DifyDriveLayerConfig(
+            drive_ref=f"agent-{agent_id}",
+            skills=skills,
+            mentioned_skill_keys=mentioned_skill_keys,
+            mentioned_file_keys=mentioned_file_keys,
+        ),
+        warnings,
+    )
 
 
 def _cli_tool_enabled(item: object) -> bool:

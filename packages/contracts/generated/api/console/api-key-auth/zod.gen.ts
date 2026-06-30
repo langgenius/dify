@@ -50,7 +50,7 @@ export const zPostApiKeyAuthDataSourceBindingBody = zApiKeyAuthBindingPayload
 export const zPostApiKeyAuthDataSourceBindingResponse = zSimpleResultResponse
 
 export const zDeleteApiKeyAuthDataSourceByBindingIdPath = z.object({
-  binding_id: z.string(),
+  binding_id: z.uuid(),
 })
 
 /**

@@ -22,7 +22,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
-import { useAppContext } from '@/context/app-context'
+import { canCreateAndModifySnippets, canManageSnippets } from '@/app/components/snippets/utils/permission'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 import Link from '@/next/link'
 import { useMembers } from '@/service/use-common'
@@ -45,7 +46,7 @@ const SnippetCard = ({
 }: Props) => {
   const { t } = useTranslation('snippet')
   const { t: tCommon } = useTranslation()
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const { data: membersData } = useMembers()
   const [isOperationsMenuOpen, setIsOperationsMenuOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
@@ -53,6 +54,9 @@ const SnippetCard = ({
   const updateSnippetMutation = useUpdateSnippetMutation()
   const exportSnippetMutation = useExportSnippetMutation()
   const deleteSnippetMutation = useDeleteSnippetMutation()
+  const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
+  const canManageSnippet = canManageSnippets(workspacePermissionKeys)
+  const canShowOperations = canCreateAndModifySnippet || canManageSnippet
 
   const memberNameById = useMemo(() => {
     return new Map((membersData?.accounts ?? []).map(member => [member.id, member.name]))
@@ -78,6 +82,9 @@ const SnippetCard = ({
   }
 
   const handleExportSnippet = async () => {
+    if (!canCreateAndModifySnippet)
+      return
+
     setIsOperationsMenuOpen(false)
     try {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
@@ -148,13 +155,7 @@ const SnippetCard = ({
         </Link>
 
         <div className="absolute right-0 bottom-1 left-0 flex h-10.5 shrink-0 items-center pt-1 pr-1.5 pb-1.5 pl-3.5">
-          <div
-            className="flex w-0 grow items-center gap-1"
-            onClick={(e) => {
-              e.stopPropagation()
-              e.preventDefault()
-            }}
-          >
+          <div className="flex w-0 grow items-center gap-1">
             <div className="mr-10.25 min-w-0 grow overflow-hidden">
               <TagSelector
                 placement="bottom-start"
@@ -163,10 +164,11 @@ const SnippetCard = ({
                 value={snippet.tags}
                 onOpenTagManagement={onOpenTagManagement}
                 onTagsChange={onTagsChange}
+                canBindOrUnbindTags={canManageSnippet}
               />
             </div>
           </div>
-          {isCurrentWorkspaceEditor && (
+          {canShowOperations && (
             <div
               className={cn(
                 'absolute top-1/2 right-1.5 flex -translate-y-1/2 items-center transition-opacity',
@@ -195,23 +197,31 @@ const SnippetCard = ({
                   sideOffset={4}
                   popupClassName="w-[216px]"
                 >
-                  <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
-                    <span className="system-sm-regular text-text-secondary">{t('menu.editInfo')}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
-                    <span className="system-sm-regular text-text-secondary">{t('menu.exportSnippet')}</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    variant="destructive"
-                    className="gap-2 px-3"
-                    onClick={() => {
-                      setIsOperationsMenuOpen(false)
-                      setIsDeleteDialogOpen(true)
-                    }}
-                  >
-                    <span className="system-sm-regular">{t('menu.deleteSnippet')}</span>
-                  </DropdownMenuItem>
+                  {canCreateAndModifySnippet && (
+                    <>
+                      <DropdownMenuItem className="gap-2 px-3" onClick={handleOpenEditDialog}>
+                        <span className="system-sm-regular text-text-secondary">{t('menu.editInfo')}</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="gap-2 px-3" onClick={handleExportSnippet}>
+                        <span className="system-sm-regular text-text-secondary">{t('menu.exportSnippet')}</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canManageSnippet && (
+                    <>
+                      {canCreateAndModifySnippet && <DropdownMenuSeparator />}
+                      <DropdownMenuItem
+                        variant="destructive"
+                        className="gap-2 px-3"
+                        onClick={() => {
+                          setIsOperationsMenuOpen(false)
+                          setIsDeleteDialogOpen(true)
+                        }}
+                      >
+                        <span className="system-sm-regular">{t('menu.deleteSnippet')}</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

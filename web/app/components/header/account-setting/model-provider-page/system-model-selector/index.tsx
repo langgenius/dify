@@ -18,6 +18,7 @@ import { Infotip } from '@/app/components/base/infotip'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
+import { hasPermission } from '@/utils/permission'
 import { ModelTypeEnum } from '../declarations'
 import {
   useInvalidateDefaultModel,
@@ -65,8 +66,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   hideProviderSettingsFooter,
 }) => {
   const { t } = useTranslation()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { workspacePermissionKeys } = useAppContext()
   const { textGenerationModelList } = useProviderContext()
+  const canManageSystemDefaultModel = hasPermission(workspacePermissionKeys, 'plugin.model_config')
   const updateModelList = useUpdateModelList()
   const invalidateDefaultModel = useInvalidateDefaultModel()
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
@@ -258,7 +260,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               className="min-w-[72px]"
               variant="primary"
               onClick={handleSave}
-              disabled={!isCurrentWorkspaceManager}
+              disabled={!canManageSystemDefaultModel}
             >
               {t('operation.save', { ns: 'common' })}
             </Button>

@@ -78,9 +78,8 @@ vi.mock('../../model-auth/hooks', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: true,
-  }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({ workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] }),
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({

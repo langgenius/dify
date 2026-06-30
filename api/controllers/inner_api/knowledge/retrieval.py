@@ -1,9 +1,10 @@
-"""Inner API endpoint for tenant-scoped knowledge retrieval.
+"""Plugin inner API endpoint for tenant-scoped knowledge retrieval.
 
 This controller is a thin HTTP wrapper around
 ``services.knowledge_retrieval_inner_service.InnerKnowledgeRetrievalService``.
-It intentionally keeps authorization simple: shared inner API key plus
-tenant-scoped app/dataset validation in the service layer.
+It uses the plugin inner API key because dify-agent calls this endpoint through
+the same trusted Dify API bridge as other agent/plugin inner calls; tenant-scoped
+app/dataset validation remains in the service layer.
 """
 
 from flask_restx import Resource
@@ -11,8 +12,9 @@ from pydantic import ValidationError
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.inner_api import inner_api_ns
-from controllers.inner_api.wraps import inner_api_only
+from controllers.inner_api.wraps import plugin_inner_api_only
 from core.workflow.nodes.knowledge_retrieval import exc as retrieval_exc
+from extensions.ext_database import db
 from libs.exception import BaseHTTPException
 from services.entities.knowledge_retrieval_inner import InnerKnowledgeRetrieveRequest, InnerKnowledgeRetrieveResponse
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError, InnerKnowledgeRetrievalServiceError
@@ -48,7 +50,7 @@ register_response_schema_models(inner_api_ns, InnerKnowledgeRetrieveResponse)
 class InnerKnowledgeRetrieveApi(Resource):
     """Retrieve knowledge from one or more datasets within the caller tenant."""
 
-    @inner_api_only
+    @plugin_inner_api_only
     @inner_api_ns.doc("inner_knowledge_retrieve")
     @inner_api_ns.doc(description="Retrieve knowledge for trusted internal callers")
     @inner_api_ns.expect(inner_api_ns.models[InnerKnowledgeRetrieveRequest.__name__])
@@ -60,9 +62,8 @@ class InnerKnowledgeRetrieveApi(Resource):
     @inner_api_ns.doc(
         responses={
             400: "Invalid request body",
-            401: "Unauthorized - invalid inner API key",
             403: "Caller tenant does not own the requested resource",
-            404: "App or dataset not found",
+            404: "Invalid plugin inner API key, app not found, or dataset not found",
             422: "Invalid retrieval configuration",
             429: "Knowledge retrieval rate limited",
             502: "External knowledge retrieval failed",
@@ -81,7 +82,7 @@ class InnerKnowledgeRetrieveApi(Resource):
             ) from exc
 
         try:
-            response = InnerKnowledgeRetrievalService().retrieve(payload)
+            response = InnerKnowledgeRetrievalService().retrieve(payload, session=db.session)
         except InnerKnowledgeRetrievalServiceError as exc:
             raise InnerKnowledgeRetrievalHttpError(
                 error_code=exc.error_code,

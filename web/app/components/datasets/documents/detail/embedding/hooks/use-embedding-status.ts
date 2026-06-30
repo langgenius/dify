@@ -129,19 +129,3 @@ export const useResumeIndexing = ({ datasetId, documentId, onSuccess, onError }:
     onError,
   })
 }
-
-export const useInvalidateEmbeddingStatus = () => {
-  const queryClient = useQueryClient()
-  return useCallback((datasetId?: string, documentId?: string) => {
-    if (datasetId && documentId) {
-      queryClient.invalidateQueries({
-        queryKey: [NAME_SPACE, 'indexing-status', datasetId, documentId],
-      })
-    }
-    else {
-      queryClient.invalidateQueries({
-        queryKey: [NAME_SPACE, 'indexing-status'],
-      })
-    }
-  }, [queryClient])
-}

@@ -42,9 +42,18 @@ vi.mock('../question', () => ({
 }))
 
 vi.mock('../chat-input-area', () => ({
-  default: ({ disabled, readonly }: { disabled?: boolean, readonly?: boolean }) => (
+  default: ({
+    customPlaceholder,
+    disabled,
+    readonly,
+  }: {
+    customPlaceholder?: string
+    disabled?: boolean
+    readonly?: boolean
+  }) => (
     <div
       data-testid="chat-input-area"
+      data-custom-placeholder={customPlaceholder}
       data-disabled={String(!!disabled)}
       data-readonly={String(!!readonly)}
     />
@@ -826,6 +835,14 @@ describe('Chat', () => {
         noChatInput: false,
       })
       expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+    })
+
+    it('should pass appData.site.input_placeholder as customPlaceholder to ChatInputArea', () => {
+      renderChat({
+        appData: { site: { input_placeholder: 'Ask the assistant' } } as unknown as ChatProps['appData'],
+        noChatInput: false,
+      })
+      expect(screen.getByTestId('chat-input-area')).toHaveAttribute('data-custom-placeholder', 'Ask the assistant')
     })
 
     it('should pass Bot as default botName when appData.site.title is missing', () => {

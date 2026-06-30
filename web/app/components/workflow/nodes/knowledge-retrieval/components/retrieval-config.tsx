@@ -32,6 +32,7 @@ type Props = Readonly<{
   onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
   onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
   readonly?: boolean
+  modal?: boolean
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
   selectedDatasets: DataSet[]
@@ -45,6 +46,7 @@ const RetrievalConfig: FC<Props> = ({
   onSingleRetrievalModelChange,
   onSingleRetrievalModelParamsChange,
   readonly,
+  modal,
   rerankModalOpen,
   onRerankModelOpenChange,
   selectedDatasets,
@@ -115,6 +117,7 @@ const RetrievalConfig: FC<Props> = ({
 
   return (
     <Popover
+      modal={modal}
       open={rerankModalOpen}
       onOpenChange={(nextOpen) => {
         if (readonly)

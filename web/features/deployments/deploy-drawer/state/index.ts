@@ -11,20 +11,21 @@ import type {
   EnvVarBindingSlot,
   EnvVarValues,
   EnvVarValueSelection,
-} from '../../components/env-var-bindings'
-import type { RuntimeCredentialBindingSelections } from '../../components/runtime-credential-bindings-utils'
+} from '../../shared/components/env-var-bindings'
+import type { RuntimeCredentialBindingSelections } from '../../shared/components/runtime-credential-bindings-utils'
 import { EnvVarValueSource as ApiEnvVarValueSource } from '@dify/contracts/enterprise/types.gen'
 import { toast } from '@langgenius/dify-ui/toast'
+import { skipToken } from '@tanstack/react-query'
 import { atom } from 'jotai'
 import { atomWithMutation, atomWithQuery } from 'jotai-tanstack-query'
 import { consoleQuery } from '@/service/client'
-import { envVarBindingSlotFromContract } from '../../components/env-var-bindings-utils'
+import { envVarBindingSlotFromContract } from '../../shared/components/env-var-bindings-utils'
 import {
   hasMissingRequiredRuntimeCredentialBinding,
   runtimeCredentialSlotKey,
   selectedDeploymentRuntimeCredentials,
   selectedRuntimeCredentialSelections,
-} from '../../components/runtime-credential-bindings-utils'
+} from '../../shared/components/runtime-credential-bindings-utils'
 import { createDeploymentIdempotencyKey } from '../../shared/domain/idempotency'
 import { releaseDeploymentAction } from '../../shared/domain/release-action'
 
@@ -38,6 +39,7 @@ export const deployDrawerOpenAtom = atom(false)
 export const deployDrawerAppInstanceIdAtom = atom<string | undefined>(undefined)
 export const deployDrawerEnvironmentIdAtom = atom<string | undefined>(undefined)
 export const deployDrawerReleaseIdAtom = atom<string | undefined>(undefined)
+export const deployFormAppInstanceIdAtom = atom<string | undefined>(undefined)
 
 export const openDeployDrawerAtom = atom(null, (_get, set, params: OpenDeployDrawerParams) => {
   set(deployDrawerAppInstanceIdAtom, params.appInstanceId)
@@ -65,6 +67,19 @@ export type DeployReadyFormConfig = {
 }
 
 export const deployReadyFormConfigAtom = atom<DeployReadyFormConfig | undefined>(undefined)
+
+export const releaseDeploymentViewQueryAtom = atomWithQuery((get) => {
+  const appInstanceId = get(deployFormAppInstanceIdAtom)
+
+  return consoleQuery.enterprise.releaseService.computeReleaseDeploymentView.queryOptions({
+    input: appInstanceId
+      ? {
+          params: { appInstanceId },
+        }
+      : skipToken,
+    enabled: Boolean(appInstanceId),
+  })
+})
 
 const selectedEnvIdAtom = atom<string | undefined>(undefined)
 const selectedReleaseIdAtom = atom<string | undefined>(undefined)
@@ -192,20 +207,20 @@ const releaseDeploymentOptionsQueryAtom = atomWithQuery((get) => {
   const hasSelectedEnvironment = get(deployHasSelectedEnvironmentAtom)
   const releaseId = get(deployTargetReleaseIdAtom)
   const selectedEnvironmentId = get(deploySelectedEnvironmentIdAtom)
-  const enabled = Boolean(releaseId && selectedEnvironmentId && hasSelectedEnvironment)
+  const hasRequiredInput = Boolean(releaseId && selectedEnvironmentId)
 
-  return {
-    ...consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
-      input: {
-        body: {
-          releaseId: releaseId ?? '',
-          environmentId: selectedEnvironmentId ?? '',
-        },
-      },
-      enabled,
-    }),
+  return consoleQuery.enterprise.releaseService.computeDeploymentOptions.queryOptions({
+    input: releaseId && selectedEnvironmentId
+      ? {
+          body: {
+            releaseId,
+            environmentId: selectedEnvironmentId,
+          },
+        }
+      : skipToken,
+    enabled: hasRequiredInput && hasSelectedEnvironment,
     retry: false,
-  }
+  })
 })
 
 export const deployBindingSlotsAtom = atom((get) => {

@@ -105,8 +105,10 @@ export default function IntegrationsPage({
   const router = useRouter()
   const section = useIntegrationSection(routeSection)
   const {
-    canManagement,
     canDebugger,
+    canInstallPlugin,
+    canDeletePlugin,
+    canUpdatePlugin,
     handlePermissionChange,
     isPluginCategory,
     permission,
@@ -114,7 +116,7 @@ export default function IntegrationsPage({
     showPluginCategorySetting,
   } = useIntegrationPermissions(section)
   const [providerSearchText, setProviderSearchText] = useState('')
-  const showInstallAction = canManagement
+  const showInstallAction = canInstallPlugin
   const showUtilityActions = canDebugger || showPermissionQuickPanel
   const {
     activeItem,
@@ -160,7 +162,7 @@ export default function IntegrationsPage({
       return
     }
 
-    window.open(getMarketplaceUrl(marketplaceUrlPath), '_blank', 'noopener,noreferrer')
+    window.open(getMarketplaceUrl(marketplaceUrlPath, undefined, { source: window.location.origin }), '_blank', 'noopener,noreferrer')
   }
   const handleSelectSection = (nextSection: IntegrationSection) => {
     if (onSectionChange) {
@@ -217,7 +219,7 @@ export default function IntegrationsPage({
           </div>
           {showInstallAction && (
             <IntegrationSidebarActions
-              canManagement={canManagement}
+              canManagement={canInstallPlugin}
               installContextCategory={getPluginCategoryBySection(section)}
               onSwitchToMarketplace={handleSwitchToMarketplace}
             />
@@ -281,7 +283,9 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </div>
@@ -293,7 +297,6 @@ export default function IntegrationsPage({
                 slotClassNames={{
                   viewport: 'overscroll-contain',
                   content: 'min-h-full',
-                  scrollbar: 'data-[orientation=vertical]:my-1 data-[orientation=vertical]:me-1',
                 }}
               >
                 <IntegrationSectionRenderer
@@ -304,7 +307,9 @@ export default function IntegrationsPage({
                   providerSearchText={providerSearchText}
                   onProviderSearchTextChange={setProviderSearchText}
                   onSwitchToMarketplace={handleSwitchToMarketplace}
-                  canInstallPlugin={canManagement}
+                  canInstallPlugin={canInstallPlugin}
+                  canDeletePlugin={canDeletePlugin}
+                  canUpdatePlugin={canUpdatePlugin}
                   pluginCategoryToolbarAction={pluginSettingAction}
                 />
               </ScrollArea>

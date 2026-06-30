@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from typing import Any
 
@@ -19,12 +19,13 @@ from werkzeug.exceptions import (
 
 import services
 from controllers.common.fields import EventStreamResponse
+from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.composition import auth_router
-from controllers.openapi.auth.data import AuthData
+from controllers.openapi.auth.data import AuthData, RBACRequirement
 from controllers.service_api.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -60,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def _translate_service_errors() -> Iterator[None]:
+def _translate_service_errors() -> Generator[None, None, None]:
     try:
         yield
     except WorkflowNotFoundError as ex:
@@ -136,7 +137,10 @@ _DISPATCH: dict[AppMode, Callable[[App, Any, AppRunRequest], Any]] = {
 
 @openapi_ns.route("/apps/<string:app_id>/run")
 class AppRunApi(Resource):
-    @auth_router.guard(scope=Scope.APPS_RUN)
+    @auth_router.guard(
+        scope=Scope.APPS_RUN,
+        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+    )
     @openapi_ns.response(200, "Run result (SSE stream)", openapi_ns.models[EventStreamResponse.__name__])
     @accepts(body=AppRunRequest)
     def post(self, app_id: str, *, auth_data: AuthData, body: AppRunRequest):
@@ -162,12 +166,16 @@ class AppRunApi(Resource):
             surface="apps",
         )
 
+        # response-contract:ignore compact_generate_response
         return helper.compact_generate_response(stream_obj)
 
 
 @openapi_ns.route("/apps/<string:app_id>/tasks/<string:task_id>/stop")
 class AppRunTaskStopApi(Resource):
-    @auth_router.guard(scope=Scope.APPS_RUN)
+    @auth_router.guard(
+        scope=Scope.APPS_RUN,
+        rbac=RBACRequirement(resource_type=RBACResourceScope.APP, scene=RBACPermission.APP_TEST_AND_RUN),
+    )
     @returns(200, TaskStopResponse, description="Task stopped")
     def post(self, app_id: str, task_id: str, *, auth_data: AuthData):
         app_model, caller, caller_kind = auth_data.require_app_context()

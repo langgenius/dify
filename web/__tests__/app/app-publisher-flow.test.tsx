@@ -59,7 +59,7 @@ vi.mock('@/hooks/use-async-window-open', () => ({
   useAsyncWindowOpen: () => mockOpenAsyncWindow,
 }))
 
-vi.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control/use-app-access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
     isLoading: false,
@@ -112,9 +112,14 @@ vi.mock('@/app/components/workflow/collaboration/core/collaboration-manager', ()
   },
 }))
 
-vi.mock('@/app/components/app/app-access-control', () => ({
-  AccessControl: () => <div data-testid="app-access-control" />,
-}))
+vi.mock('@/app/components/app/app-access-control', () => {
+  const MockAccessControl = () => <div data-testid="app-access-control" />
+
+  return {
+    default: MockAccessControl,
+    AccessControl: MockAccessControl,
+  }
+})
 
 vi.mock('@langgenius/dify-ui/popover', () => import('@/__mocks__/base-ui-popover'))
 

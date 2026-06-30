@@ -198,9 +198,6 @@ export const mapSelectItems = (
   name: getOptionLabel(option, language),
   value: option.value,
 }))
-
-export const hasOptionIcon = (options: SelectableOption[]) => options.some(option => !!option.icon)
-
 export const getSelectedLabels = (
   selectedValues: string[] | undefined,
   options: SelectableOption[],

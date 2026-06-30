@@ -9,6 +9,7 @@ import { useLocale, useTranslation } from '#i18n'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
+import { useOptionalPluginInstallPermission } from '@/app/components/plugins/install-plugin/hooks/use-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginLinkInMarketplace } from '../utils'
 
@@ -26,6 +27,7 @@ const CardWrapperComponent = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
+  const { canInstallPlugin } = useOptionalPluginInstallPermission()
   const locale = useLocale()
   const { getTagLabel } = useTags()
 
@@ -41,8 +43,9 @@ const CardWrapperComponent = ({
   const handleOpenMarketplaceDetail = () => {
     window.open(getPluginLinkInMarketplace(plugin, marketplaceLinkParams), '_blank', 'noopener,noreferrer')
   }
+  const showInstallAction = !!showInstallButton && canInstallPlugin
 
-  if (showInstallButton) {
+  if (showInstallAction) {
     return (
       <div
         className="group relative cursor-pointer rounded-xl"

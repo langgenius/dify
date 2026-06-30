@@ -36,6 +36,11 @@ class MCPIdentityRefreshError(MCPTokenError):
 
 logger = logging.getLogger(__name__)
 
+# Headers recognised by dify-enterprise's /inner/api/rbac/* endpoints.
+# Keep in sync with pkg/enterprise/service/rbac_inner_handlers.go.
+INNER_TENANT_ID_HEADER = "X-Inner-Tenant-Id"
+INNER_ACCOUNT_ID_HEADER = "X-Inner-Account-Id"
+
 
 class BaseRequest:
     proxies: Mapping[str, str] | None = {
@@ -69,8 +74,16 @@ class BaseRequest:
         *,
         timeout: float | httpx.Timeout | None = None,
         raise_for_status: bool = False,
+        extra_headers: Mapping[str, str] | None = None,
     ) -> Any:
         headers = {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key}
+        if extra_headers:
+            # Explicitly ignore empty values so callers can pass optional
+            # headers (e.g. `X-Inner-Account-Id`) without having to branch.
+            for key, value in extra_headers.items():
+                if value is None or value == "":
+                    continue
+                headers[key] = value
         url = f"{cls.base_url}{endpoint}"
         mounts = cls._build_mounts()
 
@@ -139,8 +152,67 @@ class BaseRequest:
 
 class EnterpriseRequest(BaseRequest):
     base_url = os.environ.get("ENTERPRISE_API_URL", "ENTERPRISE_API_URL")
+    rbac_base_url = os.environ.get("ENTERPRISE_RBAC_API_URL", base_url)
     secret_key = os.environ.get("ENTERPRISE_API_SECRET_KEY", "ENTERPRISE_API_SECRET_KEY")
     secret_key_header = "Enterprise-Api-Secret-Key"
+
+    @classmethod
+    def send_inner_rbac_request(
+        cls,
+        method: str,
+        endpoint: str,
+        *,
+        tenant_id: str,
+        account_id: str | None = None,
+        json: Any | None = None,
+        params: Mapping[str, Any] | None = None,
+        timeout: float | httpx.Timeout | None = None,
+    ) -> Any:
+        """Call an /inner/api/rbac/* endpoint on dify-enterprise.
+
+        Inner RBAC endpoints require three headers on top of the standard
+        Enterprise-Api-Secret-Key: the tenant the call targets and (optionally)
+        the account acting on behalf of the workspace. This helper centralises
+        both the assertions and the header wiring so callers only have to
+        supply business payload.
+        """
+        if not tenant_id:
+            raise ValueError("tenant_id must be provided for inner RBAC requests")
+
+        inner_headers: dict[str, str] = {INNER_TENANT_ID_HEADER: tenant_id}
+        if account_id:
+            inner_headers[INNER_ACCOUNT_ID_HEADER] = account_id
+
+        if (
+            not cls.rbac_base_url.startswith("http")
+            and not cls.rbac_base_url.startswith("https")
+            and not cls.rbac_base_url
+        ):
+            raise ValueError("ENTERPRISE_RBAC_API_URL is required when RBAC_ENABLED=true")
+
+        url = f"{cls.rbac_base_url}{endpoint}"
+        mounts = cls._build_mounts()
+
+        try:
+            traceparent = generate_traceparent_header()
+            if traceparent:
+                inner_headers = dict(inner_headers)
+                inner_headers["traceparent"] = traceparent
+        except Exception:
+            logger.debug("Failed to generate traceparent header", exc_info=True)
+
+        with httpx.Client(mounts=mounts) as client:
+            request_kwargs: dict[str, Any] = {
+                "json": json,
+                "params": params,
+                "headers": {"Content-Type": "application/json", cls.secret_key_header: cls.secret_key, **inner_headers},
+            }
+            if timeout is not None:
+                request_kwargs["timeout"] = timeout
+            response = client.request(method, url, **request_kwargs)
+            if not response.is_success:
+                cls._handle_error_response(response)
+        return response.json()
 
 
 class EnterprisePluginManagerRequest(BaseRequest):

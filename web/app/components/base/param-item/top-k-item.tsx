@@ -10,6 +10,7 @@ type Props = Readonly<{
   value: number
   onChange: (key: string, value: number) => void
   enable: boolean
+  disabled?: boolean
 }>
 
 const maxTopK = env.NEXT_PUBLIC_TOP_K_MAX_VALUE
@@ -25,6 +26,7 @@ const TopKItem: FC<Props> = ({
   value,
   enable,
   onChange,
+  disabled = false,
 }) => {
   const { t } = useTranslation()
   const handleParamChange = (key: string, value: number) => {
@@ -42,6 +44,7 @@ const TopKItem: FC<Props> = ({
       {...VALUE_LIMIT}
       value={value}
       enable={enable}
+      disabled={disabled}
       onChange={handleParamChange}
     />
   )

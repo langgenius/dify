@@ -8,12 +8,13 @@ from pathlib import Path
 
 def _walk_values(value):
     yield value
-    if isinstance(value, dict):
-        for child in value.values():
-            yield from _walk_values(child)
-    elif isinstance(value, list):
-        for child in value:
-            yield from _walk_values(child)
+    match value:
+        case dict():
+            for child in value.values():
+                yield from _walk_values(child)
+        case list():
+            for child in value:
+                yield from _walk_values(child)
 
 
 def _load_generate_swagger_specs_module():
@@ -106,6 +107,39 @@ def test_generate_specs_writes_get_operations_without_request_bodies(tmp_path):
         assert all("requestBody" not in operation for operation in _get_operations(payload))
 
 
+def test_generate_specs_writes_service_api_reference_descriptions(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    service_path = next(path for path in written_paths if path.name == "service-openapi.json")
+    payload = json.loads(service_path.read_text(encoding="utf-8"))
+
+    chat_operation = payload["paths"]["/chat-messages"]["post"]
+    assert chat_operation["summary"] == "Send Chat Message"
+    assert chat_operation["description"] == "Send a request to the chat application."
+    assert chat_operation["tags"] == ["Chatflows", "Chats"]
+
+    rename_operation = payload["paths"]["/conversations/{c_id}/name"]["post"]
+    assert rename_operation["summary"] == "Rename Conversation"
+
+
+def test_standalone_inline_model_name_includes_list_constraints():
+    module = _load_generate_swagger_specs_module()
+
+    from flask_restx import fields
+
+    cases = (
+        ({"min_items": 1}, {"min_items": 2}),
+        ({"max_items": 1}, {"max_items": 2}),
+        ({"unique": True}, {"unique": False}),
+    )
+    for first_kwargs, second_kwargs in cases:
+        first_inline_model = {"items": fields.List(fields.String, **first_kwargs)}
+        second_inline_model = {"items": fields.List(fields.String, **second_kwargs)}
+
+        assert module._inline_model_name(first_inline_model) != module._inline_model_name(second_inline_model)
+
+
 def test_generate_specs_is_idempotent(tmp_path):
     module = _load_generate_swagger_specs_module()
 
@@ -115,3 +149,55 @@ def test_generate_specs_is_idempotent(tmp_path):
     assert [path.name for path in first_paths] == [path.name for path in second_paths]
     for first_path, second_path in zip(first_paths, second_paths):
         assert first_path.read_text(encoding="utf-8") == second_path.read_text(encoding="utf-8")
+
+
+def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(tmp_path):
+    module = _load_generate_swagger_specs_module()
+
+    written_paths = module.generate_specs(tmp_path)
+    console_path = next(path for path in written_paths if path.name == "console-openapi.json")
+    payload = json.loads(console_path.read_text(encoding="utf-8"))
+    schemas = payload["components"]["schemas"]
+
+    assert "AgentKnowledgeSetConfig" in schemas
+    assert schemas["AgentSoulKnowledgeConfig"]["properties"]["sets"]["items"]["$ref"] == (
+        "#/components/schemas/AgentKnowledgeSetConfig"
+    )
+    assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
+
+
+def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():
+    api_dir = Path(__file__).resolve().parents[3]
+    repo_root = api_dir.parent
+
+    markdown = (api_dir / "openapi" / "markdown" / "console-openapi.md").read_text(encoding="utf-8")
+    agent_types = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "agent" / "types.gen.ts"
+    ).read_text(encoding="utf-8")
+    apps_types = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "apps" / "types.gen.ts"
+    ).read_text(encoding="utf-8")
+    agent_zod = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "agent" / "zod.gen.ts"
+    ).read_text(encoding="utf-8")
+    apps_zod = (
+        repo_root / "packages" / "contracts" / "generated" / "api" / "console" / "apps" / "zod.gen.ts"
+    ).read_text(encoding="utf-8")
+
+    assert "#### AgentKnowledgeSetConfig" in markdown
+    assert "#### AgentSoulKnowledgeConfig" in markdown
+    assert "#### AgentKnowledgeQueryMode" in markdown
+
+    for content in (agent_types, apps_types):
+        assert "export type AgentKnowledgeSetConfig = {" in content
+        assert "export type AgentSoulKnowledgeConfig = {" in content
+        assert "AgentKnowledgeQueryMode" in content
+        assert "generated_query" in content
+        assert "user_query" in content
+
+    for content in (agent_zod, apps_zod):
+        assert "export const zAgentKnowledgeSetConfig = z.object({" in content
+        assert "export const zAgentSoulKnowledgeConfig = z.object({" in content
+        assert "zAgentKnowledgeQueryMode = z.enum([" in content
+        assert "generated_query" in content
+        assert "user_query" in content

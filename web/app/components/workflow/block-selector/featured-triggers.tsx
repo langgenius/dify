@@ -4,16 +4,17 @@ import type { TriggerPluginActionPreviewPayload } from './trigger-plugin/action-
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
+import { cn } from '@langgenius/dify-ui/cn'
 import { createPreviewCardHandle, PreviewCard, PreviewCardContent, PreviewCardTrigger } from '@langgenius/dify-ui/preview-card'
-import { RiMoreLine } from '@remixicon/react'
-import { useLocalStorage } from 'foxact/use-local-storage'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowDownDoubleLine, ArrowDownRoundFill, ArrowUpDoubleLine } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getMarketplaceCategoryUrl } from '@/app/components/plugins/marketplace/utils'
 import Action from '@/app/components/workflow/block-selector/market-place-plugin/action'
+import { useFeaturedTriggersCollapsed } from '@/app/components/workflow/block-selector/storage'
 import { useGetLanguage } from '@/context/i18n'
 import Link from '@/next/link'
 import { formatNumber } from '@/utils/format'
@@ -40,8 +41,6 @@ type FeaturedTriggerPreviewPayload = {
   description: string
 }
 
-const STORAGE_KEY = 'workflow_triggers_featured_collapsed'
-
 const FeaturedTriggers = ({
   plugins,
   providerMap,
@@ -55,7 +54,7 @@ const FeaturedTriggers = ({
   const triggerActionPreviewCardHandle = useMemo(() => createPreviewCardHandle<TriggerPluginActionPreviewPayload>(), [])
   const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_COUNT)
   const [visibleCountPlugins, setVisibleCountPlugins] = useState(plugins)
-  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
+  const [isCollapsed, setIsCollapsed] = useFeaturedTriggersCollapsed()
 
   if (visibleCountPlugins !== plugins) {
     setVisibleCountPlugins(plugins)
@@ -123,7 +122,12 @@ const FeaturedTriggers = ({
         onClick={() => setIsCollapsed(prev => !prev)}
       >
         <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
-        <ArrowDownRoundFill className={`ml-0.5 size-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
+        <span className={cn(
+          'i-custom-vender-solid-arrows-arrow-down-round-fill',
+          'ml-0.5 size-4 text-text-tertiary transition-transform',
+          isCollapsed ? '-rotate-90' : 'rotate-0',
+        )}
+        />
       </button>
 
       {!isCollapsed && (
@@ -183,13 +187,13 @@ const FeaturedTriggers = ({
               }}
             >
               <div className="flex items-center px-1 text-text-tertiary transition-colors group-hover:text-text-secondary">
-                <RiMoreLine className="size-4 group-hover:hidden" />
+                <span className="i-ri-more-line size-4 group-hover:hidden" />
                 {isExpanded
                   ? (
-                      <ArrowUpDoubleLine className="hidden size-4 group-hover:block" />
+                      <span className="i-custom-vender-solid-arrows-arrow-up-double-line hidden size-4 group-hover:block" />
                     )
                   : (
-                      <ArrowDownDoubleLine className="hidden size-4 group-hover:block" />
+                      <span className="i-custom-vender-solid-arrows-arrow-down-double-line hidden size-4 group-hover:block" />
                     )}
               </div>
               <div className="system-xs-regular">
@@ -233,6 +237,7 @@ function FeaturedTriggerUninstalledItem({
   const installCountLabel = t('install', { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
   const [actionOpen, setActionOpen] = useState(false)
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   useEffect(() => {
     if (!actionOpen)
@@ -262,16 +267,18 @@ function FeaturedTriggerUninstalledItem({
         <div
           className={`flex h-full items-center gap-1 system-xs-medium text-components-button-secondary-accent-text [&_.action-btn]:size-6 [&_.action-btn]:min-h-0 [&_.action-btn]:rounded-lg [&_.action-btn]:p-0 ${actionOpen ? '' : 'hidden group-hover:flex'}`}
         >
-          <button
-            type="button"
-            className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
-            onClick={() => {
-              setActionOpen(false)
-              setIsInstallModalOpen(true)
-            }}
-          >
-            {t('installAction', { ns: 'plugin' })}
-          </button>
+          {canInstallPlugin && (
+            <button
+              type="button"
+              className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
+              onClick={() => {
+                setActionOpen(false)
+                setIsInstallModalOpen(true)
+              }}
+            >
+              {t('installAction', { ns: 'plugin' })}
+            </button>
+          )}
           <Action
             open={actionOpen}
             onOpenChange={setActionOpen}
@@ -300,18 +307,23 @@ function FeaturedTriggerUninstalledItem({
             />
           )
         : row}
-      {isInstallModalOpen && (
-        <InstallFromMarketplace
-          uniqueIdentifier={plugin.latest_package_identifier}
-          manifest={plugin}
-          onSuccess={async () => {
-            setIsInstallModalOpen(false)
-            await onInstallSuccess?.()
-          }}
-          onClose={() => {
-            setIsInstallModalOpen(false)
-          }}
-        />
+      {isInstallModalOpen && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            uniqueIdentifier={plugin.latest_package_identifier}
+            manifest={plugin}
+            onSuccess={async () => {
+              setIsInstallModalOpen(false)
+              await onInstallSuccess?.()
+            }}
+            onClose={() => {
+              setIsInstallModalOpen(false)
+            }}
+          />
+        </PluginInstallPermissionProvider>
       )}
     </>
   )

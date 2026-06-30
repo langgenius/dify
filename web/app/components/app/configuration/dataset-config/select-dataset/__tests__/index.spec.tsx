@@ -33,6 +33,13 @@ vi.mock('@/service/knowledge/use-dataset', () => ({
   useInfiniteDatasets: (...args: any[]) => mockUseInfiniteDatasets(...args),
 }))
 
+let mockWorkspacePermissionKeys = ['dataset.create_and_management']
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+}))
+
 vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: (tech: string, method: string) => `${tech}:${method}`,
@@ -78,6 +85,7 @@ const makeDataset = (overrides: Partial<DataSet>): DataSet => ({
 describe('SelectDataSet', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys = ['dataset.create_and_management']
   })
 
   it('renders dataset entries, allows selection, and fires onSelect', async () => {
@@ -136,6 +144,25 @@ describe('SelectDataSet', () => {
 
     expect(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).toHaveAttribute('href', '/datasets/create')
+    expect(screen.getByRole('button', { name: 'common.operation.add' })).toBeDisabled()
+  })
+
+  it('should hide the create dataset link when dataset.create_and_management is unavailable', async () => {
+    mockWorkspacePermissionKeys = []
+    mockUseInfiniteDatasets.mockReturnValue({
+      data: { pages: [{ data: [] }] },
+      isLoading: false,
+      isFetchingNextPage: false,
+      fetchNextPage: vi.fn(),
+      hasNextPage: false,
+    })
+
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
+    })
+
+    expect(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'common.operation.add' })).toBeDisabled()
   })
 

@@ -1,4 +1,4 @@
-import type { FC, ReactNode } from 'react'
+import type { CSSProperties, FC, ReactNode } from 'react'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import type { Node } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -13,7 +13,6 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'es-toolkit/compat'
-import { useSetLocalStorage } from 'foxact/use-local-storage'
 import * as React from 'react'
 import {
   cloneElement,
@@ -58,12 +57,14 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
+  getNodeCatalogType,
   hasErrorHandleNode,
   hasRetryNode,
   isSupportCustomRunForm,
@@ -164,7 +165,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
   const pendingSingleRun = useStore(s => s.pendingSingleRun)
   const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
-  const setNodePanelWidthStorage = useSetLocalStorage<string>('workflow-node-panel-width', { raw: true })
+  const setNodePanelWidthStorage = useSetWorkflowNodePanelWidth()
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -177,7 +178,7 @@ const BasePanel: FC<BasePanelProps> = ({
     const newValue = clampNodePanelWidth(width, maxNodePanelWidth)
 
     if (source === 'user')
-      setNodePanelWidthStorage(`${newValue}`)
+      setNodePanelWidthStorage(newValue)
 
     setNodePanelWidth(newValue)
   }, [maxNodePanelWidth, setNodePanelWidth, setNodePanelWidthStorage])
@@ -209,7 +210,7 @@ const BasePanel: FC<BasePanelProps> = ({
 
   const { handleNodeSelect } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration || data.isInLoop)
+  const { availableNextBlocks } = useAvailableBlocks(getNodeCatalogType(data), data.isInIteration || data.isInLoop)
   const toolIcon = useToolIcon(data)
 
   const { saveStateToHistory } = useWorkflowHistory()
@@ -229,6 +230,7 @@ const BasePanel: FC<BasePanelProps> = ({
   }, [handleNodeDataUpdateWithSyncDraft, id, saveStateToHistory])
 
   const isChildNode = !!(data.isInIteration || data.isInLoop)
+  const nodeMetaType = getNodeCatalogType(data)
   const isSupportSingleRun = canRunBySingle(data.type, isChildNode)
   const appDetail = useAppStore(state => state.appDetail)
 
@@ -265,6 +267,7 @@ const BasePanel: FC<BasePanelProps> = ({
   } = useNodesMetaData()
 
   const configsMap = useHooksStore(s => s.configsMap)
+  const canRun = useHooksStore(s => s.accessControl.canRun)
   const {
     isShowSingleRun,
     hideSingleRun,
@@ -293,7 +296,7 @@ const BasePanel: FC<BasePanelProps> = ({
     flowId: configsMap?.flowId || '',
     flowType: configsMap?.flowType || FlowType.appFlow,
     data,
-    defaultRunInputData: nodesMap?.[data.type]?.defaultRunInputData || {},
+    defaultRunInputData: nodesMap?.[nodeMetaType]?.defaultRunInputData || {},
     isPaused,
   })
 
@@ -405,6 +408,11 @@ const BasePanel: FC<BasePanelProps> = ({
     id,
     data,
   }) as Node, [id, data])
+  const singleRunForms = singleRunParams?.forms
+  const isCustomRunFormNode = isSupportCustomRunForm(data.type)
+  const shouldRenderSingleRunPanel = isShowSingleRun && (isCustomRunFormNode || !!singleRunForms)
+  const isSingleRunPanelVisible = showSingleRunPanel && shouldRenderSingleRunPanel
+
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -413,7 +421,7 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div
           ref={containerRef}
-          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
           style={{
             width: `${nodePanelWidth}px`,
           }}
@@ -431,20 +439,39 @@ const BasePanel: FC<BasePanelProps> = ({
     )
   }
 
-  if (isShowSingleRun) {
-    const form = getCustomRunForm({
-      nodeId: id,
-      flowId: configsMap?.flowId || '',
-      flowType: configsMap?.flowType || FlowType.appFlow,
-      payload: data,
-      setRunResult,
-      setIsRunAfterSingleRun,
-      isPaused,
-      isRunAfterSingleRun,
-      onSuccess: handleAfterCustomSingleRun,
-      onCancel: hideSingleRun,
-      appendNodeInspectVars,
-    })
+  if (shouldRenderSingleRunPanel) {
+    const customRunForm = isCustomRunFormNode
+      ? getCustomRunForm({
+          nodeId: id,
+          flowId: configsMap?.flowId || '',
+          flowType: configsMap?.flowType || FlowType.appFlow,
+          payload: data,
+          setRunResult,
+          setIsRunAfterSingleRun,
+          isPaused,
+          isRunAfterSingleRun,
+          onSuccess: handleAfterCustomSingleRun,
+          onCancel: hideSingleRun,
+          appendNodeInspectVars,
+        })
+      : null
+    const singleRunPanelContent = isCustomRunFormNode
+      ? customRunForm
+      : singleRunForms
+        ? (
+            <BeforeRunForm
+              nodeName={data.title}
+              nodeType={data.type}
+              onHide={hideSingleRun}
+              onRun={handleRunWithParams}
+              {...singleRunParams!}
+              {...passedLogParams}
+              existVarValuesInForms={getExistVarValuesInForms(singleRunForms)}
+              filteredExistVarForms={getFilteredExistVarForms(singleRunForms)}
+              handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
+            />
+          )
+        : null
 
     return (
       <div className={cn(
@@ -453,29 +480,12 @@ const BasePanel: FC<BasePanelProps> = ({
       >
         <div
           ref={containerRef}
-          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+          className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
           style={{
             width: `${nodePanelWidth}px`,
           }}
         >
-          {isSupportCustomRunForm(data.type)
-            ? (
-                form
-              )
-            : (
-                <BeforeRunForm
-                  nodeName={data.title}
-                  nodeType={data.type}
-                  onHide={hideSingleRun}
-                  onRun={handleRunWithParams}
-                  {...singleRunParams!}
-                  {...passedLogParams}
-                  existVarValuesInForms={getExistVarValuesInForms(singleRunParams?.forms as any)}
-                  filteredExistVarForms={getFilteredExistVarForms(singleRunParams?.forms as any)}
-                  handleAfterHumanInputStepRun={handleAfterCustomSingleRun}
-                />
-              )}
-
+          {singleRunPanelContent}
         </div>
       </div>
     )
@@ -485,6 +495,9 @@ const BasePanel: FC<BasePanelProps> = ({
   const singleRunActionLabel = isSingleRunning
     ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
     : runThisStepLabel
+  const nodePanelRightOffset = !showMessageLogModal
+    ? '4px'
+    : `${otherPanelWidth + 8}px`
   const isStartPlaceholderPanel = data.type === BlockEnum.StartPlaceholder
   const panelChildren = cloneElement(children as any, {
     id,
@@ -517,8 +530,9 @@ const BasePanel: FC<BasePanelProps> = ({
         showMessageLogModal && 'absolute z-0 mr-2 w-[400px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border shadow-lg transition-all',
       )}
       style={{
-        right: !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
-      }}
+        'right': !showMessageLogModal ? '0' : `${otherPanelWidth}px`,
+        '--workflow-node-panel-right': nodePanelRightOffset,
+      } as CSSProperties}
     >
       <div
         ref={triggerRef}
@@ -530,10 +544,11 @@ const BasePanel: FC<BasePanelProps> = ({
         ref={containerRef}
         value={tabType}
         onValueChange={selectedValue => setTabType(selectedValue)}
-        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('flex h-full flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-[width] ease-linear', isSingleRunPanelVisible ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
-          width: `${nodePanelWidth}px`,
-        }}
+          'width': `${nodePanelWidth}px`,
+          '--workflow-node-panel-width': `${nodePanelWidth}px`,
+        } as CSSProperties}
       >
         <div className="sticky top-0 z-10 shrink-0 border-b-[0.5px] border-divider-regular bg-components-panel-bg">
           <div className="flex items-center px-4 pt-4 pb-1">
@@ -566,7 +581,7 @@ const BasePanel: FC<BasePanelProps> = ({
             )}
             <div className="flex shrink-0 items-center text-text-tertiary">
               {
-                isSupportSingleRun && !nodesReadOnly && (
+                isSupportSingleRun && canRun && !nodesReadOnly && (
                   <Tooltip disabled={isSingleRunning}>
                     <TooltipTrigger
                       render={(
@@ -595,7 +610,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   </Tooltip>
                 )
               }
-              <HelpLink nodeType={data.type} />
+              <HelpLink nodeType={nodeMetaType} />
               <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <button

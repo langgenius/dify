@@ -170,6 +170,7 @@ class TestWebhookServiceUnit:
         fake_magic = MagicMock()
         fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
         monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+        caplog.set_level(logging.DEBUG, logger="services.trigger.webhook_service")
 
         with caplog.at_level(logging.DEBUG, logger="services.trigger.webhook_service"):
             result = WebhookService._detect_binary_mimetype(b"binary data")

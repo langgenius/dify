@@ -22,6 +22,8 @@ import { toast } from '@langgenius/dify-ui/toast'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import CreateSnippetDialog from '@/app/components/snippets/create-snippet-dialog'
+import { canCreateAndModifySnippets, canManageSnippets } from '@/app/components/snippets/utils/permission'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useRouter } from '@/next/navigation'
 import { useDeleteSnippetMutation, useExportSnippetMutation, useUpdateSnippetMutation } from '@/service/use-snippets'
 
@@ -34,12 +36,16 @@ type SnippetInfoDropdownProps = {
 const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   const { t } = useTranslation('snippet')
   const { replace } = useRouter()
+  const workspacePermissionKeys = useAppContextWithSelector(state => state.workspacePermissionKeys)
   const [open, setOpen] = React.useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = React.useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const updateSnippetMutation = useUpdateSnippetMutation()
   const exportSnippetMutation = useExportSnippetMutation()
   const deleteSnippetMutation = useDeleteSnippetMutation()
+  const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
+  const canManageSnippet = canManageSnippets(workspacePermissionKeys)
+  const canShowOperations = canCreateAndModifySnippet || canManageSnippet
 
   const initialValue = React.useMemo(() => ({
     name: snippet.name,
@@ -52,6 +58,9 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
   }, [])
 
   const handleExportSnippet = React.useCallback(async () => {
+    if (!canCreateAndModifySnippet)
+      return
+
     setOpen(false)
     try {
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
@@ -61,7 +70,7 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     catch {
       toast.error(t('exportFailed'))
     }
-  }, [exportSnippetMutation, snippet.id, snippet.name, t])
+  }, [canCreateAndModifySnippet, exportSnippetMutation, snippet.id, snippet.name, t])
 
   const handleEditSnippet = React.useCallback(async ({ name, description }: {
     name: string
@@ -99,6 +108,9 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
     })
   }, [deleteSnippetMutation, replace, snippet.id, t])
 
+  if (!canShowOperations)
+    return null
+
   return (
     <>
       <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -112,26 +124,34 @@ const SnippetInfoDropdown = ({ snippet }: SnippetInfoDropdownProps) => {
           sideOffset={4}
           popupClassName="w-[180px] p-1"
         >
-          <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
-            <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
-            <span className="grow">{t('menu.editInfo')}</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
-            <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
-            <span className="grow">{t('menu.exportSnippet')}</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator className="my-1! bg-divider-subtle" />
-          <DropdownMenuItem
-            className="mx-0 gap-2"
-            variant="destructive"
-            onClick={() => {
-              setOpen(false)
-              setIsDeleteDialogOpen(true)
-            }}
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
-            <span className="grow">{t('menu.deleteSnippet')}</span>
-          </DropdownMenuItem>
+          {canCreateAndModifySnippet && (
+            <>
+              <DropdownMenuItem className="mx-0 gap-2" onClick={handleOpenEditDialog}>
+                <span aria-hidden className="i-ri-edit-line size-4 shrink-0 text-text-tertiary" />
+                <span className="grow">{t('menu.editInfo')}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem className="mx-0 gap-2" onClick={handleExportSnippet}>
+                <span aria-hidden className="i-ri-download-2-line size-4 shrink-0 text-text-tertiary" />
+                <span className="grow">{t('menu.exportSnippet')}</span>
+              </DropdownMenuItem>
+            </>
+          )}
+          {canManageSnippet && (
+            <>
+              {canCreateAndModifySnippet && <DropdownMenuSeparator className="my-1! bg-divider-subtle" />}
+              <DropdownMenuItem
+                className="mx-0 gap-2"
+                variant="destructive"
+                onClick={() => {
+                  setOpen(false)
+                  setIsDeleteDialogOpen(true)
+                }}
+              >
+                <span aria-hidden className="i-ri-delete-bin-line size-4 shrink-0" />
+                <span className="grow">{t('menu.deleteSnippet')}</span>
+              </DropdownMenuItem>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

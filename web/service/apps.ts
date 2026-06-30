@@ -96,8 +96,8 @@ export const importDSLConfirm = ({ import_id }: { import_id: string }): Promise<
   return post<DSLImportResponse>(`apps/imports/${import_id}/confirm`, { body: {} })
 }
 
-export const switchApp = ({ appID, name, icon_type, icon, icon_background }: { appID: string, name: string, icon_type: AppIconType, icon: string, icon_background?: string | null }): Promise<{ new_app_id: string }> => {
-  return post<{ new_app_id: string }>(`apps/${appID}/convert-to-workflow`, { body: { name, icon_type, icon, icon_background } })
+export const switchApp = ({ appID, name, icon_type, icon, icon_background }: { appID: string, name: string, icon_type: AppIconType, icon: string, icon_background?: string | null }): Promise<{ new_app_id: string, permission_keys: string[] }> => {
+  return post<{ new_app_id: string, permission_keys: string[] }>(`apps/${appID}/convert-to-workflow`, { body: { name, icon_type, icon, icon_background } })
 }
 
 export const deleteApp = (appID: string): Promise<CommonResponse> => {
