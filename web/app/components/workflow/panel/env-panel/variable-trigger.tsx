@@ -7,13 +7,13 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 
-type Props = {
+type Props = Readonly<{
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
   env?: EnvironmentVariable
   onClose: () => void
   onSave: (env: EnvironmentVariable) => void
-}
+}>
 
 const VariableTrigger = ({
   open,

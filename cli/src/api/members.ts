@@ -5,45 +5,41 @@ import type {
   MemberListResponse,
   MemberRoleUpdatePayload,
 } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
+import type { OpenApiClient } from '@/http/orpc'
+import type { HttpClient } from '@/http/types'
+import { createOpenApiClient } from '@/http/orpc'
 
 /**
- * Thin client for /openapi/v1/workspaces/<id>/members.
+ * Thin client for /openapi/v1/workspaces/<id>/members, over the generated oRPC contract.
  *
- * Errors are surfaced as ky HTTPErrors with the server's status code
- * (400/403/404/422). The CLI's AuthedCommand base layer maps those to
- * user-visible messages — clients never swallow status codes here.
+ * Non-2xx (400/403/404/422) surface as BaseError — the oRPC client maps them at the transport
+ * seam. The CLI's AuthedCommand base layer renders those for the user; clients never swallow codes.
  */
 export class MembersClient {
-  private readonly http: KyInstance
+  private readonly orpc: OpenApiClient
 
-  constructor(http: KyInstance) {
-    this.http = http
+  constructor(http: HttpClient) {
+    this.orpc = createOpenApiClient(http)
   }
 
   async list(workspaceId: string, q?: { page?: number, limit?: number }): Promise<MemberListResponse> {
-    const params = new URLSearchParams()
-    if (q?.page !== undefined)
-      params.set('page', String(q.page))
-    if (q?.limit !== undefined)
-      params.set('limit', String(q.limit))
-    const hasParams = Array.from(params.keys()).length > 0
-    const opts = hasParams ? { searchParams: params } : undefined
-    return this.http
-      .get(`workspaces/${encodeURIComponent(workspaceId)}/members`, opts)
-      .json<MemberListResponse>()
+    return this.orpc.workspaces.byWorkspaceId.members.get({
+      params: { workspace_id: workspaceId },
+      query: { page: q?.page, limit: q?.limit },
+    })
   }
 
   async invite(workspaceId: string, payload: MemberInvitePayload): Promise<MemberInviteResponse> {
-    return this.http
-      .post(`workspaces/${encodeURIComponent(workspaceId)}/members`, { json: payload })
-      .json<MemberInviteResponse>()
+    return this.orpc.workspaces.byWorkspaceId.members.post({
+      params: { workspace_id: workspaceId },
+      body: payload,
+    })
   }
 
   async remove(workspaceId: string, memberId: string): Promise<MemberActionResponse> {
-    return this.http
-      .delete(`workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}`)
-      .json<MemberActionResponse>()
+    return this.orpc.workspaces.byWorkspaceId.members.byMemberId.delete({
+      params: { workspace_id: workspaceId, member_id: memberId },
+    })
   }
 
   async updateRole(
@@ -51,11 +47,9 @@ export class MembersClient {
     memberId: string,
     payload: MemberRoleUpdatePayload,
   ): Promise<MemberActionResponse> {
-    return this.http
-      .put(
-        `workspaces/${encodeURIComponent(workspaceId)}/members/${encodeURIComponent(memberId)}/role`,
-        { json: payload },
-      )
-      .json<MemberActionResponse>()
+    return this.orpc.workspaces.byWorkspaceId.members.byMemberId.role.put({
+      params: { workspace_id: workspaceId, member_id: memberId },
+      body: payload,
+    })
   }
 }

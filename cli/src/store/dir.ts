@@ -1,4 +1,4 @@
-import { getEnv, resolvePlatform } from '../sys'
+import { getEnv, resolvePlatform } from '@/sys'
 
 export const ENV_CONFIG_DIR = 'DIFY_CONFIG_DIR'
 export const ENV_CACHE_DIR = 'DIFY_CACHE_DIR'

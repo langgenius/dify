@@ -69,6 +69,7 @@ class RunScheduler:
     runner_factory: RunRunnerFactory
     layer_providers: tuple[LayerProviderInput, ...]
     plugin_daemon_http_client: httpx.AsyncClient
+    dify_api_http_client: httpx.AsyncClient
     _lifecycle_lock: asyncio.Lock
 
     def __init__(
@@ -76,6 +77,7 @@ class RunScheduler:
         *,
         store: RunStore,
         plugin_daemon_http_client: httpx.AsyncClient,
+        dify_api_http_client: httpx.AsyncClient,
         shutdown_grace_seconds: float = 30,
         layer_providers: tuple[LayerProviderInput, ...] | None = None,
         runner_factory: RunRunnerFactory | None = None,
@@ -85,6 +87,7 @@ class RunScheduler:
         self.active_tasks = {}
         self.stopping = False
         self.plugin_daemon_http_client = plugin_daemon_http_client
+        self.dify_api_http_client = dify_api_http_client
         self.layer_providers = layer_providers if layer_providers is not None else create_default_layer_providers()
         self.runner_factory = runner_factory or self._default_runner_factory
         self._lifecycle_lock = asyncio.Lock()
@@ -141,6 +144,7 @@ class RunScheduler:
             request=request,
             run_id=record.run_id,
             plugin_daemon_http_client=self.plugin_daemon_http_client,
+            dify_api_http_client=self.dify_api_http_client,
             layer_providers=self.layer_providers,
         )
 

@@ -8,7 +8,7 @@ This module tests the token refresh mechanism including:
 - Error handling for invalid tokens
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -49,7 +49,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_successful_token_refresh(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
+    def test_successful_token_refresh(self, mock_refresh_token, mock_extract_token, app: Flask, mock_token_pair):
         """
         Test successful token refresh flow.
 
@@ -70,7 +70,7 @@ class TestRefreshTokenApi:
 
         # Assert
         mock_extract_token.assert_called_once()
-        mock_refresh_token.assert_called_once_with("valid_refresh_token")
+        mock_refresh_token.assert_called_once_with("valid_refresh_token", session=ANY)
         assert response.json["result"] == "success"
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
@@ -170,7 +170,7 @@ class TestRefreshTokenApi:
 
     @patch("controllers.console.auth.login.extract_refresh_token", autospec=True)
     @patch("controllers.console.auth.login.AccountService.refresh_token", autospec=True)
-    def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app, mock_token_pair):
+    def test_refresh_updates_all_tokens(self, mock_refresh_token, mock_extract_token, app: Flask, mock_token_pair):
         """
         Test that token refresh updates all three tokens.
 
@@ -191,7 +191,7 @@ class TestRefreshTokenApi:
         # Assert
         assert response.json["result"] == "success"
         # Verify new token pair was generated
-        mock_refresh_token.assert_called_once_with("valid_refresh_token")
+        mock_refresh_token.assert_called_once_with("valid_refresh_token", session=ANY)
         # In real implementation, cookies would be set with new values
         assert mock_token_pair.access_token == "new_access_token"
         assert mock_token_pair.refresh_token == "new_refresh_token"

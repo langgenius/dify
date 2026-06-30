@@ -1,5 +1,5 @@
-import { parseLimit } from '../limit/limit.js'
-import { getEnv } from '../sys/index.js'
+import { parseLimit } from '@/limit/limit'
+import { getEnv } from '@/sys/index'
 
 export type EnvVar = {
   readonly name: string

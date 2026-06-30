@@ -1,7 +1,7 @@
 {
   "prefix": "custom-public",
   "name": "Dify Custom Public",
-  "total": 144,
+  "total": 145,
   "version": "0.0.0-private",
   "author": {
     "name": "LangGenius, Inc.",
@@ -13,12 +13,12 @@
     "url": "https://github.com/langgenius/dify/blob/main/LICENSE"
   },
   "samples": [
+    "agent-building-blocks",
     "avatar-user",
     "billing-ar-cube-1",
     "billing-asterisk",
     "billing-aws-marketplace-dark",
-    "billing-aws-marketplace-light",
-    "billing-azure"
+    "billing-aws-marketplace-light"
   ],
   "palette": false
 }

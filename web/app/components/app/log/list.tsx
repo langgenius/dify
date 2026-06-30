@@ -21,6 +21,7 @@ import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { toast } from '@langgenius/dify-ui/toast'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
@@ -35,12 +36,13 @@ import ModelInfo from '@/app/components/app/log/model-info'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import ActionButton from '@/app/components/base/action-button'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Chat from '@/app/components/base/chat/chat'
 import CopyIcon from '@/app/components/base/copy-icon'
 import Loading from '@/app/components/base/loading'
 import MessageLogModal from '@/app/components/base/message-log-modal'
 import { WorkflowContextProvider } from '@/app/components/workflow/context'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
@@ -158,16 +160,31 @@ type IDetailPanel = {
 function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
   const SCROLL_DEBOUNCE_MS = 200
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow((state: AppStoreState) => ({
+  const {
+    currentLogItem,
+    setCurrentLogItem,
+    showMessageLogModal,
+    setShowMessageLogModal,
+    showPromptLogModal,
+    setShowPromptLogModal,
+    showAgentLogModal,
+    setShowAgentLogModal,
+    currentLogModalActiveTab,
+  } = useAppStore(useShallow((state: AppStoreState) => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
     showPromptLogModal: state.showPromptLogModal,
     setShowPromptLogModal: state.setShowPromptLogModal,
+    showAgentLogModal: state.showAgentLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
@@ -391,6 +408,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
+  const shouldShowPromptLogModal = showPromptLogModal && !!currentLogItem?.log
 
   const varList = getDetailVarList(detail, varValues)
   const message_files = getCompletionMessageFiles(detail, isChatMode)
@@ -503,6 +521,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 noChatInput
                 showPromptLog
                 hideProcessDetail
+                hideLogModal
                 chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
               />
@@ -542,6 +561,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   noChatInput
                   showPromptLog
                   hideProcessDetail
+                  hideLogModal
                   chatContainerInnerClassName="px-3"
                   switchSibling={switchSibling}
                 />
@@ -570,7 +590,18 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           />
         </WorkflowContextProvider>
       )}
-      {!isChatMode && showPromptLogModal && (
+      {showAgentLogModal && (
+        <AgentLogModal
+          floating
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowAgentLogModal(false)
+          }}
+        />
+      )}
+      {shouldShowPromptLogModal && (
         <PromptLogModal
           width={width}
           currentLogItem={currentLogItem}

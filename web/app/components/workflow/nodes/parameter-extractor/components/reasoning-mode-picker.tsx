@@ -9,10 +9,10 @@ import { ReasoningModeType } from '../types'
 
 const i18nPrefix = 'nodes.parameterExtractor'
 
-type Props = {
+type Props = Readonly<{
   type: ReasoningModeType
   onChange: (type: ReasoningModeType) => void
-}
+}>
 
 const ReasoningModePicker: FC<Props> = ({
   type,

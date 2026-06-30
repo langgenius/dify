@@ -1,6 +1,6 @@
-import type { ParsedFileFlag } from './file-flags.js'
+import type { ParsedFileFlag } from './file-flags'
 import { describe, expect, it, vi } from 'vitest'
-import { difyFileType, parseFileFlag, resolveFileInputs } from './file-flags.js'
+import { difyFileType, parseFileFlag, resolveFileInputs } from './file-flags'
 
 describe('parseFileFlag', () => {
   it('parses local file with @ prefix', () => {

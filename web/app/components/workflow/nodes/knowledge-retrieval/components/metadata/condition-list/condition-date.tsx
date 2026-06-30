@@ -4,11 +4,12 @@ import {
   RiCalendarLine,
   RiCloseCircleFill,
 } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useAppContext } from '@/context/app-context'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
 
 type ConditionDateProps = {
   value?: number
@@ -19,7 +20,10 @@ const ConditionDate = ({
   onChange,
 }: ConditionDateProps) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { data: timezone } = useQuery({
+    ...userProfileQueryOptions(),
+    select: data => data.profile.timezone ?? undefined,
+  })
 
   const handleDateChange = useCallback((date?: dayjs.Dayjs) => {
     if (date)

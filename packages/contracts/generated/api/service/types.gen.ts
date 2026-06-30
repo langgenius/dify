@@ -4,6 +4,20 @@ export type ClientOptions = {
   baseUrl: `${string}://${string}/v1` | (string & {})
 }
 
+export type AgentThought = {
+  chain_id?: string | null
+  created_at?: number | null
+  files: Array<string>
+  id: string
+  message_id: string
+  observation?: string | null
+  position: number
+  thought?: string | null
+  tool?: string | null
+  tool_input?: string | null
+  tool_labels: JsonValue
+}
+
 export type Annotation = {
   content?: string | null
   created_at?: number | null
@@ -15,6 +29,12 @@ export type Annotation = {
 export type AnnotationCreatePayload = {
   answer: string
   question: string
+}
+
+export type AnnotationJobStatusResponse = {
+  error_msg?: string | null
+  job_id: string
+  job_status: string
 }
 
 export type AnnotationList = {
@@ -37,6 +57,24 @@ export type AnnotationReplyActionPayload = {
   score_threshold: number
 }
 
+export type AppFeedbackListResponse = {
+  data: Array<AppFeedbackResponse>
+}
+
+export type AppFeedbackResponse = {
+  app_id: string
+  content?: string | null
+  conversation_id: string
+  created_at: string
+  from_account_id?: string | null
+  from_end_user_id?: string | null
+  from_source: string
+  id: string
+  message_id: string
+  rating: string
+  updated_at: string
+}
+
 export type AppInfoResponse = {
   author_name: string | null
   description: string | null
@@ -45,23 +83,63 @@ export type AppInfoResponse = {
   tags: Array<string>
 }
 
+export type AppMetaResponse = {
+  tool_icons?: {
+    [key: string]: unknown
+  }
+}
+
+export type AudioBinaryResponse = Blob | File
+
+export type AudioTranscriptResponse = {
+  text: string
+}
+
+export type BinaryFileResponse = Blob | File
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
+
 export type ChatRequestPayload = {
   auto_generate_name?: boolean
   conversation_id?: string | null
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   query: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
+  workflow_id?: string | null
+}
+
+export type ChatRequestPayloadWithUser = {
+  auto_generate_name?: boolean
+  conversation_id?: string | null
+  files?: Array<{
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
+  }> | null
+  inputs: {
+    [key: string]: unknown
+  }
+  query: string
+  response_mode?: 'blocking' | 'streaming' | null
+  user: string
   workflow_id?: string | null
 }
 
 export type ChildChunkCreatePayload = {
   content: string
+}
+
+export type ChildChunkDetailResponse = {
+  data: ChildChunkResponse
 }
 
 export type ChildChunkListQuery = {
@@ -70,20 +148,56 @@ export type ChildChunkListQuery = {
   page?: number
 }
 
+export type ChildChunkListResponse = {
+  data: Array<ChildChunkResponse>
+  limit: number
+  page: number
+  total: number
+  total_pages: number
+}
+
+export type ChildChunkResponse = {
+  content: string
+  created_at: number
+  id: string
+  position: number
+  segment_id: string
+  type: string
+  updated_at: number
+  word_count: number
+}
+
 export type ChildChunkUpdatePayload = {
   content: string
 }
 
 export type CompletionRequestPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
   }
   query?: string
   response_mode?: 'blocking' | 'streaming' | null
-  retriever_from?: string
+}
+
+export type CompletionRequestPayloadWithUser = {
+  files?: Array<{
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
+  }> | null
+  inputs: {
+    [key: string]: unknown
+  }
+  query?: string
+  response_mode?: 'blocking' | 'streaming' | null
+  user: string
 }
 
 export type Condition = {
@@ -107,7 +221,13 @@ export type Condition = {
     | '≤'
     | '≥'
   name: string
-  value?: unknown
+  value?: string | Array<string> | number | null
+}
+
+export type ConversationInfiniteScrollPagination = {
+  data: Array<SimpleConversation>
+  has_more: boolean
+  limit: number
 }
 
 export type ConversationListQuery = {
@@ -116,9 +236,35 @@ export type ConversationListQuery = {
   sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
 }
 
-export type ConversationRenamePayload = {
+export type ConversationRenamePayload = (
+  | {
+    auto_generate: true
+    name?: string | null
+  }
+  | {
+    auto_generate?: false
+    name: string
+  }
+) & {
   auto_generate?: boolean
   name?: string | null
+}
+
+export type ConversationRenamePayloadWithUser = (
+  | {
+    auto_generate: true
+    name?: string | null
+    user?: string
+  }
+  | {
+    auto_generate?: false
+    name: string
+    user?: string
+  }
+) & {
+  auto_generate?: boolean
+  name?: string | null
+  user?: string
 }
 
 export type ConversationVariableInfiniteScrollPaginationResponse = {
@@ -141,11 +287,18 @@ export type ConversationVariableUpdatePayload = {
   value: unknown
 }
 
+export type ConversationVariableUpdatePayloadWithUser = {
+  user?: string
+  value: unknown
+}
+
 export type ConversationVariablesQuery = {
   last_id?: string | null
   limit?: number
   variable_name?: string | null
 }
+
+export type CustomConfigurationStatus = 'active' | 'no-configure'
 
 export type DatasetBoundTagListResponse = {
   data: Array<DatasetBoundTagResponse>
@@ -165,11 +318,14 @@ export type DatasetCreatePayload = {
   external_knowledge_id?: string | null
   indexing_technique?: 'economy' | 'high_quality' | null
   name: string
-  permission?: DatasetPermissionEnum
-  provider?: string
-  retrieval_model?: RetrievalModel
+  permission?: PermissionEnum | null
+  provider?: 'external' | 'vendor'
+  retrieval_model?: RetrievalModel | null
   summary_index_setting?: {
-    [key: string]: unknown
+    enable?: boolean
+    model_name?: string
+    model_provider_name?: string
+    summary_prompt?: string
   } | null
 }
 
@@ -190,14 +346,16 @@ export type DatasetDetailResponse = {
   embedding_model_provider: string | null
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
   is_multimodal: boolean
   is_published: boolean
+  maintainer?: string | null
   name: string
   permission: string
+  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -228,15 +386,17 @@ export type DatasetDetailWithPartialMembersResponse = {
   embedding_model_provider: string | null
   enable_api: boolean
   external_knowledge_info?: DatasetExternalKnowledgeInfoResponse
-  external_retrieval_model: DatasetExternalRetrievalModelResponse
+  external_retrieval_model: DatasetExternalRetrievalModelResponse | null
   icon_info?: DatasetIconInfoResponse
   id: string
   indexing_technique: string | null
   is_multimodal: boolean
   is_published: boolean
+  maintainer?: string | null
   name: string
   partial_member_list?: Array<string> | null
   permission: string
+  permission_keys?: Array<string>
   pipeline_id: string | null
   provider: string
   retrieval_model_dict: DatasetRetrievalModelResponse
@@ -327,8 +487,6 @@ export type DatasetMetadataResponse = {
   type: string
 }
 
-export type DatasetPermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
-
 export type DatasetRerankingModelResponse = {
   reranking_model_name?: string | null
   reranking_provider_name?: string | null
@@ -342,7 +500,7 @@ export type DatasetRetrievalModelResponse = {
   score_threshold_enabled: boolean
   search_method: string
   top_k: number
-  weights?: DatasetWeightedScoreResponse
+  weights?: DatasetWeightedScoreResponse | null
 }
 
 export type DatasetSummaryIndexSettingResponse = {
@@ -365,15 +523,17 @@ export type DatasetUpdatePayload = {
   external_knowledge_api_id?: string | null
   external_knowledge_id?: string | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   indexing_technique?: 'economy' | 'high_quality' | null
   name?: string | null
   partial_member_list?: Array<{
-    [key: string]: string
+    user_id?: string
   }> | null
-  permission?: DatasetPermissionEnum
-  retrieval_model?: RetrievalModel
+  permission?: PermissionEnum | null
+  retrieval_model?: RetrievalModel | null
 }
 
 export type DatasetVectorSettingResponse = {
@@ -388,24 +548,114 @@ export type DatasetWeightedScoreResponse = {
   weight_type?: string | null
 }
 
+export type DatasourceCredentialInfoResponse = {
+  id?: string | null
+  is_default?: boolean | null
+  name?: string | null
+  type?: string | null
+}
+
 export type DatasourceNodeRunPayload = {
   credential_id?: string | null
-  datasource_type: string
+  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
   inputs: {
     [key: string]: unknown
   }
   is_published: boolean
 }
 
+export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
+
+export type DatasourcePluginResponse = {
+  credentials: Array<DatasourceCredentialInfoResponse>
+  datasource_type?: string | null
+  node_id?: string | null
+  plugin_id?: string | null
+  provider_name?: string | null
+  title?: string | null
+  user_input_variables?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type DatasourcePluginsQuery = {
+  is_published?: boolean
+}
+
+export type DocumentAndBatchResponse = {
+  batch: string
+  document: DocumentResponse
+}
+
 export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
+}
+
+export type DocumentDetailResponse = {
+  archived?: boolean | null
+  average_segment_length?: number | null
+  completed_at?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_info?: {
+    [key: string]: unknown
+  } | null
+  data_source_type?: string | null
+  dataset_process_rule?: {
+    [key: string]: unknown
+  } | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_language?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse> | null
+  doc_type?: string | null
+  document_process_rule?: {
+    [key: string]: unknown
+  } | null
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_latency?: number | null
+  indexing_status?: string | null
+  name?: string | null
+  need_summary?: boolean | null
+  position?: number | null
+  segment_count?: number | null
+  summary_index_status?: string | null
+  tokens?: number | null
+  updated_at?: number | null
+}
+
+export type DocumentGetQuery = {
+  metadata?: 'all' | 'only' | 'without'
 }
 
 export type DocumentListQuery = {
   keyword?: string | null
   limit?: number
   page?: number
-  status?: string | null
+  status?:
+    | 'archived'
+    | 'available'
+    | 'disabled'
+    | 'error'
+    | 'indexing'
+    | 'paused'
+    | 'queuing'
+    | null
+}
+
+export type DocumentListResponse = {
+  data: Array<DocumentResponse>
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type DocumentMetadataOperation = {
@@ -414,25 +664,99 @@ export type DocumentMetadataOperation = {
   partial_update?: boolean
 }
 
+export type DocumentMetadataResponse = {
+  id: string
+  name: string
+  type: string
+  value?: string | number | number | boolean | null
+}
+
+export type DocumentResponse = {
+  archived?: boolean | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse>
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_status?: string | null
+  name: string
+  need_summary?: boolean | null
+  position?: number | null
+  summary_index_status?: string | null
+  tokens?: number | null
+  word_count?: number | null
+}
+
+export type DocumentStatusListResponse = {
+  data: Array<DocumentStatusResponse>
+}
+
+export type DocumentStatusPayload = {
+  document_ids?: Array<string>
+}
+
+export type DocumentStatusResponse = {
+  cleaning_completed_at: number | null
+  completed_at: number | null
+  completed_segments?: number | null
+  error: string | null
+  id: string
+  indexing_status: string
+  parsing_completed_at: number | null
+  paused_at: number | null
+  processing_started_at: number | null
+  splitting_completed_at: number | null
+  stopped_at: number | null
+  total_segments?: number | null
+}
+
 export type DocumentTextCreatePayload = {
-  doc_form?: string
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique?: string | null
+  indexing_technique?: 'economy' | 'high_quality' | null
   name: string
   original_document_id?: string | null
-  process_rule?: ProcessRule
-  retrieval_model?: RetrievalModel
+  process_rule?: ProcessRule | null
+  retrieval_model?: RetrievalModel | null
   text: string
 }
 
-export type DocumentTextUpdate = {
-  doc_form?: string
+export type DocumentTextUpdate = (
+  | {
+    doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
+    doc_language?: string
+    name: string
+    process_rule?: ProcessRule | null
+    retrieval_model?: RetrievalModel | null
+    text: string
+  }
+  | {
+    doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
+    doc_language?: string
+    name?: string | null
+    process_rule?: ProcessRule | null
+    retrieval_model?: RetrievalModel | null
+    text?: null
+  }
+) & {
+  doc_form?: 'hierarchical_model' | 'qa_model' | 'text_model'
   doc_language?: string
   name?: string | null
-  process_rule?: ProcessRule
-  retrieval_model?: RetrievalModel
+  process_rule?: ProcessRule | null
+  retrieval_model?: RetrievalModel | null
   text?: string | null
 }
 
@@ -449,9 +773,32 @@ export type EndUserDetail = {
   updated_at: string
 }
 
+export type EventStreamResponse = string
+
+export type ExecutionContentType = 'human_input'
+
 export type FeedbackListQuery = {
   limit?: number
   page?: number
+}
+
+export type FetchFrom = 'customizable-model' | 'predefined-model'
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
 }
 
 export type FilePreviewQuery = {
@@ -469,11 +816,32 @@ export type FileResponse = {
   name: string
   original_url?: string | null
   preview_url?: string | null
+  reference?: string | null
   size: number
   source_url?: string | null
   tenant_id?: string | null
   user_id?: string | null
 }
+
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
+export type FormInputConfig
+  = | ({
+    type: 'paragraph'
+  } & ParagraphInputConfig)
+  | ({
+    type: 'select'
+  } & SelectInputConfig)
+  | ({
+    type: 'file'
+  } & FileInputConfig)
+  | ({
+    type: 'file-list'
+  } & FileListInputConfig)
+
+export type GeneratedAppResponse = JsonValue
 
 export type HitTestingChildChunk = {
   content: string
@@ -484,7 +852,7 @@ export type HitTestingChildChunk = {
 
 export type HitTestingDocument = {
   data_source_type: string
-  doc_metadata: unknown
+  doc_metadata: unknown | null
   doc_type: string | null
   id: string
   name: string
@@ -502,10 +870,12 @@ export type HitTestingFile = {
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
   external_retrieval_model?: {
-    [key: string]: unknown
+    score_threshold?: number
+    score_threshold_enabled?: boolean
+    top_k?: number
   } | null
   query: string
-  retrieval_model?: RetrievalModel
+  retrieval_model?: RetrievalModel | null
 }
 
 export type HitTestingQuery = {
@@ -518,7 +888,7 @@ export type HitTestingRecord = {
   score: number | null
   segment: HitTestingSegment
   summary: string | null
-  tsne_position: unknown
+  tsne_position: unknown | null
 }
 
 export type HitTestingResponse = {
@@ -552,11 +922,76 @@ export type HitTestingSegment = {
   word_count: number
 }
 
+export type HumanInputContent = {
+  form_definition?: HumanInputFormDefinition | null
+  form_submission_data?: HumanInputFormSubmissionData | null
+  submitted: boolean
+  type?: ExecutionContentType
+  workflow_run_id: string
+}
+
+export type HumanInputFormDefinition = {
+  actions?: Array<UserActionConfig>
+  display_in_ui?: boolean
+  expiration_time: number
+  form_content: string
+  form_id: string
+  form_token?: string | null
+  inputs?: Array<FormInputConfig>
+  node_id: string
+  node_title: string
+  resolved_default_values?: {
+    [key: string]: unknown
+  }
+}
+
+export type HumanInputFormDefinitionResponse = {
+  expiration_time?: number | null
+  form_content: string
+  inputs?: Array<{
+    [key: string]: unknown
+  }>
+  resolved_default_values: {
+    [key: string]: string
+  }
+  user_actions?: Array<{
+    [key: string]: unknown
+  }>
+}
+
+export type HumanInputFormSubmissionData = {
+  action_id: string
+  action_text: string
+  node_id: string
+  node_title: string
+  rendered_content: string
+  submitted_data?: {
+    [key: string]: JsonValue2
+  } | null
+}
+
 export type HumanInputFormSubmitPayload = {
   action: string
   inputs: {
-    [key: string]: JsonValue
+    [key: string]: JsonValue2
   }
+}
+
+export type HumanInputFormSubmitPayloadWithUser = {
+  action: string
+  inputs: {
+    [key: string]: JsonValue2
+  }
+  user: string
+}
+
+export type HumanInputFormSubmitResponse = {
+  [key: string]: never
+}
+
+export type I18nObject = {
+  en_US: string
+  zh_Hans?: string | null
 }
 
 export type IndexInfoResponse = {
@@ -565,7 +1000,24 @@ export type IndexInfoResponse = {
   welcome: string
 }
 
-export type JsonValue = unknown
+export type JsonObject = {
+  [key: string]: unknown
+}
+
+export type JsonValue
+  = | string
+    | number
+    | number
+    | boolean
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | null
+
+export type JsonValueType = unknown
+
+export type JsonValue2 = unknown
 
 export type KnowledgeTagListResponse = Array<KnowledgeTagResponse>
 
@@ -579,6 +1031,49 @@ export type KnowledgeTagResponse = {
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
+}
+
+export type MessageFeedbackPayloadWithUser = {
+  content?: string | null
+  rating?: 'dislike' | 'like' | null
+  user: string
+}
+
+export type MessageFile = {
+  belongs_to?: string | null
+  filename: string
+  id: string
+  mime_type?: string | null
+  size?: number | null
+  transfer_method: string
+  type: string
+  upload_file_id?: string | null
+  url?: string | null
+}
+
+export type MessageInfiniteScrollPagination = {
+  data: Array<MessageListItem>
+  has_more: boolean
+  limit: number
+}
+
+export type MessageListItem = {
+  agent_thoughts: Array<AgentThought>
+  answer: string
+  conversation_id: string
+  created_at?: number | null
+  error?: string | null
+  extra_contents: Array<HumanInputContent>
+  feedback?: SimpleFeedback | null
+  id: string
+  inputs: {
+    [key: string]: JsonValueType
+  }
+  message_files: Array<MessageFile>
+  parent_message_id?: string | null
+  query: string
+  retriever_resources: Array<RetrieverResource>
+  status: string
 }
 
 export type MessageListQuery = {
@@ -595,7 +1090,7 @@ export type MetadataArgs = {
 export type MetadataDetail = {
   id: string
   name: string
-  value?: unknown
+  value?: string | number | number | null
 }
 
 export type MetadataFilteringCondition = {
@@ -611,27 +1106,156 @@ export type MetadataUpdatePayload = {
   name: string
 }
 
+export type ModelFeature
+  = | 'agent-thought'
+    | 'audio'
+    | 'document'
+    | 'multi-tool-call'
+    | 'polling'
+    | 'stream-tool-call'
+    | 'structured-output'
+    | 'tool-call'
+    | 'video'
+    | 'vision'
+
+export type ModelPropertyKey
+  = | 'audio_type'
+    | 'context_size'
+    | 'default_voice'
+    | 'file_upload_limit'
+    | 'max_characters_per_chunk'
+    | 'max_chunks'
+    | 'max_workers'
+    | 'mode'
+    | 'supported_file_extensions'
+    | 'voices'
+    | 'word_limit'
+
+export type ModelStatus
+  = | 'active'
+    | 'credential-removed'
+    | 'disabled'
+    | 'no-configure'
+    | 'no-permission'
+    | 'quota-exceeded'
+
+export type ModelType = 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
+
+export type OptionalServiceApiUserPayload = {
+  user?: string
+}
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
+}
+
+export type Parameters = {
+  annotation_reply: JsonObject
+  file_upload: JsonObject
+  more_like_this: JsonObject
+  opening_statement?: string | null
+  retriever_resource: JsonObject
+  sensitive_word_avoidance: JsonObject
+  speech_to_text: JsonObject
+  suggested_questions: Array<string>
+  suggested_questions_after_answer: JsonObject
+  system_parameters: SystemParameters
+  text_to_speech: JsonObject
+  user_input_form: Array<JsonObject>
+}
+
+export type PermissionEnum = 'all_team_members' | 'only_me' | 'partial_members'
+
 export type PipelineRunApiEntity = {
-  datasource_info_list: Array<{
-    [key: string]: unknown
-  }>
-  datasource_type: string
+  datasource_info_list: Array<
+    | {
+      name?: string
+      reference: string
+    }
+    | {
+      credential_id?: string
+      page: {
+        page_id: string
+        page_name?: string
+        type: string
+      }
+      workspace_id: string
+    }
+    | {
+      title?: string
+      url: string
+    }
+    | {
+      bucket?: string
+      id: string
+      name?: string
+      type: 'file' | 'folder'
+    }
+  >
+  datasource_type: 'local_file' | 'online_document' | 'online_drive' | 'website_crawl'
   inputs: {
     [key: string]: unknown
   }
   is_published: boolean
-  response_mode: string
+  response_mode: 'blocking' | 'streaming'
   start_node_id: string
+}
+
+export type PipelineUploadFileResponse = {
+  created_at?: string | null
+  created_by: string
+  extension: string
+  id: string
+  mime_type?: string | null
+  name: string
+  size: number
 }
 
 export type PreProcessingRule = {
   enabled: boolean
-  id: string
+  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
 }
 
 export type ProcessRule = {
-  mode: 'automatic' | 'custom' | 'hierarchical'
-  rules?: Rule
+  mode: ProcessRuleMode
+  rules?: Rule | null
+}
+
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
+
+export type ProviderModelWithStatusEntity = {
+  deprecated?: boolean
+  features?: Array<ModelFeature> | null
+  fetch_from: FetchFrom
+  has_invalid_load_balancing_configs?: boolean
+  label: I18nObject
+  load_balancing_enabled?: boolean
+  model: string
+  model_properties: {
+    [key in ModelPropertyKey]?: unknown
+  }
+  model_type: ModelType
+  status: ModelStatus
+}
+
+export type ProviderWithModelsListResponse = {
+  data: Array<ProviderWithModelsResponse>
+}
+
+export type ProviderWithModelsResponse = {
+  icon_small?: I18nObject | null
+  icon_small_dark?: I18nObject | null
+  label: I18nObject
+  models: Array<ProviderModelWithStatusEntity>
+  provider: string
+  status: CustomConfigurationStatus
+  tenant_id: string
+}
+
+export type RequiredServiceApiUserPayload = {
+  user: string
 }
 
 export type RerankingModel = {
@@ -650,33 +1274,118 @@ export type RetrievalMethod
     | 'semantic_search'
 
 export type RetrievalModel = {
-  metadata_filtering_conditions?: MetadataFilteringCondition
+  metadata_filtering_conditions?: MetadataFilteringCondition | null
   reranking_enable: boolean
-  reranking_mode?: string | null
-  reranking_model?: RerankingModel
+  reranking_mode?: 'reranking_model' | 'weighted_score' | null
+  reranking_model?: RerankingModel | null
   score_threshold?: number | null
   score_threshold_enabled: boolean
   search_method: RetrievalMethod
   top_k: number
-  weights?: WeightModel
+  weights?: WeightModel | null
+}
+
+export type RetrieverResource = {
+  content?: string | null
+  created_at?: number | null
+  data_source_type?: string | null
+  dataset_id?: string | null
+  dataset_name?: string | null
+  document_id?: string | null
+  document_name?: string | null
+  hit_count?: number | null
+  id?: string
+  index_node_hash?: string | null
+  message_id?: string
+  position: number
+  score?: number | null
+  segment_id?: string | null
+  segment_position?: number | null
+  summary?: string | null
+  word_count?: number | null
 }
 
 export type Rule = {
   parent_mode?: 'full-doc' | 'paragraph' | null
   pre_processing_rules?: Array<PreProcessingRule> | null
-  segmentation?: Segmentation
-  subchunk_segmentation?: Segmentation
+  segmentation?: Segmentation | null
+  subchunk_segmentation?: Segmentation | null
+}
+
+export type SegmentAttachmentResponse = {
+  extension: string
+  id: string
+  mime_type: string | null
+  name: string
+  size: number
+  source_url: string
+}
+
+export type SegmentCreateItemPayload = {
+  answer?: string | null
+  attachment_ids?: Array<string> | null
+  content: string
+  keywords?: Array<string> | null
+}
+
+export type SegmentCreateListResponse = {
+  data: Array<SegmentResponse>
+  doc_form: string
 }
 
 export type SegmentCreatePayload = {
-  segments?: Array<{
-    [key: string]: unknown
-  }> | null
+  segments: Array<SegmentCreateItemPayload>
+}
+
+export type SegmentDetailResponse = {
+  data: SegmentResponse
+  doc_form: string
 }
 
 export type SegmentListQuery = {
   keyword?: string | null
+  limit?: number
+  page?: number
   status?: Array<string>
+}
+
+export type SegmentListResponse = {
+  data: Array<SegmentResponse>
+  doc_form: string
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type SegmentResponse = {
+  answer: string | null
+  attachments: Array<SegmentAttachmentResponse>
+  child_chunks: Array<ChildChunkResponse>
+  completed_at: number | null
+  content: string
+  created_at: number
+  created_by: string
+  disabled_at: number | null
+  disabled_by: string | null
+  document_id: string
+  enabled: boolean
+  error: string | null
+  hit_count: number
+  id: string
+  index_node_hash: string | null
+  index_node_id: string | null
+  indexing_at: number | null
+  keywords: Array<string> | null
+  position: number
+  sign_content: string
+  status: string
+  stopped_at: number | null
+  summary: string | null
+  tokens: number
+  updated_at: number
+  updated_by: string | null
+  word_count: number
 }
 
 export type SegmentUpdateArgs = {
@@ -699,10 +1408,28 @@ export type Segmentation = {
   separator?: string
 }
 
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
 export type SimpleAccount = {
   email: string
   id: string
   name: string
+}
+
+export type SimpleConversation = {
+  created_at?: number | null
+  id: string
+  inputs: {
+    [key: string]: JsonValue
+  }
+  introduction?: string | null
+  name: string
+  status: string
+  updated_at?: number | null
 }
 
 export type SimpleEndUser = {
@@ -710,6 +1437,10 @@ export type SimpleEndUser = {
   is_anonymous: boolean
   session_id?: string | null
   type: string
+}
+
+export type SimpleFeedback = {
+  rating?: string | null
 }
 
 export type SimpleResultResponse = {
@@ -732,10 +1463,31 @@ export type Site = {
   icon_background?: string | null
   icon_type?: string | null
   readonly icon_url: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
   use_icon_as_answer_icon: boolean
+}
+
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
+export type SystemParameters = {
+  audio_file_size_limit: number
+  file_size_limit: number
+  image_file_size_limit: number
+  video_file_size_limit: number
+  workflow_file_upload_limit: number
 }
 
 export type TagBindingPayload = {
@@ -751,11 +1503,17 @@ export type TagDeletePayload = {
   tag_id: string
 }
 
-export type TagUnbindingPayload = {
-  tag_id?: string | null
-  tag_ids?: Array<string>
-  target_id: string
-}
+export type TagUnbindingPayload
+  = | {
+    tag_id: string
+    tag_ids?: Array<string>
+    target_id: string
+  }
+  | {
+    tag_id?: string
+    tag_ids: Array<string>
+    target_id: string
+  }
 
 export type TagUpdatePayload = {
   name: string
@@ -769,17 +1527,33 @@ export type TextToAudioPayload = {
   voice?: string | null
 }
 
+export type TextToAudioPayloadWithUser = {
+  message_id?: string | null
+  streaming?: boolean | null
+  text?: string | null
+  user?: string
+  voice?: string | null
+}
+
 export type UrlResponse = {
   url: string
 }
+
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type ValueSourceType = 'constant' | 'variable'
 
 export type WeightKeywordSetting = {
   keyword_weight: number
 }
 
 export type WeightModel = {
-  keyword_setting?: WeightKeywordSetting
-  vector_setting?: WeightVectorSetting
+  keyword_setting?: WeightKeywordSetting | null
+  vector_setting?: WeightVectorSetting | null
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
 }
 
@@ -799,13 +1573,28 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount
-  created_by_end_user?: SimpleEndUser
+  created_by_account?: SimpleAccount | null
+  created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
-  details?: unknown
+  details?:
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | string
+    | number
+    | number
+    | boolean
+    | null
   id: string
-  workflow_run?: WorkflowRunForLogResponse
+  workflow_run?: WorkflowRunForLogResponse | null
+}
+
+export type WorkflowEventsQuery = {
+  continue_on_pause?: boolean
+  include_state_snapshot?: boolean
+  user: string
 }
 
 export type WorkflowLogQuery = {
@@ -821,7 +1610,7 @@ export type WorkflowLogQuery = {
 
 export type WorkflowRunForLogResponse = {
   created_at?: number | null
-  elapsed_time?: unknown
+  elapsed_time?: number | number | null
   error?: string | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -835,7 +1624,10 @@ export type WorkflowRunForLogResponse = {
 
 export type WorkflowRunPayload = {
   files?: Array<{
-    [key: string]: unknown
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
   }> | null
   inputs: {
     [key: string]: unknown
@@ -843,13 +1635,36 @@ export type WorkflowRunPayload = {
   response_mode?: 'blocking' | 'streaming' | null
 }
 
+export type WorkflowRunPayloadWithUser = {
+  files?: Array<{
+    transfer_method: 'local_file' | 'remote_url'
+    type: 'audio' | 'custom' | 'document' | 'image' | 'video'
+    upload_file_id?: string
+    url?: string
+  }> | null
+  inputs: {
+    [key: string]: unknown
+  }
+  response_mode?: 'blocking' | 'streaming' | null
+  user: string
+}
+
 export type WorkflowRunResponse = {
   created_at?: number | null
-  elapsed_time?: unknown
+  elapsed_time?: number | number | null
   error?: string | null
   finished_at?: number | null
   id: string
-  inputs?: unknown
+  inputs?:
+    | {
+      [key: string]: unknown
+    }
+    | Array<unknown>
+    | string
+    | number
+    | number
+    | boolean
+    | null
   outputs?: {
     [key: string]: unknown
   }
@@ -857,6 +1672,12 @@ export type WorkflowRunResponse = {
   total_steps?: number | null
   total_tokens?: number | null
   workflow_id: string
+}
+
+export type GeneratedAppResponseWritable = JsonValue
+
+export type HumanInputFormSubmitResponseWritable = {
+  [key: string]: never
 }
 
 export type SiteWritable = {
@@ -869,6 +1690,7 @@ export type SiteWritable = {
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
+  input_placeholder?: string | null
   privacy_policy?: string | null
   show_workflow_steps: boolean
   title: string
@@ -899,17 +1721,12 @@ export type GetAppFeedbacksData = {
 }
 
 export type GetAppFeedbacksErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
 
-export type GetAppFeedbacksError = GetAppFeedbacksErrors[keyof GetAppFeedbacksErrors]
-
 export type GetAppFeedbacksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppFeedbackListResponse
 }
 
 export type GetAppFeedbacksResponse = GetAppFeedbacksResponses[keyof GetAppFeedbacksResponses]
@@ -917,25 +1734,19 @@ export type GetAppFeedbacksResponse = GetAppFeedbacksResponses[keyof GetAppFeedb
 export type PostAppsAnnotationReplyByActionData = {
   body: AnnotationReplyActionPayload
   path: {
-    action: string
+    action: 'disable' | 'enable'
   }
   query?: never
   url: '/apps/annotation-reply/{action}'
 }
 
 export type PostAppsAnnotationReplyByActionErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
 
-export type PostAppsAnnotationReplyByActionError
-  = PostAppsAnnotationReplyByActionErrors[keyof PostAppsAnnotationReplyByActionErrors]
-
 export type PostAppsAnnotationReplyByActionResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AnnotationJobStatusResponse
 }
 
 export type PostAppsAnnotationReplyByActionResponse
@@ -944,7 +1755,7 @@ export type PostAppsAnnotationReplyByActionResponse
 export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
   body?: never
   path: {
-    action: string
+    action: 'disable' | 'enable'
     job_id: string
   }
   query?: never
@@ -952,21 +1763,14 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdData = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetAppsAnnotationReplyByActionStatusByJobIdError
-  = GetAppsAnnotationReplyByActionStatusByJobIdErrors[keyof GetAppsAnnotationReplyByActionStatusByJobIdErrors]
-
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AnnotationJobStatusResponse
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
@@ -984,12 +1788,9 @@ export type GetAppsAnnotationsData = {
 }
 
 export type GetAppsAnnotationsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type GetAppsAnnotationsError = GetAppsAnnotationsErrors[keyof GetAppsAnnotationsErrors]
 
 export type GetAppsAnnotationsResponses = {
   200: AnnotationList
@@ -1006,12 +1807,9 @@ export type PostAppsAnnotationsData = {
 }
 
 export type PostAppsAnnotationsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type PostAppsAnnotationsError = PostAppsAnnotationsErrors[keyof PostAppsAnnotationsErrors]
 
 export type PostAppsAnnotationsResponses = {
   201: Annotation
@@ -1030,24 +1828,13 @@ export type DeleteAppsAnnotationsByAnnotationIdData = {
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type DeleteAppsAnnotationsByAnnotationIdError
-  = DeleteAppsAnnotationsByAnnotationIdErrors[keyof DeleteAppsAnnotationsByAnnotationIdErrors]
-
 export type DeleteAppsAnnotationsByAnnotationIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteAppsAnnotationsByAnnotationIdResponse
@@ -1063,19 +1850,10 @@ export type PutAppsAnnotationsByAnnotationIdData = {
 }
 
 export type PutAppsAnnotationsByAnnotationIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PutAppsAnnotationsByAnnotationIdError
-  = PutAppsAnnotationsByAnnotationIdErrors[keyof PutAppsAnnotationsByAnnotationIdErrors]
 
 export type PutAppsAnnotationsByAnnotationIdResponses = {
   200: Annotation
@@ -1085,77 +1863,54 @@ export type PutAppsAnnotationsByAnnotationIdResponse
   = PutAppsAnnotationsByAnnotationIdResponses[keyof PutAppsAnnotationsByAnnotationIdResponses]
 
 export type PostAudioToTextData = {
-  body?: never
+  body: {
+    file: Blob | File
+    user?: string
+  }
   path?: never
   query?: never
   url: '/audio-to-text'
 }
 
 export type PostAudioToTextErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  413: unknown
+  415: unknown
+  500: unknown
 }
 
-export type PostAudioToTextError = PostAudioToTextErrors[keyof PostAudioToTextErrors]
-
 export type PostAudioToTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AudioTranscriptResponse
 }
 
 export type PostAudioToTextResponse = PostAudioToTextResponses[keyof PostAudioToTextResponses]
 
 export type PostChatMessagesData = {
-  body: ChatRequestPayload
+  body: ChatRequestPayloadWithUser
   path?: never
   query?: never
   url: '/chat-messages'
 }
 
 export type PostChatMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  429: unknown
+  500: unknown
 }
 
-export type PostChatMessagesError = PostChatMessagesErrors[keyof PostChatMessagesErrors]
-
 export type PostChatMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
 
 export type PostChatMessagesByTaskIdStopData = {
-  body?: never
+  body: RequiredServiceApiUserPayload
   path: {
     task_id: string
   }
@@ -1164,16 +1919,11 @@ export type PostChatMessagesByTaskIdStopData = {
 }
 
 export type PostChatMessagesByTaskIdStopErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostChatMessagesByTaskIdStopError
-  = PostChatMessagesByTaskIdStopErrors[keyof PostChatMessagesByTaskIdStopErrors]
 
 export type PostChatMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -1183,41 +1933,30 @@ export type PostChatMessagesByTaskIdStopResponse
   = PostChatMessagesByTaskIdStopResponses[keyof PostChatMessagesByTaskIdStopResponses]
 
 export type PostCompletionMessagesData = {
-  body: CompletionRequestPayload
+  body: CompletionRequestPayloadWithUser
   path?: never
   query?: never
   url: '/completion-messages'
 }
 
 export type PostCompletionMessagesErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  429: unknown
+  500: unknown
 }
 
-export type PostCompletionMessagesError
-  = PostCompletionMessagesErrors[keyof PostCompletionMessagesErrors]
-
 export type PostCompletionMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostCompletionMessagesResponse
   = PostCompletionMessagesResponses[keyof PostCompletionMessagesResponses]
 
 export type PostCompletionMessagesByTaskIdStopData = {
-  body?: never
+  body: RequiredServiceApiUserPayload
   path: {
     task_id: string
   }
@@ -1226,16 +1965,11 @@ export type PostCompletionMessagesByTaskIdStopData = {
 }
 
 export type PostCompletionMessagesByTaskIdStopErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostCompletionMessagesByTaskIdStopError
-  = PostCompletionMessagesByTaskIdStopErrors[keyof PostCompletionMessagesByTaskIdStopErrors]
 
 export type PostCompletionMessagesByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -1248,34 +1982,29 @@ export type GetConversationsData = {
   body?: never
   path?: never
   query?: {
-    last_id?: string | null
+    last_id?: string
     limit?: number
     sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
+    user?: string
   }
   url: '/conversations'
 }
 
 export type GetConversationsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetConversationsError = GetConversationsErrors[keyof GetConversationsErrors]
-
 export type GetConversationsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ConversationInfiniteScrollPagination
 }
 
 export type GetConversationsResponse = GetConversationsResponses[keyof GetConversationsResponses]
 
 export type DeleteConversationsByCIdData = {
-  body?: never
+  body: OptionalServiceApiUserPayload
   path: {
     c_id: string
   }
@@ -1284,28 +2013,21 @@ export type DeleteConversationsByCIdData = {
 }
 
 export type DeleteConversationsByCIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type DeleteConversationsByCIdError
-  = DeleteConversationsByCIdErrors[keyof DeleteConversationsByCIdErrors]
-
 export type DeleteConversationsByCIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteConversationsByCIdResponse
   = DeleteConversationsByCIdResponses[keyof DeleteConversationsByCIdResponses]
 
 export type PostConversationsByCIdNameData = {
-  body: ConversationRenamePayload
+  body: ConversationRenamePayloadWithUser
   path: {
     c_id: string
   }
@@ -1314,21 +2036,14 @@ export type PostConversationsByCIdNameData = {
 }
 
 export type PostConversationsByCIdNameErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostConversationsByCIdNameError
-  = PostConversationsByCIdNameErrors[keyof PostConversationsByCIdNameErrors]
-
 export type PostConversationsByCIdNameResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SimpleConversation
 }
 
 export type PostConversationsByCIdNameResponse
@@ -1340,24 +2055,20 @@ export type GetConversationsByCIdVariablesData = {
     c_id: string
   }
   query?: {
-    last_id?: string | null
+    last_id?: string
     limit?: number
-    variable_name?: string | null
+    user?: string
+    variable_name?: string
   }
   url: '/conversations/{c_id}/variables'
 }
 
 export type GetConversationsByCIdVariablesErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetConversationsByCIdVariablesError
-  = GetConversationsByCIdVariablesErrors[keyof GetConversationsByCIdVariablesErrors]
 
 export type GetConversationsByCIdVariablesResponses = {
   200: ConversationVariableInfiniteScrollPaginationResponse
@@ -1367,7 +2078,7 @@ export type GetConversationsByCIdVariablesResponse
   = GetConversationsByCIdVariablesResponses[keyof GetConversationsByCIdVariablesResponses]
 
 export type PutConversationsByCIdVariablesByVariableIdData = {
-  body: ConversationVariableUpdatePayload
+  body: ConversationVariableUpdatePayloadWithUser
   path: {
     c_id: string
     variable_id: string
@@ -1377,19 +2088,11 @@ export type PutConversationsByCIdVariablesByVariableIdData = {
 }
 
 export type PutConversationsByCIdVariablesByVariableIdErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PutConversationsByCIdVariablesByVariableIdError
-  = PutConversationsByCIdVariablesByVariableIdErrors[keyof PutConversationsByCIdVariablesByVariableIdErrors]
 
 export type PutConversationsByCIdVariablesByVariableIdResponses = {
   200: ConversationVariableResponse
@@ -1412,12 +2115,9 @@ export type GetDatasetsData = {
 }
 
 export type GetDatasetsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type GetDatasetsError = GetDatasetsErrors[keyof GetDatasetsErrors]
 
 export type GetDatasetsResponses = {
   200: DatasetListResponse
@@ -1433,15 +2133,11 @@ export type PostDatasetsData = {
 }
 
 export type PostDatasetsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  409: unknown
 }
-
-export type PostDatasetsError = PostDatasetsErrors[keyof PostDatasetsErrors]
 
 export type PostDatasetsResponses = {
   200: DatasetDetailResponse
@@ -1450,34 +2146,24 @@ export type PostDatasetsResponses = {
 export type PostDatasetsResponse = PostDatasetsResponses[keyof PostDatasetsResponses]
 
 export type PostDatasetsPipelineFileUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+  }
   path?: never
   query?: never
   url: '/datasets/pipeline/file-upload'
 }
 
 export type PostDatasetsPipelineFileUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  413: unknown
+  415: unknown
 }
 
-export type PostDatasetsPipelineFileUploadError
-  = PostDatasetsPipelineFileUploadErrors[keyof PostDatasetsPipelineFileUploadErrors]
-
 export type PostDatasetsPipelineFileUploadResponses = {
-  201: {
-    [key: string]: unknown
-  }
+  201: PipelineUploadFileResponse
 }
 
 export type PostDatasetsPipelineFileUploadResponse
@@ -1491,20 +2177,12 @@ export type DeleteDatasetsTagsData = {
 }
 
 export type DeleteDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
 
-export type DeleteDatasetsTagsError = DeleteDatasetsTagsErrors[keyof DeleteDatasetsTagsErrors]
-
 export type DeleteDatasetsTagsResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsTagsResponse
@@ -1518,12 +2196,9 @@ export type GetDatasetsTagsData = {
 }
 
 export type GetDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type GetDatasetsTagsError = GetDatasetsTagsErrors[keyof GetDatasetsTagsErrors]
 
 export type GetDatasetsTagsResponses = {
   200: KnowledgeTagListResponse
@@ -1539,15 +2214,9 @@ export type PatchDatasetsTagsData = {
 }
 
 export type PatchDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type PatchDatasetsTagsError = PatchDatasetsTagsErrors[keyof PatchDatasetsTagsErrors]
 
 export type PatchDatasetsTagsResponses = {
   200: KnowledgeTagResponse
@@ -1563,15 +2232,9 @@ export type PostDatasetsTagsData = {
 }
 
 export type PostDatasetsTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type PostDatasetsTagsError = PostDatasetsTagsErrors[keyof PostDatasetsTagsErrors]
 
 export type PostDatasetsTagsResponses = {
   200: KnowledgeTagResponse
@@ -1587,21 +2250,12 @@ export type PostDatasetsTagsBindingData = {
 }
 
 export type PostDatasetsTagsBindingErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
 
-export type PostDatasetsTagsBindingError
-  = PostDatasetsTagsBindingErrors[keyof PostDatasetsTagsBindingErrors]
-
 export type PostDatasetsTagsBindingResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type PostDatasetsTagsBindingResponse
@@ -1615,21 +2269,12 @@ export type PostDatasetsTagsUnbindingData = {
 }
 
 export type PostDatasetsTagsUnbindingErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
 
-export type PostDatasetsTagsUnbindingError
-  = PostDatasetsTagsUnbindingErrors[keyof PostDatasetsTagsUnbindingErrors]
-
 export type PostDatasetsTagsUnbindingResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type PostDatasetsTagsUnbindingResponse
@@ -1645,24 +2290,14 @@ export type DeleteDatasetsByDatasetIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  409: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
+  409: unknown
 }
 
-export type DeleteDatasetsByDatasetIdError
-  = DeleteDatasetsByDatasetIdErrors[keyof DeleteDatasetsByDatasetIdErrors]
-
 export type DeleteDatasetsByDatasetIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdResponse
@@ -1678,19 +2313,10 @@ export type GetDatasetsByDatasetIdData = {
 }
 
 export type GetDatasetsByDatasetIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdError
-  = GetDatasetsByDatasetIdErrors[keyof GetDatasetsByDatasetIdErrors]
 
 export type GetDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
@@ -1709,19 +2335,10 @@ export type PatchDatasetsByDatasetIdData = {
 }
 
 export type PatchDatasetsByDatasetIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PatchDatasetsByDatasetIdError
-  = PatchDatasetsByDatasetIdErrors[keyof PatchDatasetsByDatasetIdErrors]
 
 export type PatchDatasetsByDatasetIdResponses = {
   200: DatasetDetailWithPartialMembersResponse
@@ -1731,7 +2348,10 @@ export type PatchDatasetsByDatasetIdResponse
   = PatchDatasetsByDatasetIdResponses[keyof PatchDatasetsByDatasetIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
-  body?: never
+  body: {
+    data?: string
+    file: Blob | File
+  }
   path: {
     dataset_id: string
   }
@@ -1740,21 +2360,13 @@ export type PostDatasetsByDatasetIdDocumentCreateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFileError
-  = PostDatasetsByDatasetIdDocumentCreateByFileErrors[keyof PostDatasetsByDatasetIdDocumentCreateByFileErrors]
-
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFileResponse
@@ -1770,28 +2382,23 @@ export type PostDatasetsByDatasetIdDocumentCreateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByTextError
-  = PostDatasetsByDatasetIdDocumentCreateByTextErrors[keyof PostDatasetsByDatasetIdDocumentCreateByTextErrors]
-
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByTextResponse
   = PostDatasetsByDatasetIdDocumentCreateByTextResponses[keyof PostDatasetsByDatasetIdDocumentCreateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
-  body?: never
+  body: {
+    data?: string
+    file: Blob | File
+  }
   path: {
     dataset_id: string
   }
@@ -1800,21 +2407,13 @@ export type PostDatasetsByDatasetIdDocumentCreateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Errors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByFile2Error
-  = PostDatasetsByDatasetIdDocumentCreateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByFile2Errors]
-
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByFile2Response
@@ -1830,21 +2429,13 @@ export type PostDatasetsByDatasetIdDocumentCreateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Errors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentCreateByText2Error
-  = PostDatasetsByDatasetIdDocumentCreateByText2Errors[keyof PostDatasetsByDatasetIdDocumentCreateByText2Errors]
-
 export type PostDatasetsByDatasetIdDocumentCreateByText2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentCreateByText2Response
@@ -1855,26 +2446,23 @@ export type GetDatasetsByDatasetIdDocumentsData = {
   path: {
     dataset_id: string
   }
-  query?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    page?: number
+    status?: 'archived' | 'available' | 'disabled' | 'error' | 'indexing' | 'paused' | 'queuing'
+  }
   url: '/datasets/{dataset_id}/documents'
 }
 
 export type GetDatasetsByDatasetIdDocumentsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetDatasetsByDatasetIdDocumentsError
-  = GetDatasetsByDatasetIdDocumentsErrors[keyof GetDatasetsByDatasetIdDocumentsErrors]
-
 export type GetDatasetsByDatasetIdDocumentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsResponse
@@ -1890,24 +2478,16 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: Blob | File
+  403: Blob | File
+  404: Blob | File
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipError
   = PostDatasetsByDatasetIdDocumentsDownloadZipErrors[keyof PostDatasetsByDatasetIdDocumentsDownloadZipErrors]
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Blob | File
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse
@@ -1923,16 +2503,10 @@ export type PostDatasetsByDatasetIdDocumentsMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsMetadataErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostDatasetsByDatasetIdDocumentsMetadataError
-  = PostDatasetsByDatasetIdDocumentsMetadataErrors[keyof PostDatasetsByDatasetIdDocumentsMetadataErrors]
 
 export type PostDatasetsByDatasetIdDocumentsMetadataResponses = {
   200: DatasetMetadataActionResponse
@@ -1942,9 +2516,9 @@ export type PostDatasetsByDatasetIdDocumentsMetadataResponse
   = PostDatasetsByDatasetIdDocumentsMetadataResponses[keyof PostDatasetsByDatasetIdDocumentsMetadataResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
-  body?: never
+  body: DocumentStatusPayload
   path: {
-    action: string
+    action: 'archive' | 'disable' | 'enable' | 'un_archive'
     dataset_id: string
   }
   query?: never
@@ -1952,22 +2526,11 @@ export type PatchDatasetsByDatasetIdDocumentsStatusByActionData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PatchDatasetsByDatasetIdDocumentsStatusByActionError
-  = PatchDatasetsByDatasetIdDocumentsStatusByActionErrors[keyof PatchDatasetsByDatasetIdDocumentsStatusByActionErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsStatusByActionResponses = {
   200: SimpleResultResponse
@@ -1987,21 +2550,13 @@ export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusError
-  = GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors[keyof GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusErrors]
-
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentStatusListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByBatchIndexingStatusResponse
@@ -2018,24 +2573,14 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdError
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors]
-
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse
@@ -2047,36 +2592,31 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdData = {
     dataset_id: string
     document_id: string
   }
-  query?: never
+  query?: {
+    metadata?: 'all' | 'only' | 'without'
+  }
   url: '/datasets/{dataset_id}/documents/{document_id}'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdErrors]
-
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentDetailResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
   = GetDatasetsByDatasetIdDocumentsByDocumentIdResponses[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdResponses]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2086,21 +2626,13 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdError
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors]
-
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdResponse
@@ -2117,19 +2649,10 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadData = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadErrors]
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdDownloadResponses = {
   200: UrlResponse
@@ -2145,28 +2668,22 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
     document_id: string
   }
   query?: {
-    keyword?: string | null
+    keyword?: string
+    limit?: number
+    page?: number
     status?: Array<string>
   }
   url: '/datasets/{dataset_id}/documents/{document_id}/segments'
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
-
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
@@ -2183,24 +2700,14 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsErrors]
-
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentCreateListResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsResponse
@@ -2218,21 +2725,13 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdDat
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
-
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
@@ -2250,21 +2749,13 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData =
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
-
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
@@ -2282,21 +2773,13 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdData 
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdErrors]
-
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: SegmentDetailResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdResponse
@@ -2310,7 +2793,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
     segment_id: string
   }
   query?: {
-    keyword?: string | null
+    keyword?: string
     limit?: number
     page?: number
   }
@@ -2318,21 +2801,13 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildC
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError
-  = GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
-
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkListResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
@@ -2350,21 +2825,14 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChild
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksErrors]
-
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ChildChunkDetailResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksResponse
@@ -2385,22 +2853,15 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChi
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
   = {
-    401: {
-      [key: string]: unknown
-    }
-    404: {
-      [key: string]: unknown
-    }
+    400: unknown
+    401: unknown
+    403: unknown
+    404: unknown
   }
-
-export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError
-  = DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
   = {
-    204: {
-      [key: string]: never
-    }
+    204: void
   }
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
@@ -2421,29 +2882,25 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChil
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors
   = {
-    401: {
-      [key: string]: unknown
-    }
-    404: {
-      [key: string]: unknown
-    }
+    400: unknown
+    401: unknown
+    403: unknown
+    404: unknown
   }
-
-export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdError
-  = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdErrors]
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses
   = {
-    200: {
-      [key: string]: unknown
-    }
+    200: ChildChunkDetailResponse
   }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponse
   = PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses[keyof PatchDatasetsByDatasetIdDocumentsByDocumentIdSegmentsBySegmentIdChildChunksByChildChunkIdResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2453,21 +2910,14 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileErrors]
-
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFileResponse
@@ -2484,28 +2934,24 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextError
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextErrors]
-
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse
   = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponses]
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
-  body?: never
+  body?: {
+    data?: string
+    file?: Blob | File
+  }
   path: {
     dataset_id: string
     document_id: string
@@ -2515,21 +2961,14 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Error
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Errors]
-
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByFile2Response
@@ -2546,21 +2985,13 @@ export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Data = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Error
-  = PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors[keyof PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Errors]
-
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Responses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DocumentAndBatchResponse
 }
 
 export type PostDatasetsByDatasetIdDocumentsByDocumentIdUpdateByText2Response
@@ -2576,16 +3007,12 @@ export type PostDatasetsByDatasetIdHitTestingData = {
 }
 
 export type PostDatasetsByDatasetIdHitTestingErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PostDatasetsByDatasetIdHitTestingError
-  = PostDatasetsByDatasetIdHitTestingErrors[keyof PostDatasetsByDatasetIdHitTestingErrors]
 
 export type PostDatasetsByDatasetIdHitTestingResponses = {
   200: HitTestingResponse
@@ -2604,16 +3031,10 @@ export type GetDatasetsByDatasetIdMetadataData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetDatasetsByDatasetIdMetadataError
-  = GetDatasetsByDatasetIdMetadataErrors[keyof GetDatasetsByDatasetIdMetadataErrors]
 
 export type GetDatasetsByDatasetIdMetadataResponses = {
   200: DatasetMetadataListResponse
@@ -2632,16 +3053,10 @@ export type PostDatasetsByDatasetIdMetadataData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostDatasetsByDatasetIdMetadataError
-  = PostDatasetsByDatasetIdMetadataErrors[keyof PostDatasetsByDatasetIdMetadataErrors]
 
 export type PostDatasetsByDatasetIdMetadataResponses = {
   201: DatasetMetadataResponse
@@ -2660,13 +3075,9 @@ export type GetDatasetsByDatasetIdMetadataBuiltInData = {
 }
 
 export type GetDatasetsByDatasetIdMetadataBuiltInErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type GetDatasetsByDatasetIdMetadataBuiltInError
-  = GetDatasetsByDatasetIdMetadataBuiltInErrors[keyof GetDatasetsByDatasetIdMetadataBuiltInErrors]
 
 export type GetDatasetsByDatasetIdMetadataBuiltInResponses = {
   200: DatasetMetadataBuiltInFieldsResponse
@@ -2678,7 +3089,7 @@ export type GetDatasetsByDatasetIdMetadataBuiltInResponse
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
   body?: never
   path: {
-    action: string
+    action: 'disable' | 'enable'
     dataset_id: string
   }
   query?: never
@@ -2686,16 +3097,10 @@ export type PostDatasetsByDatasetIdMetadataBuiltInByActionData = {
 }
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostDatasetsByDatasetIdMetadataBuiltInByActionError
-  = PostDatasetsByDatasetIdMetadataBuiltInByActionErrors[keyof PostDatasetsByDatasetIdMetadataBuiltInByActionErrors]
 
 export type PostDatasetsByDatasetIdMetadataBuiltInByActionResponses = {
   200: DatasetMetadataActionResponse
@@ -2715,21 +3120,13 @@ export type DeleteDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type DeleteDatasetsByDatasetIdMetadataByMetadataIdError
-  = DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof DeleteDatasetsByDatasetIdMetadataByMetadataIdErrors]
-
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponses = {
-  204: {
-    [key: string]: never
-  }
+  204: void
 }
 
 export type DeleteDatasetsByDatasetIdMetadataByMetadataIdResponse
@@ -2746,16 +3143,10 @@ export type PatchDatasetsByDatasetIdMetadataByMetadataIdData = {
 }
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PatchDatasetsByDatasetIdMetadataByMetadataIdError
-  = PatchDatasetsByDatasetIdMetadataByMetadataIdErrors[keyof PatchDatasetsByDatasetIdMetadataByMetadataIdErrors]
 
 export type PatchDatasetsByDatasetIdMetadataByMetadataIdResponses = {
   200: DatasetMetadataResponse
@@ -2770,31 +3161,26 @@ export type GetDatasetsByDatasetIdPipelineDatasourcePluginsData = {
     dataset_id: string
   }
   query?: {
-    is_published?: string
+    is_published?: boolean
   }
   url: '/datasets/{dataset_id}/pipeline/datasource-plugins'
 }
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetDatasetsByDatasetIdPipelineDatasourcePluginsError
-  = GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsErrors]
-
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: DatasourcePluginListResponse
 }
 
 export type GetDatasetsByDatasetIdPipelineDatasourcePluginsResponse
   = GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses[keyof GetDatasetsByDatasetIdPipelineDatasourcePluginsResponses]
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
-  body?: never
+  body: DatasourceNodeRunPayload
   path: {
     dataset_id: string
     node_id: string
@@ -2804,25 +3190,20 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunError
-  = PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors]
-
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
   = PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses[keyof PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses]
 
 export type PostDatasetsByDatasetIdPipelineRunData = {
-  body?: never
+  body: PipelineRunApiEntity
   path: {
     dataset_id: string
   }
@@ -2831,18 +3212,14 @@ export type PostDatasetsByDatasetIdPipelineRunData = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
 
-export type PostDatasetsByDatasetIdPipelineRunError
-  = PostDatasetsByDatasetIdPipelineRunErrors[keyof PostDatasetsByDatasetIdPipelineRunErrors]
-
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse
@@ -2858,16 +3235,12 @@ export type PostDatasetsByDatasetIdRetrieveData = {
 }
 
 export type PostDatasetsByDatasetIdRetrieveErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type PostDatasetsByDatasetIdRetrieveError
-  = PostDatasetsByDatasetIdRetrieveErrors[keyof PostDatasetsByDatasetIdRetrieveErrors]
 
 export type PostDatasetsByDatasetIdRetrieveResponses = {
   200: HitTestingResponse
@@ -2886,13 +3259,9 @@ export type GetDatasetsByDatasetIdTagsData = {
 }
 
 export type GetDatasetsByDatasetIdTagsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type GetDatasetsByDatasetIdTagsError
-  = GetDatasetsByDatasetIdTagsErrors[keyof GetDatasetsByDatasetIdTagsErrors]
 
 export type GetDatasetsByDatasetIdTagsResponses = {
   200: DatasetBoundTagListResponse
@@ -2911,16 +3280,10 @@ export type GetEndUsersByEndUserIdData = {
 }
 
 export type GetEndUsersByEndUserIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetEndUsersByEndUserIdError
-  = GetEndUsersByEndUserIdErrors[keyof GetEndUsersByEndUserIdErrors]
 
 export type GetEndUsersByEndUserIdResponses = {
   200: EndUserDetail
@@ -2930,28 +3293,22 @@ export type GetEndUsersByEndUserIdResponse
   = GetEndUsersByEndUserIdResponses[keyof GetEndUsersByEndUserIdResponses]
 
 export type PostFilesUploadData = {
-  body?: never
+  body: {
+    file: Blob | File
+    user?: string
+  }
   path?: never
   query?: never
   url: '/files/upload'
 }
 
 export type PostFilesUploadErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  413: {
-    [key: string]: unknown
-  }
-  415: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  413: unknown
+  415: unknown
 }
-
-export type PostFilesUploadError = PostFilesUploadErrors[keyof PostFilesUploadErrors]
 
 export type PostFilesUploadResponses = {
   201: FileResponse
@@ -2966,29 +3323,22 @@ export type GetFilesByFileIdPreviewData = {
   }
   query?: {
     as_attachment?: boolean
+    user?: string
   }
   url: '/files/{file_id}/preview'
 }
 
 export type GetFilesByFileIdPreviewErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: Blob | File
+  403: Blob | File
+  404: Blob | File
 }
 
 export type GetFilesByFileIdPreviewError
   = GetFilesByFileIdPreviewErrors[keyof GetFilesByFileIdPreviewErrors]
 
 export type GetFilesByFileIdPreviewResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Blob | File
 }
 
 export type GetFilesByFileIdPreviewResponse
@@ -3004,31 +3354,21 @@ export type GetFormHumanInputByFormTokenData = {
 }
 
 export type GetFormHumanInputByFormTokenErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  412: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
+  412: unknown
 }
 
-export type GetFormHumanInputByFormTokenError
-  = GetFormHumanInputByFormTokenErrors[keyof GetFormHumanInputByFormTokenErrors]
-
 export type GetFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormDefinitionResponse
 }
 
 export type GetFormHumanInputByFormTokenResponse
   = GetFormHumanInputByFormTokenResponses[keyof GetFormHumanInputByFormTokenResponses]
 
 export type PostFormHumanInputByFormTokenData = {
-  body: HumanInputFormSubmitPayload
+  body: HumanInputFormSubmitPayloadWithUser
   path: {
     form_token: string
   }
@@ -3037,27 +3377,15 @@ export type PostFormHumanInputByFormTokenData = {
 }
 
 export type PostFormHumanInputByFormTokenErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  412: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  412: unknown
 }
 
-export type PostFormHumanInputByFormTokenError
-  = PostFormHumanInputByFormTokenErrors[keyof PostFormHumanInputByFormTokenErrors]
-
 export type PostFormHumanInputByFormTokenResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: HumanInputFormSubmitResponse
 }
 
 export type PostFormHumanInputByFormTokenResponse
@@ -3071,15 +3399,10 @@ export type GetInfoData = {
 }
 
 export type GetInfoErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetInfoError = GetInfoErrors[keyof GetInfoErrors]
 
 export type GetInfoResponses = {
   200: AppInfoResponse
@@ -3092,33 +3415,28 @@ export type GetMessagesData = {
   path?: never
   query: {
     conversation_id: string
-    first_id?: string | null
+    first_id?: string
     limit?: number
+    user?: string
   }
   url: '/messages'
 }
 
 export type GetMessagesErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetMessagesError = GetMessagesErrors[keyof GetMessagesErrors]
-
 export type GetMessagesResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: MessageInfiniteScrollPagination
 }
 
 export type GetMessagesResponse = GetMessagesResponses[keyof GetMessagesResponses]
 
 export type PostMessagesByMessageIdFeedbacksData = {
-  body: MessageFeedbackPayload
+  body: MessageFeedbackPayloadWithUser
   path: {
     message_id: string
   }
@@ -3127,16 +3445,10 @@ export type PostMessagesByMessageIdFeedbacksData = {
 }
 
 export type PostMessagesByMessageIdFeedbacksErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostMessagesByMessageIdFeedbacksError
-  = PostMessagesByMessageIdFeedbacksErrors[keyof PostMessagesByMessageIdFeedbacksErrors]
 
 export type PostMessagesByMessageIdFeedbacksResponses = {
   200: ResultResponse
@@ -3150,27 +3462,19 @@ export type GetMessagesByMessageIdSuggestedData = {
   path: {
     message_id: string
   }
-  query?: never
+  query: {
+    user: string
+  }
   url: '/messages/{message_id}/suggested'
 }
 
 export type GetMessagesByMessageIdSuggestedErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  500: unknown
 }
-
-export type GetMessagesByMessageIdSuggestedError
-  = GetMessagesByMessageIdSuggestedErrors[keyof GetMessagesByMessageIdSuggestedErrors]
 
 export type GetMessagesByMessageIdSuggestedResponses = {
   200: SimpleResultStringListResponse
@@ -3187,20 +3491,13 @@ export type GetMetaData = {
 }
 
 export type GetMetaErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetMetaError = GetMetaErrors[keyof GetMetaErrors]
-
 export type GetMetaResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: AppMetaResponse
 }
 
 export type GetMetaResponse = GetMetaResponses[keyof GetMetaResponses]
@@ -3213,20 +3510,14 @@ export type GetParametersData = {
 }
 
 export type GetParametersErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetParametersError = GetParametersErrors[keyof GetParametersErrors]
-
 export type GetParametersResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Parameters
 }
 
 export type GetParametersResponse = GetParametersResponses[keyof GetParametersResponses]
@@ -3239,15 +3530,9 @@ export type GetSiteData = {
 }
 
 export type GetSiteErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  403: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type GetSiteError = GetSiteErrors[keyof GetSiteErrors]
 
 export type GetSiteResponses = {
   200: Site
@@ -3256,30 +3541,23 @@ export type GetSiteResponses = {
 export type GetSiteResponse = GetSiteResponses[keyof GetSiteResponses]
 
 export type PostTextToAudioData = {
-  body: TextToAudioPayload
+  body: TextToAudioPayloadWithUser
   path?: never
   query?: never
   url: '/text-to-audio'
 }
 
 export type PostTextToAudioErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: Blob | File
+  401: Blob | File
+  403: Blob | File
+  500: Blob | File
 }
 
 export type PostTextToAudioError = PostTextToAudioErrors[keyof PostTextToAudioErrors]
 
 export type PostTextToAudioResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: Blob | File
 }
 
 export type PostTextToAudioResponse = PostTextToAudioResponses[keyof PostTextToAudioResponses]
@@ -3289,30 +3567,23 @@ export type GetWorkflowByTaskIdEventsData = {
   path: {
     task_id: string
   }
-  query?: {
-    continue_on_pause?: string
-    include_state_snapshot?: string
-    user?: string
+  query: {
+    continue_on_pause?: boolean
+    include_state_snapshot?: boolean
+    user: string
   }
   url: '/workflow/{task_id}/events'
 }
 
 export type GetWorkflowByTaskIdEventsErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
 
-export type GetWorkflowByTaskIdEventsError
-  = GetWorkflowByTaskIdEventsErrors[keyof GetWorkflowByTaskIdEventsErrors]
-
 export type GetWorkflowByTaskIdEventsResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EventStreamResponse
 }
 
 export type GetWorkflowByTaskIdEventsResponse
@@ -3322,25 +3593,22 @@ export type GetWorkflowsLogsData = {
   body?: never
   path?: never
   query?: {
-    created_at__after?: string | null
-    created_at__before?: string | null
-    created_by_account?: string | null
-    created_by_end_user_session_id?: string | null
-    keyword?: string | null
+    created_at__after?: string
+    created_at__before?: string
+    created_by_account?: string
+    created_by_end_user_session_id?: string
+    keyword?: string
     limit?: number
     page?: number
-    status?: 'failed' | 'stopped' | 'succeeded' | null
+    status?: 'failed' | 'stopped' | 'succeeded'
   }
   url: '/workflows/logs'
 }
 
 export type GetWorkflowsLogsErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
+  403: unknown
 }
-
-export type GetWorkflowsLogsError = GetWorkflowsLogsErrors[keyof GetWorkflowsLogsErrors]
 
 export type GetWorkflowsLogsResponses = {
   200: WorkflowAppLogPaginationResponse
@@ -3349,36 +3617,23 @@ export type GetWorkflowsLogsResponses = {
 export type GetWorkflowsLogsResponse = GetWorkflowsLogsResponses[keyof GetWorkflowsLogsResponses]
 
 export type PostWorkflowsRunData = {
-  body: WorkflowRunPayload
+  body: WorkflowRunPayloadWithUser
   path?: never
   query?: never
   url: '/workflows/run'
 }
 
 export type PostWorkflowsRunErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  429: unknown
+  500: unknown
 }
 
-export type PostWorkflowsRunError = PostWorkflowsRunErrors[keyof PostWorkflowsRunErrors]
-
 export type PostWorkflowsRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -3393,16 +3648,11 @@ export type GetWorkflowsRunByWorkflowRunIdData = {
 }
 
 export type GetWorkflowsRunByWorkflowRunIdErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type GetWorkflowsRunByWorkflowRunIdError
-  = GetWorkflowsRunByWorkflowRunIdErrors[keyof GetWorkflowsRunByWorkflowRunIdErrors]
 
 export type GetWorkflowsRunByWorkflowRunIdResponses = {
   200: WorkflowRunResponse
@@ -3412,7 +3662,7 @@ export type GetWorkflowsRunByWorkflowRunIdResponse
   = GetWorkflowsRunByWorkflowRunIdResponses[keyof GetWorkflowsRunByWorkflowRunIdResponses]
 
 export type PostWorkflowsTasksByTaskIdStopData = {
-  body?: never
+  body: RequiredServiceApiUserPayload
   path: {
     task_id: string
   }
@@ -3421,16 +3671,11 @@ export type PostWorkflowsTasksByTaskIdStopData = {
 }
 
 export type PostWorkflowsTasksByTaskIdStopErrors = {
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
 }
-
-export type PostWorkflowsTasksByTaskIdStopError
-  = PostWorkflowsTasksByTaskIdStopErrors[keyof PostWorkflowsTasksByTaskIdStopErrors]
 
 export type PostWorkflowsTasksByTaskIdStopResponses = {
   200: SimpleResultResponse
@@ -3440,7 +3685,7 @@ export type PostWorkflowsTasksByTaskIdStopResponse
   = PostWorkflowsTasksByTaskIdStopResponses[keyof PostWorkflowsTasksByTaskIdStopResponses]
 
 export type PostWorkflowsByWorkflowIdRunData = {
-  body: WorkflowRunPayload
+  body: WorkflowRunPayloadWithUser
   path: {
     workflow_id: string
   }
@@ -3449,30 +3694,16 @@ export type PostWorkflowsByWorkflowIdRunData = {
 }
 
 export type PostWorkflowsByWorkflowIdRunErrors = {
-  400: {
-    [key: string]: unknown
-  }
-  401: {
-    [key: string]: unknown
-  }
-  404: {
-    [key: string]: unknown
-  }
-  429: {
-    [key: string]: unknown
-  }
-  500: {
-    [key: string]: unknown
-  }
+  400: unknown
+  401: unknown
+  403: unknown
+  404: unknown
+  429: unknown
+  500: unknown
 }
 
-export type PostWorkflowsByWorkflowIdRunError
-  = PostWorkflowsByWorkflowIdRunErrors[keyof PostWorkflowsByWorkflowIdRunErrors]
-
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: GeneratedAppResponse
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse
@@ -3481,25 +3712,18 @@ export type PostWorkflowsByWorkflowIdRunResponse
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeData = {
   body?: never
   path: {
-    model_type: string
+    model_type: 'llm' | 'moderation' | 'rerank' | 'speech2text' | 'text-embedding' | 'tts'
   }
   query?: never
   url: '/workspaces/current/models/model-types/{model_type}'
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeErrors = {
-  401: {
-    [key: string]: unknown
-  }
+  401: unknown
 }
 
-export type GetWorkspacesCurrentModelsModelTypesByModelTypeError
-  = GetWorkspacesCurrentModelsModelTypesByModelTypeErrors[keyof GetWorkspacesCurrentModelsModelTypesByModelTypeErrors]
-
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: ProviderWithModelsListResponse
 }
 
 export type GetWorkspacesCurrentModelsModelTypesByModelTypeResponse

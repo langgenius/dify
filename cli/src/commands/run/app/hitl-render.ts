@@ -1,5 +1,5 @@
-import type { HitlPausePayload } from './sse-collector.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
+import type { HitlPausePayload } from './sse-collector'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
 
 export type HitlExitObject = {
   status: 'paused'
@@ -10,6 +10,7 @@ export type HitlExitObject = {
   node_id: string
   node_title: string
   form_token: string | null
+  approval_channels: string[]
   form_content: string
   inputs: unknown[]
   actions: unknown[]
@@ -29,6 +30,7 @@ export function buildHitlExitObject(appId: string, payload: HitlPausePayload): H
     node_id: d.node_id,
     node_title: d.node_title,
     form_token: d.form_token,
+    approval_channels: d.approval_channels ?? [],
     form_content: d.form_content,
     inputs: d.inputs,
     actions: d.actions,
@@ -92,15 +94,35 @@ export function renderHitlOutput(appId: string, payload: HitlPausePayload, isTex
   return `${renderHitlExit(obj)}\n`
 }
 
-const EXTERNAL_CHANNEL_NOTE = 'form delivered via email/external channel — resume only from that channel'
+// Server approval-channel labels → human wording for the pause hint.
+const APPROVAL_CHANNEL_LABELS: Record<string, string> = {
+  email: 'email',
+  console: 'the console',
+  web_app: 'the web app',
+}
+
+function describeApprovalChannels(channels: string[]): string {
+  const labels = channels.map(c => APPROVAL_CHANNEL_LABELS[c] ?? c)
+  if (labels.length <= 1)
+    return labels[0] ?? 'another channel'
+  if (labels.length === 2)
+    return `${labels[0]} or ${labels[1]}`
+  return `${labels.slice(0, -1).join(', ')}, or ${labels[labels.length - 1]}`
+}
+
+function externalChannelNote(channels: string[]): string {
+  const where = channels.length > 1 ? 'those channels' : 'that channel'
+  return `form delivered via ${describeApprovalChannels(channels)} — resume only from ${where}`
+}
 
 export function renderHitlHint(appId: string, payload: HitlPausePayload, isErrTTY: boolean): string {
   const d = payload.data
   const cs = colorScheme(colorEnabled(isErrTTY))
   if (d.form_token === null) {
+    const note = externalChannelNote(d.approval_channels ?? [])
     if (!isErrTTY)
-      return `hint: workflow paused — ${EXTERNAL_CHANNEL_NOTE}\n`
-    return `${cs.warningIcon()} ${cs.bold('workflow paused')} — ${cs.dim(EXTERNAL_CHANNEL_NOTE)}\n`
+      return `hint: workflow paused — ${note}\n`
+    return `${cs.warningIcon()} ${cs.bold('workflow paused')} — ${cs.dim(note)}\n`
   }
   const actions = (d.actions ?? []) as { id: string }[]
   let cmd = `difyctl resume app ${appId} ${d.form_token} --workflow-run-id ${payload.workflow_run_id}`

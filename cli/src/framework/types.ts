@@ -1,4 +1,4 @@
-import type { CommandOutput } from './output.js'
+import type { CommandOutput } from './output'
 
 export type ArgValueType = string | boolean | number | string[]
 export type OptionalArgValueType = ArgValueType | undefined
@@ -10,6 +10,9 @@ export type FlagDefinition<T extends OptionalArgValueType = OptionalArgValueType
   readonly default?: ArgValueType
   readonly multiple?: boolean
   readonly options?: readonly string[]
+  // Marks a flag that applies across commands; surfaced once in the top-level
+  // GLOBAL FLAGS section rather than per command.
+  readonly helpGroup?: 'GLOBAL'
   readonly _flagValue?: T
 }
 

@@ -1,4 +1,7 @@
+import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
+import { createStore, Provider } from 'jotai'
+import { createElement } from 'react'
 import { useGotoAnythingModal } from '../use-goto-anything-modal'
 
 type KeyPressEvent = {
@@ -31,6 +34,14 @@ const triggerHotkey = (hotkey: string, event: KeyPressEvent) => {
   registration?.handler(event)
 }
 
+const renderGotoAnythingModalHook = () => {
+  const store = createStore()
+  const wrapper = ({ children }: { children: ReactNode }) =>
+    createElement(Provider, { store }, children)
+
+  return renderHook(() => useGotoAnythingModal(), { wrapper })
+}
+
 describe('useGotoAnythingModal', () => {
   beforeEach(() => {
     Object.keys(hotkeyHandlers).forEach(key => delete hotkeyHandlers[key])
@@ -42,92 +53,64 @@ describe('useGotoAnythingModal', () => {
   })
 
   describe('initialization', () => {
-    it('should initialize with show=false', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
-      expect(result.current.show).toBe(false)
+    it('should initialize with open=false', () => {
+      const { result } = renderGotoAnythingModalHook()
+      expect(result.current.open).toBe(false)
     })
 
     it('should provide inputRef initialized to null', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
+      const { result } = renderGotoAnythingModalHook()
       expect(result.current.inputRef).toBeDefined()
       expect(result.current.inputRef.current).toBe(null)
     })
 
-    it('should provide setShow function', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
-      expect(typeof result.current.setShow).toBe('function')
-    })
-
-    it('should provide handleClose function', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
-      expect(typeof result.current.handleClose).toBe('function')
+    it('should provide onOpenChange function', () => {
+      const { result } = renderGotoAnythingModalHook()
+      expect(typeof result.current.onOpenChange).toBe('function')
     })
   })
 
   describe('keyboard shortcuts', () => {
-    it('should toggle show state when Mod+K is triggered', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
+    it('should toggle open state when Mod+K is triggered', () => {
+      const { result } = renderGotoAnythingModalHook()
 
-      expect(result.current.show).toBe(false)
+      expect(result.current.open).toBe(false)
 
       act(() => {
         triggerHotkey('Mod+K', { preventDefault: vi.fn(), target: document.body })
       })
 
-      expect(result.current.show).toBe(true)
+      expect(result.current.open).toBe(true)
     })
 
     it('should toggle back to closed when Mod+K is triggered twice', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
+      const { result } = renderGotoAnythingModalHook()
 
       act(() => {
         triggerHotkey('Mod+K', { preventDefault: vi.fn(), target: document.body })
       })
-      expect(result.current.show).toBe(true)
+      expect(result.current.open).toBe(true)
 
       act(() => {
         triggerHotkey('Mod+K', { preventDefault: vi.fn(), target: document.body })
       })
-      expect(result.current.show).toBe(false)
+      expect(result.current.open).toBe(false)
     })
 
     it('should let the hotkey library ignore inputs when the modal is closed', () => {
-      renderHook(() => useGotoAnythingModal())
+      renderGotoAnythingModalHook()
 
       expect(hotkeyHandlers['Mod+K']?.options?.ignoreInputs).toBe(true)
     })
 
-    it('should close modal when escape is pressed and modal is open', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
+    it('should not register a separate escape hotkey', () => {
+      renderGotoAnythingModalHook()
 
-      act(() => {
-        result.current.setShow(true)
-      })
-      expect(result.current.show).toBe(true)
-
-      act(() => {
-        triggerHotkey('Escape', { preventDefault: vi.fn() })
-      })
-
-      expect(result.current.show).toBe(false)
-    })
-
-    it('should NOT do anything when escape is pressed and modal is already closed', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
-
-      expect(result.current.show).toBe(false)
-
-      const preventDefaultMock = vi.fn()
-      act(() => {
-        triggerHotkey('Escape', { preventDefault: preventDefaultMock })
-      })
-
-      expect(result.current.show).toBe(false)
-      expect(preventDefaultMock).not.toHaveBeenCalled()
+      expect(hotkeyHandlers.Escape).toBeUndefined()
     })
 
     it('should call preventDefault when Mod+K is triggered', () => {
-      renderHook(() => useGotoAnythingModal())
+      renderGotoAnythingModalHook()
 
       const preventDefaultMock = vi.fn()
       act(() => {
@@ -138,72 +121,29 @@ describe('useGotoAnythingModal', () => {
     })
   })
 
-  describe('handleClose', () => {
-    it('should close modal when handleClose is called', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
-
-      act(() => {
-        result.current.setShow(true)
-      })
-      expect(result.current.show).toBe(true)
-
-      act(() => {
-        result.current.handleClose()
-      })
-
-      expect(result.current.show).toBe(false)
-    })
-
-    it('should be safe to call handleClose when modal is already closed', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
-
-      expect(result.current.show).toBe(false)
-
-      act(() => {
-        result.current.handleClose()
-      })
-
-      expect(result.current.show).toBe(false)
-    })
-  })
-
-  describe('setShow', () => {
+  describe('onOpenChange', () => {
     it('should accept boolean value', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
+      const { result } = renderGotoAnythingModalHook()
 
       act(() => {
-        result.current.setShow(true)
+        result.current.onOpenChange(true)
       })
-      expect(result.current.show).toBe(true)
+      expect(result.current.open).toBe(true)
 
       act(() => {
-        result.current.setShow(false)
+        result.current.onOpenChange(false)
       })
-      expect(result.current.show).toBe(false)
-    })
-
-    it('should accept function value', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
-
-      act(() => {
-        result.current.setShow(prev => !prev)
-      })
-      expect(result.current.show).toBe(true)
-
-      act(() => {
-        result.current.setShow(prev => !prev)
-      })
-      expect(result.current.show).toBe(false)
+      expect(result.current.open).toBe(false)
     })
   })
 
   describe('focus management', () => {
     it('should call requestAnimationFrame when modal opens', () => {
       const rafSpy = vi.spyOn(window, 'requestAnimationFrame')
-      const { result } = renderHook(() => useGotoAnythingModal())
+      const { result } = renderGotoAnythingModalHook()
 
       act(() => {
-        result.current.setShow(true)
+        result.current.onOpenChange(true)
       })
 
       expect(rafSpy).toHaveBeenCalled()
@@ -211,16 +151,16 @@ describe('useGotoAnythingModal', () => {
     })
 
     it('should not call requestAnimationFrame when modal closes', () => {
-      const { result } = renderHook(() => useGotoAnythingModal())
+      const { result } = renderGotoAnythingModalHook()
 
       act(() => {
-        result.current.setShow(true)
+        result.current.onOpenChange(true)
       })
 
       const rafSpy = vi.spyOn(window, 'requestAnimationFrame')
 
       act(() => {
-        result.current.setShow(false)
+        result.current.onOpenChange(false)
       })
 
       expect(rafSpy).not.toHaveBeenCalled()
@@ -234,7 +174,7 @@ describe('useGotoAnythingModal', () => {
         return 0
       }
 
-      const { result } = renderHook(() => useGotoAnythingModal())
+      const { result } = renderGotoAnythingModalHook()
 
       const mockFocus = vi.fn()
       const mockInput = { focus: mockFocus } as unknown as HTMLInputElement
@@ -245,7 +185,7 @@ describe('useGotoAnythingModal', () => {
       })
 
       act(() => {
-        result.current.setShow(true)
+        result.current.onOpenChange(true)
       })
 
       expect(mockFocus).toHaveBeenCalled()
@@ -260,13 +200,13 @@ describe('useGotoAnythingModal', () => {
         return 0
       }
 
-      const { result } = renderHook(() => useGotoAnythingModal())
+      const { result } = renderGotoAnythingModalHook()
 
       act(() => {
-        result.current.setShow(true)
+        result.current.onOpenChange(true)
       })
 
-      expect(result.current.show).toBe(true)
+      expect(result.current.open).toBe(true)
 
       window.requestAnimationFrame = originalRAF
     })

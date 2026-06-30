@@ -8,6 +8,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   refreshModelProviders: noop,
+  isLoadingModelProviders: false,
   textGenerationModelList: [],
   supportRetrievalMethods: [],
   isAPIKeySet: true,

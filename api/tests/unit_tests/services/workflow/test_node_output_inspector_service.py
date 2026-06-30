@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from core.workflow.file_reference import build_file_reference
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from models.agent_config_entities import (
     DeclaredArrayItem,
@@ -27,6 +28,7 @@ from services.workflow.node_output_inspector_service import (
     NodeOutputInspectorService,
     NodeOutputStatus,
     NodeStatus,
+    _resolve_preview_url,
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -204,6 +206,20 @@ def test_output_preview_404_when_output_name_unknown():
     assert exc.value.code == "node_output_not_declared"
 
 
+def test_output_preview_404_when_node_id_absent_from_graph():
+    service = _make_service()
+    run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
+    with _patch_session(workflow_run=run, executions=[]):
+        with pytest.raises(NodeOutputInspectorError) as exc:
+            service.output_preview(
+                app_model=_app_model(),
+                workflow_run_id="run-1",
+                node_id="ghost",
+                output_name="report",
+            )
+    assert exc.value.code == "node_not_in_workflow_run"
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Snapshot happy path
 # ──────────────────────────────────────────────────────────────────────────────
@@ -372,12 +388,15 @@ def test_file_output_preview_includes_signed_url():
         ],
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
-    file_payload = {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}
+    file_payload = {
+        "transfer_method": "local_file",
+        "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
+    }
     ex = _execution(node_id="agent-1", outputs={"report": file_payload})
     with (
         _patch_session(workflow_run=run, executions=[ex]),
         patch(
-            "services.workflow.node_output_inspector_service.file_helpers.get_signed_file_url",
+            "services.workflow.node_output_inspector_service._resolve_preview_url",
             return_value="https://signed.example/x.pdf",
         ),
     ):
@@ -385,7 +404,7 @@ def test_file_output_preview_includes_signed_url():
     preview_value = snapshot.node_outputs[0].outputs[0].value_preview
     assert isinstance(preview_value, dict)
     assert preview_value["preview_url"] == "https://signed.example/x.pdf"
-    assert preview_value["filename"] == "x.pdf"
+    assert preview_value["reference"] == file_payload["reference"]
 
 
 def test_file_output_preview_endpoint_returns_full_value_with_signed_url():
@@ -395,12 +414,15 @@ def test_file_output_preview_endpoint_returns_full_value_with_signed_url():
         ],
     )
     run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
-    file_payload = {"file_id": "550e8400-e29b-41d4-a716-446655440000", "filename": "x.pdf"}
+    file_payload = {
+        "transfer_method": "tool_file",
+        "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
+    }
     ex = _execution(node_id="agent-1", outputs={"report": file_payload})
     with (
         _patch_session(workflow_run=run, executions=[ex]),
         patch(
-            "services.workflow.node_output_inspector_service.file_helpers.get_signed_file_url",
+            "services.workflow.node_output_inspector_service._resolve_preview_url",
             return_value="https://signed.example/x.pdf",
         ),
     ):
@@ -414,6 +436,144 @@ def test_file_output_preview_endpoint_returns_full_value_with_signed_url():
     assert preview.status == NodeOutputStatus.READY
     assert isinstance(preview.value, dict)
     assert preview.value["preview_url"] == "https://signed.example/x.pdf"
+
+
+def test_resolve_preview_url_uses_standard_file_factory():
+    file_payload = {
+        "transfer_method": "tool_file",
+        "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
+    }
+    file = MagicMock()
+    with (
+        patch("services.workflow.node_output_inspector_service.DatabaseFileAccessController") as controller_cls,
+        patch("services.workflow.node_output_inspector_service.build_from_mapping", return_value=file) as build_file,
+        patch(
+            "services.workflow.node_output_inspector_service.file_helpers.resolve_file_url",
+            return_value="https://signed.example/x.pdf",
+        ) as resolve_file_url,
+    ):
+        assert _resolve_preview_url(file_payload, tenant_id="tenant-1") == "https://signed.example/x.pdf"
+
+    build_file.assert_called_once_with(
+        mapping=file_payload,
+        tenant_id="tenant-1",
+        access_controller=controller_cls.return_value,
+    )
+    resolve_file_url.assert_called_once_with(file)
+
+
+def test_array_file_output_preview_includes_signed_urls_for_each_item():
+    service = _make_service(
+        declared_outputs=[
+            DeclaredOutputConfig(
+                name="files",
+                type=DeclaredOutputType.ARRAY,
+                array_item=DeclaredArrayItem(type=DeclaredOutputType.FILE),
+            ),
+        ],
+    )
+    run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
+    file_payloads = [
+        {
+            "transfer_method": "tool_file",
+            "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440001"),
+        },
+        {
+            "transfer_method": "tool_file",
+            "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440002"),
+        },
+    ]
+    ex = _execution(node_id="agent-1", outputs={"files": file_payloads})
+    with (
+        _patch_session(workflow_run=run, executions=[ex]),
+        patch(
+            "services.workflow.node_output_inspector_service._resolve_preview_url",
+            side_effect=[
+                "https://signed.example/1.pdf",
+                "https://signed.example/2.pdf",
+                "https://signed.example/1-detail.pdf",
+                "https://signed.example/2-detail.pdf",
+                "https://signed.example/1-full.pdf",
+                "https://signed.example/2-full.pdf",
+            ],
+        ),
+    ):
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1")
+        preview = service.output_preview(
+            app_model=_app_model(),
+            workflow_run_id="run-1",
+            node_id="agent-1",
+            output_name="files",
+        )
+
+    snapshot_value = snapshot.node_outputs[0].outputs[0].value_preview
+    assert isinstance(snapshot_value, list)
+    assert [item["preview_url"] for item in snapshot_value] == [
+        "https://signed.example/1.pdf",
+        "https://signed.example/2.pdf",
+    ]
+    assert isinstance(preview.value, list)
+    assert [item["preview_url"] for item in preview.value] == [
+        "https://signed.example/1-full.pdf",
+        "https://signed.example/2-full.pdf",
+    ]
+
+
+def test_file_output_preview_uses_none_when_signed_url_resolution_fails():
+    service = _make_service(
+        declared_outputs=[
+            DeclaredOutputConfig(name="report", type=DeclaredOutputType.FILE),
+        ],
+    )
+    run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
+    file_payload = {
+        "transfer_method": "local_file",
+        "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
+    }
+    ex = _execution(node_id="agent-1", outputs={"report": file_payload})
+    with (
+        _patch_session(workflow_run=run, executions=[ex]),
+        patch(
+            "services.workflow.node_output_inspector_service._resolve_preview_url",
+            side_effect=RuntimeError("boom"),
+        ),
+    ):
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1")
+
+    preview_value = snapshot.node_outputs[0].outputs[0].value_preview
+    assert isinstance(preview_value, dict)
+    assert preview_value["preview_url"] is None
+
+
+def test_object_output_preview_does_not_augment_canonical_file_mapping_shape():
+    service = _make_service(
+        declared_outputs=[
+            DeclaredOutputConfig(name="meta", type=DeclaredOutputType.OBJECT),
+        ],
+    )
+    run = _workflow_run(nodes=[_agent_v2_node(node_id="agent-1")])
+    raw_value = {
+        "transfer_method": "tool_file",
+        "reference": build_file_reference(record_id="550e8400-e29b-41d4-a716-446655440000"),
+    }
+    ex = _execution(node_id="agent-1", outputs={"meta": raw_value})
+    with (
+        _patch_session(workflow_run=run, executions=[ex]),
+        patch(
+            "services.workflow.node_output_inspector_service._resolve_preview_url",
+            return_value="https://signed.example/x.pdf",
+        ),
+    ):
+        snapshot = service.snapshot_workflow_run(app_model=_app_model(), workflow_run_id="run-1")
+        preview = service.output_preview(
+            app_model=_app_model(),
+            workflow_run_id="run-1",
+            node_id="agent-1",
+            output_name="meta",
+        )
+
+    assert snapshot.node_outputs[0].outputs[0].value_preview == raw_value
+    assert preview.value == raw_value
 
 
 # ──────────────────────────────────────────────────────────────────────────────

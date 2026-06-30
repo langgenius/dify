@@ -1,28 +1,26 @@
-import type { AppMeta } from '../types/app-meta.js'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import type { AppMeta } from '@/types/app-meta'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import yaml from 'js-yaml'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CACHE_DIR } from '../store/dir.js'
-import { CACHE_APP_INFO, cachePath, getCache } from '../store/manager.js'
-import { platform } from '../sys/index.js'
-import { FieldInfo, FieldParameters } from '../types/app-meta.js'
-import { APP_INFO_TTL_MS, loadAppInfoCache } from './app-info.js'
+import { ENV_CACHE_DIR } from '@/store/dir'
+import { CACHE_APP_INFO, cachePath, getCache } from '@/store/manager'
+import { platform } from '@/sys/index'
+import { FieldInfo, FieldParameters } from '@/types/app-meta'
+import { APP_INFO_TTL_MS, loadAppInfoCache } from './app-info'
 
 function appInfoPath(dir: string): string {
   return cachePath(dir, CACHE_APP_INFO)
 }
 
-function metaInfoOnly(): AppMeta {
+function metaInfoOnly(id = 'app-1'): AppMeta {
   return {
     info: {
-      id: 'app-1',
+      id,
       name: 'Greeter',
       description: '',
       mode: 'chat',
-      author: 'tester',
-      tags: [],
       updated_at: undefined,
       service_api_enabled: false,
       is_agent: false,
@@ -103,8 +101,28 @@ describe('app-info disk cache', () => {
   })
 
   it('corrupt cache file is treated as empty', async () => {
-    const { writeFile } = await import('node:fs/promises')
     await writeFile(appInfoPath(dir), ': : not valid yaml', 'utf8')
+    const c = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    expect(c.get('h', 'app-1')).toBeUndefined()
+  })
+
+  it('drops a corrupt single entry but keeps valid siblings', async () => {
+    // Seed a real serialized entry via set() — no hand-authored on-disk shape.
+    const seed = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await seed.set('h', 'app-2', metaInfoOnly('app-2'))
+
+    // Inject a corrupt sibling alongside the real one.
+    const file = yaml.load(await readFile(appInfoPath(dir), 'utf8')) as { entries: Record<string, unknown> }
+    file.entries['h::app-1'] = 'corrupted-string-not-object'
+    await writeFile(appInfoPath(dir), yaml.dump(file), 'utf8')
+
+    const c = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    expect(c.get('h', 'app-1')).toBeUndefined()
+    expect(c.get('h', 'app-2')?.meta.info?.id).toBe('app-2')
+  })
+
+  it('treats a non-object entries map as empty', async () => {
+    await writeFile(appInfoPath(dir), yaml.dump({ entries: 'not-an-object' }), 'utf8')
     const c = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     expect(c.get('h', 'app-1')).toBeUndefined()
   })

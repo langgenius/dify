@@ -112,7 +112,7 @@ function compareStrings(a: string, b: string): number {
 
 function emitImports(entries: readonly CommandEntry[]): string {
   const sorted = [...entries].sort((a, b) => compareStrings(a.importPath, b.importPath))
-  const lines = [`import type { CommandTree } from '../framework/registry.js'`]
+  const lines = [`import type { CommandTree } from '@/framework/registry'`]
   for (const e of sorted)
     lines.push(`import ${e.identifier} from '${e.importPath}'`)
   return lines.join('\n')
@@ -141,13 +141,24 @@ function emitNode(node: TreeNode, indent: string): string {
   return parts.join('\n')
 }
 
+function needsQuoting(key: string): boolean {
+  // A bare object key must be a valid JS identifier: the start class excludes digits
+  // (letter/_/$ only), so a leading digit fails the match and the key gets quoted.
+  return !/^[A-Z_$][\w$]*$/i.test(key)
+}
+
+function emitKey(key: string): string {
+  return needsQuoting(key) ? `'${key}'` : key
+}
+
 function emitEntry(key: string, node: TreeNode, indent: string): string {
+  const k = emitKey(key)
   const isLeaf = node.subcommands.size === 0 && node.command !== undefined
   if (isLeaf)
-    return `${indent}${key}: { command: ${node.command}, subcommands: {} },`
+    return `${indent}${k}: { command: ${node.command}, subcommands: {} },`
 
   return [
-    `${indent}${key}: {`,
+    `${indent}${k}: {`,
     emitNode(node, indent),
     `${indent}},`,
   ].join('\n')
@@ -219,7 +230,7 @@ export async function discoverCommands(commandsDir: string): Promise<CommandEntr
     entries.push({
       tokens,
       identifier: tokensToIdentifier(tokens),
-      importPath: `./${tokens.join('/')}/index.js`,
+      importPath: `@/commands/${tokens.join('/')}/index`,
     })
   }
 

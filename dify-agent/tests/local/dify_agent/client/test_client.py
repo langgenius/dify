@@ -11,6 +11,7 @@ import pytest
 
 from agenton.compositor import CompositorSessionSnapshot
 from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID
+from dify_agent.client import _client as client_module
 from dify_agent.client import (
     Client,
     DifyAgentHTTPError,
@@ -19,7 +20,7 @@ from dify_agent.client import (
     DifyAgentTimeoutError,
     DifyAgentValidationError,
 )
-from dify_agent.protocol.schemas import (
+from dify_agent.protocol import (
     CancelRunRequest,
     CancelRunResponse,
     CreateRunRequest,
@@ -30,6 +31,10 @@ from dify_agent.protocol.schemas import (
     RunStartedEvent,
     RunSucceededEvent,
     RunSucceededEventData,
+    SandboxListResponse,
+    SandboxLocator,
+    SandboxReadResponse,
+    SandboxUploadResponse,
 )
 
 
@@ -64,6 +69,61 @@ def _run_status_json(status: str) -> dict[str, object]:
     return {"run_id": "run-1", "status": status, "created_at": now, "updated_at": now, "error": None}
 
 
+def _sandbox_locator() -> SandboxLocator:
+    return SandboxLocator.model_validate(
+        {
+            "composition": {
+                "schema_version": 1,
+                "layers": [
+                    {
+                        "name": "execution_context",
+                        "type": "dify.execution_context",
+                        "config": {
+                            "tenant_id": "tenant-1",
+                            "user_from": "account",
+                            "agent_mode": "agent_app",
+                            "invoke_from": "service-api",
+                        },
+                    },
+                    {
+                        "name": "shell",
+                        "type": "dify.shell",
+                        "deps": {"execution_context": "execution_context"},
+                        "config": {},
+                    },
+                ],
+            },
+            "session_snapshot": {
+                "layers": [
+                    {"name": "execution_context", "lifecycle_state": "suspended", "runtime_state": {}},
+                    {
+                        "name": "shell",
+                        "lifecycle_state": "suspended",
+                        "runtime_state": {"session_id": "abc12ff", "workspace_cwd": "~/workspace/abc12ff"},
+                    },
+                ]
+            },
+        }
+    )
+
+
+def _function_tool_result_payload(key: str) -> dict[str, object]:
+    return {
+        "type": "pydantic_ai_event",
+        "run_id": "run-1",
+        "created_at": datetime(2026, 5, 11, tzinfo=UTC).isoformat(),
+        "data": {
+            "event_kind": "function_tool_result",
+            key: {
+                "tool_name": "shell_run",
+                "content": "ok",
+                "tool_call_id": "call-1",
+                "part_kind": "tool-return",
+            },
+        },
+    }
+
+
 class DisconnectingSyncStream(httpx.SyncByteStream):
     chunks: list[bytes]
 
@@ -74,6 +134,32 @@ class DisconnectingSyncStream(httpx.SyncByteStream):
     def __iter__(self) -> Iterator[bytes]:
         yield from self.chunks
         raise httpx.ReadError("stream disconnected")
+
+
+def test_sse_decoder_accepts_function_tool_result_part_alias(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "result")
+    decoder = client_module._SSEDecoder()
+    payload = _function_tool_result_payload("part")
+
+    assert decoder.feed_line(f"data: {json.dumps(payload)}") is None
+    event = decoder.feed_line("")
+
+    assert event is not None
+    assert event.type == "pydantic_ai_event"
+    assert event.data.event_kind == "function_tool_result"
+    assert event.data.result.tool_name == "shell_run"
+
+
+def test_function_tool_result_payload_normalization_supports_old_part_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(client_module, "_FUNCTION_TOOL_RESULT_PAYLOAD_KEY", "part")
+    payload = _function_tool_result_payload("result")
+
+    normalized = client_module._normalize_run_event_payload_for_local_pydantic_ai(payload)
+
+    assert normalized["data"]["part"]["tool_name"] == "shell_run"
+    assert "result" not in normalized["data"]
 
 
 def test_sync_methods_parse_protocol_dtos_and_send_create_request_dto() -> None:
@@ -149,6 +235,99 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
         await http_client.aclose()
 
     asyncio.run(scenario())
+
+
+def test_sync_sandbox_methods_post_dtos_and_parse_responses() -> None:
+    locator = _sandbox_locator()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/sandbox/files/list":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload["path"] == "."
+            return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
+        if request.url.path == "/sandbox/files/read":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload["path"] == "note.txt"
+            assert payload["max_bytes"] == 128
+            return httpx.Response(
+                200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
+            )
+        if request.url.path == "/sandbox/files/upload":
+            payload = cast(dict[str, object], json.loads(request.content))
+            assert payload["path"] == "report.txt"
+            return httpx.Response(
+                200,
+                json={
+                    "path": "report.txt",
+                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                },
+            )
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+    listing = client.list_sandbox_files_sync(locator, ".")
+    preview = client.read_sandbox_file_sync(locator, "note.txt", max_bytes=128)
+    uploaded = client.upload_sandbox_file_sync(locator, "report.txt")
+
+    assert isinstance(listing, SandboxListResponse)
+    assert listing.path == "."
+    assert isinstance(preview, SandboxReadResponse)
+    assert preview.text == "hello"
+    assert isinstance(uploaded, SandboxUploadResponse)
+    assert uploaded.file.reference == "dify-file-ref:file-1"
+
+
+def test_async_sandbox_methods_post_dtos_and_parse_responses() -> None:
+    locator = _sandbox_locator()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/sandbox/files/list":
+            return httpx.Response(200, json={"path": ".", "entries": [], "truncated": False})
+        if request.url.path == "/sandbox/files/read":
+            return httpx.Response(
+                200, json={"path": "note.txt", "size": 5, "truncated": False, "binary": False, "text": "hello"}
+            )
+        if request.url.path == "/sandbox/files/upload":
+            return httpx.Response(
+                200,
+                json={
+                    "path": "report.txt",
+                    "file": {"transfer_method": "tool_file", "reference": "dify-file-ref:file-1"},
+                },
+            )
+        raise AssertionError(f"unexpected request: {request.method} {request.url}")
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        listing = await client.list_sandbox_files(locator, ".")
+        preview = await client.read_sandbox_file(locator, "note.txt")
+        uploaded = await client.upload_sandbox_file(locator, "report.txt")
+
+        assert listing.path == "."
+        assert preview.text == "hello"
+        assert uploaded.file.reference == "dify-file-ref:file-1"
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_sync_sandbox_methods_map_invalid_json_to_validation_error() -> None:
+    responses = iter([httpx.Response(200, text="not-json"), httpx.Response(404, json={"detail": "missing"})])
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        return next(responses)
+
+    client = Client(base_url="http://testserver", sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)))
+
+    with pytest.raises(DifyAgentValidationError):
+        _ = client.list_sandbox_files_sync(_sandbox_locator(), ".")
+
+    with pytest.raises(DifyAgentHTTPError) as http_error:
+        _ = client.read_sandbox_file_sync(_sandbox_locator(), "missing.txt")
+    assert http_error.value.status_code == 404
 
 
 def test_error_mapping_and_create_run_input_validation() -> None:

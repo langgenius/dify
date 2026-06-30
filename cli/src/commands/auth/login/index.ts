@@ -1,10 +1,14 @@
-import { Flags } from '../../../framework/flags.js'
-import { realStreams } from '../../../sys/io/streams'
-import { DifyCommand } from '../../_shared/dify-command.js'
-import { runLogin } from './login.js'
+import type { CommandEffect } from '@/framework/command'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { Flags } from '@/framework/flags'
+import { realStreams } from '@/sys/io/streams'
+import { agentGuide } from './guide'
+import { runLogin } from './login'
 
 export default class Login extends DifyCommand {
   static override description = 'Sign in to Dify via OAuth device flow'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> auth login',
@@ -35,5 +39,9 @@ export default class Login extends DifyCommand {
       noBrowser: flags['no-browser'],
       insecure: flags.insecure,
     })
+  }
+
+  override agentGuide(): string {
+    return agentGuide
   }
 }

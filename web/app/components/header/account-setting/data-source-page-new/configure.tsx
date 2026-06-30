@@ -70,6 +70,7 @@ const Configure = ({
         <PopoverTrigger
           render={(
             <Button
+              className="h-8"
               variant="secondary-accent"
             >
               <RiAddLine className="size-4" />

@@ -7,6 +7,7 @@ import markdownPreferences from 'eslint-plugin-markdown-preferences'
 const GENERATED_IGNORES = [
   '**/storybook-static/',
   '**/.next/',
+  '**/.vinext/',
   'web/next/',
   'web/next-env.d.ts',
   '**/dist/',
@@ -22,10 +23,6 @@ export default antfu(
       '!packages/**',
       '!web/**',
       '!e2e/**',
-      '!cli/**',
-      'cli/context/**',
-      'cli/docs/**',
-      'cli/oclif.manifest.json',
       '!eslint.config.mjs',
       '!package.json',
       '!pnpm-workspace.yaml',

@@ -14,6 +14,7 @@ export type AccountAvatarPayload = {
 
 export type Account = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -86,6 +87,10 @@ export type EducationActivatePayload = {
   token: string
 }
 
+export type EducationActivateResponse = {
+  [key: string]: unknown
+}
+
 export type EducationAutocompleteResponse = {
   curr_page?: number | null
   data?: Array<string>
@@ -133,6 +138,20 @@ export type AccountIntegrateResponse = {
   is_bound: boolean
   link?: string | null
   provider: string
+}
+
+export type AccountWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  interface_language?: string | null
+  interface_theme?: string | null
+  is_password_set: boolean
+  last_login_at?: number | null
+  last_login_ip?: string | null
+  name: string
+  timezone?: string | null
 }
 
 export type GetAccountAvatarData = {
@@ -282,9 +301,7 @@ export type PostAccountEducationData = {
 }
 
 export type PostAccountEducationResponses = {
-  200: {
-    [key: string]: unknown
-  }
+  200: EducationActivateResponse
 }
 
 export type PostAccountEducationResponse

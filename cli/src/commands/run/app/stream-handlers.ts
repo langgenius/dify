@@ -1,12 +1,13 @@
-import type { SseEvent } from '../../../http/sse.js'
-import type { StreamPrinter } from '../../../printers/stream-printer.js'
-import type { HitlPausePayload } from './sse-collector.js'
-import { newError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
-import { ThinkChunkFilter } from '../../../sys/io/think-filter.js'
-import { RUN_MODES } from './handlers.js'
-import { HitlPauseError } from './sse-collector.js'
+import type { HitlPausePayload } from './sse-collector'
+import type { StreamPrinter } from '@/framework/stream'
+import type { SseEvent } from '@/http/sse'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { parseReasoningChunk, ReasoningChunkRenderer } from '@/sys/io/reasoning'
+import { filterThinkInOutputs, ThinkChunkFilter } from '@/sys/io/think-filter'
+import { RUN_MODES } from './handlers'
+import { HitlPauseError } from './sse-collector'
 
 const dec = new TextDecoder()
 
@@ -43,9 +44,12 @@ function handleCommonEvents(ev: SseEvent): boolean {
 class ChatStreamPrinter implements StreamPrinter {
   private convoId = ''
   private readonly filter: ThinkChunkFilter
+  private readonly reasoning = new ReasoningChunkRenderer()
+  private readonly think: boolean
   private readonly isTTY: boolean
   constructor(think: boolean, isTTY = false) {
     this.filter = new ThinkChunkFilter(think)
+    this.think = think
     this.isTTY = isTTY
   }
 
@@ -62,6 +66,15 @@ class ChatStreamPrinter implements StreamPrinter {
           this.convoId = c.conversation_id
         return
       }
+      // Stream separated-mode reasoning to stderr under --think.
+      case 'reasoning_chunk': {
+        if (!this.think)
+          return
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined)
+          this.reasoning.push(chunk, errOut)
+        return
+      }
       case 'agent_thought':
         if (typeof c.thought === 'string' && c.thought !== '')
           errOut.write(`thought: ${c.thought}\n`)
@@ -73,6 +86,7 @@ class ChatStreamPrinter implements StreamPrinter {
   }
 
   onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.reasoning.flush(errOut)
     this.filter.flush(out, errOut)
     out.write('\n')
     if (this.convoId !== '') {
@@ -106,6 +120,12 @@ class CompletionStreamPrinter implements StreamPrinter {
 
 class WorkflowStreamPrinter implements StreamPrinter {
   private final: Record<string, unknown> | undefined
+  private readonly reasoning = new ReasoningChunkRenderer()
+  private readonly think: boolean
+  constructor(think: boolean) {
+    this.think = think
+  }
+
   onEvent(_out: NodeJS.WritableStream, errOut: NodeJS.WritableStream, ev: SseEvent): void {
     if (handleCommonEvents(ev))
       return
@@ -117,6 +137,15 @@ class WorkflowStreamPrinter implements StreamPrinter {
           : (typeof c.id === 'string' ? c.id : '')
         if (title !== '')
           errOut.write(`→ ${title}\n`)
+        return
+      }
+      // Stream separated-mode reasoning to stderr under --think; the prior → title attributes the node.
+      case 'reasoning_chunk': {
+        if (!this.think)
+          return
+        const chunk = parseReasoningChunk(c)
+        if (chunk !== undefined)
+          this.reasoning.push(chunk, errOut)
         return
       }
       case 'node_finished': {
@@ -132,12 +161,21 @@ class WorkflowStreamPrinter implements StreamPrinter {
     }
   }
 
-  onEnd(out: NodeJS.WritableStream): void {
+  onEnd(out: NodeJS.WritableStream, errOut: NodeJS.WritableStream): void {
+    this.reasoning.flush(errOut)
     if (this.final === undefined)
       return
     const data = this.final.data
     if (data !== null && typeof data === 'object' && 'outputs' in data) {
-      out.write(`${JSON.stringify((data as { outputs: unknown }).outputs)}\n`)
+      const raw = (data as { outputs: unknown }).outputs
+      if (raw !== null && typeof raw === 'object' && !Array.isArray(raw)) {
+        const { outputs, thinking } = filterThinkInOutputs(raw as Record<string, unknown>, this.think)
+        if (this.think && thinking !== '')
+          errOut.write(`${thinking}\n`)
+        out.write(`${JSON.stringify(outputs)}\n`)
+        return
+      }
+      out.write(`${JSON.stringify(raw)}\n`)
       return
     }
     out.write(`${JSON.stringify(this.final)}\n`)
@@ -149,7 +187,7 @@ const FACTORIES: Record<string, (think: boolean, isTTY: boolean) => StreamPrinte
   [RUN_MODES.AdvancedChat]: (think, isTTY) => new ChatStreamPrinter(think, isTTY),
   [RUN_MODES.AgentChat]: (think, isTTY) => new ChatStreamPrinter(think, isTTY),
   [RUN_MODES.Completion]: (think, _isTTY) => new CompletionStreamPrinter(think),
-  [RUN_MODES.Workflow]: (_think, _isTTY) => new WorkflowStreamPrinter(),
+  [RUN_MODES.Workflow]: (think, _isTTY) => new WorkflowStreamPrinter(think),
 }
 
 export function streamPrinterFor(mode: string, think = false, isTTY = false): StreamPrinter {

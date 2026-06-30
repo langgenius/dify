@@ -20,7 +20,7 @@ jobs:
         run: echo "autofix.ci updates pull request branches, not merge group refs."
 
       - if: github.event_name != 'merge_group'
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
 
       - name: Check Docker Compose inputs
         if: github.event_name != 'merge_group'
@@ -51,13 +51,22 @@ jobs:
         with:
           files: |
             api/**
+      - name: Check dify-agent inputs
+        if: github.event_name != 'merge_group'
+        id: dify-agent-changes
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          files: |
+            dify-agent/**/*.py
+            dify-agent/pyproject.toml
+            dify-agent/uv.lock
       - if: github.event_name != 'merge_group'
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.11"
 
       - if: github.event_name != 'merge_group'
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
 
       - name: Generate Docker Compose
         if: github.event_name != 'merge_group' && steps.docker-compose-changes.outputs.any_changed == 'true'
@@ -75,6 +84,17 @@ jobs:
           uv run ruff check --fix .
           # Format code
           uv run ruff format ..
+
+      - if: github.event_name != 'merge_group' && steps.dify-agent-changes.outputs.any_changed == 'true'
+        run: |
+          cd dify-agent
+          uv sync --dev
+          # fmt first to avoid line too long
+          uv run ruff format .
+          # Fix lint errors
+          uv run ruff check --fix .
+          # Format code
+          uv run ruff format .
 
       - name: count migration progress
         if: github.event_name != 'merge_group' && steps.api-changes.outputs.any_changed == 'true'

@@ -247,6 +247,60 @@ def test_guard_populates_external_identity_from_subject_email(app):
     assert received["data"].external_identity.issuer == "https://idp.example.com"
 
 
+def test_guard_workspace_sets_membership_and_roles(app):
+    from models.account import TenantAccountRole
+
+    router = _make_router()
+    received = {}
+
+    with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()),
+            patch("controllers.openapi.auth.pipeline.reset_auth_ctx"),
+        ):
+            mock_auth.return_value.authenticate.return_value = _fake_identity()
+
+            roles = frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN})
+
+            @router.guard_workspace(
+                scope=Scope.FULL,
+                allowed_token_types=frozenset({TokenType.OAUTH_ACCOUNT}),
+                allowed_roles=roles,
+            )
+            def view(*, auth_data):
+                received["data"] = auth_data
+
+            view()
+
+    assert isinstance(received["data"], AuthData)
+    assert received["data"].allowed_roles == roles
+
+
+def test_guard_workspace_without_roles(app):
+    router = _make_router()
+    received = {}
+
+    with app.test_request_context("/test", headers={"Authorization": "Bearer tok"}):
+        with (
+            patch("controllers.openapi.auth.pipeline.extract_bearer", return_value="tok"),
+            patch("controllers.openapi.auth.pipeline.get_authenticator") as mock_auth,
+            patch("controllers.openapi.auth.pipeline.set_auth_ctx", return_value=MagicMock()),
+            patch("controllers.openapi.auth.pipeline.reset_auth_ctx"),
+        ):
+            mock_auth.return_value.authenticate.return_value = _fake_identity()
+
+            @router.guard_workspace(scope=Scope.FULL)
+            def view(*, auth_data):
+                received["data"] = auth_data
+
+            view()
+
+    assert isinstance(received["data"], AuthData)
+    assert received["data"].allowed_roles is None
+
+
 def test_guard_no_external_identity_when_subject_email_absent(app):
     router = _make_router()
     received = {}

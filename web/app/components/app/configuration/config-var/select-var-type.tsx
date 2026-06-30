@@ -14,9 +14,9 @@ import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/deve
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   onChange: (value: string) => void
-}
+}>
 
 type ItemProps = {
   text: string

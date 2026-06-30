@@ -1,41 +1,47 @@
-import type { AppDescribeResponse, AppListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
+import type { AppDescribeResponse, AppListResponse, SupportedAppType } from '@dify/contracts/api/openapi/types.gen'
+import type { AppReader } from './app-reader'
+import type { OpenApiClient } from '@/http/orpc'
+import type { HttpClient } from '@/http/types'
+import { createOpenApiClient } from '@/http/orpc'
 
 export type ListQuery = {
   readonly workspaceId: string
   readonly page?: number
   readonly limit?: number
-  readonly mode?: string
+  readonly mode?: SupportedAppType | ''
   readonly name?: string
-  readonly tag?: string
 }
 
-export class AppsClient {
-  private readonly http: KyInstance
+// An absent or empty mode filter means "any mode" — collapse both to undefined for the query.
+export function normalizeMode(mode: SupportedAppType | '' | undefined): SupportedAppType | undefined {
+  return mode !== undefined && mode !== '' ? mode : undefined
+}
 
-  constructor(http: KyInstance) {
-    this.http = http
+export class AppsClient implements AppReader {
+  private readonly orpc: OpenApiClient
+
+  constructor(http: HttpClient) {
+    this.orpc = createOpenApiClient(http)
   }
 
   async list(q: ListQuery): Promise<AppListResponse> {
-    const params = new URLSearchParams()
-    params.set('workspace_id', q.workspaceId)
-    params.set('page', String(q.page ?? 1))
-    params.set('limit', String(q.limit ?? 20))
-    if (q.mode !== undefined && q.mode !== '')
-      params.set('mode', q.mode)
-    if (q.name !== undefined && q.name !== '')
-      params.set('name', q.name)
-    if (q.tag !== undefined && q.tag !== '')
-      params.set('tag', q.tag)
-    return this.http.get('apps', { searchParams: params }).json<AppListResponse>()
+    return this.orpc.apps.get({
+      query: {
+        workspace_id: q.workspaceId,
+        page: q.page ?? 1,
+        limit: q.limit ?? 20,
+        mode: normalizeMode(q.mode),
+        name: q.name !== undefined && q.name !== '' ? q.name : undefined,
+      },
+    })
   }
 
-  async describe(appId: string, workspaceId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
-    const params = new URLSearchParams()
-    params.set('workspace_id', workspaceId)
-    if (fields !== undefined && fields.length > 0)
-      params.set('fields', fields.join(','))
-    return this.http.get(`apps/${encodeURIComponent(appId)}/describe`, { searchParams: params }).json<AppDescribeResponse>()
+  async describe(appId: string, fields?: readonly string[]): Promise<AppDescribeResponse> {
+    return this.orpc.apps.byAppId.describe.get({
+      params: { app_id: appId },
+      query: {
+        fields: fields !== undefined && fields.length > 0 ? fields.join(',') : undefined,
+      },
+    })
   }
 }

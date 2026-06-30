@@ -6,12 +6,12 @@ describe('createPanelSlice', () => {
     localStorage.clear()
   })
 
-  it('uses the persisted panel width when present', () => {
+  it('uses the static panel width default', () => {
     localStorage.setItem('workflow-node-panel-width', '480')
 
     const store = createStore(createPanelSlice)
 
-    expect(store.getState().panelWidth).toBe(480)
+    expect(store.getState().panelWidth).toBe(420)
   })
 
   it('updates panel visibility and context menus through the slice setters', () => {

@@ -23,6 +23,7 @@ const NAMESPACES = [
   'layout',
   'login',
   'oauth',
+  'permission',
   'pipeline',
   'plugin',
   'pluginTags',

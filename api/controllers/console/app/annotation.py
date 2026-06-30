@@ -6,16 +6,20 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field, TypeAdapter, field_validator
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     annotation_import_concurrency_limit,
     annotation_import_rate_limit,
     cloud_edition_billing_resource_check,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
 )
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     Annotation,
@@ -24,6 +28,7 @@ from fields.annotation_fields import (
     AnnotationHitHistoryList,
     AnnotationList,
 )
+from fields.base import ResponseModel
 from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import (
@@ -56,7 +61,10 @@ class CreateAnnotationPayload(BaseModel):
     question: str | None = Field(default=None, description="Question text")
     answer: str | None = Field(default=None, description="Answer text")
     content: str | None = Field(default=None, description="Content text")
-    annotation_reply: dict[str, Any] | None = Field(default=None, description="Annotation reply data")
+    annotation_reply: dict[str, Any] | None = Field(
+        default=None,
+        description="Annotation reply data",
+    )
 
     @field_validator("message_id")
     @classmethod
@@ -70,11 +78,16 @@ class UpdateAnnotationPayload(BaseModel):
     question: str | None = None
     answer: str | None = None
     content: str | None = None
-    annotation_reply: dict[str, Any] | None = None
+    annotation_reply: dict[str, Any] | None = Field(default=None)
 
 
 class AnnotationReplyStatusQuery(BaseModel):
     action: Literal["enable", "disable"]
+
+
+class AnnotationHitHistoryListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Page size")
 
 
 class AnnotationFilePayload(BaseModel):
@@ -84,6 +97,25 @@ class AnnotationFilePayload(BaseModel):
     @classmethod
     def validate_message_id(cls, value: str) -> str:
         return uuid_value(value)
+
+
+class AnnotationJobStatusResponse(ResponseModel):
+    job_id: str | None = None
+    job_status: str | None = None
+    error_msg: str | None = None
+    record_count: int | None = None
+
+
+class AnnotationEmbeddingModelResponse(ResponseModel):
+    embedding_provider_name: str | None = None
+    embedding_model_name: str | None = None
+
+
+class AnnotationSettingResponse(ResponseModel):
+    id: str | None = None
+    enabled: bool
+    score_threshold: float | None = None
+    embedding_model: AnnotationEmbeddingModelResponse | None = None
 
 
 register_schema_models(
@@ -99,7 +131,18 @@ register_schema_models(
     CreateAnnotationPayload,
     UpdateAnnotationPayload,
     AnnotationReplyStatusQuery,
+    AnnotationHitHistoryListQuery,
     AnnotationFilePayload,
+)
+register_response_schema_models(
+    console_ns,
+    Annotation,
+    AnnotationList,
+    AnnotationExportList,
+    AnnotationHitHistory,
+    AnnotationHitHistoryList,
+    AnnotationJobStatusResponse,
+    AnnotationSettingResponse,
 )
 
 
@@ -109,13 +152,14 @@ class AnnotationReplyActionApi(Resource):
     @console_ns.doc(description="Enable or disable annotation reply for an app")
     @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
     @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
-    @console_ns.response(200, "Action completed successfully")
+    @console_ns.response(200, "Action completed successfully", console_ns.models[AnnotationJobStatusResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID, action: Literal["enable", "disable"]):
         args = AnnotationReplyPayload.model_validate(console_ns.payload)
         match action:
@@ -136,12 +180,17 @@ class AppAnnotationSettingDetailApi(Resource):
     @console_ns.doc("get_annotation_setting")
     @console_ns.doc(description="Get annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Annotation settings retrieved successfully")
+    @console_ns.response(
+        200,
+        "Annotation settings retrieved successfully",
+        console_ns.models[AnnotationSettingResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID):
         result = AppAnnotationService.get_app_annotation_setting_by_app_id(str(app_id))
         return result, 200
@@ -153,12 +202,13 @@ class AppAnnotationSettingUpdateApi(Resource):
     @console_ns.doc(description="Update annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
     @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
-    @console_ns.response(200, "Settings updated successfully")
+    @console_ns.response(200, "Settings updated successfully", console_ns.models[AnnotationSettingResponse.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID, annotation_setting_id: UUID):
         annotation_setting_id_str = str(annotation_setting_id)
 
@@ -176,13 +226,18 @@ class AnnotationReplyActionStatusApi(Resource):
     @console_ns.doc("get_annotation_reply_action_status")
     @console_ns.doc(description="Get status of annotation reply action job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID", "action": "Action type"})
-    @console_ns.response(200, "Job status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Job status retrieved successfully",
+        console_ns.models[AnnotationJobStatusResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID, job_id: UUID, action: str):
         job_id_str = str(job_id)
         app_annotation_job_key = f"{action}_app_annotation_job_{job_id_str}"
@@ -204,13 +259,14 @@ class AnnotationApi(Resource):
     @console_ns.doc("list_annotations")
     @console_ns.doc(description="Get annotations for an app with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[AnnotationListQuery.__name__])
-    @console_ns.response(200, "Annotations retrieved successfully")
+    @console_ns.doc(params=query_params_from_model(AnnotationListQuery))
+    @console_ns.response(200, "Annotations retrieved successfully", console_ns.models[AnnotationList.__name__])
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID):
         args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))
         page = args.page
@@ -239,6 +295,7 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID):
         args = CreateAnnotationPayload.model_validate(console_ns.payload)
         upsert_args: UpsertAnnotationArgs = {}
@@ -257,6 +314,8 @@ class AnnotationApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_CREATE_AND_MANAGEMENT)
+    @console_ns.response(204, "Annotations deleted successfully")
     def delete(self, app_id: UUID):
 
         # Use request.args.getlist to get annotation_ids array directly
@@ -294,6 +353,7 @@ class AnnotationExportApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID):
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(str(app_id))
         annotation_models = TypeAdapter(list[Annotation]).validate_python(annotation_list, from_attributes=True)
@@ -321,6 +381,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID, annotation_id: UUID):
         args = UpdateAnnotationPayload.model_validate(console_ns.payload)
         update_args: UpdateAnnotationArgs = {}
@@ -328,15 +389,19 @@ class AnnotationUpdateDeleteApi(Resource):
             update_args["answer"] = args.answer
         if args.question is not None:
             update_args["question"] = args.question
-        annotation = AppAnnotationService.update_app_annotation_directly(update_args, str(app_id), str(annotation_id))
+        annotation = AppAnnotationService.update_app_annotation_directly(
+            update_args, str(app_id), str(annotation_id), db.session
+        )
         return Annotation.model_validate(annotation, from_attributes=True).model_dump(mode="json")
 
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
+    @console_ns.response(204, "Annotation deleted successfully")
     def delete(self, app_id: UUID, annotation_id: UUID):
-        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id))
+        AppAnnotationService.delete_app_annotation(str(app_id), str(annotation_id), db.session)
         return "", 204
 
 
@@ -345,7 +410,11 @@ class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
     @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Batch import started successfully")
+    @console_ns.response(
+        200,
+        "Batch import started successfully",
+        console_ns.models[AnnotationJobStatusResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "No file uploaded or too many files")
     @console_ns.response(413, "File too large")
@@ -357,6 +426,7 @@ class AnnotationBatchImportApi(Resource):
     @annotation_import_rate_limit
     @annotation_import_concurrency_limit
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_EDIT)
     def post(self, app_id: UUID):
         from configs import dify_config
 
@@ -398,13 +468,18 @@ class AnnotationBatchImportStatusApi(Resource):
     @console_ns.doc("get_batch_import_status")
     @console_ns.doc(description="Get status of batch import job")
     @console_ns.doc(params={"app_id": "Application ID", "job_id": "Job ID"})
-    @console_ns.response(200, "Job status retrieved successfully")
+    @console_ns.response(
+        200,
+        "Job status retrieved successfully",
+        console_ns.models[AnnotationJobStatusResponse.__name__],
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID, job_id: UUID):
         indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
         cache_result = redis_client.get(indexing_cache_key)
@@ -424,11 +499,7 @@ class AnnotationHitHistoryListApi(Resource):
     @console_ns.doc("list_annotation_hit_histories")
     @console_ns.doc(description="Get hit histories for an annotation")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("page", type=int, location="args", default=1, help="Page number")
-        .add_argument("limit", type=int, location="args", default=20, help="Page size")
-    )
+    @console_ns.doc(params=query_params_from_model(AnnotationHitHistoryListQuery))
     @console_ns.response(
         200,
         "Hit histories retrieved successfully",
@@ -439,6 +510,7 @@ class AnnotationHitHistoryListApi(Resource):
     @login_required
     @account_initialization_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     def get(self, app_id: UUID, annotation_id: UUID):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)

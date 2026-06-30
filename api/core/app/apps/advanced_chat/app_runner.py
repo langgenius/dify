@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -22,7 +22,7 @@ from core.app.entities.queue_entities import (
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.app.layers.conversation_variable_persist_layer import ConversationVariablePersistenceLayer
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from core.db.session_factory import session_factory
+from core.db.session_factory import create_session, session_factory
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
@@ -107,7 +107,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             workflow_execution_id=self.application_generate_entity.workflow_run_id,
         )
 
-        with Session(db.engine, expire_on_commit=False) as session:
+        with create_session() as session:
             app_record = session.scalar(select(App).where(App.id == app_config.app_id))
 
         if not app_record:
@@ -131,6 +131,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_id=self.application_generate_entity.user_id,
                 invoke_from=invoke_from,
                 user_from=user_from,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -139,6 +140,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
                 user_id=self.application_generate_entity.user_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -199,8 +201,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 user_from=user_from,
                 invoke_from=invoke_from,
                 root_node_id=root_node_id,
+                trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
             )
 
+        # Release the Flask scoped session before workflow execution so a checked-out DB connection
+        # is not held for the lifetime of the graph run.
         db.session.close()
 
         # RUN WORKFLOW
@@ -365,7 +370,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         :return: List of conversation variables ready for use
         """
-        with sessionmaker(bind=db.engine).begin() as session:
+        with create_session() as session, session.begin():
             existing_variables = self._load_existing_conversation_variables(session)
 
             if not existing_variables:

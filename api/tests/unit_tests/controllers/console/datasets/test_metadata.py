@@ -1,4 +1,5 @@
 import uuid
+from inspect import unwrap
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
@@ -14,19 +15,13 @@ from controllers.console.datasets.metadata import (
     DatasetMetadataCreateApi,
     DocumentMetadataEditApi,
 )
+from models.account import Account
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
-
-
-def unwrap(func):
-    """Recursively unwrap decorated functions."""
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 @pytest.fixture
@@ -37,8 +32,8 @@ def app():
 
 
 @pytest.fixture
-def current_user():
-    user = MagicMock()
+def current_user() -> Account:
+    user = Account(name="Test User", email="test@example.com")
     user.id = "user-1"
     return user
 
@@ -96,10 +91,6 @@ class TestDatasetMetadataCreateApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch(
-                "controllers.console.datasets.metadata.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
             patch.object(
                 MetadataArgs,
                 "model_validate",
@@ -120,7 +111,7 @@ class TestDatasetMetadataCreateApi:
                 return_value={"id": "m1", "type": "string", "name": "author"},
             ),
         ):
-            result, status = method(api, dataset_id)
+            result, status = method(api, "tenant-1", current_user, dataset_id)
 
         assert status == 201
         assert result["type"] == "string"
@@ -143,10 +134,6 @@ class TestDatasetMetadataCreateApi:
                 new_callable=PropertyMock,
                 return_value=valid_payload,
             ),
-            patch(
-                "controllers.console.datasets.metadata.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
             patch.object(
                 MetadataArgs,
                 "model_validate",
@@ -159,7 +146,7 @@ class TestDatasetMetadataCreateApi:
             ),
         ):
             with pytest.raises(NotFound, match="Dataset not found"):
-                method(api, dataset_id)
+                method(api, "tenant-1", current_user, dataset_id)
 
 
 class TestDatasetMetadataGetApi:
@@ -220,10 +207,6 @@ class TestDatasetMetadataApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch(
-                "controllers.console.datasets.metadata.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
             patch.object(
                 DatasetService,
                 "get_dataset",
@@ -239,7 +222,7 @@ class TestDatasetMetadataApi:
                 return_value={"id": "m1", "type": "string", "name": "updated-name"},
             ),
         ):
-            result, status = method(api, dataset_id, metadata_id)
+            result, status = method(api, "tenant-1", current_user, dataset_id, metadata_id)
 
         assert status == 200
         assert result["type"] == "string"
@@ -251,10 +234,6 @@ class TestDatasetMetadataApi:
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.metadata.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
             patch.object(
                 DatasetService,
                 "get_dataset",
@@ -269,7 +248,7 @@ class TestDatasetMetadataApi:
                 "delete_metadata",
             ),
         ):
-            result, status = method(api, dataset_id, metadata_id)
+            result, status = method(api, current_user, dataset_id, metadata_id)
 
         assert status == 204
         assert result == ""
@@ -307,10 +286,6 @@ class TestDatasetMetadataBuiltInFieldActionApi:
 
         with (
             app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.metadata.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
             patch.object(
                 DatasetService,
                 "get_dataset",
@@ -325,7 +300,7 @@ class TestDatasetMetadataBuiltInFieldActionApi:
                 "enable_built_in_field",
             ),
         ):
-            result, status = method(api, dataset_id, "enable")
+            result, status = method(api, current_user, dataset_id, "enable")
 
         assert status == 204
         assert result == ""
@@ -346,10 +321,6 @@ class TestDocumentMetadataEditApi:
                 new_callable=PropertyMock,
                 return_value=payload,
             ),
-            patch(
-                "controllers.console.datasets.metadata.current_account_with_tenant",
-                return_value=(current_user, "tenant-1"),
-            ),
             patch.object(
                 DatasetService,
                 "get_dataset",
@@ -369,7 +340,7 @@ class TestDocumentMetadataEditApi:
                 "update_documents_metadata",
             ),
         ):
-            result, status = method(api, dataset_id)
+            result, status = method(api, current_user, dataset_id)
 
         assert status == 204
         assert result == ""

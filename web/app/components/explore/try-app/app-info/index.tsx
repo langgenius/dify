@@ -9,13 +9,13 @@ import { AppTypeIcon } from '@/app/components/app/type-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import useGetRequirements from './use-get-requirements'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   appDetail: TryAppInfo
   categories?: string[]
   className?: string
   onCreate: () => void
-}
+}>
 
 const headerClassName = 'system-sm-semibold-uppercase text-text-secondary mb-3'
 const requirementIconSize = 20

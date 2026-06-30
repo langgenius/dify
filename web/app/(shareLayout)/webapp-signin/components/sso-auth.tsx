@@ -5,12 +5,12 @@ import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { SSOProtocol } from '@/features/system-features/constants'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { fetchMembersOAuth2SSOUrl, fetchMembersOIDCSSOUrl, fetchMembersSAMLSSOUrl } from '@/service/share'
-import { SSOProtocol } from '@/types/feature'
 
 type SSOAuthProps = {
-  protocol: SSOProtocol | ''
+  protocol: string
 }
 
 const SSOAuth: FC<SSOAuthProps> = ({

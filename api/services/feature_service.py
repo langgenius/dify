@@ -160,7 +160,7 @@ class PluginManagerModel(FeatureResponseModel):
 
 
 class SystemFeatureModel(FeatureResponseModel):
-    app_dsl_version: str = ""
+    enable_app_deploy: bool = False
     sso_enforced_for_signin: bool = False
     sso_enforced_for_signin_protocol: str = ""
     enable_marketplace: bool = False
@@ -178,10 +178,11 @@ class SystemFeatureModel(FeatureResponseModel):
     plugin_installation_permission: PluginInstallationPermissionModel = PluginInstallationPermissionModel()
     enable_change_email: bool = True
     plugin_manager: PluginManagerModel = PluginManagerModel()
-    trial_models: list[str] = []
     enable_creators_platform: bool = False
     enable_trial_app: bool = False
     enable_explore_banner: bool = False
+    enable_learn_app: bool = True
+    rbac_enabled: bool = False
 
 
 class FeatureService:
@@ -248,7 +249,7 @@ class FeatureService:
     @classmethod
     def get_system_features(cls, is_authenticated: bool = False) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
-        system_features.app_dsl_version = CURRENT_APP_DSL_VERSION
+        system_features.rbac_enabled = dify_config.RBAC_ENABLED
 
         cls._fulfill_system_params_from_env(system_features)
 
@@ -268,6 +269,10 @@ class FeatureService:
         return system_features
 
     @classmethod
+    def get_app_dsl_version(cls) -> str:
+        return CURRENT_APP_DSL_VERSION
+
+    @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
@@ -276,9 +281,9 @@ class FeatureService:
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
-        system_features.trial_models = cls._fulfill_trial_models_from_env()
         system_features.enable_trial_app = dify_config.ENABLE_TRIAL_APP
         system_features.enable_explore_banner = dify_config.ENABLE_EXPLORE_BANNER
+        system_features.enable_learn_app = dify_config.ENABLE_LEARN_APP
 
     @classmethod
     def _fulfill_trial_models_from_env(cls) -> list[str]:
@@ -290,6 +295,11 @@ class FeatureService:
                 and getattr(dify_config, f"HOSTED_{provider.config_key}_TRIAL_ENABLED", False)
             )
         ]
+
+    @classmethod
+    def get_trial_models(cls) -> list[str]:
+        """Return hosted trial provider ids without requiring the full system-features payload."""
+        return cls._fulfill_trial_models_from_env()
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):
@@ -413,6 +423,9 @@ class FeatureService:
 
         if "IsAllowCreateWorkspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["IsAllowCreateWorkspace"]
+
+        if "EnableAppDeploy" in enterprise_info:
+            features.enable_app_deploy = enterprise_info["EnableAppDeploy"]
 
         if "Branding" in enterprise_info:
             features.branding.application_title = enterprise_info["Branding"].get("applicationTitle", "")

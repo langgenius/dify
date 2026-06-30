@@ -1,30 +1,30 @@
 import type { ServerVersionResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { HostsBundle } from '../auth/hosts.js'
+import type { ActiveContext } from '@/auth/hosts'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { platform, tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { startMock } from '@test/fixtures/dify-mock/server'
 import { describe, expect, it } from 'vitest'
-import { startMock } from '../../test/fixtures/dify-mock/server.js'
-import { saveHosts } from '../auth/hosts.js'
-import { ENV_CONFIG_DIR } from '../store/dir.js'
-import { arch } from '../sys/index.js'
-import { runVersionProbe } from './probe.js'
+import { Registry } from '@/auth/hosts'
+import { ENV_CONFIG_DIR } from '@/store/dir'
+import { arch } from '@/sys/index'
+import { runVersionProbe } from './probe'
 
-function bundle(overrides: Partial<HostsBundle> = {}): HostsBundle {
+function active(overrides: Partial<ActiveContext> = {}): ActiveContext {
   return {
-    current_host: 'cloud.dify.ai',
+    host: 'cloud.dify.ai',
+    email: 'test@dify.ai',
+    ctx: { account: { id: 'acct-1', email: 'test@dify.ai', name: 'Test' } },
     scheme: 'https',
-    token_storage: 'file',
-    tokens: { bearer: 'dfoa_test' },
     ...overrides,
-  } as HostsBundle
+  }
 }
 
 describe('runVersionProbe', () => {
   it('returns skipped server + unknown compat when skipServer=true', async () => {
     const report = await runVersionProbe({
       skipServer: true,
-      loadBundle: async () => bundle(),
+      loadActive: async () => active(),
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
 
@@ -38,7 +38,7 @@ describe('runVersionProbe', () => {
     let observed: string | undefined
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => bundle({ tokens: { bearer: 'should-not-be-used' } as HostsBundle['tokens'] }),
+      loadActive: async () => active(),
       probe: async (endpoint) => {
         observed = endpoint
         return { version: '1.6.4', edition: 'CLOUD' }
@@ -49,10 +49,10 @@ describe('runVersionProbe', () => {
     expect(report.compat.status).toBe('compatible')
   })
 
-  it('returns no-host + unknown compat when bundle is missing', async () => {
+  it('returns no-host + unknown compat when active context is missing', async () => {
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => undefined,
+      loadActive: async () => undefined,
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
 
@@ -61,10 +61,10 @@ describe('runVersionProbe', () => {
     expect(report.compat.detail).toContain('no host')
   })
 
-  it('returns no-host when bundle has empty current_host', async () => {
+  it('returns no-host when active context has empty host', async () => {
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => bundle({ current_host: '' }),
+      loadActive: async () => active({ host: '' }),
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
 
@@ -72,10 +72,10 @@ describe('runVersionProbe', () => {
     expect(report.compat.status).toBe('unknown')
   })
 
-  it('distinguishes loadBundle disk failure from no-host configured in the detail', async () => {
+  it('distinguishes loadActive disk failure from no-host configured in the detail', async () => {
     const errReport = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => { throw new Error('disk-explode') },
+      loadActive: async () => { throw new Error('disk-explode') },
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
     expect(errReport.server.reachable).toBe(false)
@@ -84,7 +84,7 @@ describe('runVersionProbe', () => {
 
     const noHostReport = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => undefined,
+      loadActive: async () => undefined,
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
     expect(noHostReport.compat.detail).toContain('no host')
@@ -94,7 +94,7 @@ describe('runVersionProbe', () => {
   it('returns compatible report when server is reachable and in range', async () => {
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => bundle(),
+      loadActive: async () => active(),
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
 
@@ -108,7 +108,7 @@ describe('runVersionProbe', () => {
   it('returns unsupported when server version is out of range', async () => {
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => bundle(),
+      loadActive: async () => active(),
       probe: async () => ({ version: '99.0.0', edition: 'SELF_HOSTED' }),
     })
 
@@ -119,7 +119,7 @@ describe('runVersionProbe', () => {
   it('returns unknown when server returns an empty version string', async () => {
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => bundle(),
+      loadActive: async () => active(),
       probe: async (): Promise<ServerVersionResponse> => ({ version: '', edition: 'SELF_HOSTED' }),
     })
 
@@ -130,7 +130,7 @@ describe('runVersionProbe', () => {
   it('treats probe rejection as unreachable + unknown compat', async () => {
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => bundle(),
+      loadActive: async () => active(),
       probe: async () => { throw new Error('timeout') },
     })
 
@@ -141,10 +141,10 @@ describe('runVersionProbe', () => {
     expect(report.compat.detail).toContain('unreachable')
   })
 
-  it('builds endpoint using bundle scheme when host has no scheme', async () => {
+  it('builds endpoint using active scheme when host has no scheme', async () => {
     const report = await runVersionProbe({
       skipServer: false,
-      loadBundle: async () => bundle({ current_host: 'localhost:5001', scheme: 'http' }),
+      loadActive: async () => active({ host: 'localhost:5001', scheme: 'http' }),
       probe: async () => ({ version: '1.6.4', edition: 'SELF_HOSTED' }),
     })
 
@@ -161,12 +161,12 @@ describe('runVersionProbe', () => {
     const prevConfig = process.env[ENV_CONFIG_DIR]
     try {
       process.env[ENV_CONFIG_DIR] = configDir
-      saveHosts({
-        current_host: url.host,
-        scheme: url.protocol.replace(':', ''),
-        token_storage: 'file',
-        tokens: { bearer: 'dfoa_test' },
-      })
+      const reg = Registry.empty('file')
+      reg.upsert(url.host, 'test@dify.ai', { account: { id: 'acct-1', email: 'test@dify.ai', name: 'Test' } })
+      reg.setHost(url.host)
+      reg.setAccount('test@dify.ai')
+      reg.setScheme(url.host, url.protocol.replace(':', ''))
+      await reg.save()
       process.env[ENV_CONFIG_DIR] = configDir
 
       const report = await runVersionProbe({ skipServer: false })
@@ -190,7 +190,7 @@ describe('runVersionProbe', () => {
   it('always includes client metadata in the report', async () => {
     const report = await runVersionProbe({
       skipServer: true,
-      loadBundle: async () => undefined,
+      loadActive: async () => undefined,
       probe: async () => ({ version: '1.6.4', edition: 'CLOUD' }),
     })
 

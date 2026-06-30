@@ -12,10 +12,11 @@ import json
 from datetime import UTC, datetime
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import uuid4
 
 import pytest
+from sqlalchemy.dialects import postgresql
 
 from models.enums import ConversationFromSource
 from models.model import (
@@ -29,6 +30,7 @@ from models.model import (
     Message,
     MessageAnnotation,
     Site,
+    load_annotation_reply_config,
 )
 
 
@@ -98,6 +100,7 @@ class TestAppModelValidation:
             "workflow",
             "advanced-chat",
             "agent-chat",
+            "agent",
             "channel",
             "rag-pipeline",
         }
@@ -340,6 +343,70 @@ class TestAppModelConfig:
 
         # Assert
         assert result == questions
+
+    def test_to_dict_uses_injected_annotation_reply(self):
+        config = AppModelConfig(app_id=str(uuid4()))
+        annotation_reply = {"enabled": False}
+
+        with patch.object(
+            AppModelConfig,
+            "annotation_reply_dict",
+            new_callable=PropertyMock,
+            side_effect=AssertionError("annotation_reply_dict should not be accessed"),
+        ):
+            result = config.to_dict(annotation_reply=annotation_reply)
+
+        assert result["annotation_reply"] == annotation_reply
+
+
+class TestAnnotationReplyConfigLoader:
+    def test_load_annotation_reply_config_returns_disabled_when_setting_missing(self):
+        session = MagicMock()
+        session.scalar.return_value = None
+
+        result = load_annotation_reply_config(session, "app-1")
+
+        assert result == {"enabled": False}
+        session.scalar.assert_called_once()
+        stmt = session.scalar.call_args.args[0]
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "app_annotation_settings.app_id" in compiled
+        assert stmt.compile().params == {"app_id_1": "app-1"}
+
+    def test_load_annotation_reply_config_returns_embedding_model(self):
+        session = MagicMock()
+        annotation_setting = SimpleNamespace(
+            id="annotation-1",
+            score_threshold=0.7,
+            collection_binding_id="binding-1",
+        )
+        collection_binding = SimpleNamespace(provider_name="provider", model_name="embedding")
+        session.scalar.side_effect = [annotation_setting, collection_binding]
+
+        result = load_annotation_reply_config(session, "app-1")
+
+        assert result == {
+            "id": "annotation-1",
+            "enabled": True,
+            "score_threshold": 0.7,
+            "embedding_model": {
+                "embedding_provider_name": "provider",
+                "embedding_model_name": "embedding",
+            },
+        }
+        assert session.scalar.call_count == 2
+        stmt = session.scalar.call_args_list[1].args[0]
+        compiled = str(stmt.compile(dialect=postgresql.dialect()))
+        assert "dataset_collection_bindings.id" in compiled
+        assert stmt.compile().params == {"id_1": "binding-1"}
+
+    def test_load_annotation_reply_config_raises_when_binding_missing(self):
+        session = MagicMock()
+        annotation_setting = SimpleNamespace(collection_binding_id="binding-1")
+        session.scalar.side_effect = [annotation_setting, None]
+
+        with pytest.raises(ValueError, match="Collection binding detail not found"):
+            load_annotation_reply_config(session, "app-1")
 
 
 class TestConversationModel:

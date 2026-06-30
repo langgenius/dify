@@ -1,6 +1,6 @@
-import type { SseEvent } from './sse.js'
+import type { SseEvent } from './sse'
 import { describe, expect, it } from 'vitest'
-import { eventNameFromDifyData, normalizeDifyStream } from './sse-dify.js'
+import { eventNameFromDifyData, normalizeDifyStream } from './sse-dify'
 
 const enc = new TextEncoder()
 
@@ -73,8 +73,8 @@ describe('normalizeDifyStream', () => {
     const ev: SseEvent = { name: '', data: bytes('{"answer":"hi"}') }
     const out = await collect(normalizeDifyStream(fromArray([ev])))
     expect(out).toHaveLength(1)
-    expect(out[0].name).toBe('')
-    expect(out[0].data).toBe(ev.data)
+    expect(out[0]?.name).toBe('')
+    expect(out[0]?.data).toBe(ev.data)
   })
 
   it('forwards unchanged when data is malformed JSON', async () => {
@@ -82,7 +82,7 @@ describe('normalizeDifyStream', () => {
       { name: '', data: bytes('not-json') },
     ])))
     expect(out).toHaveLength(1)
-    expect(out[0].name).toBe('')
+    expect(out[0]?.name).toBe('')
   })
 
   it('forwards empty-data events with empty name', async () => {
@@ -90,6 +90,6 @@ describe('normalizeDifyStream', () => {
       { name: '', data: bytes('') },
     ])))
     expect(out).toHaveLength(1)
-    expect(out[0].name).toBe('')
+    expect(out[0]?.name).toBe('')
   })
 })

@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react'
 import { dehydrate, HydrationBoundary } from '@tanstack/react-query'
 import { getQueryClientServer } from '@/context/query-client-server'
-import { resolveServerConsoleApiUrl, serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import { serverSystemFeaturesQueryOptions } from '@/features/system-features/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { getServerConsoleClientContext, resolveServerConsoleApiUrl, serverConsoleQuery } from '@/service/server'
 import { basePath } from '@/utils/var'
 
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
@@ -31,7 +32,7 @@ const parseConsoleErrorPayload = async (error: Response): Promise<ConsoleErrorPa
 
 const getCurrentPath = async () => {
   const requestHeaders = await headers()
-  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/apps`
+  const pathname = requestHeaders.get(CURRENT_PATHNAME_HEADER) || `${basePath}/`
   const search = requestHeaders.get(CURRENT_SEARCH_HEADER) || ''
   return `${pathname}${search}`
 }
@@ -69,9 +70,15 @@ export async function CommonLayoutHydrationBoundary({ children }: { children: Re
   }
 
   try {
+    const context = await getServerConsoleClientContext()
+
     await Promise.all([
       queryClient.fetchQuery(serverUserProfileQueryOptions()),
-      queryClient.prefetchQuery(systemFeaturesQueryOptions()),
+      queryClient.prefetchQuery(serverSystemFeaturesQueryOptions()),
+      queryClient.prefetchQuery(serverConsoleQuery.workspaces.current.post.queryOptions({
+        context,
+        retry: false,
+      })),
     ])
   }
   catch (error) {

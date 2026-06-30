@@ -1,3 +1,5 @@
+from typing import override
+
 from dify_vdb_matrixone.matrixone_vector import MatrixoneConfig, MatrixoneVector
 
 from core.rag.datasource.vdb.vector_integration_test_support import (
@@ -15,6 +17,7 @@ class MatrixoneVectorTest(AbstractVectorTest):
             ),
         )
 
+    @override
     def get_ids_by_metadata_field(self):
         ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 1

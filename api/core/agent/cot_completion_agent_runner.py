@@ -39,16 +39,18 @@ class CotCompletionAgentRunner(CotAgentRunner):
         historic_prompt = ""
 
         for message in historic_prompt_messages:
-            if isinstance(message, UserPromptMessage):
-                historic_prompt += f"Question: {message.content}\n\n"
-            elif isinstance(message, AssistantPromptMessage):
-                if isinstance(message.content, str):
-                    historic_prompt += message.content + "\n\n"
-                elif isinstance(message.content, list):
-                    for content in message.content:
-                        if not isinstance(content, TextPromptMessageContent):
-                            continue
-                        historic_prompt += content.data
+            match message:
+                case UserPromptMessage():
+                    historic_prompt += f"Question: {message.content}\n\n"
+                case AssistantPromptMessage():
+                    match message.content:
+                        case str():
+                            historic_prompt += message.content + "\n\n"
+                        case list():
+                            for content in message.content:
+                                if not isinstance(content, TextPromptMessageContent):
+                                    continue
+                                historic_prompt += content.data
 
         return historic_prompt
 

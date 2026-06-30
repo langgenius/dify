@@ -36,7 +36,10 @@ class PluginEndpointClient(BasePluginClient):
 
     def list_endpoints(self, tenant_id: str, user_id: str, page: int, page_size: int):
         """
-        List all endpoints for the given tenant and user.
+        List all endpoints for the given tenant.
+
+        The daemon list route binds only tenant and pagination fields; user_id is
+        retained in this client signature for consistency with endpoint services.
         """
         return self._request_with_plugin_daemon_response(
             "GET",
@@ -47,7 +50,10 @@ class PluginEndpointClient(BasePluginClient):
 
     def list_endpoints_for_single_plugin(self, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int):
         """
-        List all endpoints for the given tenant, user and plugin.
+        List all endpoints for the given tenant and plugin.
+
+        The daemon list route binds tenant, plugin and pagination fields; user_id
+        is retained in this client signature for consistency with endpoint services.
         """
         return self._request_with_plugin_daemon_response(
             "GET",

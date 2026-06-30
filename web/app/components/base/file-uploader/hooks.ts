@@ -19,8 +19,12 @@ import {
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { useParams } from '@/next/navigation'
+import { useParams, usePathname } from '@/next/navigation'
 import { uploadRemoteFileInfo } from '@/service/common'
+import {
+  uploadHumanInputFormLocalFile,
+  uploadHumanInputFormRemoteFileInfo,
+} from '@/service/share'
 import { TransferMethod } from '@/types/app'
 import { formatFileSize } from '@/utils/format'
 import { useFileStore } from './store'
@@ -51,7 +55,10 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation()
   const fileStore = useFileStore()
   const params = useParams()
+  const pathname = usePathname()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(fileConfig.fileUploadConfig)
+  const formToken = typeof params.token === 'string' ? params.token : undefined
+  const isHumanInputFormPage = !!formToken && /(?:^|\/)form\/[^/]+$/.test(pathname)
 
   const checkSizeLimit = useCallback((fileType: string, fileSize: number) => {
     switch (fileType) {
@@ -156,7 +163,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         draft[index]!.progress = 0
       })
       setFiles(newFiles)
-      fileUpload({
+      const uploadParams: Parameters<typeof fileUpload>[0] = {
         file: uploadingFile!.originalFile!,
         onProgressCallback: (progress) => {
           handleUpdateFile({ ...uploadingFile, progress })
@@ -164,14 +171,24 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         onSuccessCallback: (res) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
-        onErrorCallback: (error?: any) => {
+        onErrorCallback: (error?: unknown) => {
           const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
           toast.error(errorMessage)
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
-      }, !!params.token)
+      }
+
+      if (isHumanInputFormPage) {
+        uploadHumanInputFormLocalFile({
+          formToken: formToken!,
+          ...uploadParams,
+        })
+      }
+      else {
+        fileUpload(uploadParams, !!params.token)
+      }
     }
-  }, [fileStore, t, handleUpdateFile, params])
+  }, [fileStore, t, handleUpdateFile, isHumanInputFormPage, formToken, params.token])
 
   const startProgressTimer = useCallback((fileId: string) => {
     const timer = setInterval(() => {
@@ -201,7 +218,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     handleAddFile(uploadingFile)
     startProgressTimer(uploadingFile.id)
 
-    uploadRemoteFileInfo(url, !!params.token).then((res) => {
+    const remoteUpload = isHumanInputFormPage
+      ? uploadHumanInputFormRemoteFileInfo(formToken!, url)
+      : uploadRemoteFileInfo(url, !!params.token)
+
+    remoteUpload.then((res) => {
       const newFile = {
         ...uploadingFile,
         type: res.mime_type,
@@ -223,7 +244,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       toast.error(t('fileUploader.pasteFileLinkInvalid', { ns: 'common' }))
       handleRemoveFile(uploadingFile.id)
     })
-  }, [checkSizeLimit, handleAddFile, handleUpdateFile, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
+  }, [checkSizeLimit, handleAddFile, handleUpdateFile, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, isHumanInputFormPage, formToken, params.token])
 
   const handleLoadFileFromLinkSuccess = useCallback(noop, [])
 
@@ -269,7 +290,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           base64Url: isImage ? reader.result as string : '',
         }
         handleAddFile(uploadingFile)
-        fileUpload({
+        const uploadParams: Parameters<typeof fileUpload>[0] = {
           file: uploadingFile.originalFile,
           onProgressCallback: (progress) => {
             handleUpdateFile({ ...uploadingFile, progress })
@@ -277,12 +298,22 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           onSuccessCallback: (res) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
-          onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+          onErrorCallback: (error?: unknown) => {
+            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
             toast.error(errorMessage)
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
-        }, !!params.token)
+        }
+
+        if (isHumanInputFormPage) {
+          uploadHumanInputFormLocalFile({
+            formToken: formToken!,
+            ...uploadParams,
+          })
+        }
+        else {
+          fileUpload(uploadParams, !!params.token)
+        }
       },
       false,
     )
@@ -294,7 +325,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [noNeedToCheckEnable, checkSizeLimit, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
+  }, [noNeedToCheckEnable, checkSizeLimit, t, handleAddFile, handleUpdateFile, isHumanInputFormPage, formToken, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]

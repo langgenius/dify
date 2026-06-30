@@ -31,7 +31,7 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   return icon
 }
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: ToolWithProvider
   previewCardHandle: ToolActionPreviewCardHandle
@@ -42,7 +42,7 @@ type Props = {
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   isShowLetterIndex?: boolean
-}
+}>
 
 const Tool: FC<Props> = ({
   className,
@@ -118,6 +118,7 @@ const Tool: FC<Props> = ({
                 provider_id: payload.id,
                 provider_type: payload.type,
                 provider_name: payload.name,
+                provider_show_name: payload.label[language],
                 plugin_id: payload.plugin_id!,
                 plugin_unique_identifier: payload.plugin_unique_identifier!,
                 provider_icon: normalizedIcon,
@@ -148,7 +149,7 @@ const Tool: FC<Props> = ({
           : `${selectedToolsNum} / ${totalToolsNum}`}
       </span>
     )
-  }, [actions, getIsDisabled, isAllSelected, isHovering, language, onSelectMultiple, payload.id, payload.is_team_authorization, payload.name, payload.type, selectedToolsNum, t, totalToolsNum])
+  }, [actions, getIsDisabled, isAllSelected, isHovering, language, normalizedIcon, normalizedIconDark, onSelectMultiple, payload.id, payload.is_team_authorization, payload.label, payload.name, payload.plugin_id, payload.plugin_unique_identifier, payload.type, selectedToolsNum, t, totalToolsNum])
 
   if (isFoldHasSearchText !== hasSearchText) {
     setIsFoldHasSearchText(hasSearchText)
@@ -196,6 +197,7 @@ const Tool: FC<Props> = ({
               provider_id: payload.id,
               provider_type: payload.type,
               provider_name: payload.name,
+              provider_show_name: payload.label[language],
               plugin_id: payload.plugin_id,
               plugin_unique_identifier: payload.plugin_unique_identifier,
               provider_icon: normalizedIcon,

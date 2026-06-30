@@ -1,29 +1,27 @@
-import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { HostsBundle } from '../../../auth/hosts.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
-import { loadAppInfoCache } from '../../../cache/app-info.js'
-import { createClient } from '../../../http/client.js'
-import { ENV_CACHE_DIR } from '../../../store/dir.js'
-import { CACHE_APP_INFO, getCache } from '../../../store/manager.js'
-import { bufferStreams } from '../../../sys/io/streams'
-import { resumeApp } from '../../resume/app/run.js'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { loadAppInfoCache } from '@/cache/app-info'
+import { resumeApp } from '@/commands/resume/app/run'
+import { ENV_CACHE_DIR } from '@/store/dir'
+import { CACHE_APP_INFO, getCache } from '@/store/manager'
+import { bufferStreams } from '@/sys/io/streams'
 import { runApp } from './run.js'
 
-function bundle(): HostsBundle {
+function active(): ActiveContext {
   return {
-    current_host: 'http://localhost',
-    token_storage: 'file',
-    tokens: { bearer: 'dfoa_test' },
-    account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
-    workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Other', role: 'normal' },
-    ],
+    host: 'http://localhost',
+    email: 't@d.ai',
+    ctx: {
+      account: { id: 'acct-1', email: 't@d.ai', name: 'T' },
+      workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
+    },
   }
 }
 
@@ -51,7 +49,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: hi\n')
     expect(io.errBuf()).toContain('--conversation conv-1')
@@ -62,7 +60,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await expect(runApp(
       { appId: 'app-2', message: 'hi' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )).rejects.toMatchObject({ code: 'usage_invalid_flag' })
   })
 
@@ -71,7 +69,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputs: { x: '1' } },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
   })
@@ -81,7 +79,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi', format: 'json' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, answer: string }
     expect(parsed.mode).toBe('chat')
@@ -92,7 +90,7 @@ describe('runApp', () => {
     const io = bufferStreams()
     await expect(runApp(
       { appId: 'app-1', format: 'bogus' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io },
     )).rejects.toThrow(/not supported/)
   })
 
@@ -101,8 +99,8 @@ describe('runApp', () => {
     await expect(runApp(
       { appId: 'nope', message: 'hi' },
       {
-        bundle: bundle(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }),
+        active: active(),
+        http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }),
         host: mock.url,
         io,
       },
@@ -114,7 +112,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi', stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('echo: ')
     expect(io.outBuf()).toContain('hi')
@@ -126,7 +124,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-1', message: 'hi', stream: true, format: 'json' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, answer: string, conversation_id: string }
     expect(parsed.mode).toBe('chat')
@@ -138,8 +136,8 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
-      { appId: 'app-4', workspace: 'ws-2', message: 'do research' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { appId: 'app-4', workspace: '00000000-0000-0000-0000-000000000002', message: 'do research' },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('do research')
     expect(io.errBuf()).toContain('--conversation conv-1')
@@ -149,8 +147,8 @@ describe('runApp', () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
-      { appId: 'app-4', workspace: 'ws-2', message: 'go', stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { appId: 'app-4', workspace: '00000000-0000-0000-0000-000000000002', message: 'go', stream: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toContain('go')
     expect(io.errBuf()).toContain('thought:')
@@ -161,11 +159,127 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputs: { x: '1' }, stream: true, format: 'json' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     const parsed = JSON.parse(io.outBuf()) as { mode: string, data: { status: string } }
     expect(parsed.mode).toBe('workflow')
     expect(parsed.data.status).toBe('succeeded')
+  })
+
+  it('workflow: strips <think> from outputs by default', async () => {
+    mock.setScenario('workflow-think')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' } },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toBe('final answer\n')
+    expect(io.errBuf()).not.toContain('secret reasoning')
+  })
+
+  it('workflow --think: routes <think> to stderr, clean stdout', async () => {
+    mock.setScenario('workflow-think')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toBe('final answer\n')
+    expect(io.errBuf()).toContain('secret reasoning')
+  })
+
+  it('--stream workflow -o json --think: strips outputs and routes thinking to stderr', async () => {
+    mock.setScenario('workflow-think')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, stream: true, format: 'json', think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    const parsed = JSON.parse(io.outBuf()) as { data: { outputs: { result: string } } }
+    expect(parsed.data.outputs.result).toBe('final answer')
+    expect(io.errBuf()).toContain('secret reasoning')
+  })
+
+  it('--stream chat --think: routes separated reasoning to stderr, clean answer to stdout', async () => {
+    mock.setScenario('chat-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-1', message: 'hi', stream: true, think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.outBuf()).not.toContain('secret reasoning')
+    expect(io.errBuf()).toContain('<think>')
+    expect(io.errBuf()).toContain('secret reasoning')
+  })
+
+  it('--stream chat without --think: separated reasoning stays hidden', async () => {
+    mock.setScenario('chat-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-1', message: 'hi', stream: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.errBuf()).not.toContain('secret reasoning')
+  })
+
+  it('chat -o json --think: echoes separated reasoning to stderr, persists it in metadata', async () => {
+    mock.setScenario('chat-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-1', message: 'hi', format: 'json', think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.errBuf()).toContain('secret reasoning')
+    const parsed = JSON.parse(io.outBuf()) as { answer: string, metadata: { reasoning: Record<string, string> } }
+    expect(parsed.answer).toBe('final answer')
+    expect(parsed.metadata.reasoning).toEqual({ 'llm-1': 'secret reasoning' })
+  })
+
+  it('--stream workflow --think: routes separated reasoning to stderr, clean outputs to stdout', async () => {
+    mock.setScenario('workflow-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, stream: true, think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.errBuf()).toContain('<think>')
+    expect(io.errBuf()).toContain('secret reasoning')
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.outBuf()).not.toContain('secret reasoning')
+  })
+
+  it('workflow -o json --think: echoes reasoning to stderr, accumulates into metadata.reasoning', async () => {
+    mock.setScenario('workflow-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, format: 'json', think: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.errBuf()).toContain('secret reasoning')
+    const parsed = JSON.parse(io.outBuf()) as { metadata: { reasoning: Record<string, string> } }
+    expect(parsed.metadata.reasoning).toEqual({ 'llm-1': 'secret reasoning' })
+  })
+
+  it('--stream workflow without --think: reasoning stays hidden', async () => {
+    mock.setScenario('workflow-reasoning')
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    await runApp(
+      { appId: 'app-2', inputs: { x: '1' }, stream: true },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(io.outBuf()).toContain('final answer')
+    expect(io.errBuf()).not.toContain('secret reasoning')
   })
 
   it('stream-error scenario: error event surfaces typed BaseError', async () => {
@@ -174,7 +288,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await expect(runApp(
       { appId: 'app-1', message: 'hi', stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
     )).rejects.toMatchObject({ code: 'server_5xx' })
   })
 
@@ -186,7 +300,7 @@ describe('runApp', () => {
     await writeFile(inputsFile, JSON.stringify({ x: 'from-file' }))
     await runApp(
       { appId: 'app-2', inputsFile },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
   })
@@ -198,7 +312,7 @@ describe('runApp', () => {
     await writeFile(inputsFile, JSON.stringify([1, 2, 3]))
     await expect(runApp(
       { appId: 'app-2', inputsFile },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io },
     )).rejects.toThrow(/must be a JSON object/)
   })
 
@@ -207,7 +321,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputsJson: '{"x":"hello"}' },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
   })
@@ -219,7 +333,7 @@ describe('runApp', () => {
     await writeFile(inputsFile, '{}')
     await expect(runApp(
       { appId: 'app-2', inputsJson: '{}', inputsFile },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io },
     )).rejects.toThrow(/mutually exclusive/)
   })
 
@@ -231,8 +345,8 @@ describe('runApp', () => {
     await expect(runApp(
       { appId: 'app-2', inputs: {} },
       {
-        bundle: bundle(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test' }),
+        active: active(),
+        http: testHttpClient(mock.url, 'dfoa_test'),
         host: mock.url,
         io,
         cache,
@@ -260,8 +374,8 @@ describe('runApp', () => {
     await expect(runApp(
       { appId: 'app-2', inputs: {}, format: 'json' },
       {
-        bundle: bundle(),
-        http: createClient({ host: mock.url, bearer: 'dfoa_test' }),
+        active: active(),
+        http: testHttpClient(mock.url, 'dfoa_test'),
         host: mock.url,
         io,
         cache,
@@ -284,7 +398,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await resumeApp(
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {}, withHistory: false },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: resumed\n')
   })
@@ -295,7 +409,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await resumeApp(
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {} },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: resumed\n')
   })
@@ -306,7 +420,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await resumeApp(
       { appId: 'app-2', formToken: 'ft-hitl-1', workflowRunId: 'wf-run-hitl-1', action: 'submit', inputs: {}, stream: true },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     // stream mode for workflow: node_started → "→ <title>" on stderr
     expect(io.errBuf()).toContain('After Resume')
@@ -317,7 +431,7 @@ describe('runApp', () => {
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', files: ['doc=https://example.com/report.pdf'] },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
     expect(mock.uploadCallCount).toBe(0)
@@ -338,7 +452,7 @@ describe('runApp', () => {
     await writeFile(filePath, 'fake pdf content')
     await runApp(
       { appId: 'app-2', files: [`doc=@${filePath}`] },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
     expect(mock.uploadCallCount).toBe(1)
@@ -350,12 +464,32 @@ describe('runApp', () => {
     })
   })
 
+  it('422 on run: invalidates cache and adds republish hint', async () => {
+    const io = bufferStreams()
+    const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
+    // warm cache with successful run
+    await runApp(
+      { appId: 'app-1', message: 'hi' },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
+    )
+    expect(cache.get(mock.url, 'app-1')).toBeDefined()
+
+    mock.setScenario('run-422-stale')
+    const err = await runApp(
+      { appId: 'app-1', message: 'hi' },
+      { active: active(), http: testHttpClient(mock.url, { bearer: 'dfoa_test', retryAttempts: 0 }), host: mock.url, io, cache },
+    ).catch((e: unknown) => e)
+    expect(err).toMatchObject({ code: 'server_4xx_other', httpStatus: 422 })
+    expect((err as { hint?: string }).hint).toMatch(/cache cleared/)
+    expect(cache.get(mock.url, 'app-1')).toBeUndefined()
+  })
+
   it('workflow: --file overrides same-named key from --inputs (file wins)', async () => {
     const io = bufferStreams()
     const cache = await loadAppInfoCache({ store: getCache(CACHE_APP_INFO) })
     await runApp(
       { appId: 'app-2', inputs: { doc: 'old-value' }, files: ['doc=https://example.com/override.pdf'] },
-      { bundle: bundle(), http: createClient({ host: mock.url, bearer: 'dfoa_test' }), host: mock.url, io, cache },
+      { active: active(), http: testHttpClient(mock.url, 'dfoa_test'), host: mock.url, io, cache },
     )
     expect(io.outBuf()).toBe('echo: \n')
     const runInputs = mock.lastRunBody?.inputs as Record<string, unknown>
@@ -363,5 +497,36 @@ describe('runApp', () => {
     const docInput = runInputs.doc as Record<string, unknown>
     expect(docInput.transfer_method).toBe('remote_url')
     expect(docInput.url).toBe('https://example.com/override.pdf')
+  })
+
+  it('external login: mode pre-flight calls PermittedExternalAppsClient.describe, not AppsClient.describe', async () => {
+    const describeResult = { info: { id: 'app-1', name: 'X', mode: 'chat', description: '', updated_at: null, service_api_enabled: true, is_agent: false }, parameters: null, input_schema: null }
+    const externalDescribe = vi.fn().mockResolvedValue(describeResult)
+    const { PermittedExternalAppsClient } = await import('@/api/permitted-external-apps')
+    const { AppsClient } = await import('@/api/apps')
+    const externalSpy = vi.spyOn(PermittedExternalAppsClient.prototype, 'describe').mockImplementation(externalDescribe)
+    const accountSpy = vi.spyOn(AppsClient.prototype, 'describe')
+    const io = bufferStreams()
+    const http = { baseURL: mock.url, request: vi.fn().mockResolvedValue({ answer: 'echo: hi', conversation_id: 'conv-1', message_id: 'msg-1', mode: 'chat', metadata: {} }) } as unknown as HttpClient
+    const activeExt: ActiveContext = {
+      host: mock.url,
+      email: 'sso@x.io',
+      ctx: {
+        account: { id: 'acct-1', email: 'sso@x.io', name: 'SSO User' },
+        external_subject: { email: 'sso@x.io', issuer: 'https://issuer.example.com' },
+      },
+    }
+    try {
+      await runApp(
+        { appId: 'app-1', message: 'hi' },
+        { active: activeExt, http, host: mock.url, io },
+      )
+    }
+    catch {
+      // run may fail due to mocked http; we only care about which describe was called
+    }
+    expect(externalSpy).toHaveBeenCalled()
+    expect(accountSpy).not.toHaveBeenCalled()
+    vi.restoreAllMocks()
   })
 })

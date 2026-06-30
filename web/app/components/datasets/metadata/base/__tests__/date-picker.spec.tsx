@@ -1,5 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
+import { fireEvent, render as rtlRender, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { createAccountProfileQueryWrapper } from '@/test/account-profile-query'
 import WrappedDatePicker from '../date-picker'
 
 type TriggerArgs = {
@@ -43,6 +45,11 @@ vi.mock('@/hooks/use-timestamp', () => ({
     },
   }),
 }))
+
+const render = (ui: ReactElement) => {
+  const Wrapper = createAccountProfileQueryWrapper()
+  return rtlRender(ui, { wrapper: Wrapper })
+}
 
 describe('WrappedDatePicker', () => {
   describe('Rendering', () => {

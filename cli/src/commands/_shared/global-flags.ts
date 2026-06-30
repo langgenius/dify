@@ -1,6 +1,6 @@
-import { newError } from '../../errors/base.js'
-import { ErrorCode } from '../../errors/codes.js'
-import { Flags } from '../../framework/flags.js'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { Flags } from '@/framework/flags'
 
 export const HTTP_RETRY_DEFAULT = 3
 

@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from itertools import cycle
 from threading import Event
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, cast, override
 from unittest.mock import MagicMock
 
 import pytest
@@ -16,10 +16,14 @@ from core.app.app_config.entities import WorkflowUIBasedAppConfig
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import StreamEvent
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
+from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource
+from graphon.nodes.human_input.enums import ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.enums import CreatorUserRole
+from models.human_input import RecipientType
 from models.model import AppMode
 from models.workflow import WorkflowRun
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
@@ -43,24 +47,30 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_reasons: Sequence[HumanInputRequired]
 
     @property
+    @override
     def id(self) -> str:
         return self.pause_id
 
     @property
+    @override
     def workflow_execution_id(self) -> str:
         return self.workflow_run_id
 
+    @override
     def get_state(self) -> bytes:
         raise AssertionError("state is not required for snapshot tests")
 
     @property
+    @override
     def resumed_at(self) -> datetime | None:
         return None
 
     @property
+    @override
     def paused_at(self) -> datetime:
         return self.paused_at_value
 
+    @override
     def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
         return self.pause_reasons
 
@@ -106,7 +116,7 @@ def _build_snapshot(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecutio
     )
 
 
-def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
+def _build_resumption_context(task_id: str, *, select_options: list[str] | None = None) -> WorkflowResumptionContext:
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -125,6 +135,8 @@ def _build_resumption_context(task_id: str) -> WorkflowResumptionContext:
         workflow_execution_id="run-1",
     )
     runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=0.0)
+    if select_options is not None:
+        runtime_state.variable_pool.add(("start", "options"), select_options)
     runtime_state.register_paused_node("node-1")
     runtime_state.outputs = {"result": "value"}
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
@@ -287,24 +299,30 @@ class _PauseEntity(WorkflowPauseEntity):
     state: bytes
 
     @property
+    @override
     def id(self) -> str:
         return "pause-1"
 
     @property
+    @override
     def workflow_execution_id(self) -> str:
         return "run-1"
 
     @property
+    @override
     def resumed_at(self) -> datetime | None:
         return None
 
     @property
+    @override
     def paused_at(self) -> datetime:
         return datetime(2024, 1, 1, tzinfo=UTC)
 
+    @override
     def get_state(self) -> bytes:
         return self.state
 
+    @override
     def get_pause_reasons(self) -> list[Any]:
         return []
 
@@ -747,7 +765,11 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
     resumption_context = _build_resumption_context("task-ctx")
     monkeypatch.setattr(
-        service_module, "load_form_tokens_by_form_id", lambda form_ids, session=None, surface=None: {"form-1": "wtok"}
+        service_module,
+        "load_form_dispositions_by_form_id",
+        lambda form_ids, session=None, surface=None: {
+            "form-1": FormDisposition(form_token="wtok", approval_channels=[])
+        },
     )
     session_maker = _SessionMaker(
         SimpleNamespace(
@@ -787,6 +809,146 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
     assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
 
 
+def _build_recipient_snapshot_events(recipients: Sequence[Any]) -> list[Mapping[str, Any]]:
+    """Drive the reconnect snapshot pause path for the OPENAPI surface.
+
+    Lets the real disposition loader run against a fake session whose ``scalars``
+    yields the given recipients, so the reconnect path derives the same token and
+    approval channels as the live path for the same recipient set.
+    """
+    workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
+    resumption_context = _build_resumption_context("task-ctx")
+    expiration_time = datetime(2024, 1, 1, tzinfo=UTC)
+    session_maker = _SessionMaker(
+        SimpleNamespace(
+            execute=lambda _stmt: [("form-1", expiration_time, '{"display_in_ui": true}')],
+            scalars=lambda _stmt: list(recipients),
+        )
+    )
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=expiration_time,
+        pause_reasons=[
+            HumanInputRequired(
+                form_id="form-1",
+                form_content="content",
+                node_id="node-1",
+                node_title="Human Input",
+            )
+        ],
+    )
+
+    return _build_snapshot_events(
+        workflow_run=workflow_run,
+        node_snapshots=[snapshot],
+        task_id="task-ctx",
+        message_context=None,
+        pause_entity=pause_entity,
+        resumption_context=resumption_context,
+        session_maker=cast(sessionmaker[Session], session_maker),
+        human_input_surface=HumanInputSurface.OPENAPI,
+    )
+
+
+def test_reconnect_pause_without_web_app_recipient_emits_approval_channels() -> None:
+    events = _build_recipient_snapshot_events(
+        recipients=[
+            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.EMAIL_MEMBER, access_token="email-token"),
+            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+        ],
+    )
+
+    human_input_event = events[-2]
+    assert human_input_event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
+    assert human_input_event["data"]["form_token"] is None
+    assert human_input_event["data"]["approval_channels"] == ["console", "email"]
+
+    pause_data = events[-1]["data"]
+    assert pause_data["reasons"][0]["form_token"] is None
+    assert pause_data["reasons"][0]["approval_channels"] == ["console", "email"]
+
+
+def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels() -> None:
+    events = _build_recipient_snapshot_events(
+        recipients=[
+            SimpleNamespace(
+                form_id="form-1",
+                recipient_type=RecipientType.STANDALONE_WEB_APP,
+                access_token="web-app-token",
+            ),
+            SimpleNamespace(form_id="form-1", recipient_type=RecipientType.BACKSTAGE, access_token="backstage-token"),
+        ],
+    )
+
+    human_input_event = events[-2]
+    assert human_input_event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
+    assert human_input_event["data"]["form_token"] == "web-app-token"
+    assert human_input_event["data"]["approval_channels"] == ["console"]
+
+    pause_data = events[-1]["data"]
+    assert pause_data["reasons"][0]["form_token"] == "web-app-token"
+    assert pause_data["reasons"][0]["approval_channels"] == ["console"]
+
+
+def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
+    snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
+    resumption_context = _build_resumption_context("task-ctx", select_options=["approve", "reject"])
+    monkeypatch.setattr(
+        service_module,
+        "load_form_dispositions_by_form_id",
+        lambda form_ids, session=None, surface=None: {
+            "form-1": FormDisposition(form_token="wtok", approval_channels=[])
+        },
+    )
+    session_maker = _SessionMaker(
+        SimpleNamespace(
+            execute=lambda _stmt: [("form-1", datetime(2024, 1, 1, tzinfo=UTC), '{"display_in_ui": true}')],
+        )
+    )
+    pause_entity = _FakePauseEntity(
+        pause_id="pause-1",
+        workflow_run_id="run-1",
+        paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
+        pause_reasons=[
+            HumanInputRequired(
+                form_id="form-1",
+                form_content="content",
+                inputs=[
+                    SelectInputConfig(
+                        output_variable_name="decision",
+                        option_source=StringListSource(
+                            type=ValueSourceType.VARIABLE,
+                            selector=["start", "options"],
+                            value=[],
+                        ),
+                    )
+                ],
+                node_id="node-1",
+                node_title="Human Input",
+            )
+        ],
+    )
+
+    events = _build_snapshot_events(
+        workflow_run=workflow_run,
+        node_snapshots=[snapshot],
+        task_id="task-ctx",
+        message_context=None,
+        pause_entity=pause_entity,
+        resumption_context=resumption_context,
+        session_maker=cast(sessionmaker[Session], session_maker),
+    )
+
+    human_input_event = events[-2]
+    assert human_input_event["data"]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
+
+    pause_event = events[-1]
+    assert pause_event["data"]["reasons"][0]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
+
+
 def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -817,7 +979,11 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
         service_module, "_load_resumption_context", MagicMock(return_value=_build_resumption_context("task-1"))
     )
     monkeypatch.setattr(
-        service_module, "load_form_tokens_by_form_id", lambda form_ids, session=None, surface=None: {"form-1": "wtok"}
+        service_module,
+        "load_form_dispositions_by_form_id",
+        lambda form_ids, session=None, surface=None: {
+            "form-1": FormDisposition(form_token="wtok", approval_channels=[])
+        },
     )
 
     session = SimpleNamespace(

@@ -11,23 +11,26 @@ vi.mock('@/service/common', () => ({
   uploadRemoteFileInfo: vi.fn().mockResolvedValue({ url: 'https://example.com/icon.png' }),
 }))
 
-// Mock the plugins service to avoid React Query issues from TabSlider
-vi.mock('@/service/use-plugins', () => ({
-  useInstalledPluginList: () => ({
-    data: { pages: [] },
-    hasNextPage: false,
-    isFetchingNextPage: false,
-    fetchNextPage: vi.fn(),
-    isLoading: false,
-    isSuccess: true,
-  }),
-}))
-
 const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@langgenius/dify-ui/toast', () => ({
   toast: {
     error: mockToastError,
   },
+}))
+
+// Default: SSO off entirely. Tests that need the toggle visible flip
+// `sso_enforced_for_signin = true` AND set the protocol to 'oidc' or
+// 'oauth2'. Tests for the SAML gate set protocol = 'saml' to assert the
+// toggle stays hidden even when sso_enforced_for_signin is true.
+const mockSystemFeatures = vi.hoisted(() => ({
+  sso_enforced_for_signin: false,
+  sso_enforced_for_signin_protocol: '' as 'oidc' | 'oauth2' | 'saml' | '',
+}))
+vi.mock('@/features/system-features/client', () => ({
+  systemFeaturesQueryOptions: () => ({
+    queryKey: ['mock-system-features'],
+    queryFn: async () => mockSystemFeatures,
+  }),
 }))
 
 describe('MCPModal', () => {
@@ -43,6 +46,9 @@ describe('MCPModal', () => {
         },
       },
     })
+    // useSuspenseQuery(systemFeaturesQueryOptions) reads from this key —
+    // pre-populate so the modal renders synchronously instead of suspending.
+    queryClient.setQueryData(['mock-system-features'], mockSystemFeatures)
     return ({ children }: { children: ReactNode }) =>
       React.createElement(QueryClientProvider, { client: queryClient }, children)
   }
@@ -717,6 +723,178 @@ describe('MCPModal', () => {
           expect(screen.queryByPlaceholderText('Search emojis...')).not.toBeInTheDocument()
         })
       }
+    })
+  })
+
+  // M3 — Forward-user-identity toggle (PR #36840).
+  describe('Forward-user-identity toggle', () => {
+    beforeEach(() => {
+      mockSystemFeatures.sso_enforced_for_signin = false
+      mockSystemFeatures.sso_enforced_for_signin_protocol = ''
+    })
+
+    // Helper: turn SSO on with a refresh-capable protocol so the toggle is
+    // visible. Use this for any test that needs the field rendered.
+    const enableRefreshCapableSSO = () => {
+      mockSystemFeatures.sso_enforced_for_signin = true
+      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oidc'
+    }
+
+    const fillRequiredFields = () => {
+      fireEvent.change(
+        screen.getByPlaceholderText('tools.mcp.modal.serverUrlPlaceholder'),
+        { target: { value: 'https://example.com/mcp' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('tools.mcp.modal.namePlaceholder'),
+        { target: { value: 'srv' } },
+      )
+      fireEvent.change(
+        screen.getByPlaceholderText('tools.mcp.modal.serverIdentifierPlaceholder'),
+        { target: { value: 'srv-id' } },
+      )
+    }
+
+    it('does not render the toggle when SSO is not configured', () => {
+      mockSystemFeatures.sso_enforced_for_signin = false
+      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
+      expect(screen.queryByText('tools.mcp.modal.forwardUserIdentity')).not.toBeInTheDocument()
+    })
+
+    it('renders the toggle and helper tip when SSO is configured', () => {
+      enableRefreshCapableSSO()
+      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
+      expect(screen.getByText('tools.mcp.modal.forwardUserIdentity')).toBeInTheDocument()
+      expect(screen.getByText('tools.mcp.modal.forwardUserIdentityTip')).toBeInTheDocument()
+    })
+
+    it('does not render the toggle when SSO protocol is SAML (no refresh model)', () => {
+      mockSystemFeatures.sso_enforced_for_signin = true
+      mockSystemFeatures.sso_enforced_for_signin_protocol = 'saml'
+      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
+      expect(screen.queryByText('tools.mcp.modal.forwardUserIdentity')).not.toBeInTheDocument()
+    })
+
+    it('renders the toggle when SSO protocol is OAuth2', () => {
+      mockSystemFeatures.sso_enforced_for_signin = true
+      mockSystemFeatures.sso_enforced_for_signin_protocol = 'oauth2'
+      render(<MCPModal {...defaultProps} />, { wrapper: createWrapper() })
+      expect(screen.getByText('tools.mcp.modal.forwardUserIdentity')).toBeInTheDocument()
+    })
+
+    it('submits identity_mode="off" by default (toggle off)', async () => {
+      enableRefreshCapableSSO()
+      const onConfirm = vi.fn()
+      render(
+        <MCPModal {...defaultProps} onConfirm={onConfirm} />,
+        { wrapper: createWrapper() },
+      )
+
+      fillRequiredFields()
+      fireEvent.click(screen.getByText('tools.mcp.modal.confirm'))
+
+      await waitFor(() => {
+        expect(onConfirm).toHaveBeenCalledWith(
+          expect.objectContaining({
+            identity_mode: 'off',
+          }),
+        )
+      })
+    })
+
+    it('submits identity_mode="idp_token" when toggle is flipped on', async () => {
+      enableRefreshCapableSSO()
+      const onConfirm = vi.fn()
+      render(
+        <MCPModal {...defaultProps} onConfirm={onConfirm} />,
+        { wrapper: createWrapper() },
+      )
+
+      fillRequiredFields()
+      const fwdSwitch = screen.getByRole('switch', {
+        name: 'tools.mcp.modal.forwardUserIdentity',
+      })
+      fireEvent.click(fwdSwitch)
+      fireEvent.click(screen.getByText('tools.mcp.modal.confirm'))
+
+      await waitFor(() => {
+        expect(onConfirm).toHaveBeenCalledWith(
+          expect.objectContaining({
+            identity_mode: 'idp_token',
+          }),
+        )
+      })
+    })
+
+    it('clamps to identity_mode="off" when SSO is unavailable, even if existing data had it on', async () => {
+      mockSystemFeatures.sso_enforced_for_signin = false
+      const onConfirm = vi.fn()
+      const mockData = {
+        id: 'existing-1',
+        name: 'srv',
+        server_url: 'https://example.com/mcp',
+        server_identifier: 'srv-id',
+        icon: { content: '🔗', background: '#6366F1' },
+        identity_mode: 'idp_token',
+      } as unknown as ToolWithProvider
+
+      render(
+        <MCPModal {...defaultProps} data={mockData} onConfirm={onConfirm} />,
+        { wrapper: createWrapper() },
+      )
+      fireEvent.click(screen.getByText('tools.mcp.modal.save'))
+
+      await waitFor(() => {
+        expect(onConfirm).toHaveBeenCalledWith(
+          expect.objectContaining({
+            identity_mode: 'off',
+          }),
+        )
+      })
+    })
+
+    // Regression: editing a provider saved with identity_mode="idp_token" must
+    // hydrate the toggle ON (issue: it showed off despite the persisted value).
+    it('hydrates the toggle ON when editing a provider with identity_mode="idp_token"', () => {
+      enableRefreshCapableSSO()
+      const mockData = {
+        id: 'existing-idp',
+        name: 'srv',
+        server_url: 'https://example.com/mcp',
+        server_identifier: 'srv-id',
+        icon: { content: '🔗', background: '#6366F1' },
+        identity_mode: 'idp_token',
+      } as unknown as ToolWithProvider
+
+      render(
+        <MCPModal {...defaultProps} data={mockData} />,
+        { wrapper: createWrapper() },
+      )
+
+      expect(
+        screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),
+      ).toBeChecked()
+    })
+
+    it('hydrates the toggle OFF when editing a provider with identity_mode="off"', () => {
+      enableRefreshCapableSSO()
+      const mockData = {
+        id: 'existing-off',
+        name: 'srv',
+        server_url: 'https://example.com/mcp',
+        server_identifier: 'srv-id',
+        icon: { content: '🔗', background: '#6366F1' },
+        identity_mode: 'off',
+      } as unknown as ToolWithProvider
+
+      render(
+        <MCPModal {...defaultProps} data={mockData} />,
+        { wrapper: createWrapper() },
+      )
+
+      expect(
+        screen.getByRole('switch', { name: 'tools.mcp.modal.forwardUserIdentity' }),
+      ).not.toBeChecked()
     })
   })
 })

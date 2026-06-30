@@ -10,12 +10,12 @@ import InputCombined from './input-combined'
 import InputHasSetMultipleValue from './input-has-set-multiple-value'
 import Label from './label'
 
-type Props = {
+type Props = Readonly<{
   payload: MetadataItemWithEdit
   onChange: (payload: MetadataItemWithEdit) => void
   onRemove: (id: string) => void
   onReset: (id: string) => void
-}
+}>
 
 const EditMetadatabatchItem: FC<Props> = ({
   payload,

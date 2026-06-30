@@ -94,8 +94,8 @@ const main = async () => {
   await copyAllDirs(standaloneRoot)
 
   // Start server
-  const port = process.env.npm_config_port || process.env.PORT || '3000'
-  const host = process.env.npm_config_host || process.env.HOSTNAME || '0.0.0.0'
+  const port = process.env.pnpm_config_port || process.env.PORT || '3000'
+  const host = process.env.pnpm_config_host || process.env.HOSTNAME || '0.0.0.0'
 
   console.info(`Starting server on ${host}:${port}`)
   console.debug(`Server script path: ${serverScriptPath}`)

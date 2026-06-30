@@ -1,5 +1,5 @@
 import json
-from typing import cast
+from typing import cast, override
 
 import flask_login
 from flask import Request, Response, request
@@ -14,6 +14,7 @@ from extensions.ext_database import db
 from libs.passport import PassportService
 from libs.token import extract_access_token, extract_console_cookie_token, extract_webapp_passport
 from models import Account, Tenant, TenantAccountJoin
+from models.enums import EndUserType
 from models.model import AppMCPServer, EndUser
 from services.account_service import AccountService
 
@@ -28,6 +29,7 @@ class DifyLoginManager(flask_login.LoginManager):
     Flask-Login's broader callback contract.
     """
 
+    @override
     def unauthorized(self) -> Response:
         """Return the registered unauthorized handler result as a Flask `Response`."""
         return cast(Response, super().unauthorized())
@@ -82,7 +84,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         if not user_id:
             raise Unauthorized("Invalid Authorization token.")
 
-        logged_in_account = AccountService.load_logged_in_account(account_id=user_id)
+        logged_in_account = AccountService.load_logged_in_account(account_id=user_id, session=db.session)
         return logged_in_account
     elif request.blueprint == "openapi":
         # Account-branch device-flow approval routes (approve / deny /
@@ -101,7 +103,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         source = decoded.get("token_source")
         if source or not user_id:
             return None
-        return AccountService.load_logged_in_account(account_id=user_id)
+        return AccountService.load_logged_in_account(account_id=user_id, session=db.session)
     elif request.blueprint == "web":
         app_code = request.headers.get(HEADER_NAME_APP_CODE)
         webapp_token = extract_webapp_passport(app_code, request) if app_code else None
@@ -135,7 +137,7 @@ def load_user_from_request(request_from_flask_login: Request) -> LoginUser | Non
         if not app_mcp_server:
             raise NotFound("App MCP server not found.")
         end_user = db.session.scalar(
-            select(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == "mcp").limit(1)
+            select(EndUser).where(EndUser.session_id == app_mcp_server.id, EndUser.type == EndUserType.MCP).limit(1)
         )
         if not end_user:
             raise NotFound("End user not found.")

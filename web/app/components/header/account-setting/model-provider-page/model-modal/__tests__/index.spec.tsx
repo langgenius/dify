@@ -29,7 +29,7 @@ const mockState = vi.hoisted(() => ({
   credentialData: { credentials: {}, available_credentials: [] } as CredentialData,
   doingAction: false,
   deleteCredentialId: null as string | null,
-  isCurrentWorkspaceManager: true,
+  workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'] as string[],
   formSchemas: [] as CredentialFormSchema[],
   formValues: {} as Record<string, unknown>,
   modelNameAndTypeFormSchemas: [] as CredentialFormSchema[],
@@ -76,7 +76,8 @@ vi.mock('../../model-auth/hooks', () => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({ isCurrentWorkspaceManager: mockState.isCurrentWorkspaceManager }),
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) =>
+    selector({ workspacePermissionKeys: mockState.workspacePermissionKeys }),
 }))
 
 vi.mock('@/hooks/use-i18n', () => ({
@@ -183,7 +184,7 @@ describe('ModelModal', () => {
     mockState.credentialData = { credentials: {}, available_credentials: [] }
     mockState.doingAction = false
     mockState.deleteCredentialId = null
-    mockState.isCurrentWorkspaceManager = true
+    mockState.workspacePermissionKeys = ['credential.use', 'credential.create', 'credential.manage']
     mockState.formSchemas = []
     mockState.formValues = {}
     mockState.modelNameAndTypeFormSchemas = []

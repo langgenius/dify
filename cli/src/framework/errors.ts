@@ -1,6 +1,6 @@
 import type { FlagDefinition } from './types'
-import { BaseError } from '../errors/base'
-import { ErrorCode } from '../errors/codes'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export class OutputFormatNotSupportedError extends BaseError {
   constructor(format: string) {

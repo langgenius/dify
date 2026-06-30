@@ -6,7 +6,6 @@ from flask import Flask
 from controllers.console.error import AccountNotFound
 from controllers.console.workspace.agent_providers import (
     AgentProviderApi,
-    AgentProviderListApi,
 )
 
 
@@ -29,58 +28,6 @@ def mock_decorators():
         mock_csrf.return_value = None
         mock_get_user.return_value = MagicMock()
         yield
-
-
-class TestAgentProviderListApi:
-    def test_get_success(self, app: Flask):
-        api = AgentProviderListApi()
-        method = unwrap(api.get)
-
-        user = MagicMock(id="user1")
-        tenant_id = "tenant1"
-        providers = [{"name": "openai"}, {"name": "anthropic"}]
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
-                return_value=providers,
-            ),
-        ):
-            result = method(api, tenant_id, user)
-
-        assert result == providers
-
-    def test_get_empty_list(self, app: Flask):
-        api = AgentProviderListApi()
-        method = unwrap(api.get)
-
-        user = MagicMock(id="user1")
-        tenant_id = "tenant1"
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.workspace.agent_providers.AgentService.list_agent_providers",
-                return_value=[],
-            ),
-        ):
-            result = method(api, tenant_id, user)
-
-        assert result == []
-
-    def test_get_account_not_found(self, app: Flask, mock_decorators):
-        api = AgentProviderListApi()
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.wraps.current_account_with_tenant",
-                side_effect=AccountNotFound(),
-            ),
-        ):
-            with pytest.raises(AccountNotFound):
-                api.get()
 
 
 class TestAgentProviderApi:

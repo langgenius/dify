@@ -1,5 +1,5 @@
 import openModule from 'open'
-import { platform } from '../sys'
+import { platform } from '@/sys'
 
 export const OpenDecision = {
   Auto: 'auto-open',

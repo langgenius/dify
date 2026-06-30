@@ -1,8 +1,8 @@
-import type { CodeResponse, PollRequest, PollResult, PollSuccess } from '../../../api/oauth-device.js'
-import type { Clock } from './device-flow.js'
+import type { Clock } from './device-flow'
+import type { CodeResponse, PollRequest, PollResult, PollSuccess } from '@/api/oauth-device'
 import { describe, expect, it, vi } from 'vitest'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 import {
   awaitAuthorization,
   DEFAULT_INTERVAL_MS,
@@ -10,7 +10,7 @@ import {
   POLL_RETRY_ATTEMPTS,
   POLL_RETRY_CAP_MS,
   POLL_RETRY_INITIAL_MS,
-} from './device-flow.js'
+} from './device-flow'
 
 const successPayload: PollSuccess = {
   token: 'dfoa_xyz',

@@ -14,7 +14,7 @@ import {
 } from 'react'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGetLanguage } from '@/context/i18n'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { BlockEnum } from '../types'

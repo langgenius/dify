@@ -6,11 +6,11 @@ import { ApiKeyEditModal } from './apikey-edit-modal'
 import { ManualEditModal } from './manual-edit-modal'
 import { OAuthEditModal } from './oauth-edit-modal'
 
-type Props = {
+type Props = Readonly<{
   onClose: () => void
   subscription: TriggerSubscription
   pluginDetail?: PluginDetail
-}
+}>
 
 export const EditModal = ({ onClose, subscription, pluginDetail }: Props) => {
   const credentialType = subscription.credential_type

@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   label: string
   children: React.ReactNode
-}
+}>
 
 const Field: FC<Props> = ({
   label,

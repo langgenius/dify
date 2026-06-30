@@ -1,6 +1,6 @@
-import type { VersionReport } from './probe.js'
+import type { VersionReport } from './probe'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { renderVersionText } from './render.js'
+import { renderVersionText } from './render'
 
 function baseClient(overrides: Partial<VersionReport['client']> = {}): VersionReport['client'] {
   return {
@@ -52,7 +52,7 @@ describe('renderVersionText', () => {
     expect(text).not.toContain('WARNING:')
   })
 
-  it('appends RC warning when channel is rc', () => {
+  it('appends warning when channel is rc', () => {
     const report: VersionReport = {
       client: baseClient({ channel: 'rc' }),
       server: { endpoint: '', reachable: false },
@@ -60,8 +60,43 @@ describe('renderVersionText', () => {
     }
     const text = renderVersionText(report)
 
-    expect(text).toContain('WARNING: This build is a release candidate')
-    expect(text).toContain('install the stable channel')
+    expect(text).toContain('WARNING: This build is a(n) rc release')
+    expect(text).toContain('install or wait for the stable channel')
+  })
+
+  it('appends warning when channel is alpha', () => {
+    const report: VersionReport = {
+      client: baseClient({ channel: 'alpha' }),
+      server: { endpoint: '', reachable: false },
+      compat: { ...compatible(), status: 'unknown', detail: 'server probe skipped' },
+    }
+    const text = renderVersionText(report)
+
+    expect(text).toContain('WARNING: This build is a(n) alpha release')
+    expect(text).toContain('install or wait for the stable channel')
+  })
+
+  it('appends warning when channel is edge', () => {
+    const report: VersionReport = {
+      client: baseClient({ channel: 'edge' }),
+      server: { endpoint: '', reachable: false },
+      compat: { ...compatible(), status: 'unknown', detail: 'server probe skipped' },
+    }
+    const text = renderVersionText(report)
+
+    expect(text).toContain('WARNING: This build is a(n) edge release')
+    expect(text).toContain('install or wait for the stable channel')
+  })
+
+  it('does not append warning when channel is stable', () => {
+    const report: VersionReport = {
+      client: baseClient({ channel: 'stable' }),
+      server: { endpoint: '', reachable: false },
+      compat: { ...compatible(), status: 'unknown', detail: 'server probe skipped' },
+    }
+    const text = renderVersionText(report)
+
+    expect(text).not.toContain('WARNING:')
   })
 
   it('shows "(skipped …)" when server.endpoint is empty', () => {
@@ -105,7 +140,7 @@ describe('renderVersionText', () => {
     // RC warning) ran, yet the output is byte-clean.
     expect(plain).not.toMatch(ANSI_RE)
     expect(plain).toContain('Compatibility: incompatible')
-    expect(plain).toContain('WARNING: This build is a release candidate')
+    expect(plain).toContain('WARNING: This build is a(n) rc release')
   })
 
   describe('with picocolors stubbed to always emit ANSI', () => {
@@ -133,7 +168,7 @@ describe('renderVersionText', () => {
     })
 
     it('color=true emits ANSI sequences for verdict and RC warning lines', async () => {
-      const { renderVersionText: render } = await import('./render.js')
+      const { renderVersionText: render } = await import('./render')
       const report: VersionReport = {
         client: baseClient({ channel: 'rc' }),
         server: { endpoint: 'https://cloud.dify.ai', reachable: true, version: '99.0.0', edition: 'SELF_HOSTED' },
@@ -147,8 +182,8 @@ describe('renderVersionText', () => {
       const colored = render(report, { color: true })
       expect(colored).toMatch(ANSI_RE)
       expect(colored).toContain('Compatibility: incompatible')
-      // RC warning lines also routed through yellow.
-      expect(colored).toContain('release candidate')
+      // prerelease warning lines also routed through yellow.
+      expect(colored).toContain('WARNING: This build is a(n) rc release')
     })
   })
 

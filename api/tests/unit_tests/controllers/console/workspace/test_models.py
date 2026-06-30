@@ -1,3 +1,5 @@
+from inspect import unwrap
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -16,12 +18,6 @@ from controllers.console.workspace.models import (
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 class TestDefaultModelApi:
@@ -172,7 +168,7 @@ class TestModelProviderModelCredentialApi:
             provider_service.return_value.provider_manager.get_provider_model_available_credentials.return_value = []
             lb_service.return_value.get_load_balancing_configs.return_value = (False, [])
 
-            result = method(api, "tenant1", "openai")
+            result = method(api, "tenant1", SimpleNamespace(id="u1"), "openai")
 
         assert "credentials" in result
 
@@ -207,7 +203,7 @@ class TestModelProviderModelCredentialApi:
             service.return_value.provider_manager.get_provider_model_available_credentials.return_value = []
             lb.return_value.get_load_balancing_configs.return_value = (False, [])
 
-            result = method(api, "t1", "openai")
+            result = method(api, "t1", SimpleNamespace(id="u1"), "openai")
 
         assert result["credentials"] == {}
 

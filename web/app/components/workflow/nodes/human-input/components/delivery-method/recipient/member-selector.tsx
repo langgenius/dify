@@ -17,12 +17,12 @@ import MemberList from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 
-type Props = {
+type Props = Readonly<{
   value: Recipient[]
   email: string
   onSelect: (value: string) => void
   list: Member[]
-}
+}>
 
 const MemberSelector: FC<Props> = ({
   value,

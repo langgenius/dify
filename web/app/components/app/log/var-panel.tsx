@@ -12,10 +12,10 @@ import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
-type Props = {
+type Props = Readonly<{
   varList: { label: string, value: string }[]
   message_files: string[]
-}
+}>
 
 const VarPanel: FC<Props> = ({
   varList,

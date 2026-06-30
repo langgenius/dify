@@ -20,6 +20,7 @@ from core.plugin.impl.exc import (
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
     PluginInvokeError,
+    PluginLLMPollingUnsupportedError,
     PluginNotFoundError,
     PluginPermissionDeniedError,
     PluginUniqueIdentifierError,
@@ -45,12 +46,13 @@ _plugin_daemon_timeout_config = cast(
     getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 600.0),
 )
 plugin_daemon_request_timeout: httpx.Timeout | None
-if _plugin_daemon_timeout_config is None:
-    plugin_daemon_request_timeout = None
-elif isinstance(_plugin_daemon_timeout_config, httpx.Timeout):
-    plugin_daemon_request_timeout = _plugin_daemon_timeout_config
-else:
-    plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
+match _plugin_daemon_timeout_config:
+    case None:
+        plugin_daemon_request_timeout = None
+    case httpx.Timeout():
+        plugin_daemon_request_timeout = _plugin_daemon_timeout_config
+    case _:
+        plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
 logger = logging.getLogger(__name__)
 
@@ -369,6 +371,10 @@ class BasePluginClient:
                         raise TriggerInvokeError(error_object.get("message"))
                     case EventIgnoreError.__name__:
                         raise EventIgnoreError(description=error_object.get("message"))
+                    # NOTE: current plugin sdk / plugin daemon does not raise exception with
+                    # type `PluginLLMPollingUnsupportedError`.
+                    case PluginLLMPollingUnsupportedError.__name__:
+                        raise PluginLLMPollingUnsupportedError(description=error_object.get("message"))
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:

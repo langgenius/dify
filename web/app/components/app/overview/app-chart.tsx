@@ -95,11 +95,11 @@ const Chart: React.FC<IChartProps> = ({
   const tokenSummary = getTokenSummary(statistics)
 
   return (
-    <div className={`flex w-full flex-col rounded-xl bg-components-chart-bg px-6 py-4 shadow-xs ${className ?? ''}`}>
-      <div className="mb-3">
+    <div className={`flex h-[316px] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg ${className ?? ''}`}>
+      <div className="flex h-11 shrink-0 items-center px-6 pt-6 pb-1">
         <Basic name={title} type={timePeriod} hoverTip={explanation} />
       </div>
-      <div className="mb-4 flex-1">
+      <div className="flex h-8 shrink-0 items-start px-6 py-1">
         <Basic
           isExtraInLine={CHART_TYPE_CONFIG[chartType].showTokens}
           name={summaryValue}
@@ -123,7 +123,7 @@ const Chart: React.FC<IChartProps> = ({
           textStyle={{ main: `text-3xl! font-normal! ${summaryValue === '0' || summaryValue === '0 ms' ? 'text-text-quaternary!' : ''}` }}
         />
       </div>
-      <ReactECharts option={options} style={{ height: 160 }} />
+      <ReactECharts option={options} style={{ height: 240, width: '100%' }} />
     </div>
   )
 }
@@ -315,5 +315,4 @@ export const AvgUserInteractions = createBizChartComponent({
   yMaxWhenEmpty: 500,
   isAvg: true,
 })
-
 export default Chart

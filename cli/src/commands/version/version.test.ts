@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import * as info from '../../version/info.js'
-import * as probe from '../../version/probe.js'
-import Version, { COMPAT_FAIL_EXIT_CODE } from './index.js'
+import * as info from '@/version/info'
+import * as probe from '@/version/probe'
+import Version, { COMPAT_FAIL_EXIT_CODE } from './index'
 
 function fakeReport(overrides: {
   channel?: probe.VersionReport['client']['channel']
@@ -101,7 +101,7 @@ describe('Version command', () => {
     expect(spy).toHaveBeenCalledWith({ skipServer: true })
   })
 
-  function stubProcessExit(): ReturnType<typeof vi.spyOn<typeof process, 'exit'>> {
+  function stubProcessExit() {
     const impl = (() => {
       throw new Error('__exit__')
     }) as never
@@ -158,6 +158,6 @@ describe('Version command', () => {
     if (output?.kind !== 'formatted')
       throw new Error('expected formatted output')
 
-    expect(output.data.text()).toContain('WARNING: This build is a release candidate')
+    expect(output.data.text()).toContain('WARNING: This build is a(n) rc release')
   })
 })

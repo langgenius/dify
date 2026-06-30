@@ -55,13 +55,12 @@ const FileUploaderInAttachment = ({
   const renderButton = useCallback((option: Option, open?: boolean) => {
     return (
       <Button
-        key={option.value}
         variant="tertiary"
-        className={cn('relative grow', open && 'bg-components-button-tertiary-bg-hover')}
+        className={cn('relative w-full min-w-0', open && 'bg-components-button-tertiary-bg-hover')}
         disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
-        {option.icon}
-        <span className="ml-1">{option.label}</span>
+        <span className="shrink-0">{option.icon}</span>
+        <span className="ml-1 min-w-0 truncate">{option.label}</span>
         {
           option.value === TransferMethod.local_file && (
             <FileInput fileConfig={fileConfig} />
@@ -74,17 +73,23 @@ const FileUploaderInAttachment = ({
     return (open: boolean) => renderButton(option, open)
   }, [renderButton])
   const renderOption = useCallback((option: Option) => {
-    if (option.value === TransferMethod.local_file && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file))
-      return renderButton(option)
+    if (option.value === TransferMethod.local_file && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file)) {
+      return (
+        <div key={option.value} className="min-w-0 flex-1">
+          {renderButton(option)}
+        </div>
+      )
+    }
 
     if (option.value === TransferMethod.remote_url && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)) {
       return (
-        <FileFromLinkOrLocal
-          key={option.value}
-          showFromLocal={false}
-          trigger={renderTrigger(option)}
-          fileConfig={fileConfig}
-        />
+        <div key={option.value} className="min-w-0 flex-1">
+          <FileFromLinkOrLocal
+            showFromLocal={false}
+            trigger={renderTrigger(option)}
+            fileConfig={fileConfig}
+          />
+        </div>
       )
     }
   }, [renderButton, renderTrigger, fileConfig])
@@ -92,7 +97,7 @@ const FileUploaderInAttachment = ({
   return (
     <div>
       {!isDisabled && (
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center gap-1">
           {options.map(renderOption)}
         </div>
       )}

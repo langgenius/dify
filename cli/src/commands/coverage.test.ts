@@ -1,5 +1,6 @@
+/// <reference types="vite/client" />
 import { describe, expect, it } from 'vitest'
-import { isExcludedCommandPath } from '../framework/command-fs.js'
+import { isExcludedCommandPath } from '@/framework/command-fs'
 
 const INDEX_MODULES = import.meta.glob<{ default?: unknown }>(
   './**/index.ts',

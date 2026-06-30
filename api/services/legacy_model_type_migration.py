@@ -34,7 +34,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from enum import IntEnum, StrEnum
-from typing import Protocol, cast
+from typing import Protocol, cast, override
 
 import sqlalchemy as sa
 from sqlalchemy.exc import OperationalError
@@ -337,9 +337,11 @@ class _ThreadSafeLineWriter(io.TextIOBase):
         self._lock = threading.Lock()
         self._local = threading.local()
 
+    @override
     def writable(self) -> bool:
         return True
 
+    @override
     def write(self, text: str) -> int:
         if not text:
             return 0
@@ -356,6 +358,7 @@ class _ThreadSafeLineWriter(io.TextIOBase):
         self._buffer = remainder
         return len(text)
 
+    @override
     def flush(self) -> None:
         buffered_text = self._buffer
         if buffered_text:

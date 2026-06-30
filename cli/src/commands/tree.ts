@@ -1,1 +1,1 @@
-export { commandTree } from './tree.generated.js'
+export { commandTree } from './tree.generated'

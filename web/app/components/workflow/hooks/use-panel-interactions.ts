@@ -1,16 +1,16 @@
 import type { MouseEvent } from 'react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
+import { consoleQuery } from '@/service/client'
 import { useWorkflowStore } from '../store'
 import { readWorkflowClipboard } from '../utils'
 
 export const usePanelInteractions = () => {
   const workflowStore = useWorkflowStore()
-  const { data: appDslVersion } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: s => s.app_dsl_version,
-  })
+  const { data: appDslVersion = '' } = useQuery(consoleQuery.appDslVersion.get.queryOptions({
+    staleTime: Infinity,
+    select: data => data.app_dsl_version,
+  }))
 
   const handlePaneContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault()

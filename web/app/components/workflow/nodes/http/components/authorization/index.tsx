@@ -18,13 +18,13 @@ import RadioGroup from './radio-group'
 
 const i18nPrefix = 'nodes.http.authorization'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   payload: AuthorizationPayloadType
   onChange: (payload: AuthorizationPayloadType) => void
   isShow: boolean
   onHide: () => void
-}
+}>
 
 const Field = ({ title, isRequired, children }: { title: string, isRequired?: boolean, children: React.JSX.Element }) => {
   return (

@@ -106,7 +106,12 @@ def test_create_run_accepts_valid_full_plugin_graph() -> None:
                     {
                         "name": "execution-context-renamed",
                         "type": "dify.execution_context",
-                        "config": {"tenant_id": "tenant-1", "invoke_from": "workflow_run"},
+                        "config": {
+                            "tenant_id": "tenant-1",
+                            "user_from": "account",
+                            "agent_mode": "workflow_run",
+                            "invoke_from": "service-api",
+                        },
                     },
                     {
                         "name": DIFY_AGENT_MODEL_LAYER_ID,

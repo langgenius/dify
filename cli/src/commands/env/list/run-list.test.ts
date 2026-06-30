@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runEnvList } from './run-list.js'
+import { runEnvList } from './run-list'
 
 const stub = (overrides: Record<string, string> = {}) => (name: string) => overrides[name]
 

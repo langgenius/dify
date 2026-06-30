@@ -1,7 +1,10 @@
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from models.account import Account
 
 from sqlalchemy import delete, func, select, update
 from sqlalchemy.orm import Session, sessionmaker
@@ -791,24 +794,42 @@ class DatasourceProviderService:
 
         return secret_input_form_variables
 
-    def list_datasource_credentials(self, tenant_id: str, provider: str, plugin_id: str) -> list[dict]:
+    def list_datasource_credentials(
+        self,
+        tenant_id: str,
+        provider: str,
+        plugin_id: str,
+        user: "Account | None" = None,
+    ) -> list[dict]:
         """
-        list datasource credentials with obfuscated sensitive fields.
+        list datasource credentials with obfuscated sensitive fields,
+        filtered by visibility.
 
         :param tenant_id: workspace id
-        :param provider_id: provider id
+        :param provider: provider name
+        :param plugin_id: plugin id
+        :param user: current user (id + admin flag drive the visibility filter)
         :return:
         """
+        from models.credential_permission import CredentialType as CredPermType
+        from services.credential_permission_service import CredentialPermissionService
+
         # Get all provider configurations of the current workspace
-        datasource_providers: list[DatasourceProvider] = list(
-            db.session.scalars(
-                select(DatasourceProvider).where(
-                    DatasourceProvider.tenant_id == tenant_id,
-                    DatasourceProvider.provider == provider,
-                    DatasourceProvider.plugin_id == plugin_id,
-                )
-            ).all()
+        query = select(DatasourceProvider).where(
+            DatasourceProvider.tenant_id == tenant_id,
+            DatasourceProvider.provider == provider,
+            DatasourceProvider.plugin_id == plugin_id,
         )
+        if user is not None:
+            query = CredentialPermissionService.apply_visibility_filter(
+                query,
+                model_id_column=DatasourceProvider.id,
+                model_user_id_column=DatasourceProvider.user_id,
+                model_visibility_column=DatasourceProvider.visibility,
+                credential_type=CredPermType.DATASOURCE_PROVIDER,
+                user=user,
+            )
+        datasource_providers: list[DatasourceProvider] = list(db.session.scalars(query).all())
         if not datasource_providers:
             return []
         copy_credentials_list = []

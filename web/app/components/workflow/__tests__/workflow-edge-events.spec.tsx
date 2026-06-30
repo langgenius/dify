@@ -147,6 +147,9 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({
     appId: 'app-1',
   }),
+  useRouter: () => ({
+    push: vi.fn(),
+  }),
 }))
 
 vi.mock('@/context/event-emitter', () => ({
@@ -340,7 +343,6 @@ vi.mock('../syncing-data-modal', () => ({
 
 vi.mock('../shortcuts/use-workflow-hotkeys', () => ({
   useWorkflowHotkeys: workflowHookMocks.useShortcuts,
-  useWorkflowShortcut: vi.fn(),
 }))
 
 vi.mock('../hooks', () => ({

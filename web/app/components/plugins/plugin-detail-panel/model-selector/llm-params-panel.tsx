@@ -14,13 +14,13 @@ import { getSupportedPresetConfig } from '@/app/components/header/account-settin
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE } from '@/config'
 import { useModelParameterRules } from '@/service/use-common'
 
-type Props = {
+type Props = Readonly<{
   isAdvancedMode: boolean
   provider: string
   modelId: string
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
-}
+}>
 
 const LLMParamsPanel = ({
   isAdvancedMode,

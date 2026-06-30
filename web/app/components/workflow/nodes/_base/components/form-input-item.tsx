@@ -41,7 +41,7 @@ import {
 } from './form-input-item.sections'
 import FormInputTypeSwitch from './form-input-type-switch'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema
@@ -55,7 +55,7 @@ type Props = {
   extraParams?: Record<string, unknown>
   providerType?: string
   disableVariableInsertion?: boolean
-}
+}>
 
 type FormInputValue = string | number | boolean | string[] | Record<string, unknown> | null | undefined
 

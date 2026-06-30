@@ -2,6 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useRouter } from '@/next/navigation'
 import { useCheckDatasetUsage, useDeleteDataset } from '@/service/use-dataset-card'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
 import { downloadBlob } from '@/utils/download'
@@ -9,6 +10,7 @@ import { downloadBlob } from '@/utils/download'
 type ModalState = {
   showRenameModal: boolean
   showConfirmDelete: boolean
+  showAccessConfig: boolean
   confirmMessage: string
 }
 
@@ -19,11 +21,13 @@ type UseDatasetCardStateOptions = {
 
 export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateOptions) => {
   const { t } = useTranslation()
+  const { push } = useRouter()
 
   // Modal state
   const [modalState, setModalState] = useState<ModalState>({
     showRenameModal: false,
     showConfirmDelete: false,
+    showAccessConfig: false,
     confirmMessage: '',
   })
 
@@ -41,6 +45,14 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
 
   const closeConfirmDelete = useCallback(() => {
     setModalState(prev => ({ ...prev, showConfirmDelete: false }))
+  }, [])
+
+  const openAccessConfig = useCallback(() => {
+    push(`/datasets/${dataset.id}/access-config`)
+  }, [dataset.id, push])
+
+  const closeAccessConfig = useCallback(() => {
+    setModalState(prev => ({ ...prev, showAccessConfig: false }))
   }, [])
 
   // API mutations
@@ -112,6 +124,8 @@ export const useDatasetCardState = ({ dataset, onSuccess }: UseDatasetCardStateO
     openRenameModal,
     closeRenameModal,
     closeConfirmDelete,
+    openAccessConfig,
+    closeAccessConfig,
 
     // Export state
     exporting,

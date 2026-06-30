@@ -8,7 +8,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
-from .types import AdjustedJSON, LongText, StringUUID
+from .enums import PermissionEnum
+from .types import AdjustedJSON, EnumText, LongText, StringUUID
 
 
 class DatasourceOauthParamConfig(TypeBase):
@@ -42,9 +43,16 @@ class DatasourceProvider(TypeBase):
     plugin_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     auth_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
     encrypted_credentials: Mapped[dict[str, Any]] = mapped_column(AdjustedJSON, nullable=False)
+    user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     avatar_url: Mapped[str] = mapped_column(LongText, nullable=True, default="default")
     is_default: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
     expires_at: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="-1", default=-1)
+    visibility: Mapped[PermissionEnum] = mapped_column(
+        EnumText(PermissionEnum, length=40),
+        nullable=False,
+        server_default=sa.text("'all_team_members'"),
+        default=PermissionEnum.ALL_TEAM,
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False

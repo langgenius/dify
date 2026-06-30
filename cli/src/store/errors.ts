@@ -1,5 +1,5 @@
-import { BaseError } from '../errors/base'
-import { ErrorCode } from '../errors/codes'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export class ConcurrentAccessError extends BaseError {
   constructor(filePath: string) {

@@ -1344,6 +1344,27 @@ class TestDocumentServiceEstimateValidation:
 
         assert args["process_rule"]["rules"]["pre_processing_rules"] == [{"id": "remove_stopwords", "enabled": False}]
 
+    def test_estimate_args_validate_custom_mode_drops_hierarchical_fields(self):
+        args = {
+            "info_list": {"data_source_type": "upload_file"},
+            "process_rule": {
+                "mode": "custom",
+                "rules": {
+                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
+                    "segmentation": {"separator": "\n", "max_tokens": 128},
+                    "parent_mode": "full-doc",
+                    "subchunk_segmentation": {"separator": "###", "max_tokens": 64},
+                },
+            },
+        }
+
+        DocumentService.estimate_args_validate(args)
+
+        assert args["process_rule"]["rules"] == {
+            "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
+            "segmentation": {"separator": "\n", "max_tokens": 128},
+        }
+
     def test_estimate_args_validate_requires_summary_index_provider_name(self):
         args = {
             "info_list": {"data_source_type": "upload_file"},
@@ -1359,6 +1380,43 @@ class TestDocumentServiceEstimateValidation:
 
         with pytest.raises(ValueError, match="Field required"):
             DocumentService.estimate_args_validate(args)
+
+    def test_estimate_args_validate_preserves_hierarchical_fields(self):
+        args = {
+            "info_list": {"data_source_type": "upload_file"},
+            "process_rule": {
+                "mode": "hierarchical",
+                "rules": {
+                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
+                    "segmentation": {"separator": "\n", "max_tokens": 512},
+                    "parent_mode": "full-doc",
+                    "subchunk_segmentation": {"separator": "###", "max_tokens": 128},
+                },
+            },
+        }
+
+        DocumentService.estimate_args_validate(args)
+
+        assert args["process_rule"]["rules"]["parent_mode"] == "full-doc"
+        assert args["process_rule"]["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
+
+    def test_estimate_args_validate_hierarchical_defaults_parent_mode_to_paragraph(self):
+        args = {
+            "info_list": {"data_source_type": "upload_file"},
+            "process_rule": {
+                "mode": "hierarchical",
+                "rules": {
+                    "pre_processing_rules": [{"id": "remove_stopwords", "enabled": True}],
+                    "segmentation": {"separator": "\n", "max_tokens": 512},
+                    "subchunk_segmentation": {"separator": "###", "max_tokens": 128},
+                },
+            },
+        }
+
+        DocumentService.estimate_args_validate(args)
+
+        assert args["process_rule"]["rules"]["parent_mode"] == "paragraph"
+        assert args["process_rule"]["rules"]["subchunk_segmentation"] == {"separator": "###", "max_tokens": 128}
 
 
 class TestDocumentServiceSaveDocumentAdditionalBranches:

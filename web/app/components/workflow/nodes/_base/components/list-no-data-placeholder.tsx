@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   children: React.ReactNode
-}
+}>
 
 const ListNoDataPlaceholder: FC<Props> = ({
   children,

@@ -5,21 +5,20 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { PluginInstallPermissionProvider } from '@/app/components/plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useLocale } from '@/context/i18n'
 
 import { formatNumber } from '@/utils/format'
 import Action from './action'
 
-enum ActionType {
-  install = 'install',
-  download = 'download',
-  // viewDetail = 'viewDetail', // wait for marketplace api
-}
-type Props = {
+type ActionType = 'install' | 'download'
+
+type Props = Readonly<{
   payload: Plugin
   onAction: (type: ActionType) => void
-}
+}>
 
 const Item: FC<Props> = ({
   payload,
@@ -33,9 +32,10 @@ const Item: FC<Props> = ({
     setTrue: showInstallModal,
     setFalse: hideInstallModal,
   }] = useBoolean(false)
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
 
   return (
-    <div className="group/plugin flex rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover">
+    <div className="group/plugin flex rounded-lg py-1 pr-1 pl-3 select-none hover:bg-state-base-hover">
       <div
         className="relative h-6 w-6 shrink-0 rounded-md border-[0.5px] border-components-panel-border-subtle bg-contain bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${payload.icon})` }}
@@ -52,12 +52,15 @@ const Item: FC<Props> = ({
         </div>
         {/* Action */}
         <div className={cn(!open ? 'hidden' : 'flex', 'h-4 items-center space-x-1 system-xs-medium text-components-button-secondary-accent-text group-hover/plugin:flex')}>
-          <div
-            className="cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover"
-            onClick={showInstallModal}
-          >
-            {t('installAction', { ns: 'plugin' })}
-          </div>
+          {canInstallPlugin && (
+            <button
+              type="button"
+              className="cursor-pointer rounded-md border-0 bg-transparent px-1.5 py-0.5 hover:bg-state-base-hover"
+              onClick={showInstallModal}
+            >
+              {t('installAction', { ns: 'plugin' })}
+            </button>
+          )}
           <Action
             open={open}
             onOpenChange={setOpen}
@@ -66,13 +69,18 @@ const Item: FC<Props> = ({
             version={payload.latest_version}
           />
         </div>
-        {isShowInstallModal && (
-          <InstallFromMarketplace
-            uniqueIdentifier={payload.latest_package_identifier}
-            manifest={payload}
-            onSuccess={hideInstallModal}
-            onClose={hideInstallModal}
-          />
+        {isShowInstallModal && canInstallPlugin && (
+          <PluginInstallPermissionProvider
+            canInstallPlugin={canInstallPlugin}
+            currentDifyVersion={currentDifyVersion}
+          >
+            <InstallFromMarketplace
+              uniqueIdentifier={payload.latest_package_identifier}
+              manifest={payload}
+              onSuccess={hideInstallModal}
+              onClose={hideInstallModal}
+            />
+          </PluginInstallPermissionProvider>
         )}
       </div>
     </div>

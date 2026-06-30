@@ -32,11 +32,12 @@ from controllers.console.wraps import (
     decrypt_password_field,
     email_password_login_enabled,
     setup_required,
+    with_current_user,
 )
 from events.tenant_event import tenant_was_created
+from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.helper import timezone as validate_timezone_string
-from libs.login import current_account_with_tenant
 from libs.token import (
     clear_access_token_from_cookie,
     clear_csrf_token_from_cookie,
@@ -46,6 +47,7 @@ from libs.token import (
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
+from models.account import Account
 from services.account_service import AccountService, InvitationDetailDict, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.entities.auth_entities import LoginFailureReason, LoginPayloadBase
@@ -117,7 +119,9 @@ class LoginApi(Resource):
         invite_token = args.invite_token
         invitation_data: InvitationDetailDict | None = None
         if invite_token:
-            invitation_data = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
+            invitation_data = RegisterService.get_invitation_with_case_fallback(
+                None, request_email, invite_token, session=db.session
+            )
             if invitation_data is None:
                 invite_token = None
 
@@ -143,7 +147,7 @@ class LoginApi(Resource):
             _log_console_login_failure(email=normalized_email, reason=LoginFailureReason.INVALID_CREDENTIALS)
             raise AuthenticationFailedError() from exc
         # SELF_HOSTED only have one workspace
-        tenants = TenantService.get_join_tenants(account)
+        tenants = TenantService.get_join_tenants(account, session=db.session)
         if len(tenants) == 0:
             system_features = FeatureService.get_system_features()
 
@@ -155,7 +159,7 @@ class LoginApi(Resource):
                     "data": "workspace not found, please contact system admin to invite you to join in a workspace",
                 }
 
-        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account=account, session=db.session, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(normalized_email)
 
         # Create response with cookies instead of returning tokens in body
@@ -172,9 +176,8 @@ class LoginApi(Resource):
 class LogoutApi(Resource):
     @setup_required
     @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
-    def post(self):
-        current_user, _ = current_account_with_tenant()
-        account = current_user
+    @with_current_user
+    def post(self, account: Account):
         if isinstance(account, flask_login.AnonymousUserMixin):
             response = make_response({"result": "success"})
         else:
@@ -290,7 +293,7 @@ class EmailCodeLoginApi(Resource):
             _log_console_login_failure(email=user_email, reason=LoginFailureReason.ACCOUNT_IN_FREEZE)
             raise AccountInFreezeError()
         if account:
-            tenants = TenantService.get_join_tenants(account)
+            tenants = TenantService.get_join_tenants(account, session=db.session)
             if not tenants:
                 workspaces = FeatureService.get_system_features().license.workspaces
                 if not workspaces.is_available():
@@ -298,8 +301,8 @@ class EmailCodeLoginApi(Resource):
                 if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
-                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(new_tenant, account, role="owner")
+                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", session=db.session)
+                    TenantService.create_tenant_member(new_tenant, account, db.session, role="owner")
                     account.current_tenant = new_tenant
                     tenant_was_created.send(new_tenant)
 
@@ -310,6 +313,7 @@ class EmailCodeLoginApi(Resource):
                     name=user_email,
                     interface_language=get_valid_language(language),
                     timezone=args.timezone,
+                    session=db.session,
                 )
             except WorkSpaceNotAllowedCreateError:
                 raise NotAllowedCreateWorkspace()
@@ -318,7 +322,7 @@ class EmailCodeLoginApi(Resource):
                 raise AccountInFreezeError()
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
-        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account, session=db.session, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(user_email)
 
         # Create response with cookies instead of returning tokens in body
@@ -342,7 +346,7 @@ class RefreshTokenApi(Resource):
             return {"result": "fail", "message": "No refresh token provided"}, 401
 
         try:
-            new_token_pair = AccountService.refresh_token(refresh_token)
+            new_token_pair = AccountService.refresh_token(refresh_token, session=db.session)
 
             # Create response with new cookies
             response = make_response({"result": "success"})
@@ -357,22 +361,22 @@ class RefreshTokenApi(Resource):
 
 
 def _get_account_with_case_fallback(email: str):
-    account = AccountService.get_user_through_email(email)
+    account = AccountService.get_user_through_email(email, session=db.session)
     if account or email == email.lower():
         return account
 
-    return AccountService.get_user_through_email(email.lower())
+    return AccountService.get_user_through_email(email.lower(), session=db.session)
 
 
 def _authenticate_account_with_case_fallback(
     original_email: str, normalized_email: str, password: str, invite_token: str | None
 ):
     try:
-        return AccountService.authenticate(original_email, password, invite_token)
+        return AccountService.authenticate(original_email, password, invite_token, session=db.session)
     except services.errors.account.AccountPasswordError:
         if original_email == normalized_email:
             raise
-        return AccountService.authenticate(normalized_email, password, invite_token)
+        return AccountService.authenticate(normalized_email, password, invite_token, session=db.session)
 
 
 def _log_console_login_failure(*, email: str, reason: LoginFailureReason) -> None:

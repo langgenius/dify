@@ -1,15 +1,20 @@
 import type { WorkspaceDetailResponse, WorkspaceListResponse } from '@dify/contracts/api/openapi/types.gen'
-import type { KyInstance } from 'ky'
+import type { OpenApiClient } from '@/http/orpc'
+import type { HttpClient } from '@/http/types'
+import { createOpenApiClient } from '@/http/orpc'
 
 export class WorkspacesClient {
-  private readonly http: KyInstance
+  private readonly orpc: OpenApiClient
 
-  constructor(http: KyInstance) {
-    this.http = http
+  constructor(http: HttpClient) {
+    // oRPC client over the same transport (UA+bearer / retry / timeout / error-map) — SPEC §4.4:
+    // one transport, a contract facade. Both methods are standard unary JSON, so both go through
+    // the generated contract.
+    this.orpc = createOpenApiClient(http)
   }
 
   async list(): Promise<WorkspaceListResponse> {
-    return this.http.get('workspaces').json<WorkspaceListResponse>()
+    return this.orpc.workspaces.get()
   }
 
   /**
@@ -22,8 +27,6 @@ export class WorkspacesClient {
    * server's state.
    */
   async switch(workspaceId: string): Promise<WorkspaceDetailResponse> {
-    return this.http
-      .post(`workspaces/${encodeURIComponent(workspaceId)}/switch`)
-      .json<WorkspaceDetailResponse>()
+    return this.orpc.workspaces.byWorkspaceId.switch.post({ params: { workspace_id: workspaceId } })
   }
 }

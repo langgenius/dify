@@ -39,10 +39,15 @@ describe('Tabs wrappers', () => {
 
     await expect.element(screen.getByRole('tablist')).toHaveClass(
       'flex',
+      'gap-4',
     )
     await expect.element(screen.getByRole('tab', { name: 'First' })).toHaveClass(
       'touch-manipulation',
       'focus-visible:outline-hidden',
+      'border-b-2',
+      'border-transparent',
+      'data-active:border-components-tab-active',
+      'data-active:text-text-primary',
     )
   })
 

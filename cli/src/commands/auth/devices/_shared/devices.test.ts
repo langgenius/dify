@@ -1,49 +1,27 @@
 import type { SessionListResponse, SessionRow } from '@dify/contracts/api/openapi/types.gen'
-import type { DifyMock } from '../../../../../test/fixtures/dify-mock/server.js'
-import type { AccountSessionsClient } from '../../../../api/account-sessions.js'
-import type { HostsBundle } from '../../../../auth/hosts.js'
-import type { Key, Store } from '../../../../store/store.js'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { AccountSessionsClient } from '@/api/account-sessions'
+import type { ActiveContext } from '@/auth/hosts'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
+import { MemStore } from '@test/fixtures/mem-store'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startMock } from '../../../../../test/fixtures/dify-mock/server.js'
-import { saveHosts } from '../../../../auth/hosts.js'
-import { createClient } from '../../../../http/client.js'
-import { ENV_CONFIG_DIR, resolveConfigDir } from '../../../../store/dir.js'
-import { tokenKey } from '../../../../store/manager.js'
-import { bufferStreams } from '../../../../sys/io/streams'
+import { Registry } from '@/auth/hosts'
+import { bufferStreams } from '@/sys/io/streams'
 import { listAllSessions, runDevicesList, runDevicesRevoke } from './devices.js'
 
-class MemStore implements Store {
-  readonly entries = new Map<string, unknown>()
-  get<T>(key: Key<T>): T {
-    return (this.entries.get(key.key) as T | undefined) ?? key.default
-  }
-
-  set<T>(key: Key<T>, value: T): void {
-    this.entries.set(key.key, value)
-  }
-
-  unset<T>(key: Key<T>): void {
-    this.entries.delete(key.key)
-  }
-}
-
-function bundleFor(host: string, tokenId = 'tok-1'): HostsBundle {
-  return {
-    current_host: host,
-    scheme: 'http',
-    token_storage: 'file',
-    token_id: tokenId,
-    tokens: { bearer: 'dfoa_test' },
-    account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
+function buildRegistry(host: string, email: string, tokenId: string): { reg: Registry, active: ActiveContext } {
+  const reg = Registry.empty('file')
+  reg.upsert(host, email, {
+    account: { id: 'acct-1', email, name: 'Test Tester' },
     workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-    available_workspaces: [
-      { id: 'ws-1', name: 'Default', role: 'owner' },
-      { id: 'ws-2', name: 'Other', role: 'normal' },
-    ],
-  }
+    token_id: tokenId,
+  })
+  reg.setHost(host)
+  reg.setAccount(email)
+  const active = reg.resolveActive()!
+  return { reg, active }
 }
 
 describe('runDevicesList', () => {
@@ -57,8 +35,8 @@ describe('runDevicesList', () => {
 
   it('table: marks current with *', async () => {
     const io = bufferStreams()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
-    await runDevicesList({ io, bundle: bundleFor(mock.url, 'tok-1'), http })
+    const http = testHttpClient(mock.url, 'dfoa_test')
+    await runDevicesList({ io, tokenId: 'tok-1', http })
     const out = io.outBuf()
     expect(out).toContain('DEVICE')
     expect(out).toContain('difyctl on laptop')
@@ -70,51 +48,34 @@ describe('runDevicesList', () => {
 
   it('json: emits PaginationEnvelope unchanged', async () => {
     const io = bufferStreams()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
-    await runDevicesList({ io, bundle: bundleFor(mock.url), http, json: true })
+    const http = testHttpClient(mock.url, 'dfoa_test')
+    await runDevicesList({ io, tokenId: 'tok-1', http, json: true })
     const parsed = JSON.parse(io.outBuf()) as Record<string, unknown>
     expect(parsed.page).toBe(1)
     expect(Array.isArray(parsed.data)).toBe(true)
     expect((parsed.data as unknown[]).length).toBe(3)
   })
-
-  it('not-logged-in: throws NotLoggedIn', async () => {
-    const io = bufferStreams()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
-    await expect(runDevicesList({ io, bundle: undefined, http }))
-      .rejects
-      .toThrow(/not logged in/)
-  })
 })
 
 describe('runDevicesRevoke', () => {
   let mock: DifyMock
-  let configDir: string
-  let prevConfigDir: string | undefined
+  useTempConfigDir('difyctl-devrevoke-')
   beforeEach(async () => {
     mock = await startMock({ scenario: 'happy' })
-    configDir = await mkdtemp(join(tmpdir(), 'difyctl-devrevoke-'))
-    prevConfigDir = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = configDir
   })
   afterEach(async () => {
-    if (prevConfigDir === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else
-      process.env[ENV_CONFIG_DIR] = prevConfigDir
     await mock.stop()
-    await rm(configDir, { recursive: true, force: true })
   })
 
   it('exact device_label: revokes one + leaves local creds', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const b = bundleFor(mock.url, 'tok-1')
-    store.set(tokenKey(b.current_host, 'acct-1'), 'dfoa_test')
-    saveHosts(b)
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    await store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
+    await reg.save()
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await runDevicesRevoke({ io, bundle: b, http, store, target: 'difyctl on desktop', all: false })
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl on desktop', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
     expect(store.entries.size).toBe(1)
   })
@@ -122,30 +83,30 @@ describe('runDevicesRevoke', () => {
   it('exact id: revokes one', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await runDevicesRevoke({ io, bundle: b, http, store, target: 'tok-2', all: false })
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-2', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
   })
 
   it('substring: unique match revokes', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await runDevicesRevoke({ io, bundle: b, http, store, target: 'web', all: false })
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'web', all: false })
     expect(io.outBuf()).toContain('Revoked 1 session(s)')
   })
 
   it('substring: ambiguous throws', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await expect(runDevicesRevoke({ io, bundle: b, http, store, target: 'difyctl', all: false }))
+    await expect(runDevicesRevoke({ io, reg, active, store, http, target: 'difyctl', all: false }))
       .rejects
       .toThrow(/matches multiple/)
   })
@@ -153,10 +114,10 @@ describe('runDevicesRevoke', () => {
   it('no match throws', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await expect(runDevicesRevoke({ io, bundle: b, http, store, target: 'nonexistent', all: false }))
+    await expect(runDevicesRevoke({ io, reg, active, store, http, target: 'nonexistent', all: false }))
       .rejects
       .toThrow(/no session matches/)
   })
@@ -164,31 +125,70 @@ describe('runDevicesRevoke', () => {
   it('--all: revokes everything except current', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const b = bundleFor(mock.url, 'tok-1')
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await runDevicesRevoke({ io, bundle: b, http, store, all: true })
+    await runDevicesRevoke({ io, reg, active, store, http, all: true })
     expect(io.outBuf()).toContain('Revoked 2 session(s)')
   })
 
-  it('revoking current id clears local creds', async () => {
+  it('revoking current session clears token and removes context from registry', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const b = bundleFor(mock.url, 'tok-1')
-    store.set(tokenKey(b.current_host, 'acct-1'), 'dfoa_test')
-    saveHosts(b)
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    await store.write(mock.url, 'tester@dify.ai', 'dfoa_test')
+    await reg.save()
+    const http = testHttpClient(mock.url, 'dfoa_test')
 
-    await runDevicesRevoke({ io, bundle: b, http, store, target: 'tok-1', all: false })
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-1', all: false })
     expect(store.entries.size).toBe(0)
-    await expect(readFile(join(resolveConfigDir(), 'hosts.yml'), 'utf8')).rejects.toThrow(/ENOENT/)
+    const saved = await Registry.load()
+    expect(saved?.hosts[mock.url]).toBeUndefined()
+  })
+
+  it('TTY without --yes: prompts and aborts on decline (no revoke)', async () => {
+    const base = bufferStreams('n\n')
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await expect(runDevicesRevoke({ io, reg, active, store, http, all: true }))
+      .rejects
+      .toThrow(/aborted by user/)
+    expect(base.errBuf()).toContain('Revoke 2 session(s)? [y/N]')
+    expect(base.outBuf()).not.toContain('Revoked')
+  })
+
+  it('TTY without --yes: proceeds on accept', async () => {
+    const base = bufferStreams('y\n')
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-2', all: false })
+    expect(base.outBuf()).toContain('Revoked 1 session(s)')
+  })
+
+  it('TTY with --yes: skips prompt entirely', async () => {
+    const base = bufferStreams()
+    const io = { ...base, isErrTTY: true }
+    const store = new MemStore()
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+
+    await runDevicesRevoke({ io, reg, active, store, http, target: 'tok-2', all: false, yes: true })
+    expect(base.errBuf()).not.toContain('[y/N]')
+    expect(base.outBuf()).toContain('Revoked 1 session(s)')
   })
 
   it('no target + no --all: throws UsageMissingArg', async () => {
     const io = bufferStreams()
     const store = new MemStore()
-    const http = createClient({ host: mock.url, bearer: 'dfoa_test' })
-    await expect(runDevicesRevoke({ io, bundle: bundleFor(mock.url), http, store, all: false }))
+    const { reg, active } = buildRegistry(mock.url, 'tester@dify.ai', 'tok-1')
+    const http = testHttpClient(mock.url, 'dfoa_test')
+    await expect(runDevicesRevoke({ io, reg, active, store, http, all: false }))
       .rejects
       .toThrow(/specify a device label/)
   })

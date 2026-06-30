@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { CONFIG_FILE_NAME } from '../store/manager.js'
+import { CONFIG_FILE_NAME } from '@/store/manager'
 import {
   ALLOWED_FORMATS,
   ConfigFileSchema,
   CURRENT_SCHEMA_VERSION,
   emptyConfig,
-} from './schema.js'
+} from './schema'
 
 describe('config schema', () => {
   it('CURRENT_SCHEMA_VERSION is 1', () => {

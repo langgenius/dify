@@ -35,6 +35,7 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
 export type ResponseError = {
   code: string
   message: string
+  error?: string
   status: number
 }
 
@@ -60,7 +61,7 @@ const createResponseFromHTTPError = (error: HTTPError): Response => {
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async ({ response }) => {
-    if (!/^([23])\d{2}$/.test(String(response.status))) {
+    if (!/^[23]\d{2}$/.test(String(response.status))) {
       let errorData: ResponseError | null = null
       try {
         const data: unknown = await response.clone().json()
@@ -69,8 +70,9 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
       catch {}
       const shouldNotifyError = response.status !== 401 && errorData && !otherOptions.silent
 
-      if (shouldNotifyError && errorData)
-        toast.error(errorData.message)
+      const errorMessage = errorData?.message || errorData?.error
+      if (shouldNotifyError && errorMessage)
+        toast.error(errorMessage)
 
       if (response.status === 403 && errorData?.code === 'already_setup')
         globalThis.location.href = `${globalThis.location.origin}/signin`
@@ -101,11 +103,13 @@ const resolveShareCode = () => {
 }
 
 const beforeRequestPublicWithCode: BeforeRequestHook = ({ request }) => {
-  const accessToken = getWebAppAccessToken()
-  if (accessToken)
-    request.headers.set('Authorization', `Bearer ${accessToken}`)
-  else
-    request.headers.delete('Authorization')
+  if (!request.headers.has('Authorization')) {
+    const accessToken = getWebAppAccessToken()
+    if (accessToken)
+      request.headers.set('Authorization', `Bearer ${accessToken}`)
+    else
+      request.headers.delete('Authorization')
+  }
   const shareCode = resolveShareCode()
   if (!shareCode)
     return
@@ -152,7 +156,6 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         redirect: 'follow',
       } as const
   const { params, body, headers: headersFromProps, ...init } = { ...baseOptions, ...options }
-  const headers = new Headers(headersFromProps || {})
 
   const {
     isPublicAPI = false,
@@ -164,6 +167,8 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     fetchCompat = false,
     request,
   } = otherOptions
+
+  const headers = new Headers(headersFromProps || {})
 
   let base: string
   if (isMarketplaceAPI)
@@ -255,15 +260,15 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
  * standard `base()` fetch wrapper.
  */
 export function postWithKeepalive(url: string, body: Record<string, unknown>): void {
-  const headers: Record<string, string> = {
+  const headers = new Headers({
     'Content-Type': ContentType.json,
     [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
-  }
+  })
 
   // Add Authorization header if an access token is available
   const accessToken = getWebAppAccessToken()
   if (accessToken)
-    headers.Authorization = `Bearer ${accessToken}`
+    headers.set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(url, {
     method: 'POST',

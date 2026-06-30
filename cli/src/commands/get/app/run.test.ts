@@ -1,23 +1,21 @@
-import type { DifyMock } from '../../../../test/fixtures/dify-mock/server.js'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { startMock } from '../../../../test/fixtures/dify-mock/server.js'
-import { stringifyOutput, table } from '../../../framework/output.js'
-import { createClient } from '../../../http/client.js'
+import type { DifyMock } from '@test/fixtures/dify-mock/server'
+import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
+import { startMock } from '@test/fixtures/dify-mock/server'
+import { testHttpClient } from '@test/fixtures/http-client'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { stringifyOutput, table } from '@/framework/output'
 import { AppListOutput } from './handlers.js'
 import { runGetApp } from './run.js'
 
-const baseBundle: HostsBundle = {
-  current_host: '127.0.0.1',
+const baseActive: ActiveContext = {
+  host: '127.0.0.1',
+  email: 'tester@dify.ai',
+  ctx: {
+    account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
+    workspace: { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Default', role: 'owner' },
+  },
   scheme: 'http',
-  account: { id: 'acct-1', email: 'tester@dify.ai', name: 'Test Tester' },
-  workspace: { id: 'ws-1', name: 'Default', role: 'owner' },
-  available_workspaces: [
-    { id: 'ws-1', name: 'Default', role: 'owner' },
-    { id: 'ws-2', name: 'Other', role: 'normal' },
-  ],
-  token_storage: 'file',
-  tokens: { bearer: 'dfoa_test' },
 }
 
 describe('runGetApp', () => {
@@ -28,28 +26,28 @@ describe('runGetApp', () => {
   })
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     await mock.stop()
   })
 
   function http() {
-    return createClient({ host: mock.url, bearer: 'dfoa_test' })
+    return testHttpClient(mock.url, 'dfoa_test')
   }
 
   async function render(opts: Parameters<typeof runGetApp>[0] = {}): Promise<string> {
-    const result = await runGetApp(opts, { bundle: baseBundle, http: http() })
+    const result = await runGetApp(opts, { active: baseActive, http: http() })
     return stringifyOutput(table({
       format: opts.format ?? '',
       data: result.data,
     }))
   }
 
-  it('list (no id, default format) renders table with NAME ID MODE TAGS UPDATED', async () => {
+  it('list (no id, default format) renders table with NAME ID MODE UPDATED', async () => {
     const out = await render()
-    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+TAGS\s+UPDATED/)
+    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+UPDATED/)
     expect(out).toContain('Greeter')
     expect(out).toContain('app-1')
     expect(out).toContain('chat')
-    expect(out).toContain('demo')
     expect(out).toContain('Workflow')
     expect(out).not.toContain('app-3')
   })
@@ -59,9 +57,7 @@ describe('runGetApp', () => {
       'NAME',
       'ID',
       'MODE',
-      'TAGS',
       'UPDATED',
-      'AUTHOR',
       'WORKSPACE',
     ])
   })
@@ -77,12 +73,6 @@ describe('runGetApp', () => {
     const out = await render({ mode: 'workflow' })
     expect(out).toContain('Workflow')
     expect(out).not.toContain('Greeter')
-  })
-
-  it('--tag filters server-side', async () => {
-    const out = await render({ tag: 'demo' })
-    expect(out).toContain('Greeter')
-    expect(out).not.toContain('Workflow')
   })
 
   it('-A all-workspaces aggregates across workspaces sorted by id', async () => {
@@ -113,10 +103,9 @@ describe('runGetApp', () => {
     expect(out.trim().split('\n').sort()).toEqual(['app-1', 'app-2'])
   })
 
-  it('-o wide includes AUTHOR and WORKSPACE columns', async () => {
+  it('-o wide includes the WORKSPACE column', async () => {
     const out = await render({ format: 'wide' })
-    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+TAGS\s+UPDATED\s+AUTHOR\s+WORKSPACE/)
-    expect(out).toContain('tester')
+    expect(out).toMatch(/^NAME\s+ID\s+MODE\s+UPDATED\s+WORKSPACE/)
     expect(out).toContain('Default')
   })
 
@@ -127,14 +116,39 @@ describe('runGetApp', () => {
   })
 
   it('--workspace flag overrides bundle default', async () => {
-    const out = await render({ workspace: 'ws-2' })
+    const out = await render({ workspace: '550e8400-e29b-41d4-a716-446655440001' })
     expect(out).toContain('app-3')
     expect(out).toContain('OtherWS Bot')
     expect(out).not.toContain('Greeter')
   })
 
   it('throws NotLoggedIn-equivalent when no workspace can be resolved', async () => {
-    const minimal: HostsBundle = { current_host: 'h', token_storage: 'file' }
-    await expect(runGetApp({}, { bundle: minimal, http: http() })).rejects.toThrow(/no workspace/)
+    const minimal: ActiveContext = {
+      host: 'h',
+      email: 'x@x.com',
+      ctx: { account: { email: 'x@x.com', name: 'X' } },
+    }
+    await expect(runGetApp({}, { active: minimal, http: http() })).rejects.toThrow(/no workspace/)
+  })
+
+  it('external login lists via permitted-external client without workspace', async () => {
+    const list = vi.fn().mockResolvedValue({ page: 1, limit: 20, total: 1, has_more: false, data: [{ id: 'x', name: 'X', description: null, mode: 'chat', updated_at: null, workspace_id: 'w', workspace_name: 'W' }] })
+    const { PermittedExternalAppsClient } = await import('@/api/permitted-external-apps')
+    vi.spyOn(PermittedExternalAppsClient.prototype, 'list').mockImplementation(list)
+    const active: ActiveContext = { host: 'h', email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }
+    const http = { baseURL: 'https://x', request: vi.fn() } as unknown as HttpClient
+    const res = await runGetApp({}, { active, http })
+    expect(list).toHaveBeenCalled()
+    const firstCallArg = list.mock.calls[0]![0] as { workspaceId: string }
+    expect(firstCallArg.workspaceId).toBe('')
+    expect(res.data).toBeDefined()
+  })
+
+  it('--all-workspaces throws UsageInvalidFlag for external logins', async () => {
+    const active: ActiveContext = { host: 'h', email: 'e', ctx: { account: { id: 'a', email: 'e', name: 'n' }, external_subject: { email: 'e', issuer: 'i' } } }
+    const httpClient = { baseURL: 'https://x', request: vi.fn() } as unknown as HttpClient
+    await expect(runGetApp({ allWorkspaces: true }, { active, http: httpClient }))
+      .rejects
+      .toThrow(/--all-workspaces is not available for external logins/)
   })
 })

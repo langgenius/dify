@@ -37,6 +37,7 @@ const {
   mockUninstallPlugin,
   mockFetchReleases,
   mockCheckForUpdates,
+  mockOpenReadmePanel,
 } = vi.hoisted(() => {
   return {
     mockSetShowUpdatePluginModal: vi.fn(),
@@ -45,6 +46,7 @@ const {
     mockUninstallPlugin: vi.fn(() => Promise.resolve({ success: true })),
     mockFetchReleases: vi.fn(() => Promise.resolve([{ tag_name: 'v2.0.0' }])),
     mockCheckForUpdates: vi.fn(() => ({ needUpdate: true, toastProps: { type: 'success', message: 'Update available' } })),
+    mockOpenReadmePanel: vi.fn(),
   }
 })
 
@@ -99,11 +101,40 @@ vi.mock('@/service/plugins', () => ({
 
 vi.mock('@/service/use-plugins', () => ({
   useInvalidateCheckInstalled: () => vi.fn(),
+  useInvalidateInstalledPluginList: () => vi.fn(),
+}))
+
+vi.mock('../../readme-panel/store', () => ({
+  useReadmePanelStore: (selector: (state: { openReadmePanel: typeof mockOpenReadmePanel }) => unknown) =>
+    selector({ openReadmePanel: mockOpenReadmePanel }),
 }))
 
 vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: () => ({ data: [] }),
   useInvalidateAllToolProviders: () => mockInvalidateAllToolProviders,
+  useInvalidateAllBuiltInTools: () => vi.fn(),
+  useInvalidateRAGRecommendedPlugins: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useInvalidDataSourceListAuth: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  useInvalidDataSourceList: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-strategy', () => ({
+  useInvalidateStrategyProviders: () => vi.fn(),
+}))
+
+vi.mock('@/service/use-triggers', () => ({
+  useInvalidateAllTriggerPlugins: () => vi.fn(),
+}))
+
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useInvalidateDefaultModel: () => vi.fn(),
+  useModelList: () => ({ mutate: vi.fn() }),
 }))
 
 vi.mock('../../install-plugin/hooks', async (importOriginal) => {
@@ -127,6 +158,7 @@ let mockAutoUpgradeInfo: {
 vi.mock('../../plugin-page/use-reference-setting', () => ({
   default: () => ({
     referenceSetting: mockAutoUpgradeInfo ? { auto_upgrade: mockAutoUpgradeInfo } : null,
+    canUpdate: true,
   }),
 }))
 
@@ -181,11 +213,22 @@ vi.mock('../../base/deprecation-notice', () => ({
 
 // Enhanced operation-dropdown mock
 vi.mock('../operation-dropdown', () => ({
-  default: ({ onInfo, onCheckVersion, onRemove }: { onInfo: () => void, onCheckVersion: () => void, onRemove: () => void }) => (
+  default: ({
+    onInfo,
+    onCheckVersion,
+    onRemove,
+    onViewReadme,
+  }: {
+    onInfo: () => void
+    onCheckVersion: () => void
+    onRemove: () => void
+    onViewReadme?: () => void
+  }) => (
     <div data-testid="operation-dropdown">
       <button data-testid="info-btn" onClick={onInfo}>Info</button>
       <button data-testid="check-version-btn" onClick={onCheckVersion}>Check Version</button>
       <button data-testid="remove-btn" onClick={onRemove}>Remove</button>
+      {onViewReadme && <button data-testid="view-readme-btn" onClick={onViewReadme}>View README</button>}
     </div>
   ),
 }))
@@ -743,6 +786,32 @@ describe('DetailHeader', () => {
       render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
 
       expect(screen.getByTestId('operation-dropdown'))!.toBeInTheDocument()
+    })
+  })
+
+  describe('README action', () => {
+    it('should open README panel from the operation dropdown action', () => {
+      const detail = createPluginDetail()
+      render(<DetailHeader detail={detail} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+
+      fireEvent.click(screen.getByTestId('view-readme-btn'))
+
+      expect(mockOpenReadmePanel).toHaveBeenCalledWith({
+        detail,
+        presentation: 'drawer',
+      })
+    })
+
+    it('should not expose README action for builtin tools', () => {
+      render(<DetailHeader detail={createPluginDetail({ id: 'code' })} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+
+      expect(screen.queryByTestId('view-readme-btn')).not.toBeInTheDocument()
+    })
+
+    it('should not expose README action when plugin unique identifier is missing', () => {
+      render(<DetailHeader detail={createPluginDetail({ plugin_unique_identifier: '' })} onUpdate={mockOnUpdate} onHide={mockOnHide} />)
+
+      expect(screen.queryByTestId('view-readme-btn')).not.toBeInTheDocument()
     })
   })
 

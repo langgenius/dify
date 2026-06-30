@@ -1,14 +1,14 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams.js'
-import * as readline from 'node:readline'
-import { MembersClient } from '../../../api/members.js'
-import { BaseError } from '../../../errors/base.js'
-import { ErrorCode } from '../../../errors/codes.js'
-import { colorEnabled, colorScheme } from '../../../sys/io/color.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams.js'
-import { resolveWorkspaceId } from '../../../workspace/resolver.js'
+import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
+import type { IOStreams } from '@/sys/io/streams'
+import { MembersClient } from '@/api/members'
+import { BaseError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { promptConfirm } from '@/sys/io/prompt'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { nullStreams } from '@/sys/io/streams'
+import { resolveWorkspaceId } from '@/workspace/resolver'
 import { DeleteMemberOutput } from './handlers.js'
 
 export type DeleteMemberOptions = {
@@ -19,11 +19,11 @@ export type DeleteMemberOptions = {
 }
 
 export type DeleteMemberDeps = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly active: ActiveContext
+  readonly http: HttpClient
   readonly io?: IOStreams
   readonly envLookup?: (k: string) => string | undefined
-  readonly membersFactory?: (http: KyInstance) => MembersClient
+  readonly membersFactory?: (http: HttpClient) => MembersClient
 }
 
 export type DeleteMemberResult = {
@@ -44,14 +44,14 @@ export async function runDeleteMember(
   }
 
   const env = deps.envLookup ?? ((k: string) => process.env[k])
-  const factory = deps.membersFactory ?? ((h: KyInstance) => new MembersClient(h))
+  const factory = deps.membersFactory ?? ((h: HttpClient) => new MembersClient(h))
   const io = deps.io ?? nullStreams()
   const cs = colorScheme(colorEnabled(io.isErrTTY))
 
   const wsId = resolveWorkspaceId({
     flag: opts.workspace,
     env: env('DIFY_WORKSPACE_ID'),
-    bundle: deps.bundle,
+    active: deps.active,
   })
 
   if (!opts.yes && io.isErrTTY) {
@@ -74,17 +74,5 @@ export async function runDeleteMember(
   return {
     data: new DeleteMemberOutput(opts.memberId, textLine),
     workspaceId: wsId,
-  }
-}
-
-async function promptConfirm(io: IOStreams, message: string): Promise<boolean> {
-  io.err.write(message)
-  const rl = readline.createInterface({ input: io.in, output: io.err, terminal: false })
-  try {
-    const line: string = await new Promise(resolve => rl.once('line', resolve))
-    return line.trim().toLowerCase() === 'y'
-  }
-  finally {
-    rl.close()
   }
 }

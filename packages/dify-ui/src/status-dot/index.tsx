@@ -1,7 +1,7 @@
 'use client'
 
 import type { VariantProps } from 'class-variance-authority'
-import type { ComponentProps } from 'react'
+import type * as React from 'react'
 import { cva } from 'class-variance-authority'
 import { cn } from '../cn'
 
@@ -49,14 +49,14 @@ export type StatusDotStatus = NonNullable<StatusDotVariants['status']>
 export type StatusDotSize = NonNullable<StatusDotVariants['size']>
 
 export type StatusDotProps
-  = Omit<ComponentProps<'span'>, 'children'>
+  = Omit<React.ComponentProps<'span'>, 'children'>
     & {
       status?: StatusDotStatus
       size?: StatusDotSize
     }
 
 export type StatusDotSkeletonProps
-  = Omit<ComponentProps<'span'>, 'children'>
+  = Omit<React.ComponentProps<'span'>, 'children'>
     & {
       size?: StatusDotSize
     }

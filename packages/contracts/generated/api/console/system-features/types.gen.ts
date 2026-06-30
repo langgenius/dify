@@ -5,14 +5,15 @@ export type ClientOptions = {
 }
 
 export type SystemFeatureModel = {
-  app_dsl_version: string
   branding: BrandingModel
+  enable_app_deploy: boolean
   enable_change_email: boolean
   enable_collaboration_mode: boolean
   enable_creators_platform: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_explore_banner: boolean
+  enable_learn_app: boolean
   enable_marketplace: boolean
   enable_social_oauth_login: boolean
   enable_trial_app: boolean
@@ -23,9 +24,9 @@ export type SystemFeatureModel = {
   max_plugin_package_size: number
   plugin_installation_permission: PluginInstallationPermissionModel
   plugin_manager: PluginManagerModel
+  rbac_enabled: boolean
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: string
-  trial_models: Array<string>
   webapp_auth: WebAppAuthModel
 }
 

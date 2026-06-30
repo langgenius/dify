@@ -3,10 +3,22 @@
 import * as z from 'zod'
 
 /**
+ * GeneratorResponse
+ */
+export const zGeneratorResponse = z.unknown()
+
+/**
  * InstructionTemplatePayload
  */
 export const zInstructionTemplatePayload = z.object({
   type: z.string(),
+})
+
+/**
+ * SimpleDataResponse
+ */
+export const zSimpleDataResponse = z.object({
+  data: z.string(),
 })
 
 /**
@@ -44,11 +56,11 @@ export const zPostInstructionGenerateBody = zInstructionGeneratePayload
 /**
  * Instruction generated successfully
  */
-export const zPostInstructionGenerateResponse = z.record(z.string(), z.unknown())
+export const zPostInstructionGenerateResponse = zGeneratorResponse
 
 export const zPostInstructionGenerateTemplateBody = zInstructionTemplatePayload
 
 /**
  * Template retrieved successfully
  */
-export const zPostInstructionGenerateTemplateResponse = z.record(z.string(), z.unknown())
+export const zPostInstructionGenerateTemplateResponse = zSimpleDataResponse

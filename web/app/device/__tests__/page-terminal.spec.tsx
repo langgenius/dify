@@ -35,7 +35,7 @@ vi.mock('@/service/device-flow', () => ({
   },
 }))
 
-vi.mock('@/service/system-features', () => ({
+vi.mock('@/features/system-features/client', () => ({
   systemFeaturesQueryOptions: () => ({ queryKey: ['sys'], queryFn: async () => ({}) }),
 }))
 

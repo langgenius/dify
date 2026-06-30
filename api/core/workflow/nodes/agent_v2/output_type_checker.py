@@ -7,8 +7,9 @@ inside pydantic-ai), the API side runs a *second* pass that:
 1. Locates each declared output by name in the backend payload.
 2. Asserts the value's shape against the declared ``DeclaredOutputType``
    (including array items and file ref objects).
-3. For file outputs, verifies the referenced ``file_id`` resolves to a file
-   owned by the current tenant (PRD §5.3 file output reference safety).
+3. For file outputs, validates the canonical file mapping contract and verifies
+   any referenced file record resolves to a file owned by the current tenant
+   (PRD §5.3 file output reference safety).
 
 The checker is intentionally pure: it takes data in and returns a structured
 outcome out. ``FileTenantValidator`` is injected as a Protocol so unit tests
@@ -22,6 +23,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, Protocol
 
+from core.workflow.file_reference import is_canonical_file_reference, parse_file_reference
+from graphon.file import FileTransferMethod
 from models.agent_config_entities import (
     DeclaredArrayItem,
     DeclaredOutputConfig,
@@ -73,22 +76,23 @@ class OutputTypeCheckOutcome:
 
 
 class FileTenantValidator(Protocol):
-    """Verify a file ref resolves to a file owned by the given tenant."""
+    """Verify one canonical file mapping resolves to an accessible tenant file."""
 
-    def is_owned_by_tenant(self, *, file_id: str, tenant_id: str) -> bool: ...
-
-
-# Recognized aliases the Agent backend (or pydantic-ai) may produce for the
-# canonical file id field. The canonical spec form is ``file_id`` (§5.2).
-_FILE_ID_KEYS: tuple[str, ...] = ("file_id", "upload_file_id", "tool_file_id")
+    def is_accessible_file_mapping(
+        self,
+        *,
+        file_id: str,
+        tenant_id: str,
+        transfer_method: FileTransferMethod,
+    ) -> bool: ...
 
 
 class PerOutputTypeChecker:
     """Validate that each declared output is present and shaped correctly.
 
     The checker handles array items recursively and is opinionated about file
-    refs: only dicts with at least one recognized id key plus a tenant-scope
-    match pass. Stage 4 §5.2 + §5.3.
+    refs: only canonical file mappings are accepted for Agent v2 output files.
+    Stage 4 §5.2 + §5.3.
     """
 
     def __init__(self, file_validator: FileTenantValidator) -> None:
@@ -227,18 +231,59 @@ class PerOutputTypeChecker:
 
     def _validate_file_value(self, *, value: Any, tenant_id: str) -> str | None:
         if not isinstance(value, Mapping):
-            return f"expected file ref object, got {type(value).__name__}"
-        file_id = self._extract_file_id(value)
-        if file_id is None:
-            return "file ref missing a recognized file_id field"
-        if not self._file_validator.is_owned_by_tenant(file_id=file_id, tenant_id=tenant_id):
-            return f"file_id {file_id!r} is not accessible to tenant {tenant_id!r}"
-        return None
+            return f"expected canonical file mapping object, got {type(value).__name__}"
 
-    @staticmethod
-    def _extract_file_id(value: Mapping[str, Any]) -> str | None:
-        for key in _FILE_ID_KEYS:
-            candidate = value.get(key)
-            if isinstance(candidate, str) and candidate:
-                return candidate
+        transfer_method_raw = value.get("transfer_method")
+        if not isinstance(transfer_method_raw, str):
+            return "file mapping missing transfer_method"
+
+        try:
+            transfer_method = FileTransferMethod.value_of(transfer_method_raw)
+        except ValueError:
+            return f"unsupported file transfer_method {transfer_method_raw!r}"
+
+        expected_keys = (
+            {"transfer_method", "url"}
+            if transfer_method == FileTransferMethod.REMOTE_URL
+            else {
+                "transfer_method",
+                "reference",
+            }
+        )
+        actual_keys = set(value)
+        if actual_keys != expected_keys:
+            unexpected_keys = sorted(actual_keys - expected_keys)
+            missing_keys = sorted(expected_keys - actual_keys)
+            details: list[str] = []
+            if missing_keys:
+                details.append(f"missing {', '.join(missing_keys)}")
+            if unexpected_keys:
+                details.append(f"unexpected {', '.join(unexpected_keys)}")
+            return (
+                f"{transfer_method.value} file mapping must contain exactly "
+                f"{sorted(expected_keys)} ({'; '.join(details)})"
+            )
+
+        if transfer_method == FileTransferMethod.REMOTE_URL:
+            url = value.get("url")
+            if not isinstance(url, str) or not url:
+                return "remote_url file mapping missing url"
+            return None
+
+        reference = value.get("reference")
+        if not isinstance(reference, str) or not reference:
+            return f"{transfer_method.value} file mapping missing reference"
+        if not is_canonical_file_reference(reference):
+            return f"{transfer_method.value} file mapping has invalid canonical reference"
+
+        parsed_reference = parse_file_reference(reference)
+        if parsed_reference is None:
+            return f"{transfer_method.value} file mapping has invalid canonical reference"
+        file_id = parsed_reference.record_id
+        if not self._file_validator.is_accessible_file_mapping(
+            file_id=file_id,
+            tenant_id=tenant_id,
+            transfer_method=transfer_method,
+        ):
+            return f"file reference {reference!r} is not accessible to tenant {tenant_id!r}"
         return None

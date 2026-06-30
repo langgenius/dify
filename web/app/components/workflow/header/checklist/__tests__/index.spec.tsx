@@ -47,6 +47,14 @@ vi.mock('../../../hooks', () => ({
   }),
 }))
 
+vi.mock('../../../hooks-store/store', () => ({
+  useHooksStore: (selector: (state: { configsMap: { flowType: string } }) => unknown) => selector({
+    configsMap: {
+      flowType: 'workflow',
+    },
+  }),
+}))
+
 vi.mock('@langgenius/dify-ui/popover', () => ({
   Popover: ({ children, onOpenChange }: PopoverProps) => {
     latestOnOpenChange = onOpenChange

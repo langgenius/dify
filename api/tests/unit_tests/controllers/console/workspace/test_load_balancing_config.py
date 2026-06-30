@@ -65,10 +65,10 @@ def _mock_user(role: TenantAccountRole) -> SimpleNamespace:
 
 
 def _prepare_context(module, monkeypatch: pytest.MonkeyPatch, role=TenantAccountRole.OWNER):
-    from controllers.console import wraps as _wraps
     user = _mock_user(role)
     monkeypatch.setattr("libs.login.current_account_with_tenant", lambda: (user, "tenant-123"))
-    monkeypatch.setattr(_wraps, "current_account_with_tenant", lambda: (user, "tenant-123"))
+    from controllers.console import wraps
+    monkeypatch.setattr(wraps, "current_account_with_tenant", lambda: (user, "tenant-123"))
     mock_service = MagicMock()
     monkeypatch.setattr(module, "ModelLoadBalancingService", lambda: mock_service)
     return mock_service

@@ -13,10 +13,10 @@ import { TextToAudio } from '@/app/components/base/icons/src/vender/features'
 import { languages } from '@/i18n-config/language'
 import { TtsAutoPlay } from '@/types/app'
 
-type Props = {
+type Props = Readonly<{
   disabled: boolean
   onChange?: OnFeaturesChange
-}
+}>
 
 const TextToSpeech = ({
   disabled,

@@ -10,14 +10,14 @@ import CrawledResultItem from './crawled-result-item'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   list: CrawlResultItem[]
   checkedList: CrawlResultItem[]
   onSelectedChange: (selected: CrawlResultItem[]) => void
   onPreview: (payload: CrawlResultItem) => void
   usedTime: number
-}
+}>
 
 const CrawledResult: FC<Props> = ({
   className = '',

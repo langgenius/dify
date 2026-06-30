@@ -3,8 +3,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 
 import { useSuspenseQuery } from '@tanstack/react-query'
 import Header from '@/app/signin/_header'
+import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { systemFeaturesQueryOptions } from '@/service/system-features'
 
 export default function RegisterLayout({ children }: any) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())

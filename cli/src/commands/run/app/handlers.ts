@@ -1,5 +1,5 @@
-import type { TextHandler } from '../../../printers/format-text.js'
-import type { ColorScheme } from '../../../sys/io/color.js'
+import type { FormattedPrintable } from '@/framework/output'
+import type { ColorScheme } from '@/sys/io/color'
 
 export const RUN_MODES = {
   Chat: 'chat',
@@ -11,53 +11,64 @@ export const RUN_MODES = {
 
 export type RunMode = typeof RUN_MODES[keyof typeof RUN_MODES]
 
-export type AppRunObject = {
-  mode: () => string
-  raw: () => Record<string, unknown>
-}
+export const CHAT_MODES: ReadonlySet<string> = new Set<RunMode>([
+  RUN_MODES.Chat,
+  RUN_MODES.AgentChat,
+  RUN_MODES.AdvancedChat,
+])
+
+export type AppRunObject = FormattedPrintable
 
 export function newAppRunObject(mode: string, resp: Record<string, unknown>): AppRunObject {
   const filled = resp.mode === undefined || resp.mode === '' ? { ...resp, mode } : resp
-  return { mode: () => mode, raw: () => filled }
+  return {
+    text: () => textForMode(mode, filled),
+    json: () => filled,
+  }
 }
 
-export const chatTextHandler: TextHandler = {
-  render(raw): string {
-    const resp = raw as Record<string, unknown>
-    const out: string[] = []
-    const answer = pickString(resp, 'answer')
-    if (answer !== undefined)
-      out.push(answer)
-    out.push('')
-    return out.join('\n')
-  },
+function textForMode(mode: string, raw: Record<string, unknown>): string {
+  switch (mode) {
+    case RUN_MODES.Chat:
+    case RUN_MODES.AgentChat:
+    case RUN_MODES.AdvancedChat:
+      return renderChat(raw)
+    case RUN_MODES.Completion:
+      return renderCompletion(raw)
+    case RUN_MODES.Workflow:
+      return renderWorkflow(raw)
+    default:
+      return `${JSON.stringify(raw)}\n`
+  }
 }
 
-export const completionTextHandler: TextHandler = {
-  render(raw): string {
-    const resp = raw as Record<string, unknown>
-    const answer = pickString(resp, 'answer')
-    return `${answer ?? ''}\n`
-  },
+function renderChat(raw: Record<string, unknown>): string {
+  const out: string[] = []
+  const answer = pickString(raw, 'answer')
+  if (answer !== undefined)
+    out.push(answer)
+  out.push('')
+  return out.join('\n')
 }
 
-export const workflowTextHandler: TextHandler = {
-  render(raw): string {
-    const resp = raw as Record<string, unknown>
-    const data = resp.data
-    if (data !== null && typeof data === 'object' && 'outputs' in data) {
-      const { outputs } = data as { outputs: unknown }
-      if (outputs !== undefined) {
-        if (typeof outputs === 'object' && outputs !== null) {
-          const entries = Object.entries(outputs as Record<string, unknown>)
-          if (entries.length === 1 && typeof entries[0]![1] === 'string')
-            return `${entries[0]![1]}\n`
-        }
-        return `${JSON.stringify(outputs)}\n`
+function renderCompletion(raw: Record<string, unknown>): string {
+  return `${pickString(raw, 'answer') ?? ''}\n`
+}
+
+function renderWorkflow(raw: Record<string, unknown>): string {
+  const data = raw.data
+  if (data !== null && typeof data === 'object' && 'outputs' in data) {
+    const { outputs } = data as { outputs: unknown }
+    if (outputs !== undefined) {
+      if (typeof outputs === 'object' && outputs !== null) {
+        const entries = Object.entries(outputs as Record<string, unknown>)
+        if (entries.length === 1 && typeof entries[0]![1] === 'string')
+          return `${entries[0]![1]}\n`
       }
+      return `${JSON.stringify(outputs)}\n`
     }
-    return `${JSON.stringify(resp)}\n`
-  },
+  }
+  return `${JSON.stringify(raw)}\n`
 }
 
 export function chatConversationHint(resp: Record<string, unknown>, cs: ColorScheme): string | undefined {

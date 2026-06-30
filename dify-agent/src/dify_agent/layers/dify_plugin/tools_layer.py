@@ -58,7 +58,7 @@ class DifyPluginToolsDeps(LayerDeps):
 class DifyPluginToolsLayer(PlainLayer[DifyPluginToolsDeps, DifyPluginToolsLayerConfig]):
     """Layer that resolves Dify plugin tools into Pydantic AI tools."""
 
-    type_id: ClassVar[str] = DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
+    type_id: ClassVar[str | None] = DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID
 
     config: DifyPluginToolsLayerConfig
 

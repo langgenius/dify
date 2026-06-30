@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { compatString, difyCompat, evaluateCompat } from './compat.js'
+import { compatString, difyCompat, evaluateCompat } from './compat'
 
 describe('difyCompat', () => {
   it('exposes minDify and maxDify as readonly strings', () => {

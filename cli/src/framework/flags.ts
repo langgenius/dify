@@ -1,5 +1,24 @@
-import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types.js'
-import { UnsupportedArgValueError } from './errors.js'
+import type { ArgDefinition, CommandMeta, FlagDefinition, ParsedArgs, ParsedFlags } from './types'
+import { UnsupportedArgValueError } from './errors'
+
+export const VERBOSE_FLAG = 'verbose'
+export const VERBOSE_CHAR = 'v'
+
+export const Flags = {
+  string: stringFlag,
+  stringArray: stringRepeatedFlag,
+  boolean: booleanFlag,
+  integer: integerFlag,
+  outputFormat: outputFormatFlag,
+}
+
+const GLOBAL_FLAGS: Record<string, FlagDefinition> = {
+  [VERBOSE_FLAG]: Flags.boolean({
+    char: VERBOSE_CHAR,
+    description: 'enable verbose output',
+    helpGroup: 'GLOBAL',
+  }),
+}
 
 function stringFlag<const Opts extends {
   description: string
@@ -38,7 +57,7 @@ function stringRepeatedFlag<const Opts extends { description: string, char?: str
   }
 }
 
-function booleanFlag(opts: { description: string, char?: string, default?: boolean }): FlagDefinition<boolean> {
+function booleanFlag(opts: { description: string, char?: string, default?: boolean, helpGroup?: 'GLOBAL' }): FlagDefinition<boolean> {
   return { type: 'boolean', ...opts }
 }
 
@@ -46,14 +65,6 @@ function integerFlag<const Opts extends { description: string, char?: string, de
   opts: Opts,
 ): FlagDefinition<Opts extends { default: number } ? number : number | undefined> {
   return { type: 'integer', ...opts } as FlagDefinition<Opts extends { default: number } ? number : number | undefined>
-}
-
-export const Flags = {
-  string: stringFlag,
-  stringArray: stringRepeatedFlag,
-  boolean: booleanFlag,
-  integer: integerFlag,
-  outputFormat: outputFormatFlag,
 }
 
 function stringArg<const Opts extends { description: string, required?: boolean }>(
@@ -99,8 +110,8 @@ function accumulateFlagValue(flags: ParsedFlags, name: string, value: string | b
   }
 }
 
-function resolveByChar(char: string, meta: CommandMeta): [name: string, def: FlagDefinition] | undefined {
-  for (const [name, def] of Object.entries(meta.flags)) {
+function resolveByChar(char: string, flags: Record<string, FlagDefinition>): [name: string, def: FlagDefinition] | undefined {
+  for (const [name, def] of Object.entries(flags)) {
     if (def.char === char)
       return [name, def]
   }
@@ -115,12 +126,12 @@ function validateFlagOptions(name: string, raw: string, def: FlagDefinition): vo
 
 type ResolvedFlag = { name: string, def: FlagDefinition, label: string, inlineRaw: string | undefined }
 
-function resolveToken(token: string, meta: CommandMeta): ResolvedFlag | null {
+function resolveToken(token: string, flags: Record<string, FlagDefinition>): ResolvedFlag | null {
   if (token.startsWith('--')) {
     const eqIdx = token.indexOf('=')
     const name = eqIdx !== -1 ? token.slice(2, eqIdx) : token.slice(2)
     const inlineRaw = eqIdx !== -1 ? token.slice(eqIdx + 1) : undefined
-    const def = meta.flags[name]
+    const def = flags[name]
     if (!def)
       throw new Error(`unknown flag: --${name}`)
     return { name, def, label: `--${name}`, inlineRaw }
@@ -128,7 +139,7 @@ function resolveToken(token: string, meta: CommandMeta): ResolvedFlag | null {
 
   if (token.length === 2 && token[1] !== undefined) {
     const char = token[1]
-    const resolved = resolveByChar(char, meta)
+    const resolved = resolveByChar(char, flags)
     if (!resolved)
       throw new Error(`unknown flag: -${char}`)
     const [name, def] = resolved
@@ -136,6 +147,21 @@ function resolveToken(token: string, meta: CommandMeta): ResolvedFlag | null {
   }
 
   return null
+}
+
+// Scans argv for a boolean flag without throwing on unknown tokens, so it is safe
+// to call before the command-specific flag set is known (e.g. global flags).
+export function hasBooleanFlag(argv: readonly string[], name: string, char?: string): boolean {
+  for (const token of argv) {
+    if (token === '--')
+      break
+    if (token === `--${name}` || token === `--${name}=true` || token === `--${name}=1`)
+      return true
+    if (char !== undefined && token === `-${char}`)
+      return true
+  }
+
+  return false
 }
 
 export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: ParsedArgs, flags: ParsedFlags } {
@@ -159,7 +185,10 @@ export function parseArgv(argv: readonly string[], meta: CommandMeta): { args: P
       continue
     }
 
-    const resolved = resolveToken(token, meta)
+    const resolved = resolveToken(token, {
+      ...meta.flags,
+      ...GLOBAL_FLAGS, // pass global flags to prevent unknown flag error
+    })
     if (!resolved) {
       positional.push(token)
       continue

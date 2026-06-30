@@ -15,6 +15,8 @@ export default function AppError({ error, reset, unstable_retry }: Props) {
   const { t } = useTranslation('common')
   const retry = reset ?? unstable_retry
 
+  console.error(error)
+
   if (isLegacyBase401(error))
     return <FullScreenLoading />
 

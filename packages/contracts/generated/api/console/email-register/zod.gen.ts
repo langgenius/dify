@@ -3,11 +3,39 @@
 import * as z from 'zod'
 
 /**
+ * EmailRegisterResetPayload
+ */
+export const zEmailRegisterResetPayload = z.object({
+  language: z.string().nullish(),
+  new_password: z.string(),
+  password_confirm: z.string(),
+  timezone: z.string().nullish(),
+  token: z.string(),
+})
+
+/**
+ * EmailRegisterSendPayload
+ */
+export const zEmailRegisterSendPayload = z.object({
+  email: z.string(),
+  language: z.string().nullish(),
+})
+
+/**
  * SimpleResultDataResponse
  */
 export const zSimpleResultDataResponse = z.object({
   data: z.string(),
   result: z.string(),
+})
+
+/**
+ * EmailRegisterValidityPayload
+ */
+export const zEmailRegisterValidityPayload = z.object({
+  code: z.string(),
+  email: z.string(),
+  token: z.string(),
 })
 
 /**
@@ -20,14 +48,37 @@ export const zVerificationTokenResponse = z.object({
 })
 
 /**
+ * EmailRegisterTokenPairResponse
+ */
+export const zEmailRegisterTokenPairResponse = z.object({
+  access_token: z.string(),
+  csrf_token: z.string(),
+  refresh_token: z.string(),
+})
+
+/**
+ * EmailRegisterResetResponse
+ */
+export const zEmailRegisterResetResponse = z.object({
+  data: zEmailRegisterTokenPairResponse,
+  result: z.string(),
+})
+
+export const zPostEmailRegisterBody = zEmailRegisterResetPayload
+
+/**
  * Success
  */
-export const zPostEmailRegisterResponse = z.record(z.string(), z.unknown())
+export const zPostEmailRegisterResponse = zEmailRegisterResetResponse
+
+export const zPostEmailRegisterSendEmailBody = zEmailRegisterSendPayload
 
 /**
  * Success
  */
 export const zPostEmailRegisterSendEmailResponse = zSimpleResultDataResponse
+
+export const zPostEmailRegisterValidityBody = zEmailRegisterValidityPayload
 
 /**
  * Success

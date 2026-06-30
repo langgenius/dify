@@ -1,131 +1,182 @@
-import { mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { ENV_CONFIG_DIR } from '../store/dir.js'
-import { HostsBundleSchema, loadHosts, saveHosts } from './hosts.js'
+import type { AccountContext } from './hosts'
+import { useTempConfigDir } from '@test/fixtures/config-dir'
+import { MemStore } from '@test/fixtures/mem-store'
+import { describe, expect, it } from 'vitest'
+import { AccountContextSchema, notLoggedInError, Registry, RegistrySchema } from './hosts'
 
-describe('HostsBundleSchema', () => {
-  it('parses a minimal logged-out bundle', () => {
-    const parsed = HostsBundleSchema.parse({})
-    expect(parsed.current_host).toBe('')
-    expect(parsed.token_storage).toBe('file')
+describe('RegistrySchema', () => {
+  it('parses an empty registry with defaults', () => {
+    const reg = RegistrySchema.parse({})
+    expect(reg.token_storage).toBe('file')
+    expect(reg.current_host).toBeUndefined()
+    expect(reg.hosts).toEqual({})
   })
 
-  it('parses a logged-in keychain bundle', () => {
-    const parsed = HostsBundleSchema.parse({
-      current_host: 'cloud.dify.ai',
-      account: { id: 'acct-1', email: 'a@b.c', name: 'A' },
-      workspace: { id: 'ws-1', name: 'My Space', role: 'owner' },
+  it('parses a populated multi-host registry', () => {
+    const reg = RegistrySchema.parse({
       token_storage: 'keychain',
-      token_id: 'tok_xyz',
+      current_host: 'cloud.dify.ai',
+      hosts: {
+        'cloud.dify.ai': {
+          current_account: 'bob@corp.com',
+          accounts: {
+            'bob@corp.com': {
+              account: { id: 'acct-1', email: 'bob@corp.com', name: 'Bob' },
+              workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
+              token_id: 'tok_1',
+            },
+          },
+        },
+      },
     })
-    expect(parsed.token_storage).toBe('keychain')
-    expect(parsed.tokens).toBeUndefined()
+    expect(reg.current_host).toBe('cloud.dify.ai')
+    expect(reg.hosts['cloud.dify.ai']?.current_account).toBe('bob@corp.com')
+    expect(reg.hosts['cloud.dify.ai']?.accounts['bob@corp.com']?.account.name).toBe('Bob')
   })
 
-  it('parses a logged-in file bundle with bearer', () => {
-    const parsed = HostsBundleSchema.parse({
-      current_host: 'cloud.dify.ai',
-      token_storage: 'file',
-      tokens: { bearer: 'dfoa_xxx' },
-    })
-    expect(parsed.tokens?.bearer).toBe('dfoa_xxx')
+  it('defaults a host entry accounts map to {}', () => {
+    const reg = RegistrySchema.parse({ hosts: { h: { current_account: 'x' } } })
+    expect(reg.hosts.h?.accounts).toEqual({})
   })
 
   it('rejects unknown token_storage values', () => {
-    expect(() => HostsBundleSchema.parse({ token_storage: 'cloud' })).toThrow()
+    expect(() => RegistrySchema.parse({ token_storage: 'cloud' })).toThrow()
   })
 
-  it('keeps available_workspaces when provided', () => {
-    const parsed = HostsBundleSchema.parse({
+  it('AccountContextSchema keeps optional external_subject', () => {
+    const ctx = AccountContextSchema.parse({
+      account: { id: '', email: 'sso@x.io', name: '' },
+      external_subject: { email: 'sso@x.io', issuer: 'https://issuer' },
+    })
+    expect(ctx.external_subject?.issuer).toBe('https://issuer')
+  })
+
+  it('strips a stale available_workspaces field from legacy contexts', () => {
+    const raw = {
+      account: { id: 'acct-1', email: 'bob@corp.com', name: 'Bob' },
+      workspace: { id: 'ws-1', name: 'Space', role: 'owner' },
       available_workspaces: [
-        { id: 'a', name: 'A', role: 'owner' },
-        { id: 'b', name: 'B', role: 'member' },
+        { id: 'ws-1', name: 'Space', role: 'owner' },
+        { id: '00000000-0000-0000-0000-000000000002', name: 'Other', role: 'normal' },
       ],
-    })
-    expect(parsed.available_workspaces).toHaveLength(2)
-  })
-
-  it('drops unknown top-level fields on parse', () => {
-    const parsed = HostsBundleSchema.parse({
-      current_host: 'cloud.dify.ai',
-      future_field: 42,
-      token_storage: 'file',
-    })
-    expect(parsed.current_host).toBe('cloud.dify.ai')
-    expect((parsed as Record<string, unknown>).future_field).toBeUndefined()
+    } as unknown as Record<string, unknown>
+    const ctx = AccountContextSchema.parse(raw)
+    expect((ctx as Record<string, unknown>).available_workspaces).toBeUndefined()
+    expect(ctx.workspace?.id).toBe('ws-1')
   })
 })
 
-describe('loadHosts/saveHosts', () => {
-  let dir: string
-  let prevConfigDir: string | undefined
+describe('notLoggedInError', () => {
+  it('carries the default hint', () => {
+    expect(notLoggedInError().toString()).toMatch(/auth login/)
+  })
+  it('accepts a custom hint', () => {
+    expect(notLoggedInError('run \'difyctl use host\'').toString()).toMatch(/use host/)
+  })
+})
 
-  beforeEach(async () => {
-    dir = await mkdtemp(join(tmpdir(), 'difyctl-hosts-'))
-    prevConfigDir = process.env[ENV_CONFIG_DIR]
-    process.env[ENV_CONFIG_DIR] = dir
+describe('Registry (pure)', () => {
+  const baseReg = (): Registry => Registry.empty('file')
+  const ctx = (email: string): AccountContext => ({ account: { id: `id-${email}`, email, name: email } })
+
+  it('upsert creates host + account; remove drops them', () => {
+    const reg = baseReg()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.upsert('h1', 'b@x', ctx('b@x'))
+    expect(reg.hosts.h1?.accounts['a@x']?.account.email).toBe('a@x')
+    reg.remove('h1', 'a@x')
+    expect(reg.hosts.h1?.accounts['a@x']).toBeUndefined()
+    expect(reg.hosts.h1?.accounts['b@x']).toBeDefined()
+    reg.remove('h1', 'b@x')
+    expect(reg.hosts.h1).toBeUndefined()
   })
 
-  afterEach(async () => {
-    if (prevConfigDir === undefined)
-      delete process.env[ENV_CONFIG_DIR]
-    else
-      process.env[ENV_CONFIG_DIR] = prevConfigDir
-    await rm(dir, { recursive: true, force: true })
+  it('setHost / setAccount set pointers', () => {
+    const reg = baseReg()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.setHost('h1')
+    reg.setAccount('a@x')
+    expect(reg.current_host).toBe('h1')
+    expect(reg.hosts.h1?.current_account).toBe('a@x')
   })
 
-  it('returns undefined when nothing was saved', () => {
-    expect(loadHosts()).toBeUndefined()
+  it('resolveActive returns the active context with scheme', () => {
+    const reg = baseReg()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.setScheme('h1', 'http')
+    reg.setHost('h1')
+    reg.setAccount('a@x')
+    const active = reg.resolveActive()
+    expect(active?.host).toBe('h1')
+    expect(active?.email).toBe('a@x')
+    expect(active?.scheme).toBe('http')
+    expect(active?.ctx.account.email).toBe('a@x')
   })
 
-  it('round-trips a fully-populated bundle', () => {
-    saveHosts({
-      current_host: 'cloud.dify.ai',
-      scheme: 'https',
-      account: { id: 'acct-1', email: 'a@b.c', name: 'A' },
-      workspace: { id: 'ws-1', name: 'My Space', role: 'owner' },
-      available_workspaces: [
-        { id: 'ws-1', name: 'My Space', role: 'owner' },
-        { id: 'ws-2', name: 'Other', role: 'normal' },
-      ],
-      token_storage: 'keychain',
-      token_id: 'tok_xyz',
-    })
-    const loaded = loadHosts()
+  it('resolveActive returns undefined for each missing pointer', () => {
+    const reg = baseReg()
+    expect(reg.resolveActive()).toBeUndefined()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.setHost('missing')
+    expect(reg.resolveActive()).toBeUndefined()
+    reg.setHost('h1')
+    expect(reg.resolveActive()).toBeUndefined()
+    reg.setAccount('missing@x')
+    expect(reg.resolveActive()).toBeUndefined()
+  })
+
+  it('remove unsets pointers when removing the active account', () => {
+    const reg = baseReg()
+    reg.upsert('h1', 'a@x', ctx('a@x'))
+    reg.setHost('h1')
+    reg.setAccount('a@x')
+    reg.remove('h1', 'a@x')
+    expect(reg.current_host).toBeUndefined()
+    expect(reg.resolveActive()).toBeUndefined()
+  })
+})
+
+describe('Registry.load / Registry.save', () => {
+  useTempConfigDir('difyctl-reg-')
+
+  it('returns an empty registry when nothing saved', async () => {
+    const reg = await Registry.load()
+    expect(reg.current_host).toBeUndefined()
+    expect(Object.keys(reg.hosts)).toHaveLength(0)
+  })
+
+  it('round-trips a populated registry', async () => {
+    const reg = Registry.empty('keychain')
+    reg.upsert('cloud.dify.ai', 'a@x', { account: { id: '1', email: 'a@x', name: 'A' } })
+    reg.setHost('cloud.dify.ai')
+    reg.setAccount('a@x')
+    await reg.save()
+    const loaded = await Registry.load()
     expect(loaded?.current_host).toBe('cloud.dify.ai')
-    expect(loaded?.scheme).toBe('https')
-    expect(loaded?.account?.email).toBe('a@b.c')
-    expect(loaded?.workspace?.id).toBe('ws-1')
-    expect(loaded?.available_workspaces).toHaveLength(2)
-    expect(loaded?.token_storage).toBe('keychain')
-    expect(loaded?.token_id).toBe('tok_xyz')
+    expect(loaded?.hosts['cloud.dify.ai']?.accounts['a@x']?.account.email).toBe('a@x')
   })
+})
 
-  it('round-trips a file-mode bundle with bearer token', () => {
-    saveHosts({
-      current_host: 'self.example.com',
-      token_storage: 'file',
-      tokens: { bearer: 'dfoa_test' },
-    })
-    const loaded = loadHosts()
-    expect(loaded?.tokens?.bearer).toBe('dfoa_test')
-    expect(loaded?.token_storage).toBe('file')
-  })
+describe('Registry.forget', () => {
+  useTempConfigDir('difyctl-forget-')
 
-  it('overwrites previous bundle on save', () => {
-    saveHosts({ current_host: 'old.example.com', token_storage: 'file' })
-    saveHosts({ current_host: 'new.example.com', token_storage: 'keychain' })
-    const loaded = loadHosts()
-    expect(loaded?.current_host).toBe('new.example.com')
-    expect(loaded?.token_storage).toBe('keychain')
-  })
+  it('drops token + active context, keeps siblings, unsets pointers', async () => {
+    const store = new MemStore()
+    const reg = Registry.empty('file')
+    reg.upsert('h1', 'a@x', { account: { id: '1', email: 'a@x', name: 'A' } })
+    reg.upsert('h1', 'b@x', { account: { id: '2', email: 'b@x', name: 'B' } })
+    reg.setHost('h1')
+    reg.setAccount('a@x')
+    await reg.save()
+    await store.write('h1', 'a@x', 'dfoa_a')
 
-  it('rejects invalid input at save time', () => {
-    expect(() => saveHosts({
-      current_host: 'cloud.dify.ai',
-      token_storage: 'cloud',
-    } as never)).toThrow()
+    const active = reg.resolveActive()!
+    await reg.forget(active, store)
+
+    expect(await store.read('h1', 'a@x')).toBe('')
+    const after = await Registry.load()
+    expect(after?.hosts.h1?.accounts['a@x']).toBeUndefined()
+    expect(after?.hosts.h1?.accounts['b@x']).toBeDefined()
+    expect(after?.current_host).toBeUndefined()
   })
 })

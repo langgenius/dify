@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import RunApp from './index.js'
+import RunApp from './index'
 
 describe('run app agentGuide', () => {
   it('exposes non-empty agentGuide string', () => {

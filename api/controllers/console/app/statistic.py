@@ -2,19 +2,28 @@ from decimal import Decimal
 
 import sqlalchemy as sa
 from flask import abort, jsonify, request
-from flask_restx import Resource, fields
+from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
-from controllers.common.schema import register_schema_models
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    account_initialization_required,
+    rbac_permission_required,
+    setup_required,
+    with_current_user,
+)
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date
-from libs.login import current_account_with_tenant, login_required
+from libs.login import login_required
 from models import AppMode
+from models.account import Account
 from models.model import App
 
 
@@ -30,7 +39,92 @@ class StatisticTimeRangeQuery(BaseModel):
         return value
 
 
+class DailyMessageStatisticItem(ResponseModel):
+    date: str
+    message_count: int
+
+
+class DailyMessageStatisticResponse(ResponseModel):
+    data: list[DailyMessageStatisticItem]
+
+
+class DailyConversationStatisticItem(ResponseModel):
+    date: str
+    conversation_count: int
+
+
+class DailyConversationStatisticResponse(ResponseModel):
+    data: list[DailyConversationStatisticItem]
+
+
+class DailyTerminalStatisticItem(ResponseModel):
+    date: str
+    terminal_count: int
+
+
+class DailyTerminalStatisticResponse(ResponseModel):
+    data: list[DailyTerminalStatisticItem]
+
+
+class DailyTokenCostStatisticItem(ResponseModel):
+    date: str
+    token_count: int
+    total_price: str | float
+    currency: str
+
+
+class DailyTokenCostStatisticResponse(ResponseModel):
+    data: list[DailyTokenCostStatisticItem]
+
+
+class AverageSessionInteractionStatisticItem(ResponseModel):
+    date: str
+    interactions: float
+
+
+class AverageSessionInteractionStatisticResponse(ResponseModel):
+    data: list[AverageSessionInteractionStatisticItem]
+
+
+class UserSatisfactionRateStatisticItem(ResponseModel):
+    date: str
+    rate: float
+
+
+class UserSatisfactionRateStatisticResponse(ResponseModel):
+    data: list[UserSatisfactionRateStatisticItem]
+
+
+class AverageResponseTimeStatisticItem(ResponseModel):
+    date: str
+    latency: float
+
+
+class AverageResponseTimeStatisticResponse(ResponseModel):
+    data: list[AverageResponseTimeStatisticItem]
+
+
+class TokensPerSecondStatisticItem(ResponseModel):
+    date: str
+    tps: float
+
+
+class TokensPerSecondStatisticResponse(ResponseModel):
+    data: list[TokensPerSecondStatisticItem]
+
+
 register_schema_models(console_ns, StatisticTimeRangeQuery)
+register_response_schema_models(
+    console_ns,
+    DailyMessageStatisticResponse,
+    DailyConversationStatisticResponse,
+    DailyTerminalStatisticResponse,
+    DailyTokenCostStatisticResponse,
+    AverageSessionInteractionStatisticResponse,
+    UserSatisfactionRateStatisticResponse,
+    AverageResponseTimeStatisticResponse,
+    TokensPerSecondStatisticResponse,
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/statistics/daily-messages")
@@ -38,19 +132,19 @@ class DailyMessageStatistic(Resource):
     @console_ns.doc("get_daily_message_statistics")
     @console_ns.doc(description="Get daily message statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily message statistics retrieved successfully",
-        fields.List(fields.Raw(description="Daily message count data")),
+        console_ns.models[DailyMessageStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
@@ -99,19 +193,19 @@ class DailyConversationStatistic(Resource):
     @console_ns.doc("get_daily_conversation_statistics")
     @console_ns.doc(description="Get daily conversation statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily conversation statistics retrieved successfully",
-        fields.List(fields.Raw(description="Daily conversation count data")),
+        console_ns.models[DailyConversationStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
@@ -159,19 +253,19 @@ class DailyTerminalsStatistic(Resource):
     @console_ns.doc("get_daily_terminals_statistics")
     @console_ns.doc(description="Get daily terminal/end-user statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily terminal statistics retrieved successfully",
-        fields.List(fields.Raw(description="Daily terminal count data")),
+        console_ns.models[DailyTerminalStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
@@ -220,19 +314,19 @@ class DailyTokenCostStatistic(Resource):
     @console_ns.doc("get_daily_token_cost_statistics")
     @console_ns.doc(description="Get daily token cost statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Daily token cost statistics retrieved successfully",
-        fields.List(fields.Raw(description="Daily token cost data")),
+        console_ns.models[DailyTokenCostStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
@@ -284,19 +378,19 @@ class AverageSessionInteractionStatistic(Resource):
     @console_ns.doc("get_average_session_interaction_statistics")
     @console_ns.doc(description="Get average session interaction statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Average session interaction statistics retrieved successfully",
-        fields.List(fields.Raw(description="Average session interaction data")),
+        console_ns.models[AverageSessionInteractionStatisticResponse.__name__],
     )
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("c.created_at")
@@ -364,19 +458,19 @@ class UserSatisfactionRateStatistic(Resource):
     @console_ns.doc("get_user_satisfaction_rate_statistics")
     @console_ns.doc(description="Get user satisfaction rate statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "User satisfaction rate statistics retrieved successfully",
-        fields.List(fields.Raw(description="User satisfaction rate data")),
+        console_ns.models[UserSatisfactionRateStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
-
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("m.created_at")
@@ -434,19 +528,19 @@ class AverageResponseTimeStatistic(Resource):
     @console_ns.doc("get_average_response_time_statistics")
     @console_ns.doc(description="Get average response time statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Average response time statistics retrieved successfully",
-        fields.List(fields.Raw(description="Average response time data")),
+        console_ns.models[AverageResponseTimeStatisticResponse.__name__],
     )
     @setup_required
     @login_required
     @account_initialization_required
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
     @get_app_model(mode=AppMode.COMPLETION)
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
-
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")
@@ -495,18 +589,19 @@ class TokensPerSecondStatistic(Resource):
     @console_ns.doc("get_tokens_per_second_statistics")
     @console_ns.doc(description="Get tokens per second statistics for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(console_ns.models[StatisticTimeRangeQuery.__name__])
+    @console_ns.doc(params=query_params_from_model(StatisticTimeRangeQuery))
     @console_ns.response(
         200,
         "Tokens per second statistics retrieved successfully",
-        fields.List(fields.Raw(description="Tokens per second data")),
+        console_ns.models[TokensPerSecondStatisticResponse.__name__],
     )
-    @get_app_model
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, app_model: App):
-        account, _ = current_account_with_tenant()
+    @with_current_user
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_MONITOR)
+    @get_app_model
+    def get(self, account: Account, app_model: App):
         args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))
 
         converted_created_at = convert_datetime_to_date("created_at")

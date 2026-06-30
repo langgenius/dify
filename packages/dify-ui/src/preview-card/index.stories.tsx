@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
 import type { Placement } from '.'
-import { useState } from 'react'
+import * as React from 'react'
 import {
   createPreviewCardHandle,
   PreviewCard,
@@ -144,7 +144,7 @@ const PLACEMENTS: Placement[] = [
 ]
 
 const PlacementsDemo = () => {
-  const [placement, setPlacement] = useState<Placement>('bottom')
+  const [placement, setPlacement] = React.useState<Placement>('bottom')
 
   return (
     <div className="flex flex-col items-center gap-4 p-20">

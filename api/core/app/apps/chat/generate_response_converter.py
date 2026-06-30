@@ -112,15 +112,16 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter[ChatbotAppBl
                 "created_at": chunk.created_at,
             }
 
-            if isinstance(sub_stream_response, MessageEndStreamResponse):
-                sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
-                metadata = sub_stream_response_dict.get("metadata", {})
-                sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
-                response_chunk.update(sub_stream_response_dict)
-            elif isinstance(sub_stream_response, ErrorStreamResponse):
-                data = cls._error_to_stream_response(sub_stream_response.err)
-                response_chunk.update(data)
-            else:
-                response_chunk.update(sub_stream_response.model_dump(mode="json"))
+            match sub_stream_response:
+                case MessageEndStreamResponse():
+                    sub_stream_response_dict = sub_stream_response.model_dump(mode="json")
+                    metadata = sub_stream_response_dict.get("metadata", {})
+                    sub_stream_response_dict["metadata"] = cls._get_simple_metadata(metadata)
+                    response_chunk.update(sub_stream_response_dict)
+                case ErrorStreamResponse():
+                    data = cls._error_to_stream_response(sub_stream_response.err)
+                    response_chunk.update(data)
+                case _:
+                    response_chunk.update(sub_stream_response.model_dump(mode="json"))
 
             yield response_chunk

@@ -111,7 +111,7 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
 
 const renderWithQueryClient = (provider: ModelProvider) => {
   return renderWithSystemFeatures(<CredentialPanel provider={provider} />, {
-    systemFeatures: { trial_models: ['langgenius/openai/openai'] as never },
+    trialModels: ['langgenius/openai/openai'],
   })
 }
 

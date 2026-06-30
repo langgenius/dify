@@ -1,10 +1,13 @@
-import { Args, Flags } from '../../../../framework/flags.js'
-import { DifyCommand } from '../../../_shared/dify-command.js'
-import { httpRetryFlag } from '../../../_shared/global-flags.js'
-import { runDevicesRevoke } from '../_shared/devices.js'
+import type { CommandEffect } from '@/framework/command'
+import { DifyCommand } from '@/commands/_shared/dify-command'
+import { httpRetryFlag } from '@/commands/_shared/global-flags'
+import { runDevicesRevoke } from '@/commands/auth/devices/_shared/devices'
+import { Args, Flags } from '@/framework/flags'
 
 export default class DevicesRevoke extends DifyCommand {
   static override description = 'Revoke one or all session devices'
+
+  static override effect: CommandEffect = 'destructive'
 
   static override examples = [
     '<%= config.bin %> auth devices revoke "difyctl on laptop"',
@@ -18,7 +21,7 @@ export default class DevicesRevoke extends DifyCommand {
   static override flags = {
     'all': Flags.boolean({ description: 'revoke every session except the current one', default: false }),
     'http-retry': httpRetryFlag,
-    'yes': Flags.boolean({ description: 'skip confirmation prompt', default: false }),
+    'yes': Flags.boolean({ char: 'y', description: 'skip confirmation prompt', default: false }),
   }
 
   async run(argv: string[]): Promise<void> {
@@ -26,7 +29,9 @@ export default class DevicesRevoke extends DifyCommand {
     const ctx = await this.authedCtx({ retryFlag: flags['http-retry'] })
     await runDevicesRevoke({
       io: ctx.io,
-      bundle: ctx.bundle,
+      reg: ctx.reg,
+      active: ctx.active,
+      store: ctx.store,
       http: ctx.http,
       target: args.target,
       all: flags.all,

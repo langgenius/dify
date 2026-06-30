@@ -1,8 +1,8 @@
-import type { AllowedFormat, ConfigFile } from './schema.js'
-import { newError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
-import { parseLimit } from '../limit/limit.js'
-import { ALLOWED_FORMATS } from './schema.js'
+import type { AllowedFormat, ConfigFile } from './schema'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
+import { parseLimit } from '@/limit/limit'
+import { ALLOWED_FORMATS } from './schema'
 
 export type KeySpec = {
   readonly name: string

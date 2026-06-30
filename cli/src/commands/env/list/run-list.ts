@@ -1,5 +1,5 @@
-import { ENV_REGISTRY } from '../../../env/registry.js'
-import { getEnv } from '../../../sys/index.js'
+import { ENV_REGISTRY } from '@/env/registry'
+import { getEnv } from '@/sys/index'
 
 export type EnvLookup = (name: string) => string | undefined
 

@@ -11,6 +11,8 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
 
+from configs import dify_config
+
 from .base import TypeBase
 from .engine import db
 from .types import EnumText, LongText, StringUUID
@@ -187,10 +189,14 @@ class Account(UserMixin, TypeBase):
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_privileged_role(self.role)
 
     @property
     def is_admin(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_admin_role(self.role)
 
     @property
@@ -216,14 +222,20 @@ class Account(UserMixin, TypeBase):
         - `ADMIN`
         - `EDITOR`
         """
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_editing_role(self.role)
 
     @property
     def is_dataset_editor(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return TenantAccountRole.is_dataset_edit_role(self.role)
 
     @property
     def is_dataset_operator(self):
+        if dify_config.RBAC_ENABLED:
+            return True
         return self.role == TenantAccountRole.DATASET_OPERATOR
 
 
@@ -301,6 +313,7 @@ class TenantAccountJoin(TypeBase):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), nullable=False, init=False, onupdate=func.current_timestamp()
     )
+    last_opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
 
 class AccountIntegrate(TypeBase):
@@ -389,6 +402,14 @@ class TenantPluginPermission(TypeBase):
 
 
 class TenantPluginAutoUpgradeStrategy(TypeBase):
+    class PluginCategory(enum.StrEnum):
+        TOOL = "tool"
+        MODEL = "model"
+        EXTENSION = "extension"
+        AGENT_STRATEGY = "agent-strategy"
+        DATASOURCE = "datasource"
+        TRIGGER = "trigger"
+
     class StrategySetting(enum.StrEnum):
         DISABLED = "disabled"
         FIX_ONLY = "fix_only"
@@ -402,13 +423,20 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
     __tablename__ = "tenant_plugin_auto_upgrade_strategies"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tenant_plugin_auto_upgrade_strategy_pkey"),
-        sa.UniqueConstraint("tenant_id", name="unique_tenant_plugin_auto_upgrade_strategy"),
+        sa.UniqueConstraint("tenant_id", "category", name="unique_tenant_plugin_auto_upgrade_strategy"),
+        sa.Index("idx_tenant_plugin_auto_upgrade_strategy_time", "upgrade_time_of_day"),
     )
 
     id: Mapped[str] = mapped_column(
         StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
     )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    category: Mapped[PluginCategory] = mapped_column(
+        EnumText(PluginCategory, length=32),
+        nullable=False,
+        server_default="tool",
+        default=PluginCategory.TOOL,
+    )
     strategy_setting: Mapped[StrategySetting] = mapped_column(
         EnumText(StrategySetting, length=16),
         nullable=False,

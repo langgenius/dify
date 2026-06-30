@@ -23,12 +23,21 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_forms import load_form_tokens_by_form_id
-from core.workflow.human_input_policy import HumanInputSurface, enrich_human_input_pause_reasons
+from core.workflow.human_input_forms import (
+    load_form_dispositions_by_form_id,
+)
+from core.workflow.human_input_policy import (
+    FormDisposition,
+    HumanInputSurface,
+    enrich_human_input_pause_reasons,
+    resolve_human_input_pause_reason_inputs,
+    resolve_variable_select_input_options,
+)
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import PauseReasonType
+from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import GraphRuntimeState
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.human_input import HumanInputForm
 from models.model import AppMode, Message
@@ -220,6 +229,7 @@ def _build_snapshot_events(
     human_input_surface: HumanInputSurface | None = None,
 ) -> list[Mapping[str, Any]]:
     events: list[Mapping[str, Any]] = []
+    variable_pool = _load_variable_pool_from_resumption_context(resumption_context)
 
     workflow_started = _build_workflow_started_event(
         workflow_run=workflow_run,
@@ -258,6 +268,7 @@ def _build_snapshot_events(
             pause_entity=pause_entity,
             session_maker=session_maker,
             human_input_surface=human_input_surface,
+            variable_pool=variable_pool,
         ):
             _apply_message_context(human_input_event, message_context)
             events.append(human_input_event)
@@ -344,19 +355,14 @@ def _build_human_input_required_events(
     pause_entity: WorkflowPauseEntity,
     session_maker: sessionmaker[Session] | None,
     human_input_surface: HumanInputSurface | None,
+    variable_pool: ReadOnlyVariablePool | None,
 ) -> list[dict[str, Any]]:
-    reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
-    human_input_form_ids = [
-        form_id
-        for reason in reasons
-        if reason.get("TYPE") == PauseReasonType.HUMAN_INPUT_REQUIRED
-        for form_id in [reason.get("form_id")]
-        if isinstance(form_id, str)
-    ]
+    reasons = pause_entity.get_pause_reasons()
+    human_input_form_ids = [reason.form_id for reason in reasons if isinstance(reason, HumanInputRequired)]
 
     expiration_times_by_form_id: dict[str, int] = {}
     display_in_ui_by_form_id: dict[str, bool] = {}
-    form_tokens_by_form_id: dict[str, str] = {}
+    dispositions_by_form_id: dict[str, FormDisposition] = {}
     if human_input_form_ids and session_maker is not None:
         stmt = select(HumanInputForm.id, HumanInputForm.expiration_time, HumanInputForm.form_definition).where(
             HumanInputForm.id.in_(human_input_form_ids)
@@ -369,7 +375,7 @@ def _build_human_input_required_events(
                 except (TypeError, json.JSONDecodeError):
                     definition_payload = {}
                 display_in_ui_by_form_id[str(form_id)] = bool(definition_payload.get("display_in_ui"))
-            form_tokens_by_form_id = load_form_tokens_by_form_id(
+            dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
                 surface=human_input_surface,
@@ -377,47 +383,35 @@ def _build_human_input_required_events(
 
     events: list[dict[str, Any]] = []
     for reason in reasons:
-        if reason.get("TYPE") != PauseReasonType.HUMAN_INPUT_REQUIRED:
+        if not isinstance(reason, HumanInputRequired):
             continue
 
-        form_id_raw = reason.get("form_id")
-        node_id_raw = reason.get("node_id")
-        node_title_raw = reason.get("node_title")
-        form_content_raw = reason.get("form_content")
-        if not isinstance(form_id_raw, str):
-            continue
-        if not isinstance(node_id_raw, str):
-            continue
-        if not isinstance(node_title_raw, str):
-            continue
-        if not isinstance(form_content_raw, str):
-            continue
-        form_id = form_id_raw
-        node_id = node_id_raw
-        node_title = node_title_raw
-        form_content = form_content_raw
-
-        inputs = reason.get("inputs")
-        actions = reason.get("actions")
-        resolved_default_values = reason.get("resolved_default_values")
+        form_id = reason.form_id
 
         expiration_time = expiration_times_by_form_id.get(form_id)
         if expiration_time is None:
             continue
+
+        resolved_inputs = resolve_variable_select_input_options(
+            reason.inputs,
+            variable_pool=variable_pool,
+        )
+        disposition = dispositions_by_form_id.get(form_id)
 
         response = HumanInputRequiredResponse(
             task_id=task_id,
             workflow_run_id=workflow_run_id,
             data=HumanInputRequiredResponse.Data(
                 form_id=form_id,
-                node_id=node_id,
-                node_title=node_title,
-                form_content=form_content,
-                inputs=inputs if isinstance(inputs, list) else [],
-                actions=actions if isinstance(actions, list) else [],
+                node_id=reason.node_id,
+                node_title=reason.node_title,
+                form_content=reason.form_content,
+                inputs=resolved_inputs,
+                actions=reason.actions,
                 display_in_ui=display_in_ui_by_form_id.get(form_id, False),
-                form_token=form_tokens_by_form_id.get(form_id),
-                resolved_default_values=(resolved_default_values if isinstance(resolved_default_values, dict) else {}),
+                form_token=disposition.form_token if disposition else None,
+                approval_channels=list(disposition.approval_channels) if disposition else [],
+                resolved_default_values=reason.resolved_default_values,
                 expiration_time=expiration_time,
             ),
         )
@@ -426,6 +420,16 @@ def _build_human_input_required_events(
         events.append(payload)
 
     return events
+
+
+def _load_variable_pool_from_resumption_context(
+    resumption_context: WorkflowResumptionContext | None,
+) -> ReadOnlyVariablePool | None:
+    if resumption_context is None:
+        return None
+    state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+
+    return state.variable_pool
 
 
 def _build_node_finished_event(
@@ -475,12 +479,18 @@ def _build_pause_event(
 ) -> dict[str, Any] | None:
     paused_nodes: list[str] = []
     outputs: dict[str, Any] = {}
+    variable_pool: ReadOnlyVariablePool | None = None
     if resumption_context is not None:
         state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
         paused_nodes = state.get_paused_nodes()
         outputs = dict(WorkflowRuntimeTypeConverter().to_json_encodable(state.outputs or {}))
+        variable_pool = state.variable_pool
 
-    reasons = [reason.model_dump(mode="json") for reason in pause_entity.get_pause_reasons()]
+    resolved_pause_reasons = resolve_human_input_pause_reason_inputs(
+        pause_entity.get_pause_reasons(),
+        variable_pool=variable_pool,
+    )
+    reasons = [reason.model_dump(mode="json") for reason in resolved_pause_reasons]
     human_input_form_ids = [
         form_id
         for reason in reasons
@@ -488,11 +498,11 @@ def _build_pause_event(
         for form_id in [reason.get("form_id")]
         if isinstance(form_id, str)
     ]
-    form_tokens_by_form_id: dict[str, str] = {}
+    dispositions_by_form_id: dict[str, FormDisposition] = {}
     expiration_times_by_form_id: dict[str, int] = {}
     if human_input_form_ids and session_maker is not None:
         with session_maker() as session:
-            form_tokens_by_form_id = load_form_tokens_by_form_id(
+            dispositions_by_form_id = load_form_dispositions_by_form_id(
                 human_input_form_ids,
                 session=session,
                 surface=human_input_surface,
@@ -507,7 +517,7 @@ def _build_pause_event(
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(
             reasons,
-            form_tokens_by_form_id=form_tokens_by_form_id,
+            dispositions_by_form_id=dispositions_by_form_id,
             expiration_times_by_form_id=expiration_times_by_form_id,
         )
 

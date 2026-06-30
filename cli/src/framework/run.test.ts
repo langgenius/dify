@@ -1,10 +1,11 @@
-import type { CommandConstructor } from './command.js'
-import type { CommandTree } from './registry.js'
+import type { CommandConstructor } from './command'
+import type { CommandTree } from './registry'
 import { describe, expect, it } from 'vitest'
-import { BaseError, newError } from '../errors/base.js'
-import { ErrorCode, ExitCode } from '../errors/codes.js'
-import { Command } from './command.js'
-import { run, sniffOutputFormat } from './run.js'
+import { BaseError, HttpClientError, newError } from '@/errors/base'
+import { ErrorCode, ExitCode } from '@/errors/codes'
+import { CONTRACT } from '@/help/contract'
+import { Command } from './command'
+import { run, sniffOutputFormat } from './run'
 
 describe('sniffOutputFormat', () => {
   it('returns empty for empty argv', () => {
@@ -171,7 +172,7 @@ describe('run() catch routing', () => {
   it('routes Server5xx error with http_status line and generic exit', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw newError(ErrorCode.Server5xx, 'upstream boom').withHttpStatus(502)
+        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom')).withHttpStatus(502)
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
@@ -182,7 +183,7 @@ describe('run() catch routing', () => {
   it('renders request line and http_status when both are present', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw newError(ErrorCode.Server5xx, 'upstream boom')
+        throw HttpClientError.from(newError(ErrorCode.Server5xx, 'upstream boom'))
           .withRequest('GET', 'https://api.dify.ai/v1/me')
           .withHttpStatus(502)
       }
@@ -197,7 +198,7 @@ describe('run() catch routing', () => {
   it('serializes method and url in JSON envelope', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
-        throw newError(ErrorCode.Server4xxOther, 'not found')
+        throw HttpClientError.from(newError(ErrorCode.Server4xxOther, 'not found'))
           .withRequest('GET', 'https://api.dify.ai/v1/apps/x')
           .withHttpStatus(404)
       }
@@ -211,18 +212,30 @@ describe('run() catch routing', () => {
     expect(result.exit).toBe(ExitCode.Generic)
   })
 
-  it('falls through to generic Error branch and exits 1', async () => {
+  it('routes non-BaseError to JSON envelope with -o json (exit 1)', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw new Error('boom')
+      }
+    }
+    const result = await captureRun(makeTree(Throwing), ['cmd', '-o', 'json'])
+    expect(result.stderr).toBe(`${JSON.stringify({ error: { code: 'unknown', message: 'boom' } })}\n`)
+    expect(result.exit).toBe(ExitCode.Generic)
+    expect(result.stdout).toBe('')
+  })
+
+  it('wraps a generic Error into the human unknown form and exits 1', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
         throw new Error('oops')
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
-    expect(result.stderr).toBe('oops\n')
-    expect(result.exit).toBe(1)
+    expect(result.stderr).toBe('unknown: oops\n')
+    expect(result.exit).toBe(ExitCode.Generic)
   })
 
-  it('handles non-Error throw via String() coercion', async () => {
+  it('wraps a non-Error throw via String() coercion into unknown form', async () => {
     class Throwing extends Command {
       async run(_argv: string[]) {
         // eslint-disable-next-line no-throw-literal
@@ -230,8 +243,52 @@ describe('run() catch routing', () => {
       }
     }
     const result = await captureRun(makeTree(Throwing), ['cmd'])
-    expect(result.stderr).toBe('plain string\n')
-    expect(result.exit).toBe(1)
+    expect(result.stderr).toBe('unknown: plain string\n')
+    expect(result.exit).toBe(ExitCode.Generic)
+  })
+
+  it('exits 0 on EPIPE without writing an error envelope', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw Object.assign(new Error('broken pipe'), { code: 'EPIPE' })
+      }
+    }
+    // process.exit is typed `never`; stub it to halt (throw) like the real call,
+    // so the EPIPE early-exit doesn't fall through to the envelope path.
+    let exitCode: number | undefined
+    let stderr = ''
+    const origExit = process.exit.bind(process)
+    const origStderr = process.stderr.write.bind(process.stderr)
+    process.exit = ((code?: number) => {
+      exitCode = code
+      throw new Error('__exit__')
+    }) as typeof process.exit
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderr += typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk)
+      return true
+    }) as typeof process.stderr.write
+    try {
+      await run(makeTree(Throwing), ['cmd', '-o', 'json'])
+    }
+    catch (e) {
+      expect((e as Error).message).toBe('__exit__')
+    }
+    finally {
+      process.exit = origExit
+      process.stderr.write = origStderr
+    }
+    expect(exitCode).toBe(0)
+    expect(stderr).toBe('')
+  })
+
+  it('preserves RateLimited semantic exit code through the collapsed catch', async () => {
+    class Throwing extends Command {
+      async run(_argv: string[]) {
+        throw newError(ErrorCode.RateLimited, 'slow down')
+      }
+    }
+    const result = await captureRun(makeTree(Throwing), ['cmd'])
+    expect(result.exit).toBe(ExitCode.RateLimited)
   })
 
   it('does not call process.exit when command runs successfully', async () => {
@@ -349,5 +406,159 @@ describe('deprecated commands', () => {
     }
     const result = await captureRun(tree, ['fresh'])
     expect(result.stderr).toBe('')
+  })
+})
+
+describe('run() help routing', () => {
+  class GetApp extends Command {
+    static override description = 'List or get apps'
+    async run() {}
+  }
+
+  const tree: CommandTree = {
+    get: { subcommands: { app: { command: GetApp, subcommands: {} } } },
+  }
+
+  it('renders a concept guide for `help <topic>`', async () => {
+    const result = await captureRun(tree, ['help', 'account'])
+    expect(result.stdout).toContain('account-bearer onboarding')
+    expect(result.stdout).toContain('difyctl auth login')
+    expect(result.stdout).not.toContain('COMMANDS')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('renders the environment guide for `help environment`', async () => {
+    const result = await captureRun(tree, ['help', 'environment'])
+    expect(result.stdout).toContain('ENVIRONMENT VARIABLES')
+  })
+
+  it('renders per-command help for `help <cmd...>`', async () => {
+    const result = await captureRun(tree, ['help', 'get', 'app'])
+    expect(result.stdout).toContain('List or get apps')
+    expect(result.stdout).toContain('USAGE')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('suggests and exits non-zero for an unknown help topic', async () => {
+    const result = await captureRun(tree, ['help', 'xyz'])
+    expect(result.stderr).toContain('unknown help topic: xyz')
+    expect(result.exit).toBe(1)
+  })
+
+  it('lists USAGE, COMMANDS, EXAMPLES, GLOBAL FLAGS, GUIDES and LEARN MORE in the top-level overview', async () => {
+    const result = await captureRun(tree, ['help'])
+    expect(result.stdout).toContain('USAGE')
+    expect(result.stdout).toContain('COMMANDS')
+    expect(result.stdout).toContain('EXAMPLES')
+    expect(result.stdout).toContain('GLOBAL FLAGS')
+    expect(result.stdout).toContain('GUIDES')
+    expect(result.stdout).toContain('LEARN MORE')
+    expect(result.stdout).toContain('account')
+    expect(result.stdout).toContain('environment')
+    expect(result.stdout).toContain('external')
+  })
+
+  it('derives the GLOBAL FLAGS output format list from the contract', async () => {
+    const result = await captureRun(tree, ['help'])
+    expect(result.stdout).toContain('-o, --output')
+    expect(result.stdout).toContain(`Output format: ${CONTRACT.outputFormats.join('|')}`)
+    expect(result.stdout).toContain('--http-retry')
+  })
+
+  it('does not print trailing whitespace on group rows', async () => {
+    const groupTree: CommandTree = {
+      auth: { subcommands: { devices: { subcommands: { list: { command: GetApp, subcommands: {} } } } } },
+    }
+    const result = await captureRun(groupTree, ['help'])
+    expect(result.stdout).not.toMatch(/ \n/)
+  })
+
+  it('emits a JSON site map for `help -o json`', async () => {
+    const result = await captureRun(tree, ['help', '-o', 'json'])
+    const obj = JSON.parse(result.stdout)
+    expect(obj.bin).toBe('difyctl')
+    expect(obj.contract.exitCodes).toBeDefined()
+    expect(obj.commands.some((c: { command: string }) => c.command === 'get app')).toBe(true)
+    expect(obj.topics.some((t: { name: string }) => t.name === 'account')).toBe(true)
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('emits a JSON descriptor for `help <cmd> -o json`', async () => {
+    const result = await captureRun(tree, ['help', 'get', 'app', '-o', 'json'])
+    const obj = JSON.parse(result.stdout)
+    expect(obj.command).toBe('get app')
+    expect(Array.isArray(obj.flags)).toBe(true)
+  })
+
+  class Login extends Command {
+    static override description = 'Sign in'
+    async run() {}
+  }
+
+  class DevicesList extends Command {
+    static override description = 'List sessions'
+    async run() {}
+  }
+
+  class DevicesRevoke extends Command {
+    static override description = 'Revoke a session'
+    async run() {}
+  }
+
+  const groupTree: CommandTree = {
+    auth: {
+      subcommands: {
+        login: { command: Login, subcommands: {} },
+        devices: {
+          subcommands: {
+            list: { command: DevicesList, subcommands: {} },
+            revoke: { command: DevicesRevoke, subcommands: {} },
+          },
+        },
+      },
+    },
+  }
+
+  it('drills into a namespace node for `<group> --help` instead of erroring', async () => {
+    const result = await captureRun(groupTree, ['auth', '--help'])
+    expect(result.stdout).toContain('auth login')
+    expect(result.stdout).toContain('auth devices list')
+    expect(result.stdout).toContain('auth devices revoke')
+    expect(result.stderr).not.toContain('unknown help topic')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('drills into a nested namespace node for `<group> <sub> --help`', async () => {
+    const result = await captureRun(groupTree, ['auth', 'devices', '--help'])
+    expect(result.stdout).toContain('auth devices list')
+    expect(result.stdout).toContain('auth devices revoke')
+    expect(result.stdout).not.toContain('auth login')
+    expect(result.stderr).not.toContain('unknown help topic')
+    expect(result.exit).toBeUndefined()
+  })
+
+  it('still errors for an unknown namespace-looking path', async () => {
+    const result = await captureRun(groupTree, ['auth', 'nope', '--help'])
+    expect(result.stderr).toContain('unknown help topic: auth nope')
+    expect(result.exit).toBe(1)
+  })
+
+  it('serializes the subtree as JSON for `<group> --help -o json`', async () => {
+    const result = await captureRun(groupTree, ['auth', '--help', '-o', 'json'])
+    expect(result.exit).toBeUndefined()
+    expect(result.stdout).not.toContain('COMMANDS')
+    const parsed = JSON.parse(result.stdout) as { commands: Array<{ command: string }> }
+    expect(parsed.commands.map(c => c.command)).toEqual([
+      'auth login',
+      'auth devices list',
+      'auth devices revoke',
+    ])
+  })
+
+  it('renders full-depth leaves at the top level (third-level commands visible)', async () => {
+    const result = await captureRun(groupTree, [])
+    expect(result.stdout).toContain('auth login')
+    expect(result.stdout).toContain('auth devices list')
+    expect(result.stdout).toContain('auth devices revoke')
   })
 })

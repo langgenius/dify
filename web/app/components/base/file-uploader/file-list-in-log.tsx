@@ -13,7 +13,7 @@ import {
   getFileAppearanceType,
 } from './utils'
 
-type Props = {
+type Props = Readonly<{
   fileList: {
     varName: string
     list: FileEntity[]
@@ -21,7 +21,7 @@ type Props = {
   isExpanded?: boolean
   noBorder?: boolean
   noPadding?: boolean
-}
+}>
 
 const FileListInLog = ({ fileList, isExpanded = false, noBorder = false, noPadding = false }: Props) => {
   const { t } = useTranslation()

@@ -1,5 +1,5 @@
-import { newError } from '../errors/base.js'
-import { ErrorCode } from '../errors/codes.js'
+import { newError } from '@/errors/base'
+import { ErrorCode } from '@/errors/codes'
 
 export const LIMIT_MIN = 1
 export const LIMIT_MAX = 200

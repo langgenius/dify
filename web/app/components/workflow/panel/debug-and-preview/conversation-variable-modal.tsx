@@ -23,10 +23,10 @@ import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 
-type Props = {
+type Props = Readonly<{
   conversationID: string
   onHide: () => void
-}
+}>
 
 const ConversationVariableModal = ({
   conversationID,

@@ -3,7 +3,7 @@ import type {
   UseHotkeyDefinition,
   UseHotkeyOptions,
 } from '@tanstack/react-hotkeys'
-import type { WorkflowHotkeyMeta, WorkflowShortcutDefinition, WorkflowShortcutId } from './definitions'
+import type { WorkflowCanvasHotkeyMeta, WorkflowCanvasShortcutDefinition } from './definitions'
 import { useHotkeys, useKeyHold } from '@tanstack/react-hotkeys'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useReactFlow } from 'reactflow'
@@ -11,15 +11,10 @@ import { collaborationManager } from '../collaboration/core/collaboration-manage
 import { useEdgesInteractions } from '../hooks/use-edges-interactions'
 import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import { useNodesSyncDraft } from '../hooks/use-nodes-sync-draft'
-import { useWorkflowCanvasMaximize } from '../hooks/use-workflow-canvas-maximize'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
 import { useStore } from '../store/workflow'
-import {
-  subscribeWorkflowCommand,
-  WorkflowCommand,
-} from './commands'
-import { WORKFLOW_SHORTCUTS } from './definitions'
+import { WORKFLOW_CANVAS_SHORTCUTS } from './definitions'
 
 const workflowHotkeyOptions = {
   ignoreInputs: true,
@@ -37,7 +32,7 @@ const isInputLikeElement = (element: Element | null) => {
 }
 
 const toHotkeyDefinitions = (
-  shortcut: WorkflowShortcutDefinition,
+  shortcut: WorkflowCanvasShortcutDefinition,
   callback: HotkeyCallback,
   options?: UseHotkeyOptions,
 ): UseHotkeyDefinition[] => {
@@ -48,26 +43,12 @@ const toHotkeyDefinitions = (
       ...options,
       meta: {
         id: shortcut.id,
-        scope: 'workflow',
+        scope: 'workflow-canvas',
         name: shortcut.name,
         description: shortcut.description,
-      } satisfies WorkflowHotkeyMeta,
+      } satisfies WorkflowCanvasHotkeyMeta,
     },
   }))
-}
-
-export const useWorkflowShortcut = (
-  id: WorkflowShortcutId,
-  callback: HotkeyCallback,
-  options?: UseHotkeyOptions,
-) => {
-  const shortcut = WORKFLOW_SHORTCUTS[id]
-  const hotkeys = useMemo(
-    () => toHotkeyDefinitions(shortcut, callback, options),
-    [callback, options, shortcut],
-  )
-
-  useHotkeys(hotkeys, workflowHotkeyOptions)
 }
 
 export const useWorkflowHotkeys = (): void => {
@@ -92,7 +73,6 @@ export const useWorkflowHotkeys = (): void => {
     isCommentModeAvailable,
   } = useWorkflowMoveMode()
   const { handleLayout } = useWorkflowOrganize()
-  const { handleToggleMaximizeCanvas } = useWorkflowCanvasMaximize()
 
   const {
     zoomTo,
@@ -134,76 +114,69 @@ export const useWorkflowHotkeys = (): void => {
     handleNodesCopy()
   }, [handleNodesCopy, shouldHandleCopy])
 
-  const handleZenToggle = useCallback(() => {
-    handleToggleMaximizeCanvas()
-  }, [handleToggleMaximizeCanvas])
-
   const hotkeys = useMemo<UseHotkeyDefinition[]>(() => [
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.delete'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.delete'], () => {
       handleNodesDelete()
       handleEdgeDelete()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.copy'], handleCopy, {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.copy'], handleCopy, {
       preventDefault: false,
       stopPropagation: false,
       enabled: !showDebugAndPreviewPanel,
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.paste'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.paste'], () => {
       handleNodesPaste()
     }, {
       enabled: !showDebugAndPreviewPanel,
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.duplicate'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.duplicate'], () => {
       handleNodesDuplicate()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.undo'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.undo'], () => {
       handleHistoryBack()
     }, {
       enabled: !showDebugAndPreviewPanel && historyShortcutsEnabled,
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.redo'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.redo'], () => {
       handleHistoryForward()
     }, {
       enabled: !showDebugAndPreviewPanel && historyShortcutsEnabled,
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.hand-mode'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.hand-mode'], () => {
       handleModeHand()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.pointer-mode'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.pointer-mode'], () => {
       handleModePointer()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.comment-mode'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.comment-mode'], () => {
       handleModeComment()
     }, {
       enabled: isCommentModeAvailable,
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.organize'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.organize'], () => {
       handleLayout()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.toggle-maximize'], () => {
-      handleToggleMaximizeCanvas()
-    }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.zoom-to-fit'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-fit'], () => {
       fitView()
       handleSyncWorkflowDraft()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.zoom-to-100'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-100'], () => {
       zoomTo(1)
       handleSyncWorkflowDraft()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.zoom-to-50'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-to-50'], () => {
       zoomTo(0.5)
       handleSyncWorkflowDraft()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.zoom-out'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-out'], () => {
       constrainedZoomOut()
       handleSyncWorkflowDraft()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.zoom-in'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.zoom-in'], () => {
       constrainedZoomIn()
       handleSyncWorkflowDraft()
     }),
-    ...toHotkeyDefinitions(WORKFLOW_SHORTCUTS['workflow.download-import-log'], () => {
+    ...toHotkeyDefinitions(WORKFLOW_CANVAS_SHORTCUTS['workflow.download-import-log'], () => {
       collaborationManager.downloadGraphImportLog()
     }),
   ], [
@@ -222,7 +195,6 @@ export const useWorkflowHotkeys = (): void => {
     handleNodesDuplicate,
     handleNodesPaste,
     handleSyncWorkflowDraft,
-    handleToggleMaximizeCanvas,
     historyShortcutsEnabled,
     isCommentModeAvailable,
     showDebugAndPreviewPanel,
@@ -257,8 +229,4 @@ export const useWorkflowHotkeys = (): void => {
         undimAllNodesRef.current()
     }
   }, [])
-
-  useEffect(() => {
-    return subscribeWorkflowCommand(WorkflowCommand.ToggleCanvasMaximize, handleZenToggle)
-  }, [handleZenToggle])
 }

@@ -1,25 +1,76 @@
-import type { CommandTree } from './registry.js'
-import { BaseError } from '../errors/base.js'
-import { formatErrorForCli } from '../errors/format.js'
-import { formatHelp } from './help.js'
-import { stringifyOutput } from './output.js'
-import { findSuggestions, resolveCommand } from './registry.js'
+import type { CommandTree } from './registry'
+import { BaseError, unknownError } from '@/errors/base'
+import { formatErrorForCli } from '@/errors/format'
+import { findTopic } from '@/help/topics'
+import { formatCommandList, formatHelp, formatTopic, formatTopLevelHelp } from './help'
+import { stringifyOutput } from './output'
+import { collectCommands, findSuggestions, resolveCommand } from './registry'
 
 export async function run(tree: CommandTree, argv: string[]): Promise<void> {
   if (argv.length === 0 || argv[0] === 'help' || argv.includes('--help') || argv.includes('-h')) {
-    const helpArgv = argv.filter(a => a !== '--help' && a !== '-h' && a !== 'help')
+    const format = sniffOutputFormat(argv)
+    // The command/topic path is the leading positional run; stop at the first
+    // flag so output flags like `-o json` never leak into resolution.
+    const helpArgv: string[] = []
+
+    for (const a of argv) {
+      if (a === 'help' || a === '--help' || a === '-h')
+        continue
+      if (a.startsWith('-'))
+        break
+      helpArgv.push(a)
+    }
 
     if (helpArgv.length > 0) {
       const resolved = resolveCommand(tree, helpArgv)
 
       if (resolved) {
-        process.stdout.write(`${formatHelp(resolved.command, resolved.path.join(' '))}\n`)
+        const out = formatHelp(resolved.command, resolved.path.join(' '), format)
+        process.stdout.write(isStructuredFormat(format) ? out : `${out}\n`)
 
         return
       }
+
+      const first = helpArgv[0]
+
+      if (helpArgv.length === 1 && first !== undefined) {
+        const topic = findTopic(first)
+
+        if (topic) {
+          process.stdout.write(formatTopic(topic, format))
+
+          return
+        }
+      }
+
+      // Namespace drill-in: `difyctl auth --help` / `difyctl auth devices --help`.
+      // Group nodes have no command of their own (no index.ts), so resolveCommand
+      // misses them; surface their subtree instead of erroring. A strict-prefix
+      // match over the full-depth command walk keeps this purely derived.
+      const subtree = collectCommands(tree).filter(
+        c => c.path.length > helpArgv.length && helpArgv.every((token, i) => c.path[i] === token),
+      )
+
+      if (subtree.length > 0) {
+        process.stdout.write(formatCommandList(subtree, format))
+
+        return
+      }
+
+      process.stderr.write(`unknown help topic: ${helpArgv.join(' ')}\n`)
+      const suggestions = findSuggestions(tree, helpArgv)
+
+      if (suggestions.length > 0) {
+        process.stderr.write('\nDid you mean:\n')
+
+        for (const s of suggestions.slice(0, 5))
+          process.stderr.write(`  ${s}\n`)
+      }
+
+      process.exit(1)
     }
 
-    printTopLevelHelp(tree)
+    process.stdout.write(formatTopLevelHelp(tree, format))
 
     return
   }
@@ -45,26 +96,22 @@ export async function run(tree: CommandTree, argv: string[]): Promise<void> {
     if (typeof Ctor.deprecated === 'string' && Ctor.deprecated.length > 0)
       process.stderr.write(`deprecated: ${Ctor.deprecated}\n`)
     const cmd = new Ctor()
-    const output = await cmd.run(argv.slice(resolved.path.length))
+    const commandArgv = argv.slice(resolved.path.length)
+    cmd.processGlobalFlags(commandArgv)
+
+    const output = await cmd.run(commandArgv)
     if (output !== undefined)
       process.stdout.write(stringifyOutput(output))
   }
   catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'EPIPE')
       process.exit(0)
-    if (err instanceof BaseError) {
-      const format = sniffOutputFormat(argv)
-      process.stderr.write(`${formatErrorForCli(err, { format, isErrTTY: process.stderr.isTTY })}\n`)
-      process.exit(err.exit())
-      return
-    }
-    if (err instanceof Error) {
-      process.stderr.write(`${err.message}\n`)
-      process.exit(1)
-      return
-    }
-    process.stderr.write(`${String(err)}\n`)
-    process.exit(1)
+    const e = err instanceof BaseError
+      ? err
+      : unknownError(err instanceof Error ? err.message : String(err), err)
+    const format = sniffOutputFormat(argv)
+    process.stderr.write(`${formatErrorForCli(e, { format, isErrTTY: process.stderr.isTTY })}\n`)
+    process.exit(e.exit())
   }
 }
 
@@ -90,29 +137,6 @@ export function sniffOutputFormat(argv: readonly string[]): string {
   return ''
 }
 
-function printTopLevelHelp(tree: CommandTree): void {
-  process.stdout.write('difyctl — Dify command-line interface\n\n')
-  process.stdout.write('COMMANDS\n')
-
-  for (const [topic, node] of Object.entries(tree)) {
-    if (node.command?.hidden === true)
-      continue
-
-    if (node.command) {
-      const desc = node.command.description ?? ''
-      process.stdout.write(`  ${topic}  ${desc}\n`)
-    }
-    else {
-      process.stdout.write(`  ${topic}\n`)
-    }
-
-    for (const [verb, sub] of Object.entries(node.subcommands)) {
-      if (sub.command?.hidden === true)
-        continue
-      const desc = sub.command?.description ?? ''
-      process.stdout.write(`    ${verb}  ${desc}\n`)
-    }
-  }
-
-  process.stdout.write('\n')
+function isStructuredFormat(format: string): boolean {
+  return format === 'json' || format === 'yaml'
 }

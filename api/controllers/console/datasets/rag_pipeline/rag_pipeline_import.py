@@ -1,23 +1,32 @@
 from flask import request
-from flask_restx import Resource, fields, marshal_with  # type: ignore
+from flask_restx import Resource
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from controllers.common.schema import get_or_create_model, register_schema_models
+from controllers.common.fields import SimpleDataResponse
+from controllers.common.schema import (
+    JsonResponseWithStatus,
+    query_params_from_model,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
+    rbac_permission_required,
     setup_required,
+    with_current_user,
 )
+from core.plugin.entities.plugin import PluginDependency
 from extensions.ext_database import db
-from fields.rag_pipeline_fields import (
-    leaked_dependency_fields,
-    pipeline_import_check_dependencies_fields,
-    pipeline_import_fields,
-)
-from libs.login import current_account_with_tenant, login_required
+from fields.base import ResponseModel
+from libs.helper import dump_response
+from libs.login import login_required
+from models.account import Account
 from models.dataset import Pipeline
 from services.entities.dsl_entities import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
@@ -36,35 +45,48 @@ class RagPipelineImportPayload(BaseModel):
 
 
 class IncludeSecretQuery(BaseModel):
-    include_secret: str = Field(default="false")
+    include_secret: str = Field(default="false", description="Whether to include secret values in the exported DSL")
+
+
+class RagPipelineImportResponse(ResponseModel):
+    id: str
+    status: ImportStatus
+    pipeline_id: str | None = None
+    dataset_id: str | None = None
+    current_dsl_version: str
+    imported_dsl_version: str
+    error: str = ""
+
+
+class RagPipelineImportCheckDependenciesResponse(ResponseModel):
+    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
 
 
 register_schema_models(console_ns, RagPipelineImportPayload, IncludeSecretQuery)
-
-
-pipeline_import_model = get_or_create_model("RagPipelineImport", pipeline_import_fields)
-
-leaked_dependency_model = get_or_create_model("RagPipelineLeakedDependency", leaked_dependency_fields)
-pipeline_import_check_dependencies_fields_copy = pipeline_import_check_dependencies_fields.copy()
-pipeline_import_check_dependencies_fields_copy["leaked_dependencies"] = fields.List(
-    fields.Nested(leaked_dependency_model)
-)
-pipeline_import_check_dependencies_model = get_or_create_model(
-    "RagPipelineImportCheckDependencies", pipeline_import_check_dependencies_fields_copy
+register_response_schema_models(
+    console_ns,
+    RagPipelineImportCheckDependenciesResponse,
+    RagPipelineImportResponse,
+    SimpleDataResponse,
 )
 
 
 @console_ns.route("/rag/pipelines/imports")
 class RagPipelineImportApi(Resource):
+    @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
+    @console_ns.response(200, "Import completed", console_ns.models[RagPipelineImportResponse.__name__])
+    @console_ns.response(202, "Import pending confirmation", console_ns.models[RagPipelineImportResponse.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[RagPipelineImportResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @marshal_with(pipeline_import_model)
-    @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
-    def post(self):
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+    )
+    @with_current_user
+    def post(self, current_user: Account) -> JsonResponseWithStatus:
         # Check user role first
-        current_user, _ = current_account_with_tenant()
         payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
 
         # Use a plain Session so that caught exceptions inside the service
@@ -91,23 +113,26 @@ class RagPipelineImportApi(Resource):
         status = result.status
         match status:
             case ImportStatus.FAILED:
-                return result.model_dump(mode="json"), 400
+                return dump_response(RagPipelineImportResponse, result), 400
             case ImportStatus.PENDING:
-                return result.model_dump(mode="json"), 202
+                return dump_response(RagPipelineImportResponse, result), 202
             case ImportStatus.COMPLETED | ImportStatus.COMPLETED_WITH_WARNINGS:
-                return result.model_dump(mode="json"), 200
+                return dump_response(RagPipelineImportResponse, result), 200
 
 
 @console_ns.route("/rag/pipelines/imports/<string:import_id>/confirm")
 class RagPipelineImportConfirmApi(Resource):
+    @console_ns.response(200, "Import confirmed", console_ns.models[RagPipelineImportResponse.__name__])
+    @console_ns.response(400, "Import failed", console_ns.models[RagPipelineImportResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
-    @marshal_with(pipeline_import_model)
-    def post(self, import_id: str):
-        current_user, _ = current_account_with_tenant()
-
+    @rbac_permission_required(
+        RBACResourceScope.DATASET, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, resource_required=False
+    )
+    @with_current_user
+    def post(self, current_user: Account, import_id: str) -> JsonResponseWithStatus:
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = RagPipelineDslService(session)
             account = current_user
@@ -119,34 +144,42 @@ class RagPipelineImportConfirmApi(Resource):
 
         # Return appropriate status code based on result
         if result.status == ImportStatus.FAILED:
-            return result.model_dump(mode="json"), 400
-        return result.model_dump(mode="json"), 200
+            return dump_response(RagPipelineImportResponse, result), 400
+        return dump_response(RagPipelineImportResponse, result), 200
 
 
 @console_ns.route("/rag/pipelines/imports/<string:pipeline_id>/check-dependencies")
 class RagPipelineImportCheckDependenciesApi(Resource):
+    @console_ns.response(
+        200,
+        "Dependencies checked",
+        console_ns.models[RagPipelineImportCheckDependenciesResponse.__name__],
+    )
     @setup_required
     @login_required
     @get_rag_pipeline
     @account_initialization_required
     @edit_permission_required
-    @marshal_with(pipeline_import_check_dependencies_model)
-    def get(self, pipeline: Pipeline):
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_READONLY)
+    def get(self, pipeline: Pipeline) -> JsonResponseWithStatus:
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = RagPipelineDslService(session)
             result = import_service.check_dependencies(pipeline=pipeline)
 
-        return result.model_dump(mode="json"), 200
+        return dump_response(RagPipelineImportCheckDependenciesResponse, result), 200
 
 
 @console_ns.route("/rag/pipelines/<string:pipeline_id>/exports")
 class RagPipelineExportApi(Resource):
+    @console_ns.doc(params=query_params_from_model(IncludeSecretQuery))
+    @console_ns.response(200, "Pipeline exported", console_ns.models[SimpleDataResponse.__name__])
     @setup_required
     @login_required
     @get_rag_pipeline
     @account_initialization_required
     @edit_permission_required
-    def get(self, pipeline: Pipeline):
+    @rbac_permission_required(RBACResourceScope.DATASET, RBACPermission.DATASET_IMPORT_EXPORT_DSL)
+    def get(self, pipeline: Pipeline) -> JsonResponseWithStatus:
         # Add include_secret params
         query = IncludeSecretQuery.model_validate(request.args.to_dict())
 
@@ -156,4 +189,4 @@ class RagPipelineExportApi(Resource):
                 pipeline=pipeline, include_secret=query.include_secret == "true"
             )
 
-        return {"data": result}, 200
+        return dump_response(SimpleDataResponse, {"data": result}), 200

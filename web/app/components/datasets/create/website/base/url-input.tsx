@@ -9,10 +9,10 @@ import Input from './text-input'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   isRunning: boolean
   onRun: (url: string) => void
-}
+}>
 
 const UrlInput: FC<Props> = ({
   isRunning,

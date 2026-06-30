@@ -1,9 +1,9 @@
-import type { KyInstance } from 'ky'
-import type { HostsBundle } from '../../../auth/hosts.js'
-import type { IOStreams } from '../../../sys/io/streams'
-import { WorkspacesClient } from '../../../api/workspaces.js'
-import { runWithSpinner } from '../../../sys/io/spinner.js'
-import { nullStreams } from '../../../sys/io/streams'
+import type { ActiveContext } from '@/auth/hosts'
+import type { HttpClient } from '@/http/types'
+import type { IOStreams } from '@/sys/io/streams'
+import { WorkspacesClient } from '@/api/workspaces'
+import { runWithSpinner } from '@/sys/io/spinner'
+import { nullStreams } from '@/sys/io/streams'
 import { WorkspaceListOutput, WorkspaceRow } from './handlers.js'
 
 export const EMPTY_WORKSPACES_MESSAGE
@@ -14,10 +14,10 @@ export type GetWorkspaceOptions = {
 }
 
 export type GetWorkspaceDeps = {
-  readonly bundle: HostsBundle
-  readonly http: KyInstance
+  readonly active: ActiveContext
+  readonly http: HttpClient
   readonly io?: IOStreams
-  readonly workspacesFactory?: (http: KyInstance) => WorkspacesClient
+  readonly workspacesFactory?: (http: HttpClient) => WorkspacesClient
 }
 
 export type GetWorkspaceResult
@@ -25,7 +25,7 @@ export type GetWorkspaceResult
     | { readonly kind: 'output', readonly data: WorkspaceListOutput }
 
 export async function runGetWorkspace(opts: GetWorkspaceOptions, deps: GetWorkspaceDeps): Promise<GetWorkspaceResult> {
-  const wsFactory = deps.workspacesFactory ?? ((h: KyInstance) => new WorkspacesClient(h))
+  const wsFactory = deps.workspacesFactory ?? ((h: HttpClient) => new WorkspacesClient(h))
   const io = deps.io ?? nullStreams()
   const env = await runWithSpinner(
     { io, label: 'Fetching workspaces' },
@@ -33,7 +33,7 @@ export async function runGetWorkspace(opts: GetWorkspaceOptions, deps: GetWorksp
   )
   if (env.workspaces.length === 0)
     return { kind: 'empty', message: EMPTY_WORKSPACES_MESSAGE }
-  const currentId = deps.bundle.workspace?.id ?? ''
+  const currentId = deps.active.ctx.workspace?.id ?? ''
   return {
     kind: 'output',
     data: new WorkspaceListOutput(env.workspaces.map(w => new WorkspaceRow(
