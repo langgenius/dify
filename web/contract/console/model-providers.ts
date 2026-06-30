@@ -31,3 +31,8 @@ export const changePreferredProviderTypeContract = base
     }
   }>())
   .output(type<CommonResponse>())
+
+export const modelProvidersRouterContract = {
+  models: modelProvidersModelsContract,
+  changePreferredProviderType: changePreferredProviderTypeContract,
+}
