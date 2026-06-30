@@ -308,7 +308,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     """
 
     TYPE: Literal[PauseReasonType.HITL_REQUIRED] = PauseReasonType.HITL_REQUIRED
-    session_id: str
+    form_id: str
     node_id: str
     node_title: str
     form_content: str
@@ -323,7 +323,7 @@ class HumanInputRequiredPauseReasonPayload(BaseModel):
     @classmethod
     def from_response_data(cls, data: HumanInputRequiredResponse.Data) -> "HumanInputRequiredPauseReasonPayload":
         return cls(
-            session_id=data.form_id,
+            form_id=data.form_id,
             node_id=data.node_id,
             node_title=data.node_title,
             form_content=data.form_content,

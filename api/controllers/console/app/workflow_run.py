@@ -496,7 +496,7 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
                         node_title=reason.node_title,
                         pause_type=HumanInputPauseTypeResponse(
                             type="human_input",
-                            form_id=reason.session_id,
+                            form_id=resolved_form_id_by_session_id[reason.session_id],
                             backstage_input_url=_build_backstage_input_url(
                                 form_tokens_by_form_id.get(resolved_form_id_by_session_id[reason.session_id])
                             ),

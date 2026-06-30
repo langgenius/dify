@@ -389,15 +389,13 @@ class WorkflowResponseConverter:
         # otherwise clients see schema drift after resume.
         pause_reasons = enrich_human_input_pause_reasons(
             pause_reasons,
-            dispositions_by_form_id={
-                session_id: dispositions_by_form_id.get(form_id)
-                for session_id, form_id in form_ids_by_session_id.items()
-            },
+            dispositions_by_form_id=dispositions_by_form_id,
             expiration_times_by_form_id={
-                session_id: int(expiration_times_by_form_id[form_id].timestamp())
-                for session_id, form_id in form_ids_by_session_id.items()
+                form_id: int(expiration_times_by_form_id[form_id].timestamp())
+                for form_id in human_input_form_ids
                 if form_id in expiration_times_by_form_id
             },
+            form_ids_by_session_id=form_ids_by_session_id,
         )
 
         responses: list[StreamResponse] = []
@@ -421,7 +419,7 @@ class WorkflowResponseConverter:
                     task_id=task_id,
                     workflow_run_id=run_id,
                     data=HumanInputRequiredResponse.Data(
-                        form_id=reason.session_id,
+                        form_id=resolved_form_id,
                         node_id=reason.node_id,
                         node_title=hydrated_form.node_title or reason.node_title,
                         form_content=hydrated_form.form_content,

@@ -422,7 +422,7 @@ def _build_human_input_required_events(
             task_id=task_id,
             workflow_run_id=workflow_run.id,
             data=HumanInputRequiredResponse.Data(
-                form_id=session_id,
+                form_id=form_id,
                 node_id=reason.node_id,
                 node_title=hydrated_form.node_title or reason.node_title,
                 form_content=hydrated_form.form_content,
@@ -542,15 +542,9 @@ def _build_pause_event(
         # otherwise clients see schema drift after resume.
         reasons = enrich_human_input_pause_reasons(
             reasons,
-            dispositions_by_form_id={
-                session_id: dispositions_by_form_id.get(form_id)
-                for session_id, form_id in form_ids_by_session_id.items()
-            },
-            expiration_times_by_form_id={
-                session_id: expiration_times_by_form_id[form_id]
-                for session_id, form_id in form_ids_by_session_id.items()
-                if form_id in expiration_times_by_form_id
-            },
+            dispositions_by_form_id=dispositions_by_form_id,
+            expiration_times_by_form_id=expiration_times_by_form_id,
+            form_ids_by_session_id=form_ids_by_session_id,
         )
 
     response = WorkflowPauseStreamResponse(
