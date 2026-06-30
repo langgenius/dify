@@ -227,7 +227,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
 
         # Assert
         assert result is True
@@ -247,7 +247,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=db_session_with_containers)
 
         # Assert
         assert result is False
@@ -320,7 +320,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, workflow.id)
+        result = workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
 
         # Assert
         assert result is not None
@@ -349,7 +349,7 @@ class TestWorkflowService:
         from services.errors.app import IsDraftWorkflowError
 
         with pytest.raises(IsDraftWorkflowError):
-            workflow_service.get_published_workflow_by_id(app, workflow.id)
+            workflow_service.get_published_workflow_by_id(app, workflow.id, session=db_session_with_containers)
 
     def test_get_published_workflow_by_id_not_found(self, db_session_with_containers: Session):
         """
@@ -366,7 +366,7 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, non_existent_workflow_id)
+        result = workflow_service.get_published_workflow_by_id(app, non_existent_workflow_id, session=db_session_with_containers)
 
         # Assert
         assert result is None

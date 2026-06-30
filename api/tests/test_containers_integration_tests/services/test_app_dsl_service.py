@@ -841,7 +841,7 @@ class TestAppDslService:
 
     # ── Export ─────────────────────────────────────────────────────────
 
-    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch):
+    def test_export_dsl_delegates_by_mode(self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
         workflow_calls: list[bool] = []
         model_calls: list[bool] = []
         monkeypatch.setattr(
@@ -1042,7 +1042,7 @@ class TestAppDslService:
 
     # ── Workflow Export Data ───────────────────────────────────────────
 
-    def test_append_workflow_export_data_filters_and_overrides(self, monkeypatch: pytest.MonkeyPatch):
+    def test_append_workflow_export_data_filters_and_overrides(self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
         workflow_dict = {
             "graph": {
                 "nodes": [

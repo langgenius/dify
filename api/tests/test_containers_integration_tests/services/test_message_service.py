@@ -93,15 +93,13 @@ class TestMessageService:
         # Create account and tenant first
         from services.account_service import AccountService, TenantService
 
-        account = (
-            AccountService.create_account(
+        account =             AccountService.create_account(
                 email=fake.email(),
                 name=fake.name(),
                 interface_language="en-US",
                 password=generate_valid_password(fake),
                 session=db_session_with_containers,
-            ),
-        )
+            )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
 
