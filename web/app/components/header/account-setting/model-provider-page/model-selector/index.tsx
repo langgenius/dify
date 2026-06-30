@@ -33,6 +33,7 @@ type ModelSelectorProps = {
   showDeprecatedWarnIcon?: boolean
   hideProviderSettingsFooter?: boolean
   onConfigureEmptyState?: () => void
+  onOpenMarketplace?: () => void
   providerSettingsSource?: 'agent'
   showModelMeta?: boolean
 }
@@ -49,6 +50,7 @@ function ModelSelector({
   showDeprecatedWarnIcon = true,
   hideProviderSettingsFooter,
   onConfigureEmptyState,
+  onOpenMarketplace,
   providerSettingsSource,
   showModelMeta,
 }: ModelSelectorProps) {
@@ -168,6 +170,7 @@ function ModelSelector({
           hideProviderSettingsFooter={hideProviderSettingsFooter}
           providerSettingsSource={providerSettingsSource}
           onConfigureEmptyState={onConfigureEmptyState ? handleConfigureEmptyState : undefined}
+          onOpenMarketplace={onOpenMarketplace}
           onInputValueChange={setInputValue}
           onHide={handleHide}
         />

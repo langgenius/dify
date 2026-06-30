@@ -5,6 +5,7 @@ import type { IntegrationSection } from './routes'
 import { ApiBasedExtensionPage } from '@/app/components/header/account-setting/api-based-extension-page'
 import DataSourcePage from '@/app/components/header/account-setting/data-source-page-new'
 import ModelProviderPage from '@/app/components/header/account-setting/model-provider-page'
+import InstallFromMarketplaceQuery from '@/app/components/plugins/install-plugin/install-from-marketplace-query'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { toolsContentFrameClassNames, toolsContentInsetClassNames } from '@/app/components/tools/content-inset'
 import { IntegrationPageHeader } from './page-header'
@@ -84,17 +85,28 @@ const IntegrationSectionRenderer = ({
       toolbarAction={pluginCategoryToolbarAction}
     />
   )
+  const renderMarketplaceInstallQuery = (category: PluginCategoryEnum) => (
+    <InstallFromMarketplaceQuery
+      canInstallPlugin={canInstallPlugin}
+      isPermissionLoading={isInstallPermissionLoading}
+      installContextCategory={category}
+    />
+  )
 
   switch (section) {
     case 'provider':
       return (
-        <ModelProviderPage
-          hideSystemModelSelectorProviderSettingsFooter
-          layout={renderScrollableLayout}
-          searchText={providerSearchText}
-          stickyToolbar
-          onSearchTextChange={onProviderSearchTextChange}
-        />
+        <>
+          <ModelProviderPage
+            hideSystemModelSelectorProviderSettingsFooter
+            layout={renderScrollableLayout}
+            onOpenMarketplace={onSwitchToMarketplace}
+            searchText={providerSearchText}
+            stickyToolbar
+            onSearchTextChange={onProviderSearchTextChange}
+          />
+          {renderMarketplaceInstallQuery(PluginCategoryEnum.model)}
+        </>
       )
     case 'builtin':
       return renderPluginCategoryPage(PluginCategoryEnum.tool)
@@ -106,7 +118,10 @@ const IntegrationSectionRenderer = ({
       return <ToolProviderList category="workflow" contentInset="compact" layout={renderDirectLayout} />
     case 'data-source':
       return (
-        <DataSourcePage stickyToolbar layout={renderScrollableLayout} />
+        <>
+          <DataSourcePage stickyToolbar layout={renderScrollableLayout} onOpenMarketplace={onSwitchToMarketplace} />
+          {renderMarketplaceInstallQuery(PluginCategoryEnum.datasource)}
+        </>
       )
     case 'custom-endpoint':
       return <ApiBasedExtensionPage layout={renderScrollableLayout} />
