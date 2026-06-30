@@ -517,19 +517,14 @@ def test_restore_published_snippet_workflow_to_draft_returns_400_for_invalid_gra
 def test_update_published_snippet_workflow_returns_updated_workflow(
     app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    workflow = SimpleNamespace(
-        id="workflow-1",
-        graph_dict={"nodes": [], "edges": []},
-        features_dict={},
-        unique_hash="hash-1",
+    workflow = _workflow(
+        graph=json.dumps({"nodes": [], "edges": []}),
+        features=json.dumps({}),
         version="2024-01-01 00:00:00",
         marked_name="v1",
         marked_comment="first version",
-        created_by_account=None,
         created_at=datetime(2024, 1, 1),
-        updated_by_account=None,
         updated_at=datetime(2024, 1, 1),
-        tool_published=False,
         environment_variables=[],
         conversation_variables=[],
         rag_pipeline_variables=[],
@@ -537,8 +532,15 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
     user = _account("account-1")
     input_fields = [{"variable": "query", "type": "text"}]
     snippet = _snippet(input_fields=json.dumps(input_fields))
-    session = SimpleNamespace()
+    session = object()
     update_workflow = Mock(return_value=workflow)
+    monkeypatch.setattr(Workflow, "created_by_account", property(lambda _workflow: None))
+    monkeypatch.setattr(Workflow, "updated_by_account", property(lambda _workflow: None))
+    monkeypatch.setattr(Workflow, "tool_published", property(lambda _workflow: False))
+
+    class SnippetServiceStub:
+        def update_workflow(self, **kwargs: object) -> Workflow:
+            return update_workflow(**kwargs)
 
     class TransactionContext:
         def __enter__(self):
@@ -555,7 +557,7 @@ def test_update_published_snippet_workflow_returns_updated_workflow(
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
-        lambda: SimpleNamespace(update_workflow=update_workflow),
+        SnippetServiceStub,
     )
 
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
@@ -594,10 +596,15 @@ def test_update_published_snippet_workflow_returns_400_when_no_fields(app: Flask
 def test_update_published_snippet_workflow_raises_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     user = _account("account-1")
     snippet = _snippet()
+    session = object()
+
+    class SnippetServiceStub:
+        def update_workflow(self, **kwargs: object) -> None:
+            return None
 
     class TransactionContext:
         def __enter__(self):
-            return SimpleNamespace()
+            return session
 
         def __exit__(self, exc_type, exc, tb):
             return False
@@ -610,7 +617,7 @@ def test_update_published_snippet_workflow_raises_not_found(app: Flask, monkeypa
     monkeypatch.setattr(
         snippet_workflow_module,
         "SnippetService",
-        lambda: SimpleNamespace(update_workflow=Mock(return_value=None)),
+        SnippetServiceStub,
     )
 
     api = snippet_workflow_module.SnippetWorkflowByIdApi()
