@@ -194,7 +194,7 @@ def _pagination_options() -> svc.ListOption:
 
 
 def _legacy_workspace_roles(
-    options: svc.ListOption | None = None, *, include_owner: int = 0
+    options: svc.ListOption | None = None, *, include_owner: int = 0, billing_enabled: bool = True
 ) -> svc.Paginated[svc.RBACRole]:
     """Return the built-in legacy workspace roles in the RBAC list shape.
 
@@ -205,6 +205,14 @@ def _legacy_workspace_roles(
     for role_name in ("owner", "admin", "editor", "normal", "dataset_operator"):
         if not dify_config.DATASET_OPERATOR_ENABLED and role_name == "dataset_operator":
             continue
+
+        permission_keys = _LEGACY_ROLE_PERMISSION_KEYS[role_name]
+        valid_permission_keys = []
+        for permission_key in permission_keys:
+            if not billing_enabled and "billing" in permission_key:
+                continue
+            valid_permission_keys.append(permission_key)
+
         legacy_roles.append(
             svc.RBACRole(
                 id=role_name,
@@ -214,7 +222,7 @@ def _legacy_workspace_roles(
                 name=role_name,
                 description="",
                 is_builtin=True,
-                permission_keys=list(dict.fromkeys(_LEGACY_ROLE_PERMISSION_KEYS[role_name])),
+                permission_keys=valid_permission_keys,
                 role_tag="owner" if role_name == "owner" else "",
             )
         )
@@ -305,10 +313,14 @@ class RBACRolesApi(Resource):
         query = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
         options = query.to_inner_options()
         if not dify_config.RBAC_ENABLED:
-            result = _legacy_workspace_roles(options, include_owner=query.include_owner)
+            result = _legacy_workspace_roles(options, include_owner=query.include_owner,
+                                             billing_enabled=dify_config.BILLING_ENABLED)
         else:
             result = svc.RBACService.Roles.list(
-                tenant_id, account_id, include_owner=query.include_owner, options=options
+                tenant_id, account_id,
+                include_owner=query.include_owner,
+                biiling_enabled=dify_config.BILLING_ENABLED,
+                options=options
             )
 
         return _dump(result)
@@ -334,7 +346,8 @@ class RBACRoleItemApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.RBACRole.__name__])
     def get(self, role_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.Roles.get(tenant_id, account_id, str(role_id)))
+        return _dump(svc.RBACService.Roles.get(
+            tenant_id, account_id, role_id, billing_enabled=dify_config.BILLING_ENABLED))
 
     @login_required
     @rbac_permission_required(

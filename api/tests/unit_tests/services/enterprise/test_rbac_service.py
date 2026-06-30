@@ -132,7 +132,7 @@ class TestRoles:
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/roles/item"
-        assert call.params == {"id": "role-1"}
+        assert call.params == {"billing_enabled": True, "id": "role-1"}
 
     def test_members_forwards_role_id_and_pagination(self, mock_send: MagicMock):
         mock_send.return_value = {
