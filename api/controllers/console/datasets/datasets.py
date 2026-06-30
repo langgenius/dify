@@ -335,7 +335,6 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
     # Define vector database types that only support semantic search
     semantic_only_types = {
         VectorType.RELYT,
-        VectorType.TIDB_VECTOR,
         VectorType.CHROMA,
         VectorType.PGVECTO_RS,
         VectorType.VIKINGDB,
@@ -382,6 +381,9 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
 
     if vector_type == VectorType.MILVUS:
         return semantic_methods if is_mock else full_methods
+
+    if vector_type == VectorType.TIDB_VECTOR:
+        return full_methods if dify_config.TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH else semantic_methods
 
     if vector_type in semantic_only_types:
         return semantic_methods

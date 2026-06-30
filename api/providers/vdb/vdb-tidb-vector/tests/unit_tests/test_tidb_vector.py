@@ -25,6 +25,7 @@ def _config(tidb_module):
         password="secret",
         database="dify",
         program_name="dify-app",
+        enable_fulltext_search=False,
     )
 
 
@@ -151,13 +152,47 @@ def test_create_collection_executes_create_sql_and_sets_cache(tidb_module, monke
     vector._collection_name = "collection_1"
     vector._engine = MagicMock()
     vector._distance_func = "l2"
+    vector._client_config = _config(tidb_module)
 
     vector._create_collection(3)
 
     sql = str(session.execute.call_args.args[0])
     assert "VECTOR<FLOAT>(3)" in sql
     assert "VEC_L2_DISTANCE" in sql
+    assert "FULLTEXT INDEX" not in sql
     tidb_module.redis_client.set.assert_called_once()
+
+
+def test_create_collection_adds_fulltext_index_when_enabled(tidb_module, monkeypatch: pytest.MonkeyPatch):
+    lock = MagicMock()
+    lock.__enter__.return_value = None
+    lock.__exit__.return_value = None
+    monkeypatch.setattr(tidb_module.redis_client, "lock", MagicMock(return_value=lock))
+    monkeypatch.setattr(tidb_module.redis_client, "get", MagicMock(return_value=None))
+    monkeypatch.setattr(tidb_module.redis_client, "set", MagicMock())
+
+    session = MagicMock()
+
+    class _BeginCtx:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    mock_sm = MagicMock(begin=MagicMock(return_value=_BeginCtx()))
+    monkeypatch.setattr(tidb_module, "sessionmaker", lambda **kwargs: mock_sm)
+
+    vector = tidb_module.TiDBVector.__new__(tidb_module.TiDBVector)
+    vector._collection_name = "collection_1"
+    vector._engine = MagicMock()
+    vector._distance_func = "cosine"
+    vector._client_config = _config(tidb_module).model_copy(update={"enable_fulltext_search": True})
+
+    vector._create_collection(3)
+
+    sql = str(session.execute.call_args.args[0])
+    assert "FULLTEXT INDEX idx_text (text) WITH PARSER MULTILINGUAL" in sql
 
 
 def test_add_texts_batches_inserts_and_returns_ids(tidb_module, monkeypatch: pytest.MonkeyPatch):
@@ -215,10 +250,38 @@ def tidb_vector_with_session(tidb_module, monkeypatch: pytest.MonkeyPatch):
     return vector, session, tidb_module
 
 
-# 1. search_by_full_text returns empty
-def test_search_by_full_text_returns_empty(tidb_vector_with_session):
-    vector, _, _ = tidb_vector_with_session
+# 1. search_by_full_text returns empty when disabled
+def test_search_by_full_text_returns_empty_when_disabled(tidb_vector_with_session):
+    vector, session, tidb_module = tidb_vector_with_session
+    vector._client_config = _config(tidb_module)
     assert vector.search_by_full_text("query") == []
+    session.execute.assert_not_called()
+
+
+def test_search_by_full_text_queries_tidb_fts_and_scores(tidb_vector_with_session):
+    vector, session, tidb_module = tidb_vector_with_session
+    vector._client_config = _config(tidb_module).model_copy(update={"enable_fulltext_search": True})
+    session.execute.return_value = [
+        ('{"doc_id":"id-1","document_id":"d-1"}', "text-1", 0.8),
+        ('{"doc_id":"id-2","document_id":"d-2"}', "text-2", 0.6),
+    ]
+
+    docs = vector.search_by_full_text(
+        "search query",
+        top_k=2,
+        score_threshold=0.5,
+        document_ids_filter=["d-1", "d-2"],
+    )
+
+    assert len(docs) == 2
+    assert docs[0].page_content == "text-1"
+    assert docs[0].metadata["score"] == pytest.approx(0.8)
+    assert docs[1].metadata["score"] == pytest.approx(0.6)
+    sql = str(session.execute.call_args.args[0])
+    params = session.execute.call_args.kwargs["params"]
+    assert "FTS_MATCH_WORD(text, :query)" in sql
+    assert "meta->>'$.document_id' in ('d-1', 'd-2')" in sql
+    assert params == {"query": "search query", "score_threshold": 0.5, "top_k": 2}
 
 
 # 2. text_exists returns True when ids found
@@ -428,6 +491,7 @@ def test_tidb_factory_uses_existing_or_generated_collection(tidb_module, monkeyp
     monkeypatch.setattr(tidb_module.dify_config, "TIDB_VECTOR_USER", "root")
     monkeypatch.setattr(tidb_module.dify_config, "TIDB_VECTOR_PASSWORD", "secret")
     monkeypatch.setattr(tidb_module.dify_config, "TIDB_VECTOR_DATABASE", "dify")
+    monkeypatch.setattr(tidb_module.dify_config, "TIDB_VECTOR_ENABLE_FULLTEXT_SEARCH", True)
     monkeypatch.setattr(tidb_module.dify_config, "APPLICATION_NAME", "dify-app")
 
     with patch.object(tidb_module, "TiDBVector", return_value="vector") as vector_cls:
@@ -438,4 +502,5 @@ def test_tidb_factory_uses_existing_or_generated_collection(tidb_module, monkeyp
     assert result_2 == "vector"
     assert vector_cls.call_args_list[0].kwargs["collection_name"] == "existing_collection"
     assert vector_cls.call_args_list[1].kwargs["collection_name"] == "auto_collection"
+    assert vector_cls.call_args_list[0].kwargs["config"].enable_fulltext_search is True
     assert dataset_without_index.index_struct is not None
