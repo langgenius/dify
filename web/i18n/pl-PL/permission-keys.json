@@ -50,5 +50,5 @@
   "snippets.management": "Zarządzaj fragmentami kodu",
   "tool.manage": "Zarządzaj narzędziami",
   "workspace.member.manage": "Zarządzaj członkami",
-  "workspace.role.manage": "Zarządzaj uprawnieniami ról i regułami dostępu do zasobów"
+  "workspace.role.manage": "Zarządzaj rolami i zestawami uprawnień"
 }

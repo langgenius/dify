@@ -729,13 +729,15 @@ class TestDatasetApiPatch:
         assert response["name"] == "Updated Dataset"
         assert response["partial_member_list"] == ["user-1"]
         mock_dataset_svc.update_dataset.assert_called_once()
-        _, update_data, _ = mock_dataset_svc.update_dataset.call_args.args
+        _, update_data, _, session = mock_dataset_svc.update_dataset.call_args.args
+        assert isinstance(session, (Session, scoped_session))
         assert update_data["name"] == "Updated Dataset"
         assert update_data["permission"] == "partial_members"
         mock_perm_svc.update_partial_member_list.assert_called_once_with(
             mock_dataset.tenant_id,
             mock_dataset.id,
             [{"user_id": "user-1", "role": "editor"}],
+            SessionMatcher(),
         )
 
 
