@@ -1,7 +1,5 @@
 'use client'
 
-import type { LegacyPluginsSearchParams } from '../plugin-routes'
-import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -15,23 +13,20 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
-import { cloneElement, isValidElement, useEffect, useMemo, useState } from 'react'
+import { cloneElement, isValidElement, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import TabSlider from '@/app/components/base/tab-slider'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
-import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { usePluginInstallation } from '@/hooks/use-query-params'
 import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
-import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { sleep } from '@/utils'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
 import { PluginInstallPermissionProvider } from '../install-plugin/components/plugin-install-permission-provider'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
-import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
+import InstallFromMarketplaceQuery from '../install-plugin/install-from-marketplace-query'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
 import { getInstallRedirectPathByPluginCategory } from '../plugin-routes'
 import { PluginCategoryEnum } from '../types'
@@ -53,8 +48,8 @@ const isPluginPageTab = (value: string): value is PluginPageTab => {
   return pluginPageTabSet.has(value)
 }
 
-const getCurrentInstallSearchParams = (packageId: string): LegacyPluginsSearchParams => {
-  const searchParams: LegacyPluginsSearchParams = {}
+const getCurrentInstallSearchParams = (packageId: string) => {
+  const searchParams: Record<string, string | string[]> = {}
 
   new URLSearchParams(window.location.search).forEach((value, key) => {
     const existing = searchParams[key]
@@ -93,24 +88,6 @@ const PluginPage = ({
   const docLink = useDocLink()
   const { replace } = useRouter()
 
-  // Use nuqs hook for installation state
-  const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
-
-  const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
-  const [dependencies, setDependencies] = useState<Dependency[]>([])
-
-  const [isShowInstallFromMarketplace, {
-    setTrue: showInstallFromMarketplace,
-    setFalse: doHideInstallFromMarketplace,
-  }] = useBoolean(false)
-
-  const hideInstallFromMarketplace = () => {
-    doHideInstallFromMarketplace()
-    setInstallState(null)
-  }
-
-  const [manifest, setManifest] = useState<PluginDeclaration | PluginManifestInMarket | null>(null)
-
   const {
     referenceSetting,
     canInstallPlugin,
@@ -125,47 +102,15 @@ const PluginPage = ({
     setReferenceSettings,
   } = useReferenceSetting(PluginCategoryEnum.tool)
 
-  useEffect(() => {
-    (async () => {
-      setUniqueIdentifier(null)
-      await sleep(100)
-      if (isPermissionLoading)
-        return
+  const handlePackageCategoryResolved = useCallback((category: string | undefined, packageId: string) => {
+    const installRedirectPath = getInstallRedirectPathByPluginCategory(category, getCurrentInstallSearchParams(packageId))
+    if (!installRedirectPath)
+      return false
 
-      if (!canInstallPlugin) {
-        setInstallState(null)
-        return
-      }
-      if (packageId) {
-        const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
-        const { plugin, version } = data
-        const installRedirectPath = getInstallRedirectPathByPluginCategory(plugin.category, getCurrentInstallSearchParams(packageId))
-        if (installRedirectPath) {
-          replace(installRedirectPath)
-          return
-        }
+    replace(installRedirectPath)
+    return true
+  }, [replace])
 
-        setManifest({
-          ...plugin,
-          version: version.version,
-          icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
-        })
-        setUniqueIdentifier(packageId)
-        showInstallFromMarketplace()
-        return
-      }
-      if (bundleInfo) {
-        try {
-          const { data } = await fetchBundleInfoFromMarketPlace(bundleInfo)
-          setDependencies(data.version.dependencies)
-          showInstallFromMarketplace()
-        }
-        catch (error) {
-          console.error('Failed to load bundle info:', error)
-        }
-      }
-    })()
-  }, [packageId, bundleInfo, canInstallPlugin, isPermissionLoading, replace, setInstallState, showInstallFromMarketplace])
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
@@ -384,18 +329,11 @@ const PluginPage = ({
         />
       )}
 
-      {
-        isShowInstallFromMarketplace && uniqueIdentifier && (
-          <InstallFromMarketplace
-            manifest={manifest! as PluginManifestInMarket}
-            uniqueIdentifier={uniqueIdentifier}
-            isBundle={!!bundleInfo}
-            dependencies={dependencies}
-            onClose={hideInstallFromMarketplace}
-            onSuccess={hideInstallFromMarketplace}
-          />
-        )
-      }
+      <InstallFromMarketplaceQuery
+        canInstallPlugin={canInstallPlugin}
+        isPermissionLoading={isPermissionLoading}
+        onPackageCategoryResolved={handlePackageCategoryResolved}
+      />
     </div>
   )
 }

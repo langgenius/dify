@@ -1,21 +1,18 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { PluginDeclaration, PluginManifestInMarket } from '@/app/components/plugins/types'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
-import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import InstallFromMarketplaceQuery from '@/app/components/plugins/install-plugin/install-from-marketplace-query'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import { PluginPageContextProvider } from '@/app/components/plugins/plugin-page/context-provider'
 import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
 import { useUploader } from '@/app/components/plugins/plugin-page/use-uploader'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
+import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { usePluginInstallation } from '@/hooks/use-query-params'
-import { fetchManifestFromMarketPlace } from '@/service/plugins'
 
 type PluginCategoryPageProps = {
   canInstall?: boolean
@@ -41,11 +38,6 @@ const PluginCategoryPageContent = ({
   toolbarAction,
 }: PluginCategoryPageProps) => {
   const [currentFile, setCurrentFile] = useState<File | null>(null)
-  const [marketplaceInstall, setMarketplaceInstall] = useState<{
-    manifest: PluginDeclaration | PluginManifestInMarket
-    uniqueIdentifier: string
-  } | null>(null)
-  const [{ packageId }, setInstallState] = usePluginInstallation()
   const containerRef = usePluginPageContext(v => v.containerRef)
   const { data: pluginInstallationPermission } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -53,55 +45,6 @@ const PluginCategoryPageContent = ({
   })
   const supportsDropInstall = category === PluginCategoryEnum.tool || category === PluginCategoryEnum.trigger || category === PluginCategoryEnum.agent || category === PluginCategoryEnum.extension
   const canDropLocalPackage = canInstall && supportsDropInstall && !pluginInstallationPermission.restrict_to_marketplace_only
-
-  useEffect(() => {
-    if (!packageId)
-      return
-
-    if (!canInstall) {
-      if (!isInstallPermissionLoading)
-        setInstallState(null)
-      return
-    }
-
-    let ignore = false
-
-    const loadMarketplaceManifest = async () => {
-      try {
-        const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
-        if (ignore)
-          return
-
-        const { plugin, version } = data
-        setMarketplaceInstall({
-          uniqueIdentifier: packageId,
-          manifest: {
-            ...plugin,
-            version: version.version,
-            icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
-          },
-        })
-      }
-      catch (error) {
-        if (!ignore)
-          console.error('Failed to load marketplace plugin manifest:', error)
-      }
-    }
-
-    loadMarketplaceManifest()
-
-    return () => {
-      ignore = true
-    }
-  }, [canInstall, isInstallPermissionLoading, packageId, setInstallState])
-
-  const hideInstallFromMarketplace = () => {
-    setMarketplaceInstall(null)
-    setInstallState(null)
-  }
-  const activeMarketplaceInstall = canInstall && marketplaceInstall?.uniqueIdentifier === packageId
-    ? marketplaceInstall
-    : null
 
   const handleFileChange = (file: File | null) => {
     if (!canInstall) {
@@ -153,15 +96,11 @@ const PluginCategoryPageContent = ({
           onSuccess={noop}
         />
       )}
-      {activeMarketplaceInstall && (
-        <InstallFromMarketplace
-          manifest={activeMarketplaceInstall.manifest as PluginManifestInMarket}
-          uniqueIdentifier={activeMarketplaceInstall.uniqueIdentifier}
-          installContextCategory={category}
-          onClose={hideInstallFromMarketplace}
-          onSuccess={hideInstallFromMarketplace}
-        />
-      )}
+      <InstallFromMarketplaceQuery
+        canInstallPlugin={canInstall}
+        isPermissionLoading={isInstallPermissionLoading}
+        installContextCategory={category}
+      />
       <input
         ref={fileUploader}
         className="hidden"

@@ -5,6 +5,7 @@ import PluginsPanel from '@/app/components/plugins/plugin-page/plugins-panel'
 import {
   getFirstPackageIdFromSearchParams,
   getInstallRedirectPathByPluginCategory,
+  getInstallRedirectPathFromSearchParams,
   getLegacyPluginRedirectPath,
   shouldResolveInstallCategoryRedirect,
 } from '@/app/components/plugins/plugin-routes'
@@ -45,6 +46,10 @@ const PluginList = async ({
   searchParams,
 }: PluginListProps) => {
   const resolvedSearchParams = await searchParams ?? {}
+  const installRedirectPathFromSearchParams = getInstallRedirectPathFromSearchParams(resolvedSearchParams)
+
+  if (installRedirectPathFromSearchParams)
+    redirect(installRedirectPathFromSearchParams)
 
   if (shouldResolveInstallCategoryRedirect(resolvedSearchParams)) {
     const packageId = getFirstPackageIdFromSearchParams(resolvedSearchParams)

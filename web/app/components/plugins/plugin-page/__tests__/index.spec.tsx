@@ -475,7 +475,7 @@ describe('PluginPage Component', () => {
           plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
           version: { version: '1.0.0' },
         },
-      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -511,10 +511,10 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'model' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'unknown' },
           version: { version: '1.0.0' },
         },
-      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -535,7 +535,7 @@ describe('PluginPage Component', () => {
           plugin: { org: 'junjiem', name: 'mcp_see_agent', category: 'agent-strategy' },
           version: { version: '0.2.4' },
         },
-      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -795,10 +795,10 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'model' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'unknown' },
           version: { version: '1.0.0' },
         },
-      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+      } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
       render(<PluginPageWithContext {...createDefaultProps()} />)
 
@@ -1075,10 +1075,10 @@ describe('PluginPage Integration', () => {
 
     vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
       data: {
-        plugin: { org: 'langgenius', name: 'test-plugin', category: 'model' },
+        plugin: { org: 'langgenius', name: 'test-plugin', category: 'unknown' },
         version: { version: '1.0.0' },
       },
-    } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+    } as unknown as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
 
     render(<PluginPageWithContext {...createDefaultProps()} />)
 

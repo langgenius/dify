@@ -1,4 +1,4 @@
-import { getFirstPackageIdFromSearchParams, getInstallRedirectPathByPluginCategory, getLegacyPluginRedirectPath, shouldResolveInstallCategoryRedirect } from '../plugin-routes'
+import { getFirstPackageIdFromSearchParams, getInstallRedirectPathByPluginCategory, getInstallRedirectPathFromSearchParams, getLegacyPluginRedirectPath, shouldResolveInstallCategoryRedirect } from '../plugin-routes'
 
 describe('plugin routes', () => {
   it.each([
@@ -14,7 +14,7 @@ describe('plugin routes', () => {
     [{ tab: 'agent-strategy' }, '/integrations/agent-strategy'],
     [{ tab: 'extension' }, '/integrations/extension'],
     [
-      { 'tab': 'trigger', 'package-ids': '["langgenius/telegram_trigger"]' },
+      { 'tab': 'trigger', 'package-ids': '["langgenius/telegram_trigger"]', 'source': 'https://marketplace.dify.ai' },
       '/integrations/trigger?package-ids=%5B%22langgenius%2Ftelegram_trigger%22%5D',
     ],
   ])('redirects legacy plugin category URLs for search params %j', (searchParams, expected) => {
@@ -46,22 +46,56 @@ describe('plugin routes', () => {
 
   it.each([
     [
+      'model',
+      { 'package-ids': '["langgenius/openai"]' },
+      '/integrations/model-provider?package-ids=%5B%22langgenius%2Fopenai%22%5D',
+    ],
+    [
       'agent-strategy',
       { 'package-ids': '["junjiem/mcp_see_agent"]' },
       '/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%22%5D',
     ],
     [
       'trigger',
-      { 'tab': 'plugins', 'package-ids': '["langgenius/telegram_trigger"]' },
+      { 'tab': 'plugins', 'package-ids': '["langgenius/telegram_trigger"]', 'source': 'https://marketplace.dify.ai' },
       '/integrations/trigger?package-ids=%5B%22langgenius%2Ftelegram_trigger%22%5D',
     ],
     [
-      'model',
-      { 'package-ids': '["langgenius/openai"]' },
-      undefined,
+      'datasource',
+      { 'package-ids': '["langgenius/notion_datasource"]' },
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fnotion_datasource%22%5D',
     ],
   ])('builds install redirect paths from marketplace plugin category %s', (category, searchParams, expected) => {
     expect(getInstallRedirectPathByPluginCategory(category, searchParams)).toBe(expected)
+  })
+
+  it.each([
+    [
+      { 'category': 'agent-strategy', 'package-ids': '["junjiem/mcp_see_agent"]', 'source': 'https://marketplace.dify.ai' },
+      '/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%22%5D',
+    ],
+    [
+      { 'tab': 'trigger', 'package-ids': '["langgenius/telegram_trigger"]', 'source': 'https://marketplace.dify.ai' },
+      '/integrations/trigger?package-ids=%5B%22langgenius%2Ftelegram_trigger%22%5D',
+    ],
+    [
+      { 'category': 'model', 'package-ids': '["langgenius/openai"]', 'source': 'https://marketplace.dify.ai' },
+      '/integrations/model-provider?package-ids=%5B%22langgenius%2Fopenai%22%5D',
+    ],
+    [
+      { 'category': 'datasource', 'package-ids': '["langgenius/notion_datasource"]', 'source': 'https://marketplace.dify.ai' },
+      '/integrations/data-source?package-ids=%5B%22langgenius%2Fnotion_datasource%22%5D',
+    ],
+    [
+      { 'category': 'bundle', 'package-ids': '["langgenius/bundle"]' },
+      undefined,
+    ],
+    [
+      { category: 'agent-strategy' },
+      undefined,
+    ],
+  ])('builds install redirect paths directly from install search params %j', (searchParams, expected) => {
+    expect(getInstallRedirectPathFromSearchParams(searchParams)).toBe(expected)
   })
 
   it.each([

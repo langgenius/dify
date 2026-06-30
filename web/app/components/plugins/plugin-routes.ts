@@ -14,7 +14,9 @@ const integrationPluginPathByTab = new Map<string, string>([
 ])
 
 const integrationPluginPathByInstallCategory = new Map<string, string>([
+  ['model', '/integrations/model-provider'],
   ['tool', '/integrations/tools/built-in'],
+  ['datasource', '/integrations/data-source'],
   ['trigger', '/integrations/trigger'],
   ['agent-strategy', '/integrations/agent-strategy'],
   ['extension', '/integrations/extension'],
@@ -94,6 +96,20 @@ const buildRedirectPath = (
   return query ? `${path}?${query}` : path
 }
 
+const buildInstallRedirectPath = (
+  path: string,
+  searchParams: LegacyPluginsSearchParams,
+) => {
+  const installSearchParams: LegacyPluginsSearchParams = {}
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (installSearchParamKeys.has(key))
+      installSearchParams[key] = value
+  })
+
+  return buildRedirectPath(path, installSearchParams, new Set())
+}
+
 export const getInstallRedirectPathByPluginCategory = (
   category: string | undefined,
   searchParams: LegacyPluginsSearchParams,
@@ -105,7 +121,22 @@ export const getInstallRedirectPathByPluginCategory = (
   if (!path)
     return undefined
 
-  return buildRedirectPath(path, searchParams, new Set(['tab']))
+  return buildInstallRedirectPath(path, searchParams)
+}
+
+export const getInstallRedirectPathFromSearchParams = (
+  searchParams: LegacyPluginsSearchParams,
+) => {
+  if (!hasInstallSearchParams(searchParams))
+    return undefined
+
+  const category = getFirstSearchParamValue(searchParams.category)
+  const pathByCategory = getInstallRedirectPathByPluginCategory(category, searchParams)
+  if (pathByCategory)
+    return pathByCategory
+
+  const tab = getFirstSearchParamValue(searchParams.tab)
+  return getInstallRedirectPathByPluginCategory(tab, searchParams)
 }
 
 const buildMarketplaceRedirectPath = (
@@ -135,8 +166,11 @@ export const getLegacyPluginRedirectPath = (
     return '/integrations'
 
   const integrationPluginPath = getIntegrationPluginPathByTab(tab)
-  if (integrationPluginPath)
-    return buildRedirectPath(integrationPluginPath, searchParams, new Set(['tab']))
+  if (integrationPluginPath) {
+    return hasInstallSearchParams(searchParams)
+      ? buildInstallRedirectPath(integrationPluginPath, searchParams)
+      : buildRedirectPath(integrationPluginPath, searchParams, new Set(['tab']))
+  }
 
   if (marketplacePluginTabs.has(tab))
     return buildMarketplaceRedirectPath(searchParams, tab)
