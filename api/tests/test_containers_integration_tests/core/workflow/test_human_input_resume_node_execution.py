@@ -14,7 +14,7 @@ from core.repositories.human_input_repository import HumanInputFormEntity, Human
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.human_input import HumanInputFormStatus, HumanInputNodeData, UserActionConfig
-from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
+from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
@@ -58,7 +58,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     form_entity.submitted = True
     form_entity.selected_action_id = action_id
     form_entity.submitted_data = {}
-    form_entity.status = HumanInputFormStatus.WAITING
+    form_entity.status = HumanInputFormStatus.SUBMITTED
     form_entity.expiration_time = naive_utc_now() + timedelta(hours=1)
     repo.get_form.return_value = form_entity
     return repo
@@ -119,9 +119,10 @@ def _build_graph(
         data=human_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
-        form_repository=form_repository,
-        file_reference_factory=DifyFileReferenceFactory(params.run_context),
-        runtime=DifyHumanInputNodeRuntime(params.run_context),
+        hitl_callback=build_dify_human_input_hitl_callback(
+            node_data=human_data,
+            repository=form_repository,
+        ),
     )
 
     end_data = EndNodeData(
