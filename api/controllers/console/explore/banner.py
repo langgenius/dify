@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models
-from controllers.console import api, explore_ns
+from controllers.console import api
 from controllers.console.app.wraps import with_session
 from controllers.console.explore.wraps import explore_banner_enabled
 from fields.base import ResponseModel
