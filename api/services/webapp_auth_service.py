@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
-from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
@@ -156,7 +155,9 @@ class WebAppAuthService:
         return False
 
     @classmethod
-    def get_app_auth_type(cls, session: Session, app_code: str | None = None, access_mode: str | None = None) -> WebAppAuthType:
+    def get_app_auth_type(
+        cls, session: Session, app_code: str | None = None, access_mode: str | None = None
+    ) -> WebAppAuthType:
         """
         Get the authentication type for the app based on its access mode.
         """
