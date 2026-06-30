@@ -26,6 +26,7 @@ type AgentSkillDetailSection = {
 export type AgentSkillDetail = {
   description: string
   fileCount?: number
+  fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: (context: { file: AgentSkillFileNode, depth: number }) => boolean
   filePreview?: {
@@ -49,6 +50,7 @@ export type AgentSkillDetail = {
 const keepSkillFoldersClosed = () => false
 
 function AgentSkillFileList({
+  fileListTitle,
   files,
   folderOpenState,
   onFolderOpenChange,
@@ -56,6 +58,7 @@ function AgentSkillFileList({
   renderFolderSuffix,
   selectedFileId,
 }: {
+  fileListTitle?: string
   files: AgentSkillFileNode[]
   folderOpenState?: AgentSkillDetail['folderOpenState']
   onFolderOpenChange?: AgentSkillDetail['onFolderOpenChange']
@@ -86,7 +89,7 @@ function AgentSkillFileList({
       header={(
         <>
           <h3 id="agent-skill-detail-files-heading" className="px-4 pt-3.5 pb-3 system-xl-semibold text-text-primary">
-            {t('agentDetail.configure.skills.detail.files')}
+            {fileListTitle ?? t('agentDetail.configure.skills.detail.files')}
           </h3>
         </>
       )}
@@ -245,6 +248,7 @@ export function AgentSkillDetailDialog({
         </DialogTitle>
         <div className="min-h-0 w-full">
           <AgentSkillFileList
+            fileListTitle={detail.fileListTitle}
             files={detail.files}
             folderOpenState={detail.folderOpenState}
             onFolderOpenChange={detail.onFolderOpenChange}
