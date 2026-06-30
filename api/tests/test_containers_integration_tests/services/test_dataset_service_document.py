@@ -15,6 +15,7 @@ from models import Account
 from models.dataset import Dataset, Document
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus
 from models.model import UploadFile
+from services.dataset_ref_service import DatasetRef
 from services.dataset_service import DocumentService
 from services.errors.account import NoPermissionError
 
@@ -615,9 +616,10 @@ def test_delete_document_emits_signal_and_commits(db_session_with_containers: Se
 
 def test_delete_documents_ignores_empty_input(db_session_with_containers: Session):
     dataset = DocumentServiceIntegrationFactory.create_dataset(db_session_with_containers)
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
     with patch("services.dataset_service.batch_clean_document_task.delay") as delay:
-        DocumentService.delete_documents(dataset, [], session=db_session_with_containers)
+        DocumentService.delete_documents(dataset_ref, [], dataset.doc_form, session=db_session_with_containers)
 
     delay.assert_not_called()
 
@@ -649,9 +651,15 @@ def test_delete_documents_deletes_rows_and_dispatches_cleanup_task(db_session_wi
         position=2,
         data_source_info={"upload_file_id": upload_file_b.id},
     )
+    dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
 
     with patch("services.dataset_service.batch_clean_document_task.delay") as delay:
-        DocumentService.delete_documents(dataset, [document_a.id, document_b.id], session=db_session_with_containers)
+        DocumentService.delete_documents(
+            dataset_ref,
+            [document_a.id, document_b.id],
+            dataset.doc_form,
+            session=db_session_with_containers,
+        )
 
     assert db_session_with_containers.get(Document, document_a.id) is None
     assert db_session_with_containers.get(Document, document_b.id) is None
