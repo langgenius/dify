@@ -354,7 +354,12 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Document not found.")
         segment_id_str = str(segment_id)
         # check segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id_str, tenant_id=current_tenant_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
+        )
         if not segment:
             raise NotFound("Segment not found.")
         SegmentService.delete_segment(segment, document, dataset)
@@ -416,7 +421,12 @@ class DatasetSegmentApi(DatasetApiResource):
                 raise ProviderNotInitializeError(ex.description)
         segment_id_str = str(segment_id)
         # check segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id_str, tenant_id=current_tenant_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -474,7 +484,12 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Document not found.")
         segment_id_str = str(segment_id)
         # check segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id_str, tenant_id=current_tenant_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -539,7 +554,12 @@ class ChildChunkApi(DatasetApiResource):
 
         segment_id_str = str(segment_id)
         # check segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id_str, tenant_id=current_tenant_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -613,7 +633,12 @@ class ChildChunkApi(DatasetApiResource):
 
         segment_id_str = str(segment_id)
         # check segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id_str, tenant_id=current_tenant_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -683,7 +708,12 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         segment_id_str = str(segment_id)
         # check segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id_str, tenant_id=current_tenant_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
+        )
         if not segment:
             raise NotFound("Segment not found.")
 
@@ -757,7 +787,12 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         segment_id_str = str(segment_id)
         # get segment
-        segment = SegmentService.get_segment_by_id(segment_id=segment_id_str, tenant_id=current_tenant_id)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
+        )
         if not segment:
             raise NotFound("Segment not found.")
 

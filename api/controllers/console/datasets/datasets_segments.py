@@ -483,10 +483,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -539,10 +540,11 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -661,10 +663,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -721,10 +724,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -778,10 +782,11 @@ class ChildChunkAddApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -837,10 +842,11 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
         # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
         )
         if not segment:
             raise NotFound("Segment not found.")
@@ -905,10 +911,11 @@ class ChildChunkUpdateApi(Resource):
             raise NotFound("Document not found.")
             # check segment
         segment_id_str = str(segment_id)
-        segment = db.session.scalar(
-            select(DocumentSegment)
-            .where(DocumentSegment.id == segment_id_str, DocumentSegment.tenant_id == current_tenant_id)
-            .limit(1)
+        segment = SegmentService.get_segment_by_id(
+            segment_id=segment_id_str,
+            tenant_id=current_tenant_id,
+            dataset_id=dataset_id_str,
+            document_id=document_id_str,
         )
         if not segment:
             raise NotFound("Segment not found.")
