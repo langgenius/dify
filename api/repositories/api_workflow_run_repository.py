@@ -401,6 +401,20 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def delete_runs_with_related_in_session(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> RunsWithRelatedCountsDict:
+        """
+        Delete workflow runs and related records using the caller-owned transaction.
+
+        The implementation must not commit or roll back the supplied session.
+        """
+        ...
+
     def get_pause_records_by_run_id(
         self,
         session: Session,
