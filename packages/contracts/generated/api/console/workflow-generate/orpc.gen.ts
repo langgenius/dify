@@ -3,12 +3,36 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 
-import { zPostWorkflowGenerateBody, zPostWorkflowGenerateResponse } from './zod.gen'
+import {
+  zPostWorkflowGenerateBody,
+  zPostWorkflowGenerateResponse,
+  zPostWorkflowGenerateSuggestionsBody,
+  zPostWorkflowGenerateSuggestionsResponse,
+} from './zod.gen'
+
+/**
+ * Suggest example workflow-generator instructions for the tenant
+ */
+export const post = oc
+  .route({
+    description: 'Suggest example workflow-generator instructions for the tenant',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowGenerateSuggestions',
+    path: '/workflow-generate/suggestions',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkflowGenerateSuggestionsBody }))
+  .output(zPostWorkflowGenerateSuggestionsResponse)
+
+export const suggestions = {
+  post,
+}
 
 /**
  * Generate a Dify workflow graph from natural language
  */
-export const post = oc
+export const post2 = oc
   .route({
     description: 'Generate a Dify workflow graph from natural language',
     inputStructure: 'detailed',
@@ -21,7 +45,8 @@ export const post = oc
   .output(zPostWorkflowGenerateResponse)
 
 export const workflowGenerate = {
-  post,
+  post: post2,
+  suggestions,
 }
 
 export const contract = {

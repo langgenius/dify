@@ -55,6 +55,8 @@
   "firstEmpty.title": "Aplikacij še ni",
   "gotoAnything.actions.accountDesc": "Pojdite na stran računa",
   "gotoAnything.actions.communityDesc": "Odpri Discord skupnost",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description",
   "gotoAnything.actions.createCategoryDesc": "Ustvarite potek dela ali potek klepeta, ki ga ustvari AI",
   "gotoAnything.actions.createChatflow": "Potek pogovora",
   "gotoAnything.actions.createChatflowDesc": "Iz opisa ustvarite aplikacijo chatflow (napredni klepet).",
