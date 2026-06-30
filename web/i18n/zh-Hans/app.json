@@ -55,6 +55,8 @@
   "firstEmpty.title": "创建你的第一个应用",
   "gotoAnything.actions.accountDesc": "导航到账户页面",
   "gotoAnything.actions.communityDesc": "打开 Discord 社区",
+  "gotoAnything.actions.createAuto": "自动",
+  "gotoAnything.actions.createAutoDesc": "让 AI 根据你的描述自动选择 Workflow 或 Chatflow",
   "gotoAnything.actions.createCategoryDesc": "创建由 AI 生成的工作流或 Chatflow",
   "gotoAnything.actions.createChatflow": "Chatflow",
   "gotoAnything.actions.createChatflowDesc": "根据描述生成一个 Chatflow（高级聊天）应用",
@@ -290,7 +292,5 @@
   "types.all": "全部",
   "types.chatbot": "聊天助手",
   "types.completion": "文本生成",
-  "types.workflow": "工作流",
-  "gotoAnything.actions.createAuto": "自动",
-  "gotoAnything.actions.createAutoDesc": "让 AI 根据你的描述自动选择 Workflow 或 Chatflow"
+  "types.workflow": "工作流"
 }

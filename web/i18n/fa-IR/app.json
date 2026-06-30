@@ -55,6 +55,8 @@
   "firstEmpty.title": "هنوز برنامه‌ای وجود ندارد",
   "gotoAnything.actions.accountDesc": "به صفحه حساب کاربری بروید",
   "gotoAnything.actions.communityDesc": "جامعه دیسکورد باز",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description",
   "gotoAnything.actions.createCategoryDesc": "یک گردش کار یا جریان گفتگو ایجاد شده توسط هوش مصنوعی ایجاد کنید",
   "gotoAnything.actions.createChatflow": "جریان چت",
   "gotoAnything.actions.createChatflowDesc": "یک برنامه chatflow (چت پیشرفته) از توضیحات ایجاد کنید",
@@ -290,7 +292,5 @@
   "types.all": "همه",
   "types.chatbot": "چت‌بات",
   "types.completion": "تکمیل",
-  "types.workflow": "گردش کار",
-  "gotoAnything.actions.createAuto": "Auto",
-  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description"
+  "types.workflow": "گردش کار"
 }

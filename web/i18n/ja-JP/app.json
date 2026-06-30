@@ -55,6 +55,8 @@
   "firstEmpty.title": "最初のアプリを作成",
   "gotoAnything.actions.accountDesc": "アカウントページに移動する",
   "gotoAnything.actions.communityDesc": "オープンDiscordコミュニティ",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description",
   "gotoAnything.actions.createCategoryDesc": "AI が生成したワークフローまたはチャットフローを作成する",
   "gotoAnything.actions.createChatflow": "チャットフロー",
   "gotoAnything.actions.createChatflowDesc": "説明からチャットフロー (高度なチャット) アプリを生成する",
@@ -290,7 +292,5 @@
   "types.all": "全て",
   "types.chatbot": "チャットボット",
   "types.completion": "テキスト生成",
-  "types.workflow": "ワークフロー",
-  "gotoAnything.actions.createAuto": "Auto",
-  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description"
+  "types.workflow": "ワークフロー"
 }

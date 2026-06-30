@@ -55,6 +55,8 @@
   "firstEmpty.title": "Henüz uygulama yok",
   "gotoAnything.actions.accountDesc": "Hesap sayfasına gidin",
   "gotoAnything.actions.communityDesc": "Açık Discord topluluğu",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description",
   "gotoAnything.actions.createCategoryDesc": "Yapay zeka tarafından oluşturulan bir iş akışı veya sohbet akışı oluşturun",
   "gotoAnything.actions.createChatflow": "Sohbet akışı",
   "gotoAnything.actions.createChatflowDesc": "Açıklamadan bir sohbet akışı (gelişmiş sohbet) uygulaması oluşturun",
@@ -290,7 +292,5 @@
   "types.all": "Hepsi",
   "types.chatbot": "Chatbot",
   "types.completion": "Tamamlama",
-  "types.workflow": "İş Akışı",
-  "gotoAnything.actions.createAuto": "Auto",
-  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description"
+  "types.workflow": "İş Akışı"
 }

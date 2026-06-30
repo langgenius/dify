@@ -177,14 +177,14 @@ export const generateWorkflow = (body: GenerateWorkflowBody, options?: GenerateW
 // ─── Plan-first streaming (cmd+k generator) ──────────────────────────────────
 
 /** One node in the planner's high-level plan, shown before the graph builds. */
-export type WorkflowGenPlanNode = {
+type WorkflowGenPlanNode = {
   label: string
   node_type: string
   purpose?: string
 }
 
 /** A start-node input the generated app will ask the end-user for. */
-export type WorkflowGenPlanInput = {
+type WorkflowGenPlanInput = {
   variable: string
   label?: string
   type?: string

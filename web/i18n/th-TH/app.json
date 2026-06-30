@@ -55,6 +55,8 @@
   "firstEmpty.title": "ยังไม่มีแอป",
   "gotoAnything.actions.accountDesc": "ไปที่หน้าบัญชี",
   "gotoAnything.actions.communityDesc": "เปิดชุมชน Discord",
+  "gotoAnything.actions.createAuto": "Auto",
+  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description",
   "gotoAnything.actions.createCategoryDesc": "สร้างเวิร์กโฟลว์หรือแชทที่สร้างโดย AI",
   "gotoAnything.actions.createChatflow": "แชทโฟลว์",
   "gotoAnything.actions.createChatflowDesc": "สร้างแอป Chatflow (แชทขั้นสูง) จากคำอธิบาย",
@@ -290,7 +292,5 @@
   "types.all": "ทั้งหมด",
   "types.chatbot": "แชทบอท",
   "types.completion": "เสร็จสมบูรณ์",
-  "types.workflow": "กระบวนการทำงาน",
-  "gotoAnything.actions.createAuto": "Auto",
-  "gotoAnything.actions.createAutoDesc": "Let AI pick Workflow or Chatflow from your description"
+  "types.workflow": "กระบวนการทำงาน"
 }
