@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from configs import dify_config
 from core.db.session_factory import session_factory
+from core.rbac import RBACResourceWhitelistScope
 from models import TenantAccountJoin, TenantAccountRole
 from services.enterprise.base import EnterpriseRequest
 
@@ -649,17 +650,18 @@ class ReplaceRoleBindings(_RBACModel):
 
 
 class ReplaceMemberBindings(_RBACModel):
-    scope: str = "specific"
+    scope: RBACResourceWhitelistScope = RBACResourceWhitelistScope.SPECIFIC
 
     @field_validator("scope")
     @classmethod
-    def _normalize_scope(cls, value: Any) -> str:
+    def _normalize_scope(cls, value: Any) -> RBACResourceWhitelistScope:
         scope = str(value or "").strip().lower()
-        if scope in {"", "specific"}:
-            return "specific"
-        if scope in {"all", "only_me"}:
-            return scope
-        raise ValueError(f"invalid scope: {value}")
+        if scope == "":
+            return RBACResourceWhitelistScope.SPECIFIC
+        try:
+            return RBACResourceWhitelistScope(scope)
+        except ValueError as exc:
+            raise ValueError(f"invalid scope: {value}") from exc
 
 
 class DeleteMemberBindings(_RBACModel):
