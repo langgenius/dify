@@ -2,7 +2,8 @@
 
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
-import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
 import { useMemo } from 'react'
@@ -29,7 +30,7 @@ type AgentOrchestratePanelProps = {
   activeConfigSnapshot?: AgentConfigSnapshotSummaryResponse | null
   agentSoulConfig?: AgentConfigSnapshotDetailResponse['config_snapshot']
   agentName?: string | null
-  currentModel?: DefaultModel
+  currentModel?: AgentComposerModel
   textGenerationModelList: Model[]
   draftSavedAt?: number
   isPublishing?: boolean
@@ -41,7 +42,7 @@ type AgentOrchestratePanelProps = {
   showPublishBar?: boolean
   headerAction?: ReactNode
   bottomAction?: ReactNode
-  onSelectModel: (model: DefaultModel) => void
+  onSelectModel: (model: AgentComposerModel) => void
   onPublish?: () => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions?: () => void

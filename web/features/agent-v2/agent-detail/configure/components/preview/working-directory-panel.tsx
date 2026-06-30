@@ -340,6 +340,7 @@ export function AgentWorkingDirectoryPanel({
         detail={{
           description: t('agentDetail.configure.workingDirectory.description'),
           fileCount: countReadableFiles(workingDirectoryFiles),
+          fileListTitle: t('agentDetail.configure.workingDirectory.title'),
           files: workingDirectoryFiles,
           filePreview: {
             binary: fileReadQuery.data?.binary,

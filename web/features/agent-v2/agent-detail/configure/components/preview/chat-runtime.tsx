@@ -15,7 +15,7 @@ import type { FeedbackType, IChatItem, InputForm, ThoughtItem } from '@/app/comp
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import type { Inputs } from '@/models/debug'
 import type { MessageRating } from '@/models/log'
 import type { FileResponse } from '@/types/workflow'
@@ -358,10 +358,10 @@ const buildChatConfig = ({
   prompt,
 }: {
   agentSoulConfig?: AgentSoulConfig
-  currentModel?: DefaultModel
+  currentModel?: AgentComposerModel
   prompt: string
 }): AgentPreviewChatConfig => {
-  const modelSettings = getModelSettings(agentSoulConfig)
+  const modelSettings = currentModel?.model_settings ?? getModelSettings(agentSoulConfig)
   const appFeatures = agentSoulConfig?.app_features ?? {}
   const difyTools = agentSoulConfig?.tools?.dify_tools ?? []
   const cliTools = ENABLE_AGENT_CLI_TOOLS ? (agentSoulConfig?.tools?.cli_tools ?? []) : []
