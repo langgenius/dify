@@ -111,9 +111,13 @@ class ChatMessagePayload(BaseMessagePayload):
 
 _BUILD_CHAT_FINALIZATION_QUERY = """Finalize this Build chat configuration for the agent.
 
-Inspect the current build-draft config and shell state, then summarize the changes made during this Build chat.
+This finalization step is only for updating persisted Agent config. Do not perform any other actions, including
+installing packages, changing workspace files, running validation commands, debugging, or making exploratory checks.
 
-You must update the build-draft config as needed:
+Use only the current Build chat message history to identify changes that need to be persisted. Do not inspect, test, or
+validate old config unless the message history already shows that the old config is invalid.
+
+Update the build-draft config as needed:
 
 - Update config files for reusable artifacts that should be available later.
 - Update config skills for reusable procedures or tools that should be available later.

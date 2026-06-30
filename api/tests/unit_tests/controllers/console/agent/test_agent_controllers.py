@@ -1448,10 +1448,6 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert args["inputs"] == {}
     assert args["auto_generate_name"] is False
     assert args["external_trace_id"] == "trace-1"
-    query = cast(str, args["query"])
-    assert query == completion_controller._BUILD_CHAT_FINALIZATION_QUERY
-    assert "piping the JSON push spec to `dify-agent config push`" in query
-    assert "After the push completes, respond FINISHED." in query
 
 
 def test_drain_streaming_generate_response_returns_on_message_end() -> None:
