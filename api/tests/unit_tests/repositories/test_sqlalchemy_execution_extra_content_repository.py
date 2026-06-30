@@ -54,6 +54,7 @@ def test_map_human_input_content_populates_submission_data_from_stored_form_subm
     assert content is not None
     assert content.form_submission_data is not None
     assert content.form_submission_data.submitted_data == stored_submission_data
+    assert content.form_submission_data.rendered_content == "Rendered Approve"
 
 
 def test_map_human_input_content_keeps_waiting_form_without_selected_action() -> None:
