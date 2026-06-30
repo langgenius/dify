@@ -80,43 +80,36 @@ class TestGenerateWorkflowInstructionSuggestions:
 
 class TestBuildSuggestionContext:
     @patch("core.llm_generator.llm_generator.db.session.scalars")
-    def test_both_success(self, mock_scalars):
+    def test_both_success(self, mock_scalars, monkeypatch):
         mock_scalars.return_value.all.return_value = ["kb1", "kb2"]
 
-        # We need to mock the imports that happen inside the function
-        # Create a mock module structure for core.workflow.generator.tool_catalogue
+        # ``_build_suggestion_context`` imports the tool catalogue lazily, so we
+        # stub the module in ``sys.modules``. Use ``monkeypatch.setitem`` so the
+        # ORIGINAL module is RESTORED on teardown — a bare ``del`` would evict it
+        # from sys.modules entirely, after which a sibling test that imported
+        # ``build_tool_catalogue`` at collection time (e.g. test_tool_catalogue)
+        # diverges from a freshly re-imported module and its @patch targets stop
+        # applying, silently breaking it under xdist.
         mock_tool_catalogue = MagicMock()
         mock_tool_catalogue.build_tool_catalogue.return_value = "catalog"
         mock_tool_catalogue.format_tool_catalogue.return_value = "tool1\ntool2"
+        monkeypatch.setitem(sys.modules, "core.workflow.generator.tool_catalogue", mock_tool_catalogue)
 
-        # Add the mock module to sys.modules
-        sys.modules["core.workflow.generator.tool_catalogue"] = mock_tool_catalogue
-
-        try:
-            result = LLMGenerator._build_suggestion_context("tenant")
-            assert "Knowledge bases:\n- kb1\n- kb2" in result
-            assert "Installed tools:\ntool1\ntool2" in result
-        finally:
-            # Clean up
-            del sys.modules["core.workflow.generator.tool_catalogue"]
+        result = LLMGenerator._build_suggestion_context("tenant")
+        assert "Knowledge bases:\n- kb1\n- kb2" in result
+        assert "Installed tools:\ntool1\ntool2" in result
 
     @patch("core.llm_generator.llm_generator.db.session.scalars")
-    def test_both_fail(self, mock_scalars):
+    def test_both_fail(self, mock_scalars, monkeypatch):
         mock_scalars.side_effect = Exception("DB error")
 
-        # We need to mock the imports that happen inside the function
-        # Create a mock module structure for core.workflow.generator.tool_catalogue
+        # See ``test_both_success``: restore the original module via monkeypatch
+        # rather than ``del``-ing it, so we don't evict it for sibling tests.
         mock_tool_catalogue = MagicMock()
         mock_tool_catalogue.build_tool_catalogue.side_effect = Exception("Tool error")
+        monkeypatch.setitem(sys.modules, "core.workflow.generator.tool_catalogue", mock_tool_catalogue)
 
-        # Add the mock module to sys.modules
-        sys.modules["core.workflow.generator.tool_catalogue"] = mock_tool_catalogue
-
-        try:
-            assert LLMGenerator._build_suggestion_context("tenant") == ""
-        finally:
-            # Clean up
-            del sys.modules["core.workflow.generator.tool_catalogue"]
+        assert LLMGenerator._build_suggestion_context("tenant") == ""
 
 
 class TestClassifyWorkflowMode:
