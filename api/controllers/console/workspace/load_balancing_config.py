@@ -10,12 +10,12 @@ from controllers.console.wraps import (
     with_current_tenant_id,
     with_current_user,
 )
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import login_required
 from models import Account, TenantAccountRole
-from extensions.ext_database import db
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 

@@ -7,6 +7,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.mcp import types as mcp_types
+from extensions.ext_database import db
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.model import App, AppMCPServer, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
@@ -154,6 +155,7 @@ def handle_call_tool(
         end_user,
         args,
         InvokeFrom.SERVICE_API,
+        session=db.session,
         streaming=app.mode == AppMode.AGENT_CHAT,
     )
 

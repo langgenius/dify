@@ -23,7 +23,6 @@ from controllers.common.wraps import RBACPermission, RBACResourceScope
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import accepts, returns
-from extensions.ext_database import db
 from controllers.openapi._models import AppRunRequest, TaskStopResponse
 from controllers.openapi.auth.composition import auth_router
 from controllers.openapi.auth.data import AuthData, RBACRequirement
@@ -44,6 +43,7 @@ from core.errors.error import (
     ProviderTokenNotInitError,
     QuotaExceededError,
 )
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from graphon.graph_engine.manager import GraphEngineManager
 from graphon.model_runtime.errors.invoke import InvokeError

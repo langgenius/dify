@@ -863,7 +863,7 @@ class AppCopyApi(Resource):
 
         with Session(db.engine, expire_on_commit=False) as session:
             import_service = AppDslService(session)
-            yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
+            yaml_content = import_service.export_dsl(app_model=app_model, session=session, include_secret=True)
             result = import_service.import_app(
                 account=current_user,
                 import_mode=ImportMode.YAML_CONTENT,
@@ -934,6 +934,7 @@ class AppExportApi(Resource):
         payload = AppExportResponse(
             data=AppDslService.export_dsl(
                 app_model=app_model,
+                session=db.session,
                 include_secret=args.include_secret,
                 workflow_id=args.workflow_id,
             )
@@ -958,7 +959,7 @@ class AppPublishToCreatorsPlatformApi(Resource):
         if not dify_config.CREATORS_PLATFORM_FEATURES_ENABLED:
             return {"error": "Creators Platform features are not enabled"}, 403
 
-        dsl_content = AppDslService.export_dsl(app_model=app_model, include_secret=False)
+        dsl_content = AppDslService.export_dsl(app_model=app_model, session=db.session, include_secret=False)
         dsl_bytes = dsl_content.encode("utf-8")
 
         claim_code = upload_dsl(dsl_bytes)

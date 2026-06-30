@@ -304,7 +304,7 @@ class WorkflowConverter:
 
             # get api_based_extension
             api_based_extension = self._get_api_based_extension(
-                tenant_id=tenant_id, api_based_extension_id=api_based_extension_id,session=session
+                tenant_id=tenant_id, api_based_extension_id=api_based_extension_id, session=session
             )
 
             # decrypt api_key

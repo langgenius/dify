@@ -6,6 +6,8 @@ import uuid
 from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy.orm import Session, scoped_session
+
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_app.app_generator import AgentAppGenerator
@@ -23,7 +25,6 @@ from enums.quota_type import QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
-from sqlalchemy.orm import Session, scoped_session
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited

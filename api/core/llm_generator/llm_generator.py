@@ -6,6 +6,7 @@ from typing import Any, NotRequired, Protocol, TypedDict, cast
 
 import json_repair
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import ModelConfig
 from core.llm_generator.entities import RuleCodeGeneratePayload, RuleGeneratePayload, RuleStructuredOutputPayload
@@ -70,7 +71,9 @@ def _normalize_completion_params(completion_params: dict[str, object]) -> tuple[
 
 
 class WorkflowServiceInterface(Protocol):
-    def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
+    def get_draft_workflow(
+        self, app_model: App, workflow_id: str | None = None, *, session: Session
+    ) -> Workflow | None:
         pass
 
     def get_node_last_run(self, app_model: App, workflow: Workflow, node_id: str) -> WorkflowNodeExecutionModel | None:
@@ -547,7 +550,7 @@ class LLMGenerator:
         app: App | None = session.scalar(select(App).where(App.id == flow_id, App.tenant_id == tenant_id).limit(1))
         if not app:
             raise ValueError("App not found.")
-        workflow = workflow_service.get_draft_workflow(app_model=app)
+        workflow = workflow_service.get_draft_workflow(app_model=app, session=session)
         if not workflow:
             raise ValueError("Workflow not found for the given app model.")
         last_run = workflow_service.get_node_last_run(app_model=app, workflow=workflow, node_id=node_id)

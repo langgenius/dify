@@ -134,7 +134,9 @@ class MigrationExportService:
         apps = self._selected_apps(tenant.id, selection, session=session)
         exported_app_ids = {app.id for app in apps}
         for app in apps:
-            dsl_content = AppDslService.export_dsl(app_model=app, include_secret=selection.include_secrets)
+            dsl_content = AppDslService.export_dsl(
+                app_model=app, session=session, include_secret=selection.include_secrets
+            )
             package.workflows.append(
                 {
                     "id": app.id,

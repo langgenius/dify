@@ -24,11 +24,11 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.entities.provider_entities import CredentialConfiguration
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from extensions.ext_database import db
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account

@@ -17,8 +17,8 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
-from fields.base import ResponseModel
 from extensions.ext_database import db
+from fields.base import ResponseModel
 from libs.login import login_required
 from models import App
 from services.ops_service import OpsService
