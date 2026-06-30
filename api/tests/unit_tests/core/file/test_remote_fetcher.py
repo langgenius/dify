@@ -102,6 +102,35 @@ def test_get_signed_upload_file_url_reads_storage_without_ssrf(monkeypatch: pyte
     ssrf_make_request.assert_not_called()
 
 
+def test_resolve_signed_upload_file_id_accepts_valid_upload_preview_url(monkeypatch: pytest.MonkeyPatch):
+    _patch_file_fetcher_config(monkeypatch)
+    url = _signed_url(
+        base_url="http://localhost:5001",
+        path=f"/files/{UPLOAD_FILE_ID}/file-preview",
+        payload=f"file-preview|{UPLOAD_FILE_ID}",
+    )
+
+    assert remote_fetcher.resolve_signed_upload_file_id(url) == UPLOAD_FILE_ID
+
+
+def test_resolve_signed_upload_file_id_rejects_tool_preview_url(monkeypatch: pytest.MonkeyPatch):
+    _patch_file_fetcher_config(monkeypatch)
+    url = _signed_url(
+        base_url="http://localhost:5001",
+        path=f"/files/tools/{TOOL_FILE_ID}.txt",
+        payload=f"file-preview|{TOOL_FILE_ID}",
+    )
+
+    assert remote_fetcher.resolve_signed_upload_file_id(url) is None
+
+
+def test_resolve_signed_upload_file_id_rejects_invalid_signature(monkeypatch: pytest.MonkeyPatch):
+    _patch_file_fetcher_config(monkeypatch)
+    url = f"http://localhost:5001/files/{UPLOAD_FILE_ID}/file-preview?timestamp=1700000000&nonce=nonce&sign=invalid"
+
+    assert remote_fetcher.resolve_signed_upload_file_id(url) is None
+
+
 def test_make_request_resolves_upload_preview_url_generated_by_signer(monkeypatch: pytest.MonkeyPatch):
     _patch_file_fetcher_config(monkeypatch)
     _patch_signer_times(monkeypatch)

@@ -52,6 +52,12 @@ def build_from_mapping(*, mapping, tenant_id, config=None, strict_type_validatio
     )
 
 
+def _parsed_file_reference(reference: str | None):
+    parsed_reference = parse_file_reference(reference)
+    assert parsed_reference is not None
+    return parsed_reference
+
+
 # Fixtures
 @pytest.fixture
 def mock_upload_file():
@@ -129,7 +135,7 @@ def test_build_from_mapping_backward_compatibility(mock_upload_file):
     assert file.transfer_method == FileTransferMethod.LOCAL_FILE
     assert file.type == FileType.IMAGE
     assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
-    assert parse_file_reference(file.reference).storage_key is None
+    assert _parsed_file_reference(file.reference).storage_key is None
     assert file.storage_key == "test_key"
 
 
@@ -161,7 +167,7 @@ def test_build_from_mapping_accepts_opaque_related_id_for_tool_file(mock_tool_fi
     assert file.transfer_method == FileTransferMethod.TOOL_FILE
     assert file.type == FileType.DOCUMENT
     assert resolve_file_record_id(file.reference) == TEST_TOOL_FILE_ID
-    assert parse_file_reference(file.reference).storage_key is None
+    assert _parsed_file_reference(file.reference).storage_key is None
     assert file.storage_key == "tool_file.pdf"
 
 
@@ -211,6 +217,57 @@ def test_build_from_remote_url(mock_http_head):
     assert file.type == FileType.IMAGE
     assert file.filename == "remote_test.jpg"
     assert file.size == 2048
+
+
+def test_build_from_remote_url_recovers_upload_file_from_signed_preview_url(mock_upload_file, mock_http_head):
+    signed_preview_url = "http://localhost:5001/files/preview-id/file-preview?timestamp=1&nonce=n&sign=s"
+
+    with patch(
+        "factories.file_factory.builders.remote_fetcher.resolve_signed_upload_file_id",
+        return_value=TEST_UPLOAD_FILE_ID,
+    ) as resolve_signed_upload_file_id:
+        file = build_from_mapping(
+            mapping={
+                "transfer_method": "remote_url",
+                "url": signed_preview_url,
+                "type": "image",
+            },
+            tenant_id=TEST_TENANT_ID,
+        )
+
+    resolve_signed_upload_file_id.assert_called_once_with(signed_preview_url)
+    mock_http_head.assert_not_called()
+    assert file.transfer_method == FileTransferMethod.REMOTE_URL
+    assert file.type == FileType.IMAGE
+    assert file.filename == "test.jpg"
+    assert file.remote_url is not None
+    assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+    assert file.storage_key == "test_key"
+
+
+def test_build_from_remote_url_uses_signed_preview_url_when_upload_source_url_is_empty(
+    mock_upload_file, mock_http_head
+):
+    signed_preview_url = "http://localhost:5001/files/preview-id/file-preview?timestamp=1&nonce=n&sign=s"
+    mock_upload_file.return_value.source_url = None
+
+    with patch(
+        "factories.file_factory.builders.remote_fetcher.resolve_signed_upload_file_id",
+        return_value=TEST_UPLOAD_FILE_ID,
+    ):
+        file = build_from_mapping(
+            mapping={
+                "transfer_method": "remote_url",
+                "remote_url": signed_preview_url,
+                "type": "image",
+            },
+            tenant_id=TEST_TENANT_ID,
+        )
+
+    mock_http_head.assert_not_called()
+    assert file.remote_url == signed_preview_url
+    assert resolve_file_record_id(file.reference) == TEST_UPLOAD_FILE_ID
+    assert file.storage_key == "test_key"
 
 
 @pytest.mark.parametrize(
