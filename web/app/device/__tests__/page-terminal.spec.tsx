@@ -121,40 +121,50 @@ describe('error_lookup_failed terminal state', () => {
   })
 })
 
-describe('sso_error inline banner on the code-entry page', () => {
-  const SSO_BANNER_COPY = /identity is linked to a Dify account/i
+describe('error_sso dedicated view', () => {
+  const GENERIC = /single sign-on could not be completed/i
 
-  it('shows the error banner with friendly copy when sso_error is present', async () => {
-    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+  it('renders the dedicated SSO error screen (not the code-entry page)', async () => {
+    mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    expect(await screen.findByText(SSO_BANNER_COPY)).toBeInTheDocument()
+    expect(await screen.findByText('Sign-in could not be completed')).toBeInTheDocument()
+    expect(await screen.findByText(GENERIC)).toBeInTheDocument()
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   })
 
-  it('keeps the code-entry screen visible (error on main page, not a separate view)', async () => {
-    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+  it('shows the email special-case copy', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    await screen.findByText(SSO_BANNER_COPY)
-    expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Continue/i })).toBeInTheDocument()
+    expect(await screen.findByText(/identity is linked to a Dify account/i)).toBeInTheDocument()
   })
 
-  it('does not surface the raw backend error code', async () => {
-    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+  it('never surfaces the raw backend code', async () => {
+    mockSearchParams = { sso_error: 'email_belongs_to_dify_account', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    await screen.findByText(SSO_BANNER_COPY)
+    await screen.findByText(/identity is linked to a Dify account/i)
     expect(screen.queryByText('email_belongs_to_dify_account')).not.toBeInTheDocument()
   })
 
-  it('does not scrub the param on mount (regression: error was wiped by router.replace)', async () => {
-    mockSearchParams = { sso_error: 'email_belongs_to_dify_account' }
+  it('scrubs sso_error + user_code from the URL on mount', async () => {
+    mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
     render(<DevicePage />)
-    await screen.findByText(SSO_BANNER_COPY)
-    expect(mockReplace).not.toHaveBeenCalled()
+    await screen.findByText('Sign-in could not be completed')
+    expect(mockReplace).toHaveBeenCalledWith('/device')
   })
 
-  it('shows no banner when sso_error is absent', () => {
+  it('"Back to login options" re-checks the code and advances to the chooser', async () => {
+    mockSearchParams = { sso_error: 'sso_failed', user_code: 'ABCD-3456' }
+    mockDeviceLookup.mockResolvedValue({ valid: true })
+    render(<DevicePage />)
+    await screen.findByText('Sign-in could not be completed')
+    fireEvent.click(screen.getByRole('button', { name: /Back to login options/i }))
+    await screen.findByText(/is valid/i)
+    expect(mockDeviceLookup).toHaveBeenCalledWith('ABCD-3456')
+  })
+
+  it('shows no SSO error screen when sso_error is absent', () => {
     render(<DevicePage />)
     expect(screen.getByRole('textbox')).toBeInTheDocument()
-    expect(screen.queryByText(SSO_BANNER_COPY)).not.toBeInTheDocument()
+    expect(screen.queryByText('Sign-in could not be completed')).not.toBeInTheDocument()
   })
 })
