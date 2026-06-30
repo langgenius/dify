@@ -8,7 +8,7 @@ from core.helper import encrypter
 from core.workflow.human_input import session_binding
 from core.workflow.file_reference import build_file_reference
 from factories.variable_factory import build_segment
-from graphon.entities.pause_reason import HumanInputRequired
+from graphon.entities.pause_reason import HitlRequired
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from graphon.variables.segments import IntegerSegment, Segment
@@ -149,19 +149,17 @@ def test_workflow_pause_reason_uses_session_binding_for_human_input_round_trip(m
         lambda *, session_id: session_id.removeprefix("session::"),
     )
 
-    reason = HumanInputRequired(
-        form_id="form-123",
-        form_content="content",
-        node_id="node-1",
-        node_title="Ask Name",
-    )
+    reason = HitlRequired(session_id="session::form-123", node_id="node-1", node_title="Ask Name")
 
     model = WorkflowPauseReason.from_entity(pause_id="pause-1", pause_reason=reason)
     assert model.form_id == "form-123"
+    assert model.node_id == "node-1"
 
     restored = model.to_entity()
-    assert isinstance(restored, HumanInputRequired)
-    assert restored.form_id == "session::form-123"
+    assert isinstance(restored, HitlRequired)
+    assert restored.session_id == "session::form-123"
+    assert restored.node_id == "node-1"
+    assert restored.node_title == ""
 
 
 def test_normalize_environment_variable_mappings_converts_full_mask_to_hidden_value():

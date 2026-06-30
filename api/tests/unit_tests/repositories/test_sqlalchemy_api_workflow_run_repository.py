@@ -44,9 +44,9 @@ def test_build_human_input_required_reason_prefers_standalone_web_app_token() ->
         ],
     )
 
+    assert reason.session_id == "form-1"
+    assert reason.node_id == "node-1"
     assert reason.node_title == "Ask Name"
-    assert reason.resolved_default_values == {"name": "Alice"}
-    assert not hasattr(reason, "form_token")
 
 
 def test_build_human_input_required_reason_falls_back_to_console_token() -> None:
@@ -59,9 +59,9 @@ def test_build_human_input_required_reason_falls_back_to_console_token() -> None
         ],
     )
 
+    assert reason.session_id == "form-1"
     assert reason.node_id == "node-1"
-    assert reason.actions == []
-    assert not hasattr(reason, "form_token")
+    assert reason.node_title == "Ask Name"
 
 
 def test_build_human_input_required_reason_uses_session_binding_form_id(monkeypatch) -> None:
@@ -77,4 +77,6 @@ def test_build_human_input_required_reason_uses_session_binding_form_id(monkeypa
         _build_form_model(),
     )
 
-    assert reason.form_id == "session::form-1"
+    assert reason.session_id == "session::form-1"
+    assert reason.node_id == "node-1"
+    assert reason.node_title == "Ask Name"
