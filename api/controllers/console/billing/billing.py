@@ -83,6 +83,7 @@ class PartnerTenants(Resource):
     @only_edition_cloud
     @with_current_user
     def put(self, current_user: Account, partner_key: str):
+
         try:
             args = PartnerTenantsPayload.model_validate(console_ns.payload or {})
             click_id = args.click_id

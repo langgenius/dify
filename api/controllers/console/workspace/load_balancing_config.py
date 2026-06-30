@@ -52,8 +52,6 @@ class LoadBalancingCredentialsValidateApi(Resource):
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
-        tenant_id = current_tenant_id
-
         payload = LoadBalancingCredentialPayload.model_validate(console_ns.payload or {})
 
         # validate model load balancing credentials
@@ -64,7 +62,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
 
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
-                tenant_id=tenant_id,
+                tenant_id=current_tenant_id,
                 provider=provider,
                 model=payload.model,
                 model_type=payload.model_type,
@@ -101,8 +99,6 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
         if not TenantAccountRole.is_privileged_role(current_user.current_role):
             raise Forbidden()
 
-        tenant_id = current_tenant_id
-
         payload = LoadBalancingCredentialPayload.model_validate(console_ns.payload or {})
 
         # validate model load balancing config credentials
@@ -113,7 +109,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
 
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
-                tenant_id=tenant_id,
+                tenant_id=current_tenant_id,
                 provider=provider,
                 model=payload.model,
                 model_type=payload.model_type,
