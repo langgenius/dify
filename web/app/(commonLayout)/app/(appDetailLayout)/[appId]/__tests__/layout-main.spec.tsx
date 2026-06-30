@@ -74,6 +74,7 @@ describe('AppDetailLayout', () => {
       push: vi.fn(),
       replace: mockReplace,
       prefetch: vi.fn(),
+      bfcacheId: '',
     })
     mockFetchAppDetailDirect.mockResolvedValue(createAppDetail())
     useStore.getState().setAppDetail()
