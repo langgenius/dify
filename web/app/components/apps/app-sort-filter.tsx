@@ -1,6 +1,6 @@
 'use client'
 
-import type { AppListSortBy } from '@/contract/console/apps'
+import type { GetAppsData } from '@dify/contracts/api/console/apps/types.gen'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,9 @@ import {
 } from '@langgenius/dify-ui/dropdown-menu'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+
+type AppListQuery = NonNullable<GetAppsData['query']>
+type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 
 type AppSortFilterProps = {
   value: AppListSortBy
