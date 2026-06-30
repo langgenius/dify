@@ -96,7 +96,7 @@ def _app_and_account(db_session: Session, *, mode: str = "chat") -> tuple[App, A
             api_rph=100,
             api_rpm=10,
         )
-        app_model = AppService().create_app(tenant.id, app_args, account)
+        app_model = AppService().create_app(tenant.id, app_args, account, session=db_session)
     return app_model, account
 
 

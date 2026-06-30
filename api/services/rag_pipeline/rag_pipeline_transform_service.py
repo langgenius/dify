@@ -44,11 +44,11 @@ class RagPipelineTransformService:
         indexing_technique = dataset.indexing_technique
 
         if not datasource_type and not indexing_technique:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, session=session)
 
         doc_form = dataset.doc_form
         if not doc_form:
-            return self._transform_to_empty_pipeline(dataset)
+            return self._transform_to_empty_pipeline(dataset, session=session)
         retrieval_model = RetrievalSetting.model_validate(dataset.retrieval_model) if dataset.retrieval_model else None
         pipeline_yaml = self._get_transform_yaml(doc_form, datasource_type, indexing_technique)
         # deal dependencies
@@ -80,7 +80,7 @@ class RagPipelineTransformService:
             workflow_data["graph"] = graph
             pipeline_yaml["workflow"] = workflow_data
         # create pipeline
-        pipeline = self._create_pipeline(pipeline_yaml)
+        pipeline = self._create_pipeline(pipeline_yaml, session=session)
 
         # save chunk structure to dataset
         if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -194,6 +194,8 @@ class RagPipelineTransformService:
     def _create_pipeline(
         self,
         data: dict[str, Any],
+        *,
+        session: scoped_session,
     ) -> Pipeline:
         """Create a new app or update an existing one."""
         pipeline_data = data.get("rag_pipeline", {})
@@ -288,7 +290,7 @@ class RagPipelineTransformService:
             logger.debug("Installing missing pipeline plugins %s", need_install_plugin_unique_identifiers)
             PluginService.install_from_marketplace_pkg(tenant_id, need_install_plugin_unique_identifiers)
 
-    def _transform_to_empty_pipeline(self, dataset: Dataset):
+    def _transform_to_empty_pipeline(self, dataset: Dataset, *, session: scoped_session):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,

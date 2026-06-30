@@ -658,6 +658,7 @@ class AgentPublishApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             version_note=args.version_note,
+            session=db.session,
         )
 
 
@@ -678,6 +679,7 @@ class AgentBuildDraftCheckoutApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             force=args.force,
+            session=db.session,
         )
 
 
@@ -695,6 +697,7 @@ class AgentBuildDraftApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session,
         )
 
     @console_ns.expect(console_ns.models[ComposerSavePayload.__name__])
@@ -712,6 +715,7 @@ class AgentBuildDraftApi(Resource):
             agent_id=str(agent_id),
             account_id=current_user.id,
             payload=payload,
+            session=db.session,
         )
 
     @console_ns.response(200, "Agent build draft discarded", console_ns.models[AgentSimpleResultResponse.__name__])
@@ -726,6 +730,7 @@ class AgentBuildDraftApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session,
         )
 
 
@@ -743,6 +748,7 @@ class AgentBuildDraftApplyApi(Resource):
             tenant_id=tenant_id,
             agent_id=str(agent_id),
             account_id=current_user.id,
+            session=db.session,
         )
 
 

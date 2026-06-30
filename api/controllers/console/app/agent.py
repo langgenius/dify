@@ -172,7 +172,7 @@ register_response_schema_models(
 def _resolve_agent_id(app_model: App, node_id: str | None) -> str | None:
     if node_id and app_model.mode != AppMode.AGENT:
         return AgentComposerService.resolve_workflow_node_agent_id(
-            tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id
+            tenant_id=app_model.tenant_id, app_id=app_model.id, node_id=node_id, session=db.session
         )
     return app_model.bound_agent_id
 

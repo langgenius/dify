@@ -144,7 +144,7 @@ class CustomizedPipelineTemplateApi(Resource):
         payload = CustomizedPipelineTemplatePayload.model_validate(console_ns.payload or {})
         pipeline_template_info = PipelineTemplateInfoEntity.model_validate(payload.model_dump())
         RagPipelineService.update_customized_pipeline_template(
-            template_id, pipeline_template_info, current_user, current_tenant_id
+            template_id, pipeline_template_info, current_user, current_tenant_id, session=db.session()
         )
         return "", 204
 
@@ -155,7 +155,7 @@ class CustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     @with_current_tenant_id
     def delete(self, current_tenant_id: str, template_id: str) -> tuple[str, int]:
-        RagPipelineService.delete_customized_pipeline_template(template_id, current_tenant_id)
+        RagPipelineService.delete_customized_pipeline_template(template_id, current_tenant_id, session=db.session())
         return "", 204
 
     @setup_required
@@ -189,6 +189,6 @@ class PublishCustomizedPipelineTemplateApi(Resource):
         payload = CustomizedPipelineTemplatePayload.model_validate(console_ns.payload or {})
         rag_pipeline_service = RagPipelineService()
         rag_pipeline_service.publish_customized_pipeline_template(
-            pipeline_id, payload.model_dump(), current_user, current_tenant_id
+            pipeline_id, payload.model_dump(), current_user, current_tenant_id, session=db.session()
         )
         return "", 204

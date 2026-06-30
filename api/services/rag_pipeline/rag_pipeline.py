@@ -9,7 +9,7 @@ from typing import Any, cast
 from uuid import uuid4
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 import contexts
 from configs import dify_config
@@ -95,8 +95,11 @@ def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
 
 
 class RagPipelineService:
-    def __init__(self, session_maker: sessionmaker | None = None):
+    _session: Session | scoped_session
+
+    def __init__(self, session: Session | scoped_session | None = None, session_maker: sessionmaker | None = None):
         """Initialize RagPipelineService with repository dependencies."""
+        self._session = session or db.session
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
@@ -166,6 +169,8 @@ class RagPipelineService:
         template_info: PipelineTemplateInfoEntity,
         current_user: Account | None = None,
         current_tenant_id: str | None = None,
+        *,
+        session: Session,
     ):
         """
         Update pipeline template.
@@ -205,7 +210,9 @@ class RagPipelineService:
         return customized_template
 
     @classmethod
-    def delete_customized_pipeline_template(cls, template_id: str, current_tenant_id: str | None = None):
+    def delete_customized_pipeline_template(
+        cls, template_id: str, current_tenant_id: str | None = None, *, session: Session
+    ):
         """
         Delete customized pipeline template.
         """
@@ -228,7 +235,7 @@ class RagPipelineService:
         Get draft workflow
         """
         # fetch draft workflow by rag pipeline
-        workflow = session.scalar(
+        workflow = self._session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == pipeline.tenant_id,
@@ -250,7 +257,7 @@ class RagPipelineService:
             return None
 
         # fetch published workflow by workflow_id
-        workflow = session.scalar(
+        workflow = self._session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == pipeline.tenant_id,
@@ -264,7 +271,7 @@ class RagPipelineService:
 
     def get_published_workflow_by_id(self, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
         """Fetch a published workflow snapshot by ID for restore operations."""
-        workflow = session.scalar(
+        workflow = self._session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == pipeline.tenant_id,
@@ -350,8 +357,8 @@ class RagPipelineService:
                 conversation_variables=conversation_variables,
                 rag_pipeline_variables=rag_pipeline_variables,
             )
-            session.add(workflow)
-            session.flush()
+            self._session.add(workflow)
+            self._session.flush()
             pipeline.workflow_id = workflow.id
         # update draft workflow if found
         else:
@@ -362,7 +369,7 @@ class RagPipelineService:
             workflow.conversation_variables = conversation_variables
             workflow.rag_pipeline_variables = rag_pipeline_variables
         # commit db session changes
-        session.commit()
+        self._session.commit()
 
         # trigger  workflow events TODO
         # app_draft_workflow_was_synced.send(pipeline, synced_draft_workflow=workflow)
@@ -398,11 +405,11 @@ class RagPipelineService:
         )
 
         if is_new_draft:
-            session.add(draft_workflow)
-            session.flush()
+            self._session.add(draft_workflow)
+            self._session.flush()
             pipeline.workflow_id = draft_workflow.id
 
-        session.commit()
+        self._session.commit()
 
         return draft_workflow
 
@@ -996,7 +1003,7 @@ class RagPipelineService:
                     dataset_id = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
                     pipeline_id = get_system_segment(variable_pool, SystemVariableKey.APP_ID)
                     if document_id and dataset_id and pipeline_id:
-                        document = session.scalar(
+                        document = self._session.scalar(
                             select(Document)
                             .join(Dataset, Dataset.id == Document.dataset_id)
                             .where(
@@ -1011,8 +1018,8 @@ class RagPipelineService:
                         if document:
                             document.indexing_status = IndexingStatus.ERROR
                             document.error = error
-                            session.add(document)
-                            session.commit()
+                            self._session.add(document)
+                            self._session.commit()
 
         return workflow_node_execution
 
@@ -1223,6 +1230,8 @@ class RagPipelineService:
         args: dict[str, Any],
         current_user: Account | None = None,
         current_tenant_id: str | None = None,
+        *,
+        session: Session,
     ):
         """
         Publish customized pipeline template
@@ -1236,8 +1245,8 @@ class RagPipelineService:
         workflow = session.get(Workflow, pipeline.workflow_id)
         if not workflow:
             raise ValueError("Workflow not found")
-        with sessionmaker(db.engine).begin() as session:
-            dataset = pipeline.retrieve_dataset(session=session)
+        with sessionmaker(db.engine).begin() as dataset_session:
+            dataset = pipeline.retrieve_dataset(session=dataset_session)
             if not dataset:
                 raise ValueError("Dataset not found")
 
@@ -1263,8 +1272,8 @@ class RagPipelineService:
 
         from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
-        with sessionmaker(db.engine).begin() as session:
-            rag_pipeline_dsl_service = RagPipelineDslService(session)
+        with sessionmaker(db.engine).begin() as export_session:
+            rag_pipeline_dsl_service = RagPipelineDslService(export_session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
         if args.get("icon_info") is None:
             args["icon_info"] = {}
@@ -1289,7 +1298,7 @@ class RagPipelineService:
 
     def is_workflow_exist(self, pipeline: Pipeline) -> bool:
         return (
-            session.scalar(
+            self._session.scalar(
                 select(func.count(Workflow.id)).where(
                     Workflow.tenant_id == pipeline.tenant_id,
                     Workflow.app_id == pipeline.id,
@@ -1413,7 +1422,9 @@ class RagPipelineService:
         if type and type != "all":
             stmt = stmt.where(PipelineRecommendedPlugin.type == type)
 
-        pipeline_recommended_plugins = session.scalars(stmt.order_by(PipelineRecommendedPlugin.position.asc())).all()
+        pipeline_recommended_plugins = self._session.scalars(
+            stmt.order_by(PipelineRecommendedPlugin.position.asc())
+        ).all()
 
         if not pipeline_recommended_plugins:
             return {
@@ -1452,12 +1463,12 @@ class RagPipelineService:
         """
         Retry error document
         """
-        document_pipeline_execution_log = session.scalar(
+        document_pipeline_execution_log = self._session.scalar(
             select(DocumentPipelineExecutionLog).where(DocumentPipelineExecutionLog.document_id == document.id).limit(1)
         )
         if not document_pipeline_execution_log:
             raise ValueError("Document pipeline execution log not found")
-        pipeline = session.get(Pipeline, document_pipeline_execution_log.pipeline_id)
+        pipeline = self._session.get(Pipeline, document_pipeline_execution_log.pipeline_id)
         if not pipeline:
             raise ValueError("Pipeline not found")
         # convert to app config
@@ -1486,7 +1497,7 @@ class RagPipelineService:
         """
         Get datasource plugins
         """
-        dataset: Dataset | None = session.scalar(
+        dataset: Dataset | None = self._session.scalar(
             select(Dataset)
             .where(
                 Dataset.id == dataset_id,
@@ -1496,7 +1507,7 @@ class RagPipelineService:
         )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = session.scalar(
+        pipeline: Pipeline | None = self._session.scalar(
             select(Pipeline)
             .where(
                 Pipeline.id == dataset.pipeline_id,
@@ -1554,6 +1565,7 @@ class RagPipelineService:
                     tenant_id=tenant_id,
                     provider=datasource_node_data.get("provider_name"),
                     plugin_id=datasource_node_data.get("plugin_id"),
+                    session=self._session,
                 )
                 credential_info_list: list[Any] = []
                 for credential in credentials:
@@ -1584,7 +1596,7 @@ class RagPipelineService:
         """
         Get pipeline
         """
-        dataset: Dataset | None = session.scalar(
+        dataset: Dataset | None = self._session.scalar(
             select(Dataset)
             .where(
                 Dataset.id == dataset_id,
@@ -1594,7 +1606,7 @@ class RagPipelineService:
         )
         if not dataset:
             raise ValueError("Dataset not found")
-        pipeline: Pipeline | None = session.scalar(
+        pipeline: Pipeline | None = self._session.scalar(
             select(Pipeline)
             .where(
                 Pipeline.id == dataset.pipeline_id,
