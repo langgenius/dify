@@ -98,6 +98,7 @@ _AGENT_STUB_FILE_TRANSFER_METHODS: Mapping[FileTransferMethod, AgentStubFileTran
     FileTransferMethod.DATASOURCE_FILE: "datasource_file",
     FileTransferMethod.REMOTE_URL: "remote_url",
 }
+_CANONICAL_DIFY_FILE_REFERENCE_PATTERN = r"^dify-file-ref:eyJyZWNvcmRfaWQiOi[A-Za-z0-9_-]+={0,2}$"
 
 
 class WorkflowAgentRuntimeRequestBuildError(ValueError):
@@ -553,8 +554,72 @@ class WorkflowAgentRuntimeRequestBuilder:
                     array_schema["items"]["description"] = array_item.description
                 return array_schema
             case DeclaredOutputType.FILE:
-                return cast(dict[str, Any], AgentStubFileMapping.model_json_schema())
+                return WorkflowAgentRuntimeRequestBuilder._agent_stub_output_file_mapping_schema()
         assert_never(output_type)
+
+    @staticmethod
+    def _agent_stub_output_file_mapping_schema() -> dict[str, Any]:
+        """JSON Schema for Agent-produced output file mappings.
+
+        ``AgentStubFileMapping.model_json_schema()`` cannot express the model's
+        ``after`` validator: only ``remote_url`` may carry ``url``; every other
+        method must carry a canonical ``reference``. The structured-output model
+        needs that relationship in the schema, otherwise it may emit
+        ``{"transfer_method": "local_file", "url": "..."}``, which passes the
+        broad generated schema but fails API-side output type checking.
+
+        For files produced inside an Agent run, the supported persisted shape is
+        narrower than every downloadable mapping: the sandbox must upload the
+        local artifact via ``dify-agent file upload <path>``, which returns a
+        ``tool_file`` mapping. ``local_file`` and ``datasource_file`` are valid
+        for existing file references in workflow context, not for newly produced
+        Agent output files.
+        """
+        return {
+            "title": "AgentStubFileMapping",
+            "description": (
+                "Agent output file mapping. Use `tool_file` with `reference` for files uploaded by "
+                "`dify-agent file upload <path>`; use `remote_url` only for files already reachable by URL."
+            ),
+            "anyOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["transfer_method", "reference"],
+                    "properties": {
+                        "transfer_method": {
+                            "type": "string",
+                            "enum": ["tool_file"],
+                        },
+                        "reference": {
+                            "type": "string",
+                            "minLength": 1,
+                            "pattern": _CANONICAL_DIFY_FILE_REFERENCE_PATTERN,
+                            "description": (
+                                "Canonical Dify file reference returned by `dify-agent file upload <path>`. "
+                                "Never use a local path, filename, URL, or synthesized dify-file-ref here."
+                            ),
+                        },
+                    },
+                },
+                {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["transfer_method", "url"],
+                    "properties": {
+                        "transfer_method": {
+                            "type": "string",
+                            "enum": ["remote_url"],
+                        },
+                        "url": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Remote URL for a file that is already publicly reachable.",
+                        },
+                    },
+                },
+            ],
+        }
 
     @staticmethod
     def _build_output_description(declared_outputs: Sequence[DeclaredOutputConfig]) -> str | None:
@@ -563,7 +628,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             if output.type == DeclaredOutputType.FILE:
                 file_output_lines.append(
                     f"- `{output.name}`: create the file in the sandbox, run `dify-agent file upload <path>`, "
-                    f"and set `final_output.{output.name}` to the returned AgentStubFileMapping JSON object."
+                    f"and set `final_output.{output.name}` to the returned AgentStubFileMapping JSON object. "
+                    "Do not call `final_output` before the upload command succeeds. Do not use the local path, "
+                    "filename, URL, or a synthesized/base64-encoded value as the `reference`."
                 )
             elif (
                 output.type == DeclaredOutputType.ARRAY
@@ -572,7 +639,9 @@ class WorkflowAgentRuntimeRequestBuilder:
             ):
                 file_output_lines.append(
                     f"- `{output.name}`: for every produced file, run `dify-agent file upload <path>` and set "
-                    f"`final_output.{output.name}` to an array of the returned AgentStubFileMapping JSON objects."
+                    f"`final_output.{output.name}` to an array of the returned AgentStubFileMapping JSON objects. "
+                    "Do not call `final_output` before all upload commands succeed. Do not use local paths, filenames, "
+                    "URLs, or synthesized/base64-encoded values as `reference` values."
                 )
         if not file_output_lines:
             return None
@@ -580,7 +649,8 @@ class WorkflowAgentRuntimeRequestBuilder:
         return "\n".join(
             [
                 "When filling file outputs, do not return a local filesystem path directly.",
-                "Upload each sandbox-local file through the Agent Stub CLI first:",
+                "Upload each sandbox-local file through the Agent Stub CLI first. Copy the JSON printed by "
+                "`dify-agent file upload <path>` verbatim into the final output; never invent the `reference` value.",
                 *file_output_lines,
             ]
         )
