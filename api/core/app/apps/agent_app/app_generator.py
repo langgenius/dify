@@ -1,14 +1,9 @@
-"""Agent App generator: orchestrate Agent App chat and finalize executions.
+"""Agent App generator: orchestrate one conversation turn for an Agent App.
 
-The primary mode mirrors the agent_chat generator (conversation + message +
-queue + streamed response over the EasyUI chat pipeline), but the backing
-config comes from the bound Agent Soul and the answer is produced by
-``AgentAppRunner`` calling the dify-agent backend rather than an in-process
-LLM/ReAct loop.
-
-It also exposes a stateless build-finalize mode that reuses existing runtime
-context from the bound debug conversation, triggers the Agent backend side
-effect synchronously, and skips Dify-side chat/message persistence.
+Mirrors the agent_chat generator (conversation + message + queue + streamed
+response over the EasyUI chat pipeline), but the backing config comes from the
+bound Agent Soul and the answer is produced by ``AgentAppRunner`` calling the
+dify-agent backend rather than an in-process LLM/ReAct loop.
 """
 
 from __future__ import annotations
@@ -88,7 +83,10 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         if not streaming:
             raise AgentAppGeneratorError("Agent App only supports streaming mode")
 
-        query = self._require_query(args)
+        query = args.get("query")
+        if not isinstance(query, str) or not query.strip():
+            raise AgentAppGeneratorError("query is required")
+        query = query.replace("\x00", "")
         inputs = args["inputs"]
         prompt_file_mappings = args.get("files") or []
 
@@ -189,86 +187,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             stream=streaming,
         )
         return AgentAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
-
-    def generate_stateless(
-        self,
-        *,
-        app_model: App,
-        user: Account | EndUser,
-        args: Mapping[str, Any],
-        invoke_from: InvokeFrom,
-    ) -> Mapping[str, Any]:
-        """Run one Agent App turn without persisting Dify conversation messages."""
-        query = self._require_query(args)
-        conversation_id = args.get("conversation_id")
-        if not isinstance(conversation_id, str) or not conversation_id:
-            raise AgentAppGeneratorError("conversation_id is required")
-
-        agent, agent_config_id, agent_config_version_kind, agent_soul = self._resolve_agent(
-            app_model,
-            invoke_from=invoke_from,
-            draft_type=args.get("draft_type"),
-            user=user,
-        )
-        runtime_session_snapshot_id = self._runtime_session_snapshot_id(
-            invoke_from=invoke_from,
-            snapshot_id=agent_config_id,
-        )
-
-        return self._run_stateless(
-            app_model=app_model,
-            user=user,
-            invoke_from=invoke_from,
-            query=query,
-            conversation_id=conversation_id,
-            agent=agent,
-            agent_config_id=agent_config_id,
-            agent_config_version_kind=agent_config_version_kind,
-            agent_soul=agent_soul,
-            runtime_session_snapshot_id=runtime_session_snapshot_id,
-        )
-
-    def _run_stateless(
-        self,
-        *,
-        app_model: App,
-        user: Account | EndUser,
-        invoke_from: InvokeFrom,
-        query: str,
-        conversation_id: str,
-        agent: Agent,
-        agent_config_id: str,
-        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"],
-        agent_soul: AgentSoulConfig,
-        runtime_session_snapshot_id: str | None,
-    ) -> Mapping[str, Any]:
-        """Run the Agent backend without creating or updating Dify chat records.
-
-        Build-chat finalization is an action against the Agent backend (for
-        example, ``dify-agent config push``). It may reuse the active build-chat
-        runtime snapshot for shell/config context, but the API side must not add
-        a synthetic user/assistant turn to the debug conversation.
-        """
-
-        dify_context = DifyRunContext(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            user_id=user.id,
-            user_from=UserFrom.ACCOUNT if isinstance(user, Account) else UserFrom.END_USER,
-            invoke_from=invoke_from,
-        )
-        self._build_runner(dify_context).run_stateless(
-            dify_context=dify_context,
-            agent_id=agent.id,
-            agent_config_snapshot_id=agent_config_id,
-            agent_config_version_kind=agent_config_version_kind,
-            agent_soul=agent_soul,
-            conversation_id=conversation_id,
-            query=query,
-            idempotency_key=str(uuid.uuid4()),
-            session_scope_snapshot_id=runtime_session_snapshot_id,
-        )
-        return {"result": "success"}
 
     def resume_after_form_submission(
         self,
@@ -460,13 +378,23 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                     user_from=user_from,
                     invoke_from=application_generate_entity.invoke_from,
                 )
+                credentials_provider, _ = build_dify_model_access(dify_context)
                 _, _, agent_soul = self._resolve_agent_by_id(
                     tenant_id=app_config.tenant_id,
                     agent_id=application_generate_entity.agent_id,
                     snapshot_id=application_generate_entity.agent_config_snapshot_id,
                 )
 
-                runner = self._build_runner(dify_context)
+                runner = AgentAppRunner(
+                    request_builder=AgentAppRuntimeRequestBuilder(credentials_provider=credentials_provider),
+                    agent_backend_client=create_agent_backend_run_client(
+                        base_url=dify_config.AGENT_BACKEND_BASE_URL,
+                        use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
+                        fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
+                    ),
+                    event_adapter=AgentBackendRunEventAdapter(),
+                    session_store=AgentAppRuntimeSessionStore(),
+                )
                 runner.run(
                     dify_context=dify_context,
                     agent_id=application_generate_entity.agent_id,
@@ -487,27 +415,6 @@ class AgentAppGenerator(MessageBasedAppGenerator):
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
                 db.session.close()
-
-    @staticmethod
-    def _require_query(args: Mapping[str, Any]) -> str:
-        query = args.get("query")
-        if not isinstance(query, str) or not query.strip():
-            raise AgentAppGeneratorError("query is required")
-        return query.replace("\x00", "")
-
-    @staticmethod
-    def _build_runner(dify_context: DifyRunContext) -> AgentAppRunner:
-        credentials_provider, _ = build_dify_model_access(dify_context)
-        return AgentAppRunner(
-            request_builder=AgentAppRuntimeRequestBuilder(credentials_provider=credentials_provider),
-            agent_backend_client=create_agent_backend_run_client(
-                base_url=dify_config.AGENT_BACKEND_BASE_URL,
-                use_fake=dify_config.AGENT_BACKEND_USE_FAKE,
-                fake_scenario=dify_config.AGENT_BACKEND_FAKE_SCENARIO,
-            ),
-            event_adapter=AgentBackendRunEventAdapter(),
-            session_store=AgentAppRuntimeSessionStore(),
-        )
 
     def _run_input_guards(
         self,

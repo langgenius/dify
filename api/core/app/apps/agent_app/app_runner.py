@@ -1,15 +1,11 @@
-"""Agent App runner: drive Agent backend turns for both chat and finalize flows.
+"""Agent App runner: drive one conversation turn through the dify-agent backend.
 
 Unlike the legacy ``AgentChatAppRunner`` (which runs an in-process ReAct loop),
-this runner delegates to the Agent backend and supports two execution modes.
-
-- Normal chat turns build the run request from the Agent Soul + conversation,
-  consume backend stream events, republish the assistant answer through the
-  existing EasyUI chat task pipeline, and save the conversation
-  ``session_snapshot`` on success for multi-turn continuity (S3).
-- Stateless build-finalize turns reuse any prior conversation snapshot only to
-  construct the backend request, wait synchronously for backend completion, and
-  intentionally do not persist Dify-side chat records or runtime-session state.
+this runner delegates to the Agent backend: build the run request from the
+Agent Soul + conversation, create the run, consume its event stream, and
+republish the assistant answer as chat queue events so the existing
+EasyUI chat task pipeline persists the message and streams SSE. The conversation
+``session_snapshot`` is saved on success for multi-turn continuity (S3).
 """
 
 from __future__ import annotations
@@ -33,7 +29,6 @@ from clients.agent_backend import (
     AgentBackendStreamInternalEvent,
     extract_runtime_layer_specs,
 )
-from configs import dify_config
 from core.app.apps.agent_app.runtime_request_builder import (
     AgentAppRuntimeBuildContext,
     AgentAppRuntimeRequest,
@@ -451,27 +446,38 @@ class AgentAppRunner:
         queue_manager: AppQueueManager,
         session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
     ) -> None:
-        scope = self._build_session_scope(
-            dify_context=dify_context,
-            agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
+        if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):
+            effective_session_scope_snapshot_id: str | None = agent_config_snapshot_id
+        else:
+            effective_session_scope_snapshot_id = session_scope_snapshot_id
+        scope = AgentAppSessionScope(
+            tenant_id=dify_context.tenant_id,
+            app_id=dify_context.app_id,
             conversation_id=conversation_id,
-            session_scope_snapshot_id=session_scope_snapshot_id,
+            agent_id=agent_id,
+            agent_config_snapshot_id=effective_session_scope_snapshot_id,
         )
         # ENG-638: if a prior turn paused on ask_human and the form is now answered,
         # resume by threading the human's reply into this run as deferred_tool_results.
         stored = self._session_store.load_active_session(scope)
-        runtime = self._build_runtime(
-            dify_context=dify_context,
-            agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
-            agent_config_version_kind=agent_config_version_kind,
-            agent_soul=agent_soul,
-            conversation_id=conversation_id,
-            query=query,
-            idempotency_key=message_id,
-            stored=stored,
-            message_id=message_id,
+        session_snapshot = stored.session_snapshot if stored is not None else None
+        deferred_tool_results = self._resolve_pending_ask_human(
+            stored=stored, dify_context=dify_context, message_id=message_id
+        )
+
+        runtime = self._request_builder.build(
+            AgentAppRuntimeBuildContext(
+                dify_context=dify_context,
+                agent_id=agent_id,
+                agent_config_snapshot_id=agent_config_snapshot_id,
+                agent_config_version_kind=agent_config_version_kind,
+                agent_soul=agent_soul,
+                conversation_id=conversation_id,
+                user_query=query,
+                idempotency_key=message_id,
+                session_snapshot=session_snapshot,
+                deferred_tool_results=deferred_tool_results,
+            )
         )
 
         create_response = self._agent_backend_client.create_run(runtime.request)
@@ -518,111 +524,6 @@ class AgentAppRunner:
             backend_run_id=terminal.run_id,
             snapshot=terminal.session_snapshot,
             runtime_layer_specs=extract_runtime_layer_specs(runtime.request.composition),
-        )
-
-    def run_stateless(
-        self,
-        *,
-        dify_context: DifyRunContext,
-        agent_id: str,
-        agent_config_snapshot_id: str,
-        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot",
-        agent_soul: AgentSoulConfig,
-        conversation_id: str,
-        query: str,
-        idempotency_key: str,
-        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId = _DEFAULT_SESSION_SCOPE_SNAPSHOT_ID,
-    ) -> None:
-        """Run the Agent backend without creating Dify chat message records.
-
-        This path is used by build-chat finalization: the API must trigger the
-        backend side effects in the existing conversation session, but it must
-        not persist a synthetic user/assistant turn, update API-side runtime
-        session rows, or set up HITL state that depends on one.
-        """
-        scope = self._build_session_scope(
-            dify_context=dify_context,
-            agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
-            conversation_id=conversation_id,
-            session_scope_snapshot_id=session_scope_snapshot_id,
-        )
-        runtime = self._build_runtime(
-            dify_context=dify_context,
-            agent_id=agent_id,
-            agent_config_snapshot_id=agent_config_snapshot_id,
-            agent_config_version_kind=agent_config_version_kind,
-            agent_soul=agent_soul,
-            conversation_id=conversation_id,
-            query=query,
-            idempotency_key=idempotency_key,
-            stored=self._session_store.load_active_session(scope),
-            message_id=None,
-        )
-
-        create_response = self._agent_backend_client.create_run(runtime.request)
-        status = self._agent_backend_client.wait_run(
-            create_response.run_id,
-            timeout_seconds=dify_config.APP_MAX_EXECUTION_TIME,
-        )
-        if status.status != "succeeded":
-            error = getattr(status, "error", None) or f"Agent backend run ended with status {status.status}."
-            raise AgentBackendError(str(error))
-
-    def _build_session_scope(
-        self,
-        *,
-        dify_context: DifyRunContext,
-        agent_id: str,
-        agent_config_snapshot_id: str,
-        conversation_id: str,
-        session_scope_snapshot_id: str | None | _DefaultSessionScopeSnapshotId,
-    ) -> AgentAppSessionScope:
-        if isinstance(session_scope_snapshot_id, _DefaultSessionScopeSnapshotId):
-            effective_session_scope_snapshot_id: str | None = agent_config_snapshot_id
-        else:
-            effective_session_scope_snapshot_id = session_scope_snapshot_id
-        return AgentAppSessionScope(
-            tenant_id=dify_context.tenant_id,
-            app_id=dify_context.app_id,
-            conversation_id=conversation_id,
-            agent_id=agent_id,
-            agent_config_snapshot_id=effective_session_scope_snapshot_id,
-        )
-
-    def _build_runtime(
-        self,
-        *,
-        dify_context: DifyRunContext,
-        agent_id: str,
-        agent_config_snapshot_id: str,
-        agent_config_version_kind: Literal["snapshot", "draft", "build_draft"],
-        agent_soul: AgentSoulConfig,
-        conversation_id: str,
-        query: str,
-        idempotency_key: str,
-        stored: StoredAgentAppSession | None,
-        message_id: str | None,
-    ) -> AgentAppRuntimeRequest:
-        session_snapshot = stored.session_snapshot if stored is not None else None
-        deferred_tool_results = (
-            self._resolve_pending_ask_human(stored=stored, dify_context=dify_context, message_id=message_id)
-            if message_id is not None
-            else None
-        )
-        return self._request_builder.build(
-            AgentAppRuntimeBuildContext(
-                dify_context=dify_context,
-                agent_id=agent_id,
-                agent_config_snapshot_id=agent_config_snapshot_id,
-                agent_config_version_kind=agent_config_version_kind,
-                agent_soul=agent_soul,
-                conversation_id=conversation_id,
-                user_query=query,
-                idempotency_key=idempotency_key,
-                session_snapshot=session_snapshot,
-                deferred_tool_results=deferred_tool_results,
-            )
         )
 
     def _pause_for_ask_human(

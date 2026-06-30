@@ -571,23 +571,6 @@ class AgentRosterService:
             self._session.commit()
         return conversation_id
 
-    def load_agent_app_debug_conversation_id(self, *, tenant_id: str, agent_id: str, account_id: str) -> str | None:
-        """Return the current editor's existing debug conversation without creating or repairing rows."""
-
-        return self._session.scalar(
-            select(Conversation.id)
-            .join(AgentDebugConversation, AgentDebugConversation.conversation_id == Conversation.id)
-            .where(
-                AgentDebugConversation.tenant_id == tenant_id,
-                AgentDebugConversation.agent_id == agent_id,
-                AgentDebugConversation.account_id == account_id,
-                AgentDebugConversation.app_id == Conversation.app_id,
-                Conversation.from_source == ConversationFromSource.CONSOLE,
-                Conversation.from_account_id == account_id,
-                Conversation.is_deleted.is_(False),
-            )
-        )
-
     def count_agent_app_debug_conversation_messages(self, *, conversation_id: str) -> int:
         """Return the number of visible messages in an Agent App debug conversation."""
 
