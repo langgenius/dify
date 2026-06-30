@@ -310,7 +310,7 @@ class TestOpsService:
 
     def test_update_tracing_app_config_invalid_provider(self, db_session_with_containers: Session):
         with pytest.raises(ValueError, match="Invalid tracing provider: invalid_provider"):
-            OpsService.update_tracing_app_config(str(uuid.uuid4()), "invalid_provider", {})
+            OpsService.update_tracing_app_config(str(uuid.uuid4()), "invalid_provider", {}, db_session_with_containers)
 
     def test_update_tracing_app_config_no_config(self, db_session_with_containers: Session, mock_ops_trace_manager):
         result = OpsService.update_tracing_app_config(
@@ -339,7 +339,7 @@ class TestOpsService:
             self._insert_trace_config(db_session_with_containers, app.id, str(TracingProviderEnum.ARIZE))
 
             with pytest.raises(ValueError, match="Invalid Credentials"):
-                OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {})
+                OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers)
 
     def test_update_tracing_app_config_success(
         self, db_session_with_containers: Session, mock_external_service_dependencies
@@ -352,7 +352,7 @@ class TestOpsService:
             app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
             self._insert_trace_config(db_session_with_containers, app.id, str(TracingProviderEnum.ARIZE))
 
-            result = OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {})
+            result = OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers)
 
         assert result is not None
         assert result["app_id"] == app.id
