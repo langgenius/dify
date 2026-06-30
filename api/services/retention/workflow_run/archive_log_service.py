@@ -273,7 +273,7 @@ def _dispatch_workflow_run_archive_download_task(
 
     try:
         prepare_workflow_run_archive_download_task.apply_async(
-            args=[queued_task.tenant_id, queued_task.download_id],
+            args=(queued_task.tenant_id, queued_task.download_id),
             task_id=celery_task_id,
         )
     except Exception:

@@ -207,9 +207,13 @@ class WorkflowRunArchiveDownloadFileApi(Resource):
         except WorkflowRunArchiveDownloadNotReadyError as exc:
             raise Conflict(str(exc)) from exc
 
+        storage_key = task.storage_key
+        if storage_key is None:
+            raise Conflict(f"Workflow run archive download is not ready: {download_id}")
+
         storage = get_export_storage()
         presigned_url = storage.generate_presigned_url(
-            task.storage_key,
+            storage_key,
             expires_in=_presigned_url_expires_in(task.expires_at),
             filename=task.file_name,
             content_type=ARCHIVE_DOWNLOAD_MIME_TYPE,

@@ -215,9 +215,7 @@ def _list_task_bundles(session: Session, task: WorkflowRunArchiveDownloadTask) -
     else:
         requested_bundle_ids = set(task.bundle_ids)
         requested_refs = [
-            (bundle.shard, bundle.bundle_id)
-            for bundle in indexed_bundles
-            if bundle.bundle_id in requested_bundle_ids
+            (bundle.shard, bundle.bundle_id) for bundle in indexed_bundles if bundle.bundle_id in requested_bundle_ids
         ]
 
     bundle_by_ref = {(bundle.shard, bundle.bundle_id): bundle for bundle in indexed_bundles}
@@ -275,17 +273,20 @@ def _validate_manifest(
         raise ValueError(f"unsupported archive bundle schema version: {manifest['schema_version']}")
     if manifest["archive_format"] != ARCHIVE_BUNDLE_FORMAT:
         raise ValueError(f"unsupported archive bundle format: {manifest['archive_format']}")
-    expected_values = {
-        "tenant_id": task.tenant_id,
-        "year": task.year,
-        "month": task.month,
-        "shard": bundle.shard,
-        "bundle_id": bundle.bundle_id,
-        "object_prefix": object_prefix,
-    }
-    for key, expected_value in expected_values.items():
-        if manifest[key] != expected_value:
-            raise ValueError(f"manifest {key} mismatch: expected={expected_value}, actual={manifest[key]}")
+    if manifest["tenant_id"] != task.tenant_id:
+        raise ValueError(f"manifest tenant_id mismatch: expected={task.tenant_id}, actual={manifest['tenant_id']}")
+    if manifest["year"] != task.year:
+        raise ValueError(f"manifest year mismatch: expected={task.year}, actual={manifest['year']}")
+    if manifest["month"] != task.month:
+        raise ValueError(f"manifest month mismatch: expected={task.month}, actual={manifest['month']}")
+    if manifest["shard"] != bundle.shard:
+        raise ValueError(f"manifest shard mismatch: expected={bundle.shard}, actual={manifest['shard']}")
+    if manifest["bundle_id"] != bundle.bundle_id:
+        raise ValueError(f"manifest bundle_id mismatch: expected={bundle.bundle_id}, actual={manifest['bundle_id']}")
+    if manifest["object_prefix"] != object_prefix:
+        raise ValueError(
+            f"manifest object_prefix mismatch: expected={object_prefix}, actual={manifest['object_prefix']}"
+        )
     if not manifest["tables"]:
         raise ValueError("manifest tables must not be empty")
     for table_name, raw_entry in manifest["tables"].items():
