@@ -11,6 +11,7 @@ plugin/knowledge business-layer family:
 - ``dify.shell`` for shellctl-backed shell job control,
 - ``dify.plugin.llm`` for plugin-backed model selection,
 - ``dify.plugin.tools`` for prepared plugin tool exposure, and
+- ``dify.core.tools`` for API-routed Dify tool exposure, and
 - ``dify.knowledge_base`` for inner-API-backed knowledge search tools.
 
 Public DTOs provide Dify context plus plugin/model/tool data, while server-only
@@ -23,8 +24,10 @@ layer instances inside ``resource_context()``, and never enter session
 snapshots.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from pydantic_ai.messages import UserContent
 
@@ -34,9 +37,10 @@ from agenton_collections.layers.pydantic_ai import PydanticAIHistoryLayer
 from agenton_collections.layers.plain.basic import PromptLayer
 from agenton_collections.transformers.pydantic_ai import PYDANTIC_AI_TRANSFORMERS
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory
-from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.config.layer import DifyConfigLayer
+from dify_agent.layers.dify_core_tools.configs import DifyCoreToolsLayerConfig
+from dify_agent.layers.dify_core_tools.layer import DifyCoreToolsLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
 from dify_agent.layers.drive.layer import DifyDriveLayer
@@ -49,6 +53,9 @@ from dify_agent.adapters.shell.config import ShellAdapterSettings
 from dify_agent.adapters.shell.factory import create_shell_provider
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.layer import DifyShellLayer
+
+if TYPE_CHECKING:
+    from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 
 type DifyAgentLayerProvider = LayerProvider[Any]
 
@@ -122,6 +129,14 @@ def create_default_layer_providers(
         ),
         LayerProvider.from_layer_type(DifyPluginLLMLayer),
         LayerProvider.from_layer_type(DifyPluginToolsLayer),
+        LayerProvider.from_factory(
+            layer_type=DifyCoreToolsLayer,
+            create=lambda config: DifyCoreToolsLayer.from_config_with_settings(
+                DifyCoreToolsLayerConfig.model_validate(config),
+                inner_api_url=inner_api_url,
+                inner_api_key=inner_api_key,
+            ),
+        ),
         LayerProvider.from_factory(
             layer_type=DifyKnowledgeBaseLayer,
             create=lambda config: DifyKnowledgeBaseLayer.from_config_with_settings(
