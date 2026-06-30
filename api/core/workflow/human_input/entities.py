@@ -444,7 +444,7 @@ def _validate_submitted_input_value(*, form_input: FormInputConfig, value: Any) 
                 f"Invalid value for select input '{form_input.output_variable_name}': expected string"
             )
         option_source = form_input.option_source
-        if str(option_source.type) == ValueSourceType.CONSTANT and value not in option_source.value:
+        if option_source.type == ValueSourceType.CONSTANT and value not in option_source.value:
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for select input '{form_input.output_variable_name}': {value}"
             )

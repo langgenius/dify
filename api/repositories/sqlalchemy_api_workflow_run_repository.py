@@ -993,11 +993,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             for reason in pause_reasons:
                 match reason:
                     case HitlRequired():
-                        # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
-                        pause_reason_model = WorkflowPauseReason(
+                        pause_reason_model = WorkflowPauseReason.from_entity(
                             pause_id=pause_model.id,
-                            type_=reason.TYPE,
-                            form_id=session_binding.resolve_form_id_from_session_id(session_id=reason.session_id),
+                            pause_reason=reason,
                         )
                     case SchedulingPause():
                         pause_reason_model = WorkflowPauseReason(
