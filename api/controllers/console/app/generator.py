@@ -1,8 +1,7 @@
 import json
-from collections.abc import Sequence
+from collections.abc import Generator, Sequence
 from typing import Any, Literal
 
-from flask import Response, stream_with_context
 from flask_restx import Resource
 from pydantic import BaseModel, Field, RootModel
 from sqlalchemy.orm import Session
@@ -28,6 +27,7 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.workflow.generator.types import WorkflowGenerateErrorCode
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import compact_generate_response
 from libs.login import login_required
 from models import App
 from services.workflow_generator_service import WorkflowGeneratorService
@@ -470,7 +470,7 @@ class WorkflowGenerateStreamApi(Resource):
         if guard is not None:
             return guard
 
-        def generate():
+        def generate() -> Generator[str, None, None]:
             try:
                 for event_name, payload in WorkflowGeneratorService.generate_workflow_graph_stream(
                     tenant_id=current_tenant_id,
@@ -497,8 +497,4 @@ class WorkflowGenerateStreamApi(Resource):
                 }
                 yield f"data: {json.dumps(error_body)}\n\n"
 
-        return Response(
-            stream_with_context(generate()),
-            mimetype="text/event-stream",
-            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-        )
+        return compact_generate_response(generate())
