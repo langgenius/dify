@@ -3,6 +3,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Generator, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, cast
 
 from sqlalchemy import exists, select
@@ -23,6 +24,11 @@ from core.workflow.human_input_adapter import (
     adapt_human_input_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
+from core.workflow.nodes.human_input.callback import (
+    DifyHITLCallback,
+    render_form_content_before_submission,
+    resolve_default_values,
+)
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.node_factory import (
     LATEST_VERSION,
@@ -32,7 +38,6 @@ from core.workflow.node_factory import (
 )
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
-    DifyHumanInputNodeRuntime,
     apply_dify_debug_email_recipient,
 )
 from core.workflow.system_variables import build_bootstrap_variables, build_system_variables, default_system_variables
@@ -61,7 +66,6 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.nodes.human_input.enums import HumanInputFormKind
-from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
 from graphon.variable_loader import load_into_variable_pool
@@ -82,6 +86,47 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+
+
+@dataclass(frozen=True)
+class _DebugHumanInputNode:
+    node_id: str
+    title: str
+    node_data: HumanInputNodeData
+    variable_pool: VariablePool
+
+    def render_form_content_before_submission(self) -> str:
+        return render_form_content_before_submission(
+            self.node_data,
+            ctx=self,
+        )
+
+    def resolve_default_values(self) -> Mapping[str, Any]:
+        return resolve_default_values(
+            self.node_data,
+            ctx=self,
+        )
+
+    def render_form_content_with_outputs(
+        self,
+        form_content: str,
+        outputs: Mapping[str, Any],
+        field_names: Sequence[str],
+        form_inputs: Sequence[object] | None = None,
+    ) -> str:
+        return DifyHITLCallback.render_form_content_with_outputs(
+            form_content=form_content,
+            outputs=outputs,  # type: ignore[arg-type]
+            field_names=field_names,
+            form_inputs=form_inputs,  # type: ignore[arg-type]
+        )
+
+    @property
+    def workflow_execution_id(self) -> str:
+        return "debug-human-input"
+
+
+HumanInputNode = _DebugHumanInputNode
 from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
 
@@ -1275,35 +1320,15 @@ class WorkflowService:
         account: Account,
         node_config: NodeConfigDict,
         variable_pool: VariablePool,
-    ) -> HumanInputNode:
-        run_context = build_dify_run_context(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
-            user_id=account.id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
-        )
-        graph_init_context = DifyGraphInitContext(
-            workflow_id=workflow.id,
-            graph_config=workflow.graph_dict,
-            run_context=run_context,
-            call_depth=0,
-        )
-        graph_init_params = graph_init_context.to_graph_init_params()
-        graph_runtime_state = GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=time.perf_counter(),
-        )
-        node_data = HumanInputNode.validate_node_data(adapt_human_input_node_data_for_graph(node_config["data"]))
-        node = HumanInputNode(
+    ) -> _DebugHumanInputNode:
+        _ = workflow, account
+        node_data = HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_config["data"]))
+        return HumanInputNode(
             node_id=node_config["id"],
-            data=node_data,
-            graph_init_params=graph_init_params,
-            graph_runtime_state=graph_runtime_state,
-            runtime=DifyHumanInputNodeRuntime(run_context),
-            file_reference_factory=DifyFileReferenceFactory(run_context),
+            title=node_data.title,
+            node_data=node_data,
+            variable_pool=variable_pool,
         )
-        return node
 
     def _build_human_input_variable_pool(
         self,
@@ -1333,10 +1358,8 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             user_id=user_id,
         )
-        variable_mapping = HumanInputNode.extract_variable_selector_to_variable_mapping(
-            graph_config=workflow.graph_dict,
-            config=node_config,
-        )
+        human_input_node_data = HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_config["data"]))
+        variable_mapping = human_input_node_data.extract_variable_selector_to_variable_mapping(node_config["id"])
         normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
 
         load_into_variable_pool(

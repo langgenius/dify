@@ -42,7 +42,7 @@ from typing import Protocol, TypedDict
 from sqlalchemy.orm import Session
 
 from core.repositories.factory import WorkflowExecutionRepository
-from graphon.entities.pause_reason import PauseReason
+from core.workflow.nodes.human_input.pause_reason import PauseReason
 from graphon.enums import WorkflowType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom

@@ -2111,7 +2111,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
 
     type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
 
-    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    # form_id is not empty if and only if type_ is one of the Human Input pause variants.
     #
     form_id: Mapped[str] = mapped_column(
         String(36),
@@ -2169,7 +2169,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
                 raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
     def to_entity(self) -> GraphonPauseReason | DifyPauseReason:
-        if self.type_ == HUMAN_INPUT_REQUIRED_REASON_TYPE:
+        if self.type_ in {HUMAN_INPUT_REQUIRED_REASON_TYPE, PauseReasonType.HITL_REQUIRED}:
             return HumanInputRequired(
                 form_id=self.form_id,
                 form_content="",

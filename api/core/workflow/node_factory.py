@@ -33,6 +33,13 @@ from core.workflow.node_runtime import (
     DifyToolNodeRuntime,
     build_dify_llm_file_saver,
 )
+from core.workflow.nodes.human_input.callback import (
+    DifyHITLCallback,
+    render_form_content_before_submission,
+    resolve_default_values,
+)
+from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.nodes.agent.message_transformer import AgentMessageTransformer
 from core.workflow.nodes.agent.plugin_strategy_adapter import (
     PluginAgentStrategyPresentationProvider,
@@ -409,9 +416,9 @@ class DifyNodeFactory(NodeFactory):
                 "file_reference_factory": self._file_reference_factory,
             },
             BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "runtime": self._human_input_runtime,
-                "file_reference_factory": self._file_reference_factory,
-                "form_repository": self._human_input_runtime.build_form_repository(),
+                "hitl_callback": self._build_human_input_callback(
+                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"])
+                ),
             },
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
@@ -514,6 +521,23 @@ class DifyNodeFactory(NodeFactory):
             "runtime_support": self._agent_runtime_support,
             "message_transformer": self._agent_message_transformer,
         }
+
+    def _build_human_input_callback(
+        self,
+        *,
+        node_data: DifyHumanInputNodeData,
+    ) -> DifyHITLCallback:
+        return DifyHITLCallback(
+            form_repository=self._human_input_runtime.build_form_repository(),
+            session_binding=SessionBinding(),
+            node_data=node_data,
+            rendered_content=lambda ctx: render_form_content_before_submission(node_data, ctx=ctx),
+            resolved_default_values=lambda ctx: resolve_default_values(node_data, ctx=ctx),
+            conversation_id=self._conversation_id(),
+            delivery_methods=self._human_input_runtime._resolve_delivery_methods(node_data=node_data),
+            display_in_ui=self._human_input_runtime._display_in_ui(node_data=node_data),
+            file_reference_factory=self._file_reference_factory,
+        )
 
     def _build_llm_compatible_node_init_kwargs(
         self,

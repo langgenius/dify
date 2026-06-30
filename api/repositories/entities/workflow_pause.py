@@ -10,7 +10,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
-from graphon.entities.pause_reason import PauseReason
+from core.workflow.nodes.human_input.pause_reason import PauseReason
 
 
 class WorkflowPauseEntity(Protocol):

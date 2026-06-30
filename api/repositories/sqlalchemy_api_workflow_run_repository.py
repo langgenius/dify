@@ -34,12 +34,13 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
+from core.workflow.nodes.human_input.session_binding import SessionBinding
 from core.workflow.nodes.human_input.pause_reason import (
     HUMAN_INPUT_REQUIRED_REASON_TYPE,
     HumanInputRequired,
     PauseReason as DifyPauseReason,
 )
-from graphon.entities.pause_reason import PauseReason as GraphonPauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import HitlRequired, PauseReason as GraphonPauseReason, PauseReasonType, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
 from core.workflow.nodes.human_input.entities import FormDefinition
 from libs.datetime_utils import naive_utc_now
@@ -64,6 +65,8 @@ from repositories.types import (
 from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 
 logger = logging.getLogger(__name__)
+_SESSION_BINDING = SessionBinding()
+_HITL_REASON_TYPES = frozenset({HUMAN_INPUT_REQUIRED_REASON_TYPE, PauseReasonType.HITL_REQUIRED})
 
 
 class _WorkflowRunError(Exception):
@@ -1008,6 +1011,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_reason_models = []
             for reason in pause_reasons:
                 match reason:
+                    case HitlRequired():
+                        pause_reason_model = WorkflowPauseReason(
+                            pause_id=pause_model.id,
+                            type_=PauseReasonType.HITL_REQUIRED,
+                            form_id=_SESSION_BINDING.resolve_form_id_from_session_id(session_id=reason.session_id),
+                            node_id=reason.node_id,
+                        )
                     case HumanInputRequired():
                         # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
                         pause_reason_model = WorkflowPauseReason(
@@ -1055,7 +1065,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         form_ids = [
             reason.form_id
             for reason in pause_reason_models
-            if reason.type_ == HUMAN_INPUT_REQUIRED_REASON_TYPE and reason.form_id
+            if reason.type_ in _HITL_REASON_TYPES and reason.form_id
         ]
         form_models: dict[str, HumanInputForm] = {}
         if form_ids:
@@ -1070,7 +1080,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         pause_reasons: list[GraphonPauseReason | DifyPauseReason] = []
         for reason in pause_reason_models:
-            if reason.type_ == HUMAN_INPUT_REQUIRED_REASON_TYPE:
+            if reason.type_ in _HITL_REASON_TYPES:
                 form_model = form_models.get(reason.form_id)
                 pause_reasons.append(
                     _build_human_input_required_reason(
@@ -1592,7 +1602,7 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         return self._pause_model.resumed_at
 
     @override
-    def get_pause_reasons(self) -> Sequence[PauseReason]:
+    def get_pause_reasons(self) -> Sequence[GraphonPauseReason | DifyPauseReason]:
         if self._pause_reasons is not None:
             return list(self._pause_reasons)  # type: ignore
         return [reason.to_entity() for reason in self._reason_models]  # type: ignore

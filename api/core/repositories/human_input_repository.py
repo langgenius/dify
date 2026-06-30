@@ -572,6 +572,13 @@ class HumanInputFormSubmissionRepository:
                 return None
             return HumanInputFormRecord.from_models(recipient_model.form, recipient_model)
 
+    def get_by_form_id(self, form_id: str) -> HumanInputFormRecord | None:
+        with session_factory.create_session() as session:
+            form_model = session.get(HumanInputForm, form_id)
+            if form_model is None:
+                return None
+            return HumanInputFormRecord.from_models(form_model, None)
+
     def get_by_form_id_and_recipient_type(
         self,
         form_id: str,
