@@ -40,6 +40,7 @@ from services.errors.app import QuotaExceededError
 from services.quota_service import QuotaService
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
+from services.workflow_service import WorkflowService
 
 try:
     import magic
@@ -114,6 +115,7 @@ class WebhookService:
                 workflow = session.scalar(
                     select(Workflow)
                     .where(
+                        Workflow.tenant_id == webhook_trigger.tenant_id,
                         Workflow.app_id == webhook_trigger.app_id,
                         Workflow.version == Workflow.VERSION_DRAFT,
                     )
@@ -125,6 +127,7 @@ class WebhookService:
                 app_trigger = session.scalar(
                     select(AppTrigger)
                     .where(
+                        AppTrigger.tenant_id == webhook_trigger.tenant_id,
                         AppTrigger.app_id == webhook_trigger.app_id,
                         AppTrigger.node_id == webhook_trigger.node_id,
                         AppTrigger.trigger_type == AppTriggerType.TRIGGER_WEBHOOK,
@@ -145,16 +148,18 @@ class WebhookService:
                 if app_trigger.status != AppTriggerStatus.ENABLED:
                     raise ValueError(f"Webhook trigger is disabled for webhook {webhook_id}")
 
-                # Get workflow
-                workflow = session.scalar(
-                    select(Workflow)
+                app = session.scalar(
+                    select(App)
                     .where(
-                        Workflow.app_id == webhook_trigger.app_id,
-                        Workflow.version != Workflow.VERSION_DRAFT,
+                        App.tenant_id == webhook_trigger.tenant_id,
+                        App.id == webhook_trigger.app_id,
                     )
-                    .order_by(Workflow.created_at.desc())
                     .limit(1)
                 )
+                if not app:
+                    raise ValueError(f"App not found for webhook {webhook_id}")
+
+                workflow = WorkflowService().get_published_workflow(app, session=session)
             if not workflow:
                 raise ValueError(f"Workflow not found for app {webhook_trigger.app_id}")
 

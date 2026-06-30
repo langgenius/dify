@@ -356,9 +356,13 @@ class TestSegmentServiceMockedBehavior:
         """Test segment creation returns list of segments."""
         mock_segments = [Mock(spec=DocumentSegment), Mock(spec=DocumentSegment)]
         mock_create.return_value = mock_segments
+        session = Mock()
 
         result = SegmentService.multi_create_segment(
-            segments=[{"content": "Test"}, {"content": "Test 2"}], document=mock_document, dataset=mock_dataset
+            segments=[{"content": "Test"}, {"content": "Test 2"}],
+            document=mock_document,
+            dataset=mock_dataset,
+            session=session,
         )
 
         assert result is not None
@@ -385,8 +389,13 @@ class TestSegmentServiceMockedBehavior:
     def test_get_segment_by_id_returns_segment(self, mock_get, mock_segment):
         """Test get_segment_by_id returns segment."""
         mock_get.return_value = mock_segment
+        session = Mock()
 
-        result = SegmentService.get_segment_by_id(segment_id=mock_segment.id, tenant_id=mock_segment.tenant_id)
+        result = SegmentService.get_segment_by_id(
+            segment_id=mock_segment.id,
+            tenant_id=mock_segment.tenant_id,
+            session=session,
+        )
 
         assert result == mock_segment
 
@@ -394,16 +403,22 @@ class TestSegmentServiceMockedBehavior:
     def test_get_segment_by_id_returns_none_when_not_found(self, mock_get):
         """Test get_segment_by_id returns None when not found."""
         mock_get.return_value = None
+        session = Mock()
 
-        result = SegmentService.get_segment_by_id(segment_id=str(uuid.uuid4()), tenant_id=str(uuid.uuid4()))
+        result = SegmentService.get_segment_by_id(
+            segment_id=str(uuid.uuid4()),
+            tenant_id=str(uuid.uuid4()),
+            session=session,
+        )
 
         assert result is None
 
     @patch.object(SegmentService, "delete_segment")
     def test_delete_segment_called(self, mock_delete, mock_segment, mock_document, mock_dataset):
         """Test segment deletion is called."""
-        SegmentService.delete_segment(mock_segment, mock_document, mock_dataset)
-        mock_delete.assert_called_once_with(mock_segment, mock_document, mock_dataset)
+        session = Mock()
+        SegmentService.delete_segment(mock_segment, mock_document, mock_dataset, session)
+        mock_delete.assert_called_once_with(mock_segment, mock_document, mock_dataset, session)
 
 
 class TestChildChunkServiceMockedBehavior:
@@ -431,7 +446,11 @@ class TestChildChunkServiceMockedBehavior:
         mock_create.return_value = mock_child_chunk
 
         result = SegmentService.create_child_chunk(
-            content="New chunk content", segment=mock_segment, document=Mock(spec=Document), dataset=Mock(spec=Dataset)
+            content="New chunk content",
+            segment=mock_segment,
+            document=Mock(spec=Document),
+            dataset=Mock(spec=Dataset),
+            session=Mock(),
         )
 
         assert result == mock_child_chunk
@@ -462,7 +481,9 @@ class TestChildChunkServiceMockedBehavior:
         mock_get.return_value = mock_child_chunk
 
         result = SegmentService.get_child_chunk_by_id(
-            child_chunk_id=mock_child_chunk.id, tenant_id=mock_child_chunk.tenant_id
+            child_chunk_id=mock_child_chunk.id,
+            tenant_id=mock_child_chunk.tenant_id,
+            session=Mock(),
         )
 
         assert result == mock_child_chunk
@@ -480,6 +501,7 @@ class TestChildChunkServiceMockedBehavior:
             segment=Mock(spec=DocumentSegment),
             document=Mock(spec=Document),
             dataset=Mock(spec=Dataset),
+            session=Mock(),
         )
 
         assert result.content == "Updated content"
@@ -1156,7 +1178,7 @@ class TestDatasetSegmentApiDelete:
 
         # Assert
         assert response == ("", 204)
-        mock_seg_svc.delete_segment.assert_called_once_with(mock_segment, mock_doc, mock_dataset)
+        mock_seg_svc.delete_segment.assert_called_once_with(mock_segment, mock_doc, mock_dataset, mock_db.session)
 
     @patch("controllers.service_api.dataset.segment.SegmentService")
     @patch("controllers.service_api.dataset.segment.DocumentService")
