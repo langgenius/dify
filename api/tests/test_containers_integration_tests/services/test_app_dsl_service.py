@@ -870,7 +870,9 @@ class TestAppDslService:
         AppDslService.export_dsl(chat_app, session=db_session_with_containers)
         assert model_calls == [True]
 
-    def test_export_dsl_preserves_icon_and_icon_type(self, monkeypatch: pytest.MonkeyPatch):
+    def test_export_dsl_preserves_icon_and_icon_type(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         monkeypatch.setattr(
             AppDslService,
             "_append_workflow_export_data",
@@ -1006,7 +1008,7 @@ class TestAppDslService:
 
         workflow_id = str(uuid4())
 
-        def mock_get_draft_workflow(app_model, wf_id=None):
+        def mock_get_draft_workflow(app_model, wf_id=None, **_kwargs):
             if wf_id == workflow_id:
                 return mock_workflow
             return None
@@ -1145,7 +1147,9 @@ class TestAppDslService:
         assert nodes[5]["data"]["subscription_id"] == ""
         assert export_data["dependencies"] == [{"tenant": _DEFAULT_TENANT_ID, "dep": "dep-1"}]
 
-    def test_append_workflow_export_data_missing_workflow_raises(self, monkeypatch: pytest.MonkeyPatch):
+    def test_append_workflow_export_data_missing_workflow_raises(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         workflow_service = MagicMock()
         workflow_service.get_draft_workflow.return_value = None
         monkeypatch.setattr(app_dsl_service, "WorkflowService", lambda: workflow_service)

@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from faker import Faker
@@ -638,8 +638,8 @@ class TestMessageService:
             )
 
         # Get feedbacks with pagination
-        result_page_1 = (
-            MessageService.get_all_messages_feedbacks(app, page=1, limit=3, session=db_session_with_containers),
+        result_page_1 = MessageService.get_all_messages_feedbacks(
+            app, page=1, limit=3, session=db_session_with_containers
         )
         result_page_2 = MessageService.get_all_messages_feedbacks(
             app, page=2, limit=3, session=db_session_with_containers
@@ -882,7 +882,7 @@ class TestMessageService:
 
         # Verify draft workflow was used instead of published workflow
         mock_external_service_dependencies["workflow_service"].return_value.get_draft_workflow.assert_called_once_with(
-            app_model=app
+            app_model=app, session=ANY
         )
 
         # Verify TraceQueueManager was called

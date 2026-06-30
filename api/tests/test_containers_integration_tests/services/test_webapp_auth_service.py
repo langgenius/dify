@@ -1,6 +1,6 @@
 import time
 import uuid
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 import pytest
 from faker import Faker
@@ -795,7 +795,9 @@ class TestWebAppAuthService:
         assert result is True
 
         # Verify mock service was called correctly
-        mock_external_service_dependencies["app_service"].get_app_id_by_code.assert_called_once_with("mock_app_code")
+        mock_external_service_dependencies["app_service"].get_app_id_by_code.assert_called_once_with(
+            "mock_app_code", session=ANY
+        )
         mock_external_service_dependencies[
             "enterprise_service"
         ].WebAppAuth.get_app_access_mode_by_id.assert_called_once_with("mock_app_id")

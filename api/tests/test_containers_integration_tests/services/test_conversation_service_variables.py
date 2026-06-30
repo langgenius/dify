@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
 from flask import Flask
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from graphon.variables import FloatVariable, IntegerVariable, StringVariable
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, EndUserType
@@ -152,13 +150,6 @@ class ConversationServiceVariableIntegrationFactory:
 @pytest.fixture
 def real_conversation_service_session_factory(flask_app_with_containers: Flask):
     del flask_app_with_containers
-    real_session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-
-    with (
-        patch("services.conversation_service.session_factory.create_session", side_effect=lambda: real_session_maker()),
-        patch("services.conversation_service.session_factory.get_session_maker", return_value=real_session_maker),
-    ):
-        yield
 
 
 class TestConversationServiceVariables:

@@ -67,6 +67,7 @@ class TestOpsService:
                 icon_background="#FF6B6B",
             ),
             account,
+            session=db_session_with_containers,
         )
         return app, account
 
@@ -91,13 +92,13 @@ class TestOpsService:
     # ── get_tracing_app_config ─────────────────────────────────────────
 
     def test_get_tracing_app_config_no_config(self, db_session_with_containers: Session, mock_ops_trace_manager):
-        result = OpsService.get_tracing_app_config(str(uuid.uuid4()), "arize")
+        result = OpsService.get_tracing_app_config(str(uuid.uuid4()), "arize", db_session_with_containers)
         assert result is None
 
     def test_get_tracing_app_config_no_app(self, db_session_with_containers: Session, mock_ops_trace_manager):
         fake_app_id = str(uuid.uuid4())
         self._insert_trace_config(db_session_with_containers, fake_app_id, "arize")
-        result = OpsService.get_tracing_app_config(fake_app_id, "arize")
+        result = OpsService.get_tracing_app_config(fake_app_id, "arize", db_session_with_containers)
         assert result is None
 
     def test_get_tracing_app_config_none_config(
@@ -171,7 +172,7 @@ class TestOpsService:
             app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
             self._insert_trace_config(db_session_with_containers, app.id, "langfuse")
 
-            result = OpsService.get_tracing_app_config(app.id, "langfuse")
+            result = OpsService.get_tracing_app_config(app.id, "langfuse", db_session_with_containers)
 
         assert result is not None
         assert result["tracing_config"]["project_url"] == "https://api.langfuse.com/project/key"
@@ -364,7 +365,7 @@ class TestOpsService:
     # ── delete_tracing_app_config ──────────────────────────────────────
 
     def test_delete_tracing_app_config_no_config(self, db_session_with_containers: Session):
-        result = OpsService.delete_tracing_app_config(str(uuid.uuid4()), "arize")
+        result = OpsService.delete_tracing_app_config(str(uuid.uuid4()), "arize", db_session_with_containers)
         assert result is None
 
     def test_delete_tracing_app_config_success(
@@ -373,7 +374,7 @@ class TestOpsService:
         app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
         self._insert_trace_config(db_session_with_containers, app.id, "arize")
 
-        result = OpsService.delete_tracing_app_config(app.id, "arize")
+        result = OpsService.delete_tracing_app_config(app.id, "arize", db_session_with_containers)
 
         assert result is True
         remaining = db_session_with_containers.scalar(
