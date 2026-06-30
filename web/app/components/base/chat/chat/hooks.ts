@@ -391,14 +391,15 @@ export const useChat = (
               authorName: messageEnd.metadata.annotation_reply.account.name,
             })
           })
-          handleResponding(false)
-          return
         }
-        updateChatTreeNode(messageId, (responseItem) => {
-          responseItem.citation = messageEnd.metadata?.retriever_resources || []
-          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
-          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
-        })
+        else {
+          updateChatTreeNode(messageId, (responseItem) => {
+            responseItem.citation = messageEnd.metadata?.retriever_resources || []
+            const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
+            responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
+          })
+        }
+        handleResponding(false)
       },
       onMessageReplace: (messageReplace) => {
         updateChatTreeNode(messageId, (responseItem) => {

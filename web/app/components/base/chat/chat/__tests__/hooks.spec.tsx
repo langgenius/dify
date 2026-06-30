@@ -1074,6 +1074,39 @@ describe('useChat', () => {
       })
     })
 
+    it('should clear responding state when resume message_end has no annotation metadata', async () => {
+      let callbacks: HookCallbacks
+
+      vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
+        callbacks = options as HookCallbacks
+      })
+
+      const prevChatTree = [{
+        id: 'q-1',
+        content: 'query',
+        isAnswer: false,
+        children: [{
+          id: 'm-1',
+          content: 'initial',
+          isAnswer: true,
+          siblingIndex: 0,
+        }],
+      }]
+
+      const { result } = renderHook(() => useChat(undefined, undefined, prevChatTree as ChatItemInTree[]))
+
+      act(() => {
+        result.current.handleResume('m-1', 'wr-1', { isPublicAPI: true })
+      })
+
+      act(() => {
+        callbacks.onWorkflowStarted({ workflow_run_id: 'wr-1', task_id: 't-1' })
+        callbacks.onMessageEnd({ id: 'm-1', metadata: {} })
+      })
+
+      expect(result.current.isResponding).toBe(false)
+    })
+
     it('should handle non-agent mode resume', async () => {
       let callbacks: HookCallbacks
 
