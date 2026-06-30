@@ -205,11 +205,11 @@ html[data-theme="light"] {
 
   --color-components-avatar-default-avatar-bg: #d0d5dc;
   --color-components-avatar-mask-darkmode-dimmed: rgb(255 255 255 / 0);
-  --color-components-avatar-bg-mask-stop-0: rgb(255 255 255 / 0.12);
-  --color-components-avatar-bg-mask-stop-100: rgb(255 255 255 / 0.08);
-
   --color-components-avatar-shape-fill-stop-0: #ffffff;
   --color-components-avatar-shape-fill-stop-100: rgb(255 255 255 / 0.9);
+
+  --color-components-avatar-bg-mask-stop-0: rgb(255 255 255 / 0.12);
+  --color-components-avatar-bg-mask-stop-100: rgb(255 255 255 / 0.08);
 
   --color-components-chat-input-audio-bg: #e9f0ff;
   --color-components-chat-input-audio-bg-alt: #fcfcfd;
@@ -479,10 +479,10 @@ html[data-theme="light"] {
   --color-components-slider-range: #0033ff;
   --color-components-slider-track: #e9ebf0;
 
+  --color-components-tooltip-bg: rgb(255 255 255 / 0.95);
+
   --color-components-kbd-bg-gray: rgb(16 24 40 / 0.04);
   --color-components-kbd-bg-white: rgb(255 255 255 / 0.12);
-
-  --color-components-tooltip-bg: rgb(255 255 255 / 0.95);
 
   --color-components-menu-item-text: #495464;
   --color-components-menu-item-text-hover: #354052;
@@ -497,9 +497,8 @@ html[data-theme="light"] {
   --color-components-segmented-control-item-active-accent-bg: #ffffff;
   --color-components-segmented-control-item-active-accent-border: #ffffff;
 
-  --color-components-tab-active: #0033ff;
-
   --color-components-badge-white-to-dark: #ffffff;
+  --color-components-badge-white-to-dark-alpha: rgb(255 255 255 / 0);
   --color-components-badge-bg-green-soft: rgb(23 178 106 / 0.08);
   --color-components-badge-bg-orange-soft: rgb(247 144 9 / 0.08);
   --color-components-badge-bg-red-soft: rgb(240 68 56 / 0.08);
@@ -529,6 +528,8 @@ html[data-theme="light"] {
   --color-components-badge-status-light-disabled-border-inner: #676f83;
   --color-components-badge-status-light-disabled-halo: rgb(16 24 40 / 0.04);
 
+  --color-components-tab-active: #0033ff;
+
   --color-components-main-nav-text: #495464;
   --color-components-main-nav-text-active: #0033ff;
   --color-components-main-nav-nav-button-border: rgb(255 255 255 / 0.95);
@@ -544,14 +545,14 @@ html[data-theme="light"] {
   --color-components-main-nav-glass-shadow-reflection: rgb(0 51 255 / 0.04);
   --color-components-main-nav-glass-shadow-reflection-glow: rgb(255 255 255 / 0);
   --color-components-main-nav-glass-text-glow: rgb(49 70 255 / 0.18);
-  --color-components-main-nav-glass-edge-reflection-first: rgb(0 51 255 / 0);
-  --color-components-main-nav-glass-edge-reflection-middle: rgb(0 51 255 / 0.6);
-  --color-components-main-nav-glass-edge-reflection-end: rgb(0 51 255 / 0);
-
   --color-components-main-nav-glass-surface-first: rgb(0 51 255 / 0.08);
   --color-components-main-nav-glass-surface-middle-1: rgb(0 51 255 / 0.12);
   --color-components-main-nav-glass-surface-middle-2: rgb(0 51 255 / 0.1);
   --color-components-main-nav-glass-surface-end: rgb(0 51 255 / 0.08);
+
+  --color-components-main-nav-glass-edge-reflection-first: rgb(0 51 255 / 0);
+  --color-components-main-nav-glass-edge-reflection-middle: rgb(0 51 255 / 0.6);
+  --color-components-main-nav-glass-edge-reflection-end: rgb(0 51 255 / 0);
 
   --color-components-main-nav-glass-edge-highlight-first: rgb(255 255 255 / 0.98);
   --color-components-main-nav-glass-edge-highlight-middle: rgb(255 255 255 / 0);
