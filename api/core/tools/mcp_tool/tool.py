@@ -23,6 +23,7 @@ from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
 from core.tools.errors import ToolInvokeError
+from graphon.file import File
 from graphon.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 
 logger = logging.getLogger(__name__)
@@ -261,6 +262,20 @@ class MCPTool(Tool):
             if value is not None and not (isinstance(value, str) and value.strip() == "")
         }
 
+    def _serialize_file_parameters(self, parameter: Any) -> Any:
+        if isinstance(parameter, File):
+            return dict(parameter.to_dict())
+        if isinstance(parameter, list):
+            return [self._serialize_file_parameters(item) for item in parameter]
+        if isinstance(parameter, tuple):
+            return [self._serialize_file_parameters(item) for item in parameter]
+        if isinstance(parameter, Mapping):
+            return {key: self._serialize_file_parameters(value) for key, value in parameter.items()}
+        return parameter
+
+    def _serialize_mcp_tool_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
+        return {key: self._serialize_file_parameters(value) for key, value in parameters.items()}
+
     @property
     def _forwarding_requested(self) -> bool:
         """True only when the configured identity_mode wants forwarding AND
@@ -283,6 +298,7 @@ class MCPTool(Tool):
 
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
+        tool_parameters = self._serialize_mcp_tool_parameters(tool_parameters)
 
         from sqlalchemy.orm import Session
 
