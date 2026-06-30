@@ -12,6 +12,9 @@ import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/
 import PluginPageWithContext from '../index'
 
 let mockEnableMarketplace = true
+const { mockRouterReplace } = vi.hoisted(() => ({
+  mockRouterReplace: vi.fn(),
+}))
 
 const render = (ui: ReactElement, options: Parameters<typeof renderWithSystemFeatures>[1] = {}) =>
   renderWithSystemFeatures(ui, {
@@ -31,6 +34,12 @@ vi.mock('@/hooks/use-query-params', () => ({
 
 vi.mock('@/hooks/use-document-title', () => ({
   default: vi.fn(),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({
+    replace: mockRouterReplace,
+  }),
 }))
 
 vi.mock('@/context/i18n', () => ({
@@ -502,7 +511,7 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'model' },
           version: { version: '1.0.0' },
         },
       } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
@@ -512,6 +521,28 @@ describe('PluginPage Component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('install-marketplace-modal')).toBeInTheDocument()
       }, { timeout: 3000 })
+    })
+
+    it('should redirect supported plugin categories to integrations before opening the modal', async () => {
+      const mockSetInstallState = vi.fn()
+      vi.mocked(usePluginInstallation).mockReturnValue([
+        { packageId: 'junjiem/mcp_see_agent:0.2.4@test', bundleInfo: null },
+        mockSetInstallState,
+      ])
+
+      vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
+        data: {
+          plugin: { org: 'junjiem', name: 'mcp_see_agent', category: 'agent-strategy' },
+          version: { version: '0.2.4' },
+        },
+      } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
+
+      render(<PluginPageWithContext {...createDefaultProps()} />)
+
+      await waitFor(() => {
+        expect(mockRouterReplace).toHaveBeenCalledWith('/integrations/agent-strategy?package-ids=%5B%22junjiem%2Fmcp_see_agent%3A0.2.4%40test%22%5D')
+      })
+      expect(screen.queryByTestId('install-marketplace-modal')).not.toBeInTheDocument()
     })
 
     it('should handle fetch error gracefully', async () => {
@@ -764,7 +795,7 @@ describe('PluginPage Component', () => {
 
       vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
         data: {
-          plugin: { org: 'test-org', name: 'test-plugin', category: 'tool' },
+          plugin: { org: 'test-org', name: 'test-plugin', category: 'model' },
           version: { version: '1.0.0' },
         },
       } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)
@@ -1044,7 +1075,7 @@ describe('PluginPage Integration', () => {
 
     vi.mocked(fetchManifestFromMarketPlace).mockResolvedValue({
       data: {
-        plugin: { org: 'langgenius', name: 'test-plugin', category: 'tool' },
+        plugin: { org: 'langgenius', name: 'test-plugin', category: 'model' },
         version: { version: '1.0.0' },
       },
     } as Awaited<ReturnType<typeof fetchManifestFromMarketPlace>>)

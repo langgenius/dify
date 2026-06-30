@@ -15,6 +15,7 @@ import ToolProviderList from './tool-provider-list'
 type IntegrationSectionRendererProps = {
   canInstallPlugin?: boolean
   canDeletePlugin?: boolean
+  isInstallPermissionLoading?: boolean
   canUpdatePlugin?: boolean
   description?: ReactNode
   onProviderSearchTextChange: (value: string) => void
@@ -29,6 +30,7 @@ type IntegrationSectionRendererProps = {
 const IntegrationSectionRenderer = ({
   canInstallPlugin = true,
   canDeletePlugin = true,
+  isInstallPermissionLoading = false,
   canUpdatePlugin = true,
   description,
   onProviderSearchTextChange,
@@ -74,6 +76,7 @@ const IntegrationSectionRenderer = ({
     <PluginCategoryPage
       canInstall={canInstallPlugin}
       canDeletePlugin={canDeletePlugin}
+      isInstallPermissionLoading={isInstallPermissionLoading}
       canUpdatePlugin={canUpdatePlugin}
       category={category}
       layout={renderDirectLayout}

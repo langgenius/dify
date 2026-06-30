@@ -1,5 +1,6 @@
 'use client'
 
+import type { LegacyPluginsSearchParams } from '../plugin-routes'
 import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { PluginPageTab } from './context'
 import { Button } from '@langgenius/dify-ui/button'
@@ -24,6 +25,7 @@ import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import Link from '@/next/link'
+import { useRouter } from '@/next/navigation'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
 import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
@@ -31,6 +33,7 @@ import { PluginInstallPermissionProvider } from '../install-plugin/components/pl
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/constants'
+import { getInstallRedirectPathByPluginCategory } from '../plugin-routes'
 import { PluginCategoryEnum } from '../types'
 import { usePluginPageContext } from './context'
 import { PluginPageContextProvider } from './context-provider'
@@ -50,6 +53,29 @@ const isPluginPageTab = (value: string): value is PluginPageTab => {
   return pluginPageTabSet.has(value)
 }
 
+const getCurrentInstallSearchParams = (packageId: string): LegacyPluginsSearchParams => {
+  const searchParams: LegacyPluginsSearchParams = {}
+
+  new URLSearchParams(window.location.search).forEach((value, key) => {
+    const existing = searchParams[key]
+    if (existing === undefined) {
+      searchParams[key] = value
+      return
+    }
+
+    if (Array.isArray(existing)) {
+      existing.push(value)
+      return
+    }
+
+    searchParams[key] = [existing, value]
+  })
+
+  searchParams['package-ids'] ??= JSON.stringify([packageId])
+
+  return searchParams
+}
+
 export type PluginPageProps = {
   plugins: React.ReactNode
   marketplace: React.ReactNode
@@ -65,6 +91,7 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const { replace } = useRouter()
 
   // Use nuqs hook for installation state
   const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
@@ -112,6 +139,12 @@ const PluginPage = ({
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
         const { plugin, version } = data
+        const installRedirectPath = getInstallRedirectPathByPluginCategory(plugin.category, getCurrentInstallSearchParams(packageId))
+        if (installRedirectPath) {
+          replace(installRedirectPath)
+          return
+        }
+
         setManifest({
           ...plugin,
           version: version.version,
@@ -132,7 +165,7 @@ const PluginPage = ({
         }
       }
     })()
-  }, [packageId, bundleInfo, canInstallPlugin, isPermissionLoading, setInstallState, showInstallFromMarketplace])
+  }, [packageId, bundleInfo, canInstallPlugin, isPermissionLoading, replace, setInstallState, showInstallFromMarketplace])
   const [showPluginSettingModal, {
     setTrue: setShowPluginSettingModal,
     setFalse: setHidePluginSettingModal,
