@@ -1,3 +1,4 @@
+import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { AgentConfigApiContext } from '../../config-context'
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -144,10 +145,12 @@ function renderAgentFiles({
       },
     ],
   } satisfies AgentSoulConfigFormState,
+  initialOriginalConfig,
   apiContext = { agentId: 'agent-1', draftType: 'draft' } satisfies AgentConfigApiContext,
   readOnly = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
+  initialOriginalConfig?: AgentSoulConfig
   apiContext?: AgentConfigApiContext
   readOnly?: boolean
 } = {}) {
@@ -161,7 +164,7 @@ function renderAgentFiles({
   return render(
     <QueryClientProvider client={queryClient}>
       <AgentConfigApiContextProvider value={apiContext}>
-        <AgentComposerProvider initialDraft={initialDraft}>
+        <AgentComposerProvider initialDraft={initialDraft} initialOriginalConfig={initialOriginalConfig}>
           <AgentOrchestrateReadOnlyContext value={readOnly}>
             <AgentFiles />
             <ConfigSnapshotProbe />
@@ -358,6 +361,39 @@ describe('AgentFiles', () => {
         }),
       }))
     })
+  })
+
+  it('should show config note as a virtual build note file and preview its content locally', async () => {
+    const user = userEvent.setup()
+    renderAgentFiles({
+      initialOriginalConfig: {
+        config_note: 'Build context from the latest build chat.',
+      },
+    })
+
+    expect(screen.getByText('build_note.md')).toBeInTheDocument()
+    const fileNames = screen.getAllByText(/^(build_note\.md|diagram\.png|brief\.md)$/).map(element => element.textContent)
+    expect(fileNames).toEqual(['build_note.md', 'diagram.png', 'brief.md'])
+
+    vi.clearAllMocks()
+
+    await user.click(screen.getByText('build_note.md').closest('button')!)
+
+    expect(await screen.findByText('Build context from the latest build chat.')).toBeInTheDocument()
+    expect(mocks.previewQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
+      input: expect.objectContaining({
+        params: expect.objectContaining({
+          name: 'build_note.md',
+        }),
+      }),
+    }))
+    expect(mocks.downloadQueryOptions).not.toHaveBeenCalledWith(expect.objectContaining({
+      input: expect.objectContaining({
+        params: expect.objectContaining({
+          name: 'build_note.md',
+        }),
+      }),
+    }))
   })
 
   it('should keep flat config files visible without drive-prefix filtering and disable add in read-only mode', () => {

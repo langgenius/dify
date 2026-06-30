@@ -13,7 +13,10 @@ export class DifyWorld extends World {
   scenarioStartedAt: number | undefined
   session: AuthSessionMetadata | undefined
   lastCreatedAppName: string | undefined
+  lastCreatedAgentName: string | undefined
+  lastCreatedAgentRole: string | undefined
   createdAppIds: string[] = []
+  createdAgentIds: string[] = []
   capturedDownloads: Download[] = []
   shareURL: string | undefined
 
@@ -26,7 +29,10 @@ export class DifyWorld extends World {
     this.consoleErrors = []
     this.pageErrors = []
     this.lastCreatedAppName = undefined
+    this.lastCreatedAgentName = undefined
+    this.lastCreatedAgentRole = undefined
     this.createdAppIds = []
+    this.createdAgentIds = []
     this.capturedDownloads = []
     this.shareURL = undefined
   }

@@ -27,18 +27,18 @@ export function AgentBuildDraftBar({
     ? t('agentDetail.configure.buildDraft.changes', { count: changesCount })
     : t('agentDetail.configure.buildDraft.noChanges')
   const isActionPending = isApplying || isDiscarding
-  const applyDisabled = disabled || isActionPending || changesCount <= 0
+  const applyDisabled = disabled || isActionPending
   const discardDisabled = disabled || isActionPending
 
   return (
-    <div className="pointer-events-auto relative flex h-[50px] w-[321px] max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-xl border-[1.5px] border-[#A0BDFF] bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]">
+    <div className="pointer-events-auto relative flex h-[50px] w-fit max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-xl border-[1.5px] border-[#A0BDFF] bg-components-panel-bg-blur p-2 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[10px]">
       <AgentBuildGridTexture
         aria-hidden
         cellOpacityMultiplier={3}
         className="pointer-events-none absolute top-[-104px] left-[-1171px] z-0 opacity-70"
         dotClassName="bg-[#5C90FF]"
       />
-      <div className="relative z-1 flex w-[149px] min-w-0 shrink-0 flex-col justify-center gap-0.5 pr-8 pl-2">
+      <div className="relative z-1 flex min-w-0 flex-1 flex-col justify-center gap-0.5 pr-8 pl-2">
         <p className="min-w-0 truncate system-sm-semibold text-text-primary">
           {t('agentDetail.configure.buildDraft.title')}
         </p>
@@ -50,7 +50,7 @@ export function AgentBuildDraftBar({
         type="button"
         variant="secondary"
         disabled={discardDisabled}
-        className="relative z-1 h-8 rounded-lg px-3"
+        className="relative z-1 h-8 shrink-0 rounded-lg px-3"
         onClick={onDiscard}
       >
         {t('agentDetail.configure.buildDraft.discard')}
@@ -58,8 +58,9 @@ export function AgentBuildDraftBar({
       <Button
         type="button"
         variant="primary"
+        loading={isApplying}
         disabled={applyDisabled}
-        className="relative z-1 h-8 rounded-lg px-3"
+        className="relative z-1 h-8 min-w-20 shrink-0 rounded-lg px-3"
         onClick={onApply}
       >
         {tCustom('apply')}

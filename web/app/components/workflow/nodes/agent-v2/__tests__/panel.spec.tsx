@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentV2Panel } from '../panel'
 
@@ -1019,6 +1019,7 @@ describe('agent/panel', () => {
       outputs: expect.arrayContaining([
         expect.objectContaining({ name: 'text' }),
       ]),
+      onEdit: expect.any(Function),
     })
     expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
 
@@ -1031,6 +1032,190 @@ describe('agent/panel', () => {
     expect(mockEditorFocus).toHaveBeenCalled()
     expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
     expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
+  })
+
+  it('opens the output variable editor from an agent task output token hover', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_declared_outputs: [{
+            name: 'summary',
+            type: 'string',
+            required: false,
+            description: 'Short summary',
+          }],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    act(() => {
+      mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('summary', 'string')
+    })
+
+    expect(screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toHaveValue('summary')
+  })
+
+  it('opens the output variable editor for a prompt token missing from declared outputs', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    act(() => {
+      mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('qna_report', 'string')
+    })
+
+    expect(screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toHaveValue('qna_report')
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'qna_report',
+              type: 'string',
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+  })
+
+  it('renames the current prompt output token instead of creating a separate output', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Generate [§output:qna_report:qna_report§]',
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    act(() => {
+      mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('qna_report', 'string')
+    })
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' }), {
+      target: {
+        value: 'final_report',
+      },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_task: 'Generate [§output:final_report:final_report§]',
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'final_report',
+              type: 'string',
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
+    const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0].data as AgentV2NodeType
+    expect(updatedData.agent_declared_outputs?.some(output => output.name === 'qna_report')).toBe(false)
+    expect(screen.getByText('final_report')).toBeInTheDocument()
+  })
+
+  it('reconciles inline prompt output renames with the existing declared output row', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Generate [§output:qna_report:qna_report§]',
+          agent_declared_outputs: [{
+            name: 'qna_report',
+            type: 'string',
+            required: false,
+            description: 'Old report',
+          }],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    act(() => {
+      mockPromptEditorProps[0]?.agentOutputBlock?.onChange?.([
+        {
+          name: 'qna_report',
+          type: 'string',
+          required: false,
+          description: 'Old report',
+        },
+        {
+          name: 'final_report',
+          type: 'string',
+          required: false,
+        },
+      ], 'Generate [§output:final_report:final_report§]')
+    })
+
+    const updatedData = mockHandleNodeDataUpdateWithSyncDraft.mock.calls.at(-1)?.[0].data as AgentV2NodeType
+    expect(updatedData.agent_task).toBe('Generate [§output:final_report:final_report§]')
+    expect(updatedData.agent_declared_outputs).toEqual([
+      expect.objectContaining({
+        name: 'final_report',
+        type: 'string',
+      }),
+    ])
+    expect(screen.getByText('final_report')).toBeInTheDocument()
+  })
+
+  it('keeps output variables synced when prompt text rename arrives before output block data', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_task: 'Generate [§output:qna_report:qna_report§]',
+          agent_declared_outputs: [{
+            name: 'qna_report',
+            type: 'string',
+            required: false,
+            description: 'Old report',
+          }],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    act(() => {
+      mockPromptEditorProps[0]?.onChange?.('Generate [§output:final_report:final_report§]')
+    })
+
+    expect(mockSetInputs).toHaveBeenCalledWith(expect.objectContaining({
+      agent_task: 'Generate [§output:final_report:final_report§]',
+      agent_declared_outputs: [
+        expect.objectContaining({
+          name: 'final_report',
+          type: 'string',
+          description: 'Old report',
+        }),
+      ],
+    }))
+    expect(screen.getByText('final_report')).toBeInTheDocument()
   })
 
   it('syncs declared outputs created from the agent task editor', () => {

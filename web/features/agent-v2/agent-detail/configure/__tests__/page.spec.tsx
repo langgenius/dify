@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   applyBuildDraft: vi.fn(),
   checkoutBuildDraft: vi.fn(),
   discardBuildDraft: vi.fn(),
+  finalizeBuildChat: vi.fn(),
   refreshDebugConversation: vi.fn(),
   queryState: {
     agent: {
@@ -62,6 +63,16 @@ function createDeferredPromise<T>() {
   return { promise, resolve }
 }
 
+function expectFirstMockCallBefore(first: ReturnType<typeof vi.fn>, second: ReturnType<typeof vi.fn>) {
+  const firstCallOrder = first.mock.invocationCallOrder[0]
+  const secondCallOrder = second.mock.invocationCallOrder[0]
+
+  if (firstCallOrder === undefined || secondCallOrder === undefined)
+    throw new Error('Expected both mocks to be called before comparing invocation order.')
+
+  expect(firstCallOrder).toBeLessThan(secondCallOrder)
+}
+
 vi.mock('@tanstack/react-query', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@tanstack/react-query')>()
 
@@ -114,6 +125,13 @@ vi.mock('@/service/client', () => ({
                 mutationFn: mocks.refreshDebugConversation,
                 ...options,
               }),
+            },
+          },
+        },
+        buildChat: {
+          finalize: {
+            post: {
+              mutationOptions: () => ({ mutationFn: mocks.finalizeBuildChat }),
             },
           },
         },
@@ -342,6 +360,7 @@ describe('AgentConfigurePage', () => {
       debug_conversation_id: 'debug-conversation-new',
       debug_conversation_message_count: 0,
     })
+    mocks.finalizeBuildChat.mockResolvedValue({ result: 'success' })
     mocks.applyBuildDraft.mockResolvedValue({ result: 'success', draft: {} })
     mocks.checkoutBuildDraft.mockResolvedValue({
       variant: 'agent_app',
@@ -1402,6 +1421,14 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'apply build draft' }))
 
+      await waitFor(() => expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+        expect.any(Object),
+      ))
       await waitFor(() => expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
         {
           params: {
@@ -1410,6 +1437,7 @@ describe('AgentConfigurePage', () => {
         },
         expect.any(Object),
       ))
+      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
       expect(invalidateQueries).toHaveBeenCalledWith({
         queryKey: ['agent'],
       })
@@ -1487,6 +1515,14 @@ describe('AgentConfigurePage', () => {
 
       await user.click(screen.getByRole('button', { name: 'apply build draft' }))
 
+      await waitFor(() => expect(mocks.finalizeBuildChat).toHaveBeenCalledWith(
+        {
+          params: {
+            agent_id: 'agent-1',
+          },
+        },
+        expect.any(Object),
+      ))
       await waitFor(() => expect(mocks.applyBuildDraft).toHaveBeenCalledWith(
         {
           params: {
@@ -1495,6 +1531,7 @@ describe('AgentConfigurePage', () => {
         },
         expect.any(Object),
       ))
+      expectFirstMockCallBefore(mocks.finalizeBuildChat, mocks.applyBuildDraft)
       expect(mocks.refreshDebugConversation).toHaveBeenCalledWith({
         params: {
           agent_id: 'agent-1',
