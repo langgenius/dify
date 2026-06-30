@@ -558,7 +558,7 @@ class TestMyPermissions:
         }
 
         with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=MagicMock())
 
         call = _call_args(mock_send)
         assert call.method == "GET"
@@ -617,7 +617,7 @@ class TestMyPermissions:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
             patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
         ):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=MagicMock())
 
         mock_send.assert_not_called()
         assert out.workspace.permission_keys == workspace_keys
@@ -659,7 +659,7 @@ class TestMyPermissions:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
             patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
         ):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=MagicMock())
 
         actual_snippet_keys = {
             permission_key for permission_key in out.workspace.permission_keys if permission_key.startswith("snippets.")
@@ -676,7 +676,7 @@ class TestMyPermissions:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
             patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
         ):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1")
+            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", session=MagicMock())
 
         mock_send.assert_not_called()
         assert out.workspace.permission_keys == []
@@ -694,7 +694,7 @@ class TestMyPermissions:
         }
 
         with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", app_id="app-1")
+            out = svc.RBACService.MyPermissions.get("tenant-1", "acct-1", app_id="app-1", session=MagicMock())
 
         call = _call_args(mock_send)
         assert call.method == "GET"
@@ -716,7 +716,7 @@ class TestMemberRoles:
             ],
         }
         with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
+            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2", session=MagicMock())
         call = _call_args(mock_send)
         assert call.method == "GET"
         assert call.endpoint == "/rbac/members/rbac-roles"
@@ -733,7 +733,7 @@ class TestMemberRoles:
             patch(f"{MODULE}.session_factory.create_session") as create_session,
         ):
             create_session.return_value.__enter__.return_value = session
-            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2")
+            out = svc.RBACService.MemberRoles.get("tenant-1", "acct-1", "acct-2", session=MagicMock())
 
         mock_send.assert_not_called()
         assert out.account_id == "acct-2"
@@ -755,7 +755,11 @@ class TestMemberRoles:
         mock_send.return_value = {"account_id": "acct-2", "roles": []}
         with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
             svc.RBACService.MemberRoles.replace(
-                "tenant-1", "acct-1", "acct-2", role_ids=["workspace.owner", "workspace.editor"]
+                "tenant-1",
+                "acct-1",
+                "acct-2",
+                role_ids=["workspace.owner", "workspace.editor"],
+                session=MagicMock(),
             )
         call = _call_args(mock_send)
         assert call.method == "PUT"
@@ -773,7 +777,9 @@ class TestMemberRoles:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
             patch(f"{MODULE}.session_factory.create_session", return_value=session),
         ):
-            out = svc.RBACService.MemberRoles.replace("tenant-1", "acct-1", "acct-2", role_ids=["editor"])
+            out = svc.RBACService.MemberRoles.replace(
+                "tenant-1", "acct-1", "acct-2", role_ids=["editor"], session=MagicMock()
+            )
 
         mock_send.assert_not_called()
         session.commit.assert_called_once()
@@ -793,7 +799,9 @@ class TestMemberRoles:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
             patch(f"{MODULE}.session_factory.create_session", return_value=session),
         ):
-            out = svc.RBACService.MemberRoles.replace("tenant-1", "acct-1", "acct-2", role_ids=["owner"])
+            out = svc.RBACService.MemberRoles.replace(
+                "tenant-1", "acct-1", "acct-2", role_ids=["owner"], session=MagicMock()
+            )
 
         mock_send.assert_not_called()
         session.commit.assert_called_once()
@@ -832,7 +840,9 @@ class TestResourcePermissions:
         }
 
         with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"])
+            out = svc.RBACService.AppPermissions.batch_get(
+                "tenant-1", "acct-1", ["app-1", "app-2"], session=MagicMock()
+            )
 
         call = _call_args(mock_send)
         assert call.method == "POST"
@@ -851,7 +861,9 @@ class TestResourcePermissions:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
             patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
         ):
-            out = svc.RBACService.AppPermissions.batch_get("tenant-1", "acct-1", ["app-1", "app-2"])
+            out = svc.RBACService.AppPermissions.batch_get(
+                "tenant-1", "acct-1", ["app-1", "app-2"], session=MagicMock()
+            )
 
         mock_send.assert_not_called()
         assert out == {
@@ -868,7 +880,9 @@ class TestResourcePermissions:
         }
 
         with patch(f"{MODULE}.dify_config.RBAC_ENABLED", True):
-            out = svc.RBACService.DatasetPermissions.batch_get("tenant-1", "acct-1", ["ds-1", "ds-2"])
+            out = svc.RBACService.DatasetPermissions.batch_get(
+                "tenant-1", "acct-1", ["ds-1", "ds-2"], session=MagicMock()
+            )
 
         call = _call_args(mock_send)
         assert call.method == "POST"
@@ -887,7 +901,9 @@ class TestResourcePermissions:
             patch(f"{MODULE}.dify_config.RBAC_ENABLED", False),
             patch(f"{MODULE}.session_factory.create_session", return_value=mock_session),
         ):
-            out = svc.RBACService.DatasetPermissions.batch_get("tenant-1", "acct-1", ["ds-1", "ds-2"])
+            out = svc.RBACService.DatasetPermissions.batch_get(
+                "tenant-1", "acct-1", ["ds-1", "ds-2"], session=MagicMock()
+            )
 
         mock_send.assert_not_called()
         assert out == {

@@ -112,10 +112,6 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(mocker: MockerF
     add_mock = session_mock.add
     flush_mock = session_mock.flush
     commit_mock = session_mock.commit
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.db",
-        new=SimpleNamespace(session=session_mock),
-    )
 
     dataset = SimpleNamespace(
         id="dataset-1",
@@ -128,7 +124,7 @@ def test_transform_to_empty_pipeline_updates_dataset_and_commits(mocker: MockerF
         updated_at=None,
     )
 
-    result = service._transform_to_empty_pipeline(cast(Dataset, dataset))
+    result = service._transform_to_empty_pipeline(cast(Dataset, dataset), session=session_mock)
 
     assert result == {"pipeline_id": "pipeline-1", "dataset_id": "dataset-1", "status": "success"}
     assert dataset.pipeline_id == "pipeline-1"
@@ -405,10 +401,6 @@ def test_transform_dataset_raises_for_unsupported_doc_form_after_pipeline_create
     )
     session_mock = mocker.Mock()
     session_mock.get.return_value = dataset
-    mocker.patch(
-        "services.rag_pipeline.rag_pipeline_transform_service.db",
-        new=SimpleNamespace(session=session_mock),
-    )
     mocker.patch.object(service, "_get_transform_yaml", return_value={"workflow": {"graph": {"nodes": []}}})
     mocker.patch.object(service, "_deal_dependencies")
     mocker.patch.object(service, "_create_pipeline", return_value=SimpleNamespace(id="p-new"))
@@ -441,11 +433,12 @@ def test_transform_dataset_raises_when_transform_yaml_missing_workflow(mocker: M
         service.transform_dataset("d1", session_mock)
 
 
-def test_create_pipeline_raises_when_workflow_data_missing() -> None:
+def test_create_pipeline_raises_when_workflow_data_missing(mocker: MockerFixture) -> None:
     service = RagPipelineTransformService()
+    session = mocker.Mock()
 
     with pytest.raises(ValueError, match="Missing workflow data for rag pipeline"):
-        service._create_pipeline({"rag_pipeline": {"name": "N"}})
+        service._create_pipeline({"rag_pipeline": {"name": "N"}}, session=session)
 
 
 def test_deal_document_data_upload_file_with_existing_file(mocker: MockerFixture) -> None:

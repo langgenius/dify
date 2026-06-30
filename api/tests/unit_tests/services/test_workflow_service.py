@@ -312,7 +312,7 @@ class TestWorkflowService:
         # Mock the database query to return True
         mock_db_session.session.execute.return_value.scalar_one.return_value = True
 
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=MagicMock())
 
         assert result is True
 
@@ -323,7 +323,7 @@ class TestWorkflowService:
         # Mock the database query to return False
         mock_db_session.session.execute.return_value.scalar_one.return_value = False
 
-        result = workflow_service.is_workflow_exist(app)
+        result = workflow_service.is_workflow_exist(app, session=MagicMock())
 
         assert result is False
 
@@ -343,7 +343,7 @@ class TestWorkflowService:
         # Mock db.session.scalar() used by get_draft_workflow
         mock_db_session.session.scalar.return_value = mock_workflow
 
-        result = workflow_service.get_draft_workflow(app)
+        result = workflow_service.get_draft_workflow(app, session=MagicMock())
 
         assert result == mock_workflow
 
@@ -367,7 +367,7 @@ class TestWorkflowService:
         # Mock db.session.scalar() to return None
         mock_db_session.session.scalar.return_value = None
 
-        result = workflow_service.get_draft_workflow(app)
+        result = workflow_service.get_draft_workflow(app, session=MagicMock())
 
         assert result is None
 
@@ -380,7 +380,7 @@ class TestWorkflowService:
         # Mock db.session.scalar() used by get_published_workflow_by_id
         mock_db_session.session.scalar.return_value = mock_workflow
 
-        result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id)
+        result = workflow_service.get_draft_workflow(app, workflow_id=workflow_id, session=MagicMock())
 
         assert result == mock_workflow
 
@@ -411,7 +411,7 @@ class TestWorkflowService:
         # Mock db.session.scalar() used by get_published_workflow_by_id
         mock_db_session.session.scalar.return_value = mock_workflow
 
-        result = workflow_service.get_published_workflow_by_id(app, workflow_id)
+        result = workflow_service.get_published_workflow_by_id(app, workflow_id, session=MagicMock())
 
         assert result == mock_workflow
 
@@ -432,7 +432,7 @@ class TestWorkflowService:
         mock_db_session.session.scalar.return_value = mock_workflow
 
         with pytest.raises(IsDraftWorkflowError):
-            workflow_service.get_published_workflow_by_id(app, workflow_id)
+            workflow_service.get_published_workflow_by_id(app, workflow_id, session=MagicMock())
 
     def test_get_published_workflow_by_id_returns_none(self, workflow_service, mock_db_session):
         """Test get_published_workflow_by_id returns None when workflow not found."""
@@ -442,7 +442,7 @@ class TestWorkflowService:
         # Mock db.session.scalar() to return None
         mock_db_session.session.scalar.return_value = None
 
-        result = workflow_service.get_published_workflow_by_id(app, workflow_id)
+        result = workflow_service.get_published_workflow_by_id(app, workflow_id, session=MagicMock())
 
         assert result is None
 
@@ -455,7 +455,7 @@ class TestWorkflowService:
         # Mock db.session.scalar() used by get_published_workflow
         mock_db_session.session.scalar.return_value = mock_workflow
 
-        result = workflow_service.get_published_workflow(app)
+        result = workflow_service.get_published_workflow(app, session=MagicMock())
 
         assert result == mock_workflow
 
@@ -463,7 +463,7 @@ class TestWorkflowService:
         """Test get_published_workflow returns None when app has no workflow_id."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=None)
 
-        result = workflow_service.get_published_workflow(app)
+        result = workflow_service.get_published_workflow(app, session=MagicMock())
 
         assert result is None
 
@@ -499,6 +499,7 @@ class TestWorkflowService:
                 account=account,
                 environment_variables=[],
                 conversation_variables=[],
+                session=MagicMock(),
             )
 
             # Verify workflow was added to session
@@ -536,6 +537,7 @@ class TestWorkflowService:
                 account=account,
                 environment_variables=[],
                 conversation_variables=[],
+                session=MagicMock(),
             )
 
             # Verify workflow was updated
@@ -571,6 +573,7 @@ class TestWorkflowService:
                 account=account,
                 environment_variables=[],
                 conversation_variables=[],
+                session=MagicMock(),
             )
 
     def test_restore_published_workflow_to_draft_keeps_source_features_unmodified(
@@ -648,6 +651,7 @@ class TestWorkflowService:
                 app_model=app,
                 workflow_id=source_workflow.id,
                 account=account,
+                session=MagicMock(),
             )
 
         mock_validate_features.assert_called_once_with(app_model=app, features=normalized_features)
@@ -761,6 +765,7 @@ class TestWorkflowService:
                 app_model=app,
                 environment_variables=variables,
                 account=account,
+                session=MagicMock(),
             )
 
         assert workflow.environment_variables == variables
@@ -779,6 +784,7 @@ class TestWorkflowService:
                     app_model=app,
                     environment_variables=[],
                     account=account,
+                    session=MagicMock(),
                 )
 
     def test_update_draft_workflow_conversation_variables_updates_workflow(self, workflow_service, mock_db_session):
@@ -796,6 +802,7 @@ class TestWorkflowService:
                 app_model=app,
                 conversation_variables=variables,
                 account=account,
+                session=MagicMock(),
             )
 
         assert workflow.conversation_variables == variables
@@ -814,6 +821,7 @@ class TestWorkflowService:
                     app_model=app,
                     conversation_variables=[],
                     account=account,
+                    session=MagicMock(),
                 )
 
     # ==================== Publish Workflow Tests ====================
@@ -1429,7 +1437,7 @@ class TestWorkflowService:
             mock_new_app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.WORKFLOW)
             mock_converter.convert_to_workflow.return_value = mock_new_app
 
-            result = workflow_service.convert_to_workflow(app, account, args)
+            result = workflow_service.convert_to_workflow(app, account, args, session=MagicMock())
 
             assert result == mock_new_app
             mock_converter.convert_to_workflow.assert_called_once()
@@ -1451,7 +1459,7 @@ class TestWorkflowService:
             mock_new_app = TestWorkflowAssociatedDataFactory.create_app_mock(mode=AppMode.WORKFLOW)
             mock_converter.convert_to_workflow.return_value = mock_new_app
 
-            result = workflow_service.convert_to_workflow(app, account, args)
+            result = workflow_service.convert_to_workflow(app, account, args, session=MagicMock())
 
             assert result == mock_new_app
 
@@ -1467,7 +1475,7 @@ class TestWorkflowService:
         args = {}
 
         with pytest.raises(ValueError, match="not supported convert to workflow"):
-            workflow_service.convert_to_workflow(app, account, args)
+            workflow_service.convert_to_workflow(app, account, args, session=MagicMock())
 
 
 # ===========================================================================
@@ -1520,7 +1528,7 @@ class TestWorkflowServiceCredentialValidation:
         # Act + Assert
         with patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check:
             # Should not raise; mock allows the call
-            service._validate_workflow_credentials(workflow)
+            service._validate_workflow_credentials(workflow, session=MagicMock())
             mock_check.assert_called_once()
 
     def test_validate_workflow_credentials_should_check_default_credential_when_no_credential_id(
@@ -1541,7 +1549,7 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act
         with patch.object(service, "_check_default_tool_credential") as mock_default:
-            service._validate_workflow_credentials(workflow)
+            service._validate_workflow_credentials(workflow, session=MagicMock())
 
         # Assert
         mock_default.assert_called_once_with("tenant-1", "my-provider")
@@ -1556,7 +1564,7 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert (no error raised)
         with patch.object(service, "_check_default_tool_credential") as mock_default:
-            service._validate_workflow_credentials(workflow)
+            service._validate_workflow_credentials(workflow, session=MagicMock())
             mock_default.assert_not_called()
 
     def test_validate_workflow_credentials_should_validate_llm_node_with_model_config(
@@ -1579,7 +1587,7 @@ class TestWorkflowServiceCredentialValidation:
             patch.object(service, "_validate_llm_model_config") as mock_llm,
             patch.object(service, "_validate_load_balancing_credentials"),
         ):
-            service._validate_workflow_credentials(workflow)
+            service._validate_workflow_credentials(workflow, session=MagicMock())
 
         # Assert
         mock_llm.assert_called_once_with("tenant-1", "openai", "gpt-4")
@@ -1599,7 +1607,7 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert
         with pytest.raises(ValueError, match="Missing provider or model configuration"):
-            service._validate_workflow_credentials(workflow)
+            service._validate_workflow_credentials(workflow, session=MagicMock())
 
     def test_validate_workflow_credentials_should_wrap_unexpected_exception_in_value_error(
         self, service: WorkflowService
@@ -1620,7 +1628,7 @@ class TestWorkflowServiceCredentialValidation:
         # Act + Assert
         with patch.object(service, "_validate_llm_model_config", side_effect=RuntimeError("boom")):
             with pytest.raises(ValueError, match="boom"):
-                service._validate_workflow_credentials(workflow)
+                service._validate_workflow_credentials(workflow, session=MagicMock())
 
     def test_validate_workflow_credentials_should_validate_agent_node_model(self, service: WorkflowService) -> None:
         # Arrange
@@ -1643,7 +1651,7 @@ class TestWorkflowServiceCredentialValidation:
             patch.object(service, "_validate_llm_model_config") as mock_llm,
             patch.object(service, "_validate_load_balancing_credentials"),
         ):
-            service._validate_workflow_credentials(workflow)
+            service._validate_workflow_credentials(workflow, session=MagicMock())
 
         # Assert
         mock_llm.assert_called_once_with("tenant-1", "openai", "gpt-4")
@@ -1675,7 +1683,7 @@ class TestWorkflowServiceCredentialValidation:
             patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check,
             patch.object(service, "_check_default_tool_credential") as mock_default,
         ):
-            service._validate_workflow_credentials(workflow)
+            service._validate_workflow_credentials(workflow, session=MagicMock())
 
         # Assert
         mock_check.assert_called_once()  # provider-a has credential_id
@@ -1739,7 +1747,7 @@ class TestWorkflowServiceCredentialValidation:
         # Arrange
         with patch("services.workflow_service.db") as mock_db:
             # Act + Assert (should NOT raise)
-            service._check_default_tool_credential("tenant-1", "some-provider")
+            service._check_default_tool_credential("tenant-1", "some-provider", session=MagicMock())
 
     def test_check_default_tool_credential_should_raise_when_compliance_fails(self, service: WorkflowService) -> None:
         # Arrange
@@ -1751,7 +1759,7 @@ class TestWorkflowServiceCredentialValidation:
         ):
             # Act + Assert
             with pytest.raises(ValueError, match="Failed to validate default credential"):
-                service._check_default_tool_credential("tenant-1", "some-provider")
+                service._check_default_tool_credential("tenant-1", "some-provider", session=MagicMock())
 
     # --- _is_load_balancing_enabled ---
 
@@ -1811,7 +1819,7 @@ class TestWorkflowServiceCredentialValidation:
             side_effect=RuntimeError("fail"),
         ):
             # Act
-            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4")
+            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=MagicMock())
 
         # Assert
         assert result == []
@@ -1828,7 +1836,7 @@ class TestWorkflowServiceCredentialValidation:
             ],
         ):
             # Act
-            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4")
+            result = service._get_load_balancing_configs("tenant-1", "openai", "gpt-4", session=MagicMock())
 
         # Assert — only entries with a credential_id should be returned
         assert len(result) == 2
@@ -1845,7 +1853,7 @@ class TestWorkflowServiceCredentialValidation:
         node_data: dict[str, Any] = {}  # no model key
 
         # Act + Assert (no error expected)
-        service._validate_load_balancing_credentials(workflow, node_data, "node-1")
+        service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
 
     def test_validate_load_balancing_credentials_should_skip_when_lb_not_enabled(
         self, service: WorkflowService
@@ -1856,7 +1864,7 @@ class TestWorkflowServiceCredentialValidation:
 
         # Act + Assert (no error expected)
         with patch.object(service, "_is_load_balancing_enabled", return_value=False):
-            service._validate_load_balancing_credentials(workflow, node_data, "node-1")
+            service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
 
     def test_validate_load_balancing_credentials_should_raise_when_compliance_fails(
         self, service: WorkflowService
@@ -1876,7 +1884,7 @@ class TestWorkflowServiceCredentialValidation:
             ),
         ):
             with pytest.raises(ValueError, match="Invalid load balancing credentials"):
-                service._validate_load_balancing_credentials(workflow, node_data, "node-1")
+                service._validate_load_balancing_credentials(workflow, node_data, "node-1", session=MagicMock())
 
 
 # ===========================================================================
@@ -2673,7 +2681,9 @@ class TestWorkflowServiceHumanInputOperations:
     def test_get_human_input_form_preview_should_raise_if_workflow_not_init(self, service: WorkflowService) -> None:
         service.get_draft_workflow = MagicMock(return_value=None)
         with pytest.raises(ValueError, match="Workflow not initialized"):
-            service.get_human_input_form_preview(app_model=MagicMock(), account=MagicMock(), node_id="node-1")
+            service.get_human_input_form_preview(
+                app_model=MagicMock(), account=MagicMock(), node_id="node-1", session=MagicMock()
+            )
 
     def test_get_human_input_form_preview_should_raise_if_wrong_node_type(self, service: WorkflowService) -> None:
         draft = MagicMock()
@@ -2681,7 +2691,9 @@ class TestWorkflowServiceHumanInputOperations:
         service.get_draft_workflow = MagicMock(return_value=draft)
         with patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.LLM):
             with pytest.raises(ValueError, match="Node type must be human-input"):
-                service.get_human_input_form_preview(app_model=MagicMock(), account=MagicMock(), node_id="node-1")
+                service.get_human_input_form_preview(
+                    app_model=MagicMock(), account=MagicMock(), node_id="node-1", session=MagicMock()
+                )
 
     def test_get_human_input_form_preview_success(self, service: WorkflowService) -> None:
         app_model = MagicMock(spec=App)
@@ -2716,7 +2728,9 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.HumanInputNode", return_value=mock_node),
             patch("services.workflow_service.HumanInputRequired") as mock_required_cls,
         ):
-            service.get_human_input_form_preview(app_model=app_model, account=account, node_id="node-1")
+            service.get_human_input_form_preview(
+                app_model=app_model, account=account, node_id="node-1", session=MagicMock()
+            )
             mock_node.render_form_content_before_submission.assert_called_once()
             mock_required_cls.return_value.model_dump.assert_called_once()
 
@@ -2760,7 +2774,12 @@ class TestWorkflowServiceHumanInputOperations:
             patch("services.workflow_service.DraftVariableSaver") as mock_saver_cls,
         ):
             result = service.submit_human_input_form_preview(
-                app_model=app_model, account=account, node_id="node-1", form_inputs={"field1": "val1"}, action="submit"
+                app_model=app_model,
+                account=account,
+                node_id="node-1",
+                form_inputs={"field1": "val1"},
+                action="submit",
+                session=MagicMock(),
             )
             assert result["__action_id"] == "submit"
             mock_validate.assert_called_once()
@@ -2785,7 +2804,11 @@ class TestWorkflowServiceHumanInputOperations:
         ):
             mock_resolve.return_value = MagicMock()
             service.test_human_input_delivery(
-                app_model=MagicMock(), account=MagicMock(), node_id="node-1", delivery_method_id="method-1"
+                app_model=MagicMock(),
+                account=MagicMock(),
+                node_id="node-1",
+                delivery_method_id="method-1",
+                session=MagicMock(),
             )
             mock_test_srv.return_value.send_test.assert_called_once()
 
@@ -2801,7 +2824,11 @@ class TestWorkflowServiceHumanInputOperations:
         ):
             with pytest.raises(ValueError, match="Delivery method not found"):
                 service.test_human_input_delivery(
-                    app_model=MagicMock(), account=MagicMock(), node_id="node-1", delivery_method_id="none"
+                    app_model=MagicMock(),
+                    account=MagicMock(),
+                    node_id="node-1",
+                    delivery_method_id="none",
+                    session=MagicMock(),
                 )
 
     def test_load_email_recipients_parsing_failure(self, service: WorkflowService) -> None:

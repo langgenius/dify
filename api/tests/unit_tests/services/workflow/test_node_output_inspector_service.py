@@ -8,6 +8,7 @@ logic without DB / network access.
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from typing import Any
@@ -107,18 +108,15 @@ def _patch_session(
     workflow_run: SimpleNamespace | None,
     executions: list[SimpleNamespace] | None = None,
 ):
-    """Patch ``db.session`` to return the configured rows.
+    """Configure ``TEST_SESSION`` to return the configured rows.
 
     Returns a context manager that the test uses with ``with``.
     """
     executions = executions or []
-    mock_session = MagicMock()
-    mock_session.scalar.return_value = workflow_run
-    mock_session.scalars.return_value.all.return_value = executions
-    return patch(
-        "services.workflow.node_output_inspector_service.db.session",
-        mock_session,
-    )
+    TEST_SESSION.reset_mock()
+    TEST_SESSION.scalar.return_value = workflow_run
+    TEST_SESSION.scalars.return_value.all.return_value = executions
+    return nullcontext()
 
 
 def _stub_binding_resolver(*, declared_outputs: list[DeclaredOutputConfig]):
