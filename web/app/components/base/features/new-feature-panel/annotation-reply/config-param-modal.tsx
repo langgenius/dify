@@ -14,7 +14,7 @@ import { ANNOTATION_DEFAULT } from '@/config'
 import { Item } from './config-param'
 import ScoreSlider from './score-slider'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   isShow: boolean
   onHide: () => void
@@ -24,7 +24,7 @@ type Props = {
   }, score: number) => void
   isInit?: boolean
   annotationConfig: AnnotationReplyConfig
-}
+}>
 const ConfigParamModal: FC<Props> = ({ isShow, onHide: doHide, onSave, isInit, annotationConfig: oldAnnotationConfig }) => {
   const { t } = useTranslation()
   const { modelList: embeddingsModelList, defaultModel: embeddingsDefaultModel, currentModel: isEmbeddingsDefaultModelValid } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textEmbedding)

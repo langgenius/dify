@@ -1,4 +1,4 @@
-import type { FocusEvent } from 'react'
+import type * as React from 'react'
 import { render } from 'vitest-browser-react'
 import {
   FieldDescription,
@@ -131,7 +131,7 @@ describe('Textarea', () => {
 
   it('should route field props through Base UI Field.Control and textarea-only props to textarea', async () => {
     const onFormSubmit = vi.fn()
-    const onBlur = vi.fn((event: FocusEvent<HTMLTextAreaElement>) => {
+    const onBlur = vi.fn((event: React.FocusEvent<HTMLTextAreaElement>) => {
       expect(event.currentTarget.tagName).toBe('TEXTAREA')
     })
     const screen = await render(

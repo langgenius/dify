@@ -10,11 +10,11 @@ import Field from '../base/field'
 
 const I18N_PREFIX = 'stepOne.website'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   payload: CrawlOptions
   onChange: (payload: CrawlOptions) => void
-}
+}>
 
 const Options: FC<Props> = ({
   className = '',

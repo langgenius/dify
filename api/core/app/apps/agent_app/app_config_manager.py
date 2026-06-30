@@ -21,6 +21,7 @@ from core.app.app_config.entities import (
     EasyUIBasedAppModelConfigFrom,
     PromptTemplateEntity,
 )
+from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, AppModelConfigDict, Conversation
 
@@ -91,15 +92,14 @@ class AgentAppConfigManager(BaseAppConfigManager):
                 "provider": model.model_provider,
                 "name": model.model,
                 "mode": "chat",
-                "completion_params": dict(model.model_settings or {}),
+                "completion_params": model.model_settings.model_dump(mode="json", exclude_none=True),
             }
         # The Agent Soul system prompt rides the EasyUI "simple" prompt slot; the
         # agent backend is the real prompt authority, this only feeds the chat
         # pipeline's bookkeeping (token counting, persistence).
         base["prompt_type"] = PromptTemplateEntity.PromptType.SIMPLE.value
         base["pre_prompt"] = agent_soul.prompt.system_prompt or ""
-        # Agent App takes the user message directly; no completion-style inputs form.
-        base.setdefault("user_input_form", [])
+        base["user_input_form"] = agent_app_variables_to_user_input_form(agent_soul.app_variables)
         return base
 
 

@@ -6,6 +6,7 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useHooksStore } from '@/app/components/workflow/hooks-store/store'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -28,6 +29,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
+  const flowType = useHooksStore(s => s.configsMap?.flowType)
   const {
     readOnly,
     inputs,
@@ -210,6 +212,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               hasSetBlockStatus={hasSetBlockStatus}
               availableVars={availableVars}
               availableNodesWithParent={availableNodesWithParent}
+              flowType={flowType}
               handleSyeQueryChange={handleSyeQueryChange}
               handleMemoryChange={handleMemoryChange}
             />

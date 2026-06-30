@@ -166,7 +166,7 @@ describe('runVersionProbe', () => {
       reg.setHost(url.host)
       reg.setAccount('test@dify.ai')
       reg.setScheme(url.host, url.protocol.replace(':', ''))
-      reg.save()
+      await reg.save()
       process.env[ENV_CONFIG_DIR] = configDir
 
       const report = await runVersionProbe({ skipServer: false })

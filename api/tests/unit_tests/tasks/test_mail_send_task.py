@@ -8,6 +8,7 @@ This module tests the mail sending functionality including:
 - Error handling and logging
 """
 
+import logging
 import smtplib
 from unittest.mock import ANY, MagicMock, patch
 
@@ -371,8 +372,7 @@ class TestMailTaskRetryLogic:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
-    def test_mail_task_logs_success(self, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_logs_success(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
         """Test that successful mail sends are logged properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -380,7 +380,8 @@ class TestMailTaskRetryLogic:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
+        with caplog.at_level(logging.INFO, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
 
         # Assert
         mock_service.send_email.assert_called_once_with(
@@ -390,12 +391,14 @@ class TestMailTaskRetryLogic:
             template_context={"to": "test@example.com", "code": "123456"},
         )
         # Verify logging calls
-        assert mock_logger.info.call_count == 2  # Start and success logs
+        log_messages = [record.getMessage() for record in caplog.records]
+        assert len(log_messages) == 2  # Start and success logs
+        assert "Start email register mail to test@example.com" in log_messages[0]
+        assert "Send email register mail to test@example.com succeeded" in log_messages[1]
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
-    def test_mail_task_logs_failure(self, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_logs_failure(self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture):
         """Test that failed mail sends are logged with exception details."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -404,10 +407,13 @@ class TestMailTaskRetryLogic:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
+        with caplog.at_level(logging.ERROR, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
 
         # Assert
-        mock_logger.exception.assert_called_once_with("Send email register mail to %s failed", "test@example.com")
+        assert "Send email register mail to test@example.com failed" in caplog.text
+        assert len(caplog.records) == 1
+        assert caplog.records[0].exc_info is not None
 
     @patch("tasks.mail_reset_password_task.get_email_i18n_service")
     @patch("tasks.mail_reset_password_task.mail")
@@ -574,8 +580,9 @@ class TestInnerEmailTask:
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
     @patch("tasks.mail_inner_task._render_template_with_strategy")
-    @patch("tasks.mail_inner_task.logger")
-    def test_inner_email_task_logs_failure(self, mock_logger, mock_render, mock_mail, mock_email_service):
+    def test_inner_email_task_logs_failure(
+        self, mock_render, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """Test inner email task logs failures properly."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -587,10 +594,13 @@ class TestInnerEmailTask:
         to_list = ["user@example.com"]
 
         # Act
-        send_inner_email_task(to=to_list, subject="Test", body="Body", substitutions={})
+        with caplog.at_level(logging.ERROR, logger="tasks.mail_inner_task"):
+            send_inner_email_task(to=to_list, subject="Test", body="Body", substitutions={})
 
         # Assert
-        mock_logger.exception.assert_called_once()
+        assert "Send enterprise mail to ['user@example.com'] failed" in caplog.text
+        assert len(caplog.records) == 1
+        assert caplog.records[0].exc_info is not None
 
 
 class TestSendGridIntegration:
@@ -890,9 +900,10 @@ class TestPerformanceAndTiming:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
     @patch("tasks.mail_register_task.time")
-    def test_mail_task_tracks_execution_time(self, mock_time, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_tracks_execution_time(
+        self, mock_time, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """Test that mail tasks track and log execution time."""
         # Arrange
         mock_mail.is_inited.return_value = True
@@ -903,13 +914,14 @@ class TestPerformanceAndTiming:
         mock_time.perf_counter.side_effect = [100.0, 100.5]  # 0.5 second execution
 
         # Act
-        send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
+        with caplog.at_level(logging.INFO, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="test@example.com", code="123456")
 
         # Assert
         assert mock_time.perf_counter.call_count == 2
         # Verify latency is logged
-        success_log_call = mock_logger.info.call_args_list[1]
-        assert "latency" in str(success_log_call)
+        assert len(caplog.records) == 2
+        assert "latency: 0.5" in caplog.records[1].getMessage()
 
 
 class TestEdgeCasesAndErrorHandling:
@@ -1457,8 +1469,9 @@ class TestLoggingAndMonitoring:
 
     @patch("tasks.mail_register_task.get_email_i18n_service")
     @patch("tasks.mail_register_task.mail")
-    @patch("tasks.mail_register_task.logger")
-    def test_mail_task_logs_recipient_information(self, mock_logger, mock_mail, mock_email_service):
+    def test_mail_task_logs_recipient_information(
+        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test that mail tasks log recipient information for audit trails.
 
@@ -1471,17 +1484,18 @@ class TestLoggingAndMonitoring:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_email_register_mail_task(language="en-US", to="audit@example.com", code="123456")
+        with caplog.at_level(logging.INFO, logger="tasks.mail_register_task"):
+            send_email_register_mail_task(language="en-US", to="audit@example.com", code="123456")
 
         # Assert
         # Check that recipient is logged in start message
-        start_log_call = mock_logger.info.call_args_list[0]
-        assert "audit@example.com" in str(start_log_call)
+        assert "audit@example.com" in caplog.records[0].getMessage()
 
     @patch("tasks.mail_inner_task.get_email_i18n_service")
     @patch("tasks.mail_inner_task.mail")
-    @patch("tasks.mail_inner_task.logger")
-    def test_inner_email_task_logs_subject_for_tracking(self, mock_logger, mock_mail, mock_email_service):
+    def test_inner_email_task_logs_subject_for_tracking(
+        self, mock_mail, mock_email_service, caplog: pytest.LogCaptureFixture
+    ):
         """
         Test that inner email task logs subject for tracking purposes.
 
@@ -1494,11 +1508,11 @@ class TestLoggingAndMonitoring:
         mock_email_service.return_value = mock_service
 
         # Act
-        send_inner_email_task(
-            to=["user@example.com"], subject="Important Notification", body="<p>Body</p>", substitutions={}
-        )
+        with caplog.at_level(logging.INFO, logger="tasks.mail_inner_task"):
+            send_inner_email_task(
+                to=["user@example.com"], subject="Important Notification", body="<p>Body</p>", substitutions={}
+            )
 
         # Assert
         # Check that subject is logged
-        start_log_call = mock_logger.info.call_args_list[0]
-        assert "Important Notification" in str(start_log_call)
+        assert "Important Notification" in caplog.records[0].getMessage()

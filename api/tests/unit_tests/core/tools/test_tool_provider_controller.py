@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from typing import Any
+from typing import Any, override
 
 import pytest
 
@@ -22,9 +22,11 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 
 class _DummyTool(Tool):
+    @override
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.BUILT_IN
 
+    @override
     def _invoke(
         self,
         user_id: str,
@@ -36,7 +38,8 @@ class _DummyTool(Tool):
         yield self.create_text_message("ok")
 
 
-class _DummyController(ToolProviderController):
+class _DummyController(ToolProviderController[ToolProviderEntity, Tool]):
+    @override
     def get_tool(self, tool_name: str) -> Tool:
         entity = ToolEntity(
             identity=ToolIdentity(

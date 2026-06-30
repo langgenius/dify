@@ -63,8 +63,9 @@ class TestWebhookService:
             name=fake.name(),
             interface_language="en-US",
             password=generate_valid_password(fake),
+            session=db_session_with_containers,
         )
-        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company(), session=db_session_with_containers)
         tenant = account.current_tenant
         assert tenant is not None
 
@@ -124,6 +125,9 @@ class TestWebhookService:
             version="1.0",
         )
         db_session_with_containers.add(workflow)
+        db_session_with_containers.flush()
+
+        app.workflow_id = workflow.id
         db_session_with_containers.flush()
 
         # Create webhook trigger

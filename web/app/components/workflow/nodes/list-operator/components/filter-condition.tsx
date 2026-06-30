@@ -30,14 +30,14 @@ const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
   size: VarType.number,
 }
 
-type Props = {
+type Props = Readonly<{
   condition: Condition
   varType: VarType
   onChange: (condition: Condition) => void
   hasSubVariable: boolean
   readOnly: boolean
   nodeId: string
-}
+}>
 
 const getExpectedVarType = (condition: Condition, varType: VarType) => {
   return condition.key ? VAR_INPUT_SUPPORTED_KEYS[condition.key] : varType

@@ -11,6 +11,16 @@ const { onValueChangeSpy } = vi.hoisted(() => ({
   onValueChangeSpy: vi.fn(),
 }))
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.tag.manage', 'dataset.tag.manage'] as string[],
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
+  }),
+}))
+
 const i18n = {
   selectorPlaceholder: 'common.tag.selectorPlaceholder',
   operationClear: 'common.operation.clear',
@@ -31,6 +41,7 @@ type PanelHarnessProps = {
   type?: TagType
   value?: Tag[]
   tagList?: Tag[]
+  canBindOrUnbindTags?: boolean
   onOpenTagManagement?: () => void
 }
 
@@ -42,6 +53,7 @@ const PanelHarness = ({
   type = 'app',
   value = [appTags[0]!],
   tagList = [...appTags, knowledgeTag],
+  canBindOrUnbindTags,
   onOpenTagManagement,
 }: PanelHarnessProps) => {
   const [selectedTags, setSelectedTags] = useState<Tag[]>(value)
@@ -82,6 +94,7 @@ const PanelHarness = ({
         type={type}
         inputValue={inputValue}
         onInputValueChange={setInputValue}
+        canBindOrUnbindTags={canBindOrUnbindTags}
         onOpenTagManagement={onOpenTagManagement}
       />
     </Combobox>
@@ -91,6 +104,7 @@ const PanelHarness = ({
 describe('TagSearchContent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage']
   })
 
   it('renders search, selected tags, unselected tags, and management action', () => {
@@ -191,8 +205,56 @@ describe('TagSearchContent', () => {
     expect(onOpenTagManagement).toHaveBeenCalledTimes(1)
   })
 
+  it('hides tag management action without tag management permission', () => {
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness />)
+
+    expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /Frontend/i })).toBeInTheDocument()
+  })
+
+  it('does not update selection when neither tag management nor binding permission is available', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).not.toHaveBeenCalled()
+  })
+
+  it('updates selection with binding capability without tag management permission', async () => {
+    const user = userEvent.setup()
+    mockWorkspacePermissionKeys.value = []
+
+    render(<PanelHarness canBindOrUnbindTags />)
+
+    await user.click(screen.getByRole('option', { name: /Backend/i }))
+
+    expect(onValueChangeSpy).toHaveBeenLastCalledWith(expect.arrayContaining([
+      expect.objectContaining({ id: 'tag-2' }),
+    ]))
+    expect(screen.queryByRole('button', { name: i18n.manageTags })).not.toBeInTheDocument()
+  })
+
   it('renders knowledge tags when the panel type is knowledge', () => {
     render(<PanelHarness type="knowledge" value={[]} />)
     expect(screen.getByRole('option', { name: /KnowledgeDB/i })).toBeInTheDocument()
+  })
+
+  it('renders snippet management action with snippets create-and-modify permission', () => {
+    mockWorkspacePermissionKeys.value = ['snippets.create_and_modify']
+
+    render(
+      <PanelHarness
+        type="snippet"
+        value={[]}
+        tagList={[{ id: 'snippet-tag-1', name: 'Reusable', type: 'snippet', binding_count: 1 }]}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: i18n.manageTags })).toBeInTheDocument()
   })
 })

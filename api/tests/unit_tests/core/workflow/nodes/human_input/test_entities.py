@@ -30,14 +30,19 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from core.workflow.node_runtime import DifyFileReferenceFactory, DifyHumanInputNodeRuntime
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import GraphInitParams
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent
 from graphon.node_events.node import StreamCompletedEvent
 from graphon.nodes.human_input.entities import (
+    FileInputConfig,
+    FileListInputConfig,
     HumanInputNodeData,
     ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
     StringSource,
     UserActionConfig,
 )
@@ -49,7 +54,9 @@ from graphon.nodes.human_input.enums import (
     ValueSourceType,
 )
 from graphon.nodes.human_input.human_input_node import HumanInputNode
+from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from libs.datetime_utils import naive_utc_now
 
 
@@ -136,6 +143,23 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity.status_value = HumanInputFormStatus.SUBMITTED
 
 
+class _TestFileReferenceFactory(FileReferenceFactoryProtocol):
+    """Build graph-layer file objects without touching Dify persistence in unit tests."""
+
+    def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
+        return File(
+            file_id=mapping.get("id"),
+            file_type=FileType(mapping["type"]),
+            transfer_method=FileTransferMethod(mapping["transfer_method"]),
+            remote_url=mapping.get("remote_url") or mapping.get("url"),
+            related_id=mapping.get("related_id") or mapping.get("upload_file_id"),
+            filename=mapping.get("filename"),
+            extension=mapping.get("extension"),
+            mime_type=mapping.get("mime_type"),
+            size=mapping.get("size", -1),
+        )
+
+
 def _build_human_input_node(
     *,
     node_id: str,
@@ -147,12 +171,13 @@ def _build_human_input_node(
     typed_node_data = (
         node_data if isinstance(node_data, HumanInputNodeData) else HumanInputNodeData.model_validate(node_data)
     )
+    runtime._file_reference_factory = _TestFileReferenceFactory()  # type: ignore[attr-defined]
     return HumanInputNode(
         node_id=node_id,
         data=typed_node_data,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
-        file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
+        file_reference_factory=_TestFileReferenceFactory(),
         runtime=runtime,
     )
 
@@ -198,12 +223,11 @@ class TestParagraphInputConfig:
         """Test paragraph input with constant default value."""
         default = StringSource(type=ValueSourceType.CONSTANT, value="Enter your response here...")
 
-        form_input = ParagraphInputConfig(
-            type=FormInputType.PARAGRAPH, output_variable_name="user_input", default=default
-        )
+        form_input = ParagraphInputConfig(output_variable_name="user_input", default=default)
 
         assert form_input.type == FormInputType.PARAGRAPH
         assert form_input.output_variable_name == "user_input"
+        assert form_input.default is not None
         assert form_input.default.type == ValueSourceType.CONSTANT
         assert form_input.default.value == "Enter your response here..."
 
@@ -211,16 +235,15 @@ class TestParagraphInputConfig:
         """Test paragraph input with variable default value."""
         default = StringSource(type=ValueSourceType.VARIABLE, selector=["node_123", "output_var"])
 
-        form_input = ParagraphInputConfig(
-            type=FormInputType.PARAGRAPH, output_variable_name="user_input", default=default
-        )
+        form_input = ParagraphInputConfig(output_variable_name="user_input", default=default)
 
+        assert form_input.default is not None
         assert form_input.default.type == ValueSourceType.VARIABLE
         assert form_input.default.selector == ["node_123", "output_var"]
 
     def test_form_input_without_default(self):
         """Test form input without default value."""
-        form_input = ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="description")
+        form_input = ParagraphInputConfig(output_variable_name="description")
 
         assert form_input.type == FormInputType.PARAGRAPH
         assert form_input.output_variable_name == "description"
@@ -279,7 +302,6 @@ class TestHumanInputNodeData:
 
         inputs = [
             ParagraphInputConfig(
-                type=FormInputType.PARAGRAPH,
                 output_variable_name="content",
                 default=StringSource(type=ValueSourceType.CONSTANT, value="Enter content..."),
             )
@@ -343,8 +365,8 @@ class TestHumanInputNodeData:
     def test_duplicate_input_output_variable_name_raises_validation_error(self):
         """Duplicate form input output_variable_name should raise validation error."""
         duplicate_inputs = [
-            ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="content"),
-            ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="content"),
+            ParagraphInputConfig(output_variable_name="content"),
+            ParagraphInputConfig(output_variable_name="content"),
         ]
 
         with pytest.raises(ValidationError, match="duplicated output_variable_name 'content'"):
@@ -464,12 +486,10 @@ class TestHumanInputNodeVariableResolution:
             form_content="Provide your name",
             inputs=[
                 ParagraphInputConfig(
-                    type=FormInputType.PARAGRAPH,
                     output_variable_name="user_name",
                     default=StringSource(type=ValueSourceType.VARIABLE, selector=["start", "name"]),
                 ),
                 ParagraphInputConfig(
-                    type=FormInputType.PARAGRAPH,
                     output_variable_name="user_email",
                     default=StringSource(type=ValueSourceType.CONSTANT, value="foo@example.com"),
                 ),
@@ -726,9 +746,11 @@ class TestValidation:
     def test_invalid_form_input_type(self):
         """Test validation with invalid form input type."""
         with pytest.raises(ValidationError):
-            ParagraphInputConfig(
-                type="invalid-type",  # Invalid type
-                output_variable_name="test",
+            ParagraphInputConfig.model_validate(
+                {
+                    "type": "invalid-type",
+                    "output_variable_name": "test",
+                }
             )
 
     def test_invalid_button_style(self):
@@ -782,12 +804,7 @@ class TestHumanInputNodeRenderedContent:
         node_data = HumanInputNodeData(
             title="Human Input",
             form_content="Name: {{#$output.name#}}",
-            inputs=[
-                ParagraphInputConfig(
-                    type=FormInputType.PARAGRAPH,
-                    output_variable_name="name",
-                )
-            ],
+            inputs=[ParagraphInputConfig(output_variable_name="name")],
             user_actions=[UserActionConfig(id="approve", title="Approve")],
         )
         config = {"id": "human", "data": node_data.model_dump()}
@@ -815,4 +832,115 @@ class TestHumanInputNodeRenderedContent:
         last_event = events[-1]
         assert isinstance(last_event, StreamCompletedEvent)
         node_run_result = last_event.node_run_result
-        assert node_run_result.outputs["__rendered_content"].to_object() == "Name: Alice"
+        assert node_run_result.outputs["name"] == StringSegment(value="Alice")
+        assert node_run_result.outputs["__action_id"] == StringSegment(value="approve")
+        assert node_run_result.outputs["__rendered_content"] == StringSegment(value="Name: Alice")
+
+    def test_resume_restores_file_outputs_as_runtime_segments(self):
+        variable_pool = VariablePool.from_bootstrap(
+            system_variables=build_system_variables(
+                user_id="user",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="run",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+        graph_init_params = GraphInitParams(
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            run_context={
+                DIFY_RUN_CONTEXT_KEY: {
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "user_id": "user",
+                    "user_from": "account",
+                    "invoke_from": "debugger",
+                }
+            },
+            call_depth=0,
+        )
+
+        node_data = HumanInputNodeData(
+            title="Human Input",
+            form_content=(
+                "Decision: {{#$output.decision#}}\n"
+                "Attachment: {{#$output.attachment#}}\n"
+                "Attachments: {{#$output.attachments#}}"
+            ),
+            inputs=[
+                SelectInputConfig(
+                    output_variable_name="decision",
+                    option_source=StringListSource(type="constant", value=["approve", "reject"]),
+                ),
+                FileInputConfig(output_variable_name="attachment"),
+                FileListInputConfig(output_variable_name="attachments", number_limits=2),
+            ],
+            user_actions=[UserActionConfig(id="approve", title="Approve")],
+        )
+        config = {"id": "human", "data": node_data.model_dump()}
+
+        form_repository = InMemoryHumanInputFormRepository()
+        runtime = DifyHumanInputNodeRuntime(graph_init_params.run_context)
+        runtime._build_form_repository = MagicMock(return_value=form_repository)  # type: ignore[attr-defined]
+        node = _build_human_input_node(
+            node_id=config["id"],
+            node_data=config["data"],
+            graph_init_params=graph_init_params,
+            graph_runtime_state=runtime_state,
+            runtime=runtime,
+        )
+
+        pause_gen = node._run()
+        pause_event = next(pause_gen)
+        assert isinstance(pause_event, PauseRequestedEvent)
+        with pytest.raises(StopIteration):
+            next(pause_gen)
+
+        form_repository.set_submission(
+            action_id="approve",
+            form_data={
+                "decision": "approve",
+                "attachment": {
+                    "type": "document",
+                    "transfer_method": "remote_url",
+                    "remote_url": "https://example.com/resume.pdf",
+                    "filename": "resume.pdf",
+                    "extension": ".pdf",
+                    "mime_type": "application/pdf",
+                },
+                "attachments": [
+                    {
+                        "type": "image",
+                        "transfer_method": "remote_url",
+                        "remote_url": "https://example.com/a.png",
+                        "filename": "a.png",
+                        "extension": ".png",
+                        "mime_type": "image/png",
+                    },
+                    {
+                        "type": "image",
+                        "transfer_method": "remote_url",
+                        "remote_url": "https://example.com/b.png",
+                        "filename": "b.png",
+                        "extension": ".png",
+                        "mime_type": "image/png",
+                    },
+                ],
+            },
+        )
+
+        events = list(node._run())
+        last_event = events[-1]
+        assert isinstance(last_event, StreamCompletedEvent)
+        node_run_result = last_event.node_run_result
+        assert node_run_result.outputs["decision"] == StringSegment(value="approve")
+        assert node_run_result.outputs["__rendered_content"] == StringSegment(
+            value="Decision: approve\nAttachment: [file]\nAttachments: [2 files]"
+        )
+        assert isinstance(node_run_result.outputs["attachment"], FileSegment)
+        assert node_run_result.outputs["attachment"].value.filename == "resume.pdf"
+        assert isinstance(node_run_result.outputs["attachments"], ArrayFileSegment)
+        assert [file.filename for file in node_run_result.outputs["attachments"].value] == ["a.png", "b.png"]

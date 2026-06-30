@@ -1,24 +1,24 @@
 import type { SessionListResponse } from '@dify/contracts/api/openapi/types.gen'
+import type { OpenApiClient } from '@/http/orpc'
 import type { HttpClient } from '@/http/types'
+import { createOpenApiClient } from '@/http/orpc'
 
 export class AccountSessionsClient {
-  private readonly http: HttpClient
+  private readonly orpc: OpenApiClient
 
   constructor(http: HttpClient) {
-    this.http = http
+    this.orpc = createOpenApiClient(http)
   }
 
   async list(q?: { page?: number, limit?: number }): Promise<SessionListResponse> {
-    return this.http.get<SessionListResponse>('account/sessions', {
-      searchParams: { page: q?.page, limit: q?.limit },
-    })
+    return this.orpc.account.sessions.get({ query: { page: q?.page, limit: q?.limit } })
   }
 
   async revoke(sessionId: string): Promise<void> {
-    await this.http.delete(`account/sessions/${encodeURIComponent(sessionId)}`)
+    await this.orpc.account.sessions.bySessionId.delete({ params: { session_id: sessionId } })
   }
 
   async revokeSelf(): Promise<void> {
-    await this.http.delete('account/sessions/self')
+    await this.orpc.account.sessions.self.delete()
   }
 }

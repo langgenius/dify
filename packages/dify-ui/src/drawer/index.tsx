@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type * as React from 'react'
 import { Drawer as BaseDrawer } from '@base-ui/react/drawer'
 import { cn } from '../cn'
 
@@ -32,7 +32,7 @@ export function DrawerBackdrop({
   return (
     <BaseDrawer.Backdrop
       className={cn(
-        'fixed inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
+        'absolute inset-0 z-50 bg-background-overlay opacity-[calc(1-var(--drawer-swipe-progress,0))]',
         'transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0 data-swiping:duration-0 motion-reduce:transition-none',
         className,
       )}
@@ -90,7 +90,7 @@ export function DrawerContent({
 }
 
 type DrawerCloseButtonProps = Omit<BaseDrawer.Close.Props, 'children'> & {
-  children?: ReactNode
+  children?: React.ReactNode
 }
 
 export function DrawerCloseButton({
@@ -105,7 +105,7 @@ export function DrawerCloseButton({
       type={type}
       aria-label={ariaLabel}
       className={cn(
-        'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover disabled:cursor-not-allowed disabled:opacity-50',
+        'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-text-tertiary outline-hidden hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50',
         className,
       )}
       {...props}

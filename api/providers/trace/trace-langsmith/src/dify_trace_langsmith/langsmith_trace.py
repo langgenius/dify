@@ -2,7 +2,7 @@ import logging
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import cast
+from typing import cast, override
 
 from langsmith import Client
 from langsmith.schemas import RunBase
@@ -47,6 +47,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         self.langsmith_client = Client(api_key=langsmith_config.api_key, api_url=langsmith_config.endpoint)
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
 
+    @override
     def trace(self, trace_info: BaseTraceInfo):
         match trace_info:
             case WorkflowTraceInfo():

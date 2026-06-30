@@ -7,9 +7,9 @@ import { useTranslation } from 'react-i18next'
 import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 
-type Props = {
+type Props = Readonly<{
   tool: Tool
-}
+}>
 
 const MCPToolItem = ({
   tool,
@@ -61,7 +61,7 @@ const MCPToolItem = ({
             className={cn('bg-components-panel-item-bg w-full cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 text-left shadow-xs outline-hidden hover:bg-components-panel-on-panel-item-bg-hover focus-visible:ring-1 focus-visible:ring-components-input-border-hover')}
           >
             <div className="pb-0.5 system-md-semibold text-text-secondary">{tool.label[language]}</div>
-            <div className="line-clamp-2 system-xs-regular text-text-tertiary" title={tool.description[language]}>{tool.description[language]}</div>
+            <div className="line-clamp-2 system-xs-regular text-text-tertiary">{tool.description[language]}</div>
           </button>
         )}
       />

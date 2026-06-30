@@ -1,10 +1,13 @@
 from __future__ import annotations
 
-from werkzeug.exceptions import Forbidden, Unauthorized
+from flask import request
+from werkzeug.exceptions import Forbidden, NotFound, UnprocessableEntity
 
-from controllers.openapi.auth.data import AuthData
+from configs import dify_config
+from controllers.common.wraps import enforce_rbac_access
+from controllers.openapi.auth.data import AuthData, CallerKind
 from extensions.ext_database import db
-from libs.oauth_bearer import Scope, TokenType, check_workspace_membership
+from libs.oauth_bearer import Scope, TokenType
 from services.account_service import AccountService, TenantService
 from services.enterprise.enterprise_service import EnterpriseService, WebAppAccessMode
 
@@ -17,17 +20,63 @@ def check_scope(data: AuthData) -> None:
     raise Forbidden("insufficient_scope")
 
 
-def check_membership(data: AuthData) -> None:
+def check_workspace_member(data: AuthData) -> None:
+    """Assert the caller belongs to the resolved tenant.
+
+    `load_workspace_role` stashes the membership role (None when the caller is
+    not a member or is inactive). A missing membership surfaces as 404, not
+    403, so workspace IDs don't leak across tenants.
+    """
+    if data.tenant_role is None:
+        raise NotFound("workspace not found")
+
+
+def check_workspace_mismatch(data: AuthData) -> None:
     if data.tenant is None:
-        raise Unauthorized("tenant unset")
-    if data.account_id is None:
-        raise Unauthorized("account_id unset")
-    check_workspace_membership(
-        account_id=data.account_id,
-        tenant_id=data.tenant.id,
-        token_hash=data.token_hash,
-        membership_cache=data.tenants,
+        return
+    request_workspace_id = data.path_params.get("workspace_id") or request.args.get("workspace_id")
+    if request_workspace_id and request_workspace_id != str(data.tenant.id):
+        raise UnprocessableEntity("workspace_id does not match app's workspace")
+
+
+def check_workspace_role(data: AuthData) -> None:
+    if dify_config.RBAC_ENABLED and data.rbac is not None:
+        # fine-grained permission check is performed by RBAC
+        return
+    if data.allowed_roles is None:
+        return
+    if data.tenant_role is None:
+        raise NotFound("workspace not found")
+    if data.tenant_role not in data.allowed_roles:
+        raise Forbidden("insufficient workspace role")
+
+
+def check_rbac_permission(data: AuthData) -> None:
+    req = data.rbac
+    if req is None:
+        return
+    if not dify_config.RBAC_ENABLED:
+        return
+    # Only account callers are subject to RBAC; end_user access is scope-controlled.
+    if data.caller_kind != CallerKind.ACCOUNT:
+        return
+    if data.account_id is None or data.tenant is None:
+        raise Forbidden("rbac context missing")
+    enforce_rbac_access(
+        tenant_id=str(data.tenant.id),
+        account_id=str(data.account_id),
+        resource_type=req.resource_type,
+        scene=req.scene,
+        resource_required=req.resource_required,
+        path_args=dict(data.path_params),
     )
+
+
+def check_app_api_enabled(data: AuthData) -> None:
+    if data.app is None:
+        return
+    if not data.app.enable_api:
+        raise Forbidden("service_api_disabled")
 
 
 def check_app_access(data: AuthData) -> None:

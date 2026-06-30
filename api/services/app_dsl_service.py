@@ -11,7 +11,7 @@ import yaml
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from packaging.version import parse as parse_version
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -41,6 +41,7 @@ from models.model import AppModelConfig, AppModelConfigDict, IconType
 from models.workflow import Workflow
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
+from services.errors.app import WorkflowNotFoundError
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_draft_variable_service import WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -59,6 +60,7 @@ class Import(BaseModel):
     status: ImportStatus
     app_id: str | None = None
     app_mode: str | None = None
+    permission_keys: list[str] = Field(default_factory=list)
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
     error: str = ""
@@ -432,6 +434,7 @@ class AppDslService:
             app.enable_api = True
             app.use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
             app.created_by = account.id
+            app.maintainer = account.id
             app.updated_by = account.id
 
             self._session.add(app)
@@ -557,7 +560,7 @@ class AppDslService:
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model, workflow_id)
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            raise WorkflowNotFoundError("Missing draft workflow configuration, please check.")
 
         workflow_dict = workflow.to_dict(include_secret=include_secret)
         # TODO: refactor: we need a better way to filter workspace related data from nodes

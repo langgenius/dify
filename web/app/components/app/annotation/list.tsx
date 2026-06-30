@@ -9,14 +9,14 @@ import useTimestamp from '@/hooks/use-timestamp'
 import BatchAction from './batch-action'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 
-type Props = {
+type Props = Readonly<{
   list: AnnotationItem[]
   onView: (item: AnnotationItem) => void
   onRemove: (id: string) => void
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
   onBatchDelete: () => Promise<void>
-}
+}>
 
 type AnnotationTableRowProps = {
   item: AnnotationItem

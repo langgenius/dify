@@ -7,16 +7,10 @@ import { zPostRuleGenerateBody, zPostRuleGenerateResponse } from './zod.gen'
 
 /**
  * Generate rule configuration using LLM
- *
- * Generated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.
- *
- * @deprecated
  */
 export const post = oc
   .route({
-    deprecated: true,
-    description:
-      'Generate rule configuration using LLM\n\nGenerated contract types may be inaccurate because backend OpenAPI annotations are incomplete. Do not migrate callers until the generated contract is accurate.',
+    description: 'Generate rule configuration using LLM',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postRuleGenerate',

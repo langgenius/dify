@@ -93,6 +93,30 @@ describe('checkTaskStatus', () => {
     expect(mockCheckTaskStatus).toHaveBeenCalledTimes(3)
   })
 
+  it('polls recursively when status is pending, then resolves on success', async () => {
+    mockCheckTaskStatus
+      .mockResolvedValueOnce({
+        task: {
+          plugins: [
+            { plugin_unique_identifier: 'test-plugin', status: TaskStatus.pending, message: '' },
+          ],
+        },
+      })
+      .mockResolvedValueOnce({
+        task: {
+          plugins: [
+            { plugin_unique_identifier: 'test-plugin', status: TaskStatus.success, message: '' },
+          ],
+        },
+      })
+
+    const { check } = checkTaskStatus()
+    const result = await check({ taskId: 'task-1', pluginUniqueIdentifier: 'test-plugin' })
+
+    expect(result.status).toBe(TaskStatus.success)
+    expect(mockCheckTaskStatus).toHaveBeenCalledTimes(2)
+  })
+
   it('stop() causes early return with success', async () => {
     const { check, stop } = checkTaskStatus()
     stop()

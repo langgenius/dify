@@ -66,20 +66,21 @@ class Tool(ABC):
             message_id=message_id,
         )
 
-        if isinstance(result, ToolInvokeMessage):
+        match result:
+            case ToolInvokeMessage():
 
-            def single_generator() -> Generator[ToolInvokeMessage, None, None]:
-                yield result
+                def single_generator() -> Generator[ToolInvokeMessage, None, None]:
+                    yield result
 
-            return single_generator()
-        elif isinstance(result, list):
+                return single_generator()
+            case list():
 
-            def generator() -> Generator[ToolInvokeMessage, None, None]:
-                yield from result
+                def generator() -> Generator[ToolInvokeMessage, None, None]:
+                    yield from result
 
-            return generator()
-        else:
-            return result
+                return generator()
+            case _:
+                return result
 
     def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
         """

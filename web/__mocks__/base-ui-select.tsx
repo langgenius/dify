@@ -26,15 +26,21 @@ export const SelectTrigger = ({
   children,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & { children?: ReactNode }) => (
-  <button type="button" {...props}>
+  <button type="button" role="combobox" {...props}>
     {children}
   </button>
 )
 
 export const SelectValue = ({ placeholder }: { placeholder?: ReactNode }) => <>{placeholder}</>
 
-export const SelectContent = ({ children }: { children?: ReactNode }) => (
-  <div data-testid="select-content">{children}</div>
+export const SelectContent = ({
+  children,
+  popupClassName,
+}: {
+  children?: ReactNode
+  popupClassName?: string
+}) => (
+  <div data-side="bottom" data-testid="select-content" className={popupClassName}>{children}</div>
 )
 
 export const SelectItem = ({

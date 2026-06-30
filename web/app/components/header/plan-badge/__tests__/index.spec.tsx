@@ -6,6 +6,16 @@ import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '../../../billing/type'
 import { PlanBadge } from '../index'
 
+const mockConfig = vi.hoisted(() => ({
+  isCloudEdition: true,
+}))
+
+vi.mock('@/config', () => ({
+  get IS_CLOUD_EDITION() {
+    return mockConfig.isCloudEdition
+  },
+}))
+
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),
   baseProviderContextValue: {},
@@ -16,6 +26,7 @@ describe('PlanBadge', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockConfig.isCloudEdition = true
   })
 
   it('should return null if isFetchedPlan is false', () => {
@@ -48,6 +59,19 @@ describe('PlanBadge', () => {
     const button = screen.getByRole('button', { name: 'billing.upgradeBtn.encourageShort' })
     fireEvent.click(button)
     expect(handleClick).toHaveBeenCalledTimes(1)
+  })
+
+  it('should render sandbox badge instead of upgrade badge in self-hosted edition', () => {
+    mockConfig.isCloudEdition = false
+    mockUseProviderContext.mockReturnValue(
+      createMockProviderContextValue({ isFetchedPlan: true }),
+    )
+
+    render(<PlanBadge plan={Plan.sandbox} sandboxAsUpgrade={true} />)
+
+    expect(screen.getByText(Plan.sandbox)).toBeInTheDocument()
+    expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
 
   it('should render sandbox badge when plan is sandbox and sandboxAsUpgrade is false', () => {

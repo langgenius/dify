@@ -9,7 +9,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/arrows'
 import Loading from '@/app/components/base/loading'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
-import { useLocalStorage } from '@/hooks/use-local-storage'
+import { useRAGRecommendationsCollapsed } from '@/app/components/workflow/block-selector/storage'
 import Link from '@/next/link'
 import { useRAGRecommendedPlugins } from '@/service/use-tools'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -21,15 +21,13 @@ type RAGToolRecommendationsProps = {
   onTagsChange: Dispatch<SetStateAction<string[]>>
 }
 
-const STORAGE_KEY = 'workflow_rag_recommendations_collapsed'
-
 const RAGToolRecommendations = ({
   viewType,
   onSelect,
   onTagsChange,
 }: RAGToolRecommendationsProps) => {
   const { t } = useTranslation()
-  const [isCollapsed, setIsCollapsed] = useLocalStorage<boolean>(STORAGE_KEY, false)
+  const [isCollapsed, setIsCollapsed] = useRAGRecommendationsCollapsed()
 
   const {
     data: ragRecommendedPlugins,

@@ -10,13 +10,13 @@ import { RETRIEVAL_OUTPUT_STRUCT } from '@/app/components/workflow/constants'
 import { InputVarType } from '@/app/components/workflow/types'
 import FormItem from './form-item'
 
-export type Props = {
+export type Props = Readonly<{
   className?: string
   label?: string
   inputs: InputVar[]
   values: Record<string, string>
   onChange: (newValues: Record<string, any>) => void
-}
+}>
 
 const Form: FC<Props> = ({
   className,

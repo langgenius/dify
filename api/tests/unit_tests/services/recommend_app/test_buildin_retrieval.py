@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -41,6 +42,16 @@ class TestBuildInRecommendAppRetrieval:
             mock_fetch.assert_called_once_with("en-US")
             assert result == {"apps": []}
 
+    @patch("services.recommend_app.buildin.buildin_retrieval.DatabaseRecommendAppRetrieval")
+    def test_get_learn_dify_apps_delegates_to_database(self, mock_database_retrieval):
+        expected = {"recommended_apps": [{"id": "learn-dify-app"}]}
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.return_value = expected
+
+        result = BuildInRecommendAppRetrieval().get_learn_dify_apps("en-US")
+
+        assert result == expected
+        mock_database_retrieval.fetch_learn_dify_apps_from_db.assert_called_once_with("en-US")
+
     def test_get_recommend_app_detail_delegates(self):
         with patch.object(
             BuildInRecommendAppRetrieval,
@@ -52,7 +63,7 @@ class TestBuildInRecommendAppRetrieval:
             mock_fetch.assert_called_once_with("app-1")
             assert result == {"id": "app-1"}
 
-    def test_get_builtin_data_reads_json_and_caches(self, tmp_path):
+    def test_get_builtin_data_reads_json_and_caches(self, tmp_path: Path):
         json_file = tmp_path / "constants" / "recommended_apps.json"
         json_file.parent.mkdir(parents=True)
         json_file.write_text(json.dumps(SAMPLE_BUILTIN_DATA))

@@ -21,7 +21,7 @@ export const zAccountAvatarPayload = z.object({
  */
 export const zAccount = z.object({
   avatar: z.string().nullish(),
-  avatar_url: z.string().readonly().nullable(),
+  avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
   id: z.string(),
@@ -126,6 +126,11 @@ export const zEducationActivatePayload = z.object({
   role: z.string(),
   token: z.string(),
 })
+
+/**
+ * EducationActivateResponse
+ */
+export const zEducationActivateResponse = z.record(z.string(), z.unknown())
 
 /**
  * EducationAutocompleteResponse
@@ -296,7 +301,7 @@ export const zPostAccountEducationBody = zEducationActivatePayload
 /**
  * Success
  */
-export const zPostAccountEducationResponse = z.record(z.string(), z.unknown())
+export const zPostAccountEducationResponse = zEducationActivateResponse
 
 export const zGetAccountEducationAutocompleteQuery = z.object({
   keywords: z.string(),

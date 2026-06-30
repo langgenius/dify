@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { Infotip } from '@/app/components/base/infotip'
 import { NUM_INFINITE } from '../config'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   Icon: ComponentType<{ className?: string }>
   name: string
@@ -26,7 +26,7 @@ type Props = {
   storageThreshold?: number
   storageTooltip?: string
   isSandboxPlan?: boolean
-}
+}>
 
 const UsageInfo: FC<Props> = ({
   className,

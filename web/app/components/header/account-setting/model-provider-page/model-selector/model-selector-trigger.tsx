@@ -17,6 +17,7 @@ type ModelSelectorTriggerProps = {
   className?: string
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
+  showModelMeta?: boolean
 }
 
 function ModelSelectorTrigger({
@@ -28,6 +29,7 @@ function ModelSelectorTrigger({
   className,
   deprecatedClassName,
   showDeprecatedWarnIcon = true,
+  showModelMeta = true,
 }: ModelSelectorTriggerProps) {
   const { t } = useTranslation()
   const { modelProviders } = useProviderContext()
@@ -59,7 +61,7 @@ function ModelSelectorTrigger({
   const statusLabel = statusI18nKey ? t(statusI18nKey, { ns: 'common' }) : null
   const tooltipLabel = tooltipI18nKey ? t(tooltipI18nKey, { ns: 'common' }) : null
   const isCreditsExhausted = status === 'credits-exhausted'
-  const shouldShowModelMeta = status === 'active'
+  const shouldShowModelMeta = showModelMeta && status === 'active'
   const deprecatedStatusLabel = statusLabel || t('modelProvider.selector.incompatible', { ns: 'common' })
   const deprecatedTooltipLabel = tooltipLabel || t('modelProvider.selector.incompatibleTip', { ns: 'common' })
 
@@ -96,17 +98,18 @@ function ModelSelectorTrigger({
           <ModelName
             className="grow"
             modelItem={currentModel}
+            nameClassName={currentModel?.deprecated ? 'line-through' : undefined}
             showMode={shouldShowModelMeta}
             showFeatures={shouldShowModelMeta}
           />
         )}
         {isDeprecated && (
-          <div className="grow truncate system-sm-regular text-components-input-text-filled">
+          <div className="grow truncate system-sm-regular text-components-input-text-filled line-through">
             {defaultModel.model}
           </div>
         )}
         {isEmpty && (
-          <div className="grow truncate text-[13px] text-text-quaternary">
+          <div className="grow truncate text-[13px] text-components-input-text-placeholder">
             {t('detailPanel.configureModel', { ns: 'plugin' })}
           </div>
         )}

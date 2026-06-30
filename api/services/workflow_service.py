@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import exists, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from configs import dify_config
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -59,7 +59,7 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from graphon.nodes.human_input.entities import HumanInputNodeData, validate_human_input_submission
+from graphon.nodes.human_input.entities import HumanInputNodeData
 from graphon.nodes.human_input.enums import HumanInputFormKind
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
@@ -82,6 +82,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.human_input_service import HumanInputService
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -141,7 +142,7 @@ class WorkflowService:
         return db.session.execute(stmt).scalar_one()
 
     def get_draft_workflow(
-        self, app_model: App, workflow_id: str | None = None, session: Session | None = None
+        self, app_model: App, workflow_id: str | None = None, session: Session | scoped_session | None = None
     ) -> Workflow | None:
         """
         Get draft workflow
@@ -168,7 +169,7 @@ class WorkflowService:
         return workflow
 
     def get_published_workflow_by_id(
-        self, app_model: App, workflow_id: str, session: Session | None = None
+        self, app_model: App, workflow_id: str, session: Session | scoped_session | None = None
     ) -> Workflow | None:
         """
         fetch published workflow by workflow_id
@@ -321,6 +322,12 @@ class WorkflowService:
 
         from services.agent.workflow_publish_service import WorkflowAgentPublishService
 
+        db.session.flush()
+        WorkflowAgentPublishService.sync_agent_bindings_for_draft(
+            session=cast(Session, db.session),
+            draft_workflow=workflow,
+            account_id=account.id,
+        )
         WorkflowAgentPublishService.validate_agent_nodes_for_draft_sync(
             session=cast(Session, db.session),
             draft_workflow=workflow,
@@ -1020,7 +1027,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1080,7 +1087,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1088,9 +1095,10 @@ class WorkflowService:
         )
         node_data = node.node_data
 
-        validate_human_input_submission(
-            inputs=node_data.inputs,
-            user_actions=node_data.user_actions,
+        human_input_service = HumanInputService(session_factory=sessionmaker(db.engine))
+        normalized_form_inputs = human_input_service.validate_and_normalize_submission(
+            tenant_id=app_model.tenant_id,
+            form_definition=node_data,
             selected_action_id=action,
             form_data=form_inputs,
         )
@@ -1100,11 +1108,14 @@ class WorkflowService:
             (user_action for user_action in node_data.user_actions if user_action.id == action),
             None,
         )
-        outputs: dict[str, Any] = dict(form_inputs)
+        outputs: dict[str, Any] = dict(normalized_form_inputs)
         outputs["__action_id"] = action
         outputs["__action_value"] = selected_action.title if selected_action else ""
         outputs["__rendered_content"] = node.render_form_content_with_outputs(
-            rendered_content, outputs, node_data.outputs_field_names()
+            rendered_content,
+            outputs,
+            node_data.outputs_field_names(),
+            node_data.inputs,
         )
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
@@ -1164,7 +1175,7 @@ class WorkflowService:
             manual_inputs=inputs or {},
             user_id=account.id,
         )
-        node = self._build_human_input_node(
+        node = self._build_human_input_node_for_debugging(
             workflow=draft_workflow,
             account=account,
             node_config=node_config,
@@ -1257,7 +1268,7 @@ class WorkflowService:
                 recipients_data.append(DeliveryTestEmailRecipient(email=email, form_token=recipient.access_token))
         return recipients_data
 
-    def _build_human_input_node(
+    def _build_human_input_node_for_debugging(
         self,
         *,
         workflow: Workflow,
@@ -1289,8 +1300,8 @@ class WorkflowService:
             data=node_data,
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
-            file_reference_factory=DifyFileReferenceFactory(graph_init_params.run_context),
             runtime=DifyHumanInputNodeRuntime(run_context),
+            file_reference_factory=DifyFileReferenceFactory(run_context),
         )
         return node
 

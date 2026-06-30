@@ -59,7 +59,10 @@ beforeAll(() => {
 beforeEach(() => {
   vi.clearAllMocks()
   toast.dismiss()
-  mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
+  mockUseAppContext.mockReturnValue({
+    isCurrentWorkspaceManager: false,
+    workspacePermissionKeys: ['billing.manage'],
+  })
   assignedHref = ''
 })
 
@@ -90,8 +93,11 @@ describe('SelfHostedPlanItem', () => {
   })
 
   describe('CTA interactions', () => {
-    it('should show toast when non-manager tries to proceed', () => {
-      mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
+    it('should show toast when billing manage permission is missing', () => {
+      mockUseAppContext.mockReturnValue({
+        isCurrentWorkspaceManager: true,
+        workspacePermissionKeys: [],
+      })
 
       renderWithToastHost(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
       fireEvent.click(screen.getByRole('button', { name: /billing\.plans\.premium\.btnText/ }))

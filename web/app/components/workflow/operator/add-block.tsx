@@ -1,5 +1,6 @@
 import type { OffsetOptions } from '@floating-ui/react'
 import type {
+  Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -10,7 +11,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStoreApi } from 'reactflow'
+import {
+  useStoreApi,
+} from 'reactflow'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   BlockEnum,
@@ -28,6 +31,7 @@ import { useWorkflowStore } from '../store'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
+  getNodesWithSameDefaultDataType,
 } from '../utils'
 import TipPopup from './tip-popup'
 
@@ -36,12 +40,14 @@ type AddBlockProps = {
   renderTriggerAsButtonRoot?: boolean
   offset?: OffsetOptions
   onClose?: () => void
+  isolateKeyboardEvents?: boolean
 }
 const AddBlock = ({
   renderTrigger,
   renderTriggerAsButtonRoot,
   offset,
   onClose,
+  isolateKeyboardEvents,
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -65,15 +71,15 @@ const AddBlock = ({
     const {
       getNodes,
     } = store.getState()
-    const nodes = getNodes()
-    const nodesWithSameType = nodes.filter(node => node.data.type === type)
     const {
       defaultValue,
     } = nodesMetaDataMap![type]
+    const nodes = getNodes()
+    const nodesWithSameType = getNodesWithSameDefaultDataType(nodes, type, defaultValue)
     const { newNode } = generateNewNode({
       type: getNodeCustomTypeByNodeDataType(type),
       data: {
-        ...(defaultValue as any),
+        ...(defaultValue as Node['data']),
         title: nodesWithSameType.length > 0 ? `${defaultValue.title} ${nodesWithSameType.length + 1}` : defaultValue.title,
         ...pluginDefaultValue,
         _isCandidate: true,
@@ -121,6 +127,7 @@ const AddBlock = ({
       popupClassName="min-w-[256px]!"
       availableBlocksTypes={availableNextBlocks}
       showStartTab={showStartTab}
+      isolateKeyboardEvents={isolateKeyboardEvents}
     />
   )
 }

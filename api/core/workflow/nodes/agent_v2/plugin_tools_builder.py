@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, Protocol, cast
+from typing import Any, Protocol
 
 from dify_agent.layers.dify_plugin import (
     DifyPluginCredentialValue,
@@ -42,14 +42,32 @@ class AgentToolRuntimeProvider(Protocol):
         user_id: str | None = None,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Any | None = None,
+        allow_file_parameters: bool = False,
+        use_default_for_missing_form_parameters: bool = False,
     ) -> Tool: ...
+
+
+class ProviderToolsLister(Protocol):
+    def __call__(self, *, tenant_id: str, provider_id: str) -> list[str]: ...
+
+
+def _list_provider_tool_names(*, tenant_id: str, provider_id: str) -> list[str]:
+    """Tool names a provider currently declares (provider-level config entries)."""
+    provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+    return [tool.entity.identity.name for tool in provider.get_tools() or []]
 
 
 class WorkflowAgentPluginToolsBuilder:
     """Prepare Agent Soul Dify Plugin Tools for the public Agent backend DTO."""
 
-    def __init__(self, *, tool_runtime_provider: AgentToolRuntimeProvider | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        tool_runtime_provider: AgentToolRuntimeProvider | None = None,
+        provider_tools_lister: ProviderToolsLister | None = None,
+    ) -> None:
         self._tool_runtime_provider = tool_runtime_provider or ToolManager
+        self._provider_tools_lister = provider_tools_lister or _list_provider_tool_names
 
     def build(
         self,
@@ -73,7 +91,7 @@ class WorkflowAgentPluginToolsBuilder:
 
         prepared: list[DifyPluginToolConfig] = []
         seen_names: set[str] = set()
-        for tool_config in enabled_tools:
+        for tool_config in self._expand_provider_entries(tenant_id=tenant_id, enabled_tools=enabled_tools):
             agent_tool = self._to_agent_tool_entity(tool_config)
             tool_runtime = self._fetch_tool_runtime(
                 tenant_id=tenant_id,
@@ -95,6 +113,48 @@ class WorkflowAgentPluginToolsBuilder:
             prepared.append(self._to_backend_tool_config(tool_config, tool_runtime, exposed_name))
 
         return DifyPluginToolsLayerConfig(tools=prepared)
+
+    def _expand_provider_entries(
+        self,
+        *,
+        tenant_id: str,
+        enabled_tools: list[AgentSoulDifyToolConfig],
+    ) -> list[AgentSoulDifyToolConfig]:
+        """Expand provider-level entries (``tool_name`` omitted = all tools).
+
+        An explicit per-tool entry of the same provider wins over the expansion
+        (it may carry its own ``runtime_parameters``); expanded clones share the
+        provider entry's ``credential_ref`` and start with default parameters.
+        """
+        explicit_by_provider: dict[str, set[str]] = {}
+        for tool_config in enabled_tools:
+            if tool_config.tool_name is not None:
+                explicit_by_provider.setdefault(self._provider_id(tool_config), set()).add(tool_config.tool_name)
+
+        expanded: list[AgentSoulDifyToolConfig] = []
+        for tool_config in enabled_tools:
+            if tool_config.tool_name is not None:
+                expanded.append(tool_config)
+                continue
+            provider_id = self._provider_id(tool_config)
+            try:
+                tool_names = self._provider_tools_lister(tenant_id=tenant_id, provider_id=provider_id)
+            except ToolProviderNotFoundError as exc:
+                raise WorkflowAgentPluginToolsBuildError(
+                    "agent_tool_declaration_not_found",
+                    f"Dify Plugin Tool provider {provider_id!r} declaration not found: {exc}",
+                ) from exc
+            if not tool_names:
+                raise WorkflowAgentPluginToolsBuildError(
+                    "agent_tool_declaration_not_found",
+                    f"Dify Plugin Tool provider {provider_id!r} declares no tools.",
+                )
+            already_explicit = explicit_by_provider.get(provider_id, set())
+            for tool_name in tool_names:
+                if tool_name in already_explicit:
+                    continue
+                expanded.append(tool_config.model_copy(update={"tool_name": tool_name, "runtime_parameters": {}}))
+        return expanded
 
     def _fetch_tool_runtime(
         self,
@@ -118,6 +178,8 @@ class WorkflowAgentPluginToolsBuilder:
                 user_id=user_id,
                 invoke_from=invoke_from,
                 variable_pool=None,
+                allow_file_parameters=True,
+                use_default_for_missing_form_parameters=True,
             )
         except ToolProviderNotFoundError as exc:
             raise WorkflowAgentPluginToolsBuildError(
@@ -141,6 +203,8 @@ class WorkflowAgentPluginToolsBuilder:
 
     @staticmethod
     def _to_agent_tool_entity(tool_config: AgentSoulDifyToolConfig) -> AgentToolEntity:
+        # Provider-level entries are expanded into per-tool clones before this point.
+        assert tool_config.tool_name is not None
         return AgentToolEntity(
             provider_type=ToolProviderType.value_of(tool_config.provider_type),
             provider_id=WorkflowAgentPluginToolsBuilder._provider_id(tool_config),
@@ -160,7 +224,9 @@ class WorkflowAgentPluginToolsBuilder:
     @staticmethod
     def _exposed_tool_name(tool_config: AgentSoulDifyToolConfig) -> str:
         # Stage 3.1 decision: no user rename yet. Keep the model-visible tool
-        # name aligned with the plugin declaration identity.
+        # name aligned with the plugin declaration identity. Provider-level
+        # entries are expanded into per-tool clones before this point.
+        assert tool_config.tool_name is not None
         return tool_config.tool_name
 
     def _to_backend_tool_config(
@@ -190,14 +256,14 @@ class WorkflowAgentPluginToolsBuilder:
         return DifyPluginToolConfig(
             plugin_id=plugin_id,
             provider=provider,
-            tool_name=tool_config.tool_name,
+            tool_name=exposed_name,
             credential_type=self._credential_type(tool_config, runtime.credentials),
             name=exposed_name,
             description=description,
-            credentials=self._normalize_credentials(runtime.credentials, tool_name=tool_config.tool_name),
+            credentials=self._normalize_credentials(runtime.credentials, tool_name=exposed_name),
             runtime_parameters=runtime_parameters,
             parameters=parameters,
-            parameters_json_schema=cast(dict[str, Any], tool_runtime.get_llm_parameters_json_schema()),
+            parameters_json_schema=tool_runtime.get_llm_parameters_json_schema(),
         )
 
     @staticmethod

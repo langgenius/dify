@@ -1,10 +1,11 @@
 import json
 from os import path
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 from flask import current_app
 
+from services.recommend_app.database.database_retrieval import DatabaseRecommendAppRetrieval
 from services.recommend_app.recommend_app_base import RecommendAppRetrievalBase
 from services.recommend_app.recommend_app_type import RecommendAppType
 
@@ -16,13 +17,21 @@ class BuildInRecommendAppRetrieval(RecommendAppRetrievalBase):
 
     builtin_data: dict[str, Any] | None = None
 
+    @override
     def get_type(self) -> str:
         return RecommendAppType.BUILDIN
 
+    @override
     def get_recommended_apps_and_categories(self, language: str):
         result = self.fetch_recommended_apps_from_builtin(language)
         return result
 
+    @override
+    def get_learn_dify_apps(self, language: str):
+        result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language)
+        return result
+
+    @override
     def get_recommend_app_detail(self, app_id: str):
         result = self.fetch_recommended_app_detail_from_builtin(app_id)
         return result

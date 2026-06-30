@@ -11,14 +11,14 @@ import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/typ
 import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import RemoveButton from '../../../_base/components/remove-button'
 
-type Props = {
+type Props = Readonly<{
   readonly: boolean
   nodeId: string
   list: ValueSelector[]
   onChange: (list: ValueSelector[], value?: ValueSelector) => void
   onOpen?: (index: number) => void
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
-}
+}>
 
 const VarList: FC<Props> = ({
   readonly,

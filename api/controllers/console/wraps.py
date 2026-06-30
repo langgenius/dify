@@ -4,14 +4,19 @@ import os
 import time
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate
+from typing import Any, Concatenate, overload
 
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
-from werkzeug.exceptions import UnprocessableEntity
+from werkzeug.exceptions import Forbidden, UnprocessableEntity
 
 from configs import dify_config
+from controllers.common.wraps import (
+    RBACPermission,
+    RBACResourceScope,
+    rbac_permission_required,
+)
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums.cloud_plan import CloudPlan
@@ -28,6 +33,10 @@ from services.operation_service import OperationService, UtmInfo
 
 from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
+# Re-exported so controllers can import the RBAC enums and decorator alongside
+# other console wraps from this module.
+__all__ = ["RBACPermission", "RBACResourceScope", "rbac_permission_required"]
+
 # Field names for decryption
 FIELD_NAME_PASSWORD = "password"
 FIELD_NAME_CODE = "code"
@@ -37,9 +46,21 @@ ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
 ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
 
 
-def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+@overload
+def account_initialization_required[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]: ...
+
+
+@overload
+def account_initialization_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+def account_initialization_required[R](view: Callable[..., R]) -> Callable[..., R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated(*args: Any, **kwargs: Any) -> R:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain functions used in tests and utilities.
         # check account initialization
         current_user, _ = current_account_with_tenant()
         if current_user.status == AccountStatus.UNINITIALIZED:
@@ -218,9 +239,21 @@ def cloud_utm_record[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     return decorated
 
 
-def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+@overload
+def setup_required[T, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]: ...
+
+
+@overload
+def setup_required[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+def setup_required[R](view: Callable[..., R]) -> Callable[..., R]:
     @wraps(view)
-    def decorated(*args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated(*args: Any, **kwargs: Any) -> R:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain functions used in tests and utilities.
         # check setup
         if dify_config.EDITION == "SELF_HOSTED" and not db.session.scalar(select(DifySetup).limit(1)):
             if os.environ.get("INIT_PASSWORD"):
@@ -311,15 +344,15 @@ def knowledge_pipeline_publish_enabled[**P, R](view: Callable[P, R]) -> Callable
 def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-        from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
 
-        user = current_user._get_current_object()  # type: ignore
-        if not isinstance(user, Account):
-            raise Forbidden()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+        if not dify_config.RBAC_ENABLED:
+            user = current_user._get_current_object()  # type: ignore
+            if not isinstance(user, Account):
+                raise Forbidden()
+            if not current_user.has_edit_permission:
+                raise Forbidden()
         return f(*args, **kwargs)
 
     return decorated_function
@@ -328,13 +361,13 @@ def edit_permission_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
 def is_admin_or_owner_required[**P, R](f: Callable[P, R]) -> Callable[P, R]:
     @wraps(f)
     def decorated_function(*args: P.args, **kwargs: P.kwargs):
-        from werkzeug.exceptions import Forbidden
 
         from libs.login import current_user
 
-        user = current_user._get_current_object()
-        if not isinstance(user, Account) or not user.is_admin_or_owner:
-            raise Forbidden()
+        if not dify_config.RBAC_ENABLED:
+            user = current_user._get_current_object()
+            if not isinstance(user, Account) or not user.is_admin_or_owner:
+                raise Forbidden()
         return f(*args, **kwargs)
 
     return decorated_function
@@ -552,7 +585,7 @@ def with_current_user_id[T, **P, R](
     @wraps(view)
     def decorated(self: T, *args: P.args, **kwargs: P.kwargs) -> R:
         current_user, _ = current_account_with_tenant()
-        return view(self, str(current_user.id), *args, **kwargs)
+        return view(self, current_user.id, *args, **kwargs)
 
     return decorated
 

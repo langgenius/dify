@@ -69,6 +69,10 @@ const AddBlock = ({
       <BlockSelector
         disabled={nodesReadOnly}
         onSelect={handleSelect}
+        snippetInsertPayload={{
+          prevNodeId: loopNodeData.start_node_id,
+          prevNodeSourceHandle: 'source',
+        }}
         trigger={renderTriggerElement}
         triggerInnerClassName="inline-flex"
         popupClassName="min-w-[256px]!"

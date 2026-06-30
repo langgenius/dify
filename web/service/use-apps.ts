@@ -25,6 +25,7 @@ type DateRangeParams = {
   end?: string
 }
 
+export const appDetailQueryKeyPrefix = [NAME_SPACE, 'detail']
 const useAppFullListKey = [NAME_SPACE, 'full-list']
 
 export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean) => {
@@ -42,9 +43,10 @@ export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean)
 
 export const useAppDetail = (appID: string) => {
   return useQuery<App>({
-    queryKey: [NAME_SPACE, 'detail', appID],
+    queryKey: [...appDetailQueryKeyPrefix, appID],
     queryFn: () => get<App>(`/apps/${appID}`),
     enabled: !!appID,
+    gcTime: 0,
   })
 }
 
@@ -71,6 +73,35 @@ export const useDeleteAppMutation = () => {
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: consoleQuery.apps.list.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: useAppFullListKey,
+        }),
+      ])
+    },
+  })
+}
+
+export const useToggleAppStarMutation = () => {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: ({ appId, isStarred }: { appId: string, isStarred: boolean }) => {
+      return isStarred
+        ? consoleClient.apps.unstar({
+            params: { appId },
+          })
+        : consoleClient.apps.star({
+            params: { appId },
+          })
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.list.key(),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: consoleQuery.apps.starredList.key(),
         }),
         queryClient.invalidateQueries({
           queryKey: useAppFullListKey,

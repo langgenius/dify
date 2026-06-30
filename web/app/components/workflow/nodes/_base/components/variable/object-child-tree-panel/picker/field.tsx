@@ -13,14 +13,14 @@ import TreeIndentLine from '../tree-indent-line'
 
 const MAX_DEPTH = 10
 
-type Props = {
+type Props = Readonly<{
   valueSelector: ValueSelector
   name: string
   payload: FieldType
   depth?: number
   readonly?: boolean
   onSelect?: (valueSelector: ValueSelector) => void
-}
+}>
 
 const Field: FC<Props> = ({
   valueSelector,

@@ -14,12 +14,14 @@ type TriggerPluginListProps = {
   searchText: string
   onContentStateChange?: (hasContent: boolean) => void
   tags?: string[]
+  disabled?: boolean
 }
 
 const TriggerPluginList = ({
   onSelect,
   searchText,
   onContentStateChange,
+  disabled = false,
 }: TriggerPluginListProps) => {
   const { data: triggerPluginsData } = useAllTriggerPlugins()
   const language = useGetLanguage()
@@ -99,6 +101,7 @@ const TriggerPluginList = ({
           key={plugin.id}
           payload={plugin}
           onSelect={onSelect}
+          disabled={disabled}
           hasSearchText={!!searchText}
           previewCardHandle={previewCardHandle}
         />

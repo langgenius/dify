@@ -21,6 +21,9 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
   const hasRunGroup = model.canRun || model.canChangeBlock
   const hasEditGroup = !model.nodesReadOnly && !model.isSingleton
   const hasDeleteGroup = !model.nodesReadOnly && !model.isUndeletable
+  const singleRunActionLabel = model.isSingleRunning
+    ? t('debug.variableInspect.trigger.stop', { ns: 'workflow' })
+    : t('panel.runThisStep', { ns: 'workflow' })
 
   return (
     <>
@@ -28,7 +31,7 @@ export function NodeActionsContextMenuContent(props: NodeActionsMenuProps) {
         <ContextMenuGroup>
           {model.canRun && (
             <ContextMenuItem onClick={model.handleRun}>
-              {t('panel.runThisStep', { ns: 'workflow' })}
+              {singleRunActionLabel}
             </ContextMenuItem>
           )}
           {model.canChangeBlock && (

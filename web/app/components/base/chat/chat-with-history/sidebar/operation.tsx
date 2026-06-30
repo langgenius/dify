@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
-type Props = {
+type Props = Readonly<{
   isActive?: boolean
   isItemHovering?: boolean
   isPinned: boolean
@@ -22,7 +22,7 @@ type Props = {
   isShowDelete: boolean
   togglePin: () => void
   onDelete: () => void
-}
+}>
 
 const Operation: FC<Props> = ({
   isActive,

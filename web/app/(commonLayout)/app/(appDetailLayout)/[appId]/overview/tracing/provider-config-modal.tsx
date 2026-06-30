@@ -28,7 +28,7 @@ import { docURL } from './config'
 import Field from './field'
 import { TracingProvider } from './type'
 
-type Props = {
+type Props = Readonly<{
   appId: string
   type: TracingProvider
   payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig | null
@@ -36,7 +36,7 @@ type Props = {
   onCancel: () => void
   onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => void
   onChosen: (provider: TracingProvider) => void
-}
+}>
 
 const I18N_PREFIX = 'tracing.configProvider'
 

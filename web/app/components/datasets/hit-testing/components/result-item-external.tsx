@@ -12,8 +12,8 @@ import ResultItemMeta from './result-item-meta'
 
 const i18nPrefix = ''
 type Props = {
-  payload: ExternalKnowledgeBaseHitTesting
-  positionId: number
+  readonly payload: ExternalKnowledgeBaseHitTesting
+  readonly positionId: number
 }
 
 const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {

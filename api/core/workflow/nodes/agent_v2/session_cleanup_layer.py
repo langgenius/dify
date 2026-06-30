@@ -40,7 +40,7 @@ class WorkflowAgentSessionCleanupLayer(GraphEngineLayer):
        the composition, the run fails asynchronously with ``run_failed`` — but
        the initial ``POST /runs`` already returned 202, so the API side has no
        visibility of the failure unless it waits for terminal status. The
-       ``composition_layer_specs`` persistence in A.1–A.4 plus the
+       ``runtime_layer_specs`` persistence in A.1–A.4 plus the
        ``_filter_snapshot_to_specs`` shape in ``build_cleanup_request`` keeps
        the two name lists in sync.
 
@@ -144,13 +144,13 @@ class WorkflowAgentSessionCleanupLayer(GraphEngineLayer):
             )
             return
 
-        if not stored_session.composition_layer_specs:
+        if not stored_session.runtime_layer_specs:
             # Sessions persisted before A.1 landed do not carry the spec list,
             # so we cannot replay a valid cleanup composition. Leave the row
             # ACTIVE and warn so the absence shows up in observability rather
             # than being silently swallowed by a doomed cleanup run.
             logger.warning(
-                "Skipping Agent backend cleanup: no composition_layer_specs persisted. "
+                "Skipping Agent backend cleanup: no runtime_layer_specs persisted. "
                 "workflow_run_id=%s node_id=%s agent_id=%s",
                 scope.workflow_run_id,
                 scope.node_id,
@@ -160,7 +160,7 @@ class WorkflowAgentSessionCleanupLayer(GraphEngineLayer):
 
         request = self._request_builder.build_cleanup_request(
             session_snapshot=stored_session.session_snapshot,
-            composition_layer_specs=stored_session.composition_layer_specs,
+            runtime_layer_specs=stored_session.runtime_layer_specs,
             idempotency_key=f"{scope.workflow_run_id}:{scope.node_id}:{scope.binding_id}:agent-session-cleanup",
             metadata={
                 "tenant_id": scope.tenant_id,

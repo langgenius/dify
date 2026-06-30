@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 
-type Props = {
+type Props = Readonly<{
   depth?: number
   className?: string
-}
+}>
 
 const TreeIndentLine: FC<Props> = ({
   depth = 1,

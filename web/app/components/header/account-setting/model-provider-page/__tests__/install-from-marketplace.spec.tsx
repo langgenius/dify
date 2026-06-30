@@ -11,6 +11,19 @@ vi.mock('@/next/link', () => ({
   default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
 }))
 
+vi.mock('@/utils/var', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
+  getMarketplaceUrl: (path = '', params?: Record<string, string | undefined>) => {
+    const searchParams = new URLSearchParams()
+    Object.entries(params ?? {}).forEach(([key, value]) => {
+      if (value !== undefined)
+        searchParams.append(key, value)
+    })
+    const query = searchParams.toString()
+    return `https://marketplace.test${path}${query ? `?${query}` : ''}`
+  },
+}))
+
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
@@ -44,6 +57,12 @@ vi.mock('../hooks', () => ({
     plugins: [],
     isLoading: false,
   })),
+}))
+
+vi.mock('@/app/components/plugins/plugin-page/use-reference-setting', () => ({
+  usePluginSettingsAccess: () => ({
+    canInstallPlugin: true,
+  }),
 }))
 
 describe('InstallFromMarketplace', () => {
@@ -111,6 +130,6 @@ describe('InstallFromMarketplace', () => {
 
   it('should render discovery link', () => {
     render(<InstallFromMarketplace providers={mockProviders} searchText="" />)
-    expect(screen.getByText('plugin.marketplace.difyMarketplace')).toHaveAttribute('href')
+    expect(screen.getByText('plugin.marketplace.difyMarketplace')).toHaveAttribute('href', 'https://marketplace.test/plugins/model?theme=light')
   })
 })

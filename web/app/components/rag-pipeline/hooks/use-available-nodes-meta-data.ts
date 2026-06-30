@@ -1,4 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -7,14 +8,21 @@ import dataSourceDefault from '@/app/components/workflow/nodes/data-source/defau
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import { isAgentV2Enabled } from '@/features/agent-v2/feature-flag'
 
 export const useAvailableNodesMetaData = () => {
   const { t } = useTranslation()
   const docLink = useDocLink()
+  const agentV2Enabled = isAgentV2Enabled()
 
   const mergedNodesMetaData = useMemo(() => [
-    // RAG pipeline doesn't support human-input node temporarily
-    ...WORKFLOW_COMMON_NODES.filter(node => node.metaData.type !== BlockEnum.HumanInput),
+    ...WORKFLOW_COMMON_NODES.filter(node =>
+      node.metaData.type !== BlockEnum.HumanInput
+      && (
+        agentV2Enabled
+          ? node.metaData.type !== BlockEnum.Agent
+          : node.metaData.type !== BlockEnum.AgentV2
+      )),
     {
       ...dataSourceDefault,
       defaultValue: {
@@ -24,7 +32,7 @@ export const useAvailableNodesMetaData = () => {
     },
     knowledgeBaseDefault,
     dataSourceEmptyDefault,
-  ], [])
+  ], [agentV2Enabled])
 
   const helpLinkUri = useMemo(() => docLink(
     '/use-dify/knowledge/knowledge-pipeline/knowledge-pipeline-orchestration',
@@ -33,7 +41,7 @@ export const useAvailableNodesMetaData = () => {
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
     const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
-    const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
+    const description = t(`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>, { ns: 'workflow' })
     return {
       ...node,
       metaData: {
@@ -44,7 +52,7 @@ export const useAvailableNodesMetaData = () => {
       },
       defaultValue: {
         ...node.defaultValue,
-        type: metaData.type,
+        type: metaData.type === BlockEnum.AgentV2 ? BlockEnum.Agent : metaData.type,
         title,
       },
     }

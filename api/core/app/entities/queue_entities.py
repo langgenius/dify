@@ -11,6 +11,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import PauseReason
 from graphon.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from graphon.variables.segments import Segment
 
 
 class QueueEvent(StrEnum):
@@ -39,6 +40,7 @@ class QueueEvent(StrEnum):
     NODE_FAILED = "node_failed"
     NODE_EXCEPTION = "node_exception"
     RETRIEVER_RESOURCES = "retriever_resources"
+    REASONING_CHUNK = "reasoning_chunk"
     ANNOTATION_REPLY = "annotation_reply"
     AGENT_THOUGHT = "agent_thought"
     MESSAGE_FILE = "message_file"
@@ -190,6 +192,26 @@ class QueueTextChunkEvent(AppQueueEvent):
     text: str
     from_variable_selector: list[str] | None = None
     """from variable selector"""
+    in_iteration_id: str | None = None
+    """iteration id if node is in iteration"""
+    in_loop_id: str | None = None
+    """loop id if node is in loop"""
+
+
+class QueueReasoningChunkEvent(AppQueueEvent):
+    """
+    QueueReasoningChunkEvent entity
+
+    Out-of-band reasoning (chain-of-thought) delta from an LLM node in "separated"
+    mode. It never touches the answer; it is emitted on a dedicated channel.
+    """
+
+    event: QueueEvent = QueueEvent.REASONING_CHUNK
+    reasoning: str
+    from_node_id: str | None = None
+    """id of the LLM node that produced this reasoning"""
+    is_final: bool = False
+    """marks the terminal reasoning chunk for the node run (may carry empty reasoning)"""
     in_iteration_id: str | None = None
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
@@ -507,6 +529,10 @@ class QueueHumanInputFormFilledEvent(AppQueueEvent):
     rendered_content: str
     action_id: str
     action_text: str
+
+    # Keep the field name aligned with Graphon so the app-layer bridge does not
+    # need to translate between two equivalent payload names.
+    submitted_data: Mapping[str, Segment] | None = None
 
 
 class QueueHumanInputFormTimeoutEvent(AppQueueEvent):

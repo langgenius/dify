@@ -1,3 +1,4 @@
+import type { ErrorBody } from '@dify/contracts/api/openapi/types.gen'
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
 import type { ErrorEnvelope, PrintableError } from './format'
 import { ErrorCode, exitFor } from './codes'
@@ -83,6 +84,7 @@ type HttpClientErrorOptions = BaseErrorOptions & {
   readonly method?: string
   readonly url?: string
   readonly rawResponse?: string
+  readonly serverError?: ErrorBody
 }
 
 export class HttpClientError extends BaseError {
@@ -90,6 +92,7 @@ export class HttpClientError extends BaseError {
   readonly method?: string
   readonly url?: string
   readonly rawResponse?: string
+  readonly serverError?: ErrorBody
 
   constructor(opts: HttpClientErrorOptions) {
     super(opts)
@@ -97,6 +100,7 @@ export class HttpClientError extends BaseError {
     this.method = opts.method
     this.url = opts.url
     this.rawResponse = opts.rawResponse
+    this.serverError = opts.serverError
   }
 
   override toEnvelope(): ErrorEnvelope {
@@ -109,6 +113,8 @@ export class HttpClientError extends BaseError {
       envelope.error.url = this.url
     if (this.rawResponse !== undefined)
       envelope.error.raw_response = this.rawResponse
+    if (this.serverError !== undefined)
+      envelope.error.server = this.serverError
     return envelope
   }
 
@@ -119,6 +125,7 @@ export class HttpClientError extends BaseError {
       method: this.method,
       url: this.url,
       rawResponse: this.rawResponse,
+      serverError: this.serverError,
     }
   }
 
@@ -144,5 +151,9 @@ export class HttpClientError extends BaseError {
       return this
     }
     return new HttpClientError({ ...this.snapshot(), rawResponse })
+  }
+
+  withServerError(serverError: ErrorBody): HttpClientError {
+    return new HttpClientError({ ...this.snapshot(), serverError })
   }
 }

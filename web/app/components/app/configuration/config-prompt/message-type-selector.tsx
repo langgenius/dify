@@ -6,10 +6,10 @@ import * as React from 'react'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptRole } from '@/models/debug'
 
-type Props = {
+type Props = Readonly<{
   value: PromptRole
   onChange: (value: PromptRole) => void
-}
+}>
 
 const allTypes = [PromptRole.system, PromptRole.user, PromptRole.assistant]
 const MessageTypeSelector: FC<Props> = ({

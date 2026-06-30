@@ -28,6 +28,10 @@ const { mockUseQueryData, createTag } = vi.hoisted(() => ({
   createTag: vi.fn(),
 }))
 
+const mockWorkspacePermissionKeys = vi.hoisted(() => ({
+  value: ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify'] as string[],
+}))
+
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => ({ data: mockUseQueryData.current }),
   useMutation: (mutationOptions: { mutationFn: (input: unknown) => Promise<unknown> }) => ({
@@ -37,6 +41,12 @@ vi.mock('@tanstack/react-query', () => ({
         .then(() => options?.onSuccess?.())
         .catch(() => options?.onError?.())
     },
+  }),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (state: { workspacePermissionKeys: string[] }) => T): T => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys.value,
   }),
 }))
 
@@ -89,6 +99,7 @@ describe('TagManagementModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockUseQueryData.current = mockTags
+    mockWorkspacePermissionKeys.value = ['app.tag.manage', 'dataset.tag.manage', 'snippets.create_and_modify']
     vi.mocked(createTag).mockResolvedValue({ id: 'new-tag', name: 'NewTag', type: 'app', binding_count: 0 })
   })
 
@@ -132,6 +143,15 @@ describe('TagManagementModal', () => {
       render(<TagManagementModal {...defaultProps} show={false} />)
       // The Modal component hides content when isShow is false
       expect(screen.queryByText(i18n.manageTags)).not.toBeInTheDocument()
+    })
+
+    it('should not render content without tag management permission', () => {
+      mockWorkspacePermissionKeys.value = []
+
+      render(<TagManagementModal {...defaultProps} />)
+
+      expect(screen.queryByText(i18n.manageTags)).not.toBeInTheDocument()
+      expect(screen.queryByRole('textbox', { name: i18n.addNew })).not.toBeInTheDocument()
     })
   })
 

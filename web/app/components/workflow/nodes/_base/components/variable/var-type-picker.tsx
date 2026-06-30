@@ -12,12 +12,12 @@ import {
 import * as React from 'react'
 import { VarType } from '@/app/components/workflow/types'
 
-type Props = {
+type Props = Readonly<{
   className?: string
   readonly: boolean
   value: string
   onChange: (value: string) => void
-}
+}>
 
 const TYPES = [VarType.string, VarType.number, VarType.boolean, VarType.arrayNumber, VarType.arrayString, VarType.arrayBoolean, VarType.arrayObject, VarType.object]
 const VarReferencePicker: FC<Props> = ({

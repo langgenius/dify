@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from mimetypes import guess_type
 from typing import Any, Union, cast
 
+from sqlalchemy.orm import sessionmaker
 from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -283,7 +284,11 @@ class ToolEngine:
         Extract tool response binary
         """
         for response in tool_response:
-            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+            if response.type in {
+                ToolInvokeMessage.MessageType.IMAGE_LINK,
+                ToolInvokeMessage.MessageType.IMAGE,
+                ToolInvokeMessage.MessageType.BINARY_LINK,
+            }:
                 mimetype = None
                 if not response.meta:
                     raise ValueError("missing meta data")
@@ -298,7 +303,11 @@ class ToolEngine:
                             mimetype = guess_type_result
 
                 if not mimetype:
-                    mimetype = "image/jpeg"
+                    mimetype = (
+                        "image/jpeg"
+                        if response.type != ToolInvokeMessage.MessageType.BINARY_LINK
+                        else "application/octet-stream"
+                    )
 
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", mimetype),
@@ -330,47 +339,49 @@ class ToolEngine:
         user_id: str,
     ) -> list[str]:
         """
-        Create message file
+        Create message files produced by a tool call.
+
+        Tool file persistence is a side effect of agent execution. Use an
+        independent transaction so this helper never commits or closes the
+        caller's request-scoped session.
 
         :return: message file ids
         """
         result = []
 
-        for message in tool_messages:
-            if "image" in message.mimetype:
-                file_type = FileType.IMAGE
-            elif "video" in message.mimetype:
-                file_type = FileType.VIDEO
-            elif "audio" in message.mimetype:
-                file_type = FileType.AUDIO
-            elif "text" in message.mimetype or "pdf" in message.mimetype:
-                file_type = FileType.DOCUMENT
-            else:
-                file_type = FileType.CUSTOM
+        with sessionmaker(bind=db.engine, expire_on_commit=False).begin() as session:
+            for message in tool_messages:
+                # extract tool file id from url
+                tool_file_id = message.url.split("/")[-1].split(".")[0]
+                message_file = MessageFile(
+                    message_id=agent_message.id,
+                    type=ToolEngine._resolve_tool_file_type(message),
+                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    belongs_to=MessageFileBelongsTo.ASSISTANT,
+                    url=message.url,
+                    upload_file_id=tool_file_id,
+                    created_by_role=(
+                        CreatorUserRole.ACCOUNT
+                        if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                        else CreatorUserRole.END_USER
+                    ),
+                    created_by=user_id,
+                )
 
-            # extract tool file id from url
-            tool_file_id = message.url.split("/")[-1].split(".")[0]
-            message_file = MessageFile(
-                message_id=agent_message.id,
-                type=file_type,
-                transfer_method=FileTransferMethod.TOOL_FILE,
-                belongs_to=MessageFileBelongsTo.ASSISTANT,
-                url=message.url,
-                upload_file_id=tool_file_id,
-                created_by_role=(
-                    CreatorUserRole.ACCOUNT
-                    if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                    else CreatorUserRole.END_USER
-                ),
-                created_by=user_id,
-            )
-
-            db.session.add(message_file)
-            db.session.commit()
-            db.session.refresh(message_file)
-
-            result.append(message_file.id)
-
-        db.session.close()
+                session.add(message_file)
+                result.append(message_file.id)
 
         return result
+
+    @staticmethod
+    def _resolve_tool_file_type(message: ToolInvokeMessageBinary) -> FileType:
+        if "image" in message.mimetype:
+            return FileType.IMAGE
+        elif "video" in message.mimetype:
+            return FileType.VIDEO
+        elif "audio" in message.mimetype:
+            return FileType.AUDIO
+        elif "text" in message.mimetype or "pdf" in message.mimetype:
+            return FileType.DOCUMENT
+        else:
+            return FileType.CUSTOM

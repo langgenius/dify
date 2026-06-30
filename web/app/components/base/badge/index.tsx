@@ -26,14 +26,14 @@ const BadgeVariants = cva(
   },
 )
 
-type BadgeProps = {
+type BadgeProps = Readonly<{
   size?: 's' | 'm' | 'l'
   iconOnly?: boolean
   uppercase?: boolean
   state?: BadgeState
   styleCss?: CSSProperties
   children?: ReactNode
-} & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof BadgeVariants>
+}> & React.HTMLAttributes<HTMLDivElement> & VariantProps<typeof BadgeVariants>
 
 function getBadgeState(state: BadgeState) {
   switch (state) {
@@ -73,4 +73,4 @@ const Badge: React.FC<BadgeProps> = ({
 Badge.displayName = 'Badge'
 
 export default Badge
-export { Badge, BadgeState, BadgeVariants }
+export { Badge, BadgeState }

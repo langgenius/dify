@@ -8,17 +8,16 @@ import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useConversationIdInfo } from '@/app/components/base/chat/storage'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
-import { useLocalStorage } from '@/hooks/use-local-storage'
 import { changeLanguage } from '@/i18n-config/client'
 import { AppSourceType, updateFeedback } from '@/service/share'
 import { useInvalidateShareConversations, useShareChatList, useShareConversationName, useShareConversations } from '@/service/use-share'
 import { useGetTryAppInfo, useGetTryAppParams } from '@/service/use-try-app'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
-import { CONVERSATION_ID_INFO } from '../constants'
 import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams, getProcessedUserVariablesFromUrlParams } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
@@ -40,6 +39,8 @@ function getFormattedChatList(messages: any[]) {
       feedback: item.feedback,
       isAnswer: true,
       citation: item.retriever_resources,
+      reasoningContent: item.metadata?.reasoning,
+      reasoningFinished: true,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       parentMessageId: `question-${item.id}`,
     })
@@ -102,7 +103,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     }
     setLanguageFromParams()
   }, [appInfo])
-  const [conversationIdInfo, setConversationIdInfo] = useLocalStorage<Record<string, Record<string, string>>>(CONVERSATION_ID_INFO, {})
+  const [conversationIdInfo, setConversationIdInfo] = useConversationIdInfo()
   const removeConversationIdInfo = useCallback((appId: string) => {
     setConversationIdInfo((prev) => {
       const newInfo = { ...prev }

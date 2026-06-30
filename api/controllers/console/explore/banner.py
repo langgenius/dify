@@ -1,18 +1,45 @@
+from typing import Any, cast
+
 from flask import request
-from flask_restx import Resource
+from flask_restx import Namespace, Resource
+from pydantic import BaseModel, Field, RootModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.console import api
+from controllers.common.schema import query_params_from_model, register_response_schema_models
+from controllers.console import api, explore_ns
 from controllers.console.app.wraps import with_session
 from controllers.console.explore.wraps import explore_banner_enabled
+from fields.base import ResponseModel
 from models.enums import BannerStatus
 from models.model import ExporleBanner
+
+
+class BannerListQuery(BaseModel):
+    language: str = Field(default="en-US", description="Banner language")
+
+
+class BannerResponse(ResponseModel):
+    id: str
+    content: Any
+    link: str | None = None
+    sort: int
+    status: str
+    created_at: str | None = None
+
+
+class BannerListResponse(RootModel[list[BannerResponse]]):
+    root: list[BannerResponse]
+
+
+register_response_schema_models(cast(Namespace, api), BannerListResponse)
 
 
 class BannerApi(Resource):
     """Resource for banner list."""
 
+    @api.doc(params=query_params_from_model(BannerListQuery))
+    @api.response(200, "Success", api.models[BannerListResponse.__name__])
     @explore_banner_enabled
     @with_session(write=False)
     def get(self, session: Session):

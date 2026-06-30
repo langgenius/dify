@@ -642,7 +642,7 @@ class TestBuildHumanInputRequiredReason:
         expiration_time = naive_utc_now()
         form_definition = FormDefinition(
             form_content="content",
-            inputs=[ParagraphInputConfig(type=FormInputType.PARAGRAPH, output_variable_name="name")],
+            inputs=[ParagraphInputConfig(output_variable_name="name")],
             user_actions=[UserActionConfig(id="approve", title="Approve")],
             rendered_content="rendered",
             expiration_time=expiration_time,

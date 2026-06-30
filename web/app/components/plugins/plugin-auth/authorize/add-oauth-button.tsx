@@ -199,7 +199,6 @@ const AddOAuthButton = ({
             >
               <div
                 className="truncate"
-                title={buttonText}
               >
                 {buttonText}
               </div>

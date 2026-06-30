@@ -1,3 +1,4 @@
+import type { CommandEffect } from '@/framework/command'
 import { DifyCommand } from '@/commands/_shared/dify-command'
 import { httpRetryFlag } from '@/commands/_shared/global-flags'
 import { Flags } from '@/framework/flags'
@@ -6,6 +7,8 @@ import { runCreateMember } from './run'
 
 export default class CreateMember extends DifyCommand {
   static override description = 'Invite a member to the active (or specified) workspace by email'
+
+  static override effect: CommandEffect = 'write'
 
   static override examples = [
     '<%= config.bin %> create member --email user@example.com --role normal',
