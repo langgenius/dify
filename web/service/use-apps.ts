@@ -60,7 +60,7 @@ function normalizeWorkflow(workflow: AppPartial['workflow']): App['workflow'] {
   }
 }
 
-export function normalizeAppListItem(app: AppPartial): App {
+function normalizeAppListItem(app: AppPartial): App {
   const modelConfig = (app.model_config ?? {}) as App['model_config']
 
   return {
