@@ -1,4 +1,4 @@
-import type { AgentKnowledgeDatasetConfig, AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentKnowledgeDatasetConfig, AgentSoulAppFeaturesConfig, AgentSoulModelConfig } from '@dify/contracts/api/console/agent/types.gen'
 import type { FileTreeIconType } from '@langgenius/dify-ui/file-tree'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
@@ -14,6 +14,10 @@ import type { RETRIEVE_TYPE } from '@/types/app'
 import type { I18nKeysWithPrefix } from '@/types/i18n'
 
 export type EnvScope = 'secret' | 'plain'
+
+export type AgentComposerModel = DefaultModel & {
+  model_settings?: AgentSoulModelConfig['model_settings']
+}
 
 export type EnvVariable = {
   id: string
@@ -105,7 +109,7 @@ export type AgentTool = AgentProviderTool | AgentCliTool
 
 export type AgentSoulConfigFormState = {
   prompt: string
-  model?: DefaultModel
+  model?: AgentComposerModel
   appFeatures?: AgentSoulAppFeaturesConfig
   skills: AgentSkill[]
   files: AgentFileNode[]

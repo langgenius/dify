@@ -9,6 +9,7 @@ import type {
 } from '@dify/contracts/api/console/agent/types.gen'
 import type {
   AgentCliTool,
+  AgentComposerModel,
   AgentFileNode,
   AgentKnowledgeRetrievalItem,
   AgentProviderTool,
@@ -17,7 +18,6 @@ import type {
   AgentTool,
   EnvVariable,
 } from './form-state'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   MetadataFilteringConditions,
   MultipleRetrievalConfig,
@@ -471,7 +471,7 @@ const toFileFormState = (config?: AgentSoulConfig): AgentFileNode[] => {
   }))
 }
 
-const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
+const toDraftModel = (config?: AgentSoulConfig): AgentComposerModel | undefined => {
   const modelProvider = config?.model?.model_provider
   const model = config?.model?.model
 
@@ -482,10 +482,11 @@ const toDraftModel = (config?: AgentSoulConfig): DefaultModel | undefined => {
     provider: modelProvider,
     model,
     plugin_id: config?.model?.plugin_id,
+    model_settings: config?.model?.model_settings,
   }
 }
 
-const getModelProviderPluginId = (model: DefaultModel, baseModel?: AgentSoulConfig['model']) => {
+const getModelProviderPluginId = (model: AgentComposerModel, baseModel?: AgentSoulConfig['model']) => {
   if (model.plugin_id)
     return model.plugin_id
 
@@ -507,7 +508,7 @@ export const formStateToAgentSoulConfig = ({
 }: {
   baseConfig?: AgentSoulConfig
   formState: AgentSoulConfigFormState
-  currentModel?: DefaultModel
+  currentModel?: AgentComposerModel
 }): AgentSoulConfig => {
   return {
     ...baseConfig,
@@ -521,6 +522,7 @@ export const formStateToAgentSoulConfig = ({
           model_provider: currentModel.provider,
           model: currentModel.model,
           plugin_id: getModelProviderPluginId(currentModel, baseConfig?.model),
+          model_settings: currentModel.model_settings,
         }
       : baseConfig?.model,
     tools: {

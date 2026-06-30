@@ -103,6 +103,10 @@ describe('agent composer store conversions', () => {
       model: {
         model: 'gpt-4.1',
         model_provider: 'openai',
+        model_settings: {
+          temperature: 0.2,
+          max_tokens: 1024,
+        },
         plugin_id: 'openai',
       },
       prompt: {
@@ -153,6 +157,10 @@ describe('agent composer store conversions', () => {
       prompt: 'Be precise.',
       model: {
         model: 'gpt-4.1',
+        model_settings: {
+          temperature: 0.2,
+          max_tokens: 1024,
+        },
         provider: 'openai',
         plugin_id: 'openai',
       },
@@ -240,6 +248,10 @@ describe('agent composer store conversions', () => {
       },
     ])
     expect(publishConfig.config_note).toBe('Read the proposal first.')
+    expect(publishConfig.model?.model_settings).toEqual({
+      temperature: 0.2,
+      max_tokens: 1024,
+    })
     expect(publishConfig.tools?.dify_tools).toEqual([
       expect.objectContaining({
         provider: 'DuckDuckGo',
