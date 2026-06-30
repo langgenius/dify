@@ -21,11 +21,8 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     MemberRecipient,
 )
-from graphon.nodes.human_input.entities import (
-    FormDefinition,
-    UserActionConfig,
-)
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
+from core.workflow.human_input.entities import FormDefinition, UserActionConfig
+from core.workflow.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -279,6 +276,21 @@ def _make_form_definition() -> str:
     ).model_dump_json()
 
 
+def _make_legacy_form_definition() -> str:
+    return (
+        FormDefinition(
+            form_content="hello",
+            inputs=[],
+            user_actions=[UserActionConfig(id="submit", title="Submit")],
+            rendered_content="<p>hello</p>",
+            expiration_time=naive_utc_now(),
+        )
+        .model_dump_json()
+        .replace('"user_actions"', '"actions"')
+        .replace('"default_values":{}', '"resolved_default_values":{"name":"Alice"}')
+    )
+
+
 @dataclasses.dataclass
 class _DummyForm:
     id: str
@@ -409,6 +421,23 @@ def _patch_repo_session_factory(monkeypatch: pytest.MonkeyPatch, session: _FakeS
 
 
 class TestHumanInputFormRepositoryImplPublicMethods:
+    def test_from_models_preserves_legacy_actions_and_default_values_during_hydration(self) -> None:
+        form = _DummyForm(
+            id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="tenant-id",
+            app_id="app-id",
+            form_definition=_make_legacy_form_definition(),
+            rendered_content="<p>hello</p>",
+            expiration_time=naive_utc_now(),
+        )
+        record = HumanInputFormRecord.from_models(form, None)
+
+        assert record is not None
+        assert record.definition.user_actions[0].id == "submit"
+        assert record.definition.default_values == {"name": "Alice"}
+
     def test_get_form_returns_entity_and_recipients(self, monkeypatch: pytest.MonkeyPatch):
         form = _DummyForm(
             id="form-1",

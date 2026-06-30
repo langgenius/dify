@@ -3,18 +3,13 @@ from typing import Any
 
 from pydantic import TypeAdapter
 
-from core.app.entities.task_entities import HumanInputRequiredResponse
+from core.app.entities.task_entities import HumanInputRequiredPauseReasonPayload, HumanInputRequiredResponse
 from core.entities.execution_extra_content import (
     HumanInputContent,
     HumanInputFormDefinition,
 )
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.nodes.human_input.entities import (
-    FormDefinition,
-    FormInputConfig,
-    HumanInputNodeData,
-)
-from graphon.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
+from core.workflow.human_input.entities import FormDefinition, FormInputConfig, HumanInputNodeData
+from core.workflow.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
 
 
 def _legacy_form_input_payloads() -> list[dict[str, Any]]:
@@ -130,22 +125,43 @@ def test_form_definition_accepts_current_serialized_payload() -> None:
     assert restored.user_actions[0].button_style == ButtonStyle.PRIMARY
 
 
+def test_form_definition_preserves_legacy_actions_and_default_values() -> None:
+    payload = {
+        "form_content": "Please confirm",
+        "inputs": _legacy_form_input_payloads(),
+        "actions": _legacy_user_action_payloads(),
+        "rendered_content": "Please confirm",
+        "expiration_time": "2024-01-01T00:00:00Z",
+        "resolved_default_values": {"name": "Alice"},
+        "node_title": "Human Input",
+        "display_in_ui": True,
+    }
+
+    restored = _validate_legacy_json(FormDefinition, payload)
+    assert restored.user_actions[0].id == "approve"
+    assert restored.default_values == {"name": "Alice"}
+
+
 def test_human_input_required_pause_reason_accepts_current_serialized_payload() -> None:
     payload = {
-        "TYPE": "human_input_required",
-        "form_id": "form-1",
+        "TYPE": "hitl_required",
+        "session_id": "form-1",
         "form_content": "Please confirm",
         "inputs": _legacy_form_input_payloads(),
         "actions": _legacy_user_action_payloads(),
         "node_id": "node-1",
         "node_title": "Human Input",
         "resolved_default_values": {"name": "Alice"},
+        "display_in_ui": True,
+        "form_token": "token-1",
+        "approval_channels": [],
+        "expiration_time": 1700000000,
     }
 
-    restored = _validate_legacy_json(HumanInputRequired, payload)
+    restored = _validate_legacy_json(HumanInputRequiredPauseReasonPayload, payload)
     assert restored.inputs[1].output_variable_name == "decision"
     assert restored.actions[0].id == "approve"
-    assert restored.TYPE == "human_input_required"
+    assert restored.TYPE == "hitl_required"
 
 
 def test_human_input_form_definition_accepts_current_serialized_payload() -> None:
