@@ -68,12 +68,18 @@ class _FakePauseEntity(WorkflowPauseEntity):
         return self.pause_reasons
 
 
-def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext:
+def _build_resumption_context(
+    workflow_run_id: str,
+    *,
+    tenant_id: str,
+    app_id: str,
+    workflow_id: str,
+) -> WorkflowResumptionContext:
     app_config = WorkflowUIBasedAppConfig(
-        tenant_id=str(uuid4()),
-        app_id=str(uuid4()),
+        tenant_id=tenant_id,
+        app_id=app_id,
         app_mode=AppMode.WORKFLOW,
-        workflow_id=str(uuid4()),
+        workflow_id=workflow_id,
     )
     generate_entity = WorkflowAppGenerateEntity(
         task_id="task-1",
@@ -95,12 +101,18 @@ def _build_resumption_context(workflow_run_id: str) -> WorkflowResumptionContext
     )
 
 
-def _build_workflow_run(*, workflow_run_id: str, tenant_id: str, app_id: str) -> WorkflowRun:
+def _build_workflow_run(
+    workflow_run_id: str,
+    *,
+    tenant_id: str,
+    app_id: str,
+    workflow_id: str,
+) -> WorkflowRun:
     return WorkflowRun(
         id=workflow_run_id,
         tenant_id=tenant_id,
         app_id=app_id,
-        workflow_id=str(uuid4()),
+        workflow_id=workflow_id,
         type="workflow",
         triggered_from="app-run",
         version="v1",
@@ -123,22 +135,23 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
     assert isinstance(engine, Engine)
     test_tenant_id = str(uuid4())
     test_app_id = str(uuid4())
+    test_workflow_id = str(uuid4())
     workflow_run_id = str(uuid4())
     expiration_time = (datetime.now(UTC) + timedelta(hours=1)).replace(tzinfo=None)
     form_definition = FormDefinition(
-        form_content="Rendered",
+        form_content="Choose",
+        rendered_content="Choose",
         inputs=[
             SelectInputConfig(
                 output_variable_name="decision",
                 option_source=StringListSource(
                     type=ValueSourceType.VARIABLE,
                     selector=["start", "options"],
-                    value=["configured"],
+                    value=[],
                 ),
             )
         ],
         user_actions=[UserActionConfig(id="approve", title="Approve")],
-        rendered_content="Rendered",
         expiration_time=expiration_time,
         display_in_ui=True,
     )
@@ -171,15 +184,21 @@ def test_build_snapshot_events_resolves_variable_select_options(db_session_with_
     session_maker = sessionmaker(bind=engine, expire_on_commit=False)
     events = _build_snapshot_events(
         workflow_run=_build_workflow_run(
-            workflow_run_id=workflow_run_id,
+            workflow_run_id,
             tenant_id=test_tenant_id,
             app_id=test_app_id,
+            workflow_id=test_workflow_id,
         ),
         node_snapshots=[],
         task_id="task-1",
         message_context=None,
         pause_entity=pause_entity,
-        resumption_context=_build_resumption_context(workflow_run_id),
+        resumption_context=_build_resumption_context(
+            workflow_run_id,
+            tenant_id=test_tenant_id,
+            app_id=test_app_id,
+            workflow_id=test_workflow_id,
+        ),
         session_maker=session_maker,
     )
 

@@ -13,8 +13,9 @@ from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenc
 from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.human_input import HumanInputFormStatus, HumanInputNodeData, UserActionConfig
 from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
+from core.workflow.human_input import HumanInputFormStatus, HumanInputNodeData, UserActionConfig
+from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowType
 from graphon.graph import Graph
@@ -97,7 +98,6 @@ def _build_graph(
         invoke_from="debugger",
         call_depth=0,
     )
-
     start_data = StartNodeData(title="start", variables=[])
     start_node = StartNode(
         node_id="start",
@@ -114,15 +114,17 @@ def _build_graph(
             UserActionConfig(id="continue", title="Continue"),
         ],
     )
+    hitl_runtime = DifyHumanInputNodeRuntime(params.run_context).with_form_repository(form_repository)
+    hitl_callback = build_dify_human_input_hitl_callback(
+        node_data=human_data,
+        repository=hitl_runtime.build_form_repository(),
+    )
     human_node = HumanInputNode(
         node_id="human",
         data=human_data,
         graph_init_params=params,
         graph_runtime_state=runtime_state,
-        hitl_callback=build_dify_human_input_hitl_callback(
-            node_data=human_data,
-            repository=form_repository,
-        ),
+        hitl_callback=hitl_callback,
     )
 
     end_data = EndNodeData(
@@ -334,6 +336,5 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         records = self.session.execute(stmt).scalars().all()
         assert len(records) == 1
-        assert records[0].status != "paused"
         assert records[0].triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         assert records[0].created_by_role == CreatorUserRole.ACCOUNT

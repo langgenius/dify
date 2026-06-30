@@ -239,6 +239,9 @@ def test_get_human_input_form_resolves_runtime_select_options(
 
     assert response.status_code == 200, response.get_data(as_text=True)
     body = json.loads(response.get_data(as_text=True))
+    assert body["form_content"] == "Choose"
+    assert body["resolved_default_values"] == {}
+    assert body["user_actions"] == [{"id": "approve", "title": "Approve", "button_style": "default"}]
     assert body["inputs"][0]["option_source"]["type"] == "variable"
     assert body["inputs"][0]["option_source"]["selector"] == ["start", "options"]
     assert body["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
