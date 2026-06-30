@@ -185,8 +185,12 @@ class RagPipelineTransformService:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
 
         # Copy summary_index_setting from dataset to knowledge_index node configuration
+        # Normalize: collapse disabled/enable=None settings to None (#37209)
         if dataset.summary_index_setting:
-            knowledge_configuration.summary_index_setting = dataset.summary_index_setting
+            sis = dataset.summary_index_setting
+            enable = sis.get("enable") if isinstance(sis, dict) else None
+            if enable is not None and enable is not False:
+                knowledge_configuration.summary_index_setting = sis
 
         knowledge_configuration_dict.update(knowledge_configuration.model_dump())
         node["data"] = knowledge_configuration_dict

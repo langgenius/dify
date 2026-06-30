@@ -618,6 +618,112 @@ class TestKnowledgeIndexNode:
         assert template.segments == []
 
 
+class TestSummaryIndexSettingNormalization:
+    """Tests for the normalize_summary_index_setting field validator."""
+
+    def test_none_stays_none(self):
+        data = KnowledgeIndexNodeData(
+            title="KI",
+            type="knowledge-index",
+            chunk_structure="general_structure",
+            index_chunk_variable_selector=["start", "chunks"],
+            summary_index_setting=None,
+        )
+        assert data.summary_index_setting is None
+
+    def test_enable_none_normalized_to_none(self):
+        """When enable is None, the whole setting should be None (#36233)."""
+        validated = KnowledgeIndexNodeData.model_validate(
+            {
+                "title": "KI",
+                "type": "knowledge-index",
+                "chunk_structure": "general_structure",
+                "index_chunk_variable_selector": ["start", "chunks"],
+                "summary_index_setting": {
+                    "enable": None,
+                    "model_name": None,
+                    "model_provider_name": None,
+                    "summary_prompt": None,
+                },
+            }
+        )
+        assert validated.summary_index_setting is None
+
+    def test_enable_false_normalized_to_none(self):
+        """When enable=False, setting should be None regardless of other fields (#37209).
+
+        The frontend sends ``{"enable": false, "model_name": null, ...}`` when
+        the user turns off the "Summary Generation Auto" switch.  The downstream
+        ``SummaryIndexSettingDict`` TypedDict rejects ``None`` for its string
+        fields, so we must collapse the whole value to ``None``.
+        """
+        validated = KnowledgeIndexNodeData.model_validate(
+            {
+                "title": "KI",
+                "type": "knowledge-index",
+                "chunk_structure": "general_structure",
+                "index_chunk_variable_selector": ["start", "chunks"],
+                "summary_index_setting": {
+                    "enable": False,
+                    "model_name": None,
+                    "model_provider_name": None,
+                    "summary_prompt": None,
+                },
+            }
+        )
+        assert validated.summary_index_setting is None
+
+    def test_enable_false_with_empty_strings_normalized_to_none(self):
+        """enable=False with empty-string values also yields None."""
+        validated = KnowledgeIndexNodeData.model_validate(
+            {
+                "title": "KI",
+                "type": "knowledge-index",
+                "chunk_structure": "general_structure",
+                "index_chunk_variable_selector": ["start", "chunks"],
+                "summary_index_setting": {
+                    "enable": False,
+                    "model_name": "",
+                    "model_provider_name": "",
+                },
+            }
+        )
+        assert validated.summary_index_setting is None
+
+    def test_enable_true_preserved(self):
+        """When enable=True, the setting should be preserved as-is."""
+        validated = KnowledgeIndexNodeData.model_validate(
+            {
+                "title": "KI",
+                "type": "knowledge-index",
+                "chunk_structure": "general_structure",
+                "index_chunk_variable_selector": ["start", "chunks"],
+                "summary_index_setting": {
+                    "enable": True,
+                    "model_name": "gpt-4o",
+                    "model_provider_name": "openai",
+                },
+            }
+        )
+        assert validated.summary_index_setting is not None
+        assert validated.summary_index_setting["enable"] is True
+
+    def test_missing_enable_key_normalized_to_none(self):
+        """When the enable key is missing, treat as None."""
+        validated = KnowledgeIndexNodeData.model_validate(
+            {
+                "title": "KI",
+                "type": "knowledge-index",
+                "chunk_structure": "general_structure",
+                "index_chunk_variable_selector": ["start", "chunks"],
+                "summary_index_setting": {
+                    "model_name": "gpt-4o",
+                },
+            }
+        )
+        assert validated.summary_index_setting is None
+
+
 class TestInvokeKnowledgeIndex:
     def test_invoke_with_summary_index_setting(
         self,

@@ -179,11 +179,21 @@ class _AutomaticProcessRule(BaseModel):
     @field_validator("summary_index_setting", mode="before")
     @classmethod
     def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        """Treat dicts with enable=None/False (or missing enable) as None.
+
+        When the "Summary Generation Auto" switch is off the frontend may send
+        ``{"enable": null, ...}`` or ``{"enable": false, "model_name": null, ...}``.
+        Collapsing to ``None`` prevents storing nullable string fields that
+        downstream ``SummaryIndexSettingDict`` TypedDict validation rejects.
+
+        Refs #36602, #37209.
+        """
         if v is None:
             return None
-        if isinstance(v, dict) and v.get("enable") is None:
-            return None
+        if isinstance(v, dict):
+            enable = v.get("enable")
+            if enable is None or enable is False:
+                return None
         return v
 
 
@@ -197,11 +207,13 @@ class _CustomProcessRule(BaseModel):
     @field_validator("summary_index_setting", mode="before")
     @classmethod
     def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        """Treat dicts with enable=None/False (or missing enable) as None."""
         if v is None:
             return None
-        if isinstance(v, dict) and v.get("enable") is None:
-            return None
+        if isinstance(v, dict):
+            enable = v.get("enable")
+            if enable is None or enable is False:
+                return None
         return v
 
 
@@ -215,11 +227,13 @@ class _HierarchicalProcessRule(BaseModel):
     @field_validator("summary_index_setting", mode="before")
     @classmethod
     def _normalize_summary_index_setting(cls, v: Any) -> Any:
-        """Treat dicts with enable=None (or missing enable) as None (#36602)."""
+        """Treat dicts with enable=None/False (or missing enable) as None."""
         if v is None:
             return None
-        if isinstance(v, dict) and v.get("enable") is None:
-            return None
+        if isinstance(v, dict):
+            enable = v.get("enable")
+            if enable is None or enable is False:
+                return None
         return v
 
 
@@ -232,6 +246,25 @@ _EstimateProcessRule = Annotated[
 class _EstimateArgs(BaseModel):
     info_list: dict[str, Any]
     process_rule: _EstimateProcessRule
+
+
+def _normalize_summary_index_setting_value(v: dict[str, Any] | None) -> dict[str, Any] | None:
+    """Normalize a raw summary_index_setting value.
+
+    When the "Summary Generation Auto" switch is turned off, the DB may store
+    ``{"enable": false, "model_name": null, ...}`` or ``{"enable": null, ...}``.
+    Downstream ``SummaryIndexSettingDict`` TypedDict validation rejects ``None``
+    values for string fields, so we collapse disabled settings to ``None``.
+
+    Refs #37209.
+    """
+    if v is None:
+        return None
+    if isinstance(v, dict):
+        enable = v.get("enable")
+        if enable is None or enable is False:
+            return None
+    return v
 
 
 class DatasetService:
@@ -458,7 +491,7 @@ class DatasetService:
         dataset.permission = DatasetPermissionEnum(permission) if permission else DatasetPermissionEnum.ONLY_ME
         dataset.provider = provider
         if summary_index_setting is not None:
-            dataset.summary_index_setting = summary_index_setting
+            dataset.summary_index_setting = _normalize_summary_index_setting_value(summary_index_setting)
         db.session.add(dataset)
         db.session.flush()
 
@@ -694,6 +727,11 @@ class DatasetService:
         # Update summary index setting if provided
         summary_index_setting = data.get("summary_index_setting", None)
         if summary_index_setting is not None:
+            # Normalize: collapse disabled/enable=None settings to None (#37209)
+            if isinstance(summary_index_setting, dict):
+                enable = summary_index_setting.get("enable")
+                if enable is None or enable is False:
+                    summary_index_setting = None
             dataset.summary_index_setting = summary_index_setting
 
         # Update basic dataset properties
@@ -787,8 +825,15 @@ class DatasetService:
         if data.get("retrieval_model"):
             filtered_data["retrieval_model"] = data["retrieval_model"]
         # update summary index setting
-        if data.get("summary_index_setting"):
-            filtered_data["summary_index_setting"] = data.get("summary_index_setting")
+        summary_index_setting = data.get("summary_index_setting")
+        if summary_index_setting:
+            # Normalize: collapse disabled/enable=None settings to None (#37209)
+            if isinstance(summary_index_setting, dict):
+                enable = summary_index_setting.get("enable")
+                if enable is None or enable is False:
+                    summary_index_setting = None
+            if summary_index_setting is not None:
+                filtered_data["summary_index_setting"] = summary_index_setting
         # update icon info
         if data.get("icon_info"):
             filtered_data["icon_info"] = data.get("icon_info")
@@ -856,7 +901,9 @@ class DatasetService:
                             knowledge_index_node_data["chunk_structure"] = dataset.chunk_structure
                             knowledge_index_node_data["indexing_technique"] = dataset.indexing_technique
                             knowledge_index_node_data["keyword_number"] = dataset.keyword_number
-                            knowledge_index_node_data["summary_index_setting"] = dataset.summary_index_setting
+                            knowledge_index_node_data["summary_index_setting"] = _normalize_summary_index_setting_value(
+                                dataset.summary_index_setting
+                            )
                             node["data"] = knowledge_index_node_data
                             updated = True
                         except Exception:
@@ -1186,7 +1233,9 @@ class DatasetService:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
             # Update summary_index_setting if provided
             if knowledge_configuration.summary_index_setting is not None:
-                dataset.summary_index_setting = knowledge_configuration.summary_index_setting
+                dataset.summary_index_setting = _normalize_summary_index_setting_value(
+                    knowledge_configuration.summary_index_setting
+                )
             session.add(dataset)
         else:
             if dataset.chunk_structure and dataset.chunk_structure != knowledge_configuration.chunk_structure:
@@ -1298,7 +1347,9 @@ class DatasetService:
             dataset.retrieval_model = knowledge_configuration.retrieval_model.model_dump()
             # Update summary_index_setting if provided
             if knowledge_configuration.summary_index_setting is not None:
-                dataset.summary_index_setting = knowledge_configuration.summary_index_setting
+                dataset.summary_index_setting = _normalize_summary_index_setting_value(
+                    knowledge_configuration.summary_index_setting
+                )
             session.add(dataset)
             session.commit()
             if action:

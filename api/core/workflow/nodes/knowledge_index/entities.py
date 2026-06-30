@@ -105,10 +105,20 @@ class KnowledgeIndexNodeData(BaseNodeData):
     @field_validator("summary_index_setting", mode="before")
     @classmethod
     def normalize_summary_index_setting(cls, v: Any) -> Any:
-        """Treat dicts with enable=None (or missing enable) as None (#36233)."""
+        """Normalize summary_index_setting: treat disabled/None entries as None.
+
+        When the "Summary Generation Auto" switch is turned off, the frontend
+        may send ``{"enable": null, ...}`` or ``{"enable": false, "model_name": null, ...}``.
+        Both forms should collapse to ``None`` because the downstream
+        ``SummaryIndexSettingDict`` TypedDict rejects ``None`` values for its
+        string fields even when ``enable=False``.
+
+        Refs #36233, #37209.
+        """
         if v is None:
             return None
         if isinstance(v, dict):
-            if v.get("enable") is None:
+            enable = v.get("enable")
+            if enable is None or enable is False:
                 return None
         return v

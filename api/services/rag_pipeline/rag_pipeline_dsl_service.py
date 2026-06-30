@@ -318,7 +318,11 @@ class RagPipelineDslService:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
-                        dataset.summary_index_setting = knowledge_configuration.summary_index_setting
+                        from services.dataset_service import _normalize_summary_index_setting_value
+
+                        dataset.summary_index_setting = _normalize_summary_index_setting_value(
+                            knowledge_configuration.summary_index_setting
+                        )
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
                     self._session.flush()
@@ -456,7 +460,11 @@ class RagPipelineDslService:
                         dataset.keyword_number = knowledge_configuration.keyword_number
                     # Update summary_index_setting if provided
                     if knowledge_configuration.summary_index_setting is not None:
-                        dataset.summary_index_setting = knowledge_configuration.summary_index_setting
+                        from services.dataset_service import _normalize_summary_index_setting_value
+
+                        dataset.summary_index_setting = _normalize_summary_index_setting_value(
+                            knowledge_configuration.summary_index_setting
+                        )
                     dataset.pipeline_id = pipeline.id
                     self._session.add(dataset)
                     self._session.flush()
