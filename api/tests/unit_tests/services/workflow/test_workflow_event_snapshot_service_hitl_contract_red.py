@@ -206,7 +206,7 @@ def test_snapshot_builder_rehydrates_hitl_payload_from_form_definition(
     assert resolved_session_ids == ["session-1"]
 
     human_input_event = next(event for event in events if event["event"] == "human_input_required")
-    assert human_input_event["data"]["form_id"] == "session-1"
+    assert human_input_event["data"]["form_id"] == "form-1"
     assert human_input_event["data"]["node_id"] == "node-1"
     assert human_input_event["data"]["node_title"] == "Approval Gate"
     assert human_input_event["data"]["form_content"] == "Need manager approval"

@@ -2656,11 +2656,18 @@ class TestWorkflowServiceHumanInputOperations:
             patch("models.workflow.Workflow.get_node_type_from_node_config", return_value=BuiltinNodeTypes.HUMAN_INPUT),
             patch.object(service, "_build_human_input_variable_pool"),
             patch("services.workflow_service.HumanInputNode", return_value=mock_node),
-            patch("services.workflow_service.HumanInputRequired") as mock_required_cls,
         ):
-            service.get_human_input_form_preview(app_model=app_model, account=account, node_id="node-1")
+            payload = service.get_human_input_form_preview(app_model=app_model, account=account, node_id="node-1")
             mock_node.render_form_content_before_submission.assert_called_once()
-            mock_required_cls.return_value.model_dump.assert_called_once()
+            assert payload == {
+                "form_id": "node-1",
+                "node_id": "node-1",
+                "node_title": "Form Title",
+                "form_content": "rendered",
+                "inputs": [],
+                "actions": [],
+                "resolved_default_values": {"def": 1},
+            }
 
     def test_submit_human_input_form_preview_success(self, service: WorkflowService) -> None:
         app_model = MagicMock(spec=App)

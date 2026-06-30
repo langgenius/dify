@@ -54,7 +54,6 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import (
     ErrorStrategy,
     NodeType,
@@ -157,17 +156,6 @@ class HumanInputNode:
             self.node_data.outputs_field_names(),
             self.node_data.inputs,
         )
-
-
-class HumanInputRequired:
-    """Compatibility payload wrapper for debug preview responses."""
-
-    def __init__(self, **payload: Any) -> None:
-        self._payload = payload
-
-    def model_dump(self, *, mode: str = "json") -> dict[str, Any]:
-        _ = mode
-        return dict(self._payload)
 
 
 class WorkflowService:
@@ -1108,16 +1096,15 @@ class WorkflowService:
         rendered_content = node.render_form_content_before_submission()
         resolved_default_values = node.resolve_default_values()
         node_data = node.node_data
-        return HumanInputRequired(
-            TYPE=PauseReasonType.HITL_REQUIRED,
-            session_id=node_id,
-            node_id=node_id,
-            node_title=node.title,
-            form_content=rendered_content,
-            inputs=[form_input.model_dump(mode="json") for form_input in node_data.inputs],
-            actions=[action.model_dump(mode="json") for action in node_data.user_actions],
-            resolved_default_values=resolved_default_values,
-        ).model_dump(mode="json")
+        return {
+            "form_id": node_id,
+            "node_id": node_id,
+            "node_title": node.title,
+            "form_content": rendered_content,
+            "inputs": [form_input.model_dump(mode="json") for form_input in node_data.inputs],
+            "actions": [action.model_dump(mode="json") for action in node_data.user_actions],
+            "resolved_default_values": resolved_default_values,
+        }
 
     def submit_human_input_form_preview(
         self,
