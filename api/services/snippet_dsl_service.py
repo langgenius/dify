@@ -20,6 +20,7 @@ from graphon.model_runtime.utils.encoders import jsonable_encoder
 from models import Account
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow
+from services.dsl_content import DEFAULT_DSL_MAX_SIZE, decode_dsl_content, exceeds_dsl_size_limit
 from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.snippet_service import SNIPPET_FORBIDDEN_NODE_TYPES, SnippetService
 
@@ -28,7 +29,7 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "snippet_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "snippet_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
+DSL_MAX_SIZE = DEFAULT_DSL_MAX_SIZE
 CURRENT_DSL_VERSION = "0.1.0"
 
 
@@ -121,8 +122,8 @@ class SnippetDslService:
         except ValueError:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
-        # Get YAML content
-        content: str = ""
+        # Get raw YAML content from either supported source before decoding or parsing.
+        raw_content: str | bytes = ""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return SnippetImportInfo(
@@ -145,13 +146,7 @@ class SnippetDslService:
                         status=ImportStatus.FAILED,
                         error=f"Failed to fetch YAML from URL: {response.status_code}",
                     )
-                content = response.text
-                if len(content) > DSL_MAX_SIZE:
-                    return SnippetImportInfo(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error=f"YAML content size exceeds maximum limit of {DSL_MAX_SIZE} bytes",
-                    )
+                raw_content = response.content
             except Exception as e:
                 logger.exception("Failed to fetch YAML from URL")
                 return SnippetImportInfo(
@@ -166,15 +161,17 @@ class SnippetDslService:
                     status=ImportStatus.FAILED,
                     error="yaml_content is required when import_mode is yaml-content",
                 )
-            content = yaml_content
-            if len(content) > DSL_MAX_SIZE:
-                return SnippetImportInfo(
-                    id=import_id,
-                    status=ImportStatus.FAILED,
-                    error=f"YAML content size exceeds maximum limit of {DSL_MAX_SIZE} bytes",
-                )
+            raw_content = yaml_content
+
+        if exceeds_dsl_size_limit(raw_content, DSL_MAX_SIZE):
+            return SnippetImportInfo(
+                id=import_id,
+                status=ImportStatus.FAILED,
+                error=f"YAML content size exceeds maximum limit of {DSL_MAX_SIZE} bytes",
+            )
 
         try:
+            content = decode_dsl_content(raw_content)
             # Parse YAML
             data = yaml.safe_load(content)
             if not isinstance(data, dict):

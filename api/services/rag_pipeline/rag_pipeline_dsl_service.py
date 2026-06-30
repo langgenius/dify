@@ -36,6 +36,7 @@ from models import Account
 from models.dataset import Dataset, DatasetCollectionBinding, Pipeline
 from models.enums import CollectionBindingType, DatasetRuntimeMode
 from models.workflow import Workflow, WorkflowType
+from services.dsl_content import DEFAULT_DSL_MAX_SIZE, decode_dsl_content, exceeds_dsl_size_limit
 from services.dsl_version import check_version_compatibility
 from services.entities.dsl_entities import CheckDependenciesResult, ImportMode, ImportStatus
 from services.entities.knowledge_entities.rag_pipeline_entities import (
@@ -50,7 +51,7 @@ logger = logging.getLogger(__name__)
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
-DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
+DSL_MAX_SIZE = DEFAULT_DSL_MAX_SIZE
 CURRENT_DSL_VERSION = "0.1.0"
 
 
@@ -107,8 +108,8 @@ class RagPipelineDslService:
         except ValueError:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
-        # Get YAML content
-        content: str = ""
+        # Get raw YAML content from either supported source before decoding or parsing.
+        raw_content: str | bytes = ""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return RagPipelineImportInfo(
@@ -127,16 +128,9 @@ class RagPipelineDslService:
                     yaml_url = yaml_url.replace("/blob/", "/")
                 response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
-                content = response.content.decode()
+                raw_content = response.content
 
-                if len(content) > DSL_MAX_SIZE:
-                    return RagPipelineImportInfo(
-                        id=import_id,
-                        status=ImportStatus.FAILED,
-                        error="File size exceeds the limit of 10MB",
-                    )
-
-                if not content:
+                if not raw_content:
                     return RagPipelineImportInfo(
                         id=import_id,
                         status=ImportStatus.FAILED,
@@ -155,10 +149,18 @@ class RagPipelineDslService:
                     status=ImportStatus.FAILED,
                     error="yaml_content is required when import_mode is yaml-content",
                 )
-            content = yaml_content
+            raw_content = yaml_content
+
+        if exceeds_dsl_size_limit(raw_content, DSL_MAX_SIZE):
+            return RagPipelineImportInfo(
+                id=import_id,
+                status=ImportStatus.FAILED,
+                error="File size exceeds the limit of 10MB",
+            )
 
         # Process YAML content
         try:
+            content = decode_dsl_content(raw_content)
             # Parse YAML to validate format
             data = yaml.safe_load(content)
             if not isinstance(data, dict):

@@ -54,6 +54,11 @@ class PluginInstallResultDict(TypedDict):
     failed: list[str]
 
 
+class TenantPluginNotInstalledDict(TypedDict):
+    tenant_id: str
+    plugin_not_exist: list[str]
+
+
 class PluginMigration:
     @classmethod
     def extract_plugins(cls, filepath: str, workers: int):
@@ -354,6 +359,11 @@ class PluginMigration:
 
         return {"plugins": plugins, "plugin_not_exist": plugin_not_exist}
 
+    @staticmethod
+    def _find_unresolved_plugin_ids(plugin_ids: Sequence[str], plugin_identifier_by_id: Mapping[str, str]) -> list[str]:
+        """Return plugin IDs that do not have a resolved package identifier."""
+        return [plugin_id for plugin_id in plugin_ids if plugin_id not in plugin_identifier_by_id]
+
     @classmethod
     def install_plugins(cls, extracted_plugins: str, output_file: str, workers: int = 100):
         """
@@ -361,32 +371,33 @@ class PluginMigration:
         """
         manager = PluginInstaller()
 
-        plugins = cls.extract_unique_plugins(extracted_plugins)
-        not_installed = []
-        plugin_install_failed = []
+        extracted_plugin_identifiers = cls.extract_unique_plugins(extracted_plugins)
+        plugin_identifier_by_id = extracted_plugin_identifiers["plugins"]
+        not_installed: list[TenantPluginNotInstalledDict] = []
+        plugin_install_failed: list[str] = []
 
         # use a fake tenant id to install all the plugins
         fake_tenant_id = uuid4().hex
-        logger.info("Installing %s plugin instances for fake tenant %s", len(plugins["plugins"]), fake_tenant_id)
+        logger.info("Installing %s plugin instances for fake tenant %s", len(plugin_identifier_by_id), fake_tenant_id)
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        response = cls.handle_plugin_instance_install(fake_tenant_id, plugins["plugins"])
+        response = cls.handle_plugin_instance_install(fake_tenant_id, plugin_identifier_by_id)
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
-        def install(tenant_id: str, plugin_ids: list[str]):
-            logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
+        def install(tenant_id: str, tenant_plugin_ids: list[str]):
+            logger.info("Installing %s plugins for tenant %s", len(tenant_plugin_ids), tenant_id)
             # fetch plugin already installed
             installed_plugins = manager.list_plugins(tenant_id)
-            installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+            installed_plugin_ids = {plugin.plugin_id for plugin in installed_plugins}
             # at most 64 plugins one batch
-            for i in range(0, len(plugin_ids), 64):
-                batch_plugin_ids = plugin_ids[i : i + 64]
+            for i in range(0, len(tenant_plugin_ids), 64):
+                batch_plugin_ids = tenant_plugin_ids[i : i + 64]
                 batch_plugin_identifiers = [
-                    plugins["plugins"][plugin_id]
+                    plugin_identifier_by_id[plugin_id]
                     for plugin_id in batch_plugin_ids
-                    if plugin_id not in installed_plugins_ids and plugin_id in plugins["plugins"]
+                    if plugin_id not in installed_plugin_ids and plugin_id in plugin_identifier_by_id
                 ]
                 if batch_plugin_identifiers:
                     manager.install_from_identifiers(
@@ -410,12 +421,7 @@ class PluginMigration:
                 data = _tenant_plugin_adapter.validate_json(line)
                 tenant_id = data["tenant_id"]
                 plugin_ids = data["plugins"]
-                plugin_not_exist: list[str] = []
-                # get plugin unique identifier
-                for plugin_id in plugin_ids:
-                    unique_identifier = plugins["plugins"].get(plugin_id)
-                    if not unique_identifier:
-                        plugin_not_exist.append(plugin_id)
+                plugin_not_exist = cls._find_unresolved_plugin_ids(plugin_ids, plugin_identifier_by_id)
 
                 if plugin_not_exist:
                     not_installed.append(
@@ -458,34 +464,38 @@ class PluginMigration:
         """
         manager = PluginInstaller()
 
-        plugins = cls.extract_unique_plugins(extracted_plugins)
-        plugin_install_failed = []
+        extracted_plugin_identifiers = cls.extract_unique_plugins(extracted_plugins)
+        plugin_identifier_by_id = extracted_plugin_identifiers["plugins"]
+        plugin_install_failed: list[str] = []
 
         # use a fake tenant id to install all the plugins
         fake_tenant_id = uuid4().hex
-        logger.info("Installing %s plugin instances for fake tenant %s", len(plugins["plugins"]), fake_tenant_id)
+        logger.info("Installing %s plugin instances for fake tenant %s", len(plugin_identifier_by_id), fake_tenant_id)
 
         thread_pool = ThreadPoolExecutor(max_workers=workers)
 
-        response = cls.handle_plugin_instance_install(fake_tenant_id, plugins["plugins"])
+        response = cls.handle_plugin_instance_install(fake_tenant_id, plugin_identifier_by_id)
         if response.get("failed"):
             plugin_install_failed.extend(response.get("failed", []))
 
         def install(
-            tenant_id: str, plugin_ids: dict[str, str], total_success_tenant: int, total_failed_tenant: int
+            tenant_id: str,
+            tenant_plugin_identifier_by_id: Mapping[str, str],
+            total_success_tenant: int,
+            total_failed_tenant: int,
         ) -> None:
-            logger.info("Installing %s plugins for tenant %s", len(plugin_ids), tenant_id)
+            logger.info("Installing %s plugins for tenant %s", len(tenant_plugin_identifier_by_id), tenant_id)
             try:
                 # fetch plugin already installed
                 installed_plugins = manager.list_plugins(tenant_id)
-                installed_plugins_ids = [plugin.plugin_id for plugin in installed_plugins]
+                installed_plugin_ids = {plugin.plugin_id for plugin in installed_plugins}
                 # at most 64 plugins one batch
-                for i in range(0, len(plugin_ids), 64):
-                    batch_plugin_ids = list(plugin_ids.keys())[i : i + 64]
+                for i in range(0, len(tenant_plugin_identifier_by_id), 64):
+                    batch_plugin_ids = list(tenant_plugin_identifier_by_id.keys())[i : i + 64]
                     batch_plugin_identifiers = [
-                        plugin_ids[plugin_id]
+                        tenant_plugin_identifier_by_id[plugin_id]
                         for plugin_id in batch_plugin_ids
-                        if plugin_id not in installed_plugins_ids and plugin_id in plugin_ids
+                        if plugin_id not in installed_plugin_ids and plugin_id in tenant_plugin_identifier_by_id
                     ]
                     PluginService.install_from_marketplace_pkg(tenant_id, batch_plugin_identifiers)
 
@@ -509,7 +519,7 @@ class PluginMigration:
                 thread_pool.submit(
                     install,
                     tenant_id,
-                    plugins.get("plugins", {}),
+                    plugin_identifier_by_id,
                     total_success_tenant,
                     total_failed_tenant,
                 )

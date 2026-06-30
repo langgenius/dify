@@ -95,7 +95,7 @@ def test_import_snippet_rejects_oversized_yaml_url_content(monkeypatch: pytest.M
     monkeypatch.setattr("services.snippet_dsl_service.DSL_MAX_SIZE", 3)
     monkeypatch.setattr(
         "services.snippet_dsl_service.ssrf_proxy.get",
-        Mock(return_value=SimpleNamespace(status_code=200, text="too large")),
+        Mock(return_value=SimpleNamespace(status_code=200, content=b"too large")),
     )
 
     result = service.import_snippet(

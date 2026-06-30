@@ -633,6 +633,17 @@ def test_import_rag_pipeline_yaml_content_requires_content() -> None:
     assert "yaml_content is required" in result.error
 
 
+def test_import_rag_pipeline_rejects_oversized_yaml_content(monkeypatch: pytest.MonkeyPatch) -> None:
+    service = RagPipelineDslService(session=Mock())
+    account = Mock(current_tenant_id="t1")
+    monkeypatch.setattr("services.rag_pipeline.rag_pipeline_dsl_service.DSL_MAX_SIZE", 3)
+
+    result = service.import_rag_pipeline(account=account, import_mode="yaml-content", yaml_content="too large")
+
+    assert result.status == ImportStatus.FAILED
+    assert "File size exceeds the limit" in result.error
+
+
 def test_import_rag_pipeline_yaml_content_requires_mapping() -> None:
     service = RagPipelineDslService(session=Mock())
     account = Mock(current_tenant_id="t1")
