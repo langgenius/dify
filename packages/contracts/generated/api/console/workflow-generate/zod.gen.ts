@@ -63,6 +63,13 @@ export const zPostWorkflowGenerateBody = zWorkflowGeneratePayload
  */
 export const zPostWorkflowGenerateResponse = zGeneratorResponse
 
+export const zPostWorkflowGenerateStreamBody = zWorkflowGeneratePayload
+
+/**
+ * Server-Sent Events stream of plan/result events
+ */
+export const zPostWorkflowGenerateStreamResponse = z.record(z.string(), z.unknown())
+
 export const zPostWorkflowGenerateSuggestionsBody = zWorkflowInstructionSuggestionsPayload
 
 /**

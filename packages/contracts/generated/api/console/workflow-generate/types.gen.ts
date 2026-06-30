@@ -52,6 +52,26 @@ export type PostWorkflowGenerateResponses = {
 export type PostWorkflowGenerateResponse
   = PostWorkflowGenerateResponses[keyof PostWorkflowGenerateResponses]
 
+export type PostWorkflowGenerateStreamData = {
+  body: WorkflowGeneratePayload
+  path?: never
+  query?: never
+  url: '/workflow-generate/stream'
+}
+
+export type PostWorkflowGenerateStreamErrors = {
+  400: unknown
+}
+
+export type PostWorkflowGenerateStreamResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostWorkflowGenerateStreamResponse
+  = PostWorkflowGenerateStreamResponses[keyof PostWorkflowGenerateStreamResponses]
+
 export type PostWorkflowGenerateSuggestionsData = {
   body: WorkflowInstructionSuggestionsPayload
   path?: never

@@ -6,14 +6,35 @@ import * as z from 'zod'
 import {
   zPostWorkflowGenerateBody,
   zPostWorkflowGenerateResponse,
+  zPostWorkflowGenerateStreamBody,
+  zPostWorkflowGenerateStreamResponse,
   zPostWorkflowGenerateSuggestionsBody,
   zPostWorkflowGenerateSuggestionsResponse,
 } from './zod.gen'
 
 /**
- * Suggest example workflow-generator instructions for the tenant
+ * Stream a Dify workflow graph (plan then result) via SSE
  */
 export const post = oc
+  .route({
+    description: 'Stream a Dify workflow graph (plan then result) via SSE',
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkflowGenerateStream',
+    path: '/workflow-generate/stream',
+    tags: ['console'],
+  })
+  .input(z.object({ body: zPostWorkflowGenerateStreamBody }))
+  .output(zPostWorkflowGenerateStreamResponse)
+
+export const stream = {
+  post,
+}
+
+/**
+ * Suggest example workflow-generator instructions for the tenant
+ */
+export const post2 = oc
   .route({
     description: 'Suggest example workflow-generator instructions for the tenant',
     inputStructure: 'detailed',
@@ -26,13 +47,13 @@ export const post = oc
   .output(zPostWorkflowGenerateSuggestionsResponse)
 
 export const suggestions = {
-  post,
+  post: post2,
 }
 
 /**
  * Generate a Dify workflow graph from natural language
  */
-export const post2 = oc
+export const post3 = oc
   .route({
     description: 'Generate a Dify workflow graph from natural language',
     inputStructure: 'detailed',
@@ -45,7 +66,8 @@ export const post2 = oc
   .output(zPostWorkflowGenerateResponse)
 
 export const workflowGenerate = {
-  post: post2,
+  post: post3,
+  stream,
   suggestions,
 }
 
