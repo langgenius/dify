@@ -17,7 +17,7 @@ from core.workflow.human_input.callback import build_dify_human_input_hitl_callb
 from core.workflow.human_input import HumanInputFormStatus, HumanInputNodeData, UserActionConfig
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowType
+from graphon.enums import WorkflowNodeExecutionStatus, WorkflowType
 from graphon.graph import Graph
 from graphon.graph_engine import GraphEngine
 from graphon.graph_engine.command_channels import InMemoryChannel
@@ -336,5 +336,6 @@ class TestHumanInputResumeNodeExecutionIntegration:
         )
         records = self.session.execute(stmt).scalars().all()
         assert len(records) == 1
+        assert records[0].status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert records[0].triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         assert records[0].created_by_role == CreatorUserRole.ACCOUNT
