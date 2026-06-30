@@ -75,9 +75,9 @@ def test_check_and_deduct_credits_deducts_exact_amount_when_sufficient() -> None
 
 
 def test_check_and_deduct_credits_returns_zero_for_non_positive_request() -> None:
-    assert CreditPoolService.check_and_deduct_credits(
-        tenant_id=str(uuid4()), credits_required=0, session=MagicMock()
-    ) == 0
+    assert (
+        CreditPoolService.check_and_deduct_credits(tenant_id=str(uuid4()), credits_required=0, session=MagicMock()) == 0
+    )
 
 
 def test_check_and_deduct_credits_raises_when_pool_is_missing() -> None:

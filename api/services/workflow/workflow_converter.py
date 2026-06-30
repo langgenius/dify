@@ -664,9 +664,7 @@ class WorkflowConverter:
         else:
             return AppMode.ADVANCED_CHAT
 
-    def _get_api_based_extension(
-        self, tenant_id: str, api_based_extension_id: str, session: Session | scoped_session
-    ):
+    def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str, session: Session | scoped_session):
         """
         Get API Based Extension
         :param tenant_id: tenant id

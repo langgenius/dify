@@ -118,9 +118,7 @@ class AppAnnotationService:
         raw_message_id = args.get("message_id")
         if raw_message_id:
             message_id = str(raw_message_id)
-            message = session.scalar(
-                select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1)
-            )
+            message = session.scalar(select(Message).where(Message.id == message_id, Message.app_id == app.id).limit(1))
 
             if not message:
                 raise NotFound("Message Not Exists.")

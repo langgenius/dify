@@ -17,9 +17,7 @@ from models.model import App, Conversation, EndUser, Message
 
 class AgentService:
     @classmethod
-    def get_agent_logs(
-        cls, app_model: App, conversation_id: str, message_id: str, session: scoped_session | Session
-    ):
+    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str, session: scoped_session | Session):
         """
         Service to get agent logs
         """

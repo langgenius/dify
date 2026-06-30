@@ -106,9 +106,7 @@ def sync_account_deletion(account_id: str, *, source: str, session: scoped_sessi
         return True
 
     # Fetch all workspaces the account belongs to
-    workspace_joins = session.scalars(
-        select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)
-    ).all()
+    workspace_joins = session.scalars(select(TenantAccountJoin).where(TenantAccountJoin.account_id == account_id)).all()
 
     # Queue sync task for each workspace
     success = True

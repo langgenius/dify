@@ -220,9 +220,7 @@ class MessageService:
         return feedback
 
     @classmethod
-    def get_all_messages_feedbacks(
-        cls, app_model: App, page: int, limit: int, *, session: Session | scoped_session
-    ):
+    def get_all_messages_feedbacks(cls, app_model: App, page: int, limit: int, *, session: Session | scoped_session):
         """Get all feedbacks of an app"""
         offset = (page - 1) * limit
         feedbacks = session.scalars(

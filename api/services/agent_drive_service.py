@@ -708,9 +708,7 @@ class AgentDriveService:
         return serialize(root)
 
     @staticmethod
-    def _assert_agent_belongs_to_tenant(
-        session: Session | scoped_session, *, tenant_id: str, agent_id: str
-    ) -> None:
+    def _assert_agent_belongs_to_tenant(session: Session | scoped_session, *, tenant_id: str, agent_id: str) -> None:
         try:
             found_agent_id = session.scalar(select(Agent.id).where(Agent.id == agent_id, Agent.tenant_id == tenant_id))
         except (DataError, SQLAlchemyError) as exc:

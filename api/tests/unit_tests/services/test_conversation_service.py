@@ -332,9 +332,7 @@ class TestConversationServiceConversationalVariable:
 
     @patch("services.conversation_service.ConversationService.get_conversation")
     @patch("services.conversation_service.dify_config")
-    def test_get_conversational_variable_with_name_filter_mysql(
-        self, mock_config, mock_get_conversation
-    ):
+    def test_get_conversational_variable_with_name_filter_mysql(self, mock_config, mock_get_conversation):
         """
         Test variable filtering by name for MySQL databases.
 
