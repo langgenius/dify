@@ -21,6 +21,7 @@ from core.repositories.human_input_repository import (
     _InvalidTimeoutStatusError,
     _WorkspaceMemberInfo,
 )
+from core.workflow.human_input import HumanInputFormKind, HumanInputFormStatus, HumanInputNodeData, UserActionConfig
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -29,8 +30,6 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
     WebAppDeliveryMethod,
 )
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import HumanInputFormRecipient, RecipientType
 

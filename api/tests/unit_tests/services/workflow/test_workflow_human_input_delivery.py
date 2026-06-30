@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import sessionmaker
 
+from core.workflow.human_input import HumanInputNodeData
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -13,7 +14,6 @@ from core.workflow.human_input_adapter import (
     MemberRecipient,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import HumanInputNodeData
 from services import workflow_service as workflow_service_module
 from services.workflow_service import WorkflowService
 

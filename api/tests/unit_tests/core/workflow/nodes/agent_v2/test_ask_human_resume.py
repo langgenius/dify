@@ -6,13 +6,12 @@ from datetime import datetime
 
 from dify_agent.layers.ask_human import AskHumanToolResult
 
+from core.workflow.human_input import FormDefinition, HumanInputFormStatus, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.agent_v2.ask_human_resume import (
     build_deferred_tool_results,
     map_form_to_outcome,
 )
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormStatus
+from graphon.entities.pause_reason import HitlRequired
 
 
 def _form_definition_json() -> str:
@@ -91,12 +90,10 @@ def test_map_waiting_form_rebuilds_pause() -> None:
 
     assert outcome.deferred_result is None
     pause = outcome.repause
-    assert isinstance(pause, HumanInputRequired)
-    assert pause.form_id == "form-1"
+    assert isinstance(pause, HitlRequired)
+    assert pause.session_id == "form-1"
     assert pause.node_id == "node-1"
     assert pause.node_title == "Budget review"
-    assert [a.id for a in pause.actions] == ["approve", "reject"]
-    assert [i.output_variable_name for i in pause.inputs] == ["note"]
 
 
 def test_map_submitted_without_action_id() -> None:

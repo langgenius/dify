@@ -5,7 +5,7 @@ from datetime import timedelta
 from decimal import Decimal
 from uuid import uuid4
 
-from graphon.nodes.human_input.entities import FormDefinition, UserActionConfig
+from core.workflow.human_input import FormDefinition, UserActionConfig
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, InvokeFrom

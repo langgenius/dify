@@ -4,8 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from graphon.nodes.human_input.entities import FormInputConfig
-from graphon.nodes.human_input.enums import TimeoutUnit
+from core.workflow.human_input import FormInputConfig, TimeoutUnit
 from libs.datetime_utils import naive_utc_now
 
 

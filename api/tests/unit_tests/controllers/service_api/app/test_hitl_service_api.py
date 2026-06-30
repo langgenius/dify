@@ -29,13 +29,12 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
+from core.workflow.human_input import FormInputType, ParagraphInputConfig, UserActionConfig
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
-from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
+from graphon.entities.pause_reason import HitlRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
-from graphon.nodes.human_input.enums import FormInputType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.enums import CreatorUserRole
@@ -154,7 +153,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
     workflow_run_id: str
     paused_at_value: datetime
-    pause_reasons: Sequence[HumanInputRequired]
+    pause_reasons: Sequence[HitlRequired]
 
     @property
     @override
@@ -181,7 +180,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
         return self.paused_at_value
 
     @override
-    def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
+    def get_pause_reasons(self) -> Sequence[HitlRequired]:
         return self.pause_reasons
 
 
@@ -598,21 +597,10 @@ class TestHitlServiceApi:
             },
         )
 
-        reason = HumanInputRequired(
-            form_id="form-1",
-            form_content="Rendered",
-            inputs=[
-                ParagraphInputConfig(
-                    type=FormInputType.PARAGRAPH,
-                    output_variable_name="field",
-                    default=None,
-                ),
-            ],
-            actions=[UserActionConfig(id="approve", title="Approve")],
-            display_in_ui=True,
+        reason = HitlRequired(
+            session_id="hi::form-1",
             node_id="node-id",
             node_title="Human Step",
-            form_token="token",
         )
         queue_event = QueueWorkflowPausedEvent(
             reasons=[reason],
@@ -682,12 +670,10 @@ class TestHitlServiceApi:
             workflow_run_id="run-1",
             paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
             pause_reasons=[
-                HumanInputRequired(
-                    form_id="form-1",
-                    form_content="content",
+                HitlRequired(
+                    session_id="hi::form-1",
                     node_id="node-1",
                     node_title="Human Input",
-                    form_token="wtok",
                 )
             ],
         )

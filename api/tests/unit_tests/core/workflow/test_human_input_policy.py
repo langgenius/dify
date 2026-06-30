@@ -1,13 +1,12 @@
 import pytest
 
+from core.workflow.human_input import SelectInputConfig, StringListSource, ValueSourceType
 from core.workflow.human_input_policy import (
     HumanInputSurface,
     get_preferred_form_token,
     is_recipient_type_allowed_for_surface,
     resolve_variable_select_input_options,
 )
-from graphon.nodes.human_input.entities import SelectInputConfig, StringListSource
-from graphon.nodes.human_input.enums import ValueSourceType
 from graphon.runtime import VariablePool
 from models.human_input import RecipientType
 

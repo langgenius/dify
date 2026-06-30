@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 import controllers.web.human_input_file_upload as human_input_file_upload_module
+from core.workflow.human_input import FileInputConfig, HumanInputFormKind, HumanInputNodeData
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -17,8 +18,6 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import FileInputConfig, HumanInputNodeData
-from graphon.nodes.human_input.enums import HumanInputFormKind
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, HumanInputFormUploadFile
 from models.model import App, AppMode, UploadFile

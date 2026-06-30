@@ -6,8 +6,7 @@ from typing import cast
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from graphon.nodes.human_input.entities import FormDefinition, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.human_input import FormDefinition, HumanInputFormStatus, UserActionConfig
 from libs.datetime_utils import naive_utc_now
 from models.execution_extra_content import HumanInputContent as HumanInputContentModel
 from models.human_input import HumanInputForm

@@ -4,7 +4,7 @@ from core.entities.execution_extra_content import (
     HumanInputFormDefinition,
     HumanInputFormSubmissionData,
 )
-from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
+from core.workflow.human_input import ParagraphInputConfig, UserActionConfig
 from models.execution_extra_content import ExecutionContentType
 
 

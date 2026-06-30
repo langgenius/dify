@@ -10,15 +10,14 @@ from flask import Flask
 
 from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
-from core.workflow.human_input import session_binding
-from graphon.entities.pause_reason import HumanInputRequired
+from core.workflow.human_input import ParagraphInputConfig, UserActionConfig, session_binding
+from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
 from models.workflow import WorkflowRun
 
 
 class _PauseEntity:
-    def __init__(self, paused_at: datetime, reasons: list[HumanInputRequired]):
+    def __init__(self, paused_at: datetime, reasons: list[HitlRequired]):
         self.paused_at = paused_at
         self._reasons = reasons
 
@@ -36,11 +35,8 @@ def test_pause_details_resolves_session_id_before_loading_tokens(app: Flask, mon
     fake_db = SimpleNamespace(engine=Mock(), session=SimpleNamespace(get=lambda *_: workflow_run))
     monkeypatch.setattr(workflow_run_module, "db", fake_db)
 
-    reason = HumanInputRequired(
-        form_id="session-1",
-        form_content="content",
-        inputs=[ParagraphInputConfig(output_variable_name="name")],
-        actions=[UserActionConfig(id="approve", title="Approve")],
+    reason = HitlRequired(
+        session_id="session-1",
         node_id="node-1",
         node_title="Ask Name",
     )

@@ -12,6 +12,14 @@ from dify_agent.protocol import DeferredToolCallPayload
 
 import core.workflow.nodes.agent_v2.ask_human_hitl as ask_human_hitl_module
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepository
+from core.workflow.human_input import (
+    ButtonStyle,
+    FileInputConfig,
+    FileListInputConfig,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    TimeoutUnit,
+)
 from core.workflow.human_input_adapter import (
     EmailDeliveryMethod,
     ExternalRecipient,
@@ -24,13 +32,6 @@ from core.workflow.nodes.agent_v2.ask_human_hitl import (
     build_delivery_methods,
     parse_ask_human_args,
 )
-from graphon.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    ParagraphInputConfig,
-    SelectInputConfig,
-)
-from graphon.nodes.human_input.enums import ButtonStyle, TimeoutUnit
 from models.agent_config_entities import AgentHumanContactConfig
 
 
@@ -252,17 +253,17 @@ def test_pause_reason_builds_form_and_returns_human_input_required() -> None:
     )
 
     assert result is not None
-    assert result.form_id == "form-xyz"
+    assert result.session_id == "form-xyz"
     assert result.node_id == "node-1"
     assert result.node_title == "Approve?"  # args.title wins over default
-    assert [i.output_variable_name for i in result.inputs] == ["note"]
-    assert [a.id for a in result.actions] == ["ok"]
 
     params: FormCreateParams = repo.create_form.call_args.args[0]
     assert params.workflow_execution_id == "wf-1"
     assert params.node_id == "node-1"
     # No conversation_id passed -> pure workflow run owns the form by workflow_run_id only.
     assert params.conversation_id is None
+    assert [i.output_variable_name for i in params.form_config.inputs] == ["note"]
+    assert [a.id for a in params.form_config.user_actions] == ["ok"]
     assert any(isinstance(m, EmailDeliveryMethod) for m in params.delivery_methods)
 
 
@@ -317,7 +318,7 @@ def test_pause_reason_uses_session_binding_form_id(monkeypatch: pytest.MonkeyPat
     )
 
     assert result is not None
-    assert result.form_id == "session::form-xyz"
+    assert result.session_id == "session::form-xyz"
 
 
 def test_pause_reason_select_default_flows_into_resolved_defaults() -> None:
@@ -344,7 +345,8 @@ def test_pause_reason_select_default_flows_into_resolved_defaults() -> None:
         repository=repo,
     )
     assert result is not None
-    assert result.resolved_default_values == {"tier": "t1"}
+    params: FormCreateParams = repo.create_form.call_args.args[0]
+    assert params.resolved_default_values == {"tier": "t1"}
 
 
 def test_pause_reason_wraps_repository_value_error() -> None:

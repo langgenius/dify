@@ -21,6 +21,7 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
+from core.workflow.human_input import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -40,7 +41,6 @@ from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPol
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
-from graphon.nodes.human_input.entities import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from graphon.nodes.llm.runtime_protocols import LLMPollingCapableProtocol
 from graphon.nodes.tool.entities import ToolNodeData, ToolProviderType
 from graphon.variables.segments import ArrayFileSegment, FileSegment

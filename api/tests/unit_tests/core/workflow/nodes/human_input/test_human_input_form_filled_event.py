@@ -3,6 +3,16 @@ from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import Any
 
+from core.workflow.human_input import (
+    FileInputConfig,
+    FileListInputConfig,
+    HumanInputFormStatus,
+    HumanInputNodeData,
+    ParagraphInputConfig,
+    SelectInputConfig,
+    StringListSource,
+    UserActionConfig,
+)
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import default_system_variables
@@ -14,16 +24,6 @@ from graphon.graph_events import (
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
-from graphon.nodes.human_input.entities import (
-    FileInputConfig,
-    FileListInputConfig,
-    HumanInputNodeData,
-    ParagraphInputConfig,
-    SelectInputConfig,
-    StringListSource,
-    UserActionConfig,
-)
-from graphon.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool
