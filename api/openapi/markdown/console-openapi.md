@@ -14303,12 +14303,6 @@ AppMCPServer Status Enum
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
-#### AppSelectorScope
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| AppSelectorScope | string |  |  |
-
 #### AppSiteResponse
 
 | Name | Type | Description | Required |
@@ -15853,12 +15847,6 @@ Model class for provider custom model configuration.
 | start_node_id | string |  | Yes |
 | start_node_title | string |  | Yes |
 
-#### DebugPermission
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| DebugPermission | string |  |  |
-
 #### DeclaredArrayItem
 
 Per-item shape for an ``array``-typed declared output.
@@ -16294,32 +16282,13 @@ Request payload for bulk downloading documents as a zip archive.
 | plugin_unique_identifier | string |  | Yes |
 | settings | object |  | Yes |
 
-#### EndpointDeclaration
-
-declaration of an endpoint
+#### EndpointDeclarationResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | hidden | boolean |  | No |
 | method | string |  | Yes |
 | path | string |  | Yes |
-
-#### EndpointEntityWithInstance
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| created_at | dateTime |  | Yes |
-| declaration | [EndpointProviderDeclaration](#endpointproviderdeclaration) |  | No |
-| enabled | boolean |  | Yes |
-| expired_at | dateTime |  | Yes |
-| hook_id | string |  | Yes |
-| id | string |  | Yes |
-| name | string |  | Yes |
-| plugin_id | string |  | Yes |
-| settings | object |  | Yes |
-| tenant_id | string |  | Yes |
-| updated_at | dateTime |  | Yes |
-| url | string |  | Yes |
 
 #### EndpointIdPayload
 
@@ -16335,6 +16304,23 @@ declaration of an endpoint
 | page_size | integer |  | Yes |
 | plugin_id | string |  | Yes |
 
+#### EndpointListItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime |  | Yes |
+| declaration | [EndpointProviderDeclarationResponse](#endpointproviderdeclarationresponse) |  | No |
+| enabled | boolean |  | Yes |
+| expired_at | dateTime |  | Yes |
+| hook_id | string |  | Yes |
+| id | string |  | Yes |
+| name | string |  | Yes |
+| plugin_id | string |  | Yes |
+| settings | object |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| url | string |  | Yes |
+
 #### EndpointListQuery
 
 | Name | Type | Description | Required |
@@ -16346,16 +16332,52 @@ declaration of an endpoint
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| endpoints | [ [EndpointEntityWithInstance](#endpointentitywithinstance) ] | Endpoint information | Yes |
+| endpoints | [ [EndpointListItemResponse](#endpointlistitemresponse) ] | Endpoint information | Yes |
 
-#### EndpointProviderDeclaration
-
-declaration of an endpoint group
+#### EndpointProviderConfigI18nResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| endpoints | [ [EndpointDeclaration](#endpointdeclaration) ] |  | No |
-| settings | [ [ProviderConfig](#providerconfig) ] |  | No |
+| en_US | string |  | Yes |
+| ja_JP | string |  | No |
+| pt_BR | string |  | No |
+| zh_Hans | string |  | No |
+
+#### EndpointProviderConfigOptionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | Yes |
+| value | string |  | Yes |
+
+#### EndpointProviderConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | No |
+| label | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | No |
+| multiple | boolean |  | No |
+| name | string |  | Yes |
+| options | [ [EndpointProviderConfigOptionResponse](#endpointproviderconfigoptionresponse) ] |  | No |
+| placeholder | [EndpointProviderConfigI18nResponse](#endpointproviderconfigi18nresponse) |  | No |
+| required | boolean |  | No |
+| scope | [EndpointProviderConfigScope](#endpointproviderconfigscope) |  | No |
+| type | [ProviderConfigType](#providerconfigtype) |  | Yes |
+| url | string |  | No |
+
+#### EndpointProviderConfigScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EndpointProviderConfigScope | string |  |  |
+
+#### EndpointProviderDeclarationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| endpoints | [ [EndpointDeclarationResponse](#endpointdeclarationresponse) ] |  | No |
+| settings | [ [EndpointProviderConfigResponse](#endpointproviderconfigresponse) ] |  | No |
 
 #### EndpointSettingsPayload
 
@@ -17104,12 +17126,6 @@ Input field definition for snippet parameters.
 | required | boolean |  | No |
 | type | string |  | No |
 
-#### InstallPermission
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| InstallPermission | string |  |  |
-
 #### InstalledAppCreatePayload
 
 | Name | Type | Description | Required |
@@ -17402,7 +17418,7 @@ Enum class for large language model mode.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
-| tenant_id | string |  | No |
+| tenant_id | string |  | Yes |
 
 #### MemberBindingsResponse
 
@@ -17691,12 +17707,6 @@ Enum class for model property key.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
-
-#### ModelSelectorScope
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ModelSelectorScope | string |  |  |
 
 #### ModelStatus
 
@@ -18005,13 +18015,6 @@ Coarse node-level status used by Inspector to pick a banner.
 | ---- | ---- | ----------- | -------- |
 | OpaqueObjectResponse | object |  |  |
 
-#### Option
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| label | [I18nObject](#i18nobject) | The label of the option | Yes |
-| value | string | The value of the option | Yes |
-
 #### OutputErrorStrategy
 
 Per-output failure handling strategy.
@@ -18159,13 +18162,13 @@ Enum class for parameter type.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_upgrade | [PluginAutoUpgradeSettingsPayload](#pluginautoupgradesettingspayload) |  | Yes |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 
 #### ParserAutoUpgradeFetch
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 
 #### ParserCreateCredential
 
@@ -18263,7 +18266,7 @@ Enum class for parameter type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 | plugin_id | string |  | Yes |
 
 #### ParserGetCredentials
@@ -18351,8 +18354,8 @@ Enum class for parameter type.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | No |
-| install_permission | [InstallPermission](#installpermission) |  | No |
+| debug_permission | [TenantPluginDebugPermission](#tenantplugindebugpermission) |  | No |
+| install_permission | [TenantPluginInstallPermission](#tenantplugininstallpermission) |  | No |
 
 #### ParserPluginIdentifierQuery
 
@@ -18561,7 +18564,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | auto_upgrade | [PluginAutoUpgradeSettingsResponseModel](#pluginautoupgradesettingsresponsemodel) |  | Yes |
-| category | [PluginCategory](#plugincategory) |  | Yes |
+| category | [TenantPluginAutoUpgradeCategory](#tenantpluginautoupgradecategory) |  | Yes |
 
 #### PluginAutoUpgradeSettingsPayload
 
@@ -18569,8 +18572,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | exclude_plugins | [ string ] |  | No |
 | include_plugins | [ string ] |  | No |
-| strategy_setting | [StrategySetting](#strategysetting) |  | No |
-| upgrade_mode | [UpgradeMode](#upgrademode) |  | No |
+| strategy_setting | [TenantPluginAutoUpgradeStrategySetting](#tenantpluginautoupgradestrategysetting) |  | No |
+| upgrade_mode | [TenantPluginAutoUpgradeMode](#tenantpluginautoupgrademode) |  | No |
 | upgrade_time_of_day | integer |  | No |
 
 #### PluginAutoUpgradeSettingsResponseModel
@@ -18579,8 +18582,8 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | exclude_plugins | [ string ] |  | Yes |
 | include_plugins | [ string ] |  | Yes |
-| strategy_setting | [StrategySetting](#strategysetting) |  | Yes |
-| upgrade_mode | [UpgradeMode](#upgrademode) |  | Yes |
+| strategy_setting | [TenantPluginAutoUpgradeStrategySetting](#tenantpluginautoupgradestrategysetting) |  | Yes |
+| upgrade_mode | [TenantPluginAutoUpgradeMode](#tenantpluginautoupgrademode) |  | Yes |
 | upgrade_time_of_day | integer |  | Yes |
 
 #### PluginCategory
@@ -18702,8 +18705,14 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
-| type | [Type](#type) |  | Yes |
+| type | [PluginDependencyType](#plugindependencytype) |  | Yes |
 | value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+
+#### PluginDependencyType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginDependencyType | string |  |  |
 
 #### PluginDynamicOptionsResponse
 
@@ -18772,15 +18781,15 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | Yes |
-| install_permission | [InstallPermission](#installpermission) |  | Yes |
+| debug_permission | [TenantPluginDebugPermission](#tenantplugindebugpermission) |  | Yes |
+| install_permission | [TenantPluginInstallPermission](#tenantplugininstallpermission) |  | Yes |
 
 #### PluginPermissionSettingsPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| debug_permission | [DebugPermission](#debugpermission) |  | No |
-| install_permission | [InstallPermission](#installpermission) |  | No |
+| debug_permission | [TenantPluginDebugPermission](#tenantplugindebugpermission) |  | No |
+| install_permission | [TenantPluginInstallPermission](#tenantplugininstallpermission) |  | No |
 
 #### PluginReadmeResponse
 
@@ -18847,23 +18856,11 @@ Dataset Process Rule Mode
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
 
-#### ProviderConfig
-
-Model class for common provider settings like credentials
+#### ProviderConfigType
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| default | integer<br>string<br>number<br>boolean |  | No |
-| help | [I18nObject](#i18nobject) |  | No |
-| label | [I18nObject](#i18nobject) |  | No |
-| multiple | boolean |  | No |
-| name | string | The name of the credentials | Yes |
-| options | [ [Option](#option) ] |  | No |
-| placeholder | [I18nObject](#i18nobject) |  | No |
-| required | boolean |  | No |
-| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
-| type | [Type](#type) | The type of the credentials | Yes |
-| url | string |  | No |
+| ProviderConfigType | string |  |  |
 
 #### ProviderCredentialResponse
 
@@ -19947,12 +19944,6 @@ Query parameters for listing snippet published workflows.
 | paused | integer |  | Yes |
 | success | integer |  | Yes |
 
-#### StrategySetting
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| StrategySetting | string |  |  |
-
 #### StringListSource
 
 | Name | Type | Description | Required |
@@ -20178,6 +20169,36 @@ Tag type
 | ---- | ---- | ----------- | -------- |
 | workspaces | [ [TenantListItemResponse](#tenantlistitemresponse) ] |  | Yes |
 
+#### TenantPluginAutoUpgradeCategory
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginAutoUpgradeCategory | string |  |  |
+
+#### TenantPluginAutoUpgradeMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginAutoUpgradeMode | string |  |  |
+
+#### TenantPluginAutoUpgradeStrategySetting
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginAutoUpgradeStrategySetting | string |  |  |
+
+#### TenantPluginDebugPermission
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginDebugPermission | string |  |  |
+
+#### TenantPluginInstallPermission
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TenantPluginInstallPermission | string |  |  |
+
 #### TextContentResponse
 
 | Name | Type | Description | Required |
@@ -20286,12 +20307,6 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ToolProviderType | string | Enum class for tool provider |  |
-
-#### ToolSelectorScope
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| ToolSelectorScope | string |  |  |
 
 #### TraceAppConfigResponse
 
@@ -20583,12 +20598,6 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
 
-#### Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| Type | string |  |  |
-
 #### UnaddedModelConfiguration
 
 Model class for provider unadded model configuration.
@@ -20628,12 +20637,6 @@ Payload for updating a snippet.
 | description | string |  | No |
 | icon_info | [IconInfo](#iconinfo) |  | No |
 | name | string |  | No |
-
-#### UpgradeMode
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| UpgradeMode | string |  |  |
 
 #### UploadConfig
 

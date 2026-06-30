@@ -163,9 +163,7 @@ class PluginPermissionSettingsPayload(BaseModel):
 
 
 class PluginAutoUpgradeSettingsPayload(BaseModel):
-    strategy_setting: TenantPluginAutoUpgradeStrategySetting = (
-        TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
-    )
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting = TenantPluginAutoUpgradeStrategySetting.FIX_ONLY
     upgrade_time_of_day: int = 0
     upgrade_mode: TenantPluginAutoUpgradeMode = TenantPluginAutoUpgradeMode.EXCLUDE
     exclude_plugins: list[str] = Field(default_factory=list)

@@ -431,9 +431,9 @@ class DeprecatedEndpointDeleteApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        return SuccessResponse(
-            success=_delete_endpoint_from_payload(tenant_id=tenant_id, user_id=user_id)
-        ).model_dump(mode="json")
+        return SuccessResponse(success=_delete_endpoint_from_payload(tenant_id=tenant_id, user_id=user_id)).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/workspaces/current/endpoints/update")
@@ -463,9 +463,9 @@ class DeprecatedEndpointUpdateApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def post(self, tenant_id: str, user_id: str):
-        return SuccessResponse(
-            success=_legacy_update_endpoint(tenant_id=tenant_id, user_id=user_id)
-        ).model_dump(mode="json")
+        return SuccessResponse(success=_legacy_update_endpoint(tenant_id=tenant_id, user_id=user_id)).model_dump(
+            mode="json"
+        )
 
 
 @console_ns.route("/workspaces/current/endpoints/enable")
