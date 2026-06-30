@@ -874,6 +874,7 @@ def test_composer_save_helpers_create_and_rebind_agents(monkeypatch: pytest.Monk
             "account_id": "account-1",
             "agent_soul": payload.agent_soul,
             "node_job": payload.node_job,
+            "session": composer_service.db.session,
         }
     ]
 
@@ -1540,7 +1541,7 @@ def test_composer_create_agents_syncs_active_config_has_model(monkeypatch: pytes
     )
 
     class FakeAppService:
-        def create_app(self, tenant_id, params, account):
+        def create_app(self, tenant_id, params, account, session):
             created_apps.append((tenant_id, params, account))
             return SimpleNamespace(id="app-agent-1")
 
@@ -1624,7 +1625,7 @@ def test_composer_create_roster_agent_rolls_back_name_conflict(monkeypatch: pyte
     monkeypatch.setattr(composer_service.db, "session", fake_session)
 
     class FakeAppService:
-        def create_app(self, tenant_id, params, account):
+        def create_app(self, tenant_id, params, account, session):
             raise IntegrityError("insert apps", params, Exception("duplicate"))
 
     monkeypatch.setattr(composer_service, "AppService", FakeAppService)
@@ -1649,7 +1650,7 @@ def test_composer_create_roster_agent_raises_when_backing_agent_missing(monkeypa
     monkeypatch.setattr(composer_service.db, "session", fake_session)
 
     class FakeAppService:
-        def create_app(self, tenant_id, params, account):
+        def create_app(self, tenant_id, params, account, session):
             return SimpleNamespace(id="app-agent-1")
 
     class FakeAgentRosterService:
@@ -2941,7 +2942,7 @@ class TestAgentAppBackingAgent:
         captured: dict[str, object] = {}
 
         class FakeAppService:
-            def create_app(self, tenant_id: str, params, account: object) -> object:
+            def create_app(self, tenant_id: str, params, account: object, session: object) -> object:
                 captured["tenant_id"] = tenant_id
                 captured["params"] = params
                 captured["account"] = account
@@ -3010,7 +3011,7 @@ class TestAgentAppBackingAgent:
         captured: dict[str, object] = {}
 
         class FakeAppService:
-            def create_app(self, tenant_id: str, params, account: object) -> object:
+            def create_app(self, tenant_id: str, params, account: object, session: object) -> object:
                 captured["params"] = params
                 return target_app
 
@@ -3072,7 +3073,7 @@ class TestAgentAppBackingAgent:
         monkeypatch.setattr(service, "_next_duplicate_agent_name", lambda **_: "Iris copy")
 
         class FakeAppService:
-            def create_app(self, tenant_id: str, params, account: object) -> object:
+            def create_app(self, tenant_id: str, params, account: object, session: object) -> object:
                 return target_app
 
         access_mode_updates = []
@@ -4450,7 +4451,7 @@ def test_save_workflow_composer_reports_drive_mentions_for_inline_node_job_only(
     )
     guarded: dict[str, str] = {}
 
-    def fake_collect(cls, *, tenant_id, payload, agent_id=None):
+    def fake_collect(cls, *, tenant_id, payload, agent_id=None, session=None):
         guarded["tenant_id"] = tenant_id
         guarded["agent_id"] = agent_id
         return {"warnings": [{"code": "mention_target_missing", "id": "files/sample.pdf"}]}
@@ -4513,7 +4514,7 @@ def test_save_workflow_composer_reports_drive_mentions_for_roster_node_job_only(
     )
     captured: dict[str, str | None] = {}
 
-    def fake_collect(cls, *, tenant_id, payload, agent_id=None):
+    def fake_collect(cls, *, tenant_id, payload, agent_id=None, session=None):
         captured["agent_id"] = agent_id
         return {"warnings": []}
 

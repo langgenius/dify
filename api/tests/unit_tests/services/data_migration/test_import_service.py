@@ -118,7 +118,7 @@ def test_options_override_replaces_package_defaults():
     captured_options: list[ImportOptions] = []
 
     class StubResolver(ImportTargetResolver):
-        def resolve(self, request: ImportRequest) -> ImportTarget:
+        def resolve(self, request: ImportRequest, session) -> ImportTarget:
             return ImportTarget(
                 tenant_id="tenant-1",
                 tenant_name="target",
@@ -339,15 +339,15 @@ def test_workflow_tool_import_publishes_referenced_app_before_create(monkeypatch
             return account
 
     class PublishingImportService(MigrationImportService):
-        def _find_existing_app(self, app_id, tenant_id):
+        def _find_existing_app(self, app_id, tenant_id, session):
             return object()
 
-        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id):
+        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id, session):
             if ("created", app_id) in events:
                 return type("WorkflowToolProvider", (), {"id": workflow_tool_id or "created-workflow-tool-id"})()
             return None
 
-        def _ensure_workflow_app_is_published(self, target, account, app_id):
+        def _ensure_workflow_app_is_published(self, target, account, app_id, session):
             events.append(("published", app_id))
 
     from services.data_migration import import_service
@@ -407,13 +407,13 @@ def test_workflow_tool_import_id_follows_id_strategy(monkeypatch: pytest.MonkeyP
             return account
 
     class StrategyImportService(MigrationImportService):
-        def _find_existing_app(self, app_id, tenant_id):
+        def _find_existing_app(self, app_id, tenant_id, session):
             return object()
 
-        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id):
+        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id, session):
             return target_provider if created_kwargs else None
 
-        def _ensure_workflow_app_is_published(self, target, account, app_id):
+        def _ensure_workflow_app_is_published(self, target, account, app_id, session):
             return None
 
     from services.data_migration import import_service
@@ -473,13 +473,13 @@ def test_workflow_tool_skip_records_id_mapping(monkeypatch):
             return account
 
     class SkipImportService(MigrationImportService):
-        def _find_existing_app(self, app_id, tenant_id):
+        def _find_existing_app(self, app_id, tenant_id, session):
             return object()
 
-        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id):
+        def _find_existing_workflow_tool(self, tenant_id, workflow_tool_id, tool_name, app_id, session):
             return existing_provider
 
-        def _ensure_workflow_app_is_published(self, target, account, app_id):
+        def _ensure_workflow_app_is_published(self, target, account, app_id, session):
             return None
 
     from services.data_migration import import_service
@@ -523,7 +523,7 @@ def test_api_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
     report_items = []
 
     class ExistingApiImportService(MigrationImportService):
-        def _find_api_tool_provider(self, tenant_id, provider_name):
+            def _find_api_tool_provider(self, tenant_id, provider_name, session):
             return target_provider
 
     from services.data_migration import import_service
@@ -574,7 +574,7 @@ def test_api_tool_create_records_id_mapping(monkeypatch):
             return None
 
     class CreatedApiImportService(MigrationImportService):
-        def _find_api_tool_provider(self, tenant_id, provider_name):
+            def _find_api_tool_provider(self, tenant_id, provider_name, session):
             return target_provider
 
     from services.data_migration import import_service
@@ -680,7 +680,7 @@ def test_mcp_tool_existing_provider_records_id_mapping(monkeypatch, conflict_str
             return None
 
     class ExistingMCPImportService(MigrationImportService):
-        def _find_existing_mcp_tool(self, tenant_id, provider_id, server_identifier):
+        def _find_existing_mcp_tool(self, tenant_id, provider_id, server_identifier, session):
             return provider
 
     class StubMCPToolManageService:
@@ -743,7 +743,7 @@ def test_mcp_tool_create_records_id_mapping(monkeypatch):
             return None
 
     class CreatedMCPImportService(MigrationImportService):
-        def _find_existing_mcp_tool(self, tenant_id, provider_id, server_identifier):
+        def _find_existing_mcp_tool(self, tenant_id, provider_id, server_identifier, session):
             return provider if provider_created else None
 
     class StubMCPToolManageService:
@@ -924,7 +924,7 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
     events = []
 
     class StubResolver(ImportTargetResolver):
-        def resolve(self, request):
+        def resolve(self, request, session):
             return ImportTarget(
                 tenant_id="tenant-1",
                 tenant_name="target",
@@ -933,17 +933,19 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             )
 
     class OrderedImportService(MigrationImportService):
-        def _import_api_tools(
-            self,
-            package,
-            target,
-            options,
-            report_items,
-            id_mapping,
-            id_mapping_details,
-            source_provider_ids_by_name,
-        ):
-            events.append(("api_tools", "imported"))
+            def _import_api_tools(
+                self,
+                package,
+                target,
+                options,
+                report_items,
+                id_mapping,
+                id_mapping_details,
+                source_provider_ids_by_name,
+                *,
+                session=None,
+            ):
+                events.append(("api_tools", "imported"))
 
         def _import_workflows(
             self,
@@ -953,11 +955,12 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
             report_items,
             id_mapping,
             id_mapping_details,
-            *,
-            imported_workflow_ids=None,
-            only_app_ids=None,
-            skip_app_ids=None,
-        ):
+                *,
+                imported_workflow_ids=None,
+                only_app_ids=None,
+                skip_app_ids=None,
+                session,
+            ):
             only_app_ids = set(only_app_ids or [])
             skip_app_ids = set(skip_app_ids or [])
             for workflow_data in package.workflows:
@@ -971,11 +974,15 @@ def test_import_package_imports_workflow_tool_provider_apps_before_consumers():
                 if imported_workflow_ids is not None:
                     imported_workflow_ids.add(app_id)
 
-        def _import_workflow_tools(self, package, target, options, id_mapping, id_mapping_details, report_items):
-            events.append(("workflow_tool", package.workflow_tools[0]["id"]))
+            def _import_workflow_tools(
+                self, package, target, options, id_mapping, id_mapping_details, report_items, *, session
+            ):
+                events.append(("workflow_tool", package.workflow_tools[0]["id"]))
 
-        def _import_mcp_tools(self, package, target, options, report_items, id_mapping, id_mapping_details):
-            events.append(("mcp_tools", "imported"))
+            def _import_mcp_tools(
+                self, package, target, options, report_items, id_mapping, id_mapping_details, *, session
+            ):
+                events.append(("mcp_tools", "imported"))
 
     package = MigrationPackage.from_mapping(
         {

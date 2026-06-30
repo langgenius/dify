@@ -38,14 +38,17 @@ def test_infer_returns_suggestions_with_inferred_from(monkeypatch):
         ' "env_suggestions": [{"key": "OPENAI_API_KEY", "reason": "whisper call", "secret_likely": true}]}]}'
     )
     with patch.object(SkillToolInferenceService, "_invoke", staticmethod(lambda **kwargs: raw)):
-        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=MagicMock())
+        session = MagicMock()
+        result = service.infer(tenant_id="t-1", agent_id="a-1", slug="audio-transcribe", session=session)
 
     assert result["inferable"] is True
     tool = result["cli_tools"][0]
     assert tool["name"] == "ffmpeg"
     assert tool["inferred_from"] == "audio-transcribe"
     assert tool["env_suggestions"] == [{"key": "OPENAI_API_KEY", "reason": "whisper call", "secret_likely": True}]
-    drive.preview.assert_called_once_with(tenant_id="t-1", agent_id="a-1", key="audio-transcribe/SKILL.md")
+    drive.preview.assert_called_once_with(
+        tenant_id="t-1", agent_id="a-1", key="audio-transcribe/SKILL.md", session=session
+    )
 
 
 def test_infer_threads_skill_md_into_the_prompt(monkeypatch):

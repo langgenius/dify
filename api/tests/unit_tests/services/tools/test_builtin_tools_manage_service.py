@@ -368,7 +368,7 @@ class TestGetBuiltinToolProviderCredentials:
         mock_db.session.no_autoflush.__exit__ = MagicMock(return_value=False)
         mock_db.session.scalars.return_value.all.return_value = []
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", session=MagicMock())
+        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", session=mock_db.session)
 
         assert result == []
 
@@ -391,7 +391,7 @@ class TestGetBuiltinToolProviderCredentials:
         credential_entity = MagicMock()
         mock_transform.convert_builtin_provider_to_credential_entity.return_value = credential_entity
 
-        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", session=MagicMock())
+        result = BuiltinToolManageService.get_builtin_tool_provider_credentials("t", "google", session=mock_db.session)
 
         assert len(result) == 1
         assert result[0] is credential_entity

@@ -97,9 +97,9 @@ def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
 class RagPipelineService:
     _session: Session | scoped_session
 
-    def __init__(self, session: Session | scoped_session | None = None, session_maker: sessionmaker | None = None):
+    def __init__(self, session: Session | scoped_session, session_maker: sessionmaker | None = None):
         """Initialize RagPipelineService with repository dependencies."""
-        self._session = session or db.session
+        self._session = session
         if session_maker is None:
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(

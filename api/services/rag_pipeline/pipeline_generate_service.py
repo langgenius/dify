@@ -35,7 +35,7 @@ class PipelineGenerateService:
         :return:
         """
         try:
-            workflow = cls._get_workflow(pipeline, invoke_from)
+            workflow = cls._get_workflow(pipeline, invoke_from, session)
             if original_document_id := args.get("original_document_id"):
                 # update document status to waiting
                 cls.update_document_status(original_document_id, session=session)
@@ -65,9 +65,9 @@ class PipelineGenerateService:
 
     @classmethod
     def generate_single_iteration(
-        cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, streaming: bool = True
+        cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True
     ):
-        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER)
+        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
             PipelineGenerator().single_iteration_generate(
                 pipeline=pipeline, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
@@ -75,8 +75,8 @@ class PipelineGenerateService:
         )
 
     @classmethod
-    def generate_single_loop(cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, streaming: bool = True):
-        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER)
+    def generate_single_loop(cls, pipeline: Pipeline, user: Account, node_id: str, args: Any, session: Session, streaming: bool = True):
+        workflow = cls._get_workflow(pipeline, InvokeFrom.DEBUGGER, session)
         return PipelineGenerator.convert_to_event_stream(
             PipelineGenerator().single_loop_generate(
                 pipeline=pipeline, workflow=workflow, node_id=node_id, user=user, args=args, streaming=streaming
@@ -84,14 +84,14 @@ class PipelineGenerateService:
         )
 
     @classmethod
-    def _get_workflow(cls, pipeline: Pipeline, invoke_from: InvokeFrom) -> Workflow:
+    def _get_workflow(cls, pipeline: Pipeline, invoke_from: InvokeFrom, session: Session | scoped_session) -> Workflow:
         """
         Get workflow
         :param pipeline: pipeline
         :param invoke_from: invoke from
         :return:
         """
-        rag_pipeline_service = RagPipelineService()
+        rag_pipeline_service = RagPipelineService(session)
         if invoke_from == InvokeFrom.DEBUGGER:
             # fetch draft workflow by app_model
             workflow = rag_pipeline_service.get_draft_workflow(pipeline=pipeline)

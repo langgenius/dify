@@ -373,7 +373,7 @@ class TestAgentAppType:
                         "use_icon_as_answer_icon": False,
                         "max_active_requests": 0,
                     },
-                    session=MagicMock(),
+                    session=mock_db.session,
                 )
 
         mock_db.session.rollback.assert_called_once()
@@ -396,7 +396,7 @@ class TestAgentAppType:
             patch("services.app_service.remove_app_and_related_data_task"),
         ):
             mock_db.session.scalar.return_value = backing_agent
-            AppService().delete_app(app, session=MagicMock())  # type: ignore[arg-type]
+            AppService().delete_app(app, session=mock_db.session)  # type: ignore[arg-type]
 
         assert backing_agent.status == AgentStatus.ARCHIVED
         assert backing_agent.archived_by == "account-2"

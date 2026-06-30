@@ -685,7 +685,7 @@ class TestSegmentServiceMutations:
             mock_db.session,
             True,
         )
-        update_summary.assert_called_once_with(segment, dataset, "new summary")
+        update_summary.assert_called_once_with(segment, dataset, "new summary", session=mock_db.session)
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_auto_regenerates_summary_after_content_change(self, account_context):
@@ -724,7 +724,7 @@ class TestSegmentServiceMutations:
         assert segment.tokens == 9
         assert document.word_count == 18
         vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset)
-        generate_summary.assert_called_once_with(segment, dataset, {"enable": True})
+        generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=mock_db.session)
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_regenerates_summary_when_manual_summary_is_unchanged(self, account_context):
@@ -759,7 +759,7 @@ class TestSegmentServiceMutations:
             result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
 
         assert result is refreshed_segment
-        generate_summary.assert_called_once_with(segment, dataset, {"enable": True})
+        generate_summary.assert_called_once_with(segment, dataset, {"enable": True}, session=mock_db.session)
         update_summary.assert_not_called()
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
@@ -1065,7 +1065,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             mock_db.session,
             True,
         )
-        update_summary.assert_called_once_with(segment, dataset, "new summary")
+        update_summary.assert_called_once_with(segment, dataset, "new summary", session=mock_db.session)
         vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_same_content_parent_child_marks_segment_error_for_non_high_quality_dataset(

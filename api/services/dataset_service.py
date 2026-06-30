@@ -852,7 +852,7 @@ class DatasetService:
             return
 
         try:
-            rag_pipeline_service = RagPipelineService()
+            rag_pipeline_service = RagPipelineService(session)
             published_workflow = rag_pipeline_service.get_published_workflow(pipeline)
             draft_workflow = rag_pipeline_service.get_draft_workflow(pipeline)
 
