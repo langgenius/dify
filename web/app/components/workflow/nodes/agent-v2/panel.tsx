@@ -1,12 +1,16 @@
-import type { AgentComposerBindingResponse } from '@dify/contracts/api/console/apps/types.gen'
+import type { AgentComposerBindingResponse, DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
 import type { AgentRosterNodeData } from '../../block-selector/types'
 import type { NodePanelProps } from '../../types'
 import type { AgentV2NodeType } from './types'
+import type { AgentOutputTypeOptionValue } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
 import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import {
+
+  createAgentOutputConfig,
   extractAgentOutputNames,
   replaceAgentOutputName,
 } from '@/app/components/base/prompt-editor/plugins/agent-output-block/utils'
@@ -17,12 +21,71 @@ import useNodeCrud from '../_base/hooks/use-node-crud'
 import { AgentAdvancedSettings } from './components/agent-advanced-settings'
 import { WorkflowInlineAgentConfigureWorkspace, WorkflowRosterAgentOrchestratePanelContent } from './components/agent-orchestrate-panel-content'
 import { AgentOutputVariables } from './components/agent-output-variables'
+import { OutputEditCard } from './components/agent-output-variables/edit-card'
+import { createDraft, isDefaultOutput } from './components/agent-output-variables/utils'
 import { AgentRosterField } from './components/agent-roster-field'
 import { AgentTaskField } from './components/agent-task-field'
 import { SaveInlineAgentToRosterDialog } from './components/save-inline-agent-to-roster-dialog'
 import { useAgentRosterDetail, useCreateInlineAgentBinding, useWorkflowInlineAgentDetail } from './hooks'
 import { getAgentV2DeclaredOutputs } from './output-variables'
 import { hasValidInlineAgentBinding } from './types'
+
+function FloatingOutputEditor({
+  editOutputName,
+  editOutputRequestKey,
+  editOutputType,
+  outputs,
+  position,
+  onCancel,
+  onChange,
+}: {
+  editOutputName?: string
+  editOutputRequestKey?: number
+  editOutputType?: AgentOutputTypeOptionValue
+  outputs: DeclaredOutputConfig[]
+  position?: { left: number, top: number }
+  onCancel: () => void
+  onChange: (outputs: DeclaredOutputConfig[]) => void
+}) {
+  if (!editOutputName || !position || typeof document === 'undefined')
+    return null
+
+  const outputIndex = outputs.findIndex(output => output.name === editOutputName)
+  const existingOutput = outputs[outputIndex]
+  if (existingOutput && isDefaultOutput(existingOutput))
+    return null
+
+  const output = existingOutput ?? createAgentOutputConfig(editOutputName, editOutputType ?? 'string')
+  const isExistingOutput = !!existingOutput
+
+  return createPortal(
+    <div
+      className="fixed z-60 w-[400px]"
+      style={{
+        left: position.left,
+        top: position.top,
+      }}
+    >
+      <OutputEditCard
+        key={`${editOutputRequestKey ?? 0}-${output.name}`}
+        editingIndex={isExistingOutput ? outputIndex : undefined}
+        existingOutputs={outputs}
+        state={{
+          ...(isExistingOutput ? { outputIndex } : {}),
+          draft: createDraft(output),
+        }}
+        onCancel={onCancel}
+        onConfirm={(nextOutput) => {
+          onChange(isExistingOutput
+            ? outputs.map((item, index) => index === outputIndex ? nextOutput : item)
+            : [...outputs, nextOutput])
+          onCancel()
+        }}
+      />
+    </div>,
+    document.body,
+  )
+}
 
 export function AgentV2Panel({
   id,
@@ -35,6 +98,7 @@ export function AgentV2Panel({
   const [isRosterAgentPanelOpen, setIsRosterAgentPanelOpen] = useState(false)
   const [isInlineAgentPanelOpenedFromTrigger, setIsInlineAgentPanelOpenedFromTrigger] = useState(false)
   const [isSaveToRosterDialogOpen, setIsSaveToRosterDialogOpen] = useState(false)
+  const [editingOutputFromTask, setEditingOutputFromTask] = useState<{ name: string, outputType: AgentOutputTypeOptionValue, position: { left: number, top: number }, requestKey: number } | null>(null)
   const [saveToRosterSessionKey, setSaveToRosterSessionKey] = useState(0)
   const { handleNodeDataUpdate, handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const openInlineAgentPanelNodeId = useStore(state => state.openInlineAgentPanelNodeId)
@@ -354,8 +418,34 @@ export function AgentV2Panel({
     )
   }, [handleNodeDataUpdateWithSyncDraft, id])
 
+  const handleEditTaskOutput = useCallback((name: string, outputType: AgentOutputTypeOptionValue) => {
+    const panelRect = drawerPortalContainerRef.current?.getBoundingClientRect()
+    const editorWidth = 400
+    const gap = 24
+    const position = {
+      left: Math.max(16, (panelRect?.left ?? 0) - editorWidth - gap),
+      top: Math.max(16, (panelRect?.top ?? 0) + 144),
+    }
+
+    setEditingOutputFromTask(current => ({
+      name,
+      outputType,
+      position,
+      requestKey: (current?.requestKey ?? 0) + 1,
+    }))
+  }, [])
+
   return (
-    <div ref={drawerPortalContainerRef} className="pt-2">
+    <div ref={drawerPortalContainerRef} className="relative pt-2">
+      <FloatingOutputEditor
+        editOutputName={editingOutputFromTask?.name}
+        editOutputRequestKey={editingOutputFromTask?.requestKey}
+        editOutputType={editingOutputFromTask?.outputType}
+        outputs={declaredOutputs}
+        position={editingOutputFromTask?.position}
+        onCancel={() => setEditingOutputFromTask(null)}
+        onChange={handleDeclaredOutputsChange}
+      />
       <div className="border-b border-divider-subtle">
         <AgentRosterField
           agent={displayedAgent}
@@ -421,6 +511,7 @@ export function AgentV2Panel({
             data={inputs}
             outputs={declaredOutputs}
             onChange={handleTaskChange}
+            onEditOutput={handleEditTaskOutput}
             onOutputsChange={handleDeclaredOutputsChange}
           />
         </div>

@@ -2,6 +2,7 @@ import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/type
 import type { GeneratorType } from '../../app/configuration/config/automatic/types'
 import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { Type } from '../../workflow/nodes/llm/types'
+import type { AgentOutputTypeOptionValue } from './plugins/agent-output-block/utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
 import type { RosterReferenceToken } from './plugins/roster-reference-block/utils'
@@ -93,6 +94,7 @@ export type AgentOutputBlockType = {
   show?: boolean
   outputs?: DeclaredOutputConfig[]
   onChange?: (outputs: DeclaredOutputConfig[], prompt?: string) => void
+  onEdit?: (name: string, outputType: AgentOutputTypeOptionValue) => void
 }
 
 export type WorkflowNodesMap = Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'> & { modelProvider?: string }>

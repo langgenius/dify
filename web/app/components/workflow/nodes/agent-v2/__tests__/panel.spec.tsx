@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import type { AgentV2NodeType } from '../types'
 import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AgentV2Panel } from '../panel'
 
@@ -1019,6 +1019,7 @@ describe('agent/panel', () => {
       outputs: expect.arrayContaining([
         expect.objectContaining({ name: 'text' }),
       ]),
+      onEdit: expect.any(Function),
     })
     expect(mockPromptEditorProps[0]?.contextBlock).toBeUndefined()
 
@@ -1031,6 +1032,67 @@ describe('agent/panel', () => {
     expect(mockEditorFocus).toHaveBeenCalled()
     expect(mockInsertNodes.mock.calls[0]?.[0]?.[0]?.getTextContent()).toBe('/')
     expect(screen.queryByRole('button', { name: 'workflow.nodes.agent.task.mention' })).not.toBeInTheDocument()
+  })
+
+  it('opens the output variable editor from an agent task output token hover', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData({
+          agent_declared_outputs: [{
+            name: 'summary',
+            type: 'string',
+            required: false,
+            description: 'Short summary',
+          }],
+        })}
+        panelProps={panelProps}
+      />,
+    )
+
+    act(() => {
+      mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('summary', 'string')
+    })
+
+    expect(screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toHaveValue('summary')
+  })
+
+  it('opens the output variable editor for a prompt token missing from declared outputs', () => {
+    render(
+      <AgentV2Panel
+        id="agent-node"
+        data={createData()}
+        panelProps={panelProps}
+      />,
+    )
+
+    act(() => {
+      mockPromptEditorProps[0]?.agentOutputBlock?.onEdit?.('qna_report', 'string')
+    })
+
+    expect(screen.getByRole('form', { name: 'workflow.nodes.agent.outputVars.editorLabel' })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'workflow.nodes.agent.outputVars.nameLabel' })).toHaveValue('qna_report')
+
+    fireEvent.click(screen.getByRole('button', { name: 'workflow.nodes.agent.outputVars.confirm' }))
+
+    expect(mockHandleNodeDataUpdateWithSyncDraft).toHaveBeenCalledWith(
+      {
+        id: 'agent-node',
+        data: expect.objectContaining({
+          agent_declared_outputs: expect.arrayContaining([
+            expect.objectContaining({
+              name: 'qna_report',
+              type: 'string',
+            }),
+          ]),
+        }),
+      },
+      expect.objectContaining({
+        sync: true,
+        notRefreshWhenSyncError: true,
+      }),
+    )
   })
 
   it('syncs declared outputs created from the agent task editor', () => {
