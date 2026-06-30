@@ -42,7 +42,9 @@ class TestRagPipelineServiceGetPipeline:
         yield
         db_session_with_containers.rollback()
 
-    def _make_service(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> RagPipelineService:
+    def _make_service(
+        self, flask_app_with_containers: Flask, db_session_with_containers: Session
+    ) -> RagPipelineService:
         with (
             patch(
                 "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",

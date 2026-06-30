@@ -194,6 +194,7 @@ class TestAnnotationImportServiceValidation:
     @pytest.fixture
     def mock_db_session(self):
         return MagicMock()
+
     def test_max_records_limit_enforced(self, mock_app, mock_db_session):
         """Test that files with too many records are rejected."""
 
@@ -268,7 +269,9 @@ class TestAnnotationImportServiceValidation:
 
                 with patch("services.annotation_service.batch_import_annotations_task") as mock_task:
                     with patch("services.annotation_service.redis_client"):
-                        result = AppAnnotationService.batch_import_app_annotations("app_id", file, session=mock_db_session)
+                        result = AppAnnotationService.batch_import_app_annotations(
+                            "app_id", file, session=mock_db_session
+                        )
 
                         # Should return success response
                         assert "job_id" in result
