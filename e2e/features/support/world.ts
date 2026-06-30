@@ -15,6 +15,7 @@ export class DifyWorld extends World {
   lastCreatedAppName: string | undefined
   lastCreatedAgentName: string | undefined
   lastCreatedAgentRole: string | undefined
+  lastAgentServiceApiBaseURL: string | undefined
   createdAppIds: string[] = []
   createdAgentIds: string[] = []
   capturedDownloads: Download[] = []
@@ -31,6 +32,7 @@ export class DifyWorld extends World {
     this.lastCreatedAppName = undefined
     this.lastCreatedAgentName = undefined
     this.lastCreatedAgentRole = undefined
+    this.lastAgentServiceApiBaseURL = undefined
     this.createdAppIds = []
     this.createdAgentIds = []
     this.capturedDownloads = []

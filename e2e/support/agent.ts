@@ -1,6 +1,7 @@
 import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from './api'
 
 export type AgentSeed = {
+  active_config_is_published?: boolean
   app_id?: string
   backing_app_id?: string
   description?: string
@@ -29,10 +30,9 @@ export type AgentBuildDraftResponse = {
 
 export type AgentApiAccess = {
   api_key_count: number
-  api_reference_url: string
-  endpoint: string
   enabled: boolean
   files_upload_endpoint: string
+  service_api_base_url: string
 }
 
 export type AgentApiKey = {
@@ -43,6 +43,24 @@ export type AgentApiKey = {
 export const defaultAgentSoulConfig: AgentSoulConfig = {
   prompt: {
     system_prompt: 'You are a Dify Agent E2E test assistant.',
+  },
+}
+
+export const normalAgentPrompt
+  = 'You are a Dify Agent E2E test assistant. Reply briefly to every user message, and always include AGENT_E2E_PASS in your response.'
+
+export const updatedAgentPrompt
+  = 'You are a Dify Agent E2E test assistant. Every response must start with E2E_AGENT_UPDATED.'
+
+export const normalAgentSoulConfig: AgentSoulConfig = {
+  prompt: {
+    system_prompt: normalAgentPrompt,
+  },
+}
+
+export const updatedAgentSoulConfig: AgentSoulConfig = {
+  prompt: {
+    system_prompt: updatedAgentPrompt,
   },
 }
 
@@ -129,6 +147,27 @@ export async function checkoutAgentBuildDraft(agentId: string): Promise<AgentBui
       data: { force: true },
     })
     await expectApiResponseOK(response, `Checkout Agent v2 build draft for ${agentId}`)
+    return (await response.json()) as AgentBuildDraftResponse
+  }
+  finally {
+    await ctx.dispose()
+  }
+}
+
+export async function saveAgentBuildDraft(
+  agentId: string,
+  agentSoul: AgentSoulConfig,
+): Promise<AgentBuildDraftResponse> {
+  const ctx = await createApiContext()
+  try {
+    const response = await ctx.put(`/console/api/agent/${agentId}/build-draft`, {
+      data: {
+        agent_soul: agentSoul,
+        save_strategy: 'save_to_current_version',
+        variant: 'agent_app',
+      },
+    })
+    await expectApiResponseOK(response, `Save Agent v2 build draft for ${agentId}`)
     return (await response.json()) as AgentBuildDraftResponse
   }
   finally {
