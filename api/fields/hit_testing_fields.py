@@ -14,7 +14,7 @@ class HitTestingQuery(ResponseModel):
 class HitTestingDocument(ResponseModel):
     id: str
     data_source_type: str
-    name: str
+    name: str | None
     doc_type: str | None
     doc_metadata: Any | None
 

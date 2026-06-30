@@ -30,7 +30,9 @@ const ResultItem = ({
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
-  const extension = document.name.split('.').slice(-1)[0] as FileAppearanceTypeEnum
+  const documentName = document.name ?? ''
+  const documentTitle = documentName || '--'
+  const extension = documentName.split('.').slice(-1)[0] as FileAppearanceTypeEnum
   const fileType = extensionToFileType(extension)
   const [isFold, {
     toggle: toggleFold,
@@ -104,7 +106,7 @@ const ResultItem = ({
         )}
       </div>
       {/* Foot */}
-      <ResultItemFooter docType={fileType} docTitle={document.name} showDetailModal={showDetailModal} />
+      <ResultItemFooter docType={fileType} docTitle={documentTitle} showDetailModal={showDetailModal} />
 
       {
         isShowDetailModal && (

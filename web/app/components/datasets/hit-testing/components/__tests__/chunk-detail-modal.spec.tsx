@@ -78,6 +78,24 @@ describe('ChunkDetailModal', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('chunkDetail')
   })
 
+  it('should render a visible fallback title when document name is null', () => {
+    const payload = makePayload({
+      segment: { document: { name: null } },
+    })
+
+    expect(() => {
+      render(<ChunkDetailModal payload={payload} onHide={onHide} />)
+    }).not.toThrow()
+
+    expect(screen.getByText('--')).toBeInTheDocument()
+    expect(screen.getByTestId('markdown')).toHaveTextContent('chunk content')
+  })
+
+  it('should render the document name when present', () => {
+    render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
+    expect(screen.getByText('file.pdf')).toBeInTheDocument()
+  })
+
   it('should render segment index tag and score', () => {
     render(<ChunkDetailModal payload={makePayload()} onHide={onHide} />)
     expect(screen.getByTestId('segment-index-tag')).toHaveTextContent('1')

@@ -325,6 +325,42 @@ class TestHitTestingApiPost:
         assert record["summary"] is None
 
     @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
+    @patch("controllers.console.datasets.hit_testing_base.HitTestingService")
+    @patch("controllers.console.datasets.hit_testing_base.DatasetService")
+    def test_post_allows_null_document_name(
+        self,
+        mock_dataset_svc,
+        mock_hit_svc,
+        mock_ns,
+        app: Flask,
+    ):
+        dataset_id = str(uuid.uuid4())
+        tenant_id = str(uuid.uuid4())
+
+        mock_dataset = self._dataset(dataset_id, tenant_id)
+        account = self._account(tenant_id)
+
+        mock_dataset_svc.get_dataset.return_value = mock_dataset
+        mock_dataset_svc.check_dataset_permission.return_value = None
+
+        record = hit_testing_record()
+        record["segment"]["document"]["name"] = None
+        mock_hit_svc.retrieve.return_value = {
+            "query": {"content": "legacy query"},
+            "records": [record],
+        }
+        mock_hit_svc.hit_testing_args_check.return_value = None
+
+        mock_ns.payload = {"query": "legacy query"}
+
+        with app.test_request_context():
+            g._login_user = account
+            api = HitTestingApi()
+            response = HitTestingApi.post.__wrapped__(api, tenant_id, dataset_id)
+
+        assert response["records"][0]["segment"]["document"]["name"] is None
+
+    @patch("controllers.service_api.dataset.hit_testing.service_api_ns")
     @patch("controllers.console.datasets.hit_testing_base.DatasetService")
     def test_post_dataset_not_found(
         self,
