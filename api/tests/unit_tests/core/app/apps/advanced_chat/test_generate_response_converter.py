@@ -13,7 +13,6 @@ from core.app.entities.task_entities import (
     NodeStartStreamResponse,
     PingStreamResponse,
 )
-from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 
 
@@ -43,7 +42,7 @@ class TestAdvancedChatGenerateResponseConverter:
             metadata={"usage": {"total_tokens": 1}},
             created_at=1,
             paused_nodes=["node-1"],
-            reasons=[{"type": PauseReasonType.HUMAN_INPUT_REQUIRED, "form_id": "form-1"}],
+            reasons=[{"TYPE": "hitl_required", "form_id": "form-1"}],
             status=WorkflowExecutionStatus.PAUSED,
             elapsed_time=0.1,
             total_tokens=0,

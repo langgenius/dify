@@ -405,10 +405,6 @@ class TestDifyNodeFactoryInit:
             ),
             patch.object(
                 node_factory,
-                "DifyHumanInputNodeRuntime",
-            ),
-            patch.object(
-                node_factory,
                 "DifyToolNodeRuntime",
                 return_value=tool_runtime,
             ),
@@ -672,9 +668,7 @@ class TestDifyNodeFactoryCreateNode:
     ) -> None:
         created_node = object()
         constructor = _node_constructor(return_value=created_node)
-        factory._build_dify_human_input_node_data_for_callback = MagicMock(
-            return_value=sentinel.callback_node_data
-        )
+        factory._build_dify_human_input_node_data_for_callback = MagicMock(return_value=sentinel.callback_node_data)
         monkeypatch.setattr(
             factory,
             "_resolve_node_class",
@@ -694,8 +688,8 @@ class TestDifyNodeFactoryCreateNode:
         monkeypatch: pytest.MonkeyPatch,
         factory,
     ) -> None:
-        factory._build_human_input_hitl_callback = node_factory.DifyNodeFactory._build_human_input_hitl_callback.__get__(
-            factory, node_factory.DifyNodeFactory
+        factory._build_human_input_hitl_callback = (
+            node_factory.DifyNodeFactory._build_human_input_hitl_callback.__get__(factory, node_factory.DifyNodeFactory)
         )
         factory.graph_init_params = SimpleNamespace(
             workflow_id="workflow-id",
