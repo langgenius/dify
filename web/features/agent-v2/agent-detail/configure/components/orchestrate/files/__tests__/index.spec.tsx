@@ -1,12 +1,9 @@
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { AgentDriveApiContextProvider } from '../../drive-context'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentFiles } from '../index'
@@ -104,38 +101,10 @@ vi.mock('@/service/client', () => ({
 
 const agentFilesDraft = {
   ...defaultAgentSoulConfigFormState,
-  files: [
-    {
-      id: 'files/agent-roster-skill-detail-dialog-preview-image.png',
-      name: 'agent-roster-skill-detail-dialog-preview-image.png',
-      icon: 'image',
-      driveKey: 'files/agent-roster-skill-detail-dialog-preview-image.png',
-    },
-    {
-      id: 'files/brief.md',
-      name: 'brief.md',
-      icon: 'markdown',
-      driveKey: 'files/brief.md',
-    },
-  ],
 } satisfies AgentSoulConfigFormState
 
 const agentSkillFilesDraft = {
   ...defaultAgentSoulConfigFormState,
-  files: [
-    {
-      id: 'files/run.py',
-      name: 'run.py',
-      icon: 'code',
-      driveKey: 'files/run.py',
-    },
-    {
-      id: 'files/SKILL.md',
-      name: 'SKILL.md',
-      icon: 'markdown',
-      driveKey: 'files/SKILL.md',
-    },
-  ],
 } satisfies AgentSoulConfigFormState
 
 function renderAgentFiles(initialDraft: AgentSoulConfigFormState = agentFilesDraft) {
@@ -197,17 +166,6 @@ function renderWorkflowAgentFiles(initialDraft: AgentSoulConfigFormState = agent
         </AgentComposerProvider>
       </AgentDriveApiContextProvider>
     </QueryClientProvider>,
-  )
-}
-
-function ConfigSnapshotProbe() {
-  const draft = useAtomValue(agentComposerDraftAtom)
-  const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
-
-  return (
-    <pre data-testid="config-snapshot-probe">
-      {JSON.stringify(configSnapshot)}
-    </pre>
   )
 }
 
@@ -306,18 +264,35 @@ describe('AgentFiles', () => {
     })
   })
 
-  it('should list Agent Soul files under the files prefix', () => {
+  it('should list Agent App drive files under the files prefix', () => {
     renderAgentFiles()
 
-    expect(screen.getByRole('button', { name: 'brief.md' })).toBeInTheDocument()
-    expect(mocks.agentDriveFilesQueryOptions).not.toHaveBeenCalled()
+    expect(mocks.agentDriveFilesQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          agent_id: 'agent-1',
+        },
+        query: {
+          prefix: 'files/',
+        },
+      },
+    })
   })
 
-  it('should list workflow-node Agent Soul files under the files prefix', () => {
+  it('should list workflow-node drive files under the files prefix', () => {
     renderWorkflowAgentFiles()
 
-    expect(screen.getByRole('button', { name: 'brief.md' })).toBeInTheDocument()
-    expect(mocks.workflowAgentDriveFilesQueryOptions).not.toHaveBeenCalled()
+    expect(mocks.workflowAgentDriveFilesQueryOptions).toHaveBeenCalledWith({
+      input: {
+        params: {
+          app_id: 'app-1',
+        },
+        query: {
+          node_id: 'node-1',
+          prefix: 'files/',
+        },
+      },
+    })
   })
 
   it('should keep the file preview trigger focus ring inside the row bounds', () => {
@@ -572,24 +547,9 @@ describe('AgentFiles', () => {
       }),
       mutationKey: ['commit-agent-file'],
     })
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-      },
+    renderAgentFiles({
+      ...defaultAgentSoulConfigFormState,
     })
-
-    render(
-      <QueryClientProvider client={queryClient}>
-        <AgentDriveApiContextProvider value={{ agentId: 'agent-1' }}>
-          <AgentComposerProvider initialDraft={defaultAgentSoulConfigFormState}>
-            <AgentFiles />
-            <ConfigSnapshotProbe />
-          </AgentComposerProvider>
-        </AgentDriveApiContextProvider>
-      </QueryClientProvider>,
-    )
 
     fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }))
     const input = document.querySelector('input[type="file"]')
@@ -616,52 +576,6 @@ describe('AgentFiles', () => {
       )
     })
     expect(await screen.findByRole('button', { name: 'uploaded.md' })).toBeInTheDocument()
-    await waitFor(() => {
-      const serializedConfig = JSON.parse(screen.getByTestId('config-snapshot-probe').textContent ?? '{}')
-      expect(serializedConfig.files.files).toEqual([
-        {
-          id: 'drive-file-1',
-          file_id: 'drive-file-1',
-          name: 'uploaded.md',
-          drive_key: 'files/uploaded.md',
-        },
-      ])
-    })
-  })
-
-  it('should upload a dropped file before committing it to the Agent App drive', async () => {
-    renderAgentFiles({
-      ...defaultAgentSoulConfigFormState,
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.add' }))
-
-    const uploadArea = screen.getByRole('group', { name: 'agentV2.agentDetail.configure.files.upload.title' })
-    const file = new File(['# Uploaded'], 'uploaded.md', { type: 'text/markdown' })
-    fireEvent.dragEnter(uploadArea, {
-      dataTransfer: {
-        files: [file],
-        types: ['Files'],
-      },
-    })
-    fireEvent.drop(uploadArea, {
-      dataTransfer: {
-        files: [file],
-        types: ['Files'],
-      },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.files.upload.action' }))
-
-    await waitFor(() => {
-      expect(mocks.uploadFileMutationFn).toHaveBeenCalledWith(
-        {
-          body: {
-            file,
-          },
-        },
-        expect.anything(),
-      )
-    })
   })
 
   it('should commit an uploaded file through workflow-node drive endpoints and refresh the list', async () => {
@@ -836,10 +750,13 @@ describe('AgentFiles', () => {
     expect(screen.getByRole('button', { name: 'brief.md' })).toBeInTheDocument()
   })
 
-  it('should render the empty state when Agent Soul has no files', () => {
-    renderAgentFiles({
-      ...defaultAgentSoulConfigFormState,
-    })
+  it('should render the empty state when the drive file query returns no items', () => {
+    mocks.agentDriveFilesQueryOptions.mockImplementation(({ input }) => ({
+      queryKey: ['agent-drive-files', input],
+      initialData: { items: [] },
+      queryFn: async () => ({ items: [] }),
+    }))
+    renderAgentFiles()
 
     expect(screen.getByText('agentV2.agentDetail.configure.files.empty.title')).toBeInTheDocument()
   })

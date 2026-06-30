@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Tarefa do agente",
   "nodes.agent.task.mention": "Mencionar",
   "nodes.agent.task.placeholder": "Descreva o que este agente deve fazer...",
-  "nodes.agent.task.tooltip": "Prompt adicional para ajudar o agente a lidar com este nó específico. Use / para fazer referência explícita a variáveis.\nSe configurado corretamente, você poderá confiar que o agente descobrirá as coisas por conta própria.",
+  "nodes.agent.task.tooltip": "Defina as instruções da tarefa que este agente deve seguir neste workflow.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Não autorizado",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} não está instalado",
   "nodes.agent.toolbox": "caixa de ferramentas",

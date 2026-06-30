@@ -1,7 +1,7 @@
 'use client'
 
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
-import type { ReactNode } from 'react'
+import type { AgentConfigurePublishPayload } from './publish-bar'
 import type { DefaultModel, Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { cn } from '@langgenius/dify-ui/cn'
 import { ScrollArea } from '@langgenius/dify-ui/scroll-area'
@@ -9,7 +9,6 @@ import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
-import { AgentOrchestrateBottomActions } from './bottom-actions'
 import { AgentDriveApiContextProvider } from './drive-context'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
@@ -36,13 +35,10 @@ type AgentOrchestratePanelProps = {
   className?: string
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
-  isBuildDraftActive?: boolean
   showHeader?: boolean
   showPublishBar?: boolean
-  headerAction?: ReactNode
-  bottomAction?: ReactNode
   onSelectModel: (model: DefaultModel) => void
-  onPublish: () => void | Promise<void>
+  onPublish: (payload: AgentConfigurePublishPayload) => void | Promise<void>
   onExitVersions?: () => void
   onOpenVersions: () => void
 }
@@ -53,7 +49,7 @@ export function AgentOrchestratePanel({
   nodeId,
   activeConfigIsPublished,
   activeConfigSnapshot,
-  agentSoulConfig: _agentSoulConfig,
+  agentSoulConfig,
   agentName,
   currentModel,
   textGenerationModelList,
@@ -62,11 +58,8 @@ export function AgentOrchestratePanel({
   className,
   readOnly = false,
   selectedVersionSnapshot,
-  isBuildDraftActive = false,
   showHeader = true,
   showPublishBar = true,
-  headerAction,
-  bottomAction,
   onSelectModel,
   onPublish,
   onExitVersions,
@@ -74,24 +67,7 @@ export function AgentOrchestratePanel({
 }: AgentOrchestratePanelProps) {
   const { t } = useTranslation('agentV2')
   const orchestrateHeadingId = 'agent-configure-orchestrate-heading'
-  const orchestrateLabel = t('agentDetail.configure.title')
-  const orchestrateBottomAction = bottomAction ?? (showPublishBar
-    ? (
-        <AgentConfigurePublishBar
-          agentId={agentId}
-          activeConfigIsPublished={activeConfigIsPublished}
-          activeConfigSnapshot={activeConfigSnapshot}
-          agentName={agentName}
-          draftSavedAt={draftSavedAt}
-          isPublishing={isPublishing}
-          selectedVersionSnapshot={selectedVersionSnapshot}
-          onPublish={onPublish}
-          onExitVersions={onExitVersions}
-          onOpenVersions={onOpenVersions}
-        />
-      )
-    : null)
-  const hasBottomAction = !!orchestrateBottomAction
+  const orchestrateLabel = t('agentDetail.configure.orchestrate')
   const driveApiContext = useMemo(() => appId && nodeId
     ? {
         agentId,
@@ -104,7 +80,7 @@ export function AgentOrchestratePanel({
 
   return (
     <div className={cn('relative flex max-w-140 min-w-90 flex-[0_0_min(41.08280255%,560px)] flex-col overflow-hidden rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg', className)}>
-      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} trailingAction={headerAction} isBuildDraftActive={isBuildDraftActive} />}
+      {showHeader && <AgentOrchestrateHeader headingId={orchestrateHeadingId} />}
 
       <AgentOrchestrateReadOnlyContext value={readOnly}>
         <div
@@ -117,8 +93,8 @@ export function AgentOrchestratePanel({
             labelledBy={showHeader ? orchestrateHeadingId : undefined}
             slotClassNames={{
               viewport: 'overscroll-contain',
-              content: cn('min-h-full px-4 py-3', hasBottomAction && 'pb-20'),
-              scrollbar: hasBottomAction ? 'z-20' : undefined,
+              content: cn('min-h-full px-4 py-3', showPublishBar && 'pb-20'),
+              scrollbar: showPublishBar ? 'z-20' : undefined,
             }}
           >
             <AgentDriveApiContextProvider value={driveApiContext}>
@@ -140,13 +116,22 @@ export function AgentOrchestratePanel({
         </div>
       </AgentOrchestrateReadOnlyContext>
 
-      {orchestrateBottomAction
-        ? (
-            <AgentOrchestrateBottomActions>
-              {orchestrateBottomAction}
-            </AgentOrchestrateBottomActions>
-          )
-        : null}
+      {showPublishBar && (
+        <AgentConfigurePublishBar
+          agentId={agentId}
+          activeConfigIsPublished={activeConfigIsPublished}
+          activeConfigSnapshot={activeConfigSnapshot}
+          agentSoulConfig={agentSoulConfig}
+          agentName={agentName}
+          currentModel={currentModel}
+          draftSavedAt={draftSavedAt}
+          isPublishing={isPublishing}
+          selectedVersionSnapshot={selectedVersionSnapshot}
+          onPublish={onPublish}
+          onExitVersions={onExitVersions}
+          onOpenVersions={onOpenVersions}
+        />
+      )}
     </div>
   )
 }

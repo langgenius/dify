@@ -288,7 +288,6 @@
   "menus.exploreMarketplace": "マーケットプレイスを探索する",
   "menus.plugins": "インテグレーション",
   "menus.roster": "エージェント名簿",
-  "menus.status": "ベータ版",
   "menus.tools": "ツール",
   "model.capabilities": "マルチモーダル機能",
   "model.params.stop_sequencesPlaceholder": "シーケンスを入力してタブキーを押してください",

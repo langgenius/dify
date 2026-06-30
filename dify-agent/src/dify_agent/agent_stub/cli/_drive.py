@@ -10,23 +10,14 @@ ToolFile ids back into the drive.
 
 from __future__ import annotations
 
+import stat
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
-from typing import ClassVar, Literal
-from zipfile import ZIP_DEFLATED, ZipFile
+from uuid import uuid4
+from zipfile import BadZipFile, ZIP_DEFLATED, ZipFile, ZipInfo
 
-from pydantic import BaseModel, ConfigDict
-
-from dify_agent.agent_stub._drive_materialization import (
-    DriveDownloadPayload,
-    DriveMaterializationTransferError,
-    DriveMaterializationValidationError,
-    SKILL_ARCHIVE_FILENAME,
-    materialize_drive_downloads,
-    resolve_drive_destination,
-)
 from dify_agent.agent_stub.cli._env import read_agent_stub_environment
 from dify_agent.agent_stub.cli._files import upload_tool_file_resource_from_environment
 from dify_agent.agent_stub.client._agent_stub import (
@@ -46,11 +37,11 @@ from dify_agent.agent_stub.protocol.agent_stub import (
 )
 
 _SKILL_MD_FILENAME = "SKILL.md"
+_SKILL_ARCHIVE_FILENAME = ".DIFY-SKILL-FULL.zip"
 _SKIP_DIR_NAMES = frozenset(
     {".git", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".venv", "node_modules"}
 )
-_SKIP_FILE_NAMES = frozenset({".DS_Store", SKILL_ARCHIVE_FILENAME})
-DrivePushKind = Literal["file", "skill", "dir"]
+_SKIP_FILE_NAMES = frozenset({".DS_Store", _SKILL_ARCHIVE_FILENAME})
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,28 +52,18 @@ class _DriveUploadItem:
     drive_key: str
 
 
-class DrivePullResult(BaseModel):
-    """Structured JSON result for ``dify-agent drive pull --json``."""
-
-    class Item(BaseModel):
-        key: str
-        local_path: str
-
-        model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    items: list[Item]
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-def list_drive_manifest_from_environment(prefix: str) -> AgentStubDriveManifestResponse:
+def list_drive_from_environment(prefix: str, json_output: bool) -> str | AgentStubDriveManifestResponse:
     """List drive items through the Agent Stub using the current environment.
 
     Args:
         prefix: Optional drive-key prefix forwarded to the manifest request.
+        json_output: When ``True``, return the validated manifest response model.
+            When ``False``, return one human-readable tab-separated line per item
+            containing size, mime type, hash, and key.
 
     Returns:
-        The validated manifest response model.
+        Either ``AgentStubDriveManifestResponse`` for JSON callers or a formatted
+        string for human-facing CLI output.
 
     Side effects:
         Calls the Agent Stub drive manifest control-plane endpoint with
@@ -97,24 +78,24 @@ def list_drive_manifest_from_environment(prefix: str) -> AgentStubDriveManifestR
         prefix=prefix,
         include_download_url=False,
     )
-    return response
+    if json_output:
+        return response
+    return _format_manifest(response)
 
 
 def pull_drive_from_environment(
     targets: list[str] | None = None,
-    local_base: str | None = None,
-) -> DrivePullResult:
+    drive_base: str = DEFAULT_AGENT_STUB_DRIVE_BASE,
+) -> list[Path]:
     """Pull drive files into one local drive base via signed download URLs.
 
     Args:
         targets: Optional drive-key targets or prefixes. An empty list preserves
             the historical whole-drive pull by using ``[""]``.
-        local_base: Local base directory that receives downloaded drive files.
-            When omitted, the historical Agent Stub drive base is used.
+        drive_base: Local base directory that receives downloaded drive files.
 
     Returns:
-        A structured JSON-ready result with requested drive targets/prefixes
-        that matched at least one manifest item and their local paths.
+        A list of written local paths under ``drive_base``.
 
     Observable behavior:
         Requests a manifest with ``include_download_url=True``, requires every
@@ -126,12 +107,10 @@ def pull_drive_from_environment(
         ``.DIFY-SKILL-FULL.zip`` archives into their containing skill
         directory with the same path-safety checks. Archive extraction is staged
         under a temporary directory and only moved into place after the full
-        archive validates successfully. Successfully extracted skill archives
-        are deleted from disk.
+        archive validates successfully.
 
-        Downloaded files and extracted files are materialized on disk but are
-        not enumerated in the returned item list; prefix pulls return the local
-        path corresponding to the requested prefix.
+        The return value remains the list of downloaded paths only; extracted
+        files are materialized on disk but are not added to the returned list.
 
     Raises:
         AgentStubValidationError: if a manifest item omits ``download_url``, a
@@ -145,68 +124,48 @@ def pull_drive_from_environment(
 
     environment = read_agent_stub_environment()
     manifest_targets = targets or [""]
-
-    def _fetch_manifest(target: str) -> AgentStubDriveManifestResponse:
-        return request_agent_stub_drive_manifest_sync(
-            url=environment.url,
-            auth_jwe=environment.auth_jwe,
-            prefix=target,
-            include_download_url=True,
-        )
-
     with ThreadPoolExecutor(max_workers=min(len(manifest_targets), 4)) as executor:
-        responses = list(executor.map(_fetch_manifest, manifest_targets))
-    downloads: list[DriveDownloadPayload] = []
-    resolved_base_path = Path(local_base or DEFAULT_AGENT_STUB_DRIVE_BASE).expanduser().resolve()
-    result_items: list[DrivePullResult.Item] = []
-    seen_result_targets: set[str] = set()
-    for target, response in zip(manifest_targets, responses, strict=True):
-        if not response.items or target in seen_result_targets:
-            continue
-        seen_result_targets.add(target)
-        try:
-            local_path = resolve_drive_destination(resolved_base_path, target)
-        except DriveMaterializationValidationError as exc:
-            raise AgentStubValidationError(str(exc)) from exc
-        result_items.append(DrivePullResult.Item(key=target, local_path=str(local_path)))
+        responses = list(
+            executor.map(
+                lambda target: request_agent_stub_drive_manifest_sync(
+                    url=environment.url,
+                    auth_jwe=environment.auth_jwe,
+                    prefix=target,
+                    include_download_url=True,
+                ),
+                manifest_targets,
+            )
+        )
+    base_path = Path(drive_base).expanduser().resolve()
+    base_path.mkdir(parents=True, exist_ok=True)
+    written_paths: list[Path] = []
     deduplicated_items = {item.key: item for response in responses for item in response.items}
     for item in [deduplicated_items[key] for key in sorted(deduplicated_items)]:
         download_url = item.download_url
         if not isinstance(download_url, str) or not download_url:
             raise AgentStubValidationError(f"drive manifest item is missing download_url: {item.key}")
-        try:
-            _ = resolve_drive_destination(resolved_base_path, item.key)
-        except DriveMaterializationValidationError as exc:
-            raise AgentStubValidationError(str(exc)) from exc
+        destination = _resolve_drive_destination(base_path, item.key)
         payload = download_file_bytes_from_signed_url_sync(download_url=download_url)
-        downloads.append(DriveDownloadPayload(key=item.key, payload=payload, size=item.size))
-
-    try:
-        _ = materialize_drive_downloads(
-            base_path=resolved_base_path,
-            downloads=downloads,
-        )
-    except DriveMaterializationValidationError as exc:
-        raise AgentStubValidationError(str(exc)) from exc
-    except DriveMaterializationTransferError as exc:
-        raise AgentStubTransferError(str(exc)) from exc
-
-    return DrivePullResult(items=result_items)
+        if item.size is not None and len(payload) != item.size:
+            raise AgentStubTransferError(f"downloaded drive file size mismatch for {item.key}")
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        temp_path = destination.with_name(f"{destination.name}.tmp-{uuid4().hex}")
+        temp_path.write_bytes(payload)
+        temp_path.replace(destination)
+        written_paths.append(destination)
+        if destination.name == _SKILL_ARCHIVE_FILENAME:
+            _extract_skill_archive(destination)
+    return written_paths
 
 
-def push_drive_from_environment(
-    local_path: str,
-    drive_path: str,
-    *,
-    kind: DrivePushKind | None,
-) -> AgentStubDriveCommitResponse:
+def push_drive_from_environment(local_path: str, drive_path: str, recursive: bool) -> AgentStubDriveCommitResponse:
     """Upload local files through the Agent Stub and commit them into the drive.
 
     Args:
         local_path: Source file or directory in the sandbox filesystem.
         drive_path: Destination drive key or drive-key prefix.
-        kind: Optional public upload mode. Files infer file mode when omitted,
-            while directories require explicit ``skill`` or ``dir`` selection.
+        recursive: Select directory mode. ``False`` standardizes skill
+            directories, while ``True`` uploads raw directory contents.
 
     Returns:
         The validated drive commit response returned by the Agent Stub.
@@ -214,40 +173,25 @@ def push_drive_from_environment(
     Mode split:
         * If ``local_path`` is a file, upload that file and commit exactly one
           ``tool_file`` binding to ``drive_path``.
-        * If ``local_path`` is a directory and ``kind`` is ``"skill"``,
+        * If ``local_path`` is a directory and ``recursive`` is ``False``,
           require ``SKILL.md`` and standardize the upload into
           ``<drive_path>/SKILL.md`` plus ``<drive_path>/.DIFY-SKILL-FULL.zip``.
-        * If ``local_path`` is a directory and ``kind`` is ``"dir"``, upload
+        * If ``local_path`` is a directory and ``recursive`` is ``True``, upload
           each regular file under ``drive_path/<relative_path>`` without skill
           standardization.
 
     Observable safety behavior:
-        Rejects missing local paths, rejects directory pushes without an
-        explicit mode, rejects raw directory pushes with no regular files, and
-        rejects symlinked or escaping paths, including symlinked top-level
-        ``local_path`` roots, while preparing directory uploads or skill
-        archives.
+        Rejects missing local paths, rejects recursive directory pushes with no
+        regular files, and rejects symlinked or escaping paths while preparing
+        directory uploads or skill archives.
     """
 
-    source_path = Path(local_path).expanduser()
-    if kind not in {None, "file", "skill", "dir"}:
-        raise AgentStubValidationError(f"invalid drive push kind: {kind}")
-    if source_path.is_symlink():
-        raise AgentStubValidationError(f"drive push does not support symlinked local paths: {source_path}")
-    source_path = source_path.resolve()
+    source_path = Path(local_path).expanduser().resolve()
     if source_path.is_file():
-        if kind == "skill":
-            raise AgentStubValidationError("--kind skill requires a directory containing SKILL.md")
-        if kind == "dir":
-            raise AgentStubValidationError("--kind dir requires a directory")
         return _commit_uploaded_items([_prepare_uploaded_file(source_path, drive_path)])
     if not source_path.is_dir():
         raise AgentStubValidationError(f"local path not found: {source_path}")
-    if kind is None:
-        raise AgentStubValidationError("directory drive push requires --kind skill or --kind dir")
-    if kind == "file":
-        raise AgentStubValidationError("--kind file requires a file")
-    if kind == "dir":
+    if recursive:
         upload_items = [
             _prepare_uploaded_file(path, _join_drive_key(drive_path, relative_path))
             for path, relative_path in _iter_regular_files(source_path)
@@ -261,14 +205,14 @@ def push_drive_from_environment(
 def _push_skill_directory(source_path: Path, drive_path: str) -> AgentStubDriveCommitResponse:
     skill_md_path = source_path / _SKILL_MD_FILENAME
     if not skill_md_path.is_file():
-        raise AgentStubValidationError("--kind skill requires a directory containing SKILL.md")
+        raise AgentStubValidationError(f"non-recursive drive push requires {_SKILL_MD_FILENAME}: {source_path}")
     with TemporaryDirectory() as temp_dir:
-        archive_path = Path(temp_dir) / SKILL_ARCHIVE_FILENAME
+        archive_path = Path(temp_dir) / _SKILL_ARCHIVE_FILENAME
         _build_skill_archive(source_path, archive_path)
         return _commit_uploaded_items(
             [
                 _prepare_uploaded_file(skill_md_path.resolve(), _join_drive_key(drive_path, _SKILL_MD_FILENAME)),
-                _prepare_uploaded_file(archive_path, _join_drive_key(drive_path, SKILL_ARCHIVE_FILENAME)),
+                _prepare_uploaded_file(archive_path, _join_drive_key(drive_path, _SKILL_ARCHIVE_FILENAME)),
             ]
         )
 
@@ -295,7 +239,7 @@ def _commit_uploaded_items(items: list[_DriveUploadItem]) -> AgentStubDriveCommi
     )
 
 
-def format_drive_manifest(response: AgentStubDriveManifestResponse) -> str:
+def _format_manifest(response: AgentStubDriveManifestResponse) -> str:
     return "\n".join(_format_manifest_item(item) for item in response.items)
 
 
@@ -304,6 +248,15 @@ def _format_manifest_item(item: AgentStubDriveItem) -> str:
     mime_type = item.mime_type or "-"
     item_hash = item.hash or "-"
     return f"{size}\t{mime_type}\t{item_hash}\t{item.key}"
+
+
+def _resolve_drive_destination(base_path: Path, drive_key: str) -> Path:
+    destination = (base_path / Path(drive_key)).resolve()
+    try:
+        destination.relative_to(base_path)
+    except ValueError as exc:
+        raise AgentStubValidationError(f"drive key resolves outside the drive base: {drive_key}") from exc
+    return destination
 
 
 def _iter_regular_files(root_path: Path) -> list[tuple[Path, str]]:
@@ -352,6 +305,82 @@ def _build_skill_archive(source_path: Path, archive_path: Path) -> None:
             archive.write(file_path, arcname=relative_path)
 
 
+def _extract_skill_archive(archive_path: Path) -> None:
+    """Safely extract one downloaded skill archive into its containing directory.
+
+    Extraction is staged under a temporary directory created inside the target
+    skill directory. Every entry is validated and materialized into staging
+    first, and only after the full archive succeeds are staged files moved into
+    their final locations under the skill directory. Existing files at those
+    final locations are overwritten in place by the extracted archive content.
+
+    Error mapping is intentionally stable for CLI callers: unsafe archive entry
+    names raise ``AgentStubValidationError``, while malformed archives and zip
+    parsing / archive I/O failures are translated into ``AgentStubTransferError``.
+    """
+
+    target_dir = archive_path.parent.resolve()
+    try:
+        with TemporaryDirectory(dir=target_dir, prefix=".dify-skill-extract-") as staging_dir_name:
+            staging_dir = Path(staging_dir_name).resolve()
+            with ZipFile(archive_path) as archive:
+                for zip_info in archive.infolist():
+                    destination = _resolve_zip_entry_destination(staging_dir, zip_info.filename)
+                    if _is_zip_symlink(zip_info):
+                        raise AgentStubValidationError(
+                            f"skill archive contains unsupported symlink entry: {zip_info.filename}"
+                        )
+                    if zip_info.is_dir():
+                        destination.mkdir(parents=True, exist_ok=True)
+                        continue
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    with archive.open(zip_info) as source_file:
+                        temp_path = destination.with_name(f"{destination.name}.tmp-{uuid4().hex}")
+                        temp_path.write_bytes(source_file.read())
+                        temp_path.replace(destination)
+            for staged_path in sorted(staging_dir.rglob("*")):
+                if staged_path.is_dir():
+                    continue
+                relative_path = staged_path.relative_to(staging_dir)
+                destination = (target_dir / relative_path).resolve()
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                staged_path.replace(destination)
+    except AgentStubValidationError:
+        raise
+    except (BadZipFile, OSError) as exc:
+        raise AgentStubTransferError(f"downloaded skill archive is invalid: {archive_path.name}") from exc
+
+
+def _resolve_zip_entry_destination(target_dir: Path, entry_name: str) -> Path:
+    """Resolve one zip entry path under a target skill directory.
+
+    Zip metadata may contain POSIX or backslash-separated names, so entry names
+    are normalized to forward slashes before validation. The resolved entry must
+    not be absolute, empty, ``.`` / ``..`` based, or otherwise escape the target
+    skill directory after resolution.
+    """
+
+    normalized_name = entry_name.replace("\\", "/")
+    pure_path = PurePosixPath(normalized_name)
+    if not normalized_name or normalized_name.startswith("/") or pure_path.is_absolute():
+        raise AgentStubValidationError(f"skill archive contains unsafe absolute path: {entry_name}")
+    if any(part in {"", ".", ".."} for part in pure_path.parts):
+        raise AgentStubValidationError(f"skill archive contains unsafe path traversal entry: {entry_name}")
+    destination = (target_dir / Path(*pure_path.parts)).resolve()
+    try:
+        destination.relative_to(target_dir)
+    except ValueError as exc:
+        raise AgentStubValidationError(
+            f"skill archive entry resolves outside the skill directory: {entry_name}"
+        ) from exc
+    return destination
+
+
+def _is_zip_symlink(zip_info: ZipInfo) -> bool:
+    file_mode = zip_info.external_attr >> 16
+    return stat.S_ISLNK(file_mode)
+
+
 def _join_drive_key(base_key: str, child_key: str) -> str:
     stripped_base = base_key.rstrip("/")
     stripped_child = child_key.lstrip("/")
@@ -359,10 +388,7 @@ def _join_drive_key(base_key: str, child_key: str) -> str:
 
 
 __all__ = [
-    "DrivePullResult",
-    "DrivePushKind",
-    "format_drive_manifest",
-    "list_drive_manifest_from_environment",
+    "list_drive_from_environment",
     "pull_drive_from_environment",
     "push_drive_from_environment",
 ]

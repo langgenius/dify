@@ -1,12 +1,11 @@
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { AgentSoulConfigWithFiles } from '../conversions'
 import { describe, expect, it } from 'vitest'
 import { agentSoulConfigToFormState, formStateToAgentSoulConfig } from '../conversions'
 import { defaultAgentSoulConfigFormState } from '../form-state'
 
 describe('agent composer store conversions', () => {
-  it('should hydrate editable form state from an AgentSoulConfig and preserve it in the config snapshot', () => {
-    const baseConfig: AgentSoulConfigWithFiles = {
+  it('should hydrate editable form state from an AgentSoulConfig and preserve it in publish payload', () => {
+    const baseConfig: AgentSoulConfig = {
       app_features: {
         opening_statement: 'Hello',
         suggested_questions: ['What changed?'],
@@ -28,50 +27,20 @@ describe('agent composer store conversions', () => {
         ],
       },
       knowledge: {
-        sets: [
+        datasets: [
           {
-            id: 'support',
+            id: 'dataset-1',
             name: 'Product Docs',
             description: 'Docs corpus',
-            datasets: [
-              {
-                id: 'dataset-1',
-                name: 'Product Docs',
-                description: 'Docs corpus',
-              },
-            ],
-            query: {
-              mode: 'user_query',
-              value: 'release notes',
-            },
-            retrieval: {
-              mode: 'multiple',
-              top_k: 8,
-              score_threshold: 0.72,
-              reranking_enable: false,
-            },
           },
         ],
-      },
-      files: {
-        skills: [
-          {
-            id: 'tender-analyzer',
-            name: 'Tender Analyzer',
-            description: 'Parses RFPs.',
-            path: 'tender-analyzer',
-            skill_md_key: 'tender-analyzer/SKILL.md',
-            full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-          },
-        ],
-        files: [
-          {
-            id: 'files/sample.pdf',
-            file_id: 'drive-file-1',
-            name: 'sample.pdf',
-            drive_key: 'files/sample.pdf',
-          },
-        ],
+        query_config: {
+          query: 'release notes',
+          score_threshold: 0.72,
+          score_threshold_enabled: true,
+          top_k: 8,
+        },
+        query_mode: 'user_query',
       },
       model: {
         model: 'gpt-4.1',
@@ -131,7 +100,7 @@ describe('agent composer store conversions', () => {
       },
       knowledgeRetrievals: [
         expect.objectContaining({
-          id: 'support',
+          id: 'dataset-1',
           name: 'Product Docs',
           queryMode: 'custom',
           customQuery: 'release notes',
@@ -148,20 +117,6 @@ describe('agent composer store conversions', () => {
           masked: true,
           scope: 'secret',
           value: 'credential-1',
-        }),
-      ],
-      skills: [
-        expect.objectContaining({
-          name: 'Tender Analyzer',
-          skillMdKey: 'tender-analyzer/SKILL.md',
-          archiveKey: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        }),
-      ],
-      files: [
-        expect.objectContaining({
-          name: 'sample.pdf',
-          fileId: 'drive-file-1',
-          driveKey: 'files/sample.pdf',
         }),
       ],
     })
@@ -187,26 +142,6 @@ describe('agent composer store conversions', () => {
     })
 
     expect(publishConfig).not.toHaveProperty('skills_files')
-    expect(publishConfig.files).toEqual({
-      skills: [
-        {
-          id: 'tender-analyzer',
-          name: 'Tender Analyzer',
-          description: 'Parses RFPs.',
-          path: 'tender-analyzer',
-          skill_md_key: 'tender-analyzer/SKILL.md',
-          full_archive_key: 'tender-analyzer/.DIFY-SKILL-FULL.zip',
-        },
-      ],
-      files: [
-        {
-          id: 'files/sample.pdf',
-          file_id: 'drive-file-1',
-          name: 'sample.pdf',
-          drive_key: 'files/sample.pdf',
-        },
-      ],
-    })
     expect(publishConfig.tools?.dify_tools).toEqual([
       expect.objectContaining({
         provider: 'DuckDuckGo',
@@ -231,30 +166,20 @@ describe('agent composer store conversions', () => {
       }),
     ])
     expect(publishConfig.knowledge).toMatchObject({
-      sets: [
+      datasets: [
         {
-          id: 'support',
+          id: 'dataset-1',
           name: 'Product Docs',
           description: 'Docs corpus',
-          datasets: [
-            {
-              id: 'dataset-1',
-              name: 'Product Docs',
-              description: 'Docs corpus',
-            },
-          ],
-          query: {
-            mode: 'user_query',
-            value: 'release notes',
-          },
-          retrieval: {
-            mode: 'multiple',
-            top_k: 8,
-            score_threshold: 0.72,
-            reranking_enable: false,
-          },
         },
       ],
+      query_config: {
+        query: 'release notes',
+        score_threshold: 0.72,
+        score_threshold_enabled: true,
+        top_k: 8,
+      },
+      query_mode: 'user_query',
     })
     expect(publishConfig.env).toMatchObject({
       variables: [
@@ -360,232 +285,21 @@ describe('agent composer store conversions', () => {
     })
   })
 
-  it('should not hydrate a knowledge retrieval row when the config has no sets', () => {
+  it('should not hydrate a knowledge retrieval row when the config has no datasets', () => {
     const formState = agentSoulConfigToFormState({
       knowledge: {
-        sets: [],
+        datasets: [],
+        query_config: {
+          top_k: 4,
+        },
+        query_mode: 'generated_query',
       },
     })
 
     expect(formState.knowledgeRetrievals).toEqual([])
   })
 
-  it('should keep explicitly cleared selected datasets instead of falling back to dataset refs', () => {
-    const publishConfig = formStateToAgentSoulConfig({
-      formState: {
-        ...defaultAgentSoulConfigFormState,
-        knowledgeRetrievals: [
-          {
-            id: 'retrieval-1',
-            name: 'Docs Search',
-            selectedDatasets: [],
-            datasetRefs: [
-              {
-                id: 'dataset-stale',
-                name: 'Stale Docs',
-                description: 'Should stay cleared',
-              },
-            ],
-          },
-        ],
-      },
-    })
-
-    expect(publishConfig.knowledge).toMatchObject({
-      sets: [
-        {
-          id: 'retrieval-1',
-          datasets: [],
-        },
-      ],
-    })
-  })
-
-  it('should round-trip single retrieval model config', () => {
-    const baseConfig: AgentSoulConfig = {
-      knowledge: {
-        sets: [
-          {
-            id: 'retrieval-1',
-            name: 'Docs Search',
-            datasets: [{ id: 'dataset-1', name: 'Docs' }],
-            query: { mode: 'generated_query' },
-            retrieval: {
-              mode: 'single',
-              model: {
-                provider: 'langgenius/openai/openai',
-                name: 'gpt-4.1',
-                mode: 'chat',
-                completion_params: { temperature: 0.1 },
-              },
-            },
-          },
-        ],
-      },
-    }
-
-    const formState = agentSoulConfigToFormState(baseConfig)
-    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
-
-    expect(formState.knowledgeRetrievals).toEqual([
-      expect.objectContaining({
-        id: 'retrieval-1',
-        retrievalMode: 'single',
-        singleRetrievalConfig: {
-          model: {
-            provider: 'langgenius/openai/openai',
-            name: 'gpt-4.1',
-            mode: 'chat',
-            completion_params: { temperature: 0.1 },
-          },
-        },
-      }),
-    ])
-    expect(publishConfig.knowledge).toMatchObject({
-      sets: [
-        {
-          id: 'retrieval-1',
-          retrieval: {
-            mode: 'single',
-            model: {
-              provider: 'langgenius/openai/openai',
-              name: 'gpt-4.1',
-              mode: 'chat',
-              completion_params: { temperature: 0.1 },
-            },
-          },
-        },
-      ],
-    })
-  })
-
-  it('should round-trip automatic metadata filtering model config', () => {
-    const baseConfig: AgentSoulConfig = {
-      knowledge: {
-        sets: [
-          {
-            id: 'retrieval-1',
-            name: 'Docs Search',
-            datasets: [{ id: 'dataset-1', name: 'Docs' }],
-            query: { mode: 'generated_query' },
-            retrieval: { mode: 'multiple', top_k: 4 },
-            metadata_filtering: {
-              mode: 'automatic',
-              model_config: {
-                provider: 'langgenius/openai/openai',
-                name: 'gpt-4.1-mini',
-                mode: 'chat',
-                completion_params: { temperature: 0.2 },
-              },
-            },
-          },
-        ],
-      },
-    }
-
-    const formState = agentSoulConfigToFormState(baseConfig)
-    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
-
-    expect(formState.knowledgeRetrievals).toEqual([
-      expect.objectContaining({
-        id: 'retrieval-1',
-        metadataFilterMode: 'automatic',
-        metadataModelConfig: {
-          provider: 'langgenius/openai/openai',
-          name: 'gpt-4.1-mini',
-          mode: 'chat',
-          completion_params: { temperature: 0.2 },
-        },
-      }),
-    ])
-    expect(publishConfig.knowledge).toMatchObject({
-      sets: [
-        {
-          id: 'retrieval-1',
-          metadata_filtering: {
-            mode: 'automatic',
-            model_config: {
-              provider: 'langgenius/openai/openai',
-              name: 'gpt-4.1-mini',
-              mode: 'chat',
-              completion_params: { temperature: 0.2 },
-            },
-          },
-        },
-      ],
-    })
-  })
-
-  it('should round-trip manual metadata filtering conditions', () => {
-    const baseConfig: AgentSoulConfig = {
-      knowledge: {
-        sets: [
-          {
-            id: 'retrieval-1',
-            name: 'Docs Search',
-            datasets: [{ id: 'dataset-1', name: 'Docs' }],
-            query: { mode: 'generated_query' },
-            retrieval: { mode: 'multiple', top_k: 4 },
-            metadata_filtering: {
-              mode: 'manual',
-              conditions: {
-                logical_operator: 'and',
-                conditions: [
-                  {
-                    name: 'language',
-                    comparison_operator: 'is',
-                    value: 'en',
-                  },
-                ],
-              },
-            },
-          },
-        ],
-      },
-    }
-
-    const formState = agentSoulConfigToFormState(baseConfig)
-    const publishConfig = formStateToAgentSoulConfig({ baseConfig, formState })
-
-    expect(formState.knowledgeRetrievals).toEqual([
-      expect.objectContaining({
-        id: 'retrieval-1',
-        metadataFilterMode: 'manual',
-        metadataFilteringConditions: {
-          logical_operator: 'and',
-          conditions: [
-            {
-              name: 'language',
-              comparison_operator: 'is',
-              value: 'en',
-            },
-          ],
-        },
-      }),
-    ])
-    expect(publishConfig.knowledge).toMatchObject({
-      sets: [
-        {
-          id: 'retrieval-1',
-          metadata_filtering: {
-            mode: 'manual',
-            conditions: {
-              logical_operator: 'and',
-              conditions: [
-                {
-                  name: 'language',
-                  comparison_operator: 'is',
-                  value: 'en',
-                },
-              ],
-            },
-          },
-        },
-      ],
-    })
-  })
-
-  it('should omit incomplete environment variables from the config snapshot', () => {
+  it('should omit incomplete environment variables from the publish payload', () => {
     const publishConfig = formStateToAgentSoulConfig({
       formState: {
         ...defaultAgentSoulConfigFormState,

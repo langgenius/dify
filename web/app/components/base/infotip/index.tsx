@@ -36,8 +36,6 @@ type InfotipProps = {
   'aria-label': string
   /** Placement of the popup relative to the trigger. Defaults to `top`. */
   'placement'?: Placement
-  /** Distance between the trigger and popup. Defaults to the popover primitive spacing. */
-  'sideOffset'?: number
   /** Extra classes on the outer trigger wrapper (layout / margin). */
   'className'?: string
   /** Extra classes on the `?` icon itself (size / color overrides). */
@@ -54,7 +52,6 @@ export function Infotip({
   children,
   'aria-label': ariaLabel,
   placement = 'top',
-  sideOffset,
   className,
   iconClassName,
   popupClassName,
@@ -82,7 +79,6 @@ export function Infotip({
       </PopoverTrigger>
       <PopoverContent
         placement={placement}
-        sideOffset={sideOffset}
         popupClassName={cn('max-w-[300px] rounded-md px-3 py-2 system-xs-regular text-text-tertiary', popupClassName)}
       >
         {children}

@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Задача агента",
   "nodes.agent.task.mention": "Згадати",
   "nodes.agent.task.placeholder": "Опишіть, що має робити цей агент…",
-  "nodes.agent.task.tooltip": "Додатковий промпт, який допомагає агенту обробити саме цей вузол. Використовуйте /, щоб явно посилатися на змінні.\nЯкщо налаштовано правильно, ви зможете довірити агенту самостійно розібратися із завданням.",
+  "nodes.agent.task.tooltip": "Визначте інструкції задачі, які цей агент має виконувати в цьому робочому процесі.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Не авторизовано",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} не встановлено",
   "nodes.agent.toolbox": "ящик для інструментів",

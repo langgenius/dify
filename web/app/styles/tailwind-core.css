@@ -28,7 +28,7 @@
 @import '../components/base/action-button/index.css';
 @import '../components/base/badge/index.css';
 @import '../components/base/premium-badge/index.css';
-@import './glass-surface.css';
+@import '../components/main-nav/components/nav-link.css';
 
 /* ---------- JS plugins ------------------------------------------------ */
 @plugin './plugins/icons.ts';

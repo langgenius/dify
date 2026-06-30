@@ -156,16 +156,6 @@ describe('useCreateInlineAgentBinding', () => {
       agent_id: 'inline-agent-1',
       current_snapshot_id: 'inline-snapshot-1',
     }))
-    expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(expect.objectContaining({
-      agent_soul: expect.objectContaining({
-        schema_version: 1,
-      }),
-      binding: expect.objectContaining({
-        binding_type: 'inline_agent',
-        agent_id: 'inline-agent-1',
-        current_snapshot_id: 'inline-snapshot-1',
-      }),
-    }))
   })
 
   it('creates inline agent with a model-less initial soul before the default model loads', async () => {
@@ -220,61 +210,6 @@ describe('useCreateInlineAgentBinding', () => {
       binding_type: 'inline_agent',
       agent_id: 'inline-agent-1',
       current_snapshot_id: 'inline-snapshot-1',
-    }))
-  })
-
-  it('finishes inline creation after the caller component unmounts', async () => {
-    let resolveComposerState!: (value: Awaited<ReturnType<typeof mockComposerMutationFn>>) => void
-    mockComposerMutationFn.mockImplementationOnce(async _variables =>
-      new Promise((resolve) => {
-        resolveComposerState = resolve as typeof resolveComposerState
-      }),
-    )
-    const onSuccess = vi.fn()
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        mutations: {
-          retry: false,
-        },
-      },
-    })
-    const { result, unmount } = renderWorkflowHook(() => useCreateInlineAgentBinding(), {
-      queryClient,
-      hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
-      },
-    })
-
-    act(() => {
-      void result.current.createInlineAgentBinding('node-1', { onSuccess })
-    })
-    await waitFor(() => expect(mockComposerMutationFn).toHaveBeenCalled())
-    unmount()
-    resolveComposerState({
-      agent_soul: {
-        schema_version: 1,
-      },
-      binding: {
-        binding_type: 'inline_agent',
-        agent_id: 'inline-agent-1',
-        current_snapshot_id: 'inline-snapshot-1',
-      },
-      variables: {},
-    })
-
-    await waitFor(() => expect(onSuccess).toHaveBeenCalledWith({
-      binding_type: 'inline_agent',
-      agent_id: 'inline-agent-1',
-      current_snapshot_id: 'inline-snapshot-1',
-    }))
-    expect(queryClient.getQueryData(['workflow-agent-composer', 'app-1', 'node-1'])).toEqual(expect.objectContaining({
-      agent_soul: expect.objectContaining({
-        schema_version: 1,
-      }),
     }))
   })
 })
@@ -347,53 +282,5 @@ describe('useWorkflowInlineAgentConfigureSync', () => {
         schema_version: 1,
       }),
     }))
-  })
-
-  it('still saves manually when inline agent autosave is disabled', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: {
-        queries: {
-          retry: false,
-        },
-        mutations: {
-          retry: false,
-        },
-      },
-    })
-    const { result } = renderWorkflowHook(() => useWorkflowInlineAgentConfigureSync({
-      nodeId: 'node-1',
-      baseConfig: {
-        schema_version: 1,
-      },
-      autoSaveEnabled: false,
-      enabled: true,
-    }), {
-      queryClient,
-      hooksStoreProps: {
-        configsMap: {
-          flowId: 'app-1',
-          flowType: FlowType.appFlow,
-          fileSettings: {} as never,
-        },
-      },
-    })
-
-    await act(async () => {
-      await result.current.saveDraft()
-    })
-
-    expect(mockComposerMutationFn).toHaveBeenCalledWith({
-      params: {
-        app_id: 'app-1',
-        node_id: 'node-1',
-      },
-      body: expect.objectContaining({
-        variant: 'workflow',
-        save_strategy: 'node_job_only',
-        agent_soul: expect.objectContaining({
-          schema_version: 1,
-        }),
-      }),
-    }, expect.any(Object))
   })
 })

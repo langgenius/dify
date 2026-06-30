@@ -1,9 +1,13 @@
 import type { MutableRefObject } from 'react'
-import type { EmbeddedWebAppRoute, WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../app-card-utils'
+import type { WorkflowHiddenStartVariable, WorkflowLaunchInputValue } from '../app-card-utils'
 import type { SiteInfo } from '@/models/share'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Dialog, DialogCloseButton, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import {
+  RiArrowDownSLine,
+  RiArrowRightSLine,
+} from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { Suspense, use, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,7 +33,6 @@ type Props = Readonly<{
   onClose: () => void
   accessToken?: string
   appBaseUrl?: string
-  webAppRoute?: EmbeddedWebAppRoute
   hiddenInputs?: WorkflowHiddenStartVariable[]
   className?: string
 }>
@@ -59,17 +62,15 @@ const getSerializedHiddenInputValue = (
 const buildEmbeddedIframeUrl = async ({
   appBaseUrl,
   accessToken,
-  webAppRoute,
   variables,
   values,
 }: {
   appBaseUrl: string
   accessToken: string
-  webAppRoute: EmbeddedWebAppRoute
   variables: WorkflowHiddenStartVariable[]
   values: Record<string, WorkflowLaunchInputValue>
 }) => {
-  const iframeUrl = new URL(`${appBaseUrl}${basePath}/${webAppRoute}/${accessToken}`, window.location.origin)
+  const iframeUrl = new URL(`${appBaseUrl}${basePath}/chatbot/${accessToken}`, window.location.origin)
 
   await Promise.all(variables.map(async (variable) => {
     iframeUrl.searchParams.set(variable.variable, await compressAndEncodeBase64(getSerializedHiddenInputValue(variable, values)))
@@ -100,9 +101,8 @@ const EmbeddedContent = ({
   siteInfo,
   appBaseUrl,
   accessToken,
-  webAppRoute = 'chatbot',
   hiddenInputs,
-}: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> & Pick<Props, 'siteInfo' | 'webAppRoute' | 'hiddenInputs'>) => {
+}: Required<Pick<Props, 'accessToken' | 'appBaseUrl'>> & Pick<Props, 'siteInfo' | 'hiddenInputs'>) => {
   const { t } = useTranslation()
   const supportedHiddenInputs = useMemo<WorkflowHiddenStartVariable[]>(
     () => (hiddenInputs ?? []).filter(isWorkflowLaunchInputSupported),
@@ -122,7 +122,6 @@ const EmbeddedContent = ({
     () => buildEmbeddedIframeUrl({
       appBaseUrl,
       accessToken,
-      webAppRoute,
       variables: supportedHiddenInputs,
       values: initialHiddenInputValues,
     }),
@@ -144,7 +143,6 @@ const EmbeddedContent = ({
     setPreviewIframeUrlPromise(buildEmbeddedIframeUrl({
       appBaseUrl,
       accessToken,
-      webAppRoute,
       variables: supportedHiddenInputs,
       values: nextHiddenInputValues,
     }))
@@ -152,17 +150,15 @@ const EmbeddedContent = ({
   const scriptsContent = useMemo(() => getEmbeddedScriptSnippet({
     url: appBaseUrl,
     token: accessToken,
-    webAppRoute,
     primaryColor: themeBuilder.theme?.primaryColor ?? '#1C64F2',
     isTestEnv,
     inputValues: hiddenInputValues,
-  }), [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, themeBuilder.theme?.primaryColor, webAppRoute])
+  }), [accessToken, appBaseUrl, hiddenInputValues, isTestEnv, themeBuilder.theme?.primaryColor])
 
   const onClickCopy = async () => {
     const latestIframeUrl = await buildEmbeddedIframeUrl({
       appBaseUrl,
       accessToken,
-      webAppRoute,
       variables: supportedHiddenInputs,
       values: hiddenInputValues,
     })
@@ -215,8 +211,8 @@ const EmbeddedContent = ({
               </div>
             </div>
             {hiddenInputsCollapsed
-              ? <span aria-hidden className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary" />
-              : <span aria-hidden className="i-ri-arrow-down-s-line size-4 shrink-0 text-text-tertiary" />}
+              ? <RiArrowRightSLine className="size-4 shrink-0 text-text-tertiary" />
+              : <RiArrowDownSLine className="size-4 shrink-0 text-text-tertiary" />}
           </button>
           {!hiddenInputsCollapsed && (
             <div className="max-h-72 space-y-4 overflow-y-auto border-t-[0.5px] border-divider-subtle px-4 py-4">
@@ -311,7 +307,7 @@ const EmbeddedContent = ({
   )
 }
 
-const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, webAppRoute = 'chatbot', hiddenInputs, className }: Props) => {
+const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, hiddenInputs, className }: Props) => {
   const { t } = useTranslation()
 
   return (
@@ -331,11 +327,10 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, webAppRo
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {isShow && (
             <EmbeddedContent
-              key={`${appBaseUrl ?? ''}:${accessToken ?? ''}:${webAppRoute}:${JSON.stringify(hiddenInputs ?? [])}`}
+              key={`${appBaseUrl ?? ''}:${accessToken ?? ''}:${JSON.stringify(hiddenInputs ?? [])}`}
               siteInfo={siteInfo}
               appBaseUrl={appBaseUrl ?? ''}
               accessToken={accessToken ?? ''}
-              webAppRoute={webAppRoute}
               hiddenInputs={hiddenInputs}
             />
           )}

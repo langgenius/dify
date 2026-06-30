@@ -8,11 +8,7 @@ from pydantic_ai import Tool
 from agenton.compositor import Compositor, LayerNode, LayerProvider
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
-from dify_agent.layers.knowledge.client import (
-    DifyKnowledgeBaseClient,
-    DifyKnowledgeBaseClientError,
-    DifyKnowledgeRetrieveResponse,
-)
+from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
 from dify_agent.layers.knowledge.configs import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge.layer import (
     BLANK_QUERY_OBSERVATION,
@@ -36,22 +32,9 @@ def _execution_context_config(**overrides: object) -> DifyExecutionContextLayerC
 
 
 def _knowledge_config(**overrides: object) -> DifyKnowledgeBaseLayerConfig:
-    set_payload: dict[str, object] = {
-        "id": "support",
-        "name": "Support KB",
-        "datasets": [{"id": "dataset-1"}],
-        "query": {"mode": "generated_query"},
-        "retrieval": {"mode": "multiple", "top_k": 4},
-    }
-    for key in ("id", "name", "description", "datasets", "query", "retrieval", "metadata_filtering"):
-        if key in overrides:
-            set_payload[key] = overrides.pop(key)
-    if "dataset_ids" in overrides:
-        dataset_ids = overrides.pop("dataset_ids")
-        assert isinstance(dataset_ids, list)
-        set_payload["datasets"] = [{"id": dataset_id} for dataset_id in dataset_ids]
     payload: dict[str, object] = {
-        "sets": [set_payload],
+        "dataset_ids": ["dataset-1"],
+        "retrieval": {"mode": "multiple", "top_k": 4},
     }
     payload.update(overrides)
     return DifyKnowledgeBaseLayerConfig.model_validate(payload)
@@ -79,7 +62,7 @@ def _knowledge_provider() -> LayerProvider[DifyKnowledgeBaseLayer]:
     )
 
 
-def test_knowledge_layer_exposes_one_set_scoped_tool_definition() -> None:
+def test_knowledge_layer_exposes_one_query_only_tool_definition() -> None:
     async def scenario() -> None:
         compositor = Compositor(
             [
@@ -99,23 +82,20 @@ def test_knowledge_layer_exposes_one_set_scoped_tool_definition() -> None:
                 tool_def = await tool.prepare_tool_def(None)  # pyright: ignore[reportArgumentType]
                 assert isinstance(tool, Tool)
                 assert tool.name == "knowledge_base_search"
-                assert "Pick one configured set_name" in tool.description
+                assert tool.description == "Search configured knowledge bases for information relevant to the query."
                 assert tool_def is not None
-                assert "Pick one configured set_name" in tool_def.description
+                assert (
+                    tool_def.description == "Search configured knowledge bases for information relevant to the query."
+                )
                 assert tool_def.parameters_json_schema == {
                     "type": "object",
                     "properties": {
-                        "set_name": {
-                            "type": "string",
-                            "enum": ["Support KB"],
-                            "description": "Knowledge set to search.",
-                        },
                         "query": {
                             "type": "string",
-                            "description": "Search query for the selected knowledge set.",
-                        },
+                            "description": "Search query for the configured knowledge bases.",
+                        }
                     },
-                    "required": ["set_name", "query"],
+                    "required": ["query"],
                     "additionalProperties": False,
                 }
 
@@ -139,101 +119,8 @@ def test_knowledge_layer_rejects_blank_query_locally() -> None:
             ) as run:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
-                result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                    {"set_name": "Support KB", "query": "   "}, None
-                )
+                result = await tool.function_schema.call({"query": "   "}, None)  # pyright: ignore[reportArgumentType]
                 assert result == BLANK_QUERY_OBSERVATION
-
-    asyncio.run(scenario())
-
-
-def test_knowledge_layer_exposes_no_tool_when_all_sets_are_user_query(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_retrieve(self: DifyKnowledgeBaseClient, **_kwargs: object) -> DifyKnowledgeRetrieveResponse:
-        del self
-        return DifyKnowledgeRetrieveResponse.model_validate({"results": [], "usage": {}})
-
-    monkeypatch.setattr(DifyKnowledgeBaseClient, "retrieve", fake_retrieve)
-
-    async def scenario() -> None:
-        compositor = Compositor(
-            [
-                LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("knowledge", _knowledge_provider(), deps={"execution_context": "execution_context"}),
-            ]
-        )
-        async with httpx.AsyncClient() as http_client:
-            async with compositor.enter(
-                configs={
-                    "execution_context": _execution_context_config(),
-                    "knowledge": _knowledge_config(query={"mode": "user_query", "value": "release notes"}),
-                }
-            ) as run:
-                knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
-                assert await knowledge_layer.get_tools(http_client=http_client) == []
-
-    asyncio.run(scenario())
-
-
-def test_knowledge_layer_fetches_user_query_sets_on_context_entry(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen_requests: list[dict[str, object]] = []
-
-    async def fake_retrieve(self: DifyKnowledgeBaseClient, **kwargs: object) -> DifyKnowledgeRetrieveResponse:
-        del self
-        seen_requests.append(kwargs)
-        return DifyKnowledgeRetrieveResponse.model_validate(
-            {
-                "results": [
-                    {
-                        "metadata": {
-                            "_source": "knowledge",
-                            "dataset_name": "Docs",
-                            "document_name": "Release.md",
-                            "score": 0.8,
-                        },
-                        "title": "Release",
-                        "files": [],
-                        "content": "Version notes",
-                        "summary": None,
-                    }
-                ],
-                "usage": {},
-            }
-        )
-
-    monkeypatch.setattr(DifyKnowledgeBaseClient, "retrieve", fake_retrieve)
-
-    async def scenario() -> None:
-        compositor = Compositor(
-            [
-                LayerNode("execution_context", _execution_context_provider()),
-                LayerNode("knowledge", _knowledge_provider(), deps={"execution_context": "execution_context"}),
-            ]
-        )
-        async with compositor.enter(
-            configs={
-                "execution_context": _execution_context_config(),
-                "knowledge": _knowledge_config(query={"mode": "user_query", "value": "release notes"}),
-            }
-        ) as run:
-            knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
-            assert len(seen_requests) == 1
-            assert seen_requests[0]["query"] == "release notes"
-            assert seen_requests[0]["dataset_ids"] == ["dataset-1"]
-            assert knowledge_layer.runtime_state.eager_config_fingerprint
-            assert knowledge_layer.runtime_state.eager_results[0].status == "success"
-            assert knowledge_layer.user_prompts == [
-                "Knowledge retrieval results:\n\n"
-                "Set: Support KB\n"
-                "Query: release notes\n"
-                "Results:\n"
-                "1. Title: Release\n"
-                "   Dataset: Docs\n"
-                "   Document: Release.md\n"
-                "   Score: 0.8\n"
-                "   Content: Version notes"
-            ]
-            await knowledge_layer.on_context_resume()
-            assert len(seen_requests) == 1
 
     asyncio.run(scenario())
 
@@ -312,9 +199,7 @@ def test_knowledge_layer_formats_results_and_truncates_observation() -> None:
             ) as run:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
-                result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                    {"set_name": "Support KB", "query": "reset"}, None
-                )
+                result = await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
                 assert result.startswith("Knowledge base search results:\n1. Title: Guide")
                 assert "Dataset: Docs" in result
                 assert "Document: Guide.md" in result
@@ -344,9 +229,7 @@ def test_knowledge_layer_returns_no_results_observation() -> None:
             ) as run:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
-                result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                    {"set_name": "Support KB", "query": "reset"}, None
-                )
+                result = await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
                 assert result == NO_RESULTS_OBSERVATION
 
     asyncio.run(scenario())
@@ -373,9 +256,7 @@ def test_knowledge_layer_converts_retryable_failures_into_observation() -> None:
             ) as run:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
-                result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                    {"set_name": "Support KB", "query": "reset"}, None
-                )
+                result = await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
                 assert result == TEMPORARY_UNAVAILABLE_OBSERVATION
 
     asyncio.run(scenario())
@@ -408,9 +289,7 @@ def test_knowledge_layer_converts_retryable_transport_failures_into_observation(
             ) as run:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
-                result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                    {"set_name": "Support KB", "query": "reset"}, None
-                )
+                result = await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
                 assert result == TEMPORARY_UNAVAILABLE_OBSERVATION
 
     asyncio.run(scenario())
@@ -438,9 +317,7 @@ def test_knowledge_layer_raises_non_retryable_client_errors() -> None:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
                 with pytest.raises(DifyKnowledgeBaseClientError) as exc_info:
-                    await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                        {"set_name": "Support KB", "query": "reset"}, None
-                    )
+                    await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
                 assert exc_info.value.status_code == 403
 
     asyncio.run(scenario())
@@ -466,9 +343,7 @@ def test_knowledge_layer_raises_for_malformed_success_responses() -> None:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
                 with pytest.raises(DifyKnowledgeBaseClientError) as exc_info:
-                    await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                        {"set_name": "Support KB", "query": "reset"}, None
-                    )
+                    await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
                 assert exc_info.value.error_code == "invalid_response"
                 assert exc_info.value.retryable is False
 
@@ -536,9 +411,7 @@ def test_knowledge_layer_sends_execution_context_and_static_config_to_inner_api(
             ) as run:
                 knowledge_layer = run.get_layer("knowledge", DifyKnowledgeBaseLayer)
                 tool = (await knowledge_layer.get_tools(http_client=http_client))[0]
-                result = await tool.function_schema.call(  # pyright: ignore[reportArgumentType]
-                    {"set_name": "Support KB", "query": "reset"}, None
-                )
+                result = await tool.function_schema.call({"query": "reset"}, None)  # pyright: ignore[reportArgumentType]
                 assert result == NO_RESULTS_OBSERVATION
 
     asyncio.run(scenario())

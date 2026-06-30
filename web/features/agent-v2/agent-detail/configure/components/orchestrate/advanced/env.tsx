@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next'
 import { agentComposerEnvVariablesAtom } from '@/features/agent-v2/agent-composer/store-modules/env'
 import { checkKeys } from '@/utils/var'
 import { ConfigureSection } from '../common/section'
-import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 import { getEnvImportPlatform, parseEnvVariables } from './env-utils'
 
@@ -481,7 +480,7 @@ export function AgentEnvEditor() {
       labelId="agent-configure-env-editor-label"
       headingLevel="h4"
       panelId={envEditorTableId}
-      tip={<AgentConfigureTipContent type="env" />}
+      tip={envEditorTip}
       tipAriaLabel={envEditorTip}
       rootClassName="gap-1 pt-3"
       headerClassName="mb-0 gap-1 px-3"

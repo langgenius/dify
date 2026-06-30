@@ -36,8 +36,8 @@ class AgentBackendConfig(BaseSettings):
         description=(
             "Inject the dify.drive layer (Skills & Files drive manifest declaration) "
             "into Agent runs. The declaration is an index only — the agent backend "
-            "pulls the actual SKILL.md / files through the back proxy. Set this to "
-            "false only when temporarily rolling back the drive integration."
+            "pulls the actual SKILL.md / files through the back proxy. Keep it off "
+            "until the agent backend registers the dify.drive layer type."
         ),
-        default=True,
+        default=False,
     )

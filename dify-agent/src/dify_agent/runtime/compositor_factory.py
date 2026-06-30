@@ -38,6 +38,7 @@ from dify_agent.agent_stub.server.tokens.agent_stub import AgentStubTokenCodec
 from dify_agent.layers.ask_human.layer import DifyAskHumanLayer
 from dify_agent.layers.dify_plugin.llm_layer import DifyPluginLLMLayer
 from dify_agent.layers.dify_plugin.tools_layer import DifyPluginToolsLayer
+from dify_agent.layers.drive import DifyDriveLayerConfig
 from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
@@ -89,7 +90,14 @@ def create_default_layer_providers(
         LayerProvider.from_layer_type(PydanticAIHistoryLayer),
         LayerProvider.from_layer_type(DifyOutputLayer),
         LayerProvider.from_layer_type(DifyAskHumanLayer),
-        LayerProvider.from_layer_type(DifyDriveLayer),
+        LayerProvider.from_factory(
+            layer_type=DifyDriveLayer,
+            create=lambda config: DifyDriveLayer.from_config_with_settings(
+                DifyDriveLayerConfig.model_validate(config),
+                inner_api_url=inner_api_url,
+                inner_api_key=inner_api_key,
+            ),
+        ),
         LayerProvider.from_factory(
             layer_type=DifyExecutionContextLayer,
             create=lambda config: DifyExecutionContextLayer.from_config_with_settings(

@@ -7,14 +7,19 @@ to the agent drive (Agent Files §5.4 / §4):
 * ``<slug>/.DIFY-SKILL-FULL.zip`` — the full archive, kept only to restore the
   complete skill contents.
 
-The archive's member list is stored in skill metadata and resolved lazily for
-inspect/preview/runtime. Upload must not eagerly materialize every archive member
-as a separate ToolFile; small archives with many files would otherwise perform
-hundreds of storage writes and DB commits inside the request.
+Both are stored as ``ToolFile`` records and bound via ``AgentDriveService.commit``
+with ``value_owned_by_drive=True`` (the drive owns their lifecycle). The returned
+payload is the slim drive-derived skill DTO the UI needs to work with the drive
+catalog — ``name``, ``description``, ``path``, ``skill_md_key``, and
+``archive_key`` — plus the extracted manifest for upload feedback. The console
+``/skills/upload`` endpoints delegate to this service so "upload" now always means
+drive-backed skill normalization rather than Agent Soul binding.
 """
 
 from __future__ import annotations
 
+import mimetypes
+import posixpath
 import re
 from typing import Any
 
@@ -33,11 +38,7 @@ def slugify_skill_name(name: str) -> str:
 
 
 class SkillStandardizeService:
-    """Persist a normalized skill package into drive-owned files for one agent.
-
-    Instances are intentionally stateful: ``standardize()`` updates
-    ``last_committed_items`` with the drive commit result for the most recent call.
-    """
+    """Validate + standardize a Skill package into a per-agent drive upload result."""
 
     def __init__(
         self,
@@ -49,7 +50,6 @@ class SkillStandardizeService:
         self._package = package_service or SkillPackageService()
         self._drive = drive_service or AgentDriveService()
         self._tool_files = tool_file_manager or ToolFileManager()
-        self.last_committed_items: list[dict[str, Any]] = []
 
     def standardize(
         self,
@@ -60,23 +60,17 @@ class SkillStandardizeService:
         user_id: str,
         agent_id: str,
     ) -> dict[str, Any]:
-        """Create two ToolFiles, commit two drive-owned keys, and return skill metadata.
-
-        This writes ``<slug>/SKILL.md`` and ``<slug>/.DIFY-SKILL-FULL.zip``,
-        stores the drive commit rows in ``last_committed_items``, and returns the
-        console response shape ``{"skill": ..., "manifest": ...}``.
-        """
-        package = self._package.validate_and_normalize(content=content, filename=filename)
-        manifest = package.manifest
+        manifest = self._package.validate_and_extract(content=content, filename=filename)
+        skill_md_bytes = self._package.read_member_bytes(content=content, member_path=manifest.entry_path)
         slug = slugify_skill_name(manifest.name)
 
-        # Drive-owned files: canonical SKILL.md and the full archive. The
-        # archive member tree is preserved in metadata and resolved lazily.
+        # Drive-owned files: canonical SKILL.md, every inspectable archive file,
+        # and the full archive for future restore/export.
         md_tool_file = self._tool_files.create_file_by_raw(
             user_id=user_id,
             tenant_id=tenant_id,
             conversation_id=None,
-            file_binary=package.skill_md_bytes,
+            file_binary=skill_md_bytes,
             mimetype="text/markdown",
             filename=_SKILL_MD_NAME,
         )
@@ -84,14 +78,38 @@ class SkillStandardizeService:
             user_id=user_id,
             tenant_id=tenant_id,
             conversation_id=None,
-            file_binary=package.archive_bytes,
+            file_binary=content,
             mimetype="application/zip",
             filename=_FULL_ARCHIVE_NAME,
         )
 
         skill_md_key = f"{slug}/{_SKILL_MD_NAME}"
         archive_key = f"{slug}/{_FULL_ARCHIVE_NAME}"
-        committed_items = self._drive.commit(
+        member_items: list[DriveCommitItem] = []
+        for member_path in sorted(set(manifest.files)):
+            member_key = f"{slug}/{member_path}"
+            if member_key in {skill_md_key, archive_key}:
+                continue
+
+            member_bytes = self._package.read_member_bytes(content=content, member_path=member_path)
+            mimetype = mimetypes.guess_type(member_path)[0] or "application/octet-stream"
+            member_tool_file = self._tool_files.create_file_by_raw(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=None,
+                file_binary=member_bytes,
+                mimetype=mimetype,
+                filename=posixpath.basename(member_path),
+            )
+            member_items.append(
+                DriveCommitItem(
+                    key=member_key,
+                    file_ref=DriveFileRef(kind="tool_file", id=member_tool_file.id),
+                    value_owned_by_drive=True,
+                )
+            )
+
+        self._drive.commit(
             tenant_id=tenant_id,
             user_id=user_id,
             agent_id=agent_id,
@@ -112,17 +130,23 @@ class SkillStandardizeService:
                     file_ref=DriveFileRef(kind="tool_file", id=archive_tool_file.id),
                     value_owned_by_drive=True,
                 ),
+                *member_items,
             ],
         )
-        self.last_committed_items = committed_items
+
+        drive_skill = next(
+            skill
+            for skill in self._drive.list_skills(tenant_id=tenant_id, agent_id=agent_id)
+            if skill["skill_md_key"] == skill_md_key
+        )
 
         return {
             "skill": {
-                "name": manifest.name,
-                "description": manifest.description,
-                "path": slug,
-                "skill_md_key": skill_md_key,
-                "archive_key": archive_key,
+                "name": drive_skill["name"],
+                "description": drive_skill["description"],
+                "path": drive_skill["path"],
+                "skill_md_key": drive_skill["skill_md_key"],
+                "archive_key": drive_skill["archive_key"],
             },
             "manifest": manifest.model_dump(),
         }

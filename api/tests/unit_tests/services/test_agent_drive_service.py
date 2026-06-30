@@ -7,8 +7,6 @@ exercised against the project's in-memory SQLite engine with seeded ToolFiles.
 from __future__ import annotations
 
 import datetime
-import io
-import zipfile
 from collections.abc import Generator
 from unittest.mock import patch
 
@@ -103,14 +101,6 @@ def _seed_tool_file(*, user_id: str = USER, name: str = "f.txt") -> str:
         session.add(tool_file)
         session.commit()
         return tool_file.id
-
-
-def _zip_bytes(members: dict[str, bytes]) -> bytes:
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, data in members.items():
-            archive.writestr(name, data)
-    return buffer.getvalue()
 
 
 def _commit(key: str, tool_file_id: str, *, owned: bool = True):
@@ -779,8 +769,7 @@ def test_inspect_skill_returns_manifest_files_and_file_tree():
     assert result["warnings"] == []
     assert [file["path"] for file in result["files"]] == ["SKILL.md", "references/guide.md", "scripts/run.py"]
     assert result["files"][0]["available_in_drive"] is True
-    assert result["files"][1]["available_in_drive"] is True
-    assert result["files"][1]["drive_key"] == "pdf-toolkit/references/guide.md"
+    assert result["files"][1]["available_in_drive"] is False
     assert result["file_tree"][0]["name"] == "references"
     assert result["file_tree"][1]["name"] == "scripts"
     assert result["file_tree"][2]["name"] == "SKILL.md"
@@ -796,48 +785,6 @@ def test_inspect_skill_falls_back_to_drive_keys_when_manifest_missing():
 
     assert result["warnings"] == ["manifest_files_unavailable"]
     assert [file["path"] for file in result["files"]] == ["SKILL.md"]
-
-
-def test_preview_skill_archive_member_from_manifest_without_drive_row():
-    _commit_skill(manifest_files=["SKILL.md", "references/guide.md"])
-    archive = _zip_bytes({"SKILL.md": b"# PDF Toolkit\n", "references/guide.md": b"Guide content\n"})
-
-    with patch("services.agent_drive_service.storage") as storage_mock:
-        storage_mock.load_stream.return_value = iter([archive])
-        result = AgentDriveService().preview(
-            tenant_id=TENANT,
-            agent_id=AGENT,
-            key="pdf-toolkit/references/guide.md",
-        )
-
-    assert result == {
-        "key": "pdf-toolkit/references/guide.md",
-        "size": len(b"Guide content\n"),
-        "truncated": False,
-        "binary": False,
-        "text": "Guide content\n",
-    }
-
-
-def test_download_url_signs_skill_archive_member_from_manifest_without_drive_row():
-    _commit_skill(manifest_files=["SKILL.md", "references/guide.md"])
-
-    with patch.object(
-        AgentDriveService,
-        "sign_archive_member_url",
-        return_value="https://signed.example/member",
-    ) as sign:
-        url = AgentDriveService().download_url(
-            tenant_id=TENANT,
-            agent_id=AGENT,
-            key="pdf-toolkit/references/guide.md",
-        )
-
-    assert url == "https://signed.example/member"
-    kwargs = sign.call_args.kwargs
-    assert kwargs["key"] == "pdf-toolkit/references/guide.md"
-    assert kwargs["member_path"] == "references/guide.md"
-    assert kwargs["for_external"] is True
 
 
 def test_skill_metadata_rejects_non_canonical_rows():

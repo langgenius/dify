@@ -124,18 +124,7 @@ def _soul() -> AgentSoulConfig:
                     {"id": "ct-2", "name": "disabled-one", "enabled": False},
                 ],
             },
-            "knowledge": {
-                "sets": [
-                    {
-                        "id": "kb-1",
-                        "name": "产品知识",
-                        "description": "knowledge set",
-                        "datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}],
-                        "query": {"mode": "generated_query"},
-                        "retrieval": {"mode": "multiple", "top_k": 4},
-                    }
-                ]
-            },
+            "knowledge": {"datasets": [{"id": "ds-1", "name": "旧名"}, {"id": "ds-gone", "name": "已删"}]},
             "human": {"contacts": [{"id": "c-1", "name": "David Hayes", "channel": "email"}]},
         }
     )
@@ -154,16 +143,12 @@ def test_soul_candidates_lists_configured_items_only():
     assert [item["name"] for item in lists["cli_tools"]] == ["ffmpeg"]
     # the stable mention id flows through so the frontend can mint [§cli_tool:<id>§]
     assert [item["id"] for item in lists["cli_tools"]] == ["ct-1"]
-    # Knowledge mentions point at set ids; nested datasets are hydrated for context.
-    knowledge_set = lists["knowledge_sets"][0]
-    assert knowledge_set["id"] == "kb-1"
-    assert knowledge_set["name"] == "产品知识"
-    assert knowledge_set["missing_dataset_ids"] == ["ds-gone"]
-    datasets = {item["id"]: item for item in knowledge_set["datasets"]}
-    assert datasets["ds-1"]["name"] == "产品手册"
-    assert datasets["ds-1"]["missing"] is False
-    assert datasets["ds-gone"]["missing"] is True
-    assert datasets["ds-gone"]["name"] == "已删"
+    # enriched from DB; dangling dataset kept with missing flag (placeholder, 0522)
+    knowledge = {item["id"]: item for item in lists["knowledge_datasets"]}
+    assert knowledge["ds-1"]["name"] == "产品手册"
+    assert knowledge["ds-1"]["missing"] is False
+    assert knowledge["ds-gone"]["missing"] is True
+    assert knowledge["ds-gone"]["name"] == "已删"
     assert lists["human_contacts"][0]["id"] == "c-1"
     assert lists["dify_tools"][0]["id"] == "tavily/tavily_search"
 

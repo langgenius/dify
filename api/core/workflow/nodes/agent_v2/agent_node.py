@@ -31,7 +31,6 @@ from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, Wo
 from graphon.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent, StreamCompletedEvent
 from graphon.nodes.base.node import Node
 from models.agent_config_entities import AgentSoulConfig, WorkflowNodeJobConfig
-from services.agent.prompt_mentions import extract_workflow_node_output_selectors
 
 from .ask_human_hitl import AskHumanFormBuildError, build_ask_human_pause_reason
 from .ask_human_resume import build_deferred_tool_results, resolve_ask_human_form
@@ -689,20 +688,5 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
         node_id: str,
         node_data: DifyAgentNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        """Reuse frontend workflow-marker parsing for graph variable loading.
-
-        This follows the same marker parser used by publish sync and runtime
-        request building, including reserved-prefix exclusion.
-        """
-        del graph_config
-
-        agent_task = (
-            node_data.get("agent_task") if isinstance(node_data, Mapping) else getattr(node_data, "agent_task", None)
-        )
-        if not isinstance(agent_task, str):
-            return {}
-
-        return {
-            f"{node_id}.{'.'.join(selector)}": list(selector)
-            for selector in extract_workflow_node_output_selectors(agent_task)
-        }
+        del graph_config, node_id, node_data
+        return {}

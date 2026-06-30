@@ -18,7 +18,8 @@ depends_on = None
 
 def upgrade():
     with op.batch_alter_table("agents", schema=None) as batch_op:
-        batch_op.add_column(sa.Column("role", sa.String(length=255), nullable=False))
+        batch_op.add_column(sa.Column("role", sa.String(length=255), nullable=False, server_default=""))
+        batch_op.alter_column("role", server_default=None)
 
 
 def downgrade():

@@ -1,3 +1,4 @@
+import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 
 export type AgentFormValues = {
@@ -18,13 +19,7 @@ export const defaultAgentIcon = {
   background: '#F5F3FF',
 } satisfies AppIconSelection
 
-type AgentIconSource = {
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-}
-
-export const createAgentIconSelection = (agent: AgentIconSource): AgentIconSelection => {
+export const createAgentIconSelection = (agent: AgentAppPartial): AgentIconSelection => {
   if (agent.icon_type === 'image' && agent.icon) {
     return {
       type: 'image',

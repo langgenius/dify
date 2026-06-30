@@ -25,7 +25,7 @@ from controllers.common.schema import (
     register_response_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
 from fields.base import ResponseModel
@@ -182,7 +182,7 @@ class AgentDriveListByAgentApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveListByAgentQuery)
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
             items = AgentDriveService().manifest(tenant_id=tenant_id, agent_id=str(agent_id), prefix=query.prefix)
         except AgentDriveError as exc:
@@ -201,7 +201,7 @@ class AgentDriveSkillListByAgentApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
             items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=str(agent_id))
         except AgentDriveError as exc:
@@ -220,7 +220,7 @@ class AgentDriveSkillInspectByAgentApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID, skill_path: str):
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
             return _json_response(
                 AgentDriveService().inspect_skill(
@@ -245,7 +245,7 @@ class AgentDrivePreviewByAgentApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
             return AgentDriveService().preview(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
         except AgentDriveError as exc:
@@ -264,7 +264,7 @@ class AgentDriveDownloadByAgentApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
         query = query_params_from_request(AgentDriveFileByAgentQuery)
-        resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         try:
             url = AgentDriveService().download_url(tenant_id=tenant_id, agent_id=str(agent_id), key=query.key)
         except AgentDriveError as exc:

@@ -123,9 +123,9 @@ describe('agent/node', () => {
 
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.name')).toHaveClass('system-xs-regular', 'text-text-secondary')
     expect(screen.getByText('workflow.nodes.agent.roster.inlineSetup.type')).toHaveClass('system-2xs-regular', 'text-text-tertiary')
-    const configureIcon = container.querySelector('.i-custom-vender-agent-v2-configure')
-    expect(configureIcon).toHaveClass('h-3.5', 'w-3')
-    expect(configureIcon?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
+    const robotIcon = container.querySelector('.i-custom-vender-agent-v2-robot-3')
+    expect(robotIcon).toHaveClass('size-5')
+    expect(robotIcon?.parentElement).toHaveClass('size-8', 'rounded-full', 'bg-background-default-burn')
   })
 
   it('renders the fixed inline setup name when workflow composer state is loaded', () => {

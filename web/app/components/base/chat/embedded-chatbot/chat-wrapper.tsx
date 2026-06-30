@@ -81,9 +81,6 @@ const ChatWrapper = () => {
       opening_statement: currentConversationItem?.introduction || (config as any).opening_statement,
     } as ChatConfig
   }, [appParams, currentConversationItem?.introduction])
-  const timezone = appSourceType === AppSourceType.webApp
-    ? Intl.DateTimeFormat().resolvedOptions().timeZone
-    : undefined
   const {
     chatList,
     handleSend,
@@ -101,8 +98,6 @@ const ChatWrapper = () => {
     taskId => stopChatMessageResponding('', taskId, appSourceType, appId),
     clearChatList,
     setClearChatList,
-    undefined,
-    { timezone },
   )
   const inputsFormValue = currentConversationId ? currentConversationInputs : newConversationInputsRef?.current
   const inputDisabled = useMemo(() => {

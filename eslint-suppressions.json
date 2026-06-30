@@ -886,6 +886,11 @@
       "count": 1
     }
   },
+  "web/app/components/app/overview/customize/index.tsx": {
+    "jsx-a11y/anchor-has-content": {
+      "count": 3
+    }
+  },
   "web/app/components/app/overview/workflow-hidden-input-fields.tsx": {
     "no-restricted-imports": {
       "count": 1
@@ -1198,6 +1203,14 @@
       "count": 1
     }
   },
+  "web/app/components/base/chat/chat/chat-input-area/index.tsx": {
+    "jsx-a11y/no-autofocus": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 3
+    }
+  },
   "web/app/components/base/chat/chat/check-input-forms-hooks.ts": {
     "ts/no-explicit-any": {
       "count": 1
@@ -1226,6 +1239,14 @@
     },
     "ts/no-explicit-any": {
       "count": 17
+    }
+  },
+  "web/app/components/base/chat/chat/index.tsx": {
+    "ts/no-explicit-any": {
+      "count": 2
+    },
+    "ts/no-non-null-asserted-optional-chain": {
+      "count": 1
     }
   },
   "web/app/components/base/chat/chat/log/index.tsx": {
@@ -4533,6 +4554,9 @@
   "web/app/components/workflow-app/hooks/use-nodes-sync-draft.ts": {
     "no-restricted-imports": {
       "count": 1
+    },
+    "ts/no-explicit-any": {
+      "count": 2
     }
   },
   "web/app/components/workflow-app/hooks/use-workflow-init.ts": {
@@ -6258,6 +6282,9 @@
   },
   "web/app/components/workflow/operator/add-block.tsx": {
     "no-restricted-imports": {
+      "count": 1
+    },
+    "ts/no-explicit-any": {
       "count": 1
     }
   },

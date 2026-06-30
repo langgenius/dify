@@ -67,7 +67,7 @@ def test_upload_by_agent_resolves_app_and_standardizes_into_drive():
 
     with _file_ctx(files={"file": b"zip-bytes"}):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.SkillStandardizeService") as svc,
         ):
             svc.return_value.standardize.return_value = {"skill": {"path": "skill-a"}, "manifest": {}}
@@ -174,7 +174,7 @@ def test_files_by_agent_commit_uses_agent_route_and_ignores_node_id():
     upload = SimpleNamespace(id="uf-1", name="sample.pdf")
     with _json_ctx({"upload_file_id": "0fa6f9bc-3416-4476-8857-a13129704dd9"}, query_string="node_id=ignored"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.console_ns") as ns,
             patch(f"{_MOD}.db") as db_mock,
             patch(f"{_MOD}.AgentDriveService") as drive,
@@ -252,7 +252,7 @@ def test_files_by_agent_delete_uses_agent_route_and_ignores_node_id():
     raw = _raw(AgentDriveFilesByAgentApi.delete)
     with _json_ctx(method="DELETE", query_string="key=files/sample.pdf&node_id=ignored"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.commit.return_value = [{"key": "files/sample.pdf", "removed": True}]
@@ -316,7 +316,7 @@ def test_skill_delete_by_agent_uses_agent_route():
     raw = _raw(AgentSkillByAgentApi.delete)
     with _json_ctx(method="DELETE", query_string="node_id=ignored"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.commit.return_value = [{"key": "tender-analyzer/SKILL.md", "removed": True}]
@@ -360,7 +360,7 @@ def test_infer_tools_by_agent_uses_agent_route():
     raw = _raw(AgentSkillInferToolsByAgentApi.post)
     with _json_ctx(query_string="node_id=ignored"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.SkillToolInferenceService") as svc,
         ):
             svc.return_value.infer.return_value = {"inferable": True, "cli_tools": [], "reason": None}

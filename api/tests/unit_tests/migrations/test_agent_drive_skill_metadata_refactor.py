@@ -64,7 +64,7 @@ def _run_migration_step(module: object, engine: sa.Engine, step_name: str) -> No
             module.op = original_op
 
 
-def test_upgrade_adds_skill_columns_and_index_and_preserves_snapshot_data() -> None:
+def test_upgrade_adds_skill_columns_and_index_and_strips_snapshot_data() -> None:
     engine = sa.create_engine("sqlite:///:memory:")
     _create_pre_upgrade_schema(engine)
     snapshot = {
@@ -91,7 +91,7 @@ def test_upgrade_adds_skill_columns_and_index_and_preserves_snapshot_data() -> N
             sa.text("SELECT config_snapshot FROM agent_config_snapshots WHERE id = :id"),
             {"id": "snap-1"},
         ).scalar_one()
-    assert json.loads(stored_snapshot) == snapshot
+    assert "skills_files" not in json.loads(stored_snapshot)
 
 
 def test_downgrade_drops_skill_columns_and_index_without_reconstructing_legacy_data() -> None:

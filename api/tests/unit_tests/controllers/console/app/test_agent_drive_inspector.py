@@ -64,7 +64,7 @@ def test_list_by_agent_filters_value_pointers_out_of_console_payload():
     raw = _raw(AgentDriveListByAgentApi.get)
     with app.test_request_context("/?prefix=pdf-toolkit/"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.manifest.return_value = [
@@ -105,7 +105,7 @@ def test_skill_list_by_agent_calls_service():
     raw = _raw(AgentDriveSkillListByAgentApi.get)
     with app.test_request_context("/"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.list_skills.return_value = [
@@ -177,7 +177,7 @@ def test_skill_inspect_by_agent_returns_strict_json_response():
     }
     with app.test_request_context("/"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP),
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.inspect_skill.return_value = payload
@@ -256,7 +256,7 @@ def test_preview_by_agent_passes_through_and_maps_errors():
     raw = _raw(AgentDrivePreviewByAgentApi.get)
     with app.test_request_context("/?key=pdf-toolkit/SKILL.md"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.preview.return_value = {
@@ -272,7 +272,7 @@ def test_preview_by_agent_passes_through_and_maps_errors():
 
     with app.test_request_context("/?key=ghost/SKILL.md"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP),
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP),
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.preview.side_effect = AgentDriveError(
@@ -296,7 +296,7 @@ def test_download_by_agent_returns_signed_url_json():
     raw = _raw(AgentDriveDownloadByAgentApi.get)
     with app.test_request_context("/?key=pdf-toolkit/.DIFY-SKILL-FULL.zip"):
         with (
-            patch(f"{_MOD}.resolve_agent_runtime_app_model", return_value=_APP) as resolve_app,
+            patch(f"{_MOD}.resolve_agent_app_model", return_value=_APP) as resolve_app,
             patch(f"{_MOD}.AgentDriveService") as drive,
         ):
             drive.return_value.download_url.return_value = "https://signed.example/zip"

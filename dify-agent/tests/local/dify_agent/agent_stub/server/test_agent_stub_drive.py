@@ -57,7 +57,6 @@ def test_dify_api_agent_stub_drive_handler_injects_execution_context_for_manifes
                 "items": [
                     {
                         "key": "skills/example/SKILL.md",
-                        "name": "SKILL.md",
                         "size": 12,
                         "hash": "sha256:abc",
                         "mime_type": "text/markdown",
@@ -83,7 +82,6 @@ def test_dify_api_agent_stub_drive_handler_injects_execution_context_for_manifes
             include_download_url=True,
         )
         assert response.items[0].download_url == "https://files.example.com/download"
-        assert response.items[0].model_extra == {"name": "SKILL.md"}
 
     asyncio.run(scenario())
 

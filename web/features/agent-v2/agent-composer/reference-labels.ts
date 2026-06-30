@@ -1,4 +1,4 @@
-import type { AgentFileNode, AgentKnowledgeRetrievalItem, AgentSkill, AgentTool } from './form-state'
+import type { AgentKnowledgeRetrievalItem, AgentTool } from './form-state'
 
 const getKnowledgeRetrievalName = (item: AgentKnowledgeRetrievalItem) => item.name ?? item.nameKey ?? item.id
 
@@ -72,38 +72,4 @@ export const syncCliToolReferenceLabels = ({
   kind: 'cli_tool',
   currentItems: toReferenceLabelItems(currentTools.filter(tool => tool.kind === 'cli'), tool => tool.name),
   nextItems: toReferenceLabelItems(nextTools.filter(tool => tool.kind === 'cli'), tool => tool.name),
-})
-
-export const syncSkillReferenceLabels = ({
-  prompt,
-  currentSkills,
-  nextSkills,
-}: {
-  prompt: string
-  currentSkills: AgentSkill[]
-  nextSkills: AgentSkill[]
-}) => syncReferenceLabels({
-  prompt,
-  kind: 'skill',
-  currentItems: toReferenceLabelItems(currentSkills, skill => skill.name),
-  nextItems: toReferenceLabelItems(nextSkills, skill => skill.name),
-})
-
-const flattenFileNodes = (files: AgentFileNode[]): AgentFileNode[] => files.flatMap(file => (
-  file.children?.length ? flattenFileNodes(file.children) : [file]
-))
-
-export const syncFileReferenceLabels = ({
-  prompt,
-  currentFiles,
-  nextFiles,
-}: {
-  prompt: string
-  currentFiles: AgentFileNode[]
-  nextFiles: AgentFileNode[]
-}) => syncReferenceLabels({
-  prompt,
-  kind: 'file',
-  currentItems: toReferenceLabelItems(flattenFileNodes(currentFiles), file => file.name),
-  nextItems: toReferenceLabelItems(flattenFileNodes(nextFiles), file => file.name),
 })

@@ -1,5 +1,5 @@
 import type { DeclaredOutputConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { EditableOutputConfig, EditingState, OutputDraft } from './utils'
+import type { EditingState, OutputDraft } from './utils'
 import { Button } from '@langgenius/dify-ui/button'
 import { CollapsiblePanel, CollapsibleRoot, CollapsibleTrigger } from '@langgenius/dify-ui/collapsible'
 import { FieldControl, FieldError, FieldLabel, FieldRoot } from '@langgenius/dify-ui/field'
@@ -38,25 +38,21 @@ function ConfirmHotkeyHint() {
 
 export function OutputEditCard({
   existingOutputs,
-  editingIndex,
-  allowDefaultValue = true,
   state,
   onCancel,
   onConfirm,
 }: {
-  existingOutputs: EditableOutputConfig[]
-  editingIndex?: number
-  allowDefaultValue?: boolean
+  existingOutputs: DeclaredOutputConfig[]
   state: EditingState
   onCancel: () => void
-  onConfirm: (output: DeclaredOutputConfig, state: EditingState) => void
+  onConfirm: (output: DeclaredOutputConfig, index?: number) => void
 }) {
   const { t } = useTranslation()
   const nameErrorId = useId()
   const editorRef = useRef<HTMLDivElement>(null)
   const [draft, setDraft] = useState(state.draft)
   const trimmedName = draft.name.trim()
-  const duplicateName = existingOutputs.some((output, index) => output.name === trimmedName && index !== editingIndex)
+  const duplicateName = existingOutputs.some((output, index) => output.name === trimmedName && index !== state.index)
   const nameInvalid = !!trimmedName && !OUTPUT_NAME_PATTERN.test(trimmedName)
   const hasNameError = duplicateName || nameInvalid
   const defaultValueErrorKey = getDefaultValueErrorKey(draft)
@@ -67,7 +63,7 @@ export function OutputEditCard({
   function handleConfirm() {
     if (confirmDisabled)
       return
-    onConfirm(createOutputFromDraft(draft, { includeDefaultValue: allowDefaultValue }), state)
+    onConfirm(createOutputFromDraft(draft), state.index)
   }
   useHotkey(CONFIRM_HOTKEY, handleConfirm, { target: editorRef, ignoreInputs: false })
   useHotkey('Escape', onCancel, { target: editorRef, ignoreInputs: false })
@@ -138,38 +134,36 @@ export function OutputEditCard({
             />
           </FieldRoot>
         </div>
-        {allowDefaultValue && (
-          <CollapsibleRoot>
-            <CollapsibleTrigger className="h-8 min-h-8 justify-start gap-x-0.5 rounded-none border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-tertiary focus-visible:bg-state-base-hover focus-visible:ring-inset data-panel-open:text-text-tertiary">
-              <span
-                aria-hidden="true"
-                className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open:rotate-180 motion-reduce:transition-none"
-              />
-              {t('nodes.agent.outputVars.showAdvancedOptions', { ns: 'workflow' })}
-            </CollapsibleTrigger>
-            <CollapsiblePanel className="border-t border-divider-subtle">
-              <div className="px-3 py-2">
-                <FieldRoot name="defaultValue" className="gap-1">
-                  <FieldLabel className="py-0 system-xs-medium text-text-secondary">
-                    {t('nodes.agent.outputVars.defaultValueLabel', { ns: 'workflow' })}
-                  </FieldLabel>
-                  <Textarea
-                    size="small"
-                    value={draft.defaultValue}
-                    placeholder={t('nodes.agent.outputVars.defaultValuePlaceholder', { ns: 'workflow' })}
-                    className="mt-1 min-h-6"
-                    onValueChange={defaultValue => updateDraft({ defaultValue })}
-                  />
-                  {defaultValueErrorKey && (
-                    <FieldError match className="py-0 system-xs-regular text-text-destructive">
-                      {t(defaultValueErrorKey, { ns: 'workflow' })}
-                    </FieldError>
-                  )}
-                </FieldRoot>
-              </div>
-            </CollapsiblePanel>
-          </CollapsibleRoot>
-        )}
+        <CollapsibleRoot>
+          <CollapsibleTrigger className="h-8 min-h-8 justify-start gap-x-0.5 rounded-none border-y border-divider-subtle pr-2 pl-2.5 system-xs-regular text-text-tertiary hover:not-data-disabled:bg-state-base-hover hover:not-data-disabled:text-text-tertiary focus-visible:bg-state-base-hover focus-visible:ring-inset data-panel-open:text-text-tertiary">
+            <span
+              aria-hidden="true"
+              className="i-ri-arrow-down-double-line size-3 transition-transform duration-100 ease-out group-data-panel-open:rotate-180 motion-reduce:transition-none"
+            />
+            {t('nodes.agent.outputVars.showAdvancedOptions', { ns: 'workflow' })}
+          </CollapsibleTrigger>
+          <CollapsiblePanel className="border-t border-divider-subtle">
+            <div className="px-3 py-2">
+              <FieldRoot name="defaultValue" className="gap-1">
+                <FieldLabel className="py-0 system-xs-medium text-text-secondary">
+                  {t('nodes.agent.outputVars.defaultValueLabel', { ns: 'workflow' })}
+                </FieldLabel>
+                <Textarea
+                  size="small"
+                  value={draft.defaultValue}
+                  placeholder={t('nodes.agent.outputVars.defaultValuePlaceholder', { ns: 'workflow' })}
+                  className="mt-1 min-h-6"
+                  onValueChange={defaultValue => updateDraft({ defaultValue })}
+                />
+                {defaultValueErrorKey && (
+                  <FieldError match className="py-0 system-xs-regular text-text-destructive">
+                    {t(defaultValueErrorKey, { ns: 'workflow' })}
+                  </FieldError>
+                )}
+              </FieldRoot>
+            </div>
+          </CollapsiblePanel>
+        </CollapsibleRoot>
         <div className="flex h-12 items-center justify-end gap-x-2 px-3">
           <Button type="button" size="small" variant="secondary" onClick={onCancel}>
             {t('operation.cancel', { ns: 'common' })}

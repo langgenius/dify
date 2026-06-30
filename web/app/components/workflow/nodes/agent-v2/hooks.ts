@@ -1,6 +1,6 @@
 import type { AgentInlineBinding } from '../../block-selector/types'
 import { toast } from '@langgenius/dify-ui/toast'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -51,23 +51,22 @@ export function useCreateInlineAgentBinding() {
   const { t } = useTranslation('agentV2')
   const configsMap = useHooksStore(state => state.configsMap)
   const { data: defaultModel } = useDefaultModel(ModelTypeEnum.textGeneration)
-  const queryClient = useQueryClient()
   const {
     isPending,
-    mutateAsync,
+    mutate,
   } = useMutation(
     consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put.mutationOptions(),
   )
 
-  const createInlineAgentBinding = useCallback(async (nodeId: string, options?: CreateInlineAgentBindingOptions) => {
+  const createInlineAgentBinding = useCallback((nodeId: string, options?: CreateInlineAgentBindingOptions) => {
     if (!configsMap?.flowId || configsMap.flowType !== FlowType.appFlow) {
       toast.error(t('roster.nodeSelector.createInlineFailed'))
       options?.onError?.()
       return
     }
 
-    try {
-      const composerState = await mutateAsync({
+    mutate(
+      {
         params: {
           app_id: configsMap.flowId,
           node_id: nodeId,
@@ -83,40 +82,33 @@ export function useCreateInlineAgentBinding() {
           },
           agent_soul: getDefaultAgentSoul(defaultModel),
         },
-      })
-      const binding = composerState.binding
+      },
+      {
+        onSuccess: (composerState) => {
+          const binding = composerState.binding
 
-      if (
-        binding?.binding_type !== 'inline_agent'
-        || !binding.agent_id
-        || !binding.current_snapshot_id
-      ) {
-        toast.error(t('roster.nodeSelector.createInlineFailed'))
-        options?.onError?.()
-        return
-      }
+          if (
+            binding?.binding_type !== 'inline_agent'
+            || !binding.agent_id
+            || !binding.current_snapshot_id
+          ) {
+            toast.error(t('roster.nodeSelector.createInlineFailed'))
+            options?.onError?.()
+            return
+          }
 
-      queryClient.setQueryData(
-        consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.get.queryKey({
-          input: {
-            params: {
-              app_id: configsMap.flowId,
-              node_id: nodeId,
-            },
-          },
-        }),
-        composerState,
-      )
-      options?.onSuccess?.({
-        binding_type: 'inline_agent',
-        agent_id: binding.agent_id,
-        current_snapshot_id: binding.current_snapshot_id,
-      })
-    }
-    catch {
-      options?.onError?.()
-    }
-  }, [configsMap?.flowId, configsMap?.flowType, defaultModel, mutateAsync, queryClient, t])
+          options?.onSuccess?.({
+            binding_type: 'inline_agent',
+            agent_id: binding.agent_id,
+            current_snapshot_id: binding.current_snapshot_id,
+          })
+        },
+        onError: () => {
+          options?.onError?.()
+        },
+      },
+    )
+  }, [configsMap?.flowId, configsMap?.flowType, defaultModel, mutate, t])
 
   return {
     createInlineAgentBinding,

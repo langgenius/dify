@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Agent 任务",
   "nodes.agent.task.mention": "提及",
   "nodes.agent.task.placeholder": "描述这个 Agent 要完成的任务...",
-  "nodes.agent.task.tooltip": "帮助 Agent 处理当前节点的附加提示词。使用 / 显式引用变量。\n如果配置得当，你可以信任 Agent 自行判断如何完成任务。",
+  "nodes.agent.task.tooltip": "定义该 Agent 在当前工作流中需要遵循的任务指令。",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} 未授权",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} 未安装",
   "nodes.agent.toolbox": "工具箱",

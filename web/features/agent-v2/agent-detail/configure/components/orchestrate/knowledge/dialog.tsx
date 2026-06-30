@@ -1,12 +1,11 @@
 'use client'
 
 import type { AgentKnowledgeDatasetConfig } from '@dify/contracts/api/console/agent/types.gen'
-import type { ReactNode, SetStateAction } from 'react'
+import type { ReactNode } from 'react'
 import type {
   MetadataFilteringCondition,
   MetadataFilteringModeEnum,
   MultipleRetrievalConfig,
-  SingleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
@@ -18,7 +17,6 @@ import { RadioRoot } from '@langgenius/dify-ui/radio'
 import { RadioGroup } from '@langgenius/dify-ui/radio-group'
 import { Textarea } from '@langgenius/dify-ui/textarea'
 import { intersectionBy } from 'es-toolkit/compat'
-import { useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { IndexingType } from '@/app/components/datasets/create/step-two/hooks/use-indexing-config'
@@ -35,32 +33,10 @@ import {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { DATASET_DEFAULT } from '@/config'
 import { useDocLink } from '@/context/i18n'
-import { useKnowledgeValidationMessage, validateKnowledgeRetrievals } from '@/features/agent-v2/agent-composer/knowledge-validation'
-import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { AppModeEnum, RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
 
 type KnowledgeRetrievalQueryMode = 'agent' | 'custom'
-type MetadataFilteringConditions = {
-  logical_operator: LogicalOperator
-  conditions: MetadataFilteringCondition[]
-}
-
-type KnowledgeRetrievalDialogState = {
-  customQuery: string
-  hydratedKey: string | null
-  isEditingName: boolean
-  metadataFilterMode: MetadataFilteringModeEnum
-  metadataFilteringConditions: MetadataFilteringConditions
-  metadataModelConfig?: ModelConfig
-  multipleRetrievalConfig: MultipleRetrievalConfig
-  name: string
-  queryMode: KnowledgeRetrievalQueryMode
-  rerankModelOpen: boolean
-  retrievalMode: typeof RETRIEVE_TYPE[keyof typeof RETRIEVE_TYPE]
-  selectedDatasets: DataSet[]
-  singleRetrievalConfig?: SingleRetrievalConfig
-}
 
 const queryModeOptions: KnowledgeRetrievalQueryMode[] = ['agent', 'custom']
 
@@ -97,11 +73,6 @@ const createDefaultRetrievalConfig = (): MultipleRetrievalConfig => ({
   top_k: DATASET_DEFAULT.top_k,
   score_threshold: null,
   reranking_enable: false,
-})
-
-const createDefaultMetadataFilteringConditions = (): MetadataFilteringConditions => ({
-  logical_operator: LogicalOperator.and,
-  conditions: [],
 })
 
 const createDatasetFromRef = (dataset: AgentKnowledgeDatasetConfig, index: number): DataSet => {
@@ -179,33 +150,6 @@ const getSelectedDatasets = (item?: AgentKnowledgeRetrievalItem) => (
   item?.selectedDatasets ?? item?.datasetRefs?.map(createDatasetFromRef) ?? []
 )
 
-const getDialogName = (
-  item: AgentKnowledgeRetrievalItem | undefined,
-  initialName: string | undefined,
-  fallbackName: string,
-) => item?.name ?? initialName ?? fallbackName
-
-const createDialogState = (
-  item: AgentKnowledgeRetrievalItem | undefined,
-  initialName: string | undefined,
-  fallbackName: string,
-  hydrationKey: string,
-): KnowledgeRetrievalDialogState => ({
-  customQuery: item?.customQuery ?? '',
-  hydratedKey: hydrationKey,
-  isEditingName: false,
-  metadataFilterMode: item?.metadataFilterMode ?? WorkflowMetadataFilteringModeEnum.disabled,
-  metadataFilteringConditions: item?.metadataFilteringConditions ?? createDefaultMetadataFilteringConditions(),
-  metadataModelConfig: item?.metadataModelConfig,
-  multipleRetrievalConfig: item?.multipleRetrievalConfig ?? createDefaultRetrievalConfig(),
-  name: getDialogName(item, initialName, fallbackName),
-  queryMode: item?.queryMode ?? 'agent',
-  rerankModelOpen: false,
-  retrievalMode: item?.retrievalMode ?? RETRIEVE_TYPE.multiWay,
-  selectedDatasets: getSelectedDatasets(item),
-  singleRetrievalConfig: item?.singleRetrievalConfig,
-})
-
 const createMetadataCondition = ({ id, name, type }: MetadataInDoc): MetadataFilteringCondition => ({
   id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}`,
   metadata_id: id,
@@ -230,70 +174,22 @@ export function AgentKnowledgeRetrievalDialog({
 }) {
   const { t } = useTranslation('agentV2')
   const docLink = useDocLink()
-  const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
-  const getValidationMessage = useKnowledgeValidationMessage()
-  const fallbackName = t('agentDetail.configure.knowledgeRetrieval.retrievalOne')
-  const hydrationKey = open ? (item?.id ?? initialName ?? 'new') : null
-  const [dialogState, setDialogState] = useState(() => createDialogState(item, initialName, fallbackName, hydrationKey ?? 'new'))
+  const [name, setName] = useState(() => item?.name ?? initialName ?? t('agentDetail.configure.knowledgeRetrieval.retrievalOne'))
+  const [isEditingName, setIsEditingName] = useState(false)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const [queryMode, setQueryMode] = useState<KnowledgeRetrievalQueryMode>(item?.queryMode ?? 'agent')
+  const [customQuery, setCustomQuery] = useState(item?.customQuery ?? '')
+  const [selectedDatasets, setSelectedDatasets] = useState<DataSet[]>(() => getSelectedDatasets(item))
+  const [retrievalMode, setRetrievalMode] = useState(item?.retrievalMode ?? RETRIEVE_TYPE.multiWay)
+  const [multipleRetrievalConfig, setMultipleRetrievalConfig] = useState(item?.multipleRetrievalConfig ?? createDefaultRetrievalConfig)
+  const [rerankModelOpen, setRerankModelOpen] = useState(false)
+  const [metadataFilterMode, setMetadataFilterMode] = useState<MetadataFilteringModeEnum>(item?.metadataFilterMode ?? WorkflowMetadataFilteringModeEnum.disabled)
+  const [metadataFilteringConditions, setMetadataFilteringConditions] = useState(item?.metadataFilteringConditions ?? {
+    logical_operator: LogicalOperator.and,
+    conditions: [] as MetadataFilteringCondition[],
+  })
+  const [metadataModelConfig, setMetadataModelConfig] = useState<ModelConfig | undefined>(item?.metadataModelConfig)
   const queryModeLabelId = 'agent-knowledge-retrieval-query-mode-label'
-  const {
-    customQuery,
-    hydratedKey,
-    isEditingName,
-    metadataFilterMode,
-    metadataFilteringConditions,
-    metadataModelConfig,
-    multipleRetrievalConfig,
-    name,
-    queryMode,
-    rerankModelOpen,
-    retrievalMode,
-    selectedDatasets,
-    singleRetrievalConfig,
-  } = dialogState
-  const patchDialogState = (patch: Partial<KnowledgeRetrievalDialogState>) => {
-    setDialogState(current => ({
-      ...current,
-      ...patch,
-    }))
-  }
-  const setMetadataFilteringConditions = (update: SetStateAction<MetadataFilteringConditions>) => {
-    setDialogState((current) => {
-      const nextMetadataFilteringConditions = typeof update === 'function'
-        ? update(current.metadataFilteringConditions)
-        : update
-
-      return {
-        ...current,
-        metadataFilteringConditions: nextMetadataFilteringConditions,
-      }
-    })
-  }
-  const setMetadataModelConfig = (update: SetStateAction<ModelConfig | undefined>) => {
-    setDialogState((current) => {
-      const nextMetadataModelConfig = typeof update === 'function'
-        ? update(current.metadataModelConfig)
-        : update
-
-      return {
-        ...current,
-        metadataModelConfig: nextMetadataModelConfig,
-      }
-    })
-  }
-  const setSingleRetrievalConfig = (update: SetStateAction<SingleRetrievalConfig | undefined>) => {
-    setDialogState((current) => {
-      const nextSingleRetrievalConfig = typeof update === 'function'
-        ? update(current.singleRetrievalConfig)
-        : update
-
-      return {
-        ...current,
-        singleRetrievalConfig: nextSingleRetrievalConfig,
-      }
-    })
-  }
   const updateItem = (patch: Partial<AgentKnowledgeRetrievalItem>) => {
     if (!item)
       return
@@ -306,7 +202,6 @@ export function AgentKnowledgeRetrievalDialog({
       selectedDatasets,
       retrievalMode,
       multipleRetrievalConfig,
-      singleRetrievalConfig,
       metadataFilterMode,
       metadataFilteringConditions,
       metadataModelConfig,
@@ -321,26 +216,6 @@ export function AgentKnowledgeRetrievalDialog({
 
     return intersectionBy(...datasetsWithMetadata.map(dataset => dataset.doc_metadata!), 'name')
   }, [selectedDatasets])
-  const validation = useMemo(() => validateKnowledgeRetrievals(retrievals), [retrievals])
-  const itemValidation = item ? validation.byId[item.id] : undefined
-  const nameError = getValidationMessage(itemValidation?.name)
-  const datasetsError = getValidationMessage(itemValidation?.datasets)
-  const queryError = getValidationMessage(itemValidation?.query)
-  const retrievalError = getValidationMessage(itemValidation?.retrieval)
-  const metadataError = getValidationMessage(itemValidation?.metadata)
-
-  useEffect(() => {
-    if (hydratedKey !== hydrationKey) {
-      // eslint-disable-next-line react/set-state-in-effect
-      setDialogState(current => hydrationKey
-        ? createDialogState(item, initialName, fallbackName, hydrationKey)
-        : {
-            ...current,
-            hydratedKey: null,
-            isEditingName: false,
-          })
-    }
-  }, [fallbackName, hydratedKey, hydrationKey, initialName, item])
 
   useEffect(() => {
     if (!isEditingName)
@@ -352,11 +227,7 @@ export function AgentKnowledgeRetrievalDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        backdropClassName="fixed"
-        className="flex h-[520px] max-h-[calc(100dvh-2rem)] w-[400px] flex-col overflow-hidden p-0"
-      >
+      <DialogContent className="flex h-[520px] max-h-[calc(100dvh-2rem)] w-[400px] flex-col overflow-hidden p-0">
         <DialogTitle className="sr-only">
           {t('agentDetail.configure.knowledgeRetrieval.dialog.title')}
         </DialogTitle>
@@ -367,18 +238,17 @@ export function AgentKnowledgeRetrievalDialog({
                 <Input
                   ref={nameInputRef}
                   aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.nameLabel')}
-                  aria-invalid={nameError ? true : undefined}
                   className="h-7 min-w-0 flex-1 rounded-md px-1 py-0 system-xl-semibold text-text-primary"
                   value={name}
-                  onBlur={() => patchDialogState({ isEditingName: false })}
+                  onBlur={() => setIsEditingName(false)}
                   onChange={(event) => {
                     const nextName = event.currentTarget.value
-                    patchDialogState({ name: nextName })
+                    setName(nextName)
                     updateItem({ name: nextName })
                   }}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter')
-                      patchDialogState({ isEditingName: false })
+                      setIsEditingName(false)
                   }}
                 />
               )
@@ -386,7 +256,7 @@ export function AgentKnowledgeRetrievalDialog({
                 <button
                   type="button"
                   className="flex h-7 min-w-0 flex-1 items-center rounded-md px-1 py-0 text-left system-xl-semibold text-text-primary hover:bg-components-input-bg-hover focus-visible:border focus-visible:border-components-input-border-active focus-visible:bg-components-input-bg-active focus-visible:shadow-xs focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-                  onClick={() => patchDialogState({ isEditingName: true })}
+                  onClick={() => setIsEditingName(true)}
                 >
                   <span className="min-w-0 truncate">
                     {name}
@@ -395,11 +265,6 @@ export function AgentKnowledgeRetrievalDialog({
               )}
           <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
         </div>
-        {nameError && (
-          <div role="alert" className="px-4 pt-1 system-xs-regular text-text-destructive">
-            {nameError}
-          </div>
-        )}
 
         <div className="flex min-h-0 flex-1 flex-col gap-1 py-2">
           <div className="flex flex-col gap-1 px-4 py-2">
@@ -412,7 +277,7 @@ export function AgentKnowledgeRetrievalDialog({
               value={queryMode}
               onValueChange={(nextMode) => {
                 if (nextMode) {
-                  patchDialogState({ queryMode: nextMode })
+                  setQueryMode(nextMode)
                   updateItem({ queryMode: nextMode })
                 }
               }}
@@ -437,12 +302,11 @@ export function AgentKnowledgeRetrievalDialog({
                     <div className="pt-1">
                       <Textarea
                         aria-label={t('agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel')}
-                        aria-invalid={queryError ? true : undefined}
                         className="h-20 resize-none rounded-lg px-3 py-2 system-sm-regular"
                         placeholder={t('agentDetail.configure.knowledgeRetrieval.dialog.query.customPlaceholder')}
                         value={customQuery}
                         onValueChange={(nextQuery) => {
-                          patchDialogState({ customQuery: nextQuery })
+                          setCustomQuery(nextQuery)
                           updateItem({ customQuery: nextQuery })
                         }}
                       />
@@ -450,11 +314,6 @@ export function AgentKnowledgeRetrievalDialog({
                     <p className="system-xs-regular text-text-tertiary">
                       {t('agentDetail.configure.knowledgeRetrieval.dialog.query.customDescription')}
                     </p>
-                    {queryError && (
-                      <p role="alert" className="system-xs-regular text-text-destructive">
-                        {queryError}
-                      </p>
-                    )}
                   </>
                 )
               : (
@@ -474,49 +333,19 @@ export function AgentKnowledgeRetrievalDialog({
                     payload={{
                       retrieval_mode: retrievalMode,
                       multiple_retrieval_config: multipleRetrievalConfig,
-                      single_retrieval_config: singleRetrievalConfig,
                     }}
                     onRetrievalModeChange={(nextRetrievalMode) => {
-                      patchDialogState({ retrievalMode: nextRetrievalMode })
+                      setRetrievalMode(nextRetrievalMode)
                       updateItem({ retrievalMode: nextRetrievalMode })
                     }}
                     onMultipleRetrievalConfigChange={(nextMultipleRetrievalConfig) => {
-                      patchDialogState({ multipleRetrievalConfig: nextMultipleRetrievalConfig })
+                      setMultipleRetrievalConfig(nextMultipleRetrievalConfig)
                       updateItem({ multipleRetrievalConfig: nextMultipleRetrievalConfig })
-                    }}
-                    singleRetrievalModelConfig={singleRetrievalConfig?.model}
-                    onSingleRetrievalModelChange={(model) => {
-                      setSingleRetrievalConfig((current) => {
-                        const nextSingleRetrievalConfig = {
-                          model: {
-                            provider: model.provider,
-                            name: model.modelId,
-                            mode: model.mode ?? current?.model.mode ?? AppModeEnum.CHAT,
-                            completion_params: current?.model.completion_params ?? { temperature: 0.7 },
-                          },
-                        }
-                        updateItem({ singleRetrievalConfig: nextSingleRetrievalConfig })
-                        return nextSingleRetrievalConfig
-                      })
-                    }}
-                    onSingleRetrievalModelParamsChange={(completionParams) => {
-                      setSingleRetrievalConfig((current) => {
-                        const nextSingleRetrievalConfig = {
-                          model: {
-                            provider: current?.model.provider ?? '',
-                            name: current?.model.name ?? '',
-                            mode: current?.model.mode ?? AppModeEnum.CHAT,
-                            completion_params: completionParams,
-                          },
-                        }
-                        updateItem({ singleRetrievalConfig: nextSingleRetrievalConfig })
-                        return nextSingleRetrievalConfig
-                      })
                     }}
                     readonly={!selectedDatasets.length}
                     modal
                     rerankModalOpen={rerankModelOpen}
-                    onRerankModelOpenChange={nextOpen => patchDialogState({ rerankModelOpen: nextOpen })}
+                    onRerankModelOpenChange={setRerankModelOpen}
                     selectedDatasets={selectedDatasets}
                   />
                   <div className="h-3 w-px bg-divider-regular" />
@@ -524,31 +353,21 @@ export function AgentKnowledgeRetrievalDialog({
                     selectedIds={selectedDatasets.map(dataset => dataset.id)}
                     modal
                     onChange={(nextDatasets) => {
-                      patchDialogState({ selectedDatasets: nextDatasets })
+                      setSelectedDatasets(nextDatasets)
                       updateItem({ selectedDatasets: nextDatasets })
                     }}
                   />
                 </div>
               )}
             >
-              <>
-                <DatasetList
-                  list={selectedDatasets}
-                  onChange={(nextDatasets) => {
-                    patchDialogState({ selectedDatasets: nextDatasets })
-                    updateItem({ selectedDatasets: nextDatasets })
-                  }}
-                  settingsDrawerBackdropClassName="bg-background-overlay"
-                  settingsDrawerBackdropForceRender
-                  settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"
-                  settingsModalHeight="100%"
-                />
-                {(datasetsError || retrievalError) && (
-                  <div role="alert" className="pt-2 system-xs-regular text-text-destructive">
-                    {datasetsError ?? retrievalError}
-                  </div>
-                )}
-              </>
+              <DatasetList
+                list={selectedDatasets}
+                onChange={setSelectedDatasets}
+                settingsDrawerBackdropClassName="bg-background-overlay"
+                settingsDrawerBackdropForceRender
+                settingsDrawerPopupClassName="data-[swipe-direction=right]:top-6 data-[swipe-direction=right]:bottom-6"
+                settingsModalHeight="100%"
+              />
             </Field>
           </div>
 
@@ -559,7 +378,7 @@ export function AgentKnowledgeRetrievalDialog({
               metadataFilterMode={metadataFilterMode}
               metadataFilteringConditions={metadataFilteringConditions}
               handleMetadataFilterModeChange={(nextMode) => {
-                patchDialogState({ metadataFilterMode: nextMode })
+                setMetadataFilterMode(nextMode)
                 updateItem({ metadataFilterMode: nextMode })
               }}
               handleAddCondition={(metadataItem) => {
@@ -630,11 +449,6 @@ export function AgentKnowledgeRetrievalDialog({
                 })
               }}
             />
-            {metadataError && (
-              <div role="alert" className="px-4 pt-2 system-xs-regular text-text-destructive">
-                {metadataError}
-              </div>
-            )}
           </div>
         </div>
 

@@ -29,7 +29,6 @@ def test_shell_layer_config_defaults_and_forbids_unknown_fields() -> None:
     config = DifyShellLayerConfig()
 
     assert config.model_dump() == {
-        "agent_stub_drive_ref": None,
         "cli_tools": [],
         "env": [],
         "secret_refs": [],
@@ -52,7 +51,6 @@ def test_shell_layer_config_accepts_agent_soul_shell_settings() -> None:
         ],
         env=[DifyShellEnvVarConfig(name="PROJECT_NAME", value="demo")],
         secret_refs=[DifyShellSecretRefConfig(name="OPENAI_API_KEY", ref="credential-1")],
-        agent_stub_drive_ref="agent-1",
         sandbox=DifyShellSandboxConfig(provider="independent", config={"cpu": 2}),
     )
 
@@ -61,7 +59,6 @@ def test_shell_layer_config_accepts_agent_soul_shell_settings() -> None:
     assert config.cli_tools[0].secret_refs[0].ref == "credential-2"
     assert config.env[0].name == "PROJECT_NAME"
     assert config.secret_refs[0].ref == "credential-1"
-    assert config.agent_stub_drive_ref == "agent-1"
     assert config.sandbox is not None
     assert config.sandbox.config == {"cpu": 2}
 

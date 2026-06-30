@@ -10,16 +10,13 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/client'
-import { getAgentDetailPath } from '../../agent-detail/routes'
 import { defaultAgentIcon } from './agent-form'
 import { AgentFormFields } from './agent-form-fields'
 
 export function CreateAgentDialog() {
   const { t } = useTranslation('agentV2')
   const { t: tCommon } = useTranslation('common')
-  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [name, setName] = useState('')
@@ -62,10 +59,9 @@ export function CreateAgentDialog() {
     createAgentMutation.mutate({
       body,
     }, {
-      onSuccess: (createdAgent) => {
+      onSuccess: () => {
         toast.success(t('roster.createSuccess'))
         handleOpenChange(false)
-        router.push(getAgentDetailPath(createdAgent.id, 'configure'))
       },
     })
   }

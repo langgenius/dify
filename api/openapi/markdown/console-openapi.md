@@ -465,83 +465,6 @@ Check if activation token is valid
 | ---- | ----------- |
 | 204 | Agent service API key deleted |
 
-### [DELETE] /agent/{agent_id}/build-draft
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent build draft discarded | **application/json**: [AgentSimpleResultResponse](#agentsimpleresultresponse)<br> |
-
-### [GET] /agent/{agent_id}/build-draft
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent build draft | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-
-### [PUT] /agent/{agent_id}/build-draft
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [ComposerSavePayload](#composersavepayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent build draft saved | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-
-### [POST] /agent/{agent_id}/build-draft/apply
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string (uuid) |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent build draft applied | **application/json**: [AgentBuildDraftApplyResponse](#agentbuilddraftapplyresponse)<br> |
-
-### [POST] /agent/{agent_id}/build-draft/checkout
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentBuildDraftCheckoutPayload](#agentbuilddraftcheckoutpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent build draft checked out | **application/json**: [AgentBuildDraftResponse](#agentbuilddraftresponse)<br> |
-
 ### [GET] /agent/{agent_id}/chat-messages
 Get Agent App chat messages for a conversation with pagination
 
@@ -932,26 +855,6 @@ Get Agent App message details by ID
 | ---- | ----------- | ------ |
 | 200 | Message retrieved successfully | **application/json**: [MessageDetailResponse](#messagedetailresponse)<br> |
 | 404 | Agent or message not found |  |
-
-### [POST] /agent/{agent_id}/publish
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| agent_id | path |  | Yes | string (uuid) |
-
-#### Request Body
-
-| Required | Schema |
-| -------- | ------ |
-|  Yes | **application/json**: [AgentPublishPayload](#agentpublishpayload)<br> |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | Agent draft published | **application/json**: [AgentPublishResponse](#agentpublishresponse)<br> |
-| 403 | Insufficient permissions |  |
 
 ### [GET] /agent/{agent_id}/referencing-workflows
 List workflow apps that reference this Agent App's bound Agent (read-only)
@@ -3864,7 +3767,6 @@ Submit human input form preview for workflow
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
-| snapshot_id | query |  | No | string |
 | app_id | path |  | Yes | string (uuid) |
 | node_id | path |  | Yes | string |
 
@@ -12271,14 +12173,9 @@ Default namespace
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | No |
+| active_config_snapshot | [AgentConfigSnapshotSummaryResponse](#agentconfigsnapshotsummaryresponse) |  | Yes |
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | Yes |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
-| app_id | string |  | No |
-| backing_app_id | string |  | No |
-| chat_endpoint | string |  | No |
-| draft | [AgentConfigDraftSummaryResponse](#agentconfigdraftsummaryresponse) |  | No |
-| hidden_app_backed | boolean |  | No |
 | save_options | [ [ComposerSaveStrategy](#composersavestrategy) ] |  | Yes |
 | validation | [ComposerValidationFindingsResponse](#composervalidationfindingsresponse) |  | No |
 | variant | string |  | Yes |
@@ -12313,7 +12210,6 @@ Default namespace
 | active_config_is_published | boolean |  | No |
 | api_base_url | string |  | No |
 | app_id | string |  | No |
-| backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
@@ -12322,7 +12218,6 @@ Default namespace
 | description | string |  | No |
 | enable_api | boolean |  | Yes |
 | enable_site | boolean |  | Yes |
-| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -12335,7 +12230,7 @@ Default namespace
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
 | role | string |  | No |
-| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
+| site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
 | updated_at | integer |  | No |
@@ -12378,7 +12273,6 @@ default (the config form sends the full desired feature state on save).
 | active_config_is_published | boolean |  | No |
 | app_id | string |  | No |
 | author_name | string |  | No |
-| backing_app_id | string |  | No |
 | bound_agent_id | string |  | No |
 | create_user_name | string |  | No |
 | created_at | integer |  | No |
@@ -12386,7 +12280,6 @@ default (the config form sends the full desired feature state on save).
 | debug_conversation_id | string |  | No |
 | description | string |  | No |
 | has_draft_trigger | boolean |  | No |
-| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | string |  | No |
@@ -12444,27 +12337,6 @@ default (the config form sends the full desired feature state on save).
 | ---- | ---- | ----------- | -------- |
 | date | string |  | Yes |
 | interactions | number |  | Yes |
-
-#### AgentBuildDraftApplyResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| draft | object |  | Yes |
-| result | string |  | Yes |
-
-#### AgentBuildDraftCheckoutPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| force | boolean | Overwrite the existing current-user build draft | No |
-
-#### AgentBuildDraftResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_soul | object |  | Yes |
-| draft | object |  | Yes |
-| variant | string |  | Yes |
 
 #### AgentCliToolAuthorizationStatus
 
@@ -12528,18 +12400,10 @@ Risk marker for CLI tool bootstrap commands.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | active_config_snapshot_id | string |  | No |
-| app_id | string |  | No |
-| backing_app_id | string |  | No |
 | description | string |  | Yes |
-| hidden_app_backed | boolean |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string |  | No |
 | id | string |  | Yes |
 | name | string |  | Yes |
-| role | string |  | No |
 | scope | [AgentScope](#agentscope) |  | Yes |
-| source | [AgentSource](#agentsource) |  | No |
 | status | [AgentStatus](#agentstatus) |  | Yes |
 
 #### AgentComposerBindingResponse
@@ -12592,25 +12456,6 @@ Risk marker for CLI tool bootstrap commands.
 | current_snapshot_id | string |  | No |
 | workflow_node_count | integer |  | Yes |
 
-#### AgentComposerKnowledgeDatasetCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| id | string |  | No |
-| missing | boolean |  | No |
-| name | string |  | No |
-
-#### AgentComposerKnowledgeSetCandidateResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| datasets | [ [AgentComposerKnowledgeDatasetCandidateResponse](#agentcomposerknowledgedatasetcandidateresponse) ] |  | No |
-| description | string |  | No |
-| id | string |  | Yes |
-| missing_dataset_ids | [ string ] |  | No |
-| name | string |  | Yes |
-
 #### AgentComposerNodeJobCandidatesResponse
 
 | Name | Type | Description | Required |
@@ -12626,7 +12471,7 @@ Risk marker for CLI tool bootstrap commands.
 | cli_tools | [ [AgentCliToolConfig](#agentclitoolconfig) ] |  | No |
 | dify_tools | [ [AgentComposerDifyToolCandidateResponse](#agentcomposerdifytoolcandidateresponse) ] |  | No |
 | human_contacts | [ [AgentHumanContactConfig](#agenthumancontactconfig) ] |  | No |
-| knowledge_sets | [ [AgentComposerKnowledgeSetCandidateResponse](#agentcomposerknowledgesetcandidateresponse) ] |  | No |
+| knowledge_datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
 
 #### AgentComposerSoulLockResponse
 
@@ -12644,28 +12489,6 @@ Risk marker for CLI tool bootstrap commands.
 | knowledge_retrieval_placeholder | [ [ComposerKnowledgePlaceholderResponse](#composerknowledgeplaceholderresponse) ] |  | No |
 | result | string |  | Yes |
 | warnings | [ [ComposerValidationWarningResponse](#composervalidationwarningresponse) ] |  | No |
-
-#### AgentConfigDraftSummaryResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| account_id | string |  | No |
-| agent_id | string |  | Yes |
-| base_snapshot_id | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| draft_type | [AgentConfigDraftType](#agentconfigdrafttype) |  | Yes |
-| id | string |  | Yes |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-
-#### AgentConfigDraftType
-
-Editable Agent Soul draft workspace type.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| AgentConfigDraftType | string | Editable Agent Soul draft workspace type. |  |
 
 #### AgentConfigRevisionOperation
 
@@ -12716,8 +12539,6 @@ Audit operation recorded for Agent Soul version/revision changes.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | active_config_snapshot_id | string |  | Yes |
-| draft_config_id | string |  | No |
-| restored_version_id | string |  | No |
 | result | string |  | Yes |
 
 #### AgentConfigSnapshotSummaryResponse
@@ -12972,12 +12793,10 @@ Supported icon storage formats for Agent roster entries.
 | app_id | string |  | No |
 | archived_at | integer |  | No |
 | archived_by | string |  | No |
-| backing_app_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
 | existing_node_ids | [ string ] |  | No |
-| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
@@ -13046,116 +12865,20 @@ the current roster/workflow APIs scoped to Dify Agent.
 | id | string |  | No |
 | name | string |  | No |
 
-#### AgentKnowledgeMetadataCondition
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| comparison_operator | string, <br>**Available values:** "<", "=", ">", "after", "before", "contains", "empty", "end with", "in", "is", "is not", "not contains", "not empty", "not in", "start with", "≠", "≤", "≥" | *Enum:* `"<"`, `"="`, `">"`, `"after"`, `"before"`, `"contains"`, `"empty"`, `"end with"`, `"in"`, `"is"`, `"is not"`, `"not contains"`, `"not empty"`, `"not in"`, `"start with"`, `"≠"`, `"≤"`, `"≥"` | Yes |
-| name | string |  | Yes |
-| value | string<br>[ string ]<br>number |  | No |
-
-#### AgentKnowledgeMetadataConditions
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conditions | [ [AgentKnowledgeMetadataCondition](#agentknowledgemetadatacondition) ] |  | No |
-| logical_operator | string, <br>**Available values:** "and", "or", <br>**Default:** and | *Enum:* `"and"`, `"or"` | No |
-
-#### AgentKnowledgeMetadataFilteringConfig
-
-Per-set metadata filtering policy.
-
-The Python attribute uses ``metadata_model_config`` for clarity because the
-model belongs to metadata filtering specifically, while the external API and
-generated schema keep the historical ``model_config`` field name via alias.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| conditions | [AgentKnowledgeMetadataConditions](#agentknowledgemetadataconditions) |  | No |
-| mode | string, <br>**Available values:** "automatic", "disabled", "manual", <br>**Default:** disabled | *Enum:* `"automatic"`, `"disabled"`, `"manual"` | No |
-| model_config | [AgentKnowledgeModelConfig](#agentknowledgemodelconfig) |  | No |
-
-#### AgentKnowledgeModelConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| completion_params | object |  | No |
-| mode | string |  | Yes |
-| name | string |  | Yes |
-| provider | string |  | Yes |
-
 #### AgentKnowledgeQueryConfig
 
-Per-set query policy for Agent v2 knowledge retrieval.
-
-Agent v2 stores knowledge as explicit ``knowledge.sets`` rather than the
-legacy flat ``datasets`` / ``query_mode`` / ``query_config`` shape. Each
-set owns its own query policy, so ``user_query`` must carry an explicit
-``value`` while ``generated_query`` leaves that value empty.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| mode | [AgentKnowledgeQueryMode](#agentknowledgequerymode) |  | Yes |
-| value | string |  | No |
+| query | string |  | No |
+| score_threshold | number |  | No |
+| score_threshold_enabled | boolean |  | No |
+| top_k | integer |  | No |
 
 #### AgentKnowledgeQueryMode
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AgentKnowledgeQueryMode | string |  |  |
-
-#### AgentKnowledgeRerankingModelConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| model | string |  | Yes |
-| provider | string |  | Yes |
-
-#### AgentKnowledgeRetrievalConfig
-
-Per-set retrieval policy for Agent v2 knowledge retrieval.
-
-Retrieval settings now live on each knowledge set instead of one shared
-flat config. A set may use either ``multiple`` retrieval with ``top_k`` or
-``single`` retrieval with a required model config.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| mode | string, <br>**Available values:** "multiple", "single" | *Enum:* `"multiple"`, `"single"` | Yes |
-| model | [AgentKnowledgeModelConfig](#agentknowledgemodelconfig) |  | No |
-| reranking_enable | boolean, <br>**Default:** true |  | No |
-| reranking_mode | string, <br>**Default:** reranking_model |  | No |
-| reranking_model | [AgentKnowledgeRerankingModelConfig](#agentknowledgererankingmodelconfig) |  | No |
-| score_threshold | number |  | No |
-| top_k | integer |  | No |
-| weights | [AgentKnowledgeWeightedScoreConfig](#agentknowledgeweightedscoreconfig) |  | No |
-
-#### AgentKnowledgeSetConfig
-
-One explicit knowledge set in Agent v2.
-
-``knowledge.sets`` replaces the old flat knowledge config. Each set owns
-its datasets plus query, retrieval, and metadata policies. An individual
-set must contain at least one dataset id even though the overall knowledge
-section may be empty, which is how callers express "no knowledge layer".
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | Yes |
-| description | string |  | No |
-| id | string |  | Yes |
-| metadata_filtering | [AgentKnowledgeMetadataFilteringConfig](#agentknowledgemetadatafilteringconfig) |  | No |
-| name | string |  | Yes |
-| query | [AgentKnowledgeQueryConfig](#agentknowledgequeryconfig) |  | Yes |
-| retrieval | [AgentKnowledgeRetrievalConfig](#agentknowledgeretrievalconfig) |  | Yes |
-
-#### AgentKnowledgeWeightedScoreConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| keyword_setting | object |  | No |
-| vector_setting | object |  | No |
-| weight_type | string |  | No |
 
 #### AgentLogConversationItemResponse
 
@@ -13340,21 +13063,6 @@ section may be empty, which is how callers express "no knowledge layer".
 | ---- | ---- | ----------- | -------- |
 | AgentProviderResponse | object |  |  |
 
-#### AgentPublishPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| version_note | string | Optional note for this published Agent version | No |
-
-#### AgentPublishResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| active_config_snapshot | object |  | No |
-| active_config_snapshot_id | string |  | Yes |
-| draft | object |  | No |
-| result | string |  | Yes |
-
 #### AgentPublishedReferenceResponse
 
 | Name | Type | Description | Required |
@@ -13412,11 +13120,9 @@ section may be empty, which is how callers express "no knowledge layer".
 | app_id | string |  | No |
 | archived_at | integer |  | No |
 | archived_by | string |  | No |
-| backing_app_id | string |  | No |
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | description | string |  | Yes |
-| hidden_app_backed | boolean |  | No |
 | icon | string |  | No |
 | icon_background | string |  | No |
 | icon_type | [AgentIconType](#agenticontype) |  | No |
@@ -13484,27 +13190,6 @@ Visibility and lifecycle scope of an Agent record.
 | enabled | boolean |  | No |
 | type | string |  | No |
 
-#### AgentSimpleResultResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| result | string |  | Yes |
-
-#### AgentSkillRefConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| description | string |  | No |
-| file_id | string |  | No |
-| full_archive_file_id | string |  | No |
-| full_archive_key | string |  | No |
-| id | string |  | No |
-| manifest_files | [ string ] |  | No |
-| name | string |  | No |
-| path | string |  | No |
-| skill_md_file_id | string |  | No |
-| skill_md_key | string |  | No |
-
 #### AgentSkillUploadResponse
 
 | Name | Type | Description | Required |
@@ -13531,7 +13216,6 @@ Visibility and lifecycle scope of an Agent record.
 | app_features | [AgentSoulAppFeaturesConfig](#agentsoulappfeaturesconfig) |  | No |
 | app_variables | [ [AppVariableConfig](#appvariableconfig) ] |  | No |
 | env | [AgentSoulEnvConfig](#agentsoulenvconfig) |  | No |
-| files | [AgentSoulFilesConfig](#agentsoulfilesconfig) |  | No |
 | human | [AgentSoulHumanConfig](#agentsoulhumanconfig) |  | No |
 | knowledge | [AgentSoulKnowledgeConfig](#agentsoulknowledgeconfig) |  | No |
 | memory | [AgentSoulMemoryConfig](#agentsoulmemoryconfig) |  | No |
@@ -13586,13 +13270,6 @@ old Agent tool payloads can be read while new payloads stay explicit.
 | secret_refs | [ [AgentSecretRefConfig](#agentsecretrefconfig) ] |  | No |
 | variables | [ [AgentEnvVariableConfig](#agentenvvariableconfig) ] |  | No |
 
-#### AgentSoulFilesConfig
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ [AgentFileRefConfig](#agentfilerefconfig) ] |  | No |
-| skills | [ [AgentSkillRefConfig](#agentskillrefconfig) ] |  | No |
-
 #### AgentSoulHumanConfig
 
 | Name | Type | Description | Required |
@@ -13602,17 +13279,11 @@ old Agent tool payloads can be read while new payloads stay explicit.
 
 #### AgentSoulKnowledgeConfig
 
-Top-level Agent v2 knowledge config.
-
-Agent v2 models knowledge as explicit sets instead of one flat
-``datasets`` / ``query_mode`` / ``query_config`` block. An empty ``sets``
-list means no knowledge layer should be emitted at runtime, while set-name
-uniqueness stays case-insensitive because runtime selection addresses sets
-by name.
-
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| sets | [ [AgentKnowledgeSetConfig](#agentknowledgesetconfig) ] |  | No |
+| datasets | [ [AgentKnowledgeDatasetConfig](#agentknowledgedatasetconfig) ] |  | No |
+| query_config | [AgentKnowledgeQueryConfig](#agentknowledgequeryconfig) |  | No |
+| query_mode | [AgentKnowledgeQueryMode](#agentknowledgequerymode) |  | No |
 
 #### AgentSoulMemoryConfig
 
@@ -14086,36 +13757,6 @@ Enum class for api provider schema type.
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
-#### AppDetailSiteResponse
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| access_token | string |  | No |
-| app_base_url | string |  | No |
-| chat_color_theme | string |  | No |
-| chat_color_theme_inverted | boolean |  | No |
-| code | string |  | No |
-| copyright | string |  | No |
-| created_at | integer |  | No |
-| created_by | string |  | No |
-| custom_disclaimer | string |  | No |
-| customize_domain | string |  | No |
-| customize_token_strategy | string |  | No |
-| default_language | string |  | No |
-| description | string |  | No |
-| icon | string |  | No |
-| icon_background | string |  | No |
-| icon_type | string<br>[IconType](#icontype) |  | No |
-| icon_url | string |  | Yes |
-| input_placeholder | string |  | No |
-| privacy_policy | string |  | No |
-| prompt_public | boolean |  | No |
-| show_workflow_steps | boolean |  | No |
-| title | string |  | No |
-| updated_at | integer |  | No |
-| updated_by | string |  | No |
-| use_icon_as_answer_icon | boolean |  | No |
-
 #### AppDetailWithSite
 
 | Name | Type | Description | Required |
@@ -14141,7 +13782,7 @@ Enum class for api provider schema type.
 | model_config | [ModelConfig](#modelconfig) |  | No |
 | name | string |  | Yes |
 | permission_keys | [ string ] |  | No |
-| site | [AppDetailSiteResponse](#appdetailsiteresponse) |  | No |
+| site | [Site](#site) |  | No |
 | tags | [ [Tag](#tag) ] |  | No |
 | tracing | [JSONValue](#jsonvalue) |  | No |
 | updated_at | integer |  | No |
@@ -14545,7 +14186,6 @@ Button styles for user actions.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | conversation_id | string | Conversation ID | No |
-| draft_type | string, <br>**Available values:** "debug_build", "draft", <br>**Default:** draft | Agent App debug config source. Use debug_build while the Agent is in build mode.<br>*Enum:* `"debug_build"`, `"draft"` | No |
 | files | [ object ] | Uploaded files | No |
 | inputs | object |  | Yes |
 | model_config | object |  | No |
@@ -20712,12 +20352,6 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | WorkflowAgentBindingType | string | How a workflow node is bound to an Agent. |  |
 
-#### WorkflowAgentComposerQuery
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| snapshot_id | string |  | No |
-
 #### WorkflowAgentComposerResponse
 
 | Name | Type | Description | Required |
@@ -20726,11 +20360,8 @@ How a workflow node is bound to an Agent.
 | agent | [AgentComposerAgentResponse](#agentcomposeragentresponse) |  | No |
 | agent_soul | [AgentSoulConfig](#agentsoulconfig) |  | Yes |
 | app_id | string |  | No |
-| backing_app_id | string |  | No |
 | binding | [AgentComposerBindingResponse](#agentcomposerbindingresponse) |  | No |
-| chat_endpoint | string |  | No |
 | effective_declared_outputs | [ [DeclaredOutputConfig](#declaredoutputconfig) ] |  | No |
-| hidden_app_backed | boolean |  | No |
 | impact_summary | [AgentComposerImpactResponse](#agentcomposerimpactresponse) |  | No |
 | node_id | string |  | No |
 | node_job | [WorkflowNodeJobConfig](#workflownodejobconfig) |  | Yes |

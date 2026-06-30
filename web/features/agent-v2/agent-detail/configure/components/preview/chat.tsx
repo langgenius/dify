@@ -8,12 +8,8 @@ import type {
   AgentThought,
   MessageDetailResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type {
-  ReactNode,
-} from 'react'
 import type { FeedbackType, IChatItem, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '@/app/components/base/chat/types'
-import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Inputs } from '@/models/debug'
@@ -24,7 +20,8 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useCallback, useMemo } from 'react'
-import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { buildChatItemTree, getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
@@ -32,12 +29,11 @@ import Loading from '@/app/components/base/loading'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { InputVarType } from '@/app/components/workflow/types'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
 import { PromptMode } from '@/models/debug'
 import dynamic from '@/next/dynamic'
 import { consoleClient } from '@/service/client'
@@ -71,7 +67,6 @@ const defaultSystemParameters: ChatConfig['system_parameters'] = {
 }
 
 const disabledFileUploadConfig = {
-  enabled: false,
   allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
   allowed_file_types: [],
   fileUploadConfig: defaultSystemParameters,
@@ -86,39 +81,6 @@ const disabledFileUploadConfig = {
   number_limits: 0,
 } as ChatConfig['file_upload'] & {
   fileUploadConfig: ChatConfig['system_parameters']
-}
-
-const defaultFileUploadMethods = [TransferMethod.local_file, TransferMethod.remote_url]
-
-const toPreviewFileUploadConfig = (fileUpload: FileUpload | undefined) => {
-  if (!fileUpload?.enabled)
-    return disabledFileUploadConfig
-
-  const allowedFileUploadMethods = fileUpload.allowed_file_upload_methods?.length
-    ? fileUpload.allowed_file_upload_methods
-    : defaultFileUploadMethods
-  const numberLimits = fileUpload.number_limits ?? fileUpload.image?.number_limits ?? 3
-
-  return {
-    ...disabledFileUploadConfig,
-    ...fileUpload,
-    enabled: true,
-    allowed_file_types: fileUpload.allowed_file_types?.length
-      ? fileUpload.allowed_file_types
-      : [SupportUploadFileTypes.image],
-    allowed_file_upload_methods: allowedFileUploadMethods,
-    number_limits: numberLimits,
-    fileUploadConfig: fileUpload.fileUploadConfig ?? defaultSystemParameters,
-    image: {
-      ...disabledFileUploadConfig.image,
-      ...fileUpload.image,
-      enabled: fileUpload.image?.enabled ?? true,
-      transfer_methods: fileUpload.image?.transfer_methods?.length
-        ? fileUpload.image.transfer_methods
-        : allowedFileUploadMethods,
-      number_limits: numberLimits,
-    },
-  } as ChatConfig['file_upload']
 }
 
 const getModelSettings = (agentSoulConfig?: AgentSoulConfig) => agentSoulConfig?.model?.model_settings ?? {}
@@ -177,34 +139,6 @@ const toCliTool = (tool: AgentCliToolConfig) => ({
   },
   enabled: tool.enabled ?? true,
 })
-
-const toLegacyPreviewDatasetConfigs = (
-  knowledge?: AgentSoulConfig['knowledge'],
-): NonNullable<ChatConfig['dataset_configs']> => {
-  // Temporary preview adapter: composer state is knowledge.sets, but this
-  // legacy chat preview contract still accepts one flat dataset_configs block.
-  // Preview currently flattens the first configured set only.
-  const previewKnowledgeSet = knowledge?.sets?.[0]
-  const datasets = previewKnowledgeSet?.datasets ?? []
-  const retrieval = previewKnowledgeSet?.retrieval
-
-  return {
-    retrieval_model: retrieval?.mode === 'single' ? RETRIEVE_TYPE.oneWay : RETRIEVE_TYPE.multiWay,
-    reranking_model: {
-      reranking_provider_name: retrieval?.reranking_model?.provider ?? '',
-      reranking_model_name: retrieval?.reranking_model?.model ?? '',
-    },
-    top_k: retrieval?.top_k ?? 4,
-    score_threshold_enabled: retrieval?.score_threshold !== undefined && retrieval?.score_threshold !== null,
-    score_threshold: retrieval?.score_threshold ?? 0.8,
-    datasets: {
-      datasets: datasets.map(dataset => ({
-        enabled: true,
-        id: dataset.id ?? '',
-      })).filter(dataset => dataset.id),
-    },
-  }
-}
 
 const stopAgentChatMessageResponding = (agentId: string, taskId: string) => {
   return consoleClient.agent.byAgentId.chatMessages.byTaskId.stop.post({
@@ -361,8 +295,9 @@ const buildChatConfig = ({
 }): AgentPreviewChatConfig => {
   const modelSettings = getModelSettings(agentSoulConfig)
   const appFeatures = agentSoulConfig?.app_features ?? {}
+  const datasets = agentSoulConfig?.knowledge?.datasets ?? []
   const difyTools = agentSoulConfig?.tools?.dify_tools ?? []
-  const cliTools = ENABLE_AGENT_CLI_TOOLS ? (agentSoulConfig?.tools?.cli_tools ?? []) : []
+  const cliTools = agentSoulConfig?.tools?.cli_tools ?? []
 
   return {
     pre_prompt: prompt || agentSoulConfig?.prompt?.system_prompt || '',
@@ -419,42 +354,71 @@ const buildChatConfig = ({
         echo: false,
       },
     },
-    dataset_configs: toLegacyPreviewDatasetConfigs(agentSoulConfig?.knowledge),
-    file_upload: toPreviewFileUploadConfig(appFeatures.file_upload as FileUpload | undefined),
+    dataset_configs: {
+      retrieval_model: RETRIEVE_TYPE.multiWay,
+      reranking_model: {
+        reranking_provider_name: '',
+        reranking_model_name: '',
+      },
+      top_k: agentSoulConfig?.knowledge?.query_config?.top_k ?? 4,
+      score_threshold_enabled: agentSoulConfig?.knowledge?.query_config?.score_threshold_enabled ?? false,
+      score_threshold: agentSoulConfig?.knowledge?.query_config?.score_threshold ?? 0.8,
+      datasets: {
+        datasets: datasets.map(dataset => ({
+          enabled: true,
+          id: dataset.id ?? '',
+        })).filter(dataset => dataset.id),
+      },
+    },
+    file_upload: disabledFileUploadConfig,
     system_parameters: defaultSystemParameters,
     supportCitationHitInfo: true,
   }
 }
 
-export type AgentChatRuntimeEmptyStateProps = {
+function AgentPreviewChatEmptyState({
+  agentIcon,
+  agentIconBackground,
+  agentIconType,
+  agentName,
+  hasInstructions,
+}: {
   agentIcon?: string | null
   agentIconBackground?: string | null
   agentIconType?: AgentIconType | null
   agentName?: string
   hasInstructions: boolean
-  inputNode: ReactNode
+}) {
+  const { t } = useTranslation('agentV2')
+  const imageUrl = (agentIconType === 'image' || agentIconType === 'link') ? agentIcon : undefined
+  const iconType = imageUrl ? 'image' : agentIconType
+
+  return (
+    <div className="pointer-events-none absolute inset-x-12 bottom-[calc(27%+84px)] flex flex-col items-center text-center">
+      <AppIcon
+        size="xxl"
+        rounded
+        iconType={iconType}
+        icon={agentIcon ?? undefined}
+        background={agentIconBackground}
+        imageUrl={imageUrl}
+        className="bg-background-default"
+      />
+      <div className="mt-3 max-w-full truncate system-md-semibold text-text-secondary">
+        {agentName || t('agentDetail.configure.preview.empty.defaultAgentName')}
+      </div>
+      <div className="mt-4 h-px w-73 max-w-full bg-divider-subtle" />
+      <div className="mt-5 max-w-91 body-md-regular text-text-tertiary">
+        <p>{t('agentDetail.configure.preview.empty.description')}</p>
+        {!hasInstructions && (
+          <p>{t('agentDetail.configure.preview.empty.noInstructionsDescription')}</p>
+        )}
+      </div>
+    </div>
+  )
 }
 
-export type AgentChatRuntimeProps = {
-  agentId: string
-  agentIcon?: string | null
-  agentIconBackground?: string | null
-  agentIconType?: AgentIconType | null
-  agentName?: string
-  agentSoulConfig?: AgentSoulConfig
-  clearChatList: boolean
-  conversationId?: string | null
-  draftType?: 'debug_build'
-  inputPlaceholder: string
-  sendButtonLabel?: string
-  renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
-  onClearChatListChange: (clearChatList: boolean) => void
-  onConversationComplete?: (conversationId: string) => void
-  onConversationIdChange?: (conversationId: string) => void
-  onSaveDraftBeforeRun?: () => Promise<void>
-}
-
-export function AgentChatRuntime({
+export function AgentPreviewChat({
   agentId,
   agentIcon,
   agentIconBackground,
@@ -462,27 +426,32 @@ export function AgentChatRuntime({
   agentName,
   agentSoulConfig,
   clearChatList,
-  conversationId,
-  draftType,
-  inputPlaceholder,
-  sendButtonLabel,
-  renderEmptyState,
+  debugConversationId,
   onClearChatListChange,
-  onConversationComplete,
-  onConversationIdChange,
   onSaveDraftBeforeRun,
-}: AgentChatRuntimeProps) {
+}: {
+  agentId: string
+  agentIcon?: string | null
+  agentIconBackground?: string | null
+  agentIconType?: AgentIconType | null
+  agentName?: string
+  agentSoulConfig?: AgentSoulConfig
+  clearChatList: boolean
+  debugConversationId?: string | null
+  onClearChatListChange: (clearChatList: boolean) => void
+  onSaveDraftBeforeRun?: () => Promise<void>
+}) {
   const historyQuery = useQuery({
-    queryKey: ['agent-chat-conversation-messages', agentId, conversationId],
-    queryFn: () => fetchAgentConversationMessages(agentId, conversationId!),
-    enabled: !!conversationId,
+    queryKey: ['agent-preview-debug-conversation', agentId, debugConversationId],
+    queryFn: () => fetchAgentConversationMessages(agentId, debugConversationId!),
+    enabled: !!debugConversationId,
   })
   const initialChatTree = useMemo(
     () => getFormattedAgentDebugChatTree(historyQuery.data?.data ?? []),
     [historyQuery.data?.data],
   )
 
-  if (conversationId && historyQuery.isPending) {
+  if (debugConversationId && historyQuery.isPending) {
     return (
       <div className="flex h-full items-center justify-center">
         <Loading type="app" />
@@ -492,7 +461,7 @@ export function AgentChatRuntime({
 
   return (
     <AgentPreviewChatSession
-      key={`${conversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`}
+      key={`${debugConversationId ?? 'new'}-${historyQuery.dataUpdatedAt}`}
       agentId={agentId}
       agentIcon={agentIcon}
       agentIconBackground={agentIconBackground}
@@ -500,15 +469,9 @@ export function AgentChatRuntime({
       agentName={agentName}
       agentSoulConfig={agentSoulConfig}
       clearChatList={clearChatList}
-      conversationId={conversationId}
-      draftType={draftType}
+      debugConversationId={debugConversationId}
       initialChatTree={initialChatTree}
-      inputPlaceholder={inputPlaceholder}
-      sendButtonLabel={sendButtonLabel}
-      renderEmptyState={renderEmptyState}
       onClearChatListChange={onClearChatListChange}
-      onConversationComplete={onConversationComplete}
-      onConversationIdChange={onConversationIdChange}
       onSaveDraftBeforeRun={onSaveDraftBeforeRun}
     />
   )
@@ -522,15 +485,9 @@ function AgentPreviewChatSession({
   agentName,
   agentSoulConfig,
   clearChatList,
-  conversationId,
-  draftType,
+  debugConversationId,
   initialChatTree,
-  inputPlaceholder,
-  sendButtonLabel,
-  renderEmptyState,
   onClearChatListChange,
-  onConversationComplete,
-  onConversationIdChange,
   onSaveDraftBeforeRun,
 }: {
   agentId: string
@@ -540,15 +497,9 @@ function AgentPreviewChatSession({
   agentName?: string
   agentSoulConfig?: AgentSoulConfig
   clearChatList: boolean
-  conversationId?: string | null
-  draftType?: 'debug_build'
+  debugConversationId?: string | null
   initialChatTree: ChatItemInTree[]
-  inputPlaceholder: string
-  sendButtonLabel?: string
-  renderEmptyState: (props: AgentChatRuntimeEmptyStateProps) => ReactNode
   onClearChatListChange: (clearChatList: boolean) => void
-  onConversationComplete?: (conversationId: string) => void
-  onConversationIdChange?: (conversationId: string) => void
   onSaveDraftBeforeRun?: () => Promise<void>
 }) {
   const { userProfile } = useAppContext()
@@ -591,7 +542,7 @@ function AgentPreviewChatSession({
     },
     clearChatList,
     onClearChatListChange,
-    conversationId ?? undefined,
+    debugConversationId ?? undefined,
   )
 
   const doSend: OnSend = useCallback(async (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
@@ -610,8 +561,6 @@ function AgentPreviewChatSession({
       inputs,
       parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
-    if (draftType)
-      data.draft_type = draftType
 
     if (files?.length && supportVision)
       data.files = files
@@ -622,13 +571,9 @@ function AgentPreviewChatSession({
       {
         onGetConversationMessages: conversationId => fetchAgentConversationMessages(agentId, conversationId),
         onGetSuggestedQuestions: responseItemId => fetchAgentSuggestedQuestions(agentId, responseItemId),
-        onConversationComplete: (conversationId) => {
-          onConversationIdChange?.(conversationId)
-          onConversationComplete?.(conversationId)
-        },
       },
     )
-  }, [agentId, chatList, config.model.name, config.model.provider, draftType, handleSend, inputs, onConversationComplete, onConversationIdChange, onSaveDraftBeforeRun, textGenerationModelList])
+  }, [agentId, chatList, config.model.name, config.model.provider, handleSend, inputs, onSaveDraftBeforeRun, textGenerationModelList])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)
@@ -645,45 +590,26 @@ function AgentPreviewChatSession({
   }, [chatList, doSend])
   const isEmptyChat = chatList.length === 0
   const hasInstructions = !!config.pre_prompt.trim()
-  const emptyChatInputNode = (
-    <div className="pointer-events-auto mt-5 w-full">
-      <ChatInputArea
-        botName={agentName || 'Agent'}
-        customPlaceholder={inputPlaceholder}
-        disabled={isResponding}
-        showFileUpload={false}
-        visionConfig={config.file_upload}
-        speechToTextConfig={config.speech_to_text}
-        onSend={doSend}
-        inputs={inputs}
-        inputsForm={inputsForm}
-        sendButtonLabel={sendButtonLabel}
-      />
-    </div>
-  )
 
   return (
     <Chat
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      chatNode={isEmptyChat
-        ? renderEmptyState({
-            agentIcon,
-            agentIconBackground,
-            agentIconType,
-            agentName,
-            hasInstructions,
-            inputNode: emptyChatInputNode,
-          })
-        : null}
-      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12 pt-2 !pb-[88px]' : 'px-3')}
-      chatFooterClassName={cn(
-        '!bottom-2 pb-0',
-        isEmptyChat ? 'hidden' : 'px-3 pt-10',
+      chatNode={isEmptyChat && (
+        <AgentPreviewChatEmptyState
+          agentIcon={agentIcon}
+          agentIconBackground={agentIconBackground}
+          agentIconType={agentIconType}
+          agentName={agentName}
+          hasInstructions={hasInstructions}
+        />
       )}
-      inputPlaceholder={inputPlaceholder}
-      sendButtonLabel={sendButtonLabel}
+      chatContainerClassName={cn('pt-6', isEmptyChat ? 'px-12' : 'px-3')}
+      chatFooterClassName={cn(
+        'pb-0',
+        isEmptyChat ? '!bottom-[27%] px-12 pt-3' : 'px-3 pt-10',
+      )}
       showFileUpload={false}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
@@ -692,7 +618,6 @@ function AgentPreviewChatSession({
       onRegenerate={doRegenerate}
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       onStopResponding={handleStop}
-      noChatInput={isEmptyChat}
       showPromptLog
       questionIcon={<Avatar avatar={userProfile.avatar_url} name={userProfile.name} size="xl" />}
       onAnnotationEdited={handleAnnotationEdited}

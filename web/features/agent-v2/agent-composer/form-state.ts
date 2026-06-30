@@ -6,7 +6,6 @@ import type {
   MetadataFilteringConditions,
   MetadataFilteringModeEnum,
   MultipleRetrievalConfig,
-  SingleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
@@ -36,7 +35,6 @@ export type AgentFileNode = {
   id: string
   name: string
   icon: FileTreeIconType
-  fileId?: string
   driveKey?: string
   children?: AgentFileNode[]
 }
@@ -44,7 +42,6 @@ export type AgentFileNode = {
 export type AgentKnowledgeRetrievalItem = {
   id: string
   name?: string
-  description?: string
   nameKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
   queryMode?: 'agent' | 'custom'
   customQuery?: string
@@ -52,7 +49,6 @@ export type AgentKnowledgeRetrievalItem = {
   selectedDatasets?: DataSet[]
   retrievalMode?: RETRIEVE_TYPE
   multipleRetrievalConfig?: MultipleRetrievalConfig
-  singleRetrievalConfig?: SingleRetrievalConfig
   metadataFilterMode?: MetadataFilteringModeEnum
   metadataFilteringConditions?: MetadataFilteringConditions
   metadataModelConfig?: ModelConfig
@@ -100,8 +96,6 @@ export type AgentSoulConfigFormState = {
   prompt: string
   model?: DefaultModel
   appFeatures?: AgentSoulAppFeaturesConfig
-  skills: AgentSkill[]
-  files: AgentFileNode[]
   tools: AgentTool[]
   knowledgeRetrievals: AgentKnowledgeRetrievalItem[]
   envVariables: EnvVariable[]
@@ -110,8 +104,6 @@ export type AgentSoulConfigFormState = {
 
 export const defaultAgentSoulConfigFormState: AgentSoulConfigFormState = {
   prompt: '',
-  skills: [],
-  files: [],
   tools: [],
   knowledgeRetrievals: [],
   envVariables: [],

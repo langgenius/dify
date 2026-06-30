@@ -26,7 +26,6 @@ export type AgentAppDetailWithSite = {
   active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
-  backing_app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -35,7 +34,6 @@ export type AgentAppDetailWithSite = {
   description?: string | null
   enable_api: boolean
   enable_site: boolean
-  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -48,7 +46,7 @@ export type AgentAppDetailWithSite = {
   name: string
   permission_keys?: Array<string>
   role?: string | null
-  site?: AppDetailSiteResponse | null
+  site?: Site | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -109,18 +107,27 @@ export type ApiKeyItem = {
   type: string
 }
 
-export type AgentSimpleResultResponse = {
+export type MessageInfiniteScrollPaginationResponse = {
+  data: Array<MessageDetailResponse>
+  has_more: boolean
+  limit: number
+}
+
+export type SuggestedQuestionsResponse = {
+  data: Array<string>
+}
+
+export type SimpleResultResponse = {
   result: string
 }
 
-export type AgentBuildDraftResponse = {
-  agent_soul: {
-    [key: string]: unknown
-  }
-  draft: {
-    [key: string]: unknown
-  }
-  variant: string
+export type AgentAppComposerResponse = {
+  active_config_snapshot: AgentConfigSnapshotSummaryResponse
+  agent: AgentComposerAgentResponse
+  agent_soul: AgentSoulConfig
+  save_options: Array<ComposerSaveStrategy>
+  validation?: ComposerValidationFindingsResponse | null
+  variant: 'agent_app'
 }
 
 export type ComposerSavePayload = {
@@ -139,45 +146,6 @@ export type ComposerSavePayload = {
   soul_lock?: ComposerSoulLockPayload
   variant: ComposerVariant
   version_note?: string | null
-}
-
-export type AgentBuildDraftApplyResponse = {
-  draft: {
-    [key: string]: unknown
-  }
-  result: string
-}
-
-export type AgentBuildDraftCheckoutPayload = {
-  force?: boolean
-}
-
-export type MessageInfiniteScrollPaginationResponse = {
-  data: Array<MessageDetailResponse>
-  has_more: boolean
-  limit: number
-}
-
-export type SuggestedQuestionsResponse = {
-  data: Array<string>
-}
-
-export type SimpleResultResponse = {
-  result: string
-}
-
-export type AgentAppComposerResponse = {
-  active_config_snapshot?: AgentConfigSnapshotSummaryResponse | null
-  agent: AgentComposerAgentResponse
-  agent_soul: AgentSoulConfig
-  app_id?: string | null
-  backing_app_id?: string | null
-  chat_endpoint?: string | null
-  draft?: AgentConfigDraftSummaryResponse | null
-  hidden_app_backed?: boolean
-  save_options: Array<ComposerSaveStrategy>
-  validation?: ComposerValidationFindingsResponse | null
-  variant: 'agent_app'
 }
 
 export type AgentComposerCandidatesResponse = {
@@ -326,21 +294,6 @@ export type MessageDetailResponse = {
   workflow_run_id?: string | null
 }
 
-export type AgentPublishPayload = {
-  version_note?: string | null
-}
-
-export type AgentPublishResponse = {
-  active_config_snapshot?: {
-    [key: string]: unknown
-  } | null
-  active_config_snapshot_id: string
-  draft?: {
-    [key: string]: unknown
-  } | null
-  result: string
-}
-
 export type AgentReferencingWorkflowsResponse = {
   data?: Array<AgentReferencingWorkflowResponse>
 }
@@ -406,8 +359,6 @@ export type AgentConfigSnapshotDetailResponse = {
 
 export type AgentConfigSnapshotRestoreResponse = {
   active_config_snapshot_id: string
-  draft_config_id?: string | null
-  restored_version_id?: string | null
   result: 'success'
 }
 
@@ -416,7 +367,6 @@ export type AgentAppPartial = {
   active_config_is_published?: boolean
   app_id?: string | null
   author_name?: string | null
-  backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
@@ -424,7 +374,6 @@ export type AgentAppPartial = {
   debug_conversation_id?: string | null
   description?: string | null
   has_draft_trigger?: boolean | null
-  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -464,32 +413,22 @@ export type ModelConfig = {
   provider: string
 }
 
-export type AppDetailSiteResponse = {
-  access_token?: string | null
-  app_base_url?: string | null
+export type Site = {
   chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  code?: string | null
+  chat_color_theme_inverted: boolean
   copyright?: string | null
-  created_at?: number | null
-  created_by?: string | null
   custom_disclaimer?: string | null
-  customize_domain?: string | null
-  customize_token_strategy?: string | null
-  default_language?: string | null
+  default_language: string
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | IconType | null
+  icon_type?: string | null
   readonly icon_url: string | null
   input_placeholder?: string | null
   privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type Tag = {
@@ -525,12 +464,10 @@ export type AgentInviteOptionResponse = {
   app_id?: string | null
   archived_at?: number | null
   archived_by?: string | null
-  backing_app_id?: string | null
   created_at?: number | null
   created_by?: string | null
   description: string
   existing_node_ids?: Array<string>
-  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: AgentIconType | null
@@ -551,11 +488,31 @@ export type AgentInviteOptionResponse = {
   workflow_node_id?: string | null
 }
 
+export type AgentConfigSnapshotSummaryResponse = {
+  agent_id?: string | null
+  created_at?: number | null
+  created_by?: string | null
+  display_version?: number | null
+  id: string
+  snapshot_version?: number | null
+  summary?: string | null
+  version: number
+  version_note?: string | null
+}
+
+export type AgentComposerAgentResponse = {
+  active_config_snapshot_id?: string | null
+  description: string
+  id: string
+  name: string
+  scope: AgentScope
+  status: AgentStatus
+}
+
 export type AgentSoulConfig = {
   app_features?: AgentSoulAppFeaturesConfig
   app_variables?: Array<AppVariableConfig>
   env?: AgentSoulEnvConfig
-  files?: AgentSoulFilesConfig
   human?: AgentSoulHumanConfig
   knowledge?: AgentSoulKnowledgeConfig
   memory?: AgentSoulMemoryConfig
@@ -565,6 +522,18 @@ export type AgentSoulConfig = {
   sandbox?: AgentSoulSandboxConfig
   schema_version?: number
   tools?: AgentSoulToolsConfig
+}
+
+export type ComposerSaveStrategy
+  = | 'node_job_only'
+    | 'save_as_new_agent'
+    | 'save_as_new_version'
+    | 'save_to_current_version'
+    | 'save_to_roster'
+
+export type ComposerValidationFindingsResponse = {
+  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
+  warnings?: Array<ComposerValidationWarningResponse>
 }
 
 export type ComposerBindingPayload = {
@@ -585,65 +554,12 @@ export type WorkflowNodeJobConfig = {
   workflow_prompt?: string
 }
 
-export type ComposerSaveStrategy
-  = | 'node_job_only'
-    | 'save_as_new_agent'
-    | 'save_as_new_version'
-    | 'save_to_current_version'
-    | 'save_to_roster'
-
 export type ComposerSoulLockPayload = {
   locked?: boolean
   unlocked_from_version_id?: string | null
 }
 
 export type ComposerVariant = 'agent_app' | 'workflow'
-
-export type AgentConfigSnapshotSummaryResponse = {
-  agent_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  display_version?: number | null
-  id: string
-  snapshot_version?: number | null
-  summary?: string | null
-  version: number
-  version_note?: string | null
-}
-
-export type AgentComposerAgentResponse = {
-  active_config_snapshot_id?: string | null
-  app_id?: string | null
-  backing_app_id?: string | null
-  description: string
-  hidden_app_backed?: boolean
-  icon?: string | null
-  icon_background?: string | null
-  icon_type?: string | null
-  id: string
-  name: string
-  role?: string | null
-  scope: AgentScope
-  source?: AgentSource | null
-  status: AgentStatus
-}
-
-export type AgentConfigDraftSummaryResponse = {
-  account_id?: string | null
-  agent_id: string
-  base_snapshot_id?: string | null
-  created_at?: number | null
-  created_by?: string | null
-  draft_type: AgentConfigDraftType
-  id: string
-  updated_at?: number | null
-  updated_by?: string | null
-}
-
-export type ComposerValidationFindingsResponse = {
-  knowledge_retrieval_placeholder?: Array<ComposerKnowledgePlaceholderResponse>
-  warnings?: Array<ComposerValidationWarningResponse>
-}
 
 export type AgentComposerNodeJobCandidatesResponse = {
   declare_output_types?: Array<DeclaredOutputType>
@@ -655,7 +571,7 @@ export type AgentComposerSoulCandidatesResponse = {
   cli_tools?: Array<AgentCliToolConfig>
   dify_tools?: Array<AgentComposerDifyToolCandidateResponse>
   human_contacts?: Array<AgentHumanContactConfig>
-  knowledge_sets?: Array<AgentComposerKnowledgeSetCandidateResponse>
+  knowledge_datasets?: Array<AgentKnowledgeDatasetConfig>
 }
 
 export type ComposerCandidateCapabilities = {
@@ -1009,18 +925,15 @@ export type AgentSoulEnvConfig = {
   variables?: Array<AgentEnvVariableConfig>
 }
 
-export type AgentSoulFilesConfig = {
-  files?: Array<AgentFileRefConfig>
-  skills?: Array<AgentSkillRefConfig>
-}
-
 export type AgentSoulHumanConfig = {
   contacts?: Array<AgentHumanContactConfig>
   tools?: Array<AgentHumanToolConfig>
 }
 
 export type AgentSoulKnowledgeConfig = {
-  sets?: Array<AgentKnowledgeSetConfig>
+  datasets?: Array<AgentKnowledgeDatasetConfig>
+  query_config?: AgentKnowledgeQueryConfig
+  query_mode?: AgentKnowledgeQueryMode | null
 }
 
 export type AgentSoulMemoryConfig = {
@@ -1117,8 +1030,6 @@ export type WorkflowPreviousNodeOutputRef = {
   [key: string]: unknown
 }
 
-export type AgentConfigDraftType = 'debug_build' | 'draft'
-
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
 export type AgentCliToolConfig = {
@@ -1163,12 +1074,11 @@ export type AgentComposerDifyToolCandidateResponse = {
   tools_count?: number | null
 }
 
-export type AgentComposerKnowledgeSetCandidateResponse = {
-  datasets?: Array<AgentComposerKnowledgeDatasetCandidateResponse>
+export type AgentKnowledgeDatasetConfig = {
   description?: string | null
-  id: string
-  missing_dataset_ids?: Array<string>
-  name: string
+  id?: string | null
+  name?: string | null
+  [key: string]: unknown
 }
 
 export type AgentModerationProviderConfig = {
@@ -1263,7 +1173,6 @@ export type AgentUserSatisfactionRateStatisticResponse = {
 
 export type AgentConfigRevisionOperation
   = | 'create_version'
-    | 'publish_draft'
     | 'restore_version'
     | 'save_current_version'
     | 'save_new_agent'
@@ -1317,35 +1226,6 @@ export type AgentEnvVariableConfig = {
   [key: string]: unknown
 }
 
-export type AgentFileRefConfig = {
-  drive_key?: string | null
-  file_id?: string | null
-  id?: string | null
-  name?: string | null
-  reference?: string | null
-  remote_url?: string | null
-  tenant_id?: string | null
-  transfer_method?: string | null
-  type?: string | null
-  upload_file_id?: string | null
-  url?: string | null
-  [key: string]: unknown
-}
-
-export type AgentSkillRefConfig = {
-  description?: string | null
-  file_id?: string | null
-  full_archive_file_id?: string | null
-  full_archive_key?: string | null
-  id?: string | null
-  manifest_files?: Array<string> | null
-  name?: string | null
-  path?: string | null
-  skill_md_file_id?: string | null
-  skill_md_key?: string | null
-  [key: string]: unknown
-}
-
 export type AgentHumanToolConfig = {
   description?: string | null
   enabled?: boolean
@@ -1353,15 +1233,15 @@ export type AgentHumanToolConfig = {
   [key: string]: unknown
 }
 
-export type AgentKnowledgeSetConfig = {
-  datasets: Array<AgentKnowledgeDatasetConfig>
-  description?: string | null
-  id: string
-  metadata_filtering?: AgentKnowledgeMetadataFilteringConfig
-  name: string
-  query: AgentKnowledgeQueryConfig
-  retrieval: AgentKnowledgeRetrievalConfig
+export type AgentKnowledgeQueryConfig = {
+  query?: string | null
+  score_threshold?: number | null
+  score_threshold_enabled?: boolean | null
+  top_k?: number | null
+  [key: string]: unknown
 }
+
+export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
 
 export type AgentMemoryArtifactConfig = {
   id?: string | null
@@ -1463,6 +1343,21 @@ export type DeclaredOutputFileConfig = {
   mime_types?: Array<string>
 }
 
+export type AgentFileRefConfig = {
+  drive_key?: string | null
+  file_id?: string | null
+  id?: string | null
+  name?: string | null
+  reference?: string | null
+  remote_url?: string | null
+  tenant_id?: string | null
+  transfer_method?: string | null
+  type?: string | null
+  upload_file_id?: string | null
+  url?: string | null
+  [key: string]: unknown
+}
+
 export type AgentCliToolAuthorizationStatus
   = | 'allowed'
     | 'authorized'
@@ -1485,13 +1380,6 @@ export type AgentPermissionConfig = {
 }
 
 export type AgentCliToolRiskLevel = 'dangerous' | 'safe' | 'unknown'
-
-export type AgentComposerKnowledgeDatasetCandidateResponse = {
-  description?: string | null
-  id?: string | null
-  missing?: boolean
-  name?: string | null
-}
 
 export type AgentModerationIoConfig = {
   enabled?: boolean
@@ -1520,34 +1408,6 @@ export type FormInputConfig
   } & FileListInputConfig)
 
 export type JsonValue2 = unknown
-
-export type AgentKnowledgeDatasetConfig = {
-  description?: string | null
-  id?: string | null
-  name?: string | null
-}
-
-export type AgentKnowledgeMetadataFilteringConfig = {
-  conditions?: AgentKnowledgeMetadataConditions | null
-  mode?: 'automatic' | 'disabled' | 'manual'
-  model_config?: AgentKnowledgeModelConfig | null
-}
-
-export type AgentKnowledgeQueryConfig = {
-  mode: AgentKnowledgeQueryMode
-  value?: string | null
-}
-
-export type AgentKnowledgeRetrievalConfig = {
-  mode: 'multiple' | 'single'
-  model?: AgentKnowledgeModelConfig | null
-  reranking_enable?: boolean
-  reranking_mode?: string
-  reranking_model?: AgentKnowledgeRerankingModelConfig | null
-  score_threshold?: number | null
-  top_k?: number | null
-  weights?: AgentKnowledgeWeightedScoreConfig | null
-}
 
 export type AgentModelResponseFormatConfig = {
   type?: string | null
@@ -1599,38 +1459,6 @@ export type FileListInputConfig = {
   type?: 'file-list'
 }
 
-export type AgentKnowledgeMetadataConditions = {
-  conditions?: Array<AgentKnowledgeMetadataCondition>
-  logical_operator?: 'and' | 'or'
-}
-
-export type AgentKnowledgeModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: string
-  name: string
-  provider: string
-}
-
-export type AgentKnowledgeQueryMode = 'generated_query' | 'user_query'
-
-export type AgentKnowledgeRerankingModelConfig = {
-  model: string
-  provider: string
-}
-
-export type AgentKnowledgeWeightedScoreConfig = {
-  keyword_setting?: {
-    [key: string]: unknown
-  } | null
-  vector_setting?: {
-    [key: string]: unknown
-  } | null
-  weight_type?: string | null
-  [key: string]: unknown
-}
-
 export type StringSource = {
   selector?: Array<string>
   type: ValueSourceType
@@ -1647,30 +1475,6 @@ export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
 
 export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
 
-export type AgentKnowledgeMetadataCondition = {
-  comparison_operator:
-    | '<'
-    | '='
-    | '>'
-    | 'after'
-    | 'before'
-    | 'contains'
-    | 'empty'
-    | 'end with'
-    | 'in'
-    | 'is'
-    | 'is not'
-    | 'not contains'
-    | 'not empty'
-    | 'not in'
-    | 'start with'
-    | '≠'
-    | '≤'
-    | '≥'
-  name: string
-  value?: string | Array<string> | number | null
-}
-
 export type ValueSourceType = 'constant' | 'variable'
 
 export type AgentAppPaginationWritable = {
@@ -1686,7 +1490,6 @@ export type AgentAppDetailWithSiteWritable = {
   active_config_is_published?: boolean
   api_base_url?: string | null
   app_id?: string | null
-  backing_app_id?: string | null
   bound_agent_id?: string | null
   created_at?: number | null
   created_by?: string | null
@@ -1695,7 +1498,6 @@ export type AgentAppDetailWithSiteWritable = {
   description?: string | null
   enable_api: boolean
   enable_site: boolean
-  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -1707,7 +1509,7 @@ export type AgentAppDetailWithSiteWritable = {
   name: string
   permission_keys?: Array<string>
   role?: string | null
-  site?: AppDetailSiteResponseWritable | null
+  site?: SiteWritable | null
   tags?: Array<Tag>
   tracing?: JsonValue | null
   updated_at?: number | null
@@ -1721,7 +1523,6 @@ export type AgentAppPartialWritable = {
   active_config_is_published?: boolean
   app_id?: string | null
   author_name?: string | null
-  backing_app_id?: string | null
   bound_agent_id?: string | null
   create_user_name?: string | null
   created_at?: number | null
@@ -1729,7 +1530,6 @@ export type AgentAppPartialWritable = {
   debug_conversation_id?: string | null
   description?: string | null
   has_draft_trigger?: boolean | null
-  hidden_app_backed?: boolean
   icon?: string | null
   icon_background?: string | null
   icon_type?: string | null
@@ -1751,31 +1551,21 @@ export type AgentAppPartialWritable = {
   workflow?: WorkflowPartial | null
 }
 
-export type AppDetailSiteResponseWritable = {
-  access_token?: string | null
-  app_base_url?: string | null
+export type SiteWritable = {
   chat_color_theme?: string | null
-  chat_color_theme_inverted?: boolean | null
-  code?: string | null
+  chat_color_theme_inverted: boolean
   copyright?: string | null
-  created_at?: number | null
-  created_by?: string | null
   custom_disclaimer?: string | null
-  customize_domain?: string | null
-  customize_token_strategy?: string | null
-  default_language?: string | null
+  default_language: string
   description?: string | null
   icon?: string | null
   icon_background?: string | null
-  icon_type?: string | IconType | null
+  icon_type?: string | null
   input_placeholder?: string | null
   privacy_policy?: string | null
-  prompt_public?: boolean | null
-  show_workflow_steps?: boolean | null
-  title?: string | null
-  updated_at?: number | null
-  updated_by?: string | null
-  use_icon_as_answer_icon?: boolean | null
+  show_workflow_steps: boolean
+  title: string
+  use_icon_as_answer_icon: boolean
 }
 
 export type GetAgentData = {
@@ -1988,86 +1778,6 @@ export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponses = {
 
 export type DeleteAgentByAgentIdApiKeysByApiKeyIdResponse
   = DeleteAgentByAgentIdApiKeysByApiKeyIdResponses[keyof DeleteAgentByAgentIdApiKeysByApiKeyIdResponses]
-
-export type DeleteAgentByAgentIdBuildDraftData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/build-draft'
-}
-
-export type DeleteAgentByAgentIdBuildDraftResponses = {
-  200: AgentSimpleResultResponse
-}
-
-export type DeleteAgentByAgentIdBuildDraftResponse
-  = DeleteAgentByAgentIdBuildDraftResponses[keyof DeleteAgentByAgentIdBuildDraftResponses]
-
-export type GetAgentByAgentIdBuildDraftData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/build-draft'
-}
-
-export type GetAgentByAgentIdBuildDraftResponses = {
-  200: AgentBuildDraftResponse
-}
-
-export type GetAgentByAgentIdBuildDraftResponse
-  = GetAgentByAgentIdBuildDraftResponses[keyof GetAgentByAgentIdBuildDraftResponses]
-
-export type PutAgentByAgentIdBuildDraftData = {
-  body: ComposerSavePayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/build-draft'
-}
-
-export type PutAgentByAgentIdBuildDraftResponses = {
-  200: AgentBuildDraftResponse
-}
-
-export type PutAgentByAgentIdBuildDraftResponse
-  = PutAgentByAgentIdBuildDraftResponses[keyof PutAgentByAgentIdBuildDraftResponses]
-
-export type PostAgentByAgentIdBuildDraftApplyData = {
-  body?: never
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/build-draft/apply'
-}
-
-export type PostAgentByAgentIdBuildDraftApplyResponses = {
-  200: AgentBuildDraftApplyResponse
-}
-
-export type PostAgentByAgentIdBuildDraftApplyResponse
-  = PostAgentByAgentIdBuildDraftApplyResponses[keyof PostAgentByAgentIdBuildDraftApplyResponses]
-
-export type PostAgentByAgentIdBuildDraftCheckoutData = {
-  body: AgentBuildDraftCheckoutPayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/build-draft/checkout'
-}
-
-export type PostAgentByAgentIdBuildDraftCheckoutResponses = {
-  200: AgentBuildDraftResponse
-}
-
-export type PostAgentByAgentIdBuildDraftCheckoutResponse
-  = PostAgentByAgentIdBuildDraftCheckoutResponses[keyof PostAgentByAgentIdBuildDraftCheckoutResponses]
 
 export type GetAgentByAgentIdChatMessagesData = {
   body?: never
@@ -2491,26 +2201,6 @@ export type GetAgentByAgentIdMessagesByMessageIdResponses = {
 
 export type GetAgentByAgentIdMessagesByMessageIdResponse
   = GetAgentByAgentIdMessagesByMessageIdResponses[keyof GetAgentByAgentIdMessagesByMessageIdResponses]
-
-export type PostAgentByAgentIdPublishData = {
-  body: AgentPublishPayload
-  path: {
-    agent_id: string
-  }
-  query?: never
-  url: '/agent/{agent_id}/publish'
-}
-
-export type PostAgentByAgentIdPublishErrors = {
-  403: unknown
-}
-
-export type PostAgentByAgentIdPublishResponses = {
-  200: AgentPublishResponse
-}
-
-export type PostAgentByAgentIdPublishResponse
-  = PostAgentByAgentIdPublishResponses[keyof PostAgentByAgentIdPublishResponses]
 
 export type GetAgentByAgentIdReferencingWorkflowsData = {
   body?: never

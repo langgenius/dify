@@ -47,8 +47,8 @@ const createAgentNavIcon = (iconClassName: string) => {
   return AgentNavIcon
 }
 
-const configureIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure')
-const configureActiveIcon = createAgentNavIcon('i-custom-vender-agent-v2-configure-active')
+const terminalWindowLineIcon = createAgentNavIcon('i-ri-terminal-window-line')
+const terminalWindowFillIcon = createAgentNavIcon('i-ri-terminal-window-fill')
 const accessPointIcon = createAgentNavIcon('i-custom-vender-agent-v2-access-point')
 const fileListLineIcon = createAgentNavIcon('i-ri-file-list-3-line')
 const fileListFillIcon = createAgentNavIcon('i-ri-file-list-3-fill')
@@ -59,8 +59,8 @@ const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
-    icon: configureIcon,
-    activeIcon: configureActiveIcon,
+    icon: terminalWindowLineIcon,
+    activeIcon: terminalWindowFillIcon,
   },
   {
     labelKey: 'agentDetail.sections.access',

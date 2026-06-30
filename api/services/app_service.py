@@ -96,17 +96,6 @@ class AppService:
             filters.append(App.mode == AppMode.AGENT_CHAT)
         elif params.mode == "agent":
             filters.append(App.mode == AppMode.AGENT)
-            filters.append(
-                sa.exists()
-                .where(
-                    Agent.tenant_id == tenant_id,
-                    Agent.app_id == App.id,
-                    Agent.scope == AgentScope.ROSTER,
-                    Agent.source == AgentSource.AGENT_APP,
-                    Agent.status == AgentStatus.ACTIVE,
-                )
-                .correlate(App)
-            )
         elif params.mode == "all":
             filters.append(App.mode != AppMode.AGENT)
 

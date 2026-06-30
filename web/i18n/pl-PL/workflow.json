@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Zadanie agenta",
   "nodes.agent.task.mention": "Wzmianka",
   "nodes.agent.task.placeholder": "Opisz, co ma robić ten agent…",
-  "nodes.agent.task.tooltip": "Dodatkowy prompt, który pomaga agentowi obsłużyć dokładnie ten węzeł. Użyj /, aby jawnie odwołać się do zmiennych.\nJeśli zostanie poprawnie skonfigurowany, możesz zaufać agentowi, że sam rozwiąże problem.",
+  "nodes.agent.task.tooltip": "Określ instrukcje zadania, które ten agent powinien wykonywać w tym workflow.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Nieautoryzowany",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} nie jest zainstalowany",
   "nodes.agent.toolbox": "skrzynka z narzędziami",

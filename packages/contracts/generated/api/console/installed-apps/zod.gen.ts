@@ -43,7 +43,6 @@ export const zAudioTranscriptResponse = z.object({
  */
 export const zChatMessagePayload = z.object({
   conversation_id: z.string().nullish(),
-  draft_type: z.enum(['debug_build', 'draft']).optional().default('draft'),
   files: z.array(z.unknown()).nullish(),
   inputs: z.record(z.string(), z.unknown()),
   model_config: z.record(z.string(), z.unknown()).optional(),

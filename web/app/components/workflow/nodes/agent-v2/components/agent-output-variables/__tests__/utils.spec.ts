@@ -6,7 +6,6 @@ import {
 } from '../utils'
 
 const createDraft = (overrides: Partial<OutputDraft> = {}): OutputDraft => ({
-  children: [],
   defaultValue: '',
   description: '',
   name: 'summary',
@@ -54,50 +53,5 @@ describe('agent output variables utils', () => {
       defaultValue: '[]',
       type: 'array[file]',
     }))).toBe('nodes.agent.outputVars.defaultValueFileUnsupported')
-  })
-
-  it('should preserve object children when building an output', () => {
-    expect(createOutputFromDraft(createDraft({
-      children: [{
-        name: 'email',
-        type: 'string',
-        required: true,
-        description: 'User email',
-      }],
-      name: 'profile',
-      type: 'object',
-    }))).toMatchObject({
-      name: 'profile',
-      type: 'object',
-      children: [{
-        name: 'email',
-        type: 'string',
-        required: true,
-        description: 'User email',
-      }],
-    })
-  })
-
-  it('should preserve array object item children when building an output', () => {
-    expect(createOutputFromDraft(createDraft({
-      children: [{
-        name: 'city',
-        type: 'string',
-        required: false,
-      }],
-      name: 'addresses',
-      type: 'array[object]',
-    }))).toMatchObject({
-      name: 'addresses',
-      type: 'array',
-      array_item: {
-        type: 'object',
-        children: [{
-          name: 'city',
-          type: 'string',
-          required: false,
-        }],
-      },
-    })
   })
 })

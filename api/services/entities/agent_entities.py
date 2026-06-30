@@ -31,10 +31,6 @@ class ComposerSoulLockPayload(BaseModel):
     unlocked_from_version_id: str | None = None
 
 
-class WorkflowAgentComposerQuery(BaseModel):
-    snapshot_id: str | None = Field(default=None, max_length=255)
-
-
 class ComposerSavePayload(BaseModel):
     variant: ComposerVariant
     binding: ComposerBindingPayload | None = None

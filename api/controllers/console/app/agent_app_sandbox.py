@@ -22,7 +22,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_tenant_id
 from fields.base import ResponseModel
@@ -144,7 +144,7 @@ class AgentAppSandboxListResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxListQuery)
         try:
             result = AgentAppSandboxService().list_files(
@@ -169,7 +169,7 @@ class AgentAppSandboxReadResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         query = query_params_from_request(AgentSandboxFileQuery)
         try:
             result = AgentAppSandboxService().read_file(
@@ -194,7 +194,7 @@ class AgentAppSandboxUploadResource(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def post(self, tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_app_model(tenant_id=tenant_id, agent_id=agent_id)
         payload = AgentSandboxUploadPayload.model_validate(request.get_json(silent=True) or {})
         try:
             result = AgentAppSandboxService().upload_file(

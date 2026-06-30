@@ -1,10 +1,13 @@
 import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
+  RiAttachmentLine,
+} from '@remixicon/react'
+import {
   memo,
   useCallback,
 } from 'react'
-import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
 import { TransferMethod } from '@/types/app'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
 
@@ -16,41 +19,28 @@ const FileUploaderInChatInput = ({
   fileConfig,
   readonly,
 }: FileUploaderInChatInputProps) => {
-  const { t } = useTranslation()
-  const renderTrigger = useCallback((_open: boolean) => {
+  const renderTrigger = useCallback((open: boolean) => {
     return (
-      <button
-        type="button"
-        aria-label={t('fileUploader.uploadFromComputer', { ns: 'common' })}
-        className={cn(
-          'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg p-1.5 text-text-tertiary outline-hidden',
-          'hover:bg-state-base-hover hover:text-text-secondary',
-          'focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:ring-inset',
-          'data-popup-open:bg-state-base-hover',
-          'disabled:cursor-not-allowed disabled:text-text-disabled disabled:hover:bg-transparent disabled:hover:text-text-disabled',
-        )}
+      <ActionButton
+        size="l"
+        className={cn(open && 'bg-state-base-hover')}
         disabled={readonly}
       >
-        <span className="i-ri-attachment-line size-5" aria-hidden="true" />
-      </button>
+        <RiAttachmentLine className="size-5" />
+      </ActionButton>
     )
-  }, [readonly, t])
+  }, [])
+
+  if (readonly)
+    return renderTrigger(false)
 
   return (
-    <span className="inline-flex size-8 shrink-0 items-center justify-center">
-      {
-        readonly
-          ? renderTrigger(false)
-          : (
-              <FileFromLinkOrLocal
-                trigger={renderTrigger}
-                fileConfig={fileConfig}
-                showFromLocal={fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file)}
-                showFromLink={fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)}
-              />
-            )
-      }
-    </span>
+    <FileFromLinkOrLocal
+      trigger={renderTrigger}
+      fileConfig={fileConfig}
+      showFromLocal={fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file)}
+      showFromLink={fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)}
+    />
   )
 }
 

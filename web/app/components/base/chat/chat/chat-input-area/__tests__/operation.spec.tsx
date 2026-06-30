@@ -62,24 +62,6 @@ describe('Operation', () => {
       expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeInTheDocument()
     })
 
-    it('should render file upload before voice input when both actions are enabled', () => {
-      const fileConfig: FileUpload = { enabled: true } as FileUpload
-      const speechConfig: EnableType = { enabled: true }
-
-      render(
-        <Operation
-          onSend={vi.fn()}
-          fileConfig={fileConfig}
-          speechToTextConfig={speechConfig}
-        />,
-      )
-
-      const fileUploader = screen.getByTestId('file-uploader')
-      const voiceButton = screen.getByRole('button', { name: 'common.voiceInput.start' })
-
-      expect(fileUploader.compareDocumentPosition(voiceButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    })
-
     it('should not render voice input button when speechToTextConfig.enabled is false', () => {
       const speechConfig: EnableType = { enabled: false }
 

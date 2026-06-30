@@ -113,6 +113,7 @@ export function AgentKnowledgeRetrieval() {
             ))}
       </ConfigureSection>
       <AgentKnowledgeRetrievalDialog
+        key={editingRetrieval?.id ?? 'add'}
         item={editingRetrieval ?? undefined}
         initialName={editingRetrieval ? (editingRetrieval.name ?? (editingRetrieval.nameKey ? t(editingRetrieval.nameKey) : editingRetrieval.id)) : undefined}
         onItemChange={updateRetrieval}

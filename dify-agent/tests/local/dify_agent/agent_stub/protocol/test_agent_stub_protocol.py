@@ -11,7 +11,6 @@ from dify_agent.agent_stub.protocol.agent_stub import (
     AgentStubDriveCommitItem,
     AgentStubDriveCommitRequest,
     AgentStubDriveFileRef,
-    AgentStubDriveManifestResponse,
     AgentStubFileMapping,
     agent_stub_connections_url,
     agent_stub_drive_base_for_ref,
@@ -160,7 +159,6 @@ def test_agent_stub_drive_commit_request_validates_file_refs() -> None:
         ]
     )
 
-    assert request.items[0].file_ref is not None
     assert request.items[0].file_ref.kind == "tool_file"
 
     with pytest.raises(ValidationError, match="tool_file"):
@@ -168,15 +166,6 @@ def test_agent_stub_drive_commit_request_validates_file_refs() -> None:
 
     item_without_file_ref = AgentStubDriveCommitItem.model_validate({"key": "skills/example/SKILL.md"})
     assert item_without_file_ref.file_ref is None
-
-
-def test_agent_stub_drive_manifest_response_preserves_extra_item_fields() -> None:
-    response = AgentStubDriveManifestResponse.model_validate(
-        {"items": [{"key": "skills/example/SKILL.md", "name": "SKILL.md"}]}
-    )
-
-    assert response.items[0].model_extra == {"name": "SKILL.md"}
-    assert response.items[0].model_dump(mode="json")["name"] == "SKILL.md"
 
 
 @pytest.mark.parametrize("transfer_method", ["tool_file", "local_file", "datasource_file"])

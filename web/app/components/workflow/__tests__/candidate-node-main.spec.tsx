@@ -294,7 +294,6 @@ describe('CandidateNodeMain', () => {
           agent_binding: {
             binding_type: 'inline_agent',
           },
-          selected: true,
           _isTempNode: true,
         }),
       }),
@@ -308,7 +307,6 @@ describe('CandidateNodeMain', () => {
             agent_id: 'inline-agent-1',
             current_snapshot_id: 'inline-snapshot-1',
           },
-          selected: true,
         }),
       }),
     ]))

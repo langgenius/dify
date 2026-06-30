@@ -51,6 +51,7 @@ from typing_extensions import Self, override
 
 from agenton.layers import LayerDeps, PydanticAILayer, PydanticAIPrompt, PydanticAITool
 from dify_agent.agent_stub.server.shell_agent_stub_env import ShellAgentStubTokenFactory, build_shell_agent_stub_env
+from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell.configs import DIFY_SHELL_LAYER_TYPE_ID, DifyShellLayerConfig
 
@@ -172,11 +173,11 @@ type ShellInterruptToolResult = ShellJobStatusObservation | ShellToolErrorObserv
 class DifyShellLayerDeps(LayerDeps):
     """Optional direct-layer dependencies used by the shell runtime layer.
 
-    The execution context supplies the token principal. The drive ref used for
-    Agent Stub CLI commands is passed through config so the drive layer can
-    depend on shell for eager materialization without a dependency cycle.
+    The drive dependency supplies the drive ref for injected
+    Agent Stub CLI commands; the execution context supplies the token principal.
     """
 
+    drive: DifyDriveLayer | None  # pyright: ignore[reportUninitializedInstanceVariable]
     execution_context: DifyExecutionContextLayer | None  # pyright: ignore[reportUninitializedInstanceVariable]
 
 
@@ -623,13 +624,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         timeout: float,
         env: dict[str, str] | None,
     ) -> RemoteCommandResult:
-        """Run a workspace-scoped script to completion and delete its job state.
-
-        Shellctl's ``truncated`` flag is per output window: it means the caller
-        should continue from the returned offset. After this helper drains those
-        windows, only the final window can describe whether output is still
-        unread, usually because the safety window cap was reached.
-        """
+        """Run a workspace-scoped script to completion and delete its job state."""
         client = self._require_client()
         job_id: str | None = None
         try:
@@ -637,11 +632,13 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
             job_id = result.job_id
             self._track_job_result(result)
             output_parts = [result.output]
+            truncated = result.truncated
             windows = 1
             while (result.truncated or not result.done) and windows < _REMOTE_COMMAND_MAX_OUTPUT_WINDOWS:
                 result = await client.wait(result.job_id, offset=self._tracked_offset(result.job_id), timeout=timeout)
                 self._track_job_result(result)
                 output_parts.append(result.output)
+                truncated = truncated or result.truncated
                 windows += 1
             return RemoteCommandResult(
                 job_id=result.job_id,
@@ -650,7 +647,7 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
                 exit_code=result.exit_code,
                 output="".join(output_parts),
                 offset=result.offset,
-                truncated=result.truncated,
+                truncated=truncated,
                 output_path=result.output_path,
             )
         finally:
@@ -771,9 +768,10 @@ class DifyShellLayer(PydanticAILayer[DifyShellLayerDeps, object, DifyShellLayerC
         """Build per-command Agent Stub env only for user-visible ``shell.run``."""
         execution_context_layer = self.deps.execution_context
         execution_context = execution_context_layer.config if execution_context_layer is not None else None
+        drive_layer = self.deps.drive
         return build_shell_agent_stub_env(
             agent_stub_api_base_url=self.agent_stub_api_base_url,
-            agent_stub_drive_ref=self.config.agent_stub_drive_ref,
+            agent_stub_drive_ref=drive_layer.config.drive_ref if drive_layer is not None else None,
             execution_context=execution_context,
             token_factory=self.agent_stub_token_factory,
             session_id=self.runtime_state.session_id,

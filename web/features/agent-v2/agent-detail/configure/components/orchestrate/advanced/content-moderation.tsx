@@ -109,6 +109,8 @@ function AgentContentModerationSettingsContent() {
       labelId="agent-configure-content-moderation-label"
       headingLevel="h4"
       panelId={panelId}
+      tip={t('feature.moderation.description', { ns: 'appDebug' })}
+      tipAriaLabel={t('feature.moderation.description', { ns: 'appDebug' })}
       rootClassName="gap-1 border-t border-divider-subtle py-3"
       headerClassName="mb-0 gap-1 px-3"
       panelContentClassName="px-3 pt-1"

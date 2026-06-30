@@ -1,11 +1,12 @@
 """Client-safe DTOs for the Dify knowledge-base Agenton layer.
 
-The public layer config carries one or more named knowledge sets. Each set owns
-its dataset ids plus query, retrieval, and metadata-filtering policy. Generated-
-query sets are exposed through one stable model-visible search tool whose
-schema lets the model pick ``set_name`` and ``query``; user-query sets are
-retrieved eagerly when the layer enters a run and their formatted observations
-are kept only in JSON-safe ``runtime_state`` for session snapshots.
+The public layer config exposes only static retrieval controls: dataset ids,
+retrieval strategy, metadata filtering, and observation-size limits. The agent
+model itself should only ever see a single ``query`` tool argument; tenant/
+app/user context comes from the execution-context layer and the actual
+retrieval is delegated to the Dify API inner endpoint. Tool naming is not
+caller-configurable: the runtime always exposes the same stable knowledge-base
+search tool.
 """
 
 from __future__ import annotations
@@ -58,44 +59,6 @@ class DifyKnowledgeRerankingModelConfig(BaseModel):
     model: str
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class DifyKnowledgeDatasetConfig(BaseModel):
-    """One dataset selected by a knowledge set.
-
-    Only ``id`` is used for retrieval. ``name`` and ``description`` are retained
-    because callers already have them and they are useful in runtime/debug
-    snapshots without changing the inner retrieval request contract.
-    """
-
-    id: str
-    name: str | None = None
-    description: str | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    @field_validator("id")
-    @classmethod
-    def validate_id(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("dataset id must not be blank")
-        return normalized
-
-
-class DifyKnowledgeQueryConfig(BaseModel):
-    """Query policy for one knowledge set."""
-
-    mode: Literal["user_query", "generated_query"]
-    value: str | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    @model_validator(mode="after")
-    def validate_mode_specific_fields(self) -> DifyKnowledgeQueryConfig:
-        if self.mode == "user_query" and not (self.value or "").strip():
-            raise ValueError("query.value is required for user_query mode")
-        return self
 
 
 class DifyKnowledgeRetrievalConfig(BaseModel):
@@ -188,90 +151,38 @@ class DifyKnowledgeMetadataFilteringConfig(BaseModel):
         return payload
 
 
-class DifyKnowledgeSetConfig(BaseModel):
-    """One independently searchable or eagerly-preloaded knowledge set."""
+class DifyKnowledgeBaseLayerConfig(LayerConfig):
+    """Public config for one model-visible knowledge search tool.
 
-    id: str
-    name: str
-    description: str | None = None
-    datasets: list[DifyKnowledgeDatasetConfig]
-    query: DifyKnowledgeQueryConfig
+    The model only gets to choose whether to call the tool and what ``query``
+    to send. Dataset ids, retrieval settings, metadata filtering, and caller
+    context remain config/runtime concerns outside the model-visible tool
+    schema. The tool name and description are fixed by the layer runtime and do
+    not appear in the public config DTO.
+    """
+
+    dataset_ids: list[str]
     retrieval: DifyKnowledgeRetrievalConfig
     metadata_filtering: DifyKnowledgeMetadataFilteringConfig = Field(
         default_factory=DifyKnowledgeMetadataFilteringConfig
     )
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-    @field_validator("id", "name")
-    @classmethod
-    def validate_non_blank_identity(cls, value: str) -> str:
-        normalized = value.strip()
-        if not normalized:
-            raise ValueError("knowledge set id and name must not be blank")
-        return normalized
-
-    @model_validator(mode="after")
-    def validate_dataset_ids(self) -> DifyKnowledgeSetConfig:
-        if not self.datasets:
-            raise ValueError("knowledge set requires at least one dataset")
-        dataset_ids = [dataset.id for dataset in self.datasets]
-        if len(dataset_ids) != len(set(dataset_ids)):
-            raise ValueError("knowledge set dataset ids must be unique")
-        return self
-
-    @property
-    def dataset_ids(self) -> list[str]:
-        """Return the selected dataset ids for the inner retrieval request."""
-        return [dataset.id for dataset in self.datasets]
-
-
-class DifyKnowledgeEagerResult(BaseModel):
-    """JSON-safe eager user-query result stored in layer runtime state."""
-
-    set_id: str
-    set_name: str
-    query: str
-    observation: str
-    status: Literal["success", "empty", "temporarily_unavailable"]
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-class DifyKnowledgeRuntimeState(BaseModel):
-    """Serializable eager-retrieval state stored in Agenton session snapshots."""
-
-    eager_config_fingerprint: str | None = None
-    eager_results: list[DifyKnowledgeEagerResult] = Field(default_factory=list)
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid", validate_assignment=True)
-
-
-class DifyKnowledgeBaseLayerConfig(LayerConfig):
-    """Public config for one knowledge-base layer.
-
-    The model-visible surface stays fixed to ``knowledge_base_search``. Set
-    names are the only model-visible selection labels; dataset ids, retrieval
-    controls, metadata filtering, and caller identity remain config/runtime
-    concerns outside the tool schema.
-    """
-
-    sets: list[DifyKnowledgeSetConfig]
     max_result_content_chars: int = Field(default=2000, ge=1)
     max_observation_chars: int = Field(default=12000, ge=1)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
+    @field_validator("dataset_ids")
+    @classmethod
+    def validate_dataset_ids(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("dataset_ids must contain at least one item")
+        normalized_ids = [item.strip() for item in value]
+        if any(not item for item in normalized_ids):
+            raise ValueError("dataset_ids must not contain blank items")
+        return normalized_ids
+
     @model_validator(mode="after")
-    def validate_sets_and_observation_limits(self) -> DifyKnowledgeBaseLayerConfig:
-        if not self.sets:
-            raise ValueError("sets must contain at least one knowledge set")
-        set_ids = [knowledge_set.id for knowledge_set in self.sets]
-        if len(set_ids) != len(set(set_ids)):
-            raise ValueError("knowledge set ids must be unique")
-        normalized_names = [knowledge_set.name.strip().lower() for knowledge_set in self.sets]
-        if len(normalized_names) != len(set(normalized_names)):
-            raise ValueError("knowledge set names must be unique")
+    def validate_observation_limits(self) -> DifyKnowledgeBaseLayerConfig:
         if self.max_observation_chars < self.max_result_content_chars:
             raise ValueError("max_observation_chars must be greater than or equal to max_result_content_chars")
         return self
@@ -280,15 +191,10 @@ class DifyKnowledgeBaseLayerConfig(LayerConfig):
 __all__ = [
     "DIFY_KNOWLEDGE_BASE_LAYER_TYPE_ID",
     "DifyKnowledgeBaseLayerConfig",
-    "DifyKnowledgeDatasetConfig",
-    "DifyKnowledgeEagerResult",
     "DifyKnowledgeMetadataCondition",
     "DifyKnowledgeMetadataConditions",
     "DifyKnowledgeMetadataFilteringConfig",
     "DifyKnowledgeModelConfig",
-    "DifyKnowledgeQueryConfig",
     "DifyKnowledgeRerankingModelConfig",
     "DifyKnowledgeRetrievalConfig",
-    "DifyKnowledgeRuntimeState",
-    "DifyKnowledgeSetConfig",
 ]

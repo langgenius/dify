@@ -231,15 +231,15 @@ describe('SettingsModal', () => {
     expect(mockOnClose).toHaveBeenCalled()
   })
 
-  it('should keep one show-more trigger while toggling the advanced section', () => {
+  it('should collapse the expanded settings section immediately when closing', () => {
     renderSettingsModal()
 
-    expect(screen.getAllByText('appOverview.overview.appInfo.settings.more.entry')).toHaveLength(1)
-
     fireEvent.click(screen.getByText('appOverview.overview.appInfo.settings.more.entry'))
-
-    expect(screen.getAllByText('appOverview.overview.appInfo.settings.more.entry')).toHaveLength(1)
     expect(screen.getByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('common.operation.cancel'))
+
+    expect(screen.getByText('appOverview.overview.appInfo.settings.more.entry')).toBeInTheDocument()
   })
 
   it('should reset local form state when the controlled dialog reopens', () => {
@@ -276,7 +276,6 @@ describe('SettingsModal', () => {
     )
 
     expect(screen.getByText('appOverview.overview.appInfo.settings.more.entry')).toBeInTheDocument()
-    expect(screen.queryByPlaceholderText('appOverview.overview.appInfo.settings.more.privacyPolicyPlaceholder')).not.toBeInTheDocument()
   })
 
   it('should open the pricing modal from the copyright upgrade badge for sandbox plans', async () => {

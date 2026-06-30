@@ -3,7 +3,7 @@
 import type { KeyboardEvent, MouseEvent, PointerEvent as ReactPointerEvent } from 'react'
 import type { SlashMenuCategory, SlashMenuView } from './slash'
 import type { RosterReferenceToken } from '@/app/components/base/prompt-editor/plugins/roster-reference-block/utils'
-import type { AgentProviderTool, AgentTool } from '@/features/agent-v2/agent-composer/form-state'
+import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Kbd } from '@langgenius/dify-ui/kbd'
 import { toast } from '@langgenius/dify-ui/toast'
@@ -19,12 +19,11 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
 import { agentComposerToolsAtom } from '@/features/agent-v2/agent-composer/store-modules/tools'
-import { ENABLE_AGENT_CLI_TOOLS } from '@/features/agent-v2/agent-detail/configure/feature-flags'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 import { useAgentOrchestrateAddActions } from '../add-actions-context'
-import { AgentConfigureTipContent } from '../common/tip-content'
 import { useAgentDriveFiles, useAgentDriveSkills } from '../drive-context'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
-import { useAgentPromptToolIconResolver } from './hooks'
 import { replaceTrailingSlashWithToken } from './options'
 import { AgentPromptSlashMenu } from './slash'
 
@@ -72,12 +71,12 @@ function getProviderToolFromToken(token: RosterReferenceToken, tools: AgentTool[
 function AgentPromptRosterReferenceIcon({
   token,
   tools,
-  getConfiguredToolIcon,
 }: {
   token: RosterReferenceToken
   tools: AgentTool[]
-  getConfiguredToolIcon: (tool: AgentProviderTool) => AgentProviderTool['icon']
 }) {
+  const { theme } = useTheme()
+
   if (token.kind === 'cli_tool') {
     return (
       <span
@@ -91,7 +90,7 @@ function AgentPromptRosterReferenceIcon({
   if (!providerTool || providerTool.kind !== 'provider')
     return null
 
-  const icon = getConfiguredToolIcon(providerTool)
+  const icon = theme === Theme.dark && providerTool.iconDark ? providerTool.iconDark : providerTool.icon
 
   if (icon) {
     return (
@@ -154,7 +153,6 @@ export function AgentPromptEditor() {
   const { skills } = useAgentDriveSkills()
   const { files } = useAgentDriveFiles()
   const [tools, setTools] = useAtom(agentComposerToolsAtom)
-  const { getConfiguredToolIcon } = useAgentPromptToolIconResolver()
   const retrievals = useAtomValue(agentComposerKnowledgeRetrievalsAtom)
   const addActions = useAgentOrchestrateAddActions()
   const isHydrated = useIsHydrated()
@@ -263,20 +261,11 @@ export function AgentPromptEditor() {
   }
 
   const renderRosterReferenceIcon = useCallback((token: RosterReferenceToken) => {
-    if (!ENABLE_AGENT_CLI_TOOLS && token.kind === 'cli_tool')
-      return null
-
     if (token.kind !== 'tool' && token.kind !== 'tool-all' && token.kind !== 'cli_tool')
       return null
 
-    return (
-      <AgentPromptRosterReferenceIcon
-        token={token}
-        tools={tools}
-        getConfiguredToolIcon={getConfiguredToolIcon}
-      />
-    )
-  }, [getConfiguredToolIcon, tools])
+    return <AgentPromptRosterReferenceIcon token={token} tools={tools} />
+  }, [tools])
 
   useEffect(() => {
     if (!isSlashMenuOpen)
@@ -331,7 +320,7 @@ export function AgentPromptEditor() {
             {t('agentDetail.configure.prompt.label')}
           </h3>
           <Infotip aria-label={promptTip} popupClassName="max-w-64">
-            <AgentConfigureTipContent type="prompt" />
+            {promptTip}
           </Infotip>
         </div>
         <Tooltip>
@@ -418,7 +407,7 @@ export function AgentPromptEditor() {
               files={files}
               tools={tools}
               onToolsChange={setTools}
-              onAddCliTool={ENABLE_AGENT_CLI_TOOLS ? addActions.cli : undefined}
+              onAddCliTool={addActions.cli}
               onAddFile={addActions.files}
               onAddKnowledge={addActions.knowledge}
               onAddSkill={addActions.skills}

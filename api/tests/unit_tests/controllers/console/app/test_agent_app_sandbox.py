@@ -119,7 +119,7 @@ def test_handle_maps_sandbox_and_agent_backend_errors() -> None:
 def test_agent_app_sandbox_resources_proxy_service(monkeypatch: pytest.MonkeyPatch) -> None:
     service = _AgentAppService()
     monkeypatch.setattr(module, "AgentAppSandboxService", lambda: service)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
+    monkeypatch.setattr(module, "resolve_agent_app_model", lambda *, tenant_id, agent_id: _app_model())
     monkeypatch.setattr(
         module,
         "query_params_from_request",
@@ -151,7 +151,7 @@ def test_agent_app_sandbox_resource_returns_normalized_errors(monkeypatch: pytes
             raise AgentSandboxInspectorError("no_active_session", "no active session", status_code=404)
 
     monkeypatch.setattr(module, "AgentAppSandboxService", FailingService)
-    monkeypatch.setattr(module, "resolve_agent_runtime_app_model", lambda *, tenant_id, agent_id: _app_model())
+    monkeypatch.setattr(module, "resolve_agent_app_model", lambda *, tenant_id, agent_id: _app_model())
     monkeypatch.setattr(
         module, "query_params_from_request", lambda model: SimpleNamespace(conversation_id="conv-1", path=".")
     )

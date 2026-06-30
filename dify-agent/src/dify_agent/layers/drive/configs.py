@@ -6,9 +6,7 @@ only: skills are declared as metadata, not content, and plain files are listed
 only when the prompt explicitly mentions their drive keys.
 
 The API backend catalogs and writes this config; the Agent backend consumes it
-by running sandbox-visible ``dify-agent drive pull`` commands through the shell
-layer so materialized files live in the same filesystem that model shell jobs
-use.
+(ENG-387: pull via back proxy, lazy-load SKILL.md, materialize files).
 """
 
 from typing import Final

@@ -55,10 +55,6 @@ type SendCallback = {
   isPublicAPI?: boolean
 }
 
-type UseChatOptions = {
-  timezone?: string
-}
-
 export const useChat = (
   config?: ChatConfig,
   formSettings?: {
@@ -70,10 +66,9 @@ export const useChat = (
   clearChatList?: boolean,
   clearChatListCallback?: (state: boolean) => void,
   initialConversationId?: string,
-  options: UseChatOptions = {},
 ) => {
   const { t } = useTranslation()
-  const { formatTime } = useTimestamp({ timezone: options.timezone })
+  const { formatTime } = useTimestamp()
   const conversationIdRef = useRef(initialConversationId ?? '')
   const initialConversationIdRef = useRef(initialConversationId ?? '')
   const hasStopRespondedRef = useRef(false)

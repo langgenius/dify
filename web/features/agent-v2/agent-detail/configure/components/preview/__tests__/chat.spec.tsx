@@ -2,11 +2,9 @@ import type { ComponentProps } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { agentComposerModelAtom } from '@/features/agent-v2/agent-composer/store-modules/model'
 import { agentComposerPromptAtom } from '@/features/agent-v2/agent-composer/store-modules/prompt'
-import { TransferMethod } from '@/types/app'
-import { AgentChatRuntime } from '../chat-runtime'
+import { AgentPreviewChat } from '../chat'
 
 const useChatMock = vi.hoisted(() => vi.fn())
 const handleSendMock = vi.hoisted(() => vi.fn())
@@ -105,7 +103,7 @@ vi.mock('@/service/client', () => ({
   },
 }))
 
-function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntime>>) {
+function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentPreviewChat>>) {
   const store = createStore()
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -123,11 +121,9 @@ function renderPreviewChat(props?: Partial<ComponentProps<typeof AgentChatRuntim
   return render(
     <QueryClientProvider client={queryClient}>
       <JotaiProvider store={store}>
-        <AgentChatRuntime
+        <AgentPreviewChat
           agentId="agent-1"
           clearChatList={false}
-          inputPlaceholder="Message agent"
-          renderEmptyState={() => null}
           onClearChatListChange={vi.fn()}
           {...props}
         />
@@ -169,7 +165,7 @@ describe('AgentPreviewChat', () => {
     })
 
     renderPreviewChat({
-      conversationId: 'debug-conversation-1',
+      debugConversationId: 'debug-conversation-1',
     })
 
     await waitFor(() => expect(useChatMock).toHaveBeenCalled())
@@ -268,61 +264,5 @@ describe('AgentPreviewChat', () => {
 
     await waitFor(() => expect(saveDraftBeforeRun).toHaveBeenCalledTimes(1))
     expect(handleSendMock).not.toHaveBeenCalled()
-  })
-
-  it('should send build chat with the debug build draft type', async () => {
-    renderPreviewChat({
-      draftType: 'debug_build',
-    })
-
-    fireEvent.click(screen.getByRole('button', { name: 'send' }))
-
-    await waitFor(() => expect(handleSendMock).toHaveBeenCalledTimes(1))
-    expect(handleSendMock).toHaveBeenCalledWith(
-      'agent/agent-1/chat-messages',
-      expect.objectContaining({
-        draft_type: 'debug_build',
-      }),
-      expect.any(Object),
-    )
-  })
-
-  it('should keep preview file upload disabled by default', async () => {
-    renderPreviewChat()
-
-    await waitFor(() => expect(useChatMock).toHaveBeenCalled())
-
-    const config = useChatMock.mock.calls.at(-1)?.[0]
-    expect(config.file_upload).toEqual(expect.objectContaining({
-      enabled: false,
-      allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-    }))
-  })
-
-  it('should enable build chat file upload when chat features file upload is enabled', async () => {
-    renderPreviewChat({
-      agentSoulConfig: {
-        app_features: {
-          file_upload: {
-            enabled: true,
-          },
-        },
-      },
-    })
-
-    await waitFor(() => expect(useChatMock).toHaveBeenCalled())
-
-    const config = useChatMock.mock.calls.at(-1)?.[0]
-    expect(config.file_upload).toEqual(expect.objectContaining({
-      enabled: true,
-      allowed_file_types: [SupportUploadFileTypes.image],
-      allowed_file_upload_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-      number_limits: 3,
-    }))
-    expect(config.file_upload.image).toEqual(expect.objectContaining({
-      enabled: true,
-      transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
-      number_limits: 3,
-    }))
   })
 })

@@ -11,7 +11,7 @@ import services
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
+from controllers.console.agent.app_helpers import resolve_agent_app_model
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -93,10 +93,6 @@ class ChatMessagePayload(BaseMessagePayload):
     query: str = Field(..., description="User query")
     conversation_id: str | None = Field(default=None, description="Conversation ID")
     parent_message_id: str | None = Field(default=None, description="Parent message ID")
-    draft_type: Literal["draft", "debug_build"] = Field(
-        default="draft",
-        description="Agent App debug config source. Use debug_build while the Agent is in build mode.",
-    )
 
     @field_validator("conversation_id", "parent_message_id")
     @classmethod
@@ -222,7 +218,7 @@ class AgentChatMessageApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _create_chat_message(
             current_tenant_id=current_tenant_id,
             current_user=current_user,
@@ -258,7 +254,7 @@ class AgentChatMessageStopApi(Resource):
     @with_current_user_id
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user_id: str, agent_id: UUID, task_id: str):
-        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _stop_chat_message(current_user_id=current_user_id, app_model=app_model, task_id=task_id)
 
 

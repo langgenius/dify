@@ -3,7 +3,6 @@ import type { PromptEditorProps } from '@/app/components/base/prompt-editor'
 import type { AgentTool } from '@/features/agent-v2/agent-composer/form-state'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { createStore, Provider as JotaiProvider } from 'jotai'
-import { API_PREFIX } from '@/config'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
 import { agentComposerKnowledgeRetrievalsAtom } from '@/features/agent-v2/agent-composer/store-modules/knowledge'
@@ -21,8 +20,7 @@ const mockBuiltInTools = vi.hoisted(() => [
     name: 'DuckDuckGo',
     author: 'Dify',
     description: { en_US: 'DuckDuckGo tools' },
-    icon: 'duckduckgo.svg',
-    icon_dark: 'duckduckgo-dark.svg',
+    icon: '/duckduckgo.svg',
     label: { en_US: 'DuckDuckGo' },
     type: 'builtin',
     team_credentials: {},
@@ -80,13 +78,6 @@ vi.mock('foxact/use-clipboard', () => ({
 
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
-  useDocLink: () => 'https://docs.example.com',
-}))
-
-vi.mock('@/context/app-context', () => ({
-  useSelector: (selector: (value: { currentWorkspace: { id: string } }) => string) => selector({
-    currentWorkspace: { id: 'workspace-123' },
-  }),
 }))
 
 vi.mock('@/service/use-tools', () => ({
@@ -230,12 +221,7 @@ describe('AgentPromptEditor', () => {
     })
 
     it('should render selected tool reference icons from configured tools', () => {
-      renderAgentPromptEditor('Run tools', {
-        tools: [{
-          ...duckDuckGoProviderTool,
-          iconClassName: 'i-custom-public-other-default-tool-icon',
-        }],
-      })
+      renderAgentPromptEditor('Run tools')
 
       const promptEditorProps = mockPromptEditor.mock.calls.at(-1)?.[0] as PromptEditorProps
       const renderIcon = promptEditorProps.rosterReferenceBlock?.renderIcon
@@ -251,11 +237,7 @@ describe('AgentPromptEditor', () => {
         </>,
       )
 
-      const providerIcon = Array.from(container.querySelectorAll<HTMLElement>('[style]'))
-        .find(element => element.style.backgroundImage)
-      expect(providerIcon).toHaveStyle({
-        backgroundImage: `url(${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg)`,
-      })
+      expect(container.querySelector('.i-simple-icons-duckduckgo')).toBeInTheDocument()
 
       rerender(
         <>
@@ -267,7 +249,7 @@ describe('AgentPromptEditor', () => {
         </>,
       )
 
-      expect(container.querySelector('.i-ri-terminal-box-line')).not.toBeInTheDocument()
+      expect(container.querySelector('.i-ri-terminal-box-line')).toBeInTheDocument()
     })
   })
 
@@ -313,7 +295,7 @@ describe('AgentPromptEditor', () => {
       expect(screen.queryByRole('button', { name: /agentDetail\.configure\.prompt\.mention\.label/i })).not.toBeInTheDocument()
     })
 
-    it('should insert references after prompt add actions create skills, files, or knowledge retrievals', () => {
+    it('should insert references after prompt add actions create skills, files, CLI tools, or knowledge retrievals', () => {
       const onSelect = vi.fn()
       const categories = [
         { key: 'skills' as const, label: 'Skills', icon: 'i-ri-box-3-line' },
@@ -391,20 +373,15 @@ describe('AgentPromptEditor', () => {
           onSelect={onSelect}
         />,
       )
-      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i })).not.toBeInTheDocument()
-      expect(screen.queryByRole('button', { name: /agentDetail\.configure\.tools\.toolTabs\.cli/i })).not.toBeInTheDocument()
+      fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.cliDialog\.title/i }))
+      expect(onSelect).toHaveBeenCalledWith('[§cli_tool:cli-1:Lark CLI§]')
     })
 
     it('should append available provider tool references and add missing tools to the configuration', () => {
       const { store, rerenderWithValue } = renderAgentPromptEditor('Research/', { tools: [] })
-      const expectedProviderIcon = `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=workspace-123&filename=duckduckgo.svg`
 
       fireEvent.keyDown(screen.getByRole('textbox'), { key: '/' })
       fireEvent.click(screen.getByRole('button', { name: /agentDetail\.configure\.tools\.label/i }))
-      const providerButton = screen.getByRole('button', { name: /DuckDuckGo.*agentDetail\.configure\.tools\.toolTabs\.plugins/i })
-      const providerIcon = Array.from(providerButton.querySelectorAll<HTMLElement>('[style]'))
-        .find(element => element.style.backgroundImage)
-      expect(providerIcon).toHaveStyle({ backgroundImage: `url(${expectedProviderIcon})` })
       fireEvent.click(screen.getByRole('button', { name: 'DuckDuckGo' }))
       fireEvent.click(screen.getByRole('button', { name: /DuckDuckGo Search/i }))
 
@@ -412,7 +389,6 @@ describe('AgentPromptEditor', () => {
       expect(store.get(agentComposerDraftAtom).tools).toEqual([
         expect.objectContaining({
           id: 'duckduckgo',
-          icon: expectedProviderIcon,
           actions: [
             expect.objectContaining({
               name: 'DuckDuckGo Search',

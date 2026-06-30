@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "งาน Agent",
   "nodes.agent.task.mention": "กล่าวถึง",
   "nodes.agent.task.placeholder": "อธิบายสิ่งที่ Agent นี้ควรทำ...",
-  "nodes.agent.task.tooltip": "พรอมป์เพิ่มเติมเพื่อช่วยให้เอเจนต์จัดการโหนดนี้โดยเฉพาะ ใช้ / เพื่ออ้างอิงตัวแปรอย่างชัดเจน\nหากตั้งค่าอย่างเหมาะสม คุณอาจไว้วางใจให้เอเจนต์หาทางจัดการสิ่งต่าง ๆ ได้เอง",
+  "nodes.agent.task.tooltip": "กำหนดคำสั่งงานที่ Agent นี้ควรปฏิบัติตามในเวิร์กโฟลว์นี้",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} ไม่ได้รับอนุญาต",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} ไม่ได้ติดตั้ง",
   "nodes.agent.toolbox": "เครื่อง มือ",

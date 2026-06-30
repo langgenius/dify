@@ -14,6 +14,8 @@ from dify_agent.agent_stub.server.shell_agent_stub_env import (
     AGENT_STUB_DRIVE_BASE_ENV_VAR,
     AGENT_STUB_API_BASE_URL_ENV_VAR,
 )
+from dify_agent.layers.drive import DifyDriveLayerConfig
+from dify_agent.layers.drive.layer import DifyDriveLayer
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
 from dify_agent.layers.execution_context.layer import DifyExecutionContextLayer
 from dify_agent.layers.shell import (
@@ -233,6 +235,14 @@ def _execution_context_layer() -> DifyExecutionContextLayer:
         ),
         daemon_url="http://plugin-daemon",
         daemon_api_key="daemon-secret",
+    )
+
+
+def _drive_layer() -> DifyDriveLayer:
+    return DifyDriveLayer.from_config_with_settings(
+        DifyDriveLayerConfig(drive_ref="agent-1"),
+        inner_api_url="https://api.example.com",
+        inner_api_key="secret",
     )
 
 
@@ -656,7 +666,7 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
 
     client = FakeShellctlClient(run_handler=run_handler)
     layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
+        DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
@@ -664,7 +674,7 @@ def test_shell_layer_injects_agent_stub_env_only_for_user_visible_shell_run() ->
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
     )
-    layer.deps = layer.deps_type(execution_context=_execution_context_layer())
+    layer.deps = layer.deps_type(drive=_drive_layer(), execution_context=_execution_context_layer())
     tools = {tool.name: tool for tool in layer.tools}
 
     async def scenario() -> None:
@@ -728,7 +738,6 @@ def test_run_remote_script_uses_workspace_cwd_accumulates_output_and_deletes_job
             result = await layer.run_remote_script("printf 'hello world'", timeout=7.5)
             assert result.output == "hello world"
             assert result.exit_code == 0
-            assert result.truncated is False
 
     asyncio.run(scenario())
 
@@ -784,7 +793,7 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
 
     client = FakeShellctlClient(run_handler=run_handler)
     layer = DifyShellLayer.from_config_with_settings(
-        DifyShellLayerConfig(agent_stub_drive_ref="agent-1"),
+        DifyShellLayerConfig(),
         shellctl_entrypoint="http://shellctl",
         shellctl_client_factory=lambda _entrypoint: client,
         agent_stub_api_base_url="https://agent.example.com/agent-stub",
@@ -792,7 +801,7 @@ def test_run_remote_script_can_inject_agent_stub_env_for_server_owned_uploads() 
             f"token-for:{execution_context.tenant_id}:{session_id}"
         ),
     )
-    layer.deps = layer.deps_type(execution_context=_execution_context_layer())
+    layer.deps = layer.deps_type(drive=_drive_layer(), execution_context=_execution_context_layer())
 
     async def scenario() -> None:
         async with layer.resource_context():

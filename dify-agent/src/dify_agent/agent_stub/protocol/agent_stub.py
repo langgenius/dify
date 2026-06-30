@@ -267,11 +267,7 @@ class AgentStubDriveCommitRequest(BaseModel):
 
 
 class AgentStubDriveItem(BaseModel):
-    """One manifest or commit item returned by the Agent Stub drive API.
-
-    Known stable fields stay typed, while extra response metadata from the Dify
-    API is preserved for forward compatibility.
-    """
+    """One manifest or commit item returned by the Agent Stub drive API."""
 
     key: str
     size: int | None = None
@@ -286,7 +282,7 @@ class AgentStubDriveItem(BaseModel):
     is_skill: bool | None = None
     skill_metadata: str | None = None
 
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="allow")
+    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
 
 class AgentStubDriveManifestResponse(BaseModel):

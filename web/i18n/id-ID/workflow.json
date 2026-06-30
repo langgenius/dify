@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Tugas agen",
   "nodes.agent.task.mention": "Sebut",
   "nodes.agent.task.placeholder": "Jelaskan apa yang harus dilakukan agen ini...",
-  "nodes.agent.task.tooltip": "Prompt tambahan untuk membantu agen menangani node ini. Gunakan / untuk merujuk variabel secara eksplisit.\nJika dikonfigurasi dengan benar, Anda dapat mempercayai agen untuk mencari tahu sendiri.",
+  "nodes.agent.task.tooltip": "Tentukan instruksi tugas yang harus diikuti agen ini dalam alur kerja ini.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Tidak Berwenang",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} tidak terpasang",
   "nodes.agent.toolbox": "Toolbox",

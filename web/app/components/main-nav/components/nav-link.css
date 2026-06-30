@@ -1,4 +1,4 @@
-@utility dify-blue-glass-surface {
+@utility main-nav-active-glass {
   @apply overflow-hidden system-md-semibold text-saas-dify-blue-inverted backdrop-blur-[5px];
 
   background-image: linear-gradient(

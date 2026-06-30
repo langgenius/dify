@@ -7,8 +7,6 @@ from sqlalchemy.exc import IntegrityError
 
 from models.agent import (
     Agent,
-    AgentConfigDraft,
-    AgentConfigDraftType,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
@@ -36,9 +34,6 @@ def test_agent_enums_match_prd_boundaries():
     assert AgentStatus.ARCHIVED.value == "archived"
     assert AgentConfigRevisionOperation.SAVE_CURRENT_VERSION.value == "save_current_version"
     assert AgentConfigRevisionOperation.RESTORE_VERSION.value == "restore_version"
-    assert AgentConfigRevisionOperation.PUBLISH_DRAFT.value == "publish_draft"
-    assert AgentConfigDraftType.DRAFT.value == "draft"
-    assert AgentConfigDraftType.DEBUG_BUILD.value == "debug_build"
     assert WorkflowAgentBindingType.ROSTER_AGENT.value == "roster_agent"
     assert WorkflowAgentBindingType.INLINE_AGENT.value == "inline_agent"
 
@@ -141,23 +136,6 @@ def test_current_snapshot_stores_agent_soul_snapshot_as_long_text_json():
     assert version.config_snapshot_dict["env"]["secret_refs"][0]["provider_credential_id"] == "cred-1"
 
 
-def test_agent_config_draft_stores_editable_agent_soul_as_long_text_json():
-    config_snapshot = AgentSoulConfig.model_validate({"prompt": {"system_prompt": "draft prompt"}})
-    draft = AgentConfigDraft(
-        tenant_id="tenant-1",
-        agent_id="agent-1",
-        draft_type=AgentConfigDraftType.DRAFT,
-        draft_owner_key="",
-        config_snapshot=config_snapshot,
-    )
-
-    config_snapshot_column = AgentConfigDraft.__table__.c.config_snapshot
-    assert isinstance(config_snapshot_column.type, JSONModelColumn)
-    assert config_snapshot_column.server_default is None
-    assert draft.config_snapshot_dict == config_snapshot.model_dump(mode="json")
-    assert draft.config_snapshot_dict["prompt"]["system_prompt"] == "draft prompt"
-
-
 def test_workflow_binding_stores_node_job_config_separately_from_agent_soul():
     node_job_config = {
         "schema_version": 1,
@@ -188,7 +166,6 @@ def test_long_text_columns_do_not_use_mysql_incompatible_server_defaults():
         assert isinstance(column.type, LongText)
         assert column.server_default is None
     assert AgentConfigSnapshot.__table__.c.config_snapshot.server_default is None
-    assert AgentConfigDraft.__table__.c.config_snapshot.server_default is None
     assert WorkflowAgentNodeBinding.__table__.c.node_job_config.server_default is None
 
 

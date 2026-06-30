@@ -1,13 +1,11 @@
 import type { AgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useAtomValue } from 'jotai'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { formStateToAgentSoulConfig } from '@/features/agent-v2/agent-composer/conversions'
 import { defaultAgentSoulConfigFormState } from '@/features/agent-v2/agent-composer/form-state'
 import { AgentComposerProvider } from '@/features/agent-v2/agent-composer/provider'
-import { agentComposerDraftAtom } from '@/features/agent-v2/agent-composer/store'
+import { useConfigPublishPayload } from '@/features/agent-v2/agent-composer/store'
 import { AgentOrchestrateReadOnlyContext } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
 
@@ -16,18 +14,17 @@ const agentKnowledgeDraft = {
   knowledgeRetrievals: [
     {
       id: 'retrieval-1',
-      name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
+      nameKey: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
     },
   ],
 } satisfies AgentSoulConfigFormState
 
-function ConfigSnapshotPreview() {
-  const draft = useAtomValue(agentComposerDraftAtom)
-  const configSnapshot = formStateToAgentSoulConfig({ formState: draft })
+function PublishPayloadPreview() {
+  const payload = useConfigPublishPayload({ agentId: 'agent-1' })
 
   return (
-    <output aria-label="config snapshot">
-      {JSON.stringify(configSnapshot.knowledge)}
+    <output aria-label="publish payload">
+      {JSON.stringify(payload.config_snapshot.knowledge)}
     </output>
   )
 }
@@ -35,11 +32,11 @@ function ConfigSnapshotPreview() {
 function renderKnowledgeRetrieval({
   initialDraft = agentKnowledgeDraft,
   readOnly = false,
-  showConfigSnapshot = false,
+  showPublishPayload = false,
 }: {
   initialDraft?: AgentSoulConfigFormState
   readOnly?: boolean
-  showConfigSnapshot?: boolean
+  showPublishPayload?: boolean
 } = {}) {
   const queryClient = new QueryClient()
 
@@ -49,7 +46,7 @@ function renderKnowledgeRetrieval({
         <AgentOrchestrateReadOnlyContext value={readOnly}>
           <AgentKnowledgeRetrieval />
         </AgentOrchestrateReadOnlyContext>
-        {showConfigSnapshot && <ConfigSnapshotPreview />}
+        {showPublishPayload && <PublishPayloadPreview />}
       </AgentComposerProvider>
     </QueryClientProvider>,
   )
@@ -162,68 +159,9 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).queryByText('agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.agentDescription')).not.toBeInTheDocument()
     })
 
-    it('should show inline validation for missing datasets and blank custom queries', async () => {
+    it('should save newly added retrieval data into the publish config', async () => {
       const user = userEvent.setup()
-      renderKnowledgeRetrieval()
-
-      await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' }))
-      const dialog = screen.getByRole('dialog', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
-      })
-
-      expect(within(dialog).getByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.knowledge.label"}')).toBeInTheDocument()
-
-      await user.click(within(dialog).getByRole('radio', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.custom',
-      }))
-
-      expect(within(dialog).getByText('common.errorMsg.fieldRequired:{"field":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel"}')).toBeInTheDocument()
-    })
-
-    it('should show duplicate-name validation in the dialog', async () => {
-      const user = userEvent.setup()
-      renderKnowledgeRetrieval({
-        initialDraft: {
-          ...defaultAgentSoulConfigFormState,
-          knowledgeRetrievals: [
-            {
-              id: 'retrieval-1',
-              name: 'Docs Search',
-              datasetRefs: [{ id: 'dataset-1', name: 'Docs' }],
-            },
-            {
-              id: 'retrieval-2',
-              name: 'FAQ Search',
-              datasetRefs: [{ id: 'dataset-2', name: 'FAQ' }],
-            },
-          ],
-        },
-      })
-
-      await user.click(screen.getByRole('button', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"FAQ Search"}',
-      }))
-
-      const dialog = screen.getByRole('dialog', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.title',
-      })
-
-      await user.click(within(dialog).getByRole('button', {
-        name: 'FAQ Search',
-      }))
-      const nameInput = within(dialog).getByRole('textbox', {
-        name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel',
-      })
-      await user.clear(nameInput)
-      await user.type(nameInput, 'Docs Search')
-      fireEvent.blur(nameInput)
-
-      expect(within(dialog).getByText('appDebug.varKeyError.keyAlreadyExists:{"key":"agentV2.agentDetail.configure.knowledgeRetrieval.dialog.nameLabel"}')).toBeInTheDocument()
-    })
-
-    it('should save newly added retrieval data into the config snapshot', async () => {
-      const user = userEvent.setup()
-      renderKnowledgeRetrieval({ showConfigSnapshot: true })
+      renderKnowledgeRetrieval({ showPublishPayload: true })
 
       await user.click(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.knowledgeRetrieval.add' }))
       const dialog = screen.getByRole('dialog', {
@@ -241,29 +179,23 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
       }), 'new release notes')
 
-      const knowledgeConfig = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
-      expect(knowledgeConfig.sets).toEqual(expect.arrayContaining([
-        expect.objectContaining({
+      const knowledgeConfig = JSON.parse(screen.getByLabelText('publish payload').textContent ?? '{}')
+      expect(knowledgeConfig.datasets).toEqual(expect.arrayContaining([
+        {
           id: 'retrieval-1',
-          name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne',
-          datasets: [],
-          query: {
-            mode: 'generated_query',
-          },
-        }),
+          name: 'agentDetail.configure.knowledgeRetrieval.retrievalOne',
+        },
         expect.objectContaining({
           name: 'agentV2.agentDetail.configure.knowledgeRetrieval.retrievalTwo',
-          datasets: [],
-          query: {
-            mode: 'user_query',
-            value: 'new release notes',
-          },
-          retrieval: expect.objectContaining({
-            mode: 'multiple',
-            top_k: 4,
-          }),
         }),
       ]))
+      expect(knowledgeConfig).toMatchObject({
+        query_config: {
+          query: 'new release notes',
+          top_k: 4,
+        },
+        query_mode: 'user_query',
+      })
     })
 
     it('should open the knowledge retrieval dialog from the edit button', async () => {
@@ -319,9 +251,9 @@ describe('AgentKnowledgeRetrieval', () => {
       expect(within(dialog).queryByText('appDebug.datasetConfig.knowledgeTip')).not.toBeInTheDocument()
     })
 
-    it('should save edited retrieval data into the config snapshot', async () => {
+    it('should save edited retrieval data into the publish config', async () => {
       const user = userEvent.setup()
-      renderKnowledgeRetrieval({ showConfigSnapshot: true })
+      renderKnowledgeRetrieval({ showPublishPayload: true })
 
       await user.click(screen.getByRole('button', {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.edit:{"name":"agentV2.agentDetail.configure.knowledgeRetrieval.retrievalOne"}',
@@ -345,23 +277,19 @@ describe('AgentKnowledgeRetrieval', () => {
         name: 'agentV2.agentDetail.configure.knowledgeRetrieval.dialog.query.customInputLabel',
       }), 'release notes')
 
-      const knowledgeConfig = JSON.parse(screen.getByLabelText('config snapshot').textContent ?? '{}')
+      const knowledgeConfig = JSON.parse(screen.getByLabelText('publish payload').textContent ?? '{}')
       expect(knowledgeConfig).toMatchObject({
-        sets: [
+        datasets: [
           {
             id: 'retrieval-1',
             name: 'Release Search',
-            datasets: [],
-            query: {
-              mode: 'user_query',
-              value: 'release notes',
-            },
-            retrieval: {
-              mode: 'multiple',
-              top_k: 4,
-            },
           },
         ],
+        query_config: {
+          query: 'release notes',
+          top_k: 4,
+        },
+        query_mode: 'user_query',
       })
     })
 

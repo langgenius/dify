@@ -46,13 +46,6 @@ class _FakeCredentialsProvider:
         return {"openai_api_key": "sk-test"}
 
 
-@pytest.fixture(autouse=True)
-def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_DRIVE_MANIFEST_ENABLED", False
-    )
-
-
 class _NoToolsBuilder:
     def build(self, **kwargs):
         del kwargs

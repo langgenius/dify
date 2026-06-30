@@ -43,21 +43,19 @@ function AgentRosterSkeleton() {
       {skeletonRows.map(row => (
         <div key={row} className="relative h-36.5 rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3">
           <div className="flex items-center gap-3 pt-3.5 pr-4 pb-2 pl-3.5">
-            <SkeletonRectangle className="my-0 size-12 shrink-0 rounded-full opacity-20" />
-            <div className="flex min-w-0 flex-1 flex-col gap-1.5 py-1">
-              <SkeletonRectangle className="my-0 h-3 w-36 max-w-full rounded-md opacity-20" />
-              <SkeletonRectangle className="my-0 h-2 w-20 max-w-full rounded-md opacity-12" />
+            <SkeletonRectangle className="my-0 size-12 shrink-0 animate-pulse rounded-full" />
+            <div className="min-w-0 flex-1 space-y-2.5 py-px">
+              <SkeletonRectangle className="my-0 h-4 w-36 max-w-full animate-pulse rounded-md" />
+              <SkeletonRectangle className="my-0 h-3 w-20 max-w-full animate-pulse rounded-md" />
             </div>
           </div>
           <div className="px-4 py-1">
-            <div className="flex min-h-8 flex-col gap-2 py-0.5">
-              <SkeletonRectangle className="my-0 h-2 w-full rounded-md opacity-12" />
-              <SkeletonRectangle className="my-0 h-2 w-3/4 rounded-md opacity-10" />
-            </div>
+            <SkeletonRectangle className="my-0 h-3 w-full animate-pulse rounded-md" />
+            <SkeletonRectangle className="mt-2 mb-0 h-3 w-3/4 animate-pulse rounded-md" />
           </div>
           <div className="flex items-center pt-2 pr-3 pb-3 pl-4">
-            <SkeletonRectangle className="my-0 h-3 w-6 rounded-md opacity-12" />
-            <SkeletonRectangle className="my-0 ml-2.5 h-3 w-28 rounded-md opacity-10" />
+            <SkeletonRectangle className="my-0 h-4 w-6 animate-pulse rounded-md" />
+            <SkeletonRectangle className="my-0 ml-2.5 h-4 w-28 animate-pulse rounded-md" />
           </div>
         </div>
       ))}

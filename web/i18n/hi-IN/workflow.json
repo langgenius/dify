@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "एजेंट कार्य",
   "nodes.agent.task.mention": "उल्लेख करें",
   "nodes.agent.task.placeholder": "वर्णन करें कि यह एजेंट क्या करे...",
-  "nodes.agent.task.tooltip": "इस node को संभालने में agent की मदद के लिए अतिरिक्त prompt। Variables का स्पष्ट reference देने के लिए / का उपयोग करें।\nयदि सही तरह से configured हो, तो आप अपने agent पर भरोसा कर सकते हैं कि वह चीज़ें खुद समझ लेगा।",
+  "nodes.agent.task.tooltip": "इस वर्कफ़्लो में इस एजेंट द्वारा पालन किए जाने वाले कार्य निर्देश परिभाषित करें।",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} अधिकृत नहीं है",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} स्थापित नहीं है",
   "nodes.agent.toolbox": "टूलबॉक्स",

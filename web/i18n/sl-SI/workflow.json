@@ -464,7 +464,7 @@
   "nodes.agent.task.label": "Opravilo agenta",
   "nodes.agent.task.mention": "Omemba",
   "nodes.agent.task.placeholder": "Opišite, kaj naj ta agent počne…",
-  "nodes.agent.task.tooltip": "Dodatni poziv, ki agentu pomaga obravnavati prav to vozlišče. Uporabite / za izrecno sklicevanje na spremenljivke.\nČe je pravilno konfiguriran, lahko agentu zaupate, da bo stvari ugotovil sam.",
+  "nodes.agent.task.tooltip": "Določite navodila opravila, ki naj jih ta agent upošteva v tem poteku dela.",
   "nodes.agent.toolNotAuthorizedTooltip": "{{tool}} Ni pooblaščen",
   "nodes.agent.toolNotInstallTooltip": "{{tool}} ni nameščen",
   "nodes.agent.toolbox": "delovna orodja",
