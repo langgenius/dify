@@ -33,6 +33,7 @@ from clients.agent_backend.fake_client import FakeAgentBackendRunClient, FakeAge
 from clients.agent_backend.request_builder import (
     AGENT_SOUL_PROMPT_LAYER_ID,
     DIFY_CONFIG_LAYER_ID,
+    DIFY_CORE_TOOLS_LAYER_ID,
     DIFY_EXECUTION_CONTEXT_LAYER_ID,
     DIFY_KNOWLEDGE_BASE_LAYER_ID,
     DIFY_PLUGIN_TOOLS_LAYER_ID,
@@ -49,6 +50,7 @@ from clients.agent_backend.request_builder import (
 __all__ = [
     "AGENT_SOUL_PROMPT_LAYER_ID",
     "DIFY_CONFIG_LAYER_ID",
+    "DIFY_CORE_TOOLS_LAYER_ID",
     "DIFY_EXECUTION_CONTEXT_LAYER_ID",
     "DIFY_KNOWLEDGE_BASE_LAYER_ID",
     "DIFY_PLUGIN_TOOLS_LAYER_ID",

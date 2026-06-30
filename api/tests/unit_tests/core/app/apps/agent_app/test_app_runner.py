@@ -67,8 +67,9 @@ def _disable_drive_manifest_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 class _NoToolsBuilder:
-    def build(self, **kwargs):
+    def build_layers(self, **kwargs):
         del kwargs
+        return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
 
 
 class _FakeQueueManager:
@@ -302,7 +303,7 @@ def _runner(client: FakeAgentBackendRunClient, store: _FakeSessionStore) -> Agen
     return AgentAppRunner(
         request_builder=AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         ),
         agent_backend_client=client,
         event_adapter=AgentBackendRunEventAdapter(),
