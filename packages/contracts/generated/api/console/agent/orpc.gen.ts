@@ -51,6 +51,8 @@ import {
   zGetAgentByAgentIdConfigSkillsByNameDownloadPath,
   zGetAgentByAgentIdConfigSkillsByNameDownloadQuery,
   zGetAgentByAgentIdConfigSkillsByNameDownloadResponse,
+  zGetAgentByAgentIdConfigSkillsByNameFilesContentPath,
+  zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse,
   zGetAgentByAgentIdConfigSkillsByNameFilesDownloadPath,
   zGetAgentByAgentIdConfigSkillsByNameFilesDownloadQuery,
   zGetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse,
@@ -669,6 +671,21 @@ export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
+    operationId: 'getAgentByAgentIdConfigSkillsByNameFilesContent',
+    path: '/agent/{agent_id}/config/skills/{name}/files/content',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetAgentByAgentIdConfigSkillsByNameFilesContentPath }))
+  .output(zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse)
+
+export const content = {
+  get: get14,
+}
+
+export const get15 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
     operationId: 'getAgentByAgentIdConfigSkillsByNameFilesDownload',
     path: '/agent/{agent_id}/config/skills/{name}/files/download',
     tags: ['console'],
@@ -682,10 +699,10 @@ export const get14 = oc
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesDownloadResponse)
 
 export const download3 = {
-  get: get14,
+  get: get15,
 }
 
-export const get15 = oc
+export const get16 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -702,15 +719,16 @@ export const get15 = oc
   .output(zGetAgentByAgentIdConfigSkillsByNameFilesPreviewResponse)
 
 export const preview2 = {
-  get: get15,
+  get: get16,
 }
 
 export const files2 = {
+  content,
   download: download3,
   preview: preview2,
 }
 
-export const get16 = oc
+export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -727,7 +745,7 @@ export const get16 = oc
   .output(zGetAgentByAgentIdConfigSkillsByNameInspectResponse)
 
 export const inspect = {
-  get: get16,
+  get: get17,
 }
 
 export const delete4 = oc
@@ -753,7 +771,7 @@ export const byName2 = {
   inspect,
 }
 
-export const get17 = oc
+export const get18 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -770,7 +788,7 @@ export const get17 = oc
   .output(zGetAgentByAgentIdConfigSkillsResponse)
 
 export const skills = {
-  get: get17,
+  get: get18,
   upload,
   byName: byName2,
 }
@@ -819,7 +837,7 @@ export const debugConversation = {
 /**
  * Time-limited external signed URL for one Agent App drive value
  */
-export const get18 = oc
+export const get19 = oc
   .route({
     description: 'Time-limited external signed URL for one Agent App drive value',
     inputStructure: 'detailed',
@@ -837,13 +855,13 @@ export const get18 = oc
   .output(zGetAgentByAgentIdDriveFilesDownloadResponse)
 
 export const download4 = {
-  get: get18,
+  get: get19,
 }
 
 /**
  * Truncated text preview of one Agent App drive value
  */
-export const get19 = oc
+export const get20 = oc
   .route({
     description: 'Truncated text preview of one Agent App drive value',
     inputStructure: 'detailed',
@@ -861,13 +879,13 @@ export const get19 = oc
   .output(zGetAgentByAgentIdDriveFilesPreviewResponse)
 
 export const preview3 = {
-  get: get19,
+  get: get20,
 }
 
 /**
  * List agent drive entries for an Agent App
  */
-export const get20 = oc
+export const get21 = oc
   .route({
     description: 'List agent drive entries for an Agent App',
     inputStructure: 'detailed',
@@ -885,7 +903,7 @@ export const get20 = oc
   .output(zGetAgentByAgentIdDriveFilesResponse)
 
 export const files3 = {
-  get: get20,
+  get: get21,
   download: download4,
   preview: preview3,
 }
@@ -893,7 +911,7 @@ export const files3 = {
 /**
  * Inspect one drive-backed skill for slash-menu hover/detail UI
  */
-export const get21 = oc
+export const get22 = oc
   .route({
     description: 'Inspect one drive-backed skill for slash-menu hover/detail UI',
     inputStructure: 'detailed',
@@ -906,7 +924,7 @@ export const get21 = oc
   .output(zGetAgentByAgentIdDriveSkillsBySkillPathInspectResponse)
 
 export const inspect2 = {
-  get: get21,
+  get: get22,
 }
 
 export const bySkillPath = {
@@ -916,7 +934,7 @@ export const bySkillPath = {
 /**
  * List drive-backed skills for an Agent App
  */
-export const get22 = oc
+export const get23 = oc
   .route({
     description: 'List drive-backed skills for an Agent App',
     inputStructure: 'detailed',
@@ -929,7 +947,7 @@ export const get22 = oc
   .output(zGetAgentByAgentIdDriveSkillsResponse)
 
 export const skills2 = {
-  get: get22,
+  get: get23,
   bySkillPath,
 }
 
@@ -1018,7 +1036,7 @@ export const files4 = {
   post: post14,
 }
 
-export const get23 = oc
+export const get24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1030,10 +1048,10 @@ export const get23 = oc
   .output(zGetAgentByAgentIdLogSourcesResponse)
 
 export const logSources = {
-  get: get23,
+  get: get24,
 }
 
-export const get24 = oc
+export const get25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1050,14 +1068,14 @@ export const get24 = oc
   .output(zGetAgentByAgentIdLogsByConversationIdMessagesResponse)
 
 export const messages = {
-  get: get24,
+  get: get25,
 }
 
 export const byConversationId = {
   messages,
 }
 
-export const get25 = oc
+export const get26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1071,14 +1089,14 @@ export const get25 = oc
   .output(zGetAgentByAgentIdLogsResponse)
 
 export const logs = {
-  get: get25,
+  get: get26,
   byConversationId,
 }
 
 /**
  * Get Agent App message details by ID
  */
-export const get26 = oc
+export const get27 = oc
   .route({
     description: 'Get Agent App message details by ID',
     inputStructure: 'detailed',
@@ -1091,7 +1109,7 @@ export const get26 = oc
   .output(zGetAgentByAgentIdMessagesByMessageIdResponse)
 
 export const byMessageId2 = {
-  get: get26,
+  get: get27,
 }
 
 export const messages2 = {
@@ -1116,7 +1134,7 @@ export const publish = {
 /**
  * List workflow apps that reference this Agent App's bound Agent (read-only)
  */
-export const get27 = oc
+export const get28 = oc
   .route({
     description: 'List workflow apps that reference this Agent App\'s bound Agent (read-only)',
     inputStructure: 'detailed',
@@ -1129,13 +1147,13 @@ export const get27 = oc
   .output(zGetAgentByAgentIdReferencingWorkflowsResponse)
 
 export const referencingWorkflows = {
-  get: get27,
+  get: get28,
 }
 
 /**
  * Read a text/binary preview file in an Agent App conversation sandbox
  */
-export const get28 = oc
+export const get29 = oc
   .route({
     description: 'Read a text/binary preview file in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -1153,7 +1171,7 @@ export const get28 = oc
   .output(zGetAgentByAgentIdSandboxFilesReadResponse)
 
 export const read = {
-  get: get28,
+  get: get29,
 }
 
 /**
@@ -1183,7 +1201,7 @@ export const upload2 = {
 /**
  * List a directory in an Agent App conversation sandbox
  */
-export const get29 = oc
+export const get30 = oc
   .route({
     description: 'List a directory in an Agent App conversation sandbox',
     inputStructure: 'detailed',
@@ -1201,7 +1219,7 @@ export const get29 = oc
   .output(zGetAgentByAgentIdSandboxFilesResponse)
 
 export const files5 = {
-  get: get29,
+  get: get30,
   read,
   upload: upload2,
 }
@@ -1279,7 +1297,7 @@ export const skills3 = {
   bySlug,
 }
 
-export const get30 = oc
+export const get31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1296,7 +1314,7 @@ export const get30 = oc
   .output(zGetAgentByAgentIdStatisticsSummaryResponse)
 
 export const summary = {
-  get: get30,
+  get: get31,
 }
 
 export const statistics = {
@@ -1318,7 +1336,7 @@ export const restore = {
   post: post19,
 }
 
-export const get31 = oc
+export const get32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1330,11 +1348,11 @@ export const get31 = oc
   .output(zGetAgentByAgentIdVersionsByVersionIdResponse)
 
 export const byVersionId = {
-  get: get31,
+  get: get32,
   restore,
 }
 
-export const get32 = oc
+export const get33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1346,7 +1364,7 @@ export const get32 = oc
   .output(zGetAgentByAgentIdVersionsResponse)
 
 export const versions = {
-  get: get32,
+  get: get33,
   byVersionId,
 }
 
@@ -1362,7 +1380,7 @@ export const delete7 = oc
   .input(z.object({ params: zDeleteAgentByAgentIdPath }))
   .output(zDeleteAgentByAgentIdResponse)
 
-export const get33 = oc
+export const get34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1386,7 +1404,7 @@ export const put3 = oc
 
 export const byAgentId = {
   delete: delete7,
-  get: get33,
+  get: get34,
   put: put3,
   apiAccess,
   apiEnable,
@@ -1413,7 +1431,7 @@ export const byAgentId = {
   versions,
 }
 
-export const get34 = oc
+export const get35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -1437,7 +1455,7 @@ export const post20 = oc
   .output(zPostAgentResponse)
 
 export const agent = {
-  get: get34,
+  get: get35,
   post: post20,
   inviteOptions,
   byAgentId,

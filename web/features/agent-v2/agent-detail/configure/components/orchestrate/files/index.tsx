@@ -298,6 +298,7 @@ export function AgentFiles() {
       <ConfigureSection
         label={t('agentDetail.configure.files.label')}
         labelId="agent-configure-files-label"
+        buildDraftChangeSection="files"
         tip={<AgentConfigureTipContent type="files" />}
         tipAriaLabel={filesTip}
         rootClassName="border-b border-divider-subtle pt-4"

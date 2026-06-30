@@ -14,7 +14,6 @@ type AgentBuildDraftBarProps = {
 }
 
 export function AgentBuildDraftBar({
-  changesCount,
   disabled = false,
   isApplying = false,
   isDiscarding = false,
@@ -23,9 +22,6 @@ export function AgentBuildDraftBar({
 }: AgentBuildDraftBarProps) {
   const { t } = useTranslation('agentV2')
   const { t: tCustom } = useTranslation('custom')
-  const metaLabel = changesCount > 0
-    ? t('agentDetail.configure.buildDraft.changes', { count: changesCount })
-    : t('agentDetail.configure.buildDraft.noChanges')
   const isActionPending = isApplying || isDiscarding
   const applyDisabled = disabled || isActionPending
   const discardDisabled = disabled || isActionPending
@@ -41,9 +37,6 @@ export function AgentBuildDraftBar({
       <div className="relative z-1 flex min-w-0 flex-1 flex-col justify-center gap-0.5 pr-8 pl-2">
         <p className="min-w-0 truncate system-sm-semibold text-text-primary">
           {t('agentDetail.configure.buildDraft.title')}
-        </p>
-        <p className="min-w-0 truncate system-xs-regular text-text-tertiary">
-          {metaLabel}
         </p>
       </div>
       <Button

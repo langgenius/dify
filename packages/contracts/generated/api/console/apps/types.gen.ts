@@ -3584,6 +3584,25 @@ export type GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses = {
 export type GetAppsByAppIdAgentConfigSkillsByNameDownloadResponse
   = GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameDownloadResponses]
 
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentData = {
+  body?: never
+  path: {
+    app_id: string
+    name: string
+  }
+  query?: never
+  url: '/apps/{app_id}/agent/config/skills/{name}/files/content'
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponse
+  = GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses[keyof GetAppsByAppIdAgentConfigSkillsByNameFilesContentResponses]
+
 export type GetAppsByAppIdAgentConfigSkillsByNameFilesDownloadData = {
   body?: never
   path: {

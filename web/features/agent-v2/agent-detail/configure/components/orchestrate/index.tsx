@@ -2,6 +2,7 @@
 
 import type { AgentConfigSnapshotDetailResponse, AgentConfigSnapshotSummaryResponse } from '@dify/contracts/api/console/agent/types.gen'
 import type { ReactNode } from 'react'
+import type { AgentBuildDraftChangedKey } from './build-draft-changes-context'
 import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { AgentComposerModel } from '@/features/agent-v2/agent-composer/form-state'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -11,6 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { AgentOrchestrateAddActionsProvider } from './add-actions'
 import { AgentAdvancedSettings } from './advanced'
 import { AgentOrchestrateBottomActions } from './bottom-actions'
+import { AgentBuildDraftChangedKeysProvider } from './build-draft-changes-context'
 import { AgentConfigApiContextProvider } from './config-context'
 import { AgentFiles } from './files'
 import { AgentOrchestrateHeader } from './header'
@@ -21,6 +23,8 @@ import { AgentConfigurePublishBar } from './publish-bar'
 import { AgentOrchestrateReadOnlyContext } from './read-only-context'
 import { AgentSkills } from './skills'
 import { AgentTools } from './tools'
+
+const EMPTY_BUILD_DRAFT_CHANGED_KEYS: readonly AgentBuildDraftChangedKey[] = []
 
 type AgentOrchestratePanelProps = {
   agentId: string
@@ -38,6 +42,7 @@ type AgentOrchestratePanelProps = {
   readOnly?: boolean
   selectedVersionSnapshot?: AgentConfigSnapshotSummaryResponse | null
   isBuildDraftActive?: boolean
+  buildDraftChangedKeys?: readonly AgentBuildDraftChangedKey[]
   showHeader?: boolean
   showPublishBar?: boolean
   headerAction?: ReactNode
@@ -64,6 +69,7 @@ export function AgentOrchestratePanel({
   readOnly = false,
   selectedVersionSnapshot,
   isBuildDraftActive = false,
+  buildDraftChangedKeys = [],
   showHeader = true,
   showPublishBar = true,
   headerAction,
@@ -131,17 +137,19 @@ export function AgentOrchestratePanel({
           >
             <AgentConfigApiContextProvider value={configApiContext}>
               <AgentOrchestrateAddActionsProvider>
-                <AgentModelField
-                  currentModel={currentModel}
-                  textGenerationModelList={textGenerationModelList}
-                  onSelect={onSelectModel}
-                />
-                <AgentPromptEditor />
-                <AgentSkills />
-                <AgentFiles />
-                <AgentTools />
-                <AgentKnowledgeRetrieval />
-                <AgentAdvancedSettings />
+                <AgentBuildDraftChangedKeysProvider changedKeys={isBuildDraftActive ? buildDraftChangedKeys : EMPTY_BUILD_DRAFT_CHANGED_KEYS}>
+                  <AgentModelField
+                    currentModel={currentModel}
+                    textGenerationModelList={textGenerationModelList}
+                    onSelect={onSelectModel}
+                  />
+                  <AgentPromptEditor />
+                  <AgentSkills />
+                  <AgentFiles />
+                  <AgentTools />
+                  <AgentKnowledgeRetrieval />
+                  <AgentAdvancedSettings />
+                </AgentBuildDraftChangedKeysProvider>
               </AgentOrchestrateAddActionsProvider>
             </AgentConfigApiContextProvider>
           </ScrollArea>

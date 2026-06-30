@@ -90,6 +90,7 @@ export function AgentSkills() {
       <ConfigureSection
         label={t('agentDetail.configure.skills.label')}
         labelId="agent-configure-skills-label"
+        buildDraftChangeSection="skills"
         panelId={skillsListId}
         tip={<AgentConfigureTipContent type="skills" />}
         tipAriaLabel={skillsTip}

@@ -497,6 +497,7 @@ function WorkflowInlineAgentConfigureWorkspaceContent({
           draftSavedAt={draftSavedAt}
           readOnly={buildDraft.isActive}
           isBuildDraftActive={buildDraft.isActive}
+          buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={false}
           bottomAction={buildDraft.isActive
             ? (

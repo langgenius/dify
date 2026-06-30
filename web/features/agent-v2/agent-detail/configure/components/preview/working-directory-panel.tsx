@@ -345,7 +345,7 @@ export function AgentWorkingDirectoryPanel({
           filePreview: {
             binary: fileReadQuery.data?.binary,
             content: fileReadQuery.data?.text ?? undefined,
-            fileName: selectedWorkingDirectoryFile?.name,
+            fileName: isFileListLoading ? '' : selectedWorkingDirectoryFile?.name,
             isError: fileListQuery.isError || fileReadQuery.isError,
             isLoading: isFileListLoading || isFileReadLoading,
           },

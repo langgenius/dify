@@ -4483,6 +4483,19 @@ export const zGetAppsByAppIdAgentConfigSkillsByNameDownloadQuery = z.object({
  */
 export const zGetAppsByAppIdAgentConfigSkillsByNameDownloadResponse = zAgentConfigDownloadResponse
 
+export const zGetAppsByAppIdAgentConfigSkillsByNameFilesContentPath = z.object({
+  app_id: z.uuid(),
+  name: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAppsByAppIdAgentConfigSkillsByNameFilesContentResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
 export const zGetAppsByAppIdAgentConfigSkillsByNameFilesDownloadPath = z.object({
   app_id: z.uuid(),
   name: z.string(),

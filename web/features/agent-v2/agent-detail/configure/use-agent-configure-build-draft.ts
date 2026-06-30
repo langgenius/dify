@@ -1,9 +1,11 @@
 'use client'
 
 import type { AgentSoulConfig } from '@dify/contracts/api/console/agent/types.gen'
+import type { AgentBuildDraftChangedKey } from './components/orchestrate/build-draft-changes-context'
 import type { AgentConfigureSoulSource } from './state'
 import { toast } from '@langgenius/dify-ui/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import isEqual from 'fast-deep-equal'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentSoulConfigToFormState } from '@/features/agent-v2/agent-composer/conversions'
@@ -90,22 +92,22 @@ export function useAgentConfigureBuildDraftData({
   const isBuildDraftActive = soulSource === 'build-draft'
   const buildDraftAgentSoulConfig = buildDraftData?.agent_soul as AgentSoulConfig | undefined
   const visibleAgentSoulConfig = isBuildDraftActive ? buildDraftAgentSoulConfig : normalAgentSoulConfig
-  const buildDraftChangesCount = useMemo(() => {
+  const buildDraftChangedKeys = useMemo<AgentBuildDraftChangedKey[]>(() => {
     if (!buildDraftAgentSoulConfig || !composerAgentSoulConfig)
-      return 0
+      return []
 
     const normalDraft = agentSoulConfigToFormState(composerAgentSoulConfig)
     const buildDraft = agentSoulConfigToFormState(buildDraftAgentSoulConfig)
 
     return (Object.keys(buildDraft) as Array<keyof typeof buildDraft>)
-      .filter(key => JSON.stringify(buildDraft[key]) !== JSON.stringify(normalDraft[key]))
-      .length
+      .filter(key => !isEqual(buildDraft[key], normalDraft[key]))
   }, [buildDraftAgentSoulConfig, composerAgentSoulConfig])
 
   return {
     activeVersionId: isBuildDraftActive ? `build-draft:${buildDraftDataUpdatedAt}` : activeVersionId,
     agentSoulConfig: visibleAgentSoulConfig,
-    changesCount: buildDraftChangesCount,
+    changedKeys: buildDraftChangedKeys,
+    changesCount: buildDraftChangedKeys.length,
     isActive: isBuildDraftActive,
     isPending: !isViewingVersion && soulSourceOverride !== 'draft' && soulSourceOverride !== 'view-version' && isBuildDraftPending,
     refetch: refetchBuildDraft,
