@@ -27,6 +27,17 @@ def _reference(record_id: str) -> str:
     return f"dify-file-ref:{payload}"
 
 
+def _config_manifest_response() -> AgentStubConfigManifestResponse:
+    return AgentStubConfigManifestResponse(
+        agent_id="agent-1",
+        config_version=AgentStubConfigVersionInfo(id="cfg-1", kind="build_draft", writable=True),
+        skills=AgentStubConfigSkillItemsResponse(items=[]),
+        files=AgentStubConfigFileItemsResponse(items=[]),
+        env_keys=[],
+        note="Runtime note.",
+    )
+
+
 def test_cli_connect_reports_missing_environment_variables(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["connect"])
@@ -101,17 +112,59 @@ def test_cli_connect_help_routes_to_typer_help(capsys: pytest.CaptureFixture[str
     assert "─" not in captured.out
 
 
-def test_cli_config_push_help_uses_plain_click_format(capsys: pytest.CaptureFixture[str]) -> None:
+def test_cli_config_push_is_not_a_valid_command(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc_info:
-        main(["config", "push", "--help"])
+        main(["config", "push"])
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert "No such command 'push'" in captured.err
+    assert "╭" not in captured.err
+    assert "─" not in captured.err
+
+
+def test_cli_config_help_lists_plural_groups_and_no_root_push(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["config", "--help"])
 
     captured = capsys.readouterr()
     assert exc_info.value.code == 0
-    assert "Usage: dify-agent config push [OPTIONS]" in captured.out
-    assert "Recommended usage reads the JSON spec from stdin" in captured.out
-    assert "cat <<'JSON' | dify-agent config push" in captured.out
-    assert "╭" not in captured.out
-    assert "─" not in captured.out
+    assert "Usage: dify-agent config" in captured.out
+    assert "manifest" in captured.out
+    assert "files" in captured.out
+    assert "skills" in captured.out
+    assert "env" in captured.out
+    assert "note" in captured.out
+
+
+@pytest.mark.parametrize("argv", [["config", "files", "--help"], ["config", "skills", "--help"]])
+def test_cli_plural_config_groups_expose_pull_push_and_delete(
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(argv)
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert "pull" in captured.out
+    assert "push" in captured.out
+    assert "delete" in captured.out
+
+
+@pytest.mark.parametrize("argv", [["config", "file", "--help"], ["config", "skill", "--help"]])
+def test_cli_hidden_singular_alias_help_exposes_pull_only(
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(argv)
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert "pull" in captured.out
+    assert "push" not in captured.out
+    assert "delete" not in captured.out
 
 
 def test_cli_reports_invalid_agent_stub_api_base_url_environment_value(
@@ -235,6 +288,141 @@ def test_cli_config_manifest_omits_hash_fields(
             }
         ]
     }
+
+
+@pytest.mark.parametrize(
+    ("argv", "helper_name", "expected_kwargs"),
+    [
+        (["config", "note", "push"], "push_config_note_from_environment", {"local_path": None}),
+        (["config", "note", "push", "/tmp/note.md"], "push_config_note_from_environment", {"local_path": "/tmp/note.md"}),
+        (["config", "env", "push"], "push_config_env_from_environment", {"local_path": None}),
+        (["config", "env", "push", "/tmp/.env"], "push_config_env_from_environment", {"local_path": "/tmp/.env"}),
+        (
+            ["config", "files", "push", "/tmp/guide.txt", "--name", "runtime.txt"],
+            "push_config_files_from_environment",
+            {"paths": ["/tmp/guide.txt"], "name": "runtime.txt"},
+        ),
+        (
+            ["config", "files", "delete", "old.txt", "legacy.txt"],
+            "delete_config_files_from_environment",
+            {"names": ["old.txt", "legacy.txt"]},
+        ),
+        (
+            ["config", "skills", "push", "/tmp/alpha", "/tmp/beta"],
+            "push_config_skills_from_environment",
+            {"paths": ["/tmp/alpha", "/tmp/beta"]},
+        ),
+        (
+            ["config", "skills", "delete", "alpha", "beta"],
+            "delete_config_skills_from_environment",
+            {"names": ["alpha", "beta"]},
+        ),
+    ],
+)
+def test_cli_config_mutation_commands_forward_and_print_manifest_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+    helper_name: str,
+    expected_kwargs: dict[str, object],
+) -> None:
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_helper(**kwargs):
+        captured_kwargs.update(kwargs)
+        return _config_manifest_response()
+
+    monkeypatch.setattr(f"dify_agent.agent_stub.cli.main.{helper_name}", fake_helper)
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(argv)
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert json.loads(captured.out) == json.loads(_config_manifest_response().model_dump_json())
+    assert captured_kwargs == expected_kwargs
+
+
+@pytest.mark.parametrize(
+    ("argv", "helper_name"),
+    [
+        (["config", "skills", "pull", "alpha", "--json"], "pull_config_skills_from_environment"),
+        (["config", "skill", "pull", "alpha", "--json"], "pull_config_skills_from_environment"),
+        (["config", "files", "pull", "guide.txt", "--json"], "pull_config_files_from_environment"),
+        (["config", "file", "pull", "guide.txt", "--json"], "pull_config_files_from_environment"),
+    ],
+)
+def test_cli_config_pull_commands_support_plural_and_hidden_singular_aliases(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+    helper_name: str,
+) -> None:
+    if "skills" in helper_name:
+        expected_json = {
+            "items": [
+                {
+                    "name": "alpha",
+                    "archive_path": "/tmp/alpha.zip",
+                    "directory_path": "/tmp/alpha",
+                    "skill_md": "# Alpha\n",
+                }
+            ]
+        }
+        response = type(
+            "Response",
+            (),
+            {
+                "model_dump_json": lambda self: json.dumps(expected_json)
+            },
+        )()
+        expected_kwargs = {"names": ["alpha"], "local_dir": None}
+    else:
+        expected_json = {"items": [{"name": "guide.txt", "path": "/tmp/guide.txt"}]}
+        response = type(
+            "Response",
+            (),
+            {"model_dump_json": lambda self: json.dumps(expected_json)},
+        )()
+        expected_kwargs = {"names": ["guide.txt"], "local_dir": None}
+
+    captured_kwargs: dict[str, object] = {}
+
+    def fake_helper(*, names, local_dir):
+        captured_kwargs["names"] = names
+        captured_kwargs["local_dir"] = local_dir
+        return response
+
+    monkeypatch.setattr(f"dify_agent.agent_stub.cli.main.{helper_name}", fake_helper)
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(argv)
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 0
+    assert json.loads(captured.out) == expected_json
+    assert captured_kwargs == expected_kwargs
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["config", "skill", "push", "/tmp/alpha"],
+        ["config", "skill", "delete", "alpha"],
+        ["config", "file", "push", "/tmp/guide.txt"],
+        ["config", "file", "delete", "guide.txt"],
+    ],
+)
+def test_cli_hidden_singular_aliases_do_not_expose_mutation_commands(
+    capsys: pytest.CaptureFixture[str],
+    argv: list[str],
+) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(argv)
+
+    captured = capsys.readouterr()
+    assert exc_info.value.code == 2
+    assert "No such command" in captured.err
 
 
 def test_cli_file_upload_prints_uploaded_tool_file_json(
