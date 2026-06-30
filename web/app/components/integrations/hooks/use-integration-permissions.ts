@@ -10,15 +10,18 @@ const isPluginCategorySection = (section: IntegrationSection) => {
 export function useIntegrationPermissions(section: IntegrationSection) {
   const {
     permission,
-    canManagement,
     canDebugger,
+    canInstallPlugin,
+    canDeletePlugin,
+    canSetPluginPreferences,
     canSetPermissions,
+    canUpdatePlugin,
     isPermissionLoading,
     permissionError,
     setPluginPermissionSettings,
   } = usePluginSettingsAccess()
   const isPluginCategory = isPluginCategorySection(section)
-  const showPluginCategorySetting = isPluginCategory && canSetPermissions
+  const showPluginCategorySetting = isPluginCategory && canSetPluginPreferences
   const showPermissionQuickPanel = canSetPermissions && !!permission
 
   const handlePermissionChange = (key: PermissionSettingKey, value: PermissionType) => {
@@ -33,7 +36,11 @@ export function useIntegrationPermissions(section: IntegrationSection) {
 
   return {
     canDebugger,
-    canManagement,
+    canInstallPlugin,
+    canDeletePlugin,
+    canSetPluginPreferences,
+    canUpdatePlugin,
+    canManagement: canInstallPlugin,
     handlePermissionChange,
     isPluginCategory,
     isReferenceSettingLoading: isPermissionLoading,

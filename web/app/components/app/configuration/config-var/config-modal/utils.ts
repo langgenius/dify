@@ -33,10 +33,6 @@ export const getCheckboxDefaultSelectValue = (value: InputVar['default'] | boole
     return value.toLowerCase() === CHECKBOX_DEFAULT_TRUE_VALUE ? CHECKBOX_DEFAULT_TRUE_VALUE : CHECKBOX_DEFAULT_FALSE_VALUE
   return CHECKBOX_DEFAULT_FALSE_VALUE
 }
-
-export const parseCheckboxSelectValue = (value: string) =>
-  value === CHECKBOX_DEFAULT_TRUE_VALUE
-
 export const normalizeSelectDefaultValue = (inputVar: InputVar) => {
   if (inputVar.type === InputVarType.select && inputVar.default === '')
     return { ...inputVar, default: undefined }

@@ -315,5 +315,4 @@ export const AvgUserInteractions = createBizChartComponent({
   yMaxWhenEmpty: 500,
   isAvg: true,
 })
-
 export default Chart

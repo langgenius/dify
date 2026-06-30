@@ -7,10 +7,10 @@ to the agent drive (Agent Files §5.4 / §4):
 * ``<slug>/.DIFY-SKILL-FULL.zip`` — the full archive, kept only to restore the
   complete skill contents.
 
-Both are stored as ``ToolFile`` records and bound via ``AgentDriveService.commit``
-with ``value_owned_by_drive=True`` (the drive owns their lifecycle). The returned
-skill ref records the stable drive paths + file ids (not just the raw upload id),
-so the Composer can reload the bound skill list.
+The archive's member list is stored in skill metadata and resolved lazily for
+inspect/preview/runtime. Upload must not eagerly materialize every archive member
+as a separate ToolFile; small archives with many files would otherwise perform
+hundreds of storage writes and DB commits inside the request.
 """
 
 from __future__ import annotations
@@ -19,9 +19,8 @@ import re
 from typing import Any
 
 from core.tools.tool_file_manager import ToolFileManager
-from models.agent_config_entities import AgentSkillRefConfig
 from services.agent.skill_package_service import SkillPackageService
-from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef
+from services.agent_drive_service import AgentDriveService, DriveCommitItem, DriveFileRef, DriveSkillMetadata
 
 _FULL_ARCHIVE_NAME = ".DIFY-SKILL-FULL.zip"
 _SKILL_MD_NAME = "SKILL.md"
@@ -34,7 +33,11 @@ def slugify_skill_name(name: str) -> str:
 
 
 class SkillStandardizeService:
-    """Validate + standardize a Skill package into a per-agent drive."""
+    """Persist a normalized skill package into drive-owned files for one agent.
+
+    Instances are intentionally stateful: ``standardize()`` updates
+    ``last_committed_items`` with the drive commit result for the most recent call.
+    """
 
     def __init__(
         self,
@@ -46,6 +49,7 @@ class SkillStandardizeService:
         self._package = package_service or SkillPackageService()
         self._drive = drive_service or AgentDriveService()
         self._tool_files = tool_file_manager or ToolFileManager()
+        self.last_committed_items: list[dict[str, Any]] = []
 
     def standardize(
         self,
@@ -56,16 +60,23 @@ class SkillStandardizeService:
         user_id: str,
         agent_id: str,
     ) -> dict[str, Any]:
-        manifest = self._package.validate_and_extract(content=content, filename=filename)
-        skill_md_bytes = self._package.read_member_bytes(content=content, member_path=manifest.entry_path)
+        """Create two ToolFiles, commit two drive-owned keys, and return skill metadata.
+
+        This writes ``<slug>/SKILL.md`` and ``<slug>/.DIFY-SKILL-FULL.zip``,
+        stores the drive commit rows in ``last_committed_items``, and returns the
+        console response shape ``{"skill": ..., "manifest": ...}``.
+        """
+        package = self._package.validate_and_normalize(content=content, filename=filename)
+        manifest = package.manifest
         slug = slugify_skill_name(manifest.name)
 
-        # Two drive-owned ToolFiles: canonical SKILL.md + the full archive.
+        # Drive-owned files: canonical SKILL.md and the full archive. The
+        # archive member tree is preserved in metadata and resolved lazily.
         md_tool_file = self._tool_files.create_file_by_raw(
             user_id=user_id,
             tenant_id=tenant_id,
             conversation_id=None,
-            file_binary=skill_md_bytes,
+            file_binary=package.skill_md_bytes,
             mimetype="text/markdown",
             filename=_SKILL_MD_NAME,
         )
@@ -73,14 +84,14 @@ class SkillStandardizeService:
             user_id=user_id,
             tenant_id=tenant_id,
             conversation_id=None,
-            file_binary=content,
+            file_binary=package.archive_bytes,
             mimetype="application/zip",
             filename=_FULL_ARCHIVE_NAME,
         )
 
         skill_md_key = f"{slug}/{_SKILL_MD_NAME}"
         archive_key = f"{slug}/{_FULL_ARCHIVE_NAME}"
-        self._drive.commit(
+        committed_items = self._drive.commit(
             tenant_id=tenant_id,
             user_id=user_id,
             agent_id=agent_id,
@@ -89,6 +100,12 @@ class SkillStandardizeService:
                     key=skill_md_key,
                     file_ref=DriveFileRef(kind="tool_file", id=md_tool_file.id),
                     value_owned_by_drive=True,
+                    is_skill=True,
+                    skill_metadata=DriveSkillMetadata(
+                        name=manifest.name,
+                        description=manifest.description,
+                        manifest_files=manifest.files,
+                    ),
                 ),
                 DriveCommitItem(
                     key=archive_key,
@@ -97,27 +114,16 @@ class SkillStandardizeService:
                 ),
             ],
         )
+        self.last_committed_items = committed_items
 
-        skill_ref = AgentSkillRefConfig.model_validate(
-            {
-                "id": manifest.hash,
+        return {
+            "skill": {
                 "name": manifest.name,
                 "description": manifest.description,
-                "file_id": archive_tool_file.id,
                 "path": slug,
-                "size": manifest.size,
-                "hash": manifest.hash,
-                "entry_path": skill_md_key,
-                "skill_md_file_id": md_tool_file.id,
                 "skill_md_key": skill_md_key,
-                "full_archive_file_id": archive_tool_file.id,
-                "full_archive_key": archive_key,
-                # ENG-371: zip member listing — strong signals (scripts/*.sh) for infer-tools.
-                "manifest_files": manifest.files,
-            }
-        )
-        return {
-            "skill": skill_ref.model_dump(exclude_none=True),
+                "archive_key": archive_key,
+            },
             "manifest": manifest.model_dump(),
         }
 

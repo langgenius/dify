@@ -2,20 +2,12 @@ import { act, waitFor } from '@testing-library/react'
 import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-setting/constants'
 import { renderHookWithNuqs } from '@/test/nuqs-testing'
 import {
-  clearQueryParams,
   PRICING_MODAL_QUERY_PARAM,
   PRICING_MODAL_QUERY_VALUE,
   useAccountSettingModal,
   usePluginInstallation,
   usePricingModal,
 } from './use-query-params'
-
-// Mock isServer to allow runtime control in tests
-const mockIsServer = vi.hoisted(() => ({ value: false }))
-vi.mock('@/utils/client', () => ({
-  get isServer() { return mockIsServer.value },
-  get isClient() { return !mockIsServer.value },
-}))
 
 const renderWithAdapter = <T,>(hook: () => T, searchParams = '') => {
   return renderHookWithNuqs(hook, { searchParams })
@@ -445,64 +437,5 @@ describe('useQueryParams hooks', () => {
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1]![0]
       expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
-  })
-})
-
-// Utility to clear query params from the current URL.
-describe('clearQueryParams', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    window.history.replaceState(null, '', '/')
-  })
-
-  afterEach(() => {
-    vi.unstubAllGlobals()
-    mockIsServer.value = false
-  })
-
-  it('should remove a single key when provided one key', () => {
-    // Arrange
-    const replaceSpy = vi.spyOn(window.history, 'replaceState')
-    window.history.pushState(null, '', '/?foo=1&bar=2')
-
-    // Act
-    clearQueryParams('foo')
-
-    // Assert
-    expect(replaceSpy).toHaveBeenCalled()
-    const params = new URLSearchParams(window.location.search)
-    expect(params.has('foo')).toBe(false)
-    expect(params.get('bar')).toBe('2')
-    replaceSpy.mockRestore()
-  })
-
-  it('should remove multiple keys when provided an array', () => {
-    // Arrange
-    const replaceSpy = vi.spyOn(window.history, 'replaceState')
-    window.history.pushState(null, '', '/?foo=1&bar=2&baz=3')
-
-    // Act
-    clearQueryParams(['foo', 'baz'])
-
-    // Assert
-    expect(replaceSpy).toHaveBeenCalled()
-    const params = new URLSearchParams(window.location.search)
-    expect(params.has('foo')).toBe(false)
-    expect(params.has('baz')).toBe(false)
-    expect(params.get('bar')).toBe('2')
-    replaceSpy.mockRestore()
-  })
-
-  it('should no-op when running on server', () => {
-    // Arrange
-    const replaceSpy = vi.spyOn(window.history, 'replaceState')
-    mockIsServer.value = true
-
-    // Act
-    clearQueryParams('foo')
-
-    // Assert
-    expect(replaceSpy).not.toHaveBeenCalled()
-    replaceSpy.mockRestore()
   })
 })

@@ -1,3 +1,4 @@
+from inspect import unwrap
 from unittest.mock import ANY, patch
 
 from flask import Flask
@@ -5,12 +6,6 @@ from flask import Flask
 import controllers.console.explore.recommended_app as module
 from models import Account
 from models.model import AppMode, IconType
-
-
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
 
 
 def make_account(interface_language: str | None) -> Account:

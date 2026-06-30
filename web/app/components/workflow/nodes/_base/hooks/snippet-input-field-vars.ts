@@ -5,7 +5,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { inputVarTypeToVarType } from '../../data-source/utils'
 
-export const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
+const SNIPPET_INPUT_FIELD_NODE_ID = 'start'
 
 export const isSnippetCanvas = () => {
   if (typeof globalThis.location === 'undefined')
@@ -98,17 +98,18 @@ export const appendSnippetInputFieldVars = ({
   title,
 }: {
   availableNodes: Node[]
-  fields: SnippetInputField[]
+  fields?: SnippetInputField[]
   title: string
 }) => {
+  const inputFields = fields ?? []
   const shouldAppendSnippetInputFields = isSnippetCanvas()
-    && fields.length > 0
+    && inputFields.length > 0
     && !availableNodes.some(node => node.data.type === BlockEnum.Start)
   const snippetInputFieldNode = shouldAppendSnippetInputFields
-    ? buildSnippetInputFieldNode(fields, title)
+    ? buildSnippetInputFieldNode(inputFields, title)
     : undefined
   const snippetInputFieldVars = shouldAppendSnippetInputFields
-    ? buildSnippetInputFieldVars(fields, title)
+    ? buildSnippetInputFieldVars(inputFields, title)
     : undefined
 
   return {

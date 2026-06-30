@@ -37,7 +37,7 @@ export const zPostApiBasedExtensionBody = zApiBasedExtensionPayload
 export const zPostApiBasedExtensionResponse = zApiBasedExtensionResponse
 
 export const zDeleteApiBasedExtensionByIdPath = z.object({
-  id: z.string(),
+  id: z.uuid(),
 })
 
 /**
@@ -46,7 +46,7 @@ export const zDeleteApiBasedExtensionByIdPath = z.object({
 export const zDeleteApiBasedExtensionByIdResponse = z.void()
 
 export const zGetApiBasedExtensionByIdPath = z.object({
-  id: z.string(),
+  id: z.uuid(),
 })
 
 /**
@@ -57,7 +57,7 @@ export const zGetApiBasedExtensionByIdResponse = zApiBasedExtensionResponse
 export const zPostApiBasedExtensionByIdBody = zApiBasedExtensionPayload
 
 export const zPostApiBasedExtensionByIdPath = z.object({
-  id: z.string(),
+  id: z.uuid(),
 })
 
 /**

@@ -24,12 +24,16 @@ import { SubscriptionList } from './subscription-list'
 import { TriggerEventsList } from './trigger/event-list'
 
 type Props = Readonly<{
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   detail?: PluginDetail
   onUpdate: () => void
   onHide: () => void
 }>
 
 const PluginDetailPanel: FC<Props> = ({
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   detail,
   onUpdate,
   onHide,
@@ -75,7 +79,13 @@ const PluginDetailPanel: FC<Props> = ({
             <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
               {detail && (
                 <>
-                  <DetailHeader detail={detail} onUpdate={handleUpdate} onHide={onHide} />
+                  <DetailHeader
+                    detail={detail}
+                    onUpdate={handleUpdate}
+                    onHide={onHide}
+                    canDeletePlugin={canDeletePlugin}
+                    canUpdatePlugin={canUpdatePlugin}
+                  />
                   <div className="grow overflow-y-auto">
                     <div className="flex min-h-full flex-col">
                       <div className="flex-1">

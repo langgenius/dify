@@ -17,7 +17,7 @@ Decorator strategy:
 
 import uuid
 from inspect import unwrap
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, patch
 
 import pytest
 from flask import Flask
@@ -408,7 +408,7 @@ class TestDatasetMetadataBuiltInFieldAction:
 
         assert status == 200
         assert response["result"] == "success"
-        mock_meta_svc.enable_built_in_field.assert_called_once_with(mock_dataset)
+        mock_meta_svc.enable_built_in_field.assert_called_once_with(ANY, mock_dataset)
 
     @patch("controllers.service_api.dataset.metadata.MetadataService")
     @patch("controllers.service_api.dataset.metadata.DatasetService")
@@ -439,7 +439,7 @@ class TestDatasetMetadataBuiltInFieldAction:
             )
 
         assert status == 200
-        mock_meta_svc.disable_built_in_field.assert_called_once_with(mock_dataset)
+        mock_meta_svc.disable_built_in_field.assert_called_once_with(ANY, mock_dataset)
 
     @patch("controllers.service_api.dataset.metadata.DatasetService")
     def test_action_dataset_not_found(

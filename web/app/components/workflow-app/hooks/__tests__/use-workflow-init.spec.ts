@@ -1,6 +1,7 @@
 import { renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { AppACLPermission } from '@/utils/permission'
 
 import { useWorkflowInit } from '../use-workflow-init'
 
@@ -21,6 +22,8 @@ let appStoreState: {
     id: string
     name: string
     mode: string
+    permission_keys?: string[]
+    maintainer?: string
   }
 }
 
@@ -41,6 +44,14 @@ vi.mock('@/app/components/workflow/store', () => ({
 vi.mock('@/app/components/app/store', () => ({
   useStore: <T>(selector: (state: typeof appStoreState) => T): T =>
     selector(appStoreState),
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T>(selector: (state: { userProfile: { id: string }, workspacePermissionKeys: string[] }) => T): T =>
+    selector({
+      userProfile: { id: 'user-1' },
+      workspacePermissionKeys: ['app.create_and_management'],
+    }),
 }))
 
 vi.mock('../use-workflow-template', () => ({
@@ -98,7 +109,7 @@ describe('useWorkflowInit', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     appStoreState = {
-      appDetail: { id: 'app-1', name: 'Test', mode: 'workflow' },
+      appDetail: { id: 'app-1', name: 'Test', mode: 'workflow', permission_keys: [AppACLPermission.Edit] },
     }
     workflowConfigState = { data: null, isLoading: false }
     mockWorkflowStoreGetState.mockReturnValue({
@@ -154,7 +165,7 @@ describe('useWorkflowInit', () => {
 
   it('should keep creating the first backend draft for advanced chat apps', async () => {
     appStoreState = {
-      appDetail: { id: 'app-1', name: 'Test', mode: 'advanced-chat' },
+      appDetail: { id: 'app-1', name: 'Test', mode: 'advanced-chat', permission_keys: [AppACLPermission.Edit] },
     }
     mockFetchWorkflowDraft
       .mockReset()
@@ -178,6 +189,33 @@ describe('useWorkflowInit', () => {
       hasShownOnboarding: false,
     }))
     expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('new-hash')
+  })
+
+  it('should keep readonly users local when the first workflow draft does not exist', async () => {
+    appStoreState = {
+      appDetail: { id: 'app-1', name: 'Test', mode: 'workflow', permission_keys: [AppACLPermission.ViewLayout] },
+    }
+    mockFetchWorkflowDraft
+      .mockReset()
+      .mockRejectedValueOnce(notExistError())
+
+    const { result } = renderHook(() => useWorkflowInit())
+
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false)
+    })
+
+    expect(result.current.data?.graph.nodes).toEqual([
+      { id: 'start-placeholder', data: { type: BlockEnum.StartPlaceholder } },
+    ])
+    expect(mockSyncWorkflowDraft).not.toHaveBeenCalled()
+    expect(mockWorkflowStoreSetState).toHaveBeenCalledWith(expect.objectContaining({
+      envSecrets: {},
+      environmentVariables: [],
+      conversationVariables: [],
+      isWorkflowDataLoaded: true,
+    }))
+    expect(mockSetSyncWorkflowDraftHash).toHaveBeenCalledWith('')
   })
 
   it('should restore a local start placeholder when an existing workflow draft has an empty graph', async () => {

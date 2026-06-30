@@ -56,12 +56,47 @@ from repositories.types import (
     DailyTerminalsStats,
     DailyTokenCostStats,
 )
+from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 
 logger = logging.getLogger(__name__)
 
 
 class _WorkflowRunError(Exception):
     pass
+
+
+_HEX_SHARD_VALUES = {
+    "0": 0,
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "4": 4,
+    "5": 5,
+    "6": 6,
+    "7": 7,
+    "8": 8,
+    "9": 9,
+    "a": 10,
+    "b": 11,
+    "c": 12,
+    "d": 13,
+    "e": 14,
+    "f": 15,
+}
+
+
+def _tenant_prefix_condition(prefixes: Sequence[str]) -> sa.ColumnElement[bool]:
+    conditions = [tenant_prefix_condition(WorkflowRun.tenant_id, prefix) for prefix in prefixes]
+    return sa.or_(*conditions)
+
+
+def _workflow_run_id_shard_expr() -> sa.ColumnElement[int]:
+    normalized_id = func.lower(func.replace(sa.cast(WorkflowRun.id, sa.String()), "-", ""))
+    last_hex = func.substr(normalized_id, func.length(normalized_id), 1)
+    return sa.case(
+        *[(last_hex == hex_digit, shard_value) for hex_digit, shard_value in _HEX_SHARD_VALUES.items()],
+        else_=0,
+    )
 
 
 def _build_human_input_required_reason(
@@ -378,7 +413,10 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         batch_size: int,
         run_types: Sequence[WorkflowType] | None = None,
         tenant_ids: Sequence[str] | None = None,
+        tenant_prefixes: Sequence[str] | None = None,
         workflow_ids: Sequence[str] | None = None,
+        run_shard_index: int | None = None,
+        run_shard_total: int | None = None,
     ) -> Sequence[WorkflowRun]:
         """
         Fetch ended workflow runs in a time window for archival and clean batching.
@@ -387,7 +425,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         - created_at in [start_from, end_before)
         - type in run_types (when provided)
         - status is an ended state
-        - optional tenant_id, workflow_id filters and cursor (last_seen) for pagination
+        - optional tenant_id, tenant_prefix, workflow_id filters and cursor (last_seen) for pagination
+        - optional deterministic shard by the last hexadecimal digit of workflow_run_id
         """
         with self._session_maker() as session:
             stmt = (
@@ -410,8 +449,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if tenant_ids:
                 stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
 
+            if tenant_prefixes:
+                stmt = stmt.where(_tenant_prefix_condition(tenant_prefixes))
+
             if workflow_ids:
                 stmt = stmt.where(WorkflowRun.workflow_id.in_(workflow_ids))
+
+            if run_shard_index is not None and run_shard_total is not None:
+                stmt = stmt.where((_workflow_run_id_shard_expr() % run_shard_total) == run_shard_index)
 
             if last_seen:
                 stmt = stmt.where(
@@ -957,21 +1002,22 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             )
             pause_reason_models = []
             for reason in pause_reasons:
-                if isinstance(reason, HumanInputRequired):
-                    # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
-                    pause_reason_model = WorkflowPauseReason(
-                        pause_id=pause_model.id,
-                        type_=reason.TYPE,
-                        form_id=reason.form_id,
-                    )
-                elif isinstance(reason, SchedulingPause):
-                    pause_reason_model = WorkflowPauseReason(
-                        pause_id=pause_model.id,
-                        type_=reason.TYPE,
-                        message=reason.message,
-                    )
-                else:
-                    raise AssertionError(f"unkown reason type: {type(reason)}")
+                match reason:
+                    case HumanInputRequired():
+                        # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
+                        pause_reason_model = WorkflowPauseReason(
+                            pause_id=pause_model.id,
+                            type_=reason.TYPE,
+                            form_id=reason.form_id,
+                        )
+                    case SchedulingPause():
+                        pause_reason_model = WorkflowPauseReason(
+                            pause_id=pause_model.id,
+                            type_=reason.TYPE,
+                            message=reason.message,
+                        )
+                    case _:
+                        raise AssertionError(f"unknown reason type: {type(reason)}")
 
                 pause_reason_models.append(pause_reason_model)
 

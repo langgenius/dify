@@ -4,6 +4,7 @@ import time
 from typing import Any, TypedDict, cast
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
@@ -12,7 +13,6 @@ from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from graphon.model_runtime.entities import LLMMode
 from models import Account
 from models.dataset import Dataset, DatasetQuery
@@ -56,7 +56,9 @@ class HitTestingService:
         }
 
     @classmethod
-    def _dump_retrieval_records(cls, records: list[RetrievalSegments]) -> list[dict[str, Any]]:
+    def _dump_retrieval_records(
+        cls, session: Session | scoped_session, records: list[RetrievalSegments]
+    ) -> list[dict[str, Any]]:
         document_ids = {
             document_id
             for record in records
@@ -69,9 +71,7 @@ class HitTestingService:
 
         documents = {
             document.id: cls._dump_dataset_document(document)
-            for document in db.session.scalars(
-                select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
-            ).all()
+            for document in session.scalars(select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))).all()
         }
 
         records_with_documents: list[dict[str, Any]] = []
@@ -105,6 +105,7 @@ class HitTestingService:
     @classmethod
     def retrieve(
         cls,
+        session: Session | scoped_session,
         dataset: Dataset,
         query: str,
         account: Account,
@@ -142,7 +143,7 @@ class HitTestingService:
             if metadata_filter_document_ids:
                 document_ids_filter = metadata_filter_document_ids.get(dataset.id, [])
             if metadata_condition and not document_ids_filter:
-                return cls.compact_retrieve_response(query, [])
+                return cls.compact_retrieve_response(session, query, [])
         all_documents = RetrievalService.retrieve(
             retrieval_method=RetrievalMethod(
                 resolved_retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)
@@ -181,14 +182,15 @@ class HitTestingService:
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
             )
-            db.session.add(dataset_query)
-        db.session.commit()
+            session.add(dataset_query)
+        session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents)
+        return cls.compact_retrieve_response(session, query, all_documents)
 
     @classmethod
     def external_retrieve(
         cls,
+        session: Session | scoped_session,
         dataset: Dataset,
         query: str,
         account: Account,
@@ -222,20 +224,22 @@ class HitTestingService:
             created_by=account.id,
         )
 
-        db.session.add(dataset_query)
-        db.session.commit()
+        session.add(dataset_query)
+        session.commit()
 
         return dict(cls.compact_external_retrieve_response(dataset, query, all_documents))
 
     @classmethod
-    def compact_retrieve_response(cls, query: str, documents: list[Document]) -> RetrieveResponseDict:
+    def compact_retrieve_response(
+        cls, session: Session | scoped_session, query: str, documents: list[Document]
+    ) -> RetrieveResponseDict:
         records = RetrievalService.format_retrieval_documents(documents)
 
         return {
             "query": {
                 "content": query,
             },
-            "records": cls._dump_retrieval_records(records),
+            "records": cls._dump_retrieval_records(session, records),
         }
 
     @classmethod

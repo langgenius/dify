@@ -8,6 +8,7 @@ import { BaseError } from '@/errors/base'
 import { ErrorCode } from '@/errors/codes'
 import { LIMIT_DEFAULT, LIMIT_MAX, parseLimit } from '@/limit/limit'
 import { colorEnabled, colorScheme } from '@/sys/io/color'
+import { promptConfirm } from '@/sys/io/prompt'
 import { runWithSpinner } from '@/sys/io/spinner'
 
 export type DevicesListOptions = {
@@ -94,6 +95,17 @@ export async function runDevicesRevoke(opts: DevicesRevokeOptions): Promise<void
   if (ids.length === 0) {
     opts.io.out.write('no sessions to revoke\n')
     return
+  }
+
+  if (opts.yes !== true && opts.io.isErrTTY) {
+    const confirmed = await promptConfirm(opts.io, `Revoke ${ids.length} session(s)? [y/N] `)
+    if (!confirmed) {
+      throw new BaseError({
+        code: ErrorCode.UsageMissingArg,
+        message: 'aborted by user',
+        hint: 'pass --yes to skip confirmation',
+      })
+    }
   }
 
   for (const id of ids)

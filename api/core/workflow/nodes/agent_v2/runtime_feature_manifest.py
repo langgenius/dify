@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from models.agent_config_entities import AgentSoulConfig
+from services.agent.knowledge_datasets import list_agent_soul_knowledge_dataset_ids
 
 SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
     {
@@ -16,9 +17,6 @@ SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
         "knowledge",
         "env",
         "sandbox",
-        # ENG-623: exposed at runtime as the dify.drive declaration layer
-        # (an index the agent pulls through the back proxy).
-        "skills_files",
         # ENG-635: human involvement is exposed at runtime as the dify.ask_human
         # deferred tool; a call pauses via the existing HITL form mechanism.
         "human",
@@ -32,11 +30,7 @@ RESERVED_AGENT_BACKEND_FEATURES = frozenset(
 )
 
 
-def build_runtime_feature_manifest(
-    agent_soul: AgentSoulConfig,
-    *,
-    drive_manifest_enabled: bool = False,
-) -> dict[str, Any]:
+def build_runtime_feature_manifest(agent_soul: AgentSoulConfig) -> dict[str, Any]:
     """Describe PRD capabilities supported by or still reserved from Agent backend runtime."""
     warnings: list[dict[str, str]] = []
     soul_dump = agent_soul.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
@@ -54,38 +48,8 @@ def build_runtime_feature_manifest(
                 }
             )
 
-    has_skills_files = bool(agent_soul.skills_files.skills or agent_soul.skills_files.files)
-    if has_skills_files and not drive_manifest_enabled:
-        warnings.append(
-            {
-                "section": "agent_soul.skills_files",
-                "code": "drive_manifest_disabled",
-                "message": (
-                    "skills_files is configured but AGENT_DRIVE_MANIFEST_ENABLED is off; "
-                    "the drive declaration layer is not injected into this run."
-                ),
-            }
-        )
-    for skill in agent_soul.skills_files.skills:
-        if not skill.skill_md_key:
-            warnings.append(
-                {
-                    "section": "agent_soul.skills_files",
-                    "code": "skill_ref_dangling",
-                    "message": (
-                        f"skill_ref_dangling: skill '{skill.name or skill.id or 'unknown'}' has no drive key; "
-                        "re-standardize it to expose it at runtime."
-                    ),
-                }
-            )
-
     reserved_status = dict.fromkeys(sorted(RESERVED_AGENT_BACKEND_FEATURES), "reserved_not_executed")
-    reserved_status["knowledge"] = (
-        "supported_by_knowledge_layer" if list_configured_knowledge_dataset_ids(agent_soul) else "not_configured"
-    )
-    reserved_status["skills_files"] = (
-        "supported_by_drive_manifest" if drive_manifest_enabled else "drive_manifest_disabled"
-    )
+    reserved_status["knowledge"] = "supported_by_knowledge_layer" if agent_soul.knowledge.sets else "not_configured"
     reserved_status["tools.dify_tools"] = "supported_when_config_valid"
     reserved_status["tools.cli_tools"] = "supported_by_shell_bootstrap"
     reserved_status["env"] = "supported_by_shell_bootstrap"
@@ -101,14 +65,14 @@ def build_runtime_feature_manifest(
 
 
 def list_configured_knowledge_dataset_ids(agent_soul: AgentSoulConfig) -> list[str]:
-    """Return the normalized knowledge dataset ids that can produce a runtime layer.
+    """Return normalized dataset ids selected by Agent v2 knowledge sets.
 
     ``build_runtime_feature_manifest()`` and ``build_knowledge_layer_config()``
-    must stay aligned: both decide knowledge support from this effective,
-    non-blank dataset-id set rather than from raw
-    ``agent_soul.knowledge.datasets`` entries.
+    stay aligned on the set-based contract: DTO validation rejects blank dataset
+    ids before runtime, so this helper only flattens configured set datasets for
+    metadata/diagnostic surfaces that still need a dataset-id summary.
     """
-    return [dataset_id for dataset in agent_soul.knowledge.datasets if (dataset_id := (dataset.id or "").strip())]
+    return list_agent_soul_knowledge_dataset_ids(agent_soul)
 
 
 def _get_nested(value: dict[str, Any], path: str) -> Any:

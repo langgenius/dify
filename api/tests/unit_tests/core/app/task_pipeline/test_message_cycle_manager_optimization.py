@@ -345,7 +345,9 @@ class TestMessageCycleManagerOptimization:
         db_session.close.assert_called_once()
         mock_redis.setex.assert_called_once()
 
-    def test_generate_conversation_name_worker_falls_back_when_generation_fails(self, message_cycle_manager, caplog):
+    def test_generate_conversation_name_worker_falls_back_when_generation_fails(
+        self, message_cycle_manager, caplog: pytest.LogCaptureFixture
+    ):
         """Fallback to truncated query when LLM generation fails."""
         flask_app = Flask(__name__)
         conversation = SimpleNamespace(

@@ -297,25 +297,26 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         for cond in conditions.conditions or []:
             value = cond.value
             resolved_value: str | Sequence[str] | int | float | None
-            if isinstance(value, str):
-                segment_group = variable_pool.convert_template(value)
-                if len(segment_group.value) == 1:
-                    resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
-                else:
-                    resolved_value = segment_group.text
-            elif isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
-                resolved_values: list[str] = []
-                for v in value:
-                    segment_group = variable_pool.convert_template(v)
+            match value:
+                case str():
+                    segment_group = variable_pool.convert_template(value)
                     if len(segment_group.value) == 1:
-                        resolved_values.append(
-                            _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
-                        )
+                        resolved_value = _normalize_metadata_filter_scalar(segment_group.value[0].to_object())
                     else:
-                        resolved_values.append(segment_group.text)
-                resolved_value = resolved_values
-            else:
-                resolved_value = value
+                        resolved_value = segment_group.text
+                case _ if isinstance(value, Sequence) and all(isinstance(v, str) for v in value):
+                    resolved_values: list[str] = []
+                    for v in value:
+                        segment_group = variable_pool.convert_template(v)
+                        if len(segment_group.value) == 1:
+                            resolved_values.append(
+                                _normalize_metadata_filter_sequence_item(segment_group.value[0].to_object())
+                            )
+                        else:
+                            resolved_values.append(segment_group.text)
+                    resolved_value = resolved_values
+                case _:
+                    resolved_value = value
             resolved_conditions.append(
                 Condition(
                     name=cond.name,

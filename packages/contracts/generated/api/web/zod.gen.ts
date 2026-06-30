@@ -73,6 +73,7 @@ export const zAppSiteResponse = z.object({
   icon_background: z.string().nullish(),
   icon_type: z.string().nullish(),
   icon_url: z.string().nullish(),
+  input_placeholder: z.string().nullish(),
   privacy_policy: z.string().nullish(),
   prompt_public: z.boolean().nullish(),
   show_workflow_steps: z.boolean().nullish(),
@@ -168,13 +169,22 @@ export const zConversationListQuery = z.object({
     .default('-updated_at'),
 })
 
-/**
- * ConversationRenamePayload
- */
-export const zConversationRenamePayload = z.object({
-  auto_generate: z.boolean().optional().default(false),
-  name: z.string().nullish(),
-})
+export const zConversationRenamePayload = z.intersection(
+  z.union([
+    z.object({
+      auto_generate: z.literal(true),
+      name: z.string().nullish(),
+    }),
+    z.object({
+      auto_generate: z.literal(false).optional().default(false),
+      name: z.string().regex(/.*\S.*/),
+    }),
+  ]),
+  z.object({
+    auto_generate: z.boolean().optional().default(false),
+    name: z.string().nullish(),
+  }),
+)
 
 /**
  * EmailCodeLoginSendPayload
@@ -687,7 +697,7 @@ export const zParameters = z.object({
  * TextToAudioPayload
  */
 export const zTextToAudioPayload = z.object({
-  message_id: z.string().nullish(),
+  message_id: z.uuid().nullish(),
   streaming: z.boolean().nullish(),
   text: z.string().nullish(),
   voice: z.string().nullish(),
@@ -831,6 +841,7 @@ export const zSystemFeatureModel = z.object({
   enable_email_code_login: z.boolean().default(false),
   enable_email_password_login: z.boolean().default(true),
   enable_explore_banner: z.boolean().default(false),
+  enable_learn_app: z.boolean().default(true),
   enable_marketplace: z.boolean().default(false),
   enable_social_oauth_login: z.boolean().default(false),
   enable_trial_app: z.boolean().default(false),
@@ -852,6 +863,7 @@ export const zSystemFeatureModel = z.object({
     restrict_to_marketplace_only: false,
   }),
   plugin_manager: zPluginManagerModel.default({ enabled: false }),
+  rbac_enabled: z.boolean().default(false),
   sso_enforced_for_signin: z.boolean().default(false),
   sso_enforced_for_signin_protocol: z.string().default(''),
   webapp_auth: zWebAppAuthModel.default({
@@ -897,7 +909,16 @@ export const zWebMessageInfiniteScrollPagination = z.object({
  * WorkflowRunPayload
  */
 export const zWorkflowRunPayload = z.object({
-  files: z.array(z.record(z.string(), z.unknown())).nullish(),
+  files: z
+    .array(
+      z.object({
+        transfer_method: z.enum(['local_file', 'remote_url']),
+        type: z.enum(['audio', 'custom', 'document', 'image', 'video']),
+        upload_file_id: z.string().optional(),
+        url: z.string().optional(),
+      }),
+    )
+    .nullish(),
   inputs: z.record(z.string(), z.unknown()),
 })
 
@@ -954,7 +975,7 @@ export const zGetConversationsQuery = z.object({
 export const zGetConversationsResponse = zConversationInfiniteScrollPagination
 
 export const zDeleteConversationsByCIdPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -965,7 +986,7 @@ export const zDeleteConversationsByCIdResponse = z.void()
 export const zPostConversationsByCIdNameBody = zConversationRenamePayload
 
 export const zPostConversationsByCIdNamePath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 export const zPostConversationsByCIdNameQuery = z.object({
@@ -979,7 +1000,7 @@ export const zPostConversationsByCIdNameQuery = z.object({
 export const zPostConversationsByCIdNameResponse = zSimpleConversation
 
 export const zPatchConversationsByCIdPinPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -988,7 +1009,7 @@ export const zPatchConversationsByCIdPinPath = z.object({
 export const zPatchConversationsByCIdPinResponse = zResultResponse
 
 export const zPatchConversationsByCIdUnpinPath = z.object({
-  c_id: z.string(),
+  c_id: z.uuid(),
 })
 
 /**
@@ -1106,7 +1127,7 @@ export const zGetMessagesResponse = zWebMessageInfiniteScrollPagination
 export const zPostMessagesByMessageIdFeedbacksBody = zMessageFeedbackPayload
 
 export const zPostMessagesByMessageIdFeedbacksPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
@@ -1120,7 +1141,7 @@ export const zPostMessagesByMessageIdFeedbacksQuery = z.object({
 export const zPostMessagesByMessageIdFeedbacksResponse = zResultResponse
 
 export const zGetMessagesByMessageIdMoreLikeThisPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
@@ -1133,7 +1154,7 @@ export const zGetMessagesByMessageIdMoreLikeThisQuery = z.object({
 export const zGetMessagesByMessageIdMoreLikeThisResponse = zGeneratedAppResponse
 
 export const zGetMessagesByMessageIdSuggestedQuestionsPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 /**
@@ -1198,7 +1219,7 @@ export const zPostSavedMessagesQuery = z.object({
 export const zPostSavedMessagesResponse = zResultResponse
 
 export const zDeleteSavedMessagesByMessageIdPath = z.object({
-  message_id: z.string(),
+  message_id: z.uuid(),
 })
 
 /**

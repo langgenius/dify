@@ -28,6 +28,7 @@ const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 const mockTrackCreateApp = vi.fn()
 const mockFetchAppDetail = vi.mocked(fetchAppDetail)
+let mockWorkspacePermissionKeys: string[] = ['app.create_and_management']
 
 const mockTemplateApp: App = {
   app_id: 'template-1',
@@ -66,6 +67,15 @@ vi.mock('@/app/education-apply/hooks', () => ({
   useEducationInit: () => {
     educationInitCalls++
   },
+}))
+
+vi.mock('@/context/app-context', () => ({
+  useSelector: (selector: (state: { workspacePermissionKeys: string[] }) => unknown) => selector({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
+  useAppContext: () => ({
+    workspacePermissionKeys: mockWorkspacePermissionKeys,
+  }),
 }))
 
 vi.mock('@/hooks/use-import-dsl', () => ({
@@ -193,6 +203,7 @@ describe('Apps', () => {
     vi.clearAllMocks()
     documentTitleCalls = []
     educationInitCalls = 0
+    mockWorkspacePermissionKeys = ['app.create_and_management']
     mockSearchParams = new URLSearchParams()
     mockReplace.mockClear()
     mockFetchAppDetail.mockResolvedValue({
@@ -351,6 +362,14 @@ describe('Apps', () => {
       expect(screen.getByTestId('template-id')).toHaveTextContent('tpl-42')
     })
 
+    it('should not render the template modal without app.create_and_management permission', () => {
+      mockWorkspacePermissionKeys = []
+      mockSearchParams = new URLSearchParams('template-id=tpl-42')
+      renderWithClient(<Apps />)
+
+      expect(screen.queryByTestId('marketplace-template-modal')).not.toBeInTheDocument()
+    })
+
     it('should not render the template modal when no template-id is present', () => {
       renderWithClient(<Apps />)
 
@@ -389,6 +408,16 @@ describe('Apps', () => {
         })
         expect(mockReplace).toHaveBeenCalled()
       })
+    })
+
+    it('should not open create modal from template preview without app.create_and_management permission', async () => {
+      mockWorkspacePermissionKeys = []
+      renderWithClient(<Apps />)
+
+      fireEvent.click(screen.getByTestId('open-preview'))
+      fireEvent.click(await screen.findByTestId('try-app-create'))
+
+      expect(screen.queryByTestId('create-app-modal')).not.toBeInTheDocument()
     })
 
     it('should track marketplace template creation after confirming a pending import', async () => {

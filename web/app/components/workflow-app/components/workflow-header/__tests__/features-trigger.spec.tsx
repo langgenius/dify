@@ -1,11 +1,13 @@
 import type { ReactElement } from 'react'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import type { App } from '@/types/app'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/client'
 import FeaturesTrigger from '../features-trigger'
 
 const mockUseIsChatMode = vi.fn()
@@ -44,6 +46,8 @@ const mockUpdatePublishedWorkflow = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 const mockInvalidateAppTriggers = vi.fn()
 const mockFetchAppDetail = vi.fn()
+const mockInvalidateQueries = vi.fn()
+const mockSetQueryData = vi.fn()
 const mockSetPublishedAt = vi.fn()
 const mockSetLastPublishedHasUserInput = vi.fn()
 
@@ -83,6 +87,26 @@ vi.mock('@/app/components/workflow/store', () => ({
   },
   useWorkflowStore: () => mockWorkflowStore,
 }))
+
+vi.mock('@/app/components/workflow/hooks-store', () => ({
+  useHooksStore: <T,>(selector: (state: { accessControl: { canReleaseAndVersion: boolean } }) => T): T =>
+    selector({
+      accessControl: {
+        canReleaseAndVersion: true,
+      },
+    }),
+}))
+
+vi.mock('@tanstack/react-query', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@tanstack/react-query')>()
+  return {
+    ...actual,
+    useQueryClient: () => ({
+      invalidateQueries: mockInvalidateQueries,
+      setQueryData: mockSetQueryData,
+    }),
+  }
+})
 
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: Record<string, unknown>) => unknown) => mockUseFeatures(selector),
@@ -167,7 +191,15 @@ const createProviderContext = ({
 })
 
 const renderWithToast = (ui: ReactElement) => {
-  return render(ui)
+  const queryClient = new QueryClient()
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        {ui}
+      </QueryClientProvider>,
+    ),
+  }
 }
 
 describe('FeaturesTrigger', () => {
@@ -193,7 +225,8 @@ describe('FeaturesTrigger', () => {
     mockUseEdges.mockReturnValue([])
     // Set up app store state
     useAppStore.setState({ appDetail: { id: 'app-id' } as unknown as App })
-    mockFetchAppDetail.mockResolvedValue({ id: 'app-id' })
+    mockFetchAppDetail.mockResolvedValue({ id: 'app-id', name: 'Updated App' })
+    mockInvalidateQueries.mockResolvedValue(undefined)
     mockPublishWorkflow.mockResolvedValue({ created_at: '2024-01-01T00:00:00Z' })
   })
 
@@ -438,7 +471,94 @@ describe('FeaturesTrigger', () => {
         expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
         expect(toastMocks.call).toHaveBeenCalledWith({ type: 'success', message: 'common.api.actionSuccess' })
         expect(mockFetchAppDetail).toHaveBeenCalledWith({ url: '/apps', id: 'app-id' })
-        expect(useAppStore.getState().appDetail).toBeDefined()
+        expect(mockSetQueryData).toHaveBeenCalledWith(['apps', 'detail', 'app-id'], expect.objectContaining({
+          name: 'Updated App',
+        }))
+        expect(useAppStore.getState().appDetail).toEqual(expect.objectContaining({
+          name: 'Updated App',
+        }))
+      })
+    })
+
+    it('should invalidate roster list after publishing a workflow with a roster Agent v2 node', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUseNodes.mockReturnValue([
+        { id: 'start', data: { type: BlockEnum.Start } },
+        {
+          id: 'agent-v2',
+          data: {
+            type: BlockEnum.AgentV2,
+            version: '2',
+            agent_node_kind: 'dify_agent',
+            agent_binding: {
+              binding_type: 'roster_agent',
+              agent_id: 'agent-1',
+            },
+          },
+        },
+      ])
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.agent.get.key(),
+        })
+        expect(mockInvalidateQueries).toHaveBeenCalledWith({
+          queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+            input: {
+              params: {
+                agent_id: 'agent-1',
+              },
+            },
+          }).queryKey,
+        })
+      })
+    })
+
+    it('should keep roster list cache stable after publishing a workflow without roster Agent v2 nodes', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUseNodes.mockReturnValue([
+        { id: 'start', data: { type: BlockEnum.Start } },
+        {
+          id: 'inline-agent-v2',
+          data: {
+            type: BlockEnum.AgentV2,
+            version: '2',
+            agent_node_kind: 'dify_agent',
+            agent_binding: {
+              binding_type: 'inline_agent',
+              agent_id: 'agent-1',
+              current_snapshot_id: 'snapshot-1',
+            },
+          },
+        },
+      ])
+      renderWithToast(<FeaturesTrigger />)
+
+      // Act
+      await user.click(screen.getByRole('button', { name: 'publisher-publish' }))
+
+      // Assert
+      await waitFor(() => {
+        expect(mockPublishWorkflow).toHaveBeenCalled()
+      })
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.get.key(),
+      })
+      expect(mockInvalidateQueries).not.toHaveBeenCalledWith({
+        queryKey: consoleQuery.agent.byAgentId.referencingWorkflows.get.queryOptions({
+          input: {
+            params: {
+              agent_id: 'agent-1',
+            },
+          },
+        }).queryKey,
       })
     })
 
@@ -503,7 +623,7 @@ describe('FeaturesTrigger', () => {
       // Arrange
       const user = userEvent.setup()
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-      mockFetchAppDetail.mockRejectedValue(new Error('fetch failed'))
+      mockFetchAppDetail.mockRejectedValueOnce(new Error('fetch failed'))
 
       renderWithToast(<FeaturesTrigger />)
 

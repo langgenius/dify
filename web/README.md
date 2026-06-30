@@ -148,7 +148,7 @@ Before writing tests, use the script to analyze component complexity:
 pnpm analyze-component app/components/your-component/index.tsx
 ```
 
-This will help you determine the testing strategy. See [web/testing/testing.md] for details.
+This will help you determine the testing strategy. See [web/docs/test.md] for details.
 
 ## Documentation
 

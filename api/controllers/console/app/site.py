@@ -10,9 +10,12 @@ from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
+    RBACPermission,
+    RBACResourceScope,
     account_initialization_required,
     edit_permission_required,
     is_admin_or_owner_required,
+    rbac_permission_required,
     setup_required,
     with_current_user,
 )
@@ -37,6 +40,7 @@ class AppSiteUpdatePayload(BaseModel):
     customize_domain: str | None = Field(default=None)
     copyright: str | None = Field(default=None)
     privacy_policy: str | None = Field(default=None)
+    input_placeholder: str | None = Field(default=None)
     custom_disclaimer: str | None = Field(default=None)
     customize_token_strategy: Literal["must", "allow", "not_allow"] | None = Field(default=None)
     prompt_public: bool | None = Field(default=None)
@@ -63,6 +67,7 @@ class AppSiteResponse(ResponseModel):
     customize_domain: str | None = None
     copyright: str | None = None
     privacy_policy: str | None = None
+    input_placeholder: str | None = None
     custom_disclaimer: str | None = None
     customize_token_strategy: str
     prompt_public: bool
@@ -85,9 +90,10 @@ class AppSite(Resource):
     @setup_required
     @login_required
     @edit_permission_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @account_initialization_required
-    @get_app_model
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         args = AppSiteUpdatePayload.model_validate(console_ns.payload or {})
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
@@ -106,6 +112,7 @@ class AppSite(Resource):
             "customize_domain",
             "copyright",
             "privacy_policy",
+            "input_placeholder",
             "custom_disclaimer",
             "customize_token_strategy",
             "prompt_public",
@@ -134,9 +141,10 @@ class AppSiteAccessTokenReset(Resource):
     @setup_required
     @login_required
     @is_admin_or_owner_required
+    @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_RELEASE_AND_VERSION)
     @account_initialization_required
-    @get_app_model
     @with_current_user
+    @get_app_model
     def post(self, current_user: Account, app_model: App):
         site = db.session.scalar(select(Site).where(Site.app_id == app_model.id).limit(1))
 

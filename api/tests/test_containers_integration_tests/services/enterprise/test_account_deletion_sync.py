@@ -45,7 +45,7 @@ class TestQueueTask:
         assert "task_id" in task_data
         assert "created_at" in task_data
 
-    def test_queue_task_redis_error(self, caplog):
+    def test_queue_task_redis_error(self, caplog: pytest.LogCaptureFixture):
         with patch("services.enterprise.account_deletion_sync.redis_client") as mock_redis:
             mock_redis.lpush.side_effect = RedisError("Connection failed")
 
@@ -54,7 +54,7 @@ class TestQueueTask:
             assert result is False
             assert "Failed to queue account deletion sync" in caplog.text
 
-    def test_queue_task_type_error(self, caplog):
+    def test_queue_task_type_error(self, caplog: pytest.LogCaptureFixture):
         with patch("services.enterprise.account_deletion_sync.redis_client") as mock_redis:
             mock_redis.lpush.side_effect = TypeError("Cannot serialize")
 

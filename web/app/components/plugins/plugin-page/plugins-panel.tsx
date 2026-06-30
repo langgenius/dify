@@ -52,6 +52,8 @@ const matchesSearchQuery = (plugin: PluginDetail & { latest_version: string }, q
 
 type PluginsPanelProps = {
   canInstall?: boolean
+  canDeletePlugin?: boolean
+  canUpdatePlugin?: boolean
   contentInset?: PluginPageContentInset
   fixedCategory?: PluginCategoryEnum
   layout?: (parts: { body: ReactNode, toolbar: ReactNode }) => ReactNode
@@ -61,6 +63,8 @@ type PluginsPanelProps = {
 
 const PluginsPanel = ({
   canInstall = true,
+  canDeletePlugin = true,
+  canUpdatePlugin = true,
   contentInset = 'default',
   fixedCategory,
   layout,
@@ -82,7 +86,7 @@ const PluginsPanel = ({
     select: s => s.enable_marketplace,
   })
   const { data: pluginList, isLoading: isPluginListLoading, isFetching, isLastPage, loadNextPage } = useInstalledPluginList(
-    undefined,
+    false,
     100,
     fixedCategory
       ? {
@@ -217,6 +221,8 @@ const PluginsPanel = ({
                   scrollAreaLabel={scrollAreaLabel}
                   setCurrentBuiltinToolID={setCurrentBuiltinToolID}
                   tagFilterValue={filters.tags}
+                  canDeletePlugin={canDeletePlugin}
+                  canUpdatePlugin={canUpdatePlugin}
                 />
               )
             : isIntegrationCategorySearchEmpty
@@ -251,6 +257,8 @@ const PluginsPanel = ({
         detail={currentPluginDetail}
         onUpdate={() => invalidateInstalledPluginList()}
         onHide={handleHide}
+        canDeletePlugin={canDeletePlugin}
+        canUpdatePlugin={canUpdatePlugin}
       />
       {currentBuiltinTool && !currentBuiltinTool.plugin_id && (
         <ProviderDetail

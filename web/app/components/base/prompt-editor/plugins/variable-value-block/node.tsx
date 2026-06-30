@@ -1,6 +1,5 @@
 import type {
   EditorConfig,
-  LexicalNode,
   SerializedTextNode,
 } from 'lexical'
 import {
@@ -55,10 +54,4 @@ export class VariableValueBlockNode extends TextNode {
 
 export function $createVariableValueBlockNode(text = ''): VariableValueBlockNode {
   return $applyNodeReplacement(new VariableValueBlockNode(text))
-}
-
-export function $isVariableValueNodeBlock(
-  node: LexicalNode | null | undefined,
-): node is VariableValueBlockNode {
-  return node instanceof VariableValueBlockNode
 }

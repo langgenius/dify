@@ -64,6 +64,7 @@ describe('QueryInput', () => {
     onClickRetrievalMethod: vi.fn(),
     retrievalConfig: { search_method: 'semantic_search' } as RetrievalConfig,
     isEconomy: false,
+    canRunRetrievalRecall: true,
     hitTestingMutation: vi.fn(),
     externalKnowledgeBaseHitTestingMutation: vi.fn(),
   })
@@ -99,6 +100,12 @@ describe('QueryInput', () => {
       queries: [{ content: '', content_type: 'text_query', file_info: null }] satisfies Query[],
     }
     render(<QueryInput {...props} />)
+    expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
+  })
+
+  it('should disable submit button when retrieval recall permission is missing', () => {
+    render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
+
     expect(screen.getByRole('button', { name: /input\.testing/ }))!.toBeDisabled()
   })
 
@@ -230,6 +237,16 @@ describe('QueryInput', () => {
           expect.objectContaining({ content: 'new text', content_type: 'text_query' }),
         ]),
       )
+    })
+  })
+
+  describe('Permission Guarding', () => {
+    it('should not run hit testing mutation when retrieval recall permission is missing', () => {
+      render(<QueryInput {...defaultProps} canRunRetrievalRecall={false} />)
+
+      fireEvent.click(screen.getByRole('button', { name: /input\.testing/ }))
+
+      expect(defaultProps.hitTestingMutation).not.toHaveBeenCalled()
     })
   })
 

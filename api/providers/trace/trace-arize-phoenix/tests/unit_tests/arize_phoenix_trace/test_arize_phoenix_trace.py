@@ -456,7 +456,7 @@ class TestPhoenixParentSpanBridgeHelpers:
         assert error.parent_node_execution_id == "outer-node-execution-1"
         assert "outer-node-execution-1" in str(error)
 
-    def test_resolve_parent_span_context_rejects_payload_without_traceparent(self, monkeypatch):
+    def test_resolve_parent_span_context_rejects_payload_without_traceparent(self, monkeypatch: pytest.MonkeyPatch):
         mock_redis = MagicMock()
         mock_redis.get.return_value = '{"tracestate": "vendor=value"}'
         monkeypatch.setattr(arize_phoenix_trace_module, "redis_client", mock_redis)
