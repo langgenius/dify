@@ -122,7 +122,7 @@ const PermissionSetModalBody = ({
 
       <div className="flex shrink-0 items-center justify-between gap-3 border-t border-divider-subtle px-6 py-4">
         <a
-          href="https://docs.dify.ai/"
+          href="https://enterprise-docs.dify.ai/en/3.11.x/use/workspace/permission-reference"
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center gap-1 system-xs-medium text-text-accent hover:underline"
