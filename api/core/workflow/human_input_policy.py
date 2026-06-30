@@ -7,14 +7,17 @@ from typing import Any, NamedTuple
 
 from pydantic import ValidationError
 
-from core.workflow.human_input import FormDefinition, FormInputConfig, SelectInputConfig, UserActionConfig, ValueSourceType
+from core.workflow.human_input import (
+    FormDefinition,
+    FormInputConfig,
+    SelectInputConfig,
+    UserActionConfig,
+    ValueSourceType,
+)
 from graphon.entities.pause_reason import HitlRequired, PauseReason, PauseReasonType
 from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables import ArrayStringSegment
 from models.human_input import ApprovalChannel, RecipientType
-
-if not hasattr(PauseReasonType, "HUMAN_INPUT_REQUIRED"):
-    PauseReasonType.HUMAN_INPUT_REQUIRED = PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED
 
 
 class HumanInputSurface(StrEnum):
@@ -118,17 +121,10 @@ def enrich_human_input_pause_reasons(
         if updated.get("TYPE") == PauseReasonType.HITL_REQUIRED:
             session_id = updated.pop("session_id", None)
             if isinstance(session_id, str):
-                reason_id = (
-                    form_ids_by_session_id.get(session_id)
-                    if form_ids_by_session_id is not None
-                    else None
-                )
+                reason_id = form_ids_by_session_id.get(session_id) if form_ids_by_session_id is not None else None
                 if reason_id is not None:
                     updated["form_id"] = reason_id
-        elif updated.get("TYPE") in {
-            PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED,
-            PauseReasonType.HUMAN_INPUT_REQUIRED,
-        }:
+        elif updated.get("TYPE") == PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED:
             form_id = updated.get("form_id")
             if isinstance(form_id, str):
                 reason_id = form_id
@@ -219,12 +215,12 @@ def resolve_variable_select_input_options(
         return list(inputs)
 
     for form_input in inputs:
-        if str(getattr(form_input, "type", "")) != "select":
+        if not isinstance(form_input, SelectInputConfig):
             resolved_inputs.append(form_input)
             continue
 
         option_source = form_input.option_source
-        if str(option_source.type) != ValueSourceType.VARIABLE:
+        if option_source.type != ValueSourceType.VARIABLE:
             resolved_inputs.append(form_input)
             continue
 

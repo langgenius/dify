@@ -54,8 +54,8 @@ def ensure_backend_test_environment(repo_root: Path) -> None:
 
     os.environ["LOG_OUTPUT_FORMAT"] = "text"
     os.environ["LOG_FORMAT"] = DEFAULT_LOG_FORMAT
-    os.environ.setdefault("STORAGE_TYPE", "opendal")
-    os.environ.setdefault("OPENDAL_SCHEME", "fs")
+    os.environ["STORAGE_TYPE"] = "opendal"
+    os.environ["OPENDAL_SCHEME"] = "fs"
     os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
     Path(os.environ["OPENDAL_FS_ROOT"]).mkdir(parents=True, exist_ok=True)
 

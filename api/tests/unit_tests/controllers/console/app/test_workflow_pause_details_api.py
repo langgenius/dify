@@ -10,7 +10,7 @@ from flask import Flask
 
 from controllers.common.errors import NotFoundError
 from controllers.console.app import workflow_run as workflow_run_module
-from core.workflow.human_input import ParagraphInputConfig, UserActionConfig, session_binding
+from core.workflow.human_input import session_binding
 from graphon.entities.pause_reason import HitlRequired
 from graphon.enums import WorkflowExecutionStatus
 from models.workflow import WorkflowRun
@@ -52,7 +52,9 @@ def test_pause_details_resolves_session_id_before_loading_tokens(app: Flask, mon
     monkeypatch.setattr(
         session_binding,
         "resolve_form_id_from_session_id",
-        lambda *, session_id: "form-1" if session_id == "session-1" else pytest.fail(f"unexpected session_id: {session_id}"),
+        lambda *, session_id: (
+            "form-1" if session_id == "session-1" else pytest.fail(f"unexpected session_id: {session_id}")
+        ),
     )
     monkeypatch.setattr(
         workflow_run_module,

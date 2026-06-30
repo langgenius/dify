@@ -5,7 +5,7 @@ import json
 import re
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime, timedelta
-from typing import Annotated, Any, Literal, Self, assert_never
+from typing import Annotated, Any, Literal, Protocol, Self, assert_never, override
 
 from pydantic import BaseModel, Field, NonNegativeInt, field_validator, model_validator
 
@@ -14,8 +14,8 @@ from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import BuiltinNodeTypes, NodeType
 from graphon.file import FileUploadConfig
 from graphon.file.enums import FileTransferMethod, FileType
-from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
+from graphon.runtime.graph_runtime_state_protocol import ReadOnlyVariablePool
 from graphon.variables.consts import SELECTORS_LENGTH
 from graphon.variables.segments import Segment
 
@@ -24,6 +24,10 @@ from .enums import ButtonStyle, FormInputType, TimeoutUnit, ValueSourceType
 _OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
 _IDENTIFIER_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _ALLOWED_TRANSFER_METHOD = frozenset((FileTransferMethod.LOCAL_FILE, FileTransferMethod.REMOTE_URL))
+
+
+class _TemplateRenderableVariablePool(Protocol):
+    def convert_template(self, template: str, /) -> Any: ...
 
 
 class StringSource(BaseModel):
@@ -36,9 +40,7 @@ class StringSource(BaseModel):
         if self.type == ValueSourceType.CONSTANT:
             return self
         if len(self.selector) < SELECTORS_LENGTH:
-            raise ValueError(
-                f"the length of selector should be at least {SELECTORS_LENGTH}, selector={self.selector}"
-            )
+            raise ValueError(f"the length of selector should be at least {SELECTORS_LENGTH}, selector={self.selector}")
         return self
 
 
@@ -64,11 +66,13 @@ class ParagraphInputConfig(BaseInputConfig):
     type: Literal[FormInputType.PARAGRAPH] = FormInputType.PARAGRAPH
     default: StringSource | None = None
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
         if self.default is None or self.default.type == ValueSourceType.CONSTANT:
             return []
         return [self.default.selector]
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         if self.default is None or self.default.type == ValueSourceType.CONSTANT:
             return None
@@ -79,11 +83,13 @@ class SelectInputConfig(BaseInputConfig):
     type: Literal[FormInputType.SELECT] = FormInputType.SELECT
     option_source: StringListSource
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
         if self.option_source.type == ValueSourceType.CONSTANT:
             return []
         return [self.option_source.selector]
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         _ = pool
         return None
@@ -116,9 +122,11 @@ class _FileInputCommonConfig(BaseModel):
 class FileInputConfig(_FileInputCommonConfig, BaseInputConfig):
     type: Literal[FormInputType.FILE] = FormInputType.FILE
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
         return []
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         _ = pool
         return None
@@ -128,9 +136,11 @@ class FileListInputConfig(_FileInputCommonConfig, BaseInputConfig):
     type: Literal[FormInputType.FILE_LIST] = FormInputType.FILE_LIST
     number_limits: NonNegativeInt = 0
 
+    @override
     def extract_variable_selectors(self) -> Sequence[Sequence[str]]:
         return []
 
+    @override
     def resolve_default_value(self, pool: ReadOnlyVariablePool) -> Segment | None:
         _ = pool
         return None
@@ -293,7 +303,7 @@ def extract_output_field_names(form_content: str) -> list[str]:
 def render_form_content_before_submission(
     *,
     form_content: str,
-    variable_pool: ReadOnlyVariablePool | None,
+    variable_pool: _TemplateRenderableVariablePool | None,
 ) -> str:
     """Render runtime variables while leaving output placeholders intact."""
     if variable_pool is None:
@@ -425,7 +435,11 @@ def validate_human_input_submission(
         raise HumanInputSubmissionValidationError(f"Invalid action: {selected_action_id}")
 
     provided_inputs = set(form_data.keys())
-    missing_inputs = [form_input.output_variable_name for form_input in inputs if form_input.output_variable_name not in provided_inputs]
+    missing_inputs = [
+        form_input.output_variable_name
+        for form_input in inputs
+        if form_input.output_variable_name not in provided_inputs
+    ]
     if missing_inputs:
         raise HumanInputSubmissionValidationError(f"Missing required inputs: {', '.join(missing_inputs)}")
 
@@ -438,7 +452,7 @@ def validate_human_input_submission(
 
 
 def _validate_submitted_input_value(*, form_input: FormInputConfig, value: Any) -> None:
-    if _is_select_input(form_input):
+    if isinstance(form_input, SelectInputConfig):
         if not isinstance(value, str):
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for select input '{form_input.output_variable_name}': expected string"
@@ -450,7 +464,7 @@ def _validate_submitted_input_value(*, form_input: FormInputConfig, value: Any) 
             )
         return
 
-    if _is_file_input(form_input):
+    if isinstance(form_input, FileInputConfig):
         if not isinstance(value, Mapping):
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file input '{form_input.output_variable_name}': expected mapping"
@@ -458,7 +472,7 @@ def _validate_submitted_input_value(*, form_input: FormInputConfig, value: Any) 
         _validate_submitted_file_mapping(form_input=form_input, value=value)
         return
 
-    if _is_file_list_input(form_input):
+    if isinstance(form_input, FileListInputConfig):
         if not isinstance(value, list):
             raise HumanInputSubmissionValidationError(
                 f"Invalid value for file list input '{form_input.output_variable_name}': expected list"
@@ -483,6 +497,15 @@ def _validate_submitted_file_mapping(
     file_type_value = value.get("type")
     transfer_method_value = value.get("transfer_method")
     extension = value.get("extension")
+
+    if not isinstance(file_type_value, str):
+        raise HumanInputSubmissionValidationError(
+            f"Invalid value for file input '{form_input.output_variable_name}': unsupported file type"
+        )
+    if not isinstance(transfer_method_value, str):
+        raise HumanInputSubmissionValidationError(
+            f"Invalid value for file input '{form_input.output_variable_name}': unsupported transfer method"
+        )
 
     try:
         file_type = FileType(file_type_value)
@@ -533,9 +556,9 @@ __all__ = [
     "StringSource",
     "UserActionConfig",
     "extract_output_field_names",
-    "resolve_default_values",
     "render_form_content_before_submission",
     "render_form_content_with_outputs",
+    "resolve_default_values",
     "restore_submitted_data",
     "restore_submitted_value",
     "validate_human_input_submission",

@@ -34,13 +34,13 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.human_input import session_binding
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
-from core.workflow.human_input import session_binding
 from core.workflow.system_variables import (
     build_bootstrap_variables,
     default_system_variables,

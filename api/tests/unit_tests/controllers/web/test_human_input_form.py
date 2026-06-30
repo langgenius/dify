@@ -14,8 +14,8 @@ from werkzeug.exceptions import Forbidden
 
 import controllers.web.human_input_form as human_input_module
 import controllers.web.site as site_module
-from core.workflow.human_input import ParagraphInputConfig, SelectInputConfig, StringListSource, ValueSourceType
 from controllers.web.error import WebFormRateLimitExceededError
+from core.workflow.human_input import ParagraphInputConfig, SelectInputConfig, StringListSource, ValueSourceType
 from models.human_input import RecipientType
 from services.feature_service import FeatureModel
 from services.human_input_service import FormExpiredError

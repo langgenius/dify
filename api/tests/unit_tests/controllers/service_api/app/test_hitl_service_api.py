@@ -29,7 +29,7 @@ from core.app.entities.task_entities import (
     WorkflowPauseStreamResponse,
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
-from core.workflow.human_input import FormInputType, ParagraphInputConfig, UserActionConfig
+from core.workflow.human_input import UserActionConfig
 from core.workflow.human_input import session_binding as session_binding_module
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.system_variables import build_system_variables

@@ -50,14 +50,14 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.trigger.trigger_manager import TriggerManager
+from core.workflow.human_input import session_binding
 from core.workflow.human_input_forms import (
     load_form_dispositions_by_form_id,
 )
-from core.workflow.human_input import session_binding
 from core.workflow.human_input_policy import (
     FormDisposition,
-    HydratedHitlFormDefinition,
     HumanInputSurface,
+    HydratedHitlFormDefinition,
     enrich_human_input_pause_reasons,
     hydrate_hitl_form_definition,
     iter_hitl_required_reasons,
@@ -423,8 +423,8 @@ class WorkflowResponseConverter:
                         node_id=reason.node_id,
                         node_title=hydrated_form.node_title or reason.node_title,
                         form_content=hydrated_form.form_content,
-                        inputs=self._serialize_human_input_inputs(hydrated_form.inputs),
-                        actions=self._serialize_human_input_actions(hydrated_form.actions),
+                        inputs=hydrated_form.inputs,
+                        actions=hydrated_form.actions,
                         display_in_ui=hydrated_form.display_in_ui,
                         form_token=disposition.form_token if disposition else None,
                         approval_channels=list(disposition.approval_channels) if disposition else [],

@@ -26,6 +26,7 @@ from core.workflow.human_input import (
     render_form_content_with_outputs,
     resolve_default_values,
 )
+from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,
@@ -37,7 +38,6 @@ from core.workflow.node_factory import (
     get_node_type_classes_mapping,
     is_start_node_type,
 )
-from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
 from core.workflow.node_runtime import (  # noqa: F401
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -1169,7 +1169,7 @@ class WorkflowService:
         outputs: dict[str, Any] = dict(normalized_form_inputs)
         outputs["__action_id"] = action
         outputs["__action_value"] = selected_action.title if selected_action else ""
-        outputs["__rendered_content"] = node.render_form_content_with_outputs(
+        outputs["__rendered_content"] = render_form_content_with_outputs(
             rendered_content,
             outputs,
             node_data.outputs_field_names(),
@@ -1359,8 +1359,8 @@ class WorkflowService:
                 tenant_id=workflow.tenant_id,
                 app_id=workflow.app_id,
                 workflow_execution_id=workflow_execution_id,
-                invoke_source=run_context.invoke_from.value,
-                submission_actor_id=account.id if run_context.invoke_from in {"debugger", "explore"} else None,
+                invoke_source=InvokeFrom.DEBUGGER.value,
+                submission_actor_id=account.id,
             ),
             file_value_restorer=lambda mapping: build_from_mapping(
                 mapping=mapping,

@@ -34,6 +34,7 @@ from repositories.execution_extra_content_repository import ExecutionExtraConten
 
 logger = logging.getLogger(__name__)
 
+
 class SQLAlchemyExecutionExtraContentRepository(ExecutionExtraContentRepository):
     def __init__(self, session_maker: sessionmaker[Session]):
         self._session_maker = session_maker

@@ -14,6 +14,8 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
     _WorkspaceMemberInfo,
 )
+from core.workflow.human_input.entities import FormDefinition, UserActionConfig
+from core.workflow.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from core.workflow.human_input_adapter import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -21,8 +23,6 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     MemberRecipient,
 )
-from core.workflow.human_input.entities import FormDefinition, UserActionConfig
-from core.workflow.human_input.enums import HumanInputFormKind, HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,

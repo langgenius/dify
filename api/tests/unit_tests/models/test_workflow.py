@@ -5,8 +5,8 @@ from uuid import uuid4
 
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
-from core.workflow.human_input import session_binding
 from core.workflow.file_reference import build_file_reference
+from core.workflow.human_input import session_binding
 from factories.variable_factory import build_segment
 from graphon.entities.pause_reason import HitlRequired
 from graphon.file import File, FileTransferMethod, FileType
@@ -15,8 +15,8 @@ from graphon.variables.segments import IntegerSegment, Segment
 from models.workflow import (
     Workflow,
     WorkflowDraftVariable,
-    WorkflowPauseReason,
     WorkflowNodeExecutionModel,
+    WorkflowPauseReason,
     is_system_variable_editable,
 )
 

@@ -13,6 +13,7 @@ from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.plugin_service import PluginService
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
+from core.workflow.human_input import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from core.workflow.human_input_adapter import (
     DeliveryMethodType,
     EmailDeliveryConfig,
@@ -21,7 +22,6 @@ from core.workflow.human_input_adapter import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
-from core.workflow.human_input import FileInputConfig, FileListInputConfig, HumanInputNodeData
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,

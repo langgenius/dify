@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from types import SimpleNamespace
 from typing import Any
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.human_input import (
     FileInputConfig,
     FileListInputConfig,
@@ -14,7 +15,6 @@ from core.workflow.human_input import (
     UserActionConfig,
 )
 from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
-from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import default_system_variables
 from graphon.entities import GraphInitParams
@@ -240,9 +240,7 @@ def test_human_input_node_emits_form_filled_event_before_succeeded():
     node_run_result = events[1].node_run_result
     assert node_run_result.edge_source_handle == "Accept"
     assert node_run_result.outputs["__rendered_content"] == StringSegment(
-        value=(
-        "Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]"
-        )
+        value=("Please enter your name:\n\nAlice\nDecision: approve\nAttachment: [file]\nAttachments: [1 files]")
     )
     assert node_run_result.outputs["__action_id"] == StringSegment(value="Accept")
     assert node_run_result.outputs["name"] == StringSegment(value="Alice")

@@ -323,7 +323,9 @@ class DifyAgentNode(Node[DifyAgentNodeData]):
                 pending_form_id: str | None = None
                 pending_tool_call_id: str | None = None
                 if isinstance(pause_reason, HitlRequired):
-                    pending_form_id = session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id)
+                    pending_form_id = session_binding.resolve_form_id_from_session_id(
+                        session_id=pause_reason.session_id
+                    )
                     pending_tool_call_id = terminal_event.deferred_tool_call.tool_call_id
                 else:
                     pause_reason = SchedulingPause(

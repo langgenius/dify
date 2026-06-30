@@ -7,10 +7,7 @@ def _load_human_input_package():
     try:
         return importlib.import_module("core.workflow.human_input")
     except ModuleNotFoundError as exc:
-        pytest.fail(
-            "expected Dify-owned human input package at 'core.workflow.human_input': "
-            f"{exc}"
-        )
+        pytest.fail(f"expected Dify-owned human input package at 'core.workflow.human_input': {exc}")
 
 
 class _FakeRenderedTemplate:

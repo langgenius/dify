@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import queue
 import threading
@@ -28,8 +29,8 @@ from core.workflow.human_input_forms import (
 )
 from core.workflow.human_input_policy import (
     FormDisposition,
-    HydratedHitlFormDefinition,
     HumanInputSurface,
+    HydratedHitlFormDefinition,
     enrich_human_input_pause_reasons,
     hydrate_hitl_form_definition,
     iter_hitl_required_reasons,
@@ -426,8 +427,8 @@ def _build_human_input_required_events(
                 node_id=reason.node_id,
                 node_title=hydrated_form.node_title or reason.node_title,
                 form_content=hydrated_form.form_content,
-                inputs=[input_config.model_dump(mode="json") for input_config in hydrated_form.inputs],
-                actions=[action.model_dump(mode="json") for action in hydrated_form.actions],
+                inputs=hydrated_form.inputs,
+                actions=hydrated_form.actions,
                 display_in_ui=hydrated_form.display_in_ui,
                 form_token=disposition.form_token if disposition else None,
                 approval_channels=list(disposition.approval_channels) if disposition else [],

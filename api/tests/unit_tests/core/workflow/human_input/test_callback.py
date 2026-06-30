@@ -24,25 +24,15 @@ def _load_callback_module():
     try:
         return importlib.import_module("core.workflow.human_input.callback")
     except ModuleNotFoundError as exc:
-        pytest.fail(
-            "expected Dify-owned HITL callback module at "
-            "'core.workflow.human_input.callback': "
-            f"{exc}"
-        )
+        pytest.fail(f"expected Dify-owned HITL callback module at 'core.workflow.human_input.callback': {exc}")
 
 
 def _load_graphon_hitl_entities():
     module = importlib.import_module("graphon.nodes.human_input.entities")
-    missing = [
-        name
-        for name in ("Completed", "Expired", "HITLContext", "PauseRequested")
-        if not hasattr(module, name)
-    ]
+    missing = [name for name in ("Completed", "Expired", "HITLContext", "PauseRequested") if not hasattr(module, name)]
     if missing:
         pytest.fail(
-            "expected graphon-185 HITL entities in "
-            "'graphon.nodes.human_input.entities', missing: "
-            + ", ".join(missing)
+            "expected graphon-185 HITL entities in 'graphon.nodes.human_input.entities', missing: " + ", ".join(missing)
         )
     return module
 
@@ -179,11 +169,7 @@ def _construct_callback(*, node_data: HumanInputNodeData, repository: HumanInput
         "session_binding": session_binding,
     }
     signature = inspect.signature(entrypoint)
-    kwargs = {
-        name: value
-        for name, value in candidate_kwargs.items()
-        if name in signature.parameters
-    }
+    kwargs = {name: value for name, value in candidate_kwargs.items() if name in signature.parameters}
     return entrypoint(**kwargs)
 
 

@@ -37,7 +37,6 @@ from core.workflow.human_input_adapter import (
 )
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
-    DifyHumanInputNodeRuntime,
     DifyPreparedLLM,
     DifyPreparedPollingLLM,
     DifyPromptMessageSerializer,

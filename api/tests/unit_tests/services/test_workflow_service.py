@@ -2845,9 +2845,7 @@ class TestWorkflowServiceFreeNodeExecution:
             service.validate_features_structure(app, {})
 
     def test_validate_human_input_node_data_error(self, service: WorkflowService) -> None:
-        with patch(
-            "services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")
-        ):
+        with patch("services.workflow_service.HumanInputNodeData.model_validate", side_effect=Exception("error")):
             with pytest.raises(ValueError, match="Invalid HumanInput node data"):
                 service._validate_human_input_node_data({})
 
@@ -2875,7 +2873,9 @@ class TestWorkflowServiceFreeNodeExecution:
                 return_value=sentinel.adapted_node_data,
             ) as mock_adapt_node_data,
             patch("services.workflow_service.build_dify_run_context") as mock_build_dify_run_context,
-            patch("services.workflow_service.build_dify_human_input_hitl_callback", create=True) as mock_build_hitl_callback,
+            patch(
+                "services.workflow_service.build_dify_human_input_hitl_callback", create=True
+            ) as mock_build_hitl_callback,
             patch("services.workflow_service.HumanInputNode") as mock_node_cls,
         ):
             mock_build_hitl_callback.return_value = sentinel.hitl_callback

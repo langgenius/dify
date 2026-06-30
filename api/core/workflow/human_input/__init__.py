@@ -7,6 +7,8 @@ dependencies. Entity exports stay available through lazy attribute loading.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from .enums import (
     ButtonStyle,
     FormInputType,
@@ -16,6 +18,28 @@ from .enums import (
     ValueSourceType,
 )
 from .session_binding import SessionBinding, session_binding
+
+if TYPE_CHECKING:
+    from .entities import (
+        FileInputConfig,
+        FileListInputConfig,
+        FormDefinition,
+        FormInputConfig,
+        HumanInputNodeData,
+        HumanInputSubmissionValidationError,
+        ParagraphInputConfig,
+        SelectInputConfig,
+        StringListSource,
+        StringSource,
+        UserActionConfig,
+        extract_output_field_names,
+        render_form_content_before_submission,
+        render_form_content_with_outputs,
+        resolve_default_values,
+        restore_submitted_data,
+        restore_submitted_value,
+        validate_human_input_submission,
+    )
 
 _ENTITY_EXPORTS = frozenset(
     {
@@ -52,7 +76,6 @@ __all__ = [
     "HumanInputNodeData",
     "HumanInputSubmissionValidationError",
     "ParagraphInputConfig",
-    "resolve_default_values",
     "SelectInputConfig",
     "SessionBinding",
     "StringListSource",
@@ -63,6 +86,7 @@ __all__ = [
     "extract_output_field_names",
     "render_form_content_before_submission",
     "render_form_content_with_outputs",
+    "resolve_default_values",
     "restore_submitted_data",
     "restore_submitted_value",
     "session_binding",
