@@ -111,33 +111,28 @@ class ChatMessagePayload(BaseMessagePayload):
 
 _BUILD_CHAT_FINALIZATION_QUERY = """Finalize this Build chat configuration for the agent.
 
-This finalization step is only for updating persisted Agent config. Do not perform any other actions, including
-installing packages, changing workspace files, running validation commands, debugging, or making exploratory checks.
+This step is only for persisting Agent config changes discovered in the current Build chat. Do not install packages,
+edit workspace files, run validation or debugging commands, make exploratory checks, or perform other work.
 
 Use only the current Build chat message history to identify changes that need to be persisted. Do not inspect, test, or
 validate old config unless the message history already shows that the old config is invalid.
 
-Update the build-draft config as needed:
+Persist only the build-draft config resources that need to change, using the Agent config CLI usage provided in the
+runtime prompt:
 
-- Update config files for reusable artifacts that should be available later.
-- Update config skills for reusable procedures or tools that should be available later.
-- Update config env when environment keys or values need to be recorded.
-- Update the config note with useful new build context when available. This is strongly recommended even if no files,
-  skills, or env changed, because each Build chat usually discovers information worth preserving.
+- config files for reusable artifacts that should be available later,
+- config skills for reusable procedures or tools that should be available later,
+- config env when environment keys or values need to be recorded,
+- config note for concise durable context when useful.
 
-When you update the config note, it should clearly state:
+When updating the config note, record only durable context needed by later runs, such as:
 
 - what you installed or configured outside the workspace for this agent,
 - where those external updates live, including CLI tools, packages, and persistent $HOME paths,
 - how the agent should use it in later runs,
 - any setup, authentication, or user action still required.
 
-Do not repeat details already managed through `dify-agent config push` for config files, skills, or env.
-Persist the build-draft config by piping the JSON push spec to `dify-agent config push`.
-Local file edits alone are not saved as config. Always include the config note in the JSON push spec, even when the
-note content did not change.
-
-After the push completes, respond FINISHED."""
+After config persistence completes, respond FINISHED."""
 
 
 register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)

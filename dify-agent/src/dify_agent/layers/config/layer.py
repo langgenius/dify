@@ -42,13 +42,6 @@ _CONFIG_CLI_MUTATION_HELP_COMMANDS: dict[str, tuple[str, ...]] = {
     "dify-agent config skills delete --help": ("config", "skills", "delete"),
 }
 _CONFIG_CONTEXT_EXCLUDE = {"mentioned_skill_names": True, "mentioned_file_names": True}
-_CONFIG_CLI_MUTATION_PROMPT = """Config mutation commands:
-- Replace the note with `dify-agent config note push [PATH|-]`.
-- Replace env text with `dify-agent config env push [PATH|-]`.
-- Upload one or more files with `dify-agent config files push PATH... [--name NAME]`.
-- Delete config files with `dify-agent config files delete NAME...`.
-- Upload one or more skills with `dify-agent config skills push DIR...`.
-- Delete config skills with `dify-agent config skills delete NAME...`."""
 
 
 class DifyConfigLayerError(RuntimeError):
@@ -133,8 +126,6 @@ class DifyConfigLayer(PlainLayer[DifyConfigDeps, DifyConfigLayerConfig, DifyConf
         if self.runtime_state.config_context_json:
             sections.append(f"{_CONFIG_CONTEXT_HEADING}\n{self.runtime_state.config_context_json}")
         usage_lines = [_CONFIG_CLI_USAGE_PROMPT]
-        if self._config_writable:
-            usage_lines.append(_CONFIG_CLI_MUTATION_PROMPT)
         if cli_help := self._format_config_cli_help():
             usage_lines.append(cli_help)
         sections.append("\n".join(usage_lines))

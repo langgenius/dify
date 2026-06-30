@@ -59,10 +59,10 @@ class DifyConfigLayerConfig(LayerConfig):
 class DifyConfigRuntimeState(BaseModel):
     """Serializable config-layer values computed once during context entry.
 
-    The ``push_spec_*`` fields are compatibility leftovers from the removed
-    root ``dify-agent config push`` JSON-spec workflow. This change keeps them
-    in the runtime-state schema to avoid snapshot churn, but new code should
-    treat them as inert compatibility fields rather than active prompt data.
+    The ``push_spec_*`` fields are compatibility leftovers from the removed root
+    JSON-spec config mutation workflow. This change keeps them in the runtime-state
+    schema to avoid snapshot churn, but new code should treat them as inert
+    compatibility fields rather than active prompt data.
     """
 
     pulled_skill_outputs: dict[str, str] = Field(default_factory=dict)

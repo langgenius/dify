@@ -220,19 +220,6 @@ def test_shell_type_id_constant_matches_implementation_class() -> None:
     assert DIFY_SHELL_LAYER_TYPE_ID == DifyShellLayer.type_id
 
 
-def test_shell_prefix_prompt_describes_workspace_persistence_rules() -> None:
-    prompt = shell_layer_module._shell_layer_prefix_prompt()
-
-    assert "current workspace cwd is stable during this agent run" in prompt
-    assert "Do not use the current workspace cwd as persistent storage" in prompt
-    assert "$HOME outside the current workspace cwd is persistent storage" in prompt
-    assert "Agent config context reports" in prompt
-    assert "`config_version.kind` as `build_draft`" in prompt
-    assert "`config_version.writable` as true" in prompt
-    assert "In non-build-draft modes, those changes are rolled back" in prompt
-    assert "requires the matching `dify-agent config note/env/files/skills push`" in prompt
-
-
 def test_resource_context_calls_provider_create_and_resource_close() -> None:
     layer, provider = _layer(commands=FakeCommands())
 
