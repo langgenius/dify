@@ -21,6 +21,8 @@
   "archives.empty.title": "No archived logs",
   "archives.error.description": "Refresh the page or try again later.",
   "archives.error.title": "Could not load archived logs",
+  "archives.notice.action": "View archived logs",
+  "archives.notice.description": "Some logs in this time range may have been archived.",
   "archives.summary.latest": "Latest archive",
   "archives.summary.months": "Archived months",
   "archives.summary.runs": "Workflow runs",
