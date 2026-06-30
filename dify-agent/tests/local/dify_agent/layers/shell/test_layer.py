@@ -230,7 +230,7 @@ def test_shell_prefix_prompt_describes_workspace_persistence_rules() -> None:
     assert "`config_version.kind` as `build_draft`" in prompt
     assert "`config_version.writable` as true" in prompt
     assert "In non-build-draft modes, those changes are rolled back" in prompt
-    assert "requires a config push" in prompt
+    assert "requires the matching `dify-agent config note/env/files/skills push`" in prompt
 
 
 def test_resource_context_calls_provider_create_and_resource_close() -> None:

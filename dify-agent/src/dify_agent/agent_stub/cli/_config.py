@@ -2,16 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 import json
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any, Final
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 
 from dify_agent.agent_stub._drive_materialization import (
     DriveMaterializationTransferError,
@@ -67,96 +65,10 @@ class ConfigFilePullResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-class ConfigPushEntrySpec(BaseModel):
-    """One file or skill entry in a local config push spec."""
-
-    name: str | None = Field(
-        default=None,
-        description=(
-            "Config asset name. Required when deleting an entry or when the path basename should not be inferred."
-        ),
-    )
-    path: str | None = Field(
-        default=None,
-        description=("Local path to upload or update. Omit path and provide name to delete the existing config entry."),
-    )
-
-    model_config = ConfigDict(extra="forbid")
-
-
-class ConfigPushSpec(BaseModel):
-    files: list[str | ConfigPushEntrySpec] = Field(
-        default_factory=list,
-        description=(
-            "Config files to upload/update/delete. A string is a local file path. An object with {name, path} "
-            "uploads or updates that config file. An object with {name} and no path deletes that config file."
-        ),
-    )
-    skills: list[str | ConfigPushEntrySpec] = Field(
-        default_factory=list,
-        description=(
-            "Config skills to upload/update/delete. A string is a local skill directory path. An object with "
-            "{name, path} uploads or updates that skill. An object with {name} and no path deletes that skill."
-        ),
-    )
-    env: str | None = Field(
-        default=None,
-        description=(
-            "Local dotenv file path. When present, the file contents replace the visible config env variables."
-        ),
-    )
-    note: str | None = Field(
-        default=None,
-        description="Local text or markdown file path. When present, the file contents replace the config note.",
-    )
-
-    model_config = ConfigDict(extra="forbid")
-
-
-CONFIG_PUSH_SPEC_SEMANTICS: Final[str] = (
-    "Read the JSON spec from stdin with `cat <<'JSON' | dify-agent config push` unless a file path is explicitly "
-    "needed. Put editable files under ./.dify_conf/ by default: files in ./.dify_conf/files/, skills in "
-    "./.dify_conf/skills/, env in ./.dify_conf/.env, and note in ./.dify_conf/note.md. File entries point to "
-    "regular files. Skill entries point to directories containing SKILL.md; the skill name must match the directory "
-    "name when both are provided. A string entry uploads or updates using the path basename as the name. An object "
-    "with {name, path} uploads or updates that named entry. An object with {name} and no path deletes that entry. "
-    "The env file replaces config env variables, and the note file replaces the config note."
-)
-CONFIG_PUSH_SPEC_EXAMPLE: Final[dict[str, object]] = {
-    "files": [
-        {"name": "guide.txt", "path": "./.dify_conf/files/guide.txt"},
-        {"name": "old.txt"},
-    ],
-    "skills": [
-        {"name": "alpha", "path": "./.dify_conf/skills/alpha"},
-        {"name": "old-skill"},
-    ],
-    "env": "./.dify_conf/.env",
-    "note": "./.dify_conf/note.md",
-}
-CONFIG_PUSH_SPEC_JSON_SCHEMA: Final[dict[str, Any]] = ConfigPushSpec.model_json_schema()
-CONFIG_PUSH_SPEC_JSON_SCHEMA_TEXT: Final[str] = json.dumps(
-    CONFIG_PUSH_SPEC_JSON_SCHEMA,
-    indent=2,
-    sort_keys=True,
-)
-CONFIG_PUSH_SPEC_EXAMPLE_TEXT: Final[str] = json.dumps(CONFIG_PUSH_SPEC_EXAMPLE, indent=2)
-CONFIG_PUSH_COMMAND_HELP: Final[str] = f"""Update the current build-draft Agent config from one local spec.
-
-Recommended usage reads the JSON spec from stdin:
-
-\b
-    cat <<'JSON' | dify-agent config push
-    {CONFIG_PUSH_SPEC_EXAMPLE_TEXT.replace(chr(10), chr(10) + "    ")}
-    JSON
-
-{CONFIG_PUSH_SPEC_SEMANTICS}"""
-
-
 @dataclass(frozen=True, slots=True)
 class _PreparedPushItem:
     name: str
-    path: Path | None
+    path: Path
 
 
 def manifest_from_environment() -> AgentStubConfigManifestResponse:
@@ -250,56 +162,91 @@ def pull_config_note_from_environment(local_path: str | None = None) -> Path:
     return target_path
 
 
-def push_config_from_environment(spec_path: str | None = None) -> AgentStubConfigManifestResponse:
-    environment = read_agent_stub_environment()
-    raw_spec = _read_push_spec(spec_path)
-    spec = ConfigPushSpec.model_validate(json.loads(raw_spec))
+def push_config_note_from_environment(local_path: str | None) -> AgentStubConfigManifestResponse:
+    note = _read_text_input(local_path, _DEFAULT_CONFIG_BASE / "note.md")
+    return _push_config_from_environment(note=note)
 
-    file_items = [_build_file_push_item(item=item) for item in _prepare_push_items(spec.files, kind="file")]
-    skill_items = [_build_skill_push_item(item=item) for item in _prepare_push_items(spec.skills, kind="skill")]
-    env_text = _read_optional_text_path(spec.env)
-    note_text = _read_optional_text_path(spec.note)
+
+def push_config_env_from_environment(local_path: str | None) -> AgentStubConfigManifestResponse:
+    env_text = _read_text_input(local_path, _DEFAULT_CONFIG_BASE / ".env")
+    return _push_config_from_environment(env_text=env_text)
+
+
+def push_config_files_from_environment(paths: list[str], name: str | None) -> AgentStubConfigManifestResponse:
+    _require_non_empty_inputs(paths, kind="file path")
+    override_name = None if name is None else _require_config_entry_name(name, kind="file")
+    if override_name is not None and len(paths) != 1:
+        raise AgentStubValidationError("--name requires exactly one PATH")
+    items = [
+        _PreparedPushItem(
+            name=override_name if index == 0 and override_name is not None else _infer_name_from_path(source_path),
+            path=source_path,
+        )
+        for index, source_path in enumerate(_resolve_input_paths(paths))
+    ]
+    return _push_config_from_environment(files=[_build_file_push_item(item=item) for item in items])
+
+
+def delete_config_files_from_environment(names: list[str]) -> AgentStubConfigManifestResponse:
+    _require_non_empty_inputs(names, kind="file name")
+    return _push_config_from_environment(
+        files=[
+            AgentStubConfigPushFileItem(name=_require_config_entry_name(name, kind="file"), file_ref=None)
+            for name in names
+        ]
+    )
+
+
+def push_config_skills_from_environment(paths: list[str]) -> AgentStubConfigManifestResponse:
+    _require_non_empty_inputs(paths, kind="skill directory")
+    items = [
+        _PreparedPushItem(name=_infer_name_from_path(source_path), path=source_path)
+        for source_path in _resolve_input_paths(paths)
+    ]
+    return _push_config_from_environment(skills=[_build_skill_push_item(item=item) for item in items])
+
+
+def delete_config_skills_from_environment(names: list[str]) -> AgentStubConfigManifestResponse:
+    _require_non_empty_inputs(names, kind="skill name")
+    return _push_config_from_environment(
+        skills=[
+            AgentStubConfigPushSkillItem(name=_require_config_entry_name(name, kind="skill"), file_ref=None)
+            for name in names
+        ]
+    )
+
+
+def _push_config_from_environment(
+    *,
+    files: list[AgentStubConfigPushFileItem] | None = None,
+    skills: list[AgentStubConfigPushSkillItem] | None = None,
+    env_text: str | None = None,
+    note: str | None = None,
+) -> AgentStubConfigManifestResponse:
+    environment = read_agent_stub_environment()
     return request_agent_stub_config_push_sync(
         url=environment.url,
         auth_jwe=environment.auth_jwe,
         request=AgentStubConfigPushRequest(
-            files=file_items,
-            skills=skill_items,
+            files=files or [],
+            skills=skills or [],
             env_text=env_text,
-            note=note_text,
+            note=note,
         ),
     )
 
 
-def _read_push_spec(spec_path: str | None) -> str:
-    if spec_path is None or spec_path == "-":
+def _read_text_input(path_value: str | None, default_path: Path) -> str:
+    if path_value == "-":
         return os.fdopen(os.dup(0), encoding="utf-8").read()
-    return Path(spec_path).expanduser().read_text(encoding="utf-8")
+    source_path = Path(path_value or default_path).expanduser().resolve()
+    if not source_path.is_file():
+        raise AgentStubValidationError(f"local file not found: {source_path}")
+    return source_path.read_text(encoding="utf-8")
 
 
-def _prepare_push_items(entries: list[str | ConfigPushEntrySpec], *, kind: str) -> list[_PreparedPushItem]:
-    prepared: list[_PreparedPushItem] = []
-    for entry in entries:
-        if isinstance(entry, str):
-            path = Path(entry).expanduser().resolve()
-            prepared.append(_PreparedPushItem(name=_infer_name_from_path(path), path=path))
-            continue
-        if isinstance(entry, ConfigPushEntrySpec):
-            path_value = entry.path
-            name = (entry.name or "").strip()
-        elif isinstance(entry, Mapping):
-            path_value = entry.get("path")
-            name = str(entry.get("name") or "").strip()
-        else:
-            raise AgentStubValidationError(f"invalid config {kind} push entry")
-        if not path_value:
-            if not name:
-                raise AgentStubValidationError(f"config {kind} delete entries require a name")
-            prepared.append(_PreparedPushItem(name=name, path=None))
-            continue
-        path = Path(str(path_value)).expanduser().resolve()
-        prepared.append(_PreparedPushItem(name=name or _infer_name_from_path(path), path=path))
-    return prepared
+def _resolve_input_paths(paths: list[str]) -> list[Path]:
+    return [Path(path).expanduser().resolve() for path in paths]
 
 
 def _infer_name_from_path(path: Path) -> str:
@@ -310,8 +257,6 @@ def _build_file_push_item(
     *,
     item: _PreparedPushItem,
 ) -> AgentStubConfigPushFileItem:
-    if item.path is None:
-        return AgentStubConfigPushFileItem(name=item.name, file_ref=None)
     if not item.path.is_file():
         raise AgentStubValidationError(f"config file path must be a regular file: {item.path}")
     uploaded = upload_tool_file_resource_from_environment(path=str(item.path))
@@ -325,15 +270,11 @@ def _build_skill_push_item(
     *,
     item: _PreparedPushItem,
 ) -> AgentStubConfigPushSkillItem:
-    if item.path is None:
-        return AgentStubConfigPushSkillItem(name=item.name, file_ref=None)
     if not item.path.is_dir():
         raise AgentStubValidationError(f"config skill path must be a directory: {item.path}")
     skill_md_path = item.path / _SKILL_MD_FILENAME
     if not skill_md_path.is_file():
         raise AgentStubValidationError(f"config skill directory must contain {_SKILL_MD_FILENAME}: {item.path}")
-    if item.path.name != item.name:
-        raise AgentStubValidationError(f"config skill name must match the directory name: {item.name}")
     with TemporaryDirectory() as temp_dir:
         archive_path = Path(temp_dir) / f"{item.name}.zip"
         _build_skill_archive(item.path, archive_path)
@@ -344,10 +285,16 @@ def _build_skill_push_item(
     )
 
 
-def _read_optional_text_path(path_value: str | None) -> str | None:
-    if path_value is None:
-        return None
-    return Path(path_value).expanduser().read_text(encoding="utf-8")
+def _require_config_entry_name(name: str, *, kind: str) -> str:
+    normalized = name.strip()
+    if not normalized:
+        raise AgentStubValidationError(f"config {kind} name must not be empty")
+    return normalized
+
+
+def _require_non_empty_inputs(values: list[str], *, kind: str) -> None:
+    if not values:
+        raise AgentStubValidationError(f"at least one {kind} is required")
 
 
 def _format_env_value(value: str) -> str:
@@ -364,5 +311,10 @@ __all__ = [
     "pull_config_files_from_environment",
     "pull_config_note_from_environment",
     "pull_config_skills_from_environment",
-    "push_config_from_environment",
+    "push_config_env_from_environment",
+    "push_config_files_from_environment",
+    "push_config_note_from_environment",
+    "push_config_skills_from_environment",
+    "delete_config_files_from_environment",
+    "delete_config_skills_from_environment",
 ]

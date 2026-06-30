@@ -19,13 +19,17 @@ from typer.main import get_command
 
 from dify_agent.agent_stub.cli._agent_stub import connect_from_environment
 from dify_agent.agent_stub.cli._config import (
-    CONFIG_PUSH_COMMAND_HELP,
+    delete_config_files_from_environment,
+    delete_config_skills_from_environment,
     manifest_from_environment,
     pull_config_env_from_environment,
     pull_config_files_from_environment,
     pull_config_note_from_environment,
     pull_config_skills_from_environment,
-    push_config_from_environment,
+    push_config_env_from_environment,
+    push_config_files_from_environment,
+    push_config_note_from_environment,
+    push_config_skills_from_environment,
 )
 from dify_agent.agent_stub.cli._drive import (
     DrivePushKind,
@@ -60,15 +64,22 @@ config_app = typer.Typer(
     help="Inspect or update Agent Soul-backed config assets through the Agent Stub.",
     rich_markup_mode=None,
 )
-config_skill_app = typer.Typer(help="Pull config skills through the Agent Stub.", rich_markup_mode=None)
-config_file_app = typer.Typer(help="Pull config files through the Agent Stub.", rich_markup_mode=None)
-config_env_app = typer.Typer(help="Export config env variables visible to the current run.", rich_markup_mode=None)
-config_note_app = typer.Typer(help="Export the current config note.", rich_markup_mode=None)
+config_skills_app = typer.Typer(help="Pull or update config skills through the Agent Stub.", rich_markup_mode=None)
+config_files_app = typer.Typer(help="Pull or update config files through the Agent Stub.", rich_markup_mode=None)
+config_skill_pull_alias_app = typer.Typer(help="Pull config skills through the Agent Stub.", rich_markup_mode=None)
+config_file_pull_alias_app = typer.Typer(help="Pull config files through the Agent Stub.", rich_markup_mode=None)
+config_env_app = typer.Typer(help="Pull or update config env variables visible to the current run.", rich_markup_mode=None)
+config_note_app = typer.Typer(help="Pull or update the current config note.", rich_markup_mode=None)
 drive_app = typer.Typer(help="List, pull, or push agent drive files through the Agent Stub.", rich_markup_mode=None)
 app.add_typer(file_app, name="file")
 app.add_typer(config_app, name="config")
-config_app.add_typer(config_skill_app, name="skill")
-config_app.add_typer(config_file_app, name="file")
+config_app.add_typer(config_skills_app, name="skills")
+# Keep hidden singular aliases on separate pull-only apps. Reusing the plural
+# apps here would also expose push/delete through `config skill|file ...`,
+# which is intentionally not part of the compatibility surface.
+config_app.add_typer(config_skill_pull_alias_app, name="skill", hidden=True)
+config_app.add_typer(config_files_app, name="files")
+config_app.add_typer(config_file_pull_alias_app, name="file", hidden=True)
 config_app.add_typer(config_env_app, name="env")
 config_app.add_typer(config_note_app, name="note")
 app.add_typer(drive_app, name="drive")
@@ -112,19 +123,8 @@ def config_manifest() -> None:
     _run_config_manifest()
 
 
-@config_app.command("push", help=CONFIG_PUSH_COMMAND_HELP)
-def config_push(
-    from_path: str | None = typer.Option(
-        None,
-        "--from",
-        help="JSON spec file path. Omit or pass - to read the spec from stdin.",
-    ),
-) -> None:
-    _run_config_push(from_path=from_path)
-
-
-@config_skill_app.command("pull")
-def config_skill_pull(
+@config_skills_app.command("pull")
+def config_skills_pull(
     names: list[str] = typer.Argument(None, metavar="NAME"),
     local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config skills."),
     json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
@@ -133,14 +133,71 @@ def config_skill_pull(
     _run_config_skill_pull(names=names or None, local_dir=local_dir, json_output=json_output)
 
 
-@config_file_app.command("pull")
-def config_file_pull(
+@config_skill_pull_alias_app.command("pull")
+def config_skill_pull_alias(
+    names: list[str] = typer.Argument(None, metavar="NAME"),
+    local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config skills."),
+    json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
+) -> None:
+    """Pull one or all visible config skills into ./.dify_conf/skills by default."""
+    _run_config_skill_pull(names=names or None, local_dir=local_dir, json_output=json_output)
+
+
+@config_skills_app.command("push")
+def config_skills_push(
+    paths: list[str] = typer.Argument(..., metavar="PATH"),
+) -> None:
+    """Upload one or more local skill directories into the current config manifest."""
+    _run_config_skills_push(paths=paths)
+
+
+@config_skills_app.command("delete")
+def config_skills_delete(
+    names: list[str] = typer.Argument(..., metavar="NAME"),
+) -> None:
+    """Delete one or more config skills by name without touching local directories."""
+    _run_config_skills_delete(names=names)
+
+
+@config_files_app.command("pull")
+def config_files_pull(
     names: list[str] = typer.Argument(None, metavar="NAME"),
     local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config files."),
     json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
 ) -> None:
     """Pull one or all visible config files into ./.dify_conf/files by default."""
     _run_config_file_pull(names=names or None, local_dir=local_dir, json_output=json_output)
+
+
+@config_file_pull_alias_app.command("pull")
+def config_file_pull_alias(
+    names: list[str] = typer.Argument(None, metavar="NAME"),
+    local_dir: str | None = typer.Option(None, "--to", help="Local directory for pulled config files."),
+    json_output: bool = typer.Option(False, "--json", help="Emit the pull result as JSON."),
+) -> None:
+    """Pull one or all visible config files into ./.dify_conf/files by default."""
+    _run_config_file_pull(names=names or None, local_dir=local_dir, json_output=json_output)
+
+
+@config_files_app.command("push")
+def config_files_push(
+    paths: list[str] = typer.Argument(..., metavar="PATH"),
+    name: str | None = typer.Option(
+        None,
+        "--name",
+        help="Override the target config file name when uploading exactly one local file.",
+    ),
+) -> None:
+    """Upload one or more local files into the current config manifest."""
+    _run_config_files_push(paths=paths, name=name)
+
+
+@config_files_app.command("delete")
+def config_files_delete(
+    names: list[str] = typer.Argument(..., metavar="NAME"),
+) -> None:
+    """Delete one or more config files by name without touching local files."""
+    _run_config_files_delete(names=names)
 
 
 @config_env_app.command("pull")
@@ -151,12 +208,28 @@ def config_env_pull(
     _run_config_env_pull(local_path=local_path)
 
 
+@config_env_app.command("push")
+def config_env_push(
+    local_path: str | None = typer.Argument(None, metavar="PATH|-"),
+) -> None:
+    """Replace visible config env values from one local dotenv file or stdin."""
+    _run_config_env_push(local_path=local_path)
+
+
 @config_note_app.command("pull")
 def config_note_pull(
     local_path: str | None = typer.Option(None, "--to", help="Local markdown file path."),
 ) -> None:
     """Export the current config note into ./.dify_conf/note.md by default."""
     _run_config_note_pull(local_path=local_path)
+
+
+@config_note_app.command("push")
+def config_note_push(
+    local_path: str | None = typer.Argument(None, metavar="PATH|-"),
+) -> None:
+    """Replace the current config note from one local text file or stdin."""
+    _run_config_note_push(local_path=local_path)
 
 
 @drive_app.command("list")
@@ -397,9 +470,69 @@ def _run_config_note_pull(*, local_path: str | None) -> None:
     typer.echo(str(path))
 
 
-def _run_config_push(*, from_path: str | None) -> None:
+def _run_config_note_push(*, local_path: str | None) -> None:
     try:
-        response = push_config_from_environment(spec_path=from_path)
+        response = push_config_note_from_environment(local_path=local_path)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
+
+
+def _run_config_env_push(*, local_path: str | None) -> None:
+    try:
+        response = push_config_env_from_environment(local_path=local_path)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
+
+
+def _run_config_files_push(*, paths: list[str], name: str | None) -> None:
+    try:
+        response = push_config_files_from_environment(paths=paths, name=name)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
+
+
+def _run_config_files_delete(*, names: list[str]) -> None:
+    try:
+        response = delete_config_files_from_environment(names=names)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
+
+
+def _run_config_skills_push(*, paths: list[str]) -> None:
+    try:
+        response = push_config_skills_from_environment(paths=paths)
+    except MissingAgentStubEnvironmentError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(2) from exc
+    except AgentStubClientError as exc:
+        typer.echo(str(exc), err=True)
+        raise SystemExit(1) from exc
+    typer.echo(response.model_dump_json())
+
+
+def _run_config_skills_delete(*, names: list[str]) -> None:
+    try:
+        response = delete_config_skills_from_environment(names=names)
     except MissingAgentStubEnvironmentError as exc:
         typer.echo(str(exc), err=True)
         raise SystemExit(2) from exc

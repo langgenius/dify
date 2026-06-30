@@ -97,7 +97,8 @@ Workspace persistence rules:
 - $HOME outside the current workspace cwd is persistent storage. In build draft mode, when Agent config context reports
   `config_version.kind` as `build_draft` and `config_version.writable` as true, changes there can be persisted for
   later runs. In non-build-draft modes, those changes are rolled back.
-- Saving config files, skills, env, or notes still requires a config push; shell file edits alone do not save config.
+- Saving config files, skills, env, or notes still requires the matching `dify-agent config note/env/files/skills push`
+  or `dify-agent config files/skills delete` command; shell file edits alone do not save config.
 
 The script argument of shell_run can be a normal shell script, or a shebang script.
 If the first line is a shebang, the shell layer executes the script directly.
