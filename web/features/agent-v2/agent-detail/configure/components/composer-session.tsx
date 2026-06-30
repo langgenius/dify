@@ -321,6 +321,7 @@ function AgentConfigurePageComposerContent({
           readOnly={isViewingVersion || buildDraft.isActive}
           selectedVersionSnapshot={isViewingVersion ? activeConfigSnapshot : undefined}
           isBuildDraftActive={buildDraft.isActive}
+          buildDraftChangedKeys={buildDraft.changedKeys}
           showPublishBar={!buildDraft.isActive}
           bottomAction={showBuildDraftBar
             ? (
