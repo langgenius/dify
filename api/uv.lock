@@ -1441,6 +1441,9 @@ dev = [
     { name = "types-ujson" },
     { name = "xinference-client" },
 ]
+engram = [
+    { name = "weaviate-engram" },
+]
 storage = [
     { name = "azure-storage-blob" },
     { name = "bce-python-sdk" },
@@ -1724,6 +1727,7 @@ dev = [
     { name = "types-ujson", specifier = ">=5.10.0" },
     { name = "xinference-client", specifier = ">=2.7.0" },
 ]
+engram = [{ name = "weaviate-engram", specifier = "==1.0.0" }]
 storage = [
     { name = "azure-storage-blob", specifier = ">=12.29.0,<13.0.0" },
     { name = "bce-python-sdk", specifier = "==0.9.71" },
@@ -7417,6 +7421,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/81/c8/aa47cfa0a2b1e260846eaf04ce4cc2ab1bb03f29d793e7b009bc3e3babc7/weaviate_client-4.20.5.tar.gz", hash = "sha256:c07c688f0e6b78723dfecbcfeebf897cefa75f1a89c63ebd84aab88c662e4394", size = 811866, upload-time = "2026-04-09T20:08:45.268Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/58/ba/d55f1a665802f736436d09198afc0d00806a405aadb9977193a2f009cfcb/weaviate_client-4.20.5-py3-none-any.whl", hash = "sha256:3f508e3dc08257f85230f9d2ea0562443ed0715e7e89156f22b7e950d6c08cdb", size = 620766, upload-time = "2026-04-09T20:08:43.215Z" },
+]
+
+[[package]]
+name = "weaviate-engram"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3a/f2/ea2207b7d11aa0cf5f32abede401b084b1357876bbe80649897afaa2e0d2/weaviate_engram-1.0.0.tar.gz", hash = "sha256:a2841bd48d26a83e926656acd72d4cfe7d67942cea61f34dc3ff408b559dd69f", size = 10150, upload-time = "2026-06-03T10:07:21.568Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7d/56/57ef4e203490d77a82e747ffb3dc3535c5c735a7c8712e437131644635b1/weaviate_engram-1.0.0-py3-none-any.whl", hash = "sha256:43f2d76dd8224462ecccee666b6ae06f54340892279aeaec76868f70f40a4142", size = 15884, upload-time = "2026-06-03T10:07:20.489Z" },
 ]
 
 [[package]]
