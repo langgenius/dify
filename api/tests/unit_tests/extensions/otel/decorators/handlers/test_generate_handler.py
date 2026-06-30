@@ -6,6 +6,7 @@ Test objectives:
 2. Verify span attribute mapping correctness
 """
 
+from unittest.mock import MagicMock
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -35,6 +36,7 @@ class TestAppGenerateHandler:
             "user": mock_account_user,
             "args": {"workflow_id": "test-wf-123"},
             "invoke_from": InvokeFrom.DEBUGGER,
+            "session": MagicMock(),
             "streaming": True,
             "root_node_id": None,
         }
