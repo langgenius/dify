@@ -25,3 +25,8 @@ export const pluginLatestVersionsContract = base
     }
   }>())
   .output(type<InstalledLatestVersionResponse>())
+
+export const pluginsRouterContract = {
+  checkInstalled: pluginCheckInstalledContract,
+  latestVersions: pluginLatestVersionsContract,
+}

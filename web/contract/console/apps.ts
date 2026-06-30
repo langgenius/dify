@@ -1,8 +1,10 @@
 import type { AppListResponse, WorkflowOnlineUsersResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppModeEnum } from '@/types/app'
+import { apps } from '@dify/contracts/api/console/apps/orpc.gen'
 import { type } from '@orpc/contract'
 import { base } from '../base'
+import { agentDriveContracts } from './agent-drive'
 
 export type AppListSortBy = 'last_modified' | 'recently_created' | 'earliest_created'
 type AppListMode = AppModeEnum | 'agent' | 'channel' | 'all'
@@ -85,3 +87,24 @@ export const workflowOnlineUsersContract = base
     }
   }>())
   .output(type<WorkflowOnlineUsersResponse>())
+
+export const appsRouterContract = {
+  ...apps,
+  list: appListContract,
+  deleteApp: appDeleteContract,
+  starredList: appStarredListContract,
+  star: appStarContract,
+  unstar: appUnstarContract,
+  workflowOnlineUsers: workflowOnlineUsersContract,
+  byAppId: {
+    ...apps.byAppId,
+    agent: {
+      ...apps.byAppId.agent,
+      ...agentDriveContracts.byAppId.agent,
+      drive: {
+        ...apps.byAppId.agent.drive,
+        ...agentDriveContracts.byAppId.agent.drive,
+      },
+    },
+  },
+}

@@ -34,3 +34,6 @@ export const notificationDismissContract = base
     }
   }>())
   .output(type<unknown>())
+
+export const notificationRouterContract = notificationContract
+export const notificationDismissRouterContract = notificationDismissContract

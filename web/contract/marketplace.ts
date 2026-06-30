@@ -1,3 +1,4 @@
+import type { InferContractRouterInputs } from '@orpc/contract'
 import type { CollectionsAndPluginsSearchParams, MarketplaceCollection, PluginsSearchParams } from '@/app/components/plugins/marketplace/types'
 import type { Plugin, PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 import type { MarketplaceTemplate } from '@/types/marketplace-template'
@@ -81,3 +82,13 @@ export const downloadPluginContract = base
     }
   }>())
   .output(type<Blob>())
+
+export const marketplaceRouterContract = {
+  collections: collectionsContract,
+  collectionPlugins: collectionPluginsContract,
+  searchAdvanced: searchAdvancedContract,
+  templateDetail: templateDetailContract,
+  downloadPlugin: downloadPluginContract,
+}
+
+export type MarketPlaceInputs = InferContractRouterInputs<typeof marketplaceRouterContract>
