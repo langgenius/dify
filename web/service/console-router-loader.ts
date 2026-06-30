@@ -21,9 +21,9 @@ const customConsoleContractLoaders: Record<string, () => Promise<AnyContractRout
   modelProviders: () =>
     import('@/contract/console/model-providers').then(({ modelProvidersRouterContract }) => wrapConsoleContract('modelProviders', modelProvidersRouterContract)),
   notification: () =>
-    import('@/contract/console/notification').then(({ notificationRouterContract }) => wrapConsoleContract('notification', notificationRouterContract)),
+    import('@/contract/console/notification').then(({ notificationContract }) => wrapConsoleContract('notification', notificationContract)),
   notificationDismiss: () =>
-    import('@/contract/console/notification').then(({ notificationDismissRouterContract }) => wrapConsoleContract('notificationDismiss', notificationDismissRouterContract)),
+    import('@/contract/console/notification').then(({ notificationDismissContract }) => wrapConsoleContract('notificationDismiss', notificationDismissContract)),
   plugins: () => import('@/contract/console/plugins').then(({ pluginsRouterContract }) => wrapConsoleContract('plugins', pluginsRouterContract)),
   rbacAccessConfig: () =>
     import('@/contract/console/access-control').then(({ rbacAccessConfigContract }) => wrapConsoleContract('rbacAccessConfig', rbacAccessConfigContract)),

@@ -45,7 +45,7 @@ import { billingRouterContract } from './console/billing'
 import { exploreRouterContract } from './console/explore'
 import { filesRouterContract } from './console/files'
 import { modelProvidersRouterContract } from './console/model-providers'
-import { notificationDismissRouterContract, notificationRouterContract } from './console/notification'
+import { notificationContract, notificationDismissContract } from './console/notification'
 import { pluginsRouterContract } from './console/plugins'
 import { snippetsRouterContract } from './console/snippets'
 import { tagsRouterContract } from './console/tags'
@@ -106,8 +106,8 @@ export const consoleRouterContract = {
   explore: exploreRouterContract,
   files: filesRouterContract,
   modelProviders: modelProvidersRouterContract,
-  notification: notificationRouterContract,
-  notificationDismiss: notificationDismissRouterContract,
+  notification: notificationContract,
+  notificationDismiss: notificationDismissContract,
   plugins: pluginsRouterContract,
   rbacAccessConfig: rbacAccessConfigContract,
   snippets: snippetsRouterContract,
