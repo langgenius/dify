@@ -316,8 +316,11 @@ def test_get_ready_workflow_run_archive_download_task_requires_ready_file() -> N
     )
     cache = FakeTaskCache(existing_task=ready_task)
 
-    assert get_ready_workflow_run_archive_download_task(
-        tenant_id="tenant-1",
-        download_id="download-1",
-        cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
-    ) == ready_task
+    assert (
+        get_ready_workflow_run_archive_download_task(
+            tenant_id="tenant-1",
+            download_id="download-1",
+            cache=cast(WorkflowRunArchiveDownloadTaskCache, cache),
+        )
+        == ready_task
+    )

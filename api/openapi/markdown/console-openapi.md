@@ -9135,6 +9135,61 @@ Generate a Dify workflow graph from natural language
 | 400 | Invalid request parameters |  |
 | 402 | Provider quota exceeded |  |
 
+### [GET] /workflow-run-archives
+List monthly workflow-run archive metadata for the current workspace
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkflowRunArchiveListResponse](#workflowrunarchivelistresponse)<br> |
+
+### [POST] /workflow-run-archives/downloads
+Create or return a temporary workflow-run archive download task
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkflowRunArchiveDownloadPayload](#workflowrunarchivedownloadpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 202 | Download task accepted | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+
+### [GET] /workflow-run-archives/downloads/{download_id}
+Get a temporary workflow-run archive download task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| download_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse)<br> |
+
+### [GET] /workflow-run-archives/downloads/{download_id}/file
+Redirect to a prepared workflow-run archive ZIP file
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| download_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 302 | Redirect to pre-signed archive storage URL | **application/json**: [RedirectResponse](#redirectresponse)<br> |
+| 409 | Download task is not ready |  |
+
 ### [GET] /workflow/{workflow_run_id}/events
 **Get workflow execution events stream after resume**
 
@@ -21299,6 +21354,71 @@ can reuse its existing handler.
 | hash | string |  | Yes |
 | result | string |  | Yes |
 | updated_at | integer |  | Yes |
+
+#### WorkflowRunArchiveDownloadPayload
+
+Request body for preparing one monthly workflow-run archive download.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| month | integer |  | Yes |
+| year | integer |  | Yes |
+
+#### WorkflowRunArchiveDownloadStatus
+
+Lifecycle state for an asynchronous archive download request.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WorkflowRunArchiveDownloadStatus | string | Lifecycle state for an asynchronous archive download request. |  |
+
+#### WorkflowRunArchiveDownloadTaskResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_bytes | integer |  | Yes |
+| bundle_count | integer |  | Yes |
+| created_at | dateTime |  | Yes |
+| download_id | string |  | Yes |
+| error | string |  | No |
+| expires_at | dateTime |  | Yes |
+| file_name | string |  | No |
+| file_size_bytes | integer |  | No |
+| finished_at | string |  | No |
+| month | integer |  | Yes |
+| started_at | string |  | No |
+| status | [WorkflowRunArchiveDownloadStatus](#workflowrunarchivedownloadstatus) |  | Yes |
+| updated_at | dateTime |  | Yes |
+| year | integer |  | Yes |
+
+#### WorkflowRunArchiveListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| months | [ [WorkflowRunArchiveMonthResponse](#workflowrunarchivemonthresponse) ] |  | Yes |
+| summary | [WorkflowRunArchiveSummaryResponse](#workflowrunarchivesummaryresponse) |  | Yes |
+
+#### WorkflowRunArchiveMonthResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_bytes | integer |  | Yes |
+| bundle_count | integer |  | Yes |
+| download_task | [WorkflowRunArchiveDownloadTaskResponse](#workflowrunarchivedownloadtaskresponse) |  | No |
+| latest_archived_at | dateTime |  | Yes |
+| month | integer |  | Yes |
+| row_count | integer |  | Yes |
+| workflow_run_count | integer |  | Yes |
+| year | integer |  | Yes |
+
+#### WorkflowRunArchiveSummaryResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| archive_bytes | integer |  | Yes |
+| archived_month_count | integer |  | Yes |
+| latest_archived_at | string |  | No |
+| workflow_run_count | integer |  | Yes |
 
 #### WorkflowRunCountQuery
 
