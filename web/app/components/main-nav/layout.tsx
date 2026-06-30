@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import MainNav from './index'
+import { MainNav } from '.'
 import { MAIN_CONTENT_ID, SkipNav } from './skip-nav'
 
 type MainNavLayoutProps = {

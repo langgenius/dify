@@ -1,5 +1,6 @@
 describe('env runtime transport', () => {
   const originalAgentV2Env = process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
+  const originalRbacEnv = process.env.NEXT_PUBLIC_RBAC_ENABLED
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -7,7 +8,9 @@ describe('env runtime transport', () => {
     vi.doUnmock('../utils/client')
     document.body.removeAttribute('data-enable-agent-v2')
     document.body.removeAttribute('data-enable-agent-v-2')
+    document.body.removeAttribute('data-rbac-enabled')
     delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
+    delete process.env.NEXT_PUBLIC_RBAC_ENABLED
   })
 
   afterAll(() => {
@@ -15,6 +18,11 @@ describe('env runtime transport', () => {
       delete process.env.NEXT_PUBLIC_ENABLE_AGENT_V2
     else
       process.env.NEXT_PUBLIC_ENABLE_AGENT_V2 = originalAgentV2Env
+
+    if (originalRbacEnv === undefined)
+      delete process.env.NEXT_PUBLIC_RBAC_ENABLED
+    else
+      process.env.NEXT_PUBLIC_RBAC_ENABLED = originalRbacEnv
   })
 
   it('should read NEXT_PUBLIC_ENABLE_AGENT_V2 from the browser runtime dataset key', async () => {
@@ -23,6 +31,14 @@ describe('env runtime transport', () => {
     const { env } = await import('../env')
 
     expect(env.NEXT_PUBLIC_ENABLE_AGENT_V2).toBe(true)
+  })
+
+  it('should read NEXT_PUBLIC_RBAC_ENABLED from the browser runtime dataset key', async () => {
+    document.body.setAttribute('data-rbac-enabled', 'true')
+
+    const { env } = await import('../env')
+
+    expect(env.NEXT_PUBLIC_RBAC_ENABLED).toBe(true)
   })
 
   it('should emit the Agent v2 runtime dataset attribute from getDatasetMap on the server', async () => {
@@ -38,5 +54,19 @@ describe('env runtime transport', () => {
 
     expect(datasetMap['data-enable-agent-v2']).toBe(true)
     expect(datasetMap['data-enable-agent-v-2']).toBeUndefined()
+  })
+
+  it('should emit the RBAC runtime dataset attribute from getDatasetMap on the server', async () => {
+    process.env.NEXT_PUBLIC_RBAC_ENABLED = 'true'
+
+    vi.doMock('../utils/client', () => ({
+      isClient: false,
+      isServer: true,
+    }))
+
+    const { getDatasetMap } = await import('../env')
+    const datasetMap = getDatasetMap()
+
+    expect(datasetMap['data-rbac-enabled']).toBe(true)
   })
 })

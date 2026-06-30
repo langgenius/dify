@@ -36,7 +36,9 @@ class WorkspaceService:
         feature = FeatureService.get_features(tenant.id, exclude_vector_space=True)
         can_replace_logo = feature.can_replace_logo
 
-        if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN]):
+        if can_replace_logo and TenantService.has_roles(
+            tenant, [TenantAccountRole.OWNER, TenantAccountRole.ADMIN], session=db.session
+        ):
             base_url = dify_config.FILES_URL
             replace_webapp_logo = (
                 f"{base_url}/files/workspaces/{tenant.id}/webapp-logo"

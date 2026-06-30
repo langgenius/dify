@@ -12,9 +12,170 @@ from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpi
 from services.retention.conversation.messages_clean_policy import create_message_clean_policy
 from services.retention.conversation.messages_clean_service import MessagesCleanService
 from services.retention.workflow_run.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
+from services.retention.workflow_run.tenant_prefix import tenant_prefix_condition
 from tasks.remove_app_and_related_data_task import delete_draft_variables_batch
 
 logger = logging.getLogger(__name__)
+
+_HEX_PREFIXES = tuple("0123456789abcdef")
+
+
+class WorkflowRunArchivePlanRow(TypedDict):
+    tenant_prefix: str
+    total_tenants: int
+    workflow_runs: int
+    workflow_node_executions: int
+    paid_tenants: int
+    unpaid_tenants: int
+
+
+class WorkflowRunArchiveTenantPlan(TypedDict):
+    archive_tenant_ids: list[str] | None
+    paid_tenant_ids: list[str]
+    unpaid_tenant_ids: list[str]
+
+
+def _normalize_utc_datetime(value: datetime.datetime) -> datetime.datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=datetime.UTC)
+    return value.astimezone(datetime.UTC)
+
+
+def _parse_tenant_prefixes(prefixes: str | None) -> list[str]:
+    if not prefixes:
+        return []
+
+    parsed = []
+    for raw_prefix in prefixes.split(","):
+        prefix = raw_prefix.strip().lower()
+        if not prefix:
+            continue
+        if len(prefix) != 1 or prefix not in _HEX_PREFIXES:
+            raise click.UsageError("--tenant-prefixes must be a comma-separated list of hex digits, e.g. 0,1,a,f.")
+        parsed.append(prefix)
+    return sorted(set(parsed))
+
+
+def _get_archive_candidate_tenant_ids_by_prefix(
+    prefix: str,
+    *,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime,
+) -> list[str]:
+    from graphon.enums import WorkflowExecutionStatus
+    from models.workflow import WorkflowRun
+    from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
+
+    conditions = [
+        WorkflowRun.created_at < end_before,
+        WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
+        WorkflowRun.type.in_(WorkflowRunArchiver.ARCHIVED_TYPE),
+        tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
+    ]
+    if start_from is not None:
+        conditions.append(WorkflowRun.created_at >= start_from)
+
+    tenant_ids = db.session.scalars(
+        sa.select(WorkflowRun.tenant_id).where(*conditions).distinct().order_by(WorkflowRun.tenant_id)
+    ).all()
+    return list(tenant_ids)
+
+
+def _filter_paid_workflow_archive_tenant_ids(tenant_ids: list[str]) -> tuple[list[str], list[str]]:
+    from configs import dify_config
+    from enums.cloud_plan import CloudPlan
+    from services.billing_service import BillingService
+
+    tenant_ids = sorted(set(tenant_ids))
+    if not tenant_ids:
+        return [], []
+    if not dify_config.BILLING_ENABLED:
+        return tenant_ids, []
+
+    plans = BillingService.get_plan_bulk_with_cache(tenant_ids)
+    paid_tenant_ids = [
+        tenant_id
+        for tenant_id in tenant_ids
+        if plans.get(tenant_id) and plans[tenant_id].get("plan") in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+    ]
+    unpaid_tenant_ids = sorted(set(tenant_ids) - set(paid_tenant_ids))
+    return paid_tenant_ids, unpaid_tenant_ids
+
+
+def _resolve_archive_tenant_ids_from_plan(
+    *,
+    tenant_ids: str | None,
+    tenant_prefixes: list[str],
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime,
+) -> WorkflowRunArchiveTenantPlan:
+    """
+    Resolve the archive tenant scope once before scanning workflow_runs.
+
+    Prefix rollout should use the tenant list collected by the same planning path, then archive by
+    tenant_id IN (...). Scanning workflow_runs with a tenant prefix range in every archive run is too expensive on
+    the large production table this command is meant to shrink.
+    """
+    if tenant_ids:
+        requested_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
+    elif tenant_prefixes:
+        requested_tenant_ids = []
+        for prefix in tenant_prefixes:
+            requested_tenant_ids.extend(
+                _get_archive_candidate_tenant_ids_by_prefix(
+                    prefix,
+                    start_from=start_from,
+                    end_before=end_before,
+                )
+            )
+    else:
+        return WorkflowRunArchiveTenantPlan(
+            archive_tenant_ids=None,
+            paid_tenant_ids=[],
+            unpaid_tenant_ids=[],
+        )
+
+    paid_tenant_ids, unpaid_tenant_ids = _filter_paid_workflow_archive_tenant_ids(requested_tenant_ids)
+    return WorkflowRunArchiveTenantPlan(
+        archive_tenant_ids=paid_tenant_ids,
+        paid_tenant_ids=paid_tenant_ids,
+        unpaid_tenant_ids=unpaid_tenant_ids,
+    )
+
+
+def _resolve_archive_time_range(
+    *,
+    before_days: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+) -> tuple[int, datetime.datetime | None, datetime.datetime | None]:
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+
+    if (from_days_ago is None) ^ (to_days_ago is None):
+        raise click.UsageError("--from-days-ago and --to-days-ago must be provided together.")
+
+    if from_days_ago is not None and to_days_ago is not None:
+        if start_from or end_before:
+            raise click.UsageError("Choose either day offsets or explicit dates, not both.")
+        if from_days_ago <= to_days_ago:
+            raise click.UsageError("--from-days-ago must be greater than --to-days-ago.")
+        now = datetime.datetime.now(datetime.UTC)
+        start_from = now - datetime.timedelta(days=from_days_ago)
+        end_before = now - datetime.timedelta(days=to_days_ago)
+        before_days = 0
+
+    if start_from is not None:
+        start_from = _normalize_utc_datetime(start_from)
+    if end_before is not None:
+        end_before = _normalize_utc_datetime(end_before)
+
+    if start_from and end_before and start_from >= end_before:
+        raise click.UsageError("--start-from must be earlier than --end-before.")
+
+    return before_days, start_from, end_before
 
 
 @click.command("clear-free-plan-tenant-expired-logs", help="Clear free plan tenant expired logs.")
@@ -140,10 +301,149 @@ def clean_workflow_runs(
 
 
 @click.command(
+    "archive-workflow-runs-plan",
+    help="Plan workflow run archive rollout by tenant ID first hex digit.",
+)
+@click.option("--before-days", default=90, show_default=True, help="Plan runs older than N days.")
+@click.option(
+    "--from-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Lower bound in days ago (older). Must be paired with --to-days-ago.",
+)
+@click.option(
+    "--to-days-ago",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Upper bound in days ago (newer). Must be paired with --from-days-ago.",
+)
+@click.option(
+    "--start-from",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Plan runs created at or after this timestamp (UTC if no timezone).",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Plan runs created before this timestamp (UTC if no timezone).",
+)
+@click.option(
+    "--include-archived",
+    is_flag=True,
+    help="Compatibility no-op for V2 bundle archive; plan counts source rows in the requested window.",
+)
+def archive_workflow_runs_plan(
+    before_days: int,
+    from_days_ago: int | None,
+    to_days_ago: int | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    include_archived: bool,
+):
+    """
+    Print the 16 tenant-prefix rollout rows used to choose archive execution order.
+
+    Counts use the same workflow run eligibility as archive-workflow-runs: ended runs,
+    supported workflow types, and the requested created_at window. V2 bundle archive
+    does not maintain per-run archive logs, so this plan reports source-table volume.
+    """
+    from graphon.enums import WorkflowExecutionStatus
+    from models.workflow import WorkflowNodeExecutionModel, WorkflowRun
+    from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
+
+    before_days, start_from, end_before = _resolve_archive_time_range(
+        before_days=before_days,
+        from_days_ago=from_days_ago,
+        to_days_ago=to_days_ago,
+        start_from=start_from,
+        end_before=end_before,
+    )
+    plan_end_before = end_before or datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=before_days)
+    if include_archived:
+        click.echo(click.style("--include-archived is a no-op for V2 bundle archive plans.", fg="yellow"))
+
+    rows: list[WorkflowRunArchivePlanRow] = []
+    for prefix in _HEX_PREFIXES:
+        tenant_ids = _get_archive_candidate_tenant_ids_by_prefix(
+            prefix,
+            start_from=start_from,
+            end_before=plan_end_before,
+        )
+        total_tenants = len(tenant_ids)
+        paid_tenant_ids, unpaid_tenant_ids = _filter_paid_workflow_archive_tenant_ids(tenant_ids)
+
+        run_conditions = [
+            WorkflowRun.created_at < plan_end_before,
+            WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
+            WorkflowRun.type.in_(WorkflowRunArchiver.ARCHIVED_TYPE),
+            tenant_prefix_condition(WorkflowRun.tenant_id, prefix),
+        ]
+        if start_from is not None:
+            run_conditions.append(WorkflowRun.created_at >= start_from)
+        workflow_runs = (
+            db.session.scalar(sa.select(sa.func.count()).select_from(WorkflowRun).where(*run_conditions)) or 0
+        )
+        candidate_runs = sa.select(WorkflowRun.id).where(*run_conditions).subquery()
+        workflow_node_executions = (
+            db.session.scalar(
+                sa.select(sa.func.count())
+                .select_from(WorkflowNodeExecutionModel)
+                .join(candidate_runs, WorkflowNodeExecutionModel.workflow_run_id == candidate_runs.c.id)
+            )
+            or 0
+        )
+
+        rows.append(
+            WorkflowRunArchivePlanRow(
+                tenant_prefix=prefix,
+                total_tenants=total_tenants,
+                workflow_runs=workflow_runs,
+                workflow_node_executions=workflow_node_executions,
+                paid_tenants=len(paid_tenant_ids),
+                unpaid_tenants=len(unpaid_tenant_ids),
+            )
+        )
+
+    click.echo(
+        click.style(
+            f"Workflow archive plan for runs before {plan_end_before.isoformat()}"
+            f"{f' and at/after {start_from.isoformat()}' if start_from else ''}.",
+            fg="white",
+        )
+    )
+    click.echo(
+        click.style(
+            "fixed_archive_window="
+            f"{start_from.isoformat() if start_from else 'unbounded'},{plan_end_before.isoformat()}",
+            fg="white",
+        )
+    )
+    click.echo("tenant_prefix,total_tenants,workflow_runs,workflow_node_executions,paid_tenants,unpaid_tenants")
+    for row in rows:
+        click.echo(
+            f"{row['tenant_prefix']},{row['total_tenants']},{row['workflow_runs']},"
+            f"{row['workflow_node_executions']},{row['paid_tenants']},{row['unpaid_tenants']}"
+        )
+
+    ordered_rows = sorted(
+        rows,
+        key=lambda row: (row["workflow_runs"] + row["workflow_node_executions"], row["tenant_prefix"]),
+    )
+    click.echo("suggested_execution_order=" + ",".join(row["tenant_prefix"] for row in ordered_rows))
+
+
+@click.command(
     "archive-workflow-runs",
     help="Archive workflow runs for paid plan tenants to S3-compatible storage.",
 )
 @click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs for grayscale rollout.")
+@click.option(
+    "--tenant-prefixes",
+    default=None,
+    help="Optional comma-separated tenant ID first hex digits for rollout waves, e.g. 0,1,a,f.",
+)
 @click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
 @click.option(
     "--from-days-ago",
@@ -169,13 +469,36 @@ def clean_workflow_runs(
     default=None,
     help="Archive runs created before this timestamp (UTC if no timezone).",
 )
-@click.option("--batch-size", default=100, show_default=True, help="Batch size for processing.")
-@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to archive.")
+@click.option("--batch-size", default=10000, show_default=True, help="Maximum workflow runs per archive bundle.")
+@click.option(
+    "--workers",
+    default=1,
+    show_default=True,
+    type=int,
+    help="Reserved; bundle archive currently runs serially.",
+)
+@click.option(
+    "--run-shard-index",
+    default=None,
+    type=click.IntRange(min=0),
+    help="Zero-based workflow run shard index for parallel cron jobs. Must be paired with --run-shard-total.",
+)
+@click.option(
+    "--run-shard-total",
+    default=None,
+    type=click.IntRange(min=1, max=16),
+    help="Total workflow run shard count for parallel cron jobs. Must be paired with --run-shard-index.",
+)
 @click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
 @click.option("--dry-run", is_flag=True, help="Preview without archiving.")
-@click.option("--delete-after-archive", is_flag=True, help="Delete runs and related data after archiving.")
+@click.option(
+    "--delete-after-archive",
+    is_flag=True,
+    help="Not supported by bundle archive; use a separate bundle delete workflow after validation.",
+)
 def archive_workflow_runs(
     tenant_ids: str | None,
+    tenant_prefixes: str | None,
     before_days: int,
     from_days_ago: int | None,
     to_days_ago: int | None,
@@ -183,6 +506,8 @@ def archive_workflow_runs(
     end_before: datetime.datetime | None,
     batch_size: int,
     workers: int,
+    run_shard_index: int | None,
+    run_shard_total: int | None,
     limit: int | None,
     dry_run: bool,
     delete_after_archive: bool,
@@ -190,14 +515,19 @@ def archive_workflow_runs(
     """
     Archive workflow runs for paid plan tenants older than the specified days.
 
-    This command archives the following tables to storage:
+    This command writes V2 tenant/month/shard archive bundles. Each bundle contains Parquet snapshots from:
+    - workflow_runs
+    - workflow_app_logs
     - workflow_node_executions
     - workflow_node_execution_offload
     - workflow_pauses
     - workflow_pause_reasons
     - workflow_trigger_logs
 
-    The workflow_runs and workflow_app_logs tables are preserved for UI listing.
+    Source database rows are always preserved by archive. Deletion must be handled by
+    a separate bundle-level delete workflow after manifest, checksum, row-count, and
+    restore-sampling validation. In --dry-run mode, no storage or database writes
+    happen; the command estimates per-table Parquet bytes and object size instead.
     """
     from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
@@ -209,32 +539,67 @@ def archive_workflow_runs(
         )
     )
 
-    if (start_from is None) ^ (end_before is None):
-        click.echo(click.style("start-from and end-before must be provided together.", fg="red"))
+    uses_relative_window = start_from is None and end_before is None
+    try:
+        before_days, start_from, end_before = _resolve_archive_time_range(
+            before_days=before_days,
+            from_days_ago=from_days_ago,
+            to_days_ago=to_days_ago,
+            start_from=start_from,
+            end_before=end_before,
+        )
+        parsed_tenant_prefixes = _parse_tenant_prefixes(tenant_prefixes)
+    except click.UsageError as e:
+        click.echo(click.style(e.message, fg="red"))
         return
-
-    if (from_days_ago is None) ^ (to_days_ago is None):
-        click.echo(click.style("from-days-ago and to-days-ago must be provided together.", fg="red"))
-        return
-
-    if from_days_ago is not None and to_days_ago is not None:
-        if start_from or end_before:
-            click.echo(click.style("Choose either day offsets or explicit dates, not both.", fg="red"))
-            return
-        if from_days_ago <= to_days_ago:
-            click.echo(click.style("from-days-ago must be greater than to-days-ago.", fg="red"))
-            return
-        now = datetime.datetime.now()
-        start_from = now - datetime.timedelta(days=from_days_ago)
-        end_before = now - datetime.timedelta(days=to_days_ago)
-        before_days = 0
-
-    if start_from and end_before and start_from >= end_before:
-        click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
-        return
+    plan_end_before = end_before or datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=before_days)
     if workers < 1:
         click.echo(click.style("workers must be at least 1.", fg="red"))
         return
+    if (run_shard_index is None) ^ (run_shard_total is None):
+        click.echo(click.style("run-shard-index and run-shard-total must be provided together.", fg="red"))
+        return
+    if run_shard_index is not None and run_shard_total is not None and run_shard_index >= run_shard_total:
+        click.echo(click.style("run-shard-index must be less than run-shard-total.", fg="red"))
+        return
+    if delete_after_archive:
+        click.echo(click.style("delete-after-archive is not supported by bundle archive.", fg="red"))
+        return
+    if uses_relative_window:
+        click.echo(
+            click.style(
+                "Relative archive windows are evaluated at command start. For multi-day prefix/shard rollout, "
+                "reuse absolute --start-from/--end-before values from archive-workflow-runs-plan.",
+                fg="yellow",
+            )
+        )
+
+    try:
+        tenant_plan = _resolve_archive_tenant_ids_from_plan(
+            tenant_ids=tenant_ids,
+            tenant_prefixes=parsed_tenant_prefixes,
+            start_from=start_from,
+            end_before=plan_end_before,
+        )
+    except Exception:
+        logger.exception("Failed to resolve workflow archive tenant plan")
+        click.echo(click.style("Failed to resolve workflow archive tenant plan.", fg="red"))
+        return
+
+    planned_tenant_ids = tenant_plan["archive_tenant_ids"]
+    planned_paid_tenant_ids = tenant_plan["paid_tenant_ids"] if planned_tenant_ids is not None else None
+    paid_tenants = len(tenant_plan["paid_tenant_ids"])
+    unpaid_tenants = len(tenant_plan["unpaid_tenant_ids"])
+    if planned_tenant_ids is not None:
+        click.echo(
+            click.style(
+                f"Resolved archive tenant plan: paid_tenants={paid_tenants}, unpaid_tenants={unpaid_tenants}.",
+                fg="white",
+            )
+        )
+        if not planned_tenant_ids:
+            click.echo(click.style("No paid tenants matched the archive plan; nothing to archive.", fg="yellow"))
+            return
 
     archiver = WorkflowRunArchiver(
         days=before_days,
@@ -242,7 +607,11 @@ def archive_workflow_runs(
         start_from=start_from,
         end_before=end_before,
         workers=workers,
-        tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
+        tenant_ids=planned_tenant_ids,
+        tenant_prefixes=parsed_tenant_prefixes,
+        paid_tenant_ids=planned_paid_tenant_ids,
+        run_shard_index=run_shard_index,
+        run_shard_total=run_shard_total,
         limit=limit,
         dry_run=dry_run,
         delete_after_archive=delete_after_archive,
@@ -252,7 +621,9 @@ def archive_workflow_runs(
         click.style(
             f"Summary: processed={summary.total_runs_processed}, archived={summary.runs_archived}, "
             f"skipped={summary.runs_skipped}, failed={summary.runs_failed}, "
-            f"time={summary.total_elapsed_time:.2f}s",
+            f"bundles_archived={summary.bundles_archived}, bundles_skipped={summary.bundles_skipped}, "
+            f"bundles_failed={summary.bundles_failed}, "
+            f"object_size_bytes={summary.total_object_size_bytes}, time={summary.total_elapsed_time:.2f}s",
             fg="cyan",
         )
     )
@@ -266,6 +637,52 @@ def archive_workflow_runs(
             fg="green",
         )
     )
+
+
+def _echo_bundle_archive_operation_summary(summary) -> None:
+    status = "completed successfully" if summary.bundles_failed == 0 else "completed with failures"
+    fg = "green" if summary.bundles_failed == 0 else "red"
+    click.echo(
+        click.style(
+            f"{summary.operation} {status}. "
+            f"bundles_success={summary.bundles_succeeded} bundles_failed={summary.bundles_failed} "
+            f"runs={summary.runs_processed} rows={summary.rows_processed} "
+            f"archive_bytes={summary.archive_bytes} duration={summary.elapsed_time:.2f}s "
+            f"validation_time={summary.validation_time:.2f}s "
+            f"runs_per_second={summary.runs_per_second:.2f} rows_per_second={summary.rows_per_second:.2f} "
+            f"bytes_per_second={summary.bytes_per_second:.2f}",
+            fg=fg,
+        )
+    )
+    click.echo(click.style("table,row_count", fg="white"))
+    for table_name in [
+        "workflow_runs",
+        "workflow_app_logs",
+        "workflow_node_executions",
+        "workflow_node_execution_offload",
+        "workflow_pauses",
+        "workflow_pause_reasons",
+        "workflow_trigger_logs",
+    ]:
+        click.echo(f"{table_name},{summary.table_counts.get(table_name, 0)}")
+    for result in summary.results:
+        if result.success:
+            click.echo(
+                click.style(
+                    f"  bundle={result.bundle_id} tenant={result.tenant_id} runs={result.run_count} "
+                    f"rows={result.row_count} archive_bytes={result.archive_bytes} "
+                    f"time={result.elapsed_time:.2f}s validation={result.validation_time:.2f}s",
+                    fg="white",
+                )
+            )
+        else:
+            click.echo(
+                click.style(
+                    f"  failed bundle={result.bundle_id} tenant={result.tenant_id} "
+                    f"object_prefix={result.object_prefix} error={result.error}",
+                    fg="red",
+                )
+            )
 
 
 @click.command(
@@ -290,8 +707,8 @@ def archive_workflow_runs(
     default=None,
     help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
 )
-@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to restore.")
-@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to restore.")
+@click.option("--workers", default=1, show_default=True, type=int, help="V1 --run-id compatibility only.")
+@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of V2 bundles to restore.")
 @click.option("--dry-run", is_flag=True, help="Preview without restoring.")
 def restore_workflow_runs(
     tenant_ids: str | None,
@@ -303,15 +720,18 @@ def restore_workflow_runs(
     dry_run: bool,
 ):
     """
-    Restore an archived workflow run from storage to the database.
+    Restore archived workflow runs from storage to the database.
 
-    This restores the following tables:
+    Batch restore uses V2 bundle metadata and validates archive objects before writing source rows. This restores:
+    - workflow_runs
+    - workflow_app_logs
     - workflow_node_executions
     - workflow_node_execution_offload
     - workflow_pauses
     - workflow_pause_reasons
     - workflow_trigger_logs
     """
+    from services.retention.workflow_run.bundle_archive_maintenance import WorkflowRunBundleArchiveMaintenance
     from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
 
     parsed_tenant_ids = None
@@ -335,39 +755,46 @@ def restore_workflow_runs(
         )
     )
 
-    restorer = WorkflowRunRestore(dry_run=dry_run, workers=workers)
     if run_id:
+        restorer = WorkflowRunRestore(dry_run=dry_run, workers=workers)
         results = [restorer.restore_by_run_id(run_id)]
-    else:
-        assert start_from is not None
-        assert end_before is not None
-        results = restorer.restore_batch(
-            parsed_tenant_ids,
-            start_date=start_from,
-            end_date=end_before,
-            limit=limit,
-        )
+        end_time = datetime.datetime.now(datetime.UTC)
+        elapsed = end_time - start_time
 
-    end_time = datetime.datetime.now(datetime.UTC)
-    elapsed = end_time - start_time
+        successes = sum(1 for result in results if result.success)
+        failures = len(results) - successes
 
-    successes = sum(1 for result in results if result.success)
-    failures = len(results) - successes
-
-    if failures == 0:
-        click.echo(
-            click.style(
-                f"Restore completed successfully. success={successes} duration={elapsed}",
-                fg="green",
+        if failures == 0:
+            click.echo(
+                click.style(
+                    f"Restore completed successfully. success={successes} duration={elapsed}",
+                    fg="green",
+                )
             )
-        )
-    else:
-        click.echo(
-            click.style(
-                f"Restore completed with failures. success={successes} failed={failures} duration={elapsed}",
-                fg="red",
+        else:
+            click.echo(
+                click.style(
+                    f"Restore completed with failures. success={successes} failed={failures} duration={elapsed}",
+                    fg="red",
+                )
             )
+        return
+
+    if workers != 1:
+        click.echo(
+            click.style("--workers is ignored for V2 bundle restore; bundles are processed serially.", fg="yellow")
         )
+    assert start_from is not None
+    assert end_before is not None
+    bundle_restorer = WorkflowRunBundleArchiveMaintenance(dry_run=dry_run, strict_content_validation=True)
+    summary = bundle_restorer.restore_batch(
+        tenant_ids=parsed_tenant_ids,
+        start_date=start_from,
+        end_date=end_before,
+        limit=limit,
+    )
+    _echo_bundle_archive_operation_summary(summary)
+    return
 
 
 @click.command(
@@ -392,8 +819,20 @@ def restore_workflow_runs(
     default=None,
     help="Optional upper bound (exclusive) for created_at; must be paired with --start-from.",
 )
-@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of runs to delete.")
+@click.option("--limit", type=int, default=100, show_default=True, help="Maximum number of V2 bundles to delete.")
 @click.option("--dry-run", is_flag=True, help="Preview without deleting.")
+@click.option(
+    "--skip-bad-archives",
+    is_flag=True,
+    help="Continue batch deletion when one archive object fails validation.",
+)
+@click.option(
+    "--restore-sample-interval",
+    type=int,
+    default=0,
+    show_default=True,
+    help="Run restore dry-run after every N successful deletes; 0 disables restore sampling.",
+)
 def delete_archived_workflow_runs(
     tenant_ids: str | None,
     run_id: str | None,
@@ -401,10 +840,16 @@ def delete_archived_workflow_runs(
     end_before: datetime.datetime | None,
     limit: int,
     dry_run: bool,
+    skip_bad_archives: bool,
+    restore_sample_interval: int,
 ):
     """
     Delete archived workflow runs from the database.
+
+    Batch delete uses V2 bundle metadata and validates object existence, manifest schema, object size, checksum, row
+    counts, and source/archive content checksums before deleting source rows. `--run-id` keeps the V1 per-run path.
     """
+    from services.retention.workflow_run.bundle_archive_maintenance import WorkflowRunBundleArchiveMaintenance
     from services.retention.workflow_run.delete_archived_workflow_run import ArchivedWorkflowRunDeletion
 
     parsed_tenant_ids = None
@@ -417,6 +862,8 @@ def delete_archived_workflow_runs(
         raise click.UsageError("--start-from and --end-before must be provided together.")
     if run_id is None and (start_from is None or end_before is None):
         raise click.UsageError("--start-from and --end-before are required for batch delete.")
+    if restore_sample_interval < 0:
+        raise click.BadParameter("restore-sample-interval must be >= 0")
 
     start_time = datetime.datetime.now(datetime.UTC)
     target_desc = f"workflow run {run_id}" if run_id else "workflow runs"
@@ -427,56 +874,85 @@ def delete_archived_workflow_runs(
         )
     )
 
-    deleter = ArchivedWorkflowRunDeletion(dry_run=dry_run)
     if run_id:
-        results = [deleter.delete_by_run_id(run_id)]
-    else:
-        assert start_from is not None
-        assert end_before is not None
-        results = deleter.delete_batch(
-            parsed_tenant_ids,
-            start_date=start_from,
-            end_date=end_before,
-            limit=limit,
+        deleter = ArchivedWorkflowRunDeletion(
+            dry_run=dry_run,
+            skip_bad_archives=skip_bad_archives,
+            restore_sample_interval=restore_sample_interval,
         )
+        results = [deleter.delete_by_run_id(run_id)]
+        for result in results:
+            if result.success:
+                click.echo(
+                    click.style(
+                        f"{'[DRY RUN] Would delete' if dry_run else 'Deleted'} "
+                        f"workflow run {result.run_id} (tenant={result.tenant_id}, "
+                        f"archive_key={result.archive_key}, counts={result.validated_counts})",
+                        fg="green",
+                    )
+                )
+                if result.restore_sampled:
+                    sample_status = "passed" if result.restore_sample_success else "failed"
+                    click.echo(
+                        click.style(
+                            f"  restore dry-run sample {sample_status} for workflow run {result.run_id}",
+                            fg="green" if result.restore_sample_success else "red",
+                        )
+                    )
+            else:
+                click.echo(
+                    click.style(
+                        f"Failed to delete workflow run {result.run_id}: {result.error}",
+                        fg="red",
+                    )
+                )
+                click.echo(
+                    click.style(
+                        "  runbook: pause this delete window, verify archive storage object and manifest/checksum, "
+                        "retry the same run after fixing storage or DB drift, or rerun with --skip-bad-archives "
+                        "to quarantine this run and continue the batch.",
+                        fg="yellow",
+                    )
+                )
 
-    for result in results:
-        if result.success:
+        end_time = datetime.datetime.now(datetime.UTC)
+        elapsed = end_time - start_time
+
+        successes = sum(1 for result in results if result.success)
+        failures = len(results) - successes
+
+        if failures == 0:
             click.echo(
                 click.style(
-                    f"{'[DRY RUN] Would delete' if dry_run else 'Deleted'} "
-                    f"workflow run {result.run_id} (tenant={result.tenant_id})",
+                    f"Delete completed successfully. success={successes} duration={elapsed}",
                     fg="green",
                 )
             )
         else:
             click.echo(
                 click.style(
-                    f"Failed to delete workflow run {result.run_id}: {result.error}",
+                    f"Delete completed with failures. success={successes} failed={failures} duration={elapsed}",
                     fg="red",
                 )
             )
+        return
 
-    end_time = datetime.datetime.now(datetime.UTC)
-    elapsed = end_time - start_time
-
-    successes = sum(1 for result in results if result.success)
-    failures = len(results) - successes
-
-    if failures == 0:
-        click.echo(
-            click.style(
-                f"Delete completed successfully. success={successes} duration={elapsed}",
-                fg="green",
-            )
-        )
-    else:
-        click.echo(
-            click.style(
-                f"Delete completed with failures. success={successes} failed={failures} duration={elapsed}",
-                fg="red",
-            )
-        )
+    if restore_sample_interval:
+        click.echo(click.style("--restore-sample-interval is ignored for V2 bundle delete.", fg="yellow"))
+    assert start_from is not None
+    assert end_before is not None
+    bundle_deleter = WorkflowRunBundleArchiveMaintenance(
+        dry_run=dry_run,
+        strict_content_validation=True,
+        stop_on_error=not skip_bad_archives,
+    )
+    summary = bundle_deleter.delete_batch(
+        tenant_ids=parsed_tenant_ids,
+        start_date=start_from,
+        end_date=end_before,
+        limit=limit,
+    )
+    _echo_bundle_archive_operation_summary(summary)
 
 
 def _find_orphaned_draft_variables(batch_size: int = 1000) -> list[str]:

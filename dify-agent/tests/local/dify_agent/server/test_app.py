@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 import time
 from typing import ClassVar
@@ -8,7 +7,8 @@ from typing import ClassVar
 import httpx
 import pytest
 from fastapi.testclient import TestClient
-from shell_session_manager.shellctl.client import ShellctlClient
+
+from dify_agent.adapters.shell.shellctl import ShellctlProvisioner
 
 import dify_agent.server.app as app_module
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
@@ -189,13 +189,12 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         run_retention_seconds=7,
         plugin_daemon_url="http://plugin-daemon",
         plugin_daemon_api_key="daemon-secret",
-        dify_api_inner_url="http://dify-api",
+        inner_api_url="http://dify-api",
+        inner_api_key="inner-secret",
         shellctl_entrypoint="http://shellctl",
         shellctl_auth_token="shell-secret",
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
         outbound_http_connect_timeout=1,
         outbound_http_read_timeout=2,
         outbound_http_write_timeout=3,
@@ -232,20 +231,23 @@ def test_create_app_creates_scheduler_and_closes_after_shutdown(monkeypatch: pyt
         knowledge_layer = knowledge_provider.create_layer(
             DifyKnowledgeBaseLayerConfig.model_validate(
                 {
-                    "dataset_ids": ["dataset-1"],
-                    "retrieval": {"mode": "multiple", "top_k": 2},
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 2},
+                        }
+                    ],
                 }
             )
         )
         assert isinstance(knowledge_layer, DifyKnowledgeBaseLayer)
-        assert knowledge_layer.dify_api_inner_url == "http://dify-api"
-        assert knowledge_layer.dify_api_inner_api_key == "inner-secret"
-        assert shell_layer.shellctl_entrypoint == "http://shellctl"
-        assert shell_layer.agent_stub_url == "https://agent.example.com/agent-stub"
-        shellctl_client = shell_layer.shellctl_client_factory("http://shellctl")
-        assert isinstance(shellctl_client, ShellctlClient)
-        assert shellctl_client.token == "shell-secret"
-        asyncio.run(shellctl_client.close())
+        assert knowledge_layer.inner_api_url == "http://dify-api"
+        assert knowledge_layer.inner_api_key == "inner-secret"
+        assert isinstance(shell_layer.shell_provisioner, ShellctlProvisioner)
+        assert shell_layer.agent_stub_api_base_url == "https://agent.example.com/agent-stub"
         http_client = scheduler.plugin_daemon_http_client
         assert http_client is fake_http_client
         assert http_client.is_closed is False
@@ -277,7 +279,7 @@ def test_create_app_wires_authenticated_agent_stub_connection_route(monkeypatch:
     fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
     )
     token_codec = settings.create_agent_stub_token_codec()
@@ -303,10 +305,10 @@ def test_create_app_wires_authenticated_agent_stub_file_upload_route(monkeypatch
     fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
@@ -342,10 +344,10 @@ def test_create_app_wires_authenticated_agent_stub_drive_manifest_route(monkeypa
     fake_redis, fake_http_client = _patch_app_lifecycle(monkeypatch)
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
-        agent_stub_url="https://agent.example.com/agent-stub",
+        agent_stub_api_base_url="https://agent.example.com/agent-stub",
         server_secret_key=_base64url_secret(b"1" * 32),
-        dify_api_base_url="https://api.example.com",
-        dify_api_inner_api_key="inner-secret",
+        inner_api_url="https://api.example.com",
+        inner_api_key="inner-secret",
     )
     token_codec = settings.create_agent_stub_token_codec()
     assert token_codec is not None
@@ -409,7 +411,7 @@ def test_create_app_starts_and_stops_agent_stub_grpc_server_for_grpc_url(monkeyp
 
     settings = ServerSettings(
         redis_url="redis://example.invalid/0",
-        agent_stub_url="grpc://agent.example.com:9091",
+        agent_stub_api_base_url="grpc://agent.example.com:9091",
         agent_stub_grpc_bind_address="0.0.0.0:9191",
         server_secret_key=_base64url_secret(b"1" * 32),
     )
@@ -485,8 +487,8 @@ def test_create_dify_api_inner_http_client_uses_generic_outbound_httpx_construct
 def test_server_settings_use_generic_outbound_http_args_for_shared_clients() -> None:
     model_fields = ServerSettings.model_fields
 
-    assert "dify_api_inner_url" in model_fields
-    assert "dify_api_inner_api_key" in model_fields
+    assert "inner_api_url" in model_fields
+    assert "inner_api_key" in model_fields
     assert "outbound_http_connect_timeout" in model_fields
     assert "outbound_http_read_timeout" in model_fields
     assert "outbound_http_write_timeout" in model_fields

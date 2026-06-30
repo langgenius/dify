@@ -1,4 +1,3 @@
-from sqlalchemy.orm import Session
 
 """Service wrapper for the inner knowledge retrieval API.
 
@@ -15,6 +14,7 @@ of a separate validation error.
 """
 
 from sqlalchemy import select
+from sqlalchemy.orm import scoped_session
 
 from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
@@ -39,7 +39,11 @@ from services.errors.knowledge_retrieval import (
 class InnerKnowledgeRetrievalService:
     """Validate inner caller scope and delegate to workflow dataset retrieval."""
 
-    def retrieve(self, request: InnerKnowledgeRetrieveRequest, *, session: Session) -> InnerKnowledgeRetrieveResponse:
+    def retrieve(
+        self,
+        request: InnerKnowledgeRetrieveRequest,
+        session: scoped_session,
+    ) -> InnerKnowledgeRetrieveResponse:
         """Run tenant-scoped retrieval for a trusted internal caller.
 
         This method only rejects caller app existence/tenant mismatches and
@@ -67,7 +71,7 @@ class InnerKnowledgeRetrievalService:
             usage=InnerKnowledgeRetrieveUsage.model_validate(jsonable_encoder(rag.llm_usage)),
         )
 
-    def _validate_caller_app(self, *, tenant_id: str, app_id: str, session: Session) -> None:
+    def _validate_caller_app(self, *, tenant_id: str, app_id: str, session: scoped_session) -> None:
         app = session.scalar(select(App).where(App.id == app_id).limit(1))
         if app is None:
             raise InnerKnowledgeRetrieveAppNotFoundError(f"App '{app_id}' not found")
@@ -76,7 +80,7 @@ class InnerKnowledgeRetrievalService:
                 f"App '{app_id}' does not belong to tenant '{tenant_id}'"
             )
 
-    def _validate_datasets(self, *, tenant_id: str, dataset_ids: list[str], session: Session) -> None:
+    def _validate_datasets(self, *, tenant_id: str, dataset_ids: list[str], session: scoped_session) -> None:
         datasets = session.scalars(select(Dataset).where(Dataset.id.in_(dataset_ids))).all()
 
         found_ids = {dataset.id for dataset in datasets}

@@ -13,7 +13,7 @@ from controllers.common.controller_schemas import MessageFeedbackPayload as _Mes
 from controllers.common.fields import SimpleResultResponse, TextFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
-from controllers.console.agent.app_helpers import resolve_agent_app_model
+from controllers.console.agent.app_helpers import resolve_agent_runtime_app_model
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -53,6 +53,7 @@ from libs.login import login_required
 from models.account import Account
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
+from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError, SuggestedQuestionsAfterAnswerDisabledError
 from services.message_service import MessageService, attach_message_extra_contents
@@ -166,12 +167,16 @@ register_schema_models(
     ChatMessagesQuery,
     MessageFeedbackPayload,
     FeedbackExportQuery,
+)
+register_response_schema_models(
+    console_ns,
     AnnotationCountResponse,
     SuggestedQuestionsResponse,
     MessageDetailResponse,
     MessageInfiniteScrollPaginationResponse,
+    SimpleResultResponse,
+    TextFileResponse,
 )
-register_response_schema_models(console_ns, SimpleResultResponse, TextFileResponse)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
@@ -186,10 +191,11 @@ class ChatMessageListApi(Resource):
     @account_initialization_required
     @setup_required
     @edit_permission_required
+    @with_current_user
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT])
-    def get(self, app_model: App):
-        return _list_chat_messages(app_model=app_model)
+    def get(self, current_user: Account, app_model: App):
+        return _list_chat_messages(app_model=app_model, current_user=current_user)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/chat-messages")
@@ -205,10 +211,11 @@ class AgentChatMessageListApi(Resource):
     @setup_required
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.APP, RBACPermission.APP_VIEW_LAYOUT)
+    @with_current_user
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
-        return _list_chat_messages(app_model=app_model)
+    def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        return _list_chat_messages(app_model=app_model, current_user=current_user)
 
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
@@ -243,7 +250,7 @@ class AgentMessageFeedbackApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _update_message_feedback(current_user=current_user, app_model=app_model)
 
 
@@ -308,7 +315,7 @@ class AgentMessageSuggestedQuestionApi(Resource):
     @with_current_user
     @with_current_tenant_id
     def get(self, current_tenant_id: str, current_user: Account, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _get_message_suggested_questions(current_user=current_user, app_model=app_model, message_id=message_id)
 
 
@@ -338,8 +345,8 @@ class MessageFeedbackExportApi(Resource):
 
         try:
             export_data = FeedbackService.export_feedbacks(
-                db.session(),
-                app_id=app_model.id,
+                app_model.id,
+                session=db.session(),
                 from_source=args.from_source,
                 rating=args.rating,
                 has_comment=args.has_comment,
@@ -386,18 +393,28 @@ class AgentMessageApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str, agent_id: UUID, message_id: UUID):
-        app_model = resolve_agent_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
+        app_model = resolve_agent_runtime_app_model(tenant_id=current_tenant_id, agent_id=agent_id)
         return _get_message_detail(app_model=app_model, message_id=message_id)
 
 
-def _list_chat_messages(*, app_model: App):
+def _list_chat_messages(*, app_model: App, current_user: Account | None = None):
     args = ChatMessagesQuery.model_validate(request.args.to_dict())
 
-    conversation = db.session.scalar(
-        select(Conversation)
-        .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
-        .limit(1)
-    )
+    if AppMode.value_of(app_model.mode) == AppMode.AGENT and current_user is not None:
+        try:
+            conversation = ConversationService.get_conversation(
+                app_model=app_model,
+                conversation_id=args.conversation_id,
+                user=current_user,
+            )
+        except ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+    else:
+        conversation = db.session.scalar(
+            select(Conversation)
+            .where(Conversation.id == args.conversation_id, Conversation.app_id == app_model.id)
+            .limit(1)
+        )
 
     if not conversation:
         raise NotFound("Conversation Not Exists.")

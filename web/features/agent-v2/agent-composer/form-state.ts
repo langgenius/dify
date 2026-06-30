@@ -6,6 +6,7 @@ import type {
   MetadataFilteringConditions,
   MetadataFilteringModeEnum,
   MultipleRetrievalConfig,
+  SingleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
@@ -24,14 +25,10 @@ export type EnvVariable = {
 
 export type AgentSkill = {
   description?: string
-  files?: string[]
-  fileId?: string
-  fullArchiveFileId?: string
-  fullArchiveKey?: string
+  archiveKey?: string
   id: string
   name: string
   path?: string
-  skillMdFileId?: string
   skillMdKey?: string
 }
 
@@ -39,6 +36,7 @@ export type AgentFileNode = {
   id: string
   name: string
   icon: FileTreeIconType
+  fileId?: string
   driveKey?: string
   children?: AgentFileNode[]
 }
@@ -46,6 +44,7 @@ export type AgentFileNode = {
 export type AgentKnowledgeRetrievalItem = {
   id: string
   name?: string
+  description?: string
   nameKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
   queryMode?: 'agent' | 'custom'
   customQuery?: string
@@ -53,6 +52,7 @@ export type AgentKnowledgeRetrievalItem = {
   selectedDatasets?: DataSet[]
   retrievalMode?: RETRIEVE_TYPE
   multipleRetrievalConfig?: MultipleRetrievalConfig
+  singleRetrievalConfig?: SingleRetrievalConfig
   metadataFilterMode?: MetadataFilteringModeEnum
   metadataFilteringConditions?: MetadataFilteringConditions
   metadataModelConfig?: ModelConfig

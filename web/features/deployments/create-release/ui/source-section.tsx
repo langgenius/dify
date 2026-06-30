@@ -8,9 +8,11 @@ import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
 import { isDeploymentDslImportEnabled } from '../../shared/domain/feature-flags'
 import {
   createReleaseDslFileFieldAtom,
-  createReleaseDslStateAtom,
-  createReleaseSourceAppFieldAtom,
-  createReleaseSourceModeFieldAtom,
+  createReleaseDslReadErrorAtom,
+  createReleaseHasUnsupportedDslModeAtom,
+  createReleaseSelectedSourceAppAtom,
+  createReleaseSourceModeAtom,
+  isReadingCreateReleaseDslAtom,
   selectCreateReleaseSourceModeAtom,
   updateCreateReleaseDslFileAtom,
   updateCreateReleaseSourceAppAtom,
@@ -23,7 +25,7 @@ function selectedReleaseSourceMode(value: readonly ReleaseSourceMode[] | undefin
 
 export function ReleaseSourceSection() {
   const { t } = useTranslation('deployments')
-  const sourceModeField = useAtomValue(createReleaseSourceModeFieldAtom)
+  const releaseSourceMode = useAtomValue(createReleaseSourceModeAtom)
   const selectReleaseSourceMode = useSetAtom(selectCreateReleaseSourceModeAtom)
 
   return (
@@ -35,10 +37,10 @@ export function ReleaseSourceSection() {
         {isDeploymentDslImportEnabled && (
           <SegmentedControl<ReleaseSourceMode>
             aria-labelledby="release-source-mode-label"
-            value={[sourceModeField.value]}
+            value={[releaseSourceMode]}
             onValueChange={(value) => {
               const nextMode = selectedReleaseSourceMode(value)
-              if (!nextMode || nextMode === sourceModeField.value)
+              if (!nextMode || nextMode === releaseSourceMode)
                 return
 
               selectReleaseSourceMode(nextMode)
@@ -58,7 +60,7 @@ export function ReleaseSourceSection() {
       </div>
 
       <div className="min-h-12">
-        {sourceModeField.value === 'sourceApp' || !isDeploymentDslImportEnabled
+        {releaseSourceMode === 'sourceApp'
           ? <SourceAppField />
           : <DslFileField />}
       </div>
@@ -67,17 +69,15 @@ export function ReleaseSourceSection() {
 }
 
 function SourceAppField() {
-  const { t } = useTranslation('deployments')
-  const sourceAppField = useAtomValue(createReleaseSourceAppFieldAtom)
+  const sourceApp = useAtomValue(createReleaseSelectedSourceAppAtom)
   const updateSourceApp = useSetAtom(updateCreateReleaseSourceAppAtom)
   const sourceAppLocked = !isDeploymentDslImportEnabled
 
   return (
     <div className="flex min-h-12 items-center">
       <SourceAppPicker
-        value={sourceAppField.value}
+        value={sourceApp}
         onChange={updateSourceApp}
-        ariaLabel={t('versions.sourceAppOption')}
         disabled={sourceAppLocked}
       />
     </div>
@@ -87,7 +87,8 @@ function SourceAppField() {
 function DslFileField() {
   const { t } = useTranslation('deployments')
   const dslFileField = useAtomValue(createReleaseDslFileFieldAtom)
-  const dslState = useAtomValue(createReleaseDslStateAtom)
+  const isReadingDsl = useAtomValue(isReadingCreateReleaseDslAtom)
+  const dslReadError = useAtomValue(createReleaseDslReadErrorAtom)
   const updateDslFile = useSetAtom(updateCreateReleaseDslFileAtom)
 
   return (
@@ -99,12 +100,12 @@ function DslFileField() {
         }}
         className="mt-0"
       />
-      {dslState.isReadingDsl && (
-        <div className="system-xs-regular text-text-tertiary">
+      {isReadingDsl && (
+        <div role="status" className="system-xs-regular text-text-tertiary">
           {t('versions.dslReading')}
         </div>
       )}
-      {dslState.dslReadError && (
+      {dslReadError && (
         <div role="alert" className="system-xs-regular text-util-colors-red-red-600">
           {t('versions.dslReadFailed')}
         </div>
@@ -116,11 +117,7 @@ function DslFileField() {
 
 function DslUnsupportedModeError() {
   const { t } = useTranslation('deployments')
-  const dslState = useAtomValue(createReleaseDslStateAtom)
-  const hasUnsupportedDslMode = dslState.hasDslContent
-    && !dslState.isReadingDsl
-    && !dslState.dslReadError
-    && !dslState.isWorkflowDslContent
+  const hasUnsupportedDslMode = useAtomValue(createReleaseHasUnsupportedDslModeAtom)
 
   if (!hasUnsupportedDslMode)
     return null

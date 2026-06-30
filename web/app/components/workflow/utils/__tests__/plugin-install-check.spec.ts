@@ -4,7 +4,6 @@ import { CollectionType } from '@/app/components/tools/types'
 import { BlockEnum } from '../../types'
 import {
   isNodePluginMissing,
-  isPluginDependentNode,
   matchDataSource,
   matchToolInCollection,
   matchTriggerProvider,
@@ -27,18 +26,6 @@ const createTriggerProvider = (overrides: Partial<TriggerWithProvider> = {}): Tr
 } as TriggerWithProvider)
 
 describe('plugin install check', () => {
-  describe('isPluginDependentNode', () => {
-    it('should return true for plugin dependent node types', () => {
-      expect(isPluginDependentNode(BlockEnum.Tool)).toBe(true)
-      expect(isPluginDependentNode(BlockEnum.DataSource)).toBe(true)
-      expect(isPluginDependentNode(BlockEnum.TriggerPlugin)).toBe(true)
-    })
-
-    it('should return false for non-plugin node types', () => {
-      expect(isPluginDependentNode(BlockEnum.LLM)).toBe(false)
-    })
-  })
-
   describe('matchToolInCollection', () => {
     const collection = [createTool()]
 

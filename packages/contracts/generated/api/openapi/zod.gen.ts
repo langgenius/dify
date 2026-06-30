@@ -105,19 +105,6 @@ export const zAppMode = z.enum([
 ])
 
 /**
- * AppListQuery
- *
- * mode is a closed enum.
- */
-export const zAppListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zAppMode.nullish(),
-  name: z.string().max(200).nullish(),
-  page: z.int().gte(1).optional().default(1),
-  workspace_id: z.string(),
-})
-
-/**
  * AppListRow
  */
 export const zAppListRow = z.object({
@@ -453,18 +440,6 @@ export const zPackage = z.object({
 })
 
 /**
- * PermittedExternalAppsListQuery
- *
- * Strict (extra='forbid').
- */
-export const zPermittedExternalAppsListQuery = z.object({
-  limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: zAppMode.nullish(),
-  name: z.string().max(200).nullish(),
-  page: z.int().gte(1).optional().default(1),
-})
-
-/**
  * PermittedExternalAppsListResponse
  */
 export const zPermittedExternalAppsListResponse = z.object({
@@ -524,6 +499,61 @@ export const zSessionListResponse = z.object({
   limit: z.int(),
   page: z.int(),
   total: z.int(),
+})
+
+/**
+ * SimpleResultResponse
+ */
+export const zSimpleResultResponse = z.object({
+  result: z.string(),
+})
+
+/**
+ * SupportedAppType
+ *
+ * App types the ``app`` usage face (``get app``) lists and filters.
+ *
+ * A curated subset of :class:`AppMode`: the real, user-facing app categories.
+ * Excludes runtime-only mode tags that are not standalone apps
+ * (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the
+ * roster-owned ``agent`` type (surfaced through the roster, not this list).
+ *
+ * Members reference ``AppMode.*.value`` so the subset relationship is
+ * type-checked: dropping a member from ``AppMode`` breaks this at import.
+ * This is the single source for the listable set — params, filters, and the
+ * generated CLI whitelist all derive from it.
+ */
+export const zSupportedAppType = z.enum([
+  'advanced-chat',
+  'agent-chat',
+  'chat',
+  'completion',
+  'workflow',
+])
+
+/**
+ * AppListQuery
+ *
+ * mode is a closed enum of listable app types.
+ */
+export const zAppListQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  mode: zSupportedAppType.nullish(),
+  name: z.string().max(200).nullish(),
+  page: z.int().gte(1).optional().default(1),
+  workspace_id: z.string(),
+})
+
+/**
+ * PermittedExternalAppsListQuery
+ *
+ * Strict (extra='forbid').
+ */
+export const zPermittedExternalAppsListQuery = z.object({
+  limit: z.int().gte(1).lte(200).optional().default(20),
+  mode: zSupportedAppType.nullish(),
+  name: z.string().max(200).nullish(),
+  page: z.int().gte(1).optional().default(1),
 })
 
 /**
@@ -698,18 +728,7 @@ export const zDeleteAccountSessionsBySessionIdResponse = zRevokeResponse
 
 export const zGetAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z
-    .enum([
-      'advanced-chat',
-      'agent',
-      'agent-chat',
-      'channel',
-      'chat',
-      'completion',
-      'rag-pipeline',
-      'workflow',
-    ])
-    .optional(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
   workspace_id: z.string(),
@@ -862,18 +881,7 @@ export const zPostOauthDeviceTokenResponse = zDeviceTokenResponse
 
 export const zGetPermittedExternalAppsQuery = z.object({
   limit: z.int().gte(1).lte(200).optional().default(20),
-  mode: z
-    .enum([
-      'advanced-chat',
-      'agent',
-      'agent-chat',
-      'channel',
-      'chat',
-      'completion',
-      'rag-pipeline',
-      'workflow',
-    ])
-    .optional(),
+  mode: z.enum(['advanced-chat', 'agent-chat', 'chat', 'completion', 'workflow']).optional(),
   name: z.string().max(200).optional(),
   page: z.int().gte(1).optional().default(1),
 })

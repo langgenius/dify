@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 
-_DIAGNOSTIC_PREFIXES = ("ERROR ", "WARNING ")
+_DIAGNOSTIC_PREFIXES = ("ERROR ", "WARN ", "WARNING ")
 _LOCATION_PREFIX = "-->"
 
 
@@ -13,7 +14,7 @@ def extract_diagnostics(raw_output: str) -> str:
 
     The full pyrefly output includes code excerpts and carets, which create noisy
     diffs. This helper keeps only:
-    - diagnostic headline lines (``ERROR ...`` / ``WARNING ...``)
+    - diagnostic headline lines (``ERROR ...`` / ``WARN ...`` / ``WARNING ...``)
     - the following location line (``--> path:line:column``), when present
     """
 
@@ -36,11 +37,28 @@ def extract_diagnostics(raw_output: str) -> str:
     return "\n".join(diagnostics) + "\n"
 
 
+def render_diagnostics(raw_output: str, exit_code: int) -> str:
+    """Render concise diagnostics and fall back to raw output on unmatched failures."""
+
+    diagnostics = extract_diagnostics(raw_output)
+    if diagnostics:
+        return diagnostics
+
+    if exit_code != 0:
+        return raw_output
+
+    return ""
+
+
 def main() -> int:
     """Read pyrefly output from stdin and print normalized diagnostics."""
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--status", type=int, default=0)
+    args = parser.parse_args()
+
     raw_output = sys.stdin.read()
-    sys.stdout.write(extract_diagnostics(raw_output))
+    sys.stdout.write(render_diagnostics(raw_output, exit_code=args.status))
     return 0
 
 

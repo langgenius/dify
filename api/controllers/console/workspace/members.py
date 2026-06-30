@@ -131,7 +131,7 @@ def _normalize_invitee_emails(emails: list[str]) -> list[str]:
 def _count_new_member_invites(tenant_id: str, emails: list[str]) -> int:
     new_member_count = 0
     for email in emails:
-        account = AccountService.get_account_by_email_with_case_fallback(email)
+        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
         if not account:
             new_member_count += 1
             continue
@@ -186,7 +186,7 @@ class MemberListApi(Resource):
             current_user, _ = current_account_with_tenant()
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        members = TenantService.get_tenant_members(current_user.current_tenant)
+        members = TenantService.get_tenant_members(current_user.current_tenant, session=db.session)
         if dify_config.RBAC_ENABLED:
             member_ids = [member.id for member in members]
             member_roles = enterprise_rbac_service.RBACService.MemberRoles.batch_get(
@@ -273,6 +273,7 @@ class MemberInviteEmailApi(Resource):
                         language=interface_language,
                         role=invitee_role,
                         inviter=inviter,
+                        session=db.session,
                     )
                     encoded_invitee_email = parse.quote(invitee_email)
                     invitation_results.append(
@@ -317,7 +318,9 @@ class MemberCancelInviteApi(Resource):
             abort(404)
         else:
             try:
-                TenantService.remove_member_from_tenant(current_user.current_tenant, member, current_user)
+                TenantService.remove_member_from_tenant(
+                    current_user.current_tenant, member, current_user, session=db.session
+                )
             except services.errors.account.CannotOperateSelfError as e:
                 return {"code": "cannot-operate-self", "message": str(e)}, 400
             except services.errors.account.NoPermissionError as e:
@@ -360,7 +363,9 @@ class MemberUpdateRoleApi(Resource):
 
         try:
             assert member is not None, "Member not found"
-            TenantService.update_member_role(current_user.current_tenant, member, new_role, current_user)
+            TenantService.update_member_role(
+                current_user.current_tenant, member, new_role, current_user, session=db.session
+            )
         except services.errors.account.CannotOperateSelfError as e:
             return {"code": "cannot-operate-self", "message": str(e)}, 400
         except services.errors.account.NoPermissionError as e:
@@ -387,7 +392,7 @@ class DatasetOperatorMemberListApi(Resource):
     def get(self, current_user: Account):
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        members = TenantService.get_dataset_operator_members(current_user.current_tenant)
+        members = TenantService.get_dataset_operator_members(current_user.current_tenant, session=db.session)
         member_models = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
         response = AccountWithRoleList(accounts=member_models)
         return response.model_dump(mode="json"), 200
@@ -413,7 +418,7 @@ class SendOwnerTransferEmailApi(Resource):
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_owner(current_user, current_user.current_tenant):
+        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session):
             raise NotOwnerError()
 
         if args.language is not None and args.language == "zh-Hans":
@@ -448,7 +453,7 @@ class OwnerTransferCheckApi(Resource):
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_owner(current_user, current_user.current_tenant):
+        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session):
             raise NotOwnerError()
 
         user_email = current_user.email
@@ -494,7 +499,7 @@ class OwnerTransfer(Resource):
         # check if the current user is the owner of the workspace
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_owner(current_user, current_user.current_tenant):
+        if not TenantService.is_owner(current_user, current_user.current_tenant, session=db.session):
             raise NotOwnerError()
 
         if current_user.id == str(member_id):
@@ -516,12 +521,14 @@ class OwnerTransfer(Resource):
 
         if not current_user.current_tenant:
             raise ValueError("No current tenant")
-        if not TenantService.is_member(member, current_user.current_tenant):
+        if not TenantService.is_member(member, current_user.current_tenant, session=db.session):
             raise MemberNotInTenantError()
 
         try:
             assert member is not None, "Member not found"
-            TenantService.update_member_role(current_user.current_tenant, member, "owner", current_user)
+            TenantService.update_member_role(
+                current_user.current_tenant, member, "owner", current_user, session=db.session
+            )
 
             AccountService.send_new_owner_transfer_notify_email(
                 account=member,

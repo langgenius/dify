@@ -46,29 +46,6 @@ const invalidateSnippetWorkflowQueries = async (
     }),
   ])
 }
-
-export const useSnippetDraftWorkflow = (
-  snippetId: string,
-  onSuccess?: (draftWorkflow: SnippetWorkflow) => void,
-) => {
-  const queryOptions = consoleQuery.snippets.draftWorkflow.queryOptions({
-    input: {
-      params: { snippetId },
-    },
-    enabled: !!snippetId,
-  })
-
-  return useQuery({
-    ...queryOptions,
-    queryFn: async () => {
-      const draftWorkflow = await fetchSnippetDraftWorkflow(snippetId)
-      if (draftWorkflow)
-        onSuccess?.(draftWorkflow)
-      return draftWorkflow
-    },
-  })
-}
-
 export const useSnippetPublishedWorkflow = (
   snippetId: string,
   onSuccess?: (publishedWorkflow: SnippetWorkflow) => void,

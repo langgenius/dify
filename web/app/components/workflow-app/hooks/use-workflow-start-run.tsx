@@ -1,3 +1,7 @@
+import type {
+  useNodesSyncDraft,
+  useWorkflowRun,
+} from '.'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -10,9 +14,7 @@ import {
 } from '@/app/components/workflow/types'
 import {
   useIsChatMode,
-  useNodesSyncDraft,
   useNodesSyncDraftByCanEdit,
-  useWorkflowRun,
   useWorkflowRunByCanEdit,
 } from '.'
 
@@ -313,13 +315,6 @@ const useWorkflowStartRunBase = (
 export const useWorkflowStartRunByCanEdit = (canEdit: boolean) => {
   const { handleRun } = useWorkflowRunByCanEdit(canEdit)
   const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
-
-  return useWorkflowStartRunBase(handleRun, doSyncWorkflowDraft)
-}
-
-export const useWorkflowStartRun = () => {
-  const { handleRun } = useWorkflowRun()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
   return useWorkflowStartRunBase(handleRun, doSyncWorkflowDraft)
 }

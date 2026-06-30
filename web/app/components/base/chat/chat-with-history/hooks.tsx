@@ -67,6 +67,8 @@ function getFormattedChatList(messages: any[]) {
       feedback: item.feedback,
       isAnswer: true,
       citation: item.retriever_resources,
+      reasoningContent: item.metadata?.reasoning,
+      reasoningFinished: true,
       message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id, upload_file_id: item.upload_file_id }))),
       parentMessageId: `question-${item.id}`,
       humanInputFormDataList,
@@ -96,6 +98,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         app_id: id,
         site: {
           title: app.name,
+          description: app.description,
           icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,

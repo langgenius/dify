@@ -106,7 +106,6 @@ describe('NodeSelector', () => {
     await user.click(trigger)
 
     const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock')
-    expect(screen.queryByText('workflow.tabs.snippets')).not.toBeInTheDocument()
     expect(screen.getByText('LLM')).toBeInTheDocument()
     expect(screen.getByText('End')).toBeInTheDocument()
 
@@ -287,6 +286,39 @@ describe('NodeSelector', () => {
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })
 
+  it('isolates popup keyboard events when opened from another keyboard-managed overlay', async () => {
+    const user = userEvent.setup()
+    const handleParentKeyDown = vi.fn()
+
+    renderNodeSelector(
+      <NodeSelector
+        open
+        isolateKeyboardEvents
+        onSelect={vi.fn()}
+        blocks={[
+          createBlock(BlockEnum.LLM, 'LLM'),
+          createBlock(BlockEnum.End, 'End'),
+        ]}
+        availableBlocksTypes={[BlockEnum.LLM, BlockEnum.End]}
+      />,
+    )
+
+    const searchInput = screen.getByPlaceholderText('workflow.tabs.searchBlock') as HTMLInputElement
+    document.body.addEventListener('keydown', handleParentKeyDown)
+
+    try {
+      await user.type(searchInput, 'LLM')
+    }
+    finally {
+      document.body.removeEventListener('keydown', handleParentKeyDown)
+    }
+
+    expect(searchInput.value).toBe('LLM')
+    expect(handleParentKeyDown).not.toHaveBeenCalled()
+    expect(screen.getByText('LLM')).toBeInTheDocument()
+    expect(screen.queryByText('End')).not.toBeInTheDocument()
+  })
+
   it('disables the start tab with a setup tooltip when an unconfigured start node is on the canvas', async () => {
     const user = userEvent.setup()
 
@@ -318,7 +350,7 @@ describe('NodeSelector', () => {
     expect(await screen.findByText('workflow.tabs.unconfiguredStartDisabledTip')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'workflow.tabs.startDisabledTipLearnMore' })).toHaveAttribute(
       'href',
-      'https://docs.dify.ai/en/use-dify/nodes/trigger/overview',
+      'https://docs.dify.ai/en/self-host/use-dify/nodes/trigger/overview',
     )
     expect(screen.getByPlaceholderText('workflow.tabs.searchBlock')).toBeInTheDocument()
   })

@@ -325,10 +325,10 @@ class TenantApi(Resource):
             raise ValueError("No current tenant")
 
         if tenant.status == TenantStatus.ARCHIVE:
-            tenants = TenantService.get_join_tenants(current_user)
+            tenants = TenantService.get_join_tenants(current_user, session=db.session)
             # if there is any tenant, switch to the first one
             if len(tenants) > 0:
-                TenantService.switch_tenant(current_user, tenants[0].id)
+                TenantService.switch_tenant(current_user, tenants[0].id, session=db.session)
                 tenant = tenants[0]
             # else, raise Unauthorized
             else:
@@ -351,7 +351,7 @@ class SwitchWorkspaceApi(Resource):
 
         # check if tenant_id is valid, 403 if not
         try:
-            TenantService.switch_tenant(current_user, args.tenant_id)
+            TenantService.switch_tenant(current_user, args.tenant_id, session=db.session)
         except Exception:
             raise AccountNotLinkTenantError("Account not link tenant")
 
