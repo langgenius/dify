@@ -65,7 +65,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
-from services.dataset_ref_service import DatasetRefService, SegmentRef
+from services.dataset_ref_service import DatasetRef, SegmentRef
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.enterprise import rbac_service as enterprise_rbac_service
@@ -1923,11 +1923,10 @@ class DocumentService:
         db.session.commit()
 
     @staticmethod
-    def delete_documents(dataset: Dataset, document_ids: list[str]):
+    def delete_documents(dataset_ref: DatasetRef, document_ids: list[str], doc_form: str | None):
         # Check if document_ids is not empty to avoid WHERE false condition
         if not document_ids or len(document_ids) == 0:
             return
-        dataset_ref = DatasetRefService.create_dataset_ref(dataset)
         documents = db.session.scalars(
             select(Document).where(
                 Document.id.in_(document_ids),
@@ -1950,8 +1949,8 @@ class DocumentService:
 
         # Dispatch cleanup task after commit to avoid lock contention
         # Task cleans up segments, files, and vector indexes
-        if deleted_document_ids and dataset.doc_form is not None:
-            batch_clean_document_task.delay(deleted_document_ids, dataset.id, dataset.doc_form, file_ids)
+        if deleted_document_ids and doc_form is not None:
+            batch_clean_document_task.delay(deleted_document_ids, dataset_ref.dataset_id, doc_form, file_ids)
 
     @staticmethod
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:

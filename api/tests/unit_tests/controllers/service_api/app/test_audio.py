@@ -180,7 +180,6 @@ class TestAudioServiceMockedBehavior:
             text="Hello world",
             voice="nova",
             end_user="user_123",
-            message_id="msg_123",
         )
 
         assert result["audio"] == "base64_audio_data"

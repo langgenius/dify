@@ -49,6 +49,7 @@ from libs.login import login_required
 from models import Account, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from models.enums import IndexingStatus, SegmentStatus
+from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
@@ -472,7 +473,8 @@ class DatasetDocumentListApi(Resource):
 
         try:
             document_ids = request.args.getlist("document_id")
-            DocumentService.delete_documents(dataset, document_ids)
+            dataset_ref = DatasetRefService.create_dataset_ref(dataset)
+            DocumentService.delete_documents(dataset_ref, document_ids, dataset.doc_form)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 

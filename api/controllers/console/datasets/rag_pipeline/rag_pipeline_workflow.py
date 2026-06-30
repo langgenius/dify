@@ -745,8 +745,6 @@ class RagPipelineByIdApi(Resource):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = rag_pipeline_service.update_workflow(
                 session=session,
-                workflow_id=workflow_id,
-                tenant_id=pipeline.tenant_id,
                 account_id=current_user.id,
                 data=update_data,
                 workflow_ref=workflow_ref,
@@ -778,8 +776,6 @@ class RagPipelineByIdApi(Resource):
             try:
                 workflow_service.delete_workflow(
                     session=session,
-                    workflow_id=workflow_id,
-                    tenant_id=pipeline.tenant_id,
                     workflow_ref=workflow_ref,
                 )
             except WorkflowInUseError as e:

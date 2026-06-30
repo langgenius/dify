@@ -12,7 +12,7 @@ from models.dataset import Dataset, Pipeline, PipelineCustomizedTemplate, Pipeli
 from models.workflow import Workflow
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-from services.workflow_ref_service import WorkflowRefService
+from services.workflow_ref_service import WorkflowRef
 
 
 @pytest.fixture
@@ -336,15 +336,15 @@ def test_update_workflow_updates_allowed_fields(
     workflow = SimpleNamespace(
         id="wf-1", marked_name="", marked_comment="", updated_by=None, updated_at=None, disallowed="original"
     )
+    workflow_ref = WorkflowRef(tenant_id="t1", owner_id="pipeline-1", workflow_id="wf-1")
     session = mocker.Mock()
     session.scalar.return_value = workflow
 
     result = rag_pipeline_service.update_workflow(
         session=session,
-        workflow_id="wf-1",
-        tenant_id="t1",
         account_id="u1",
         data={"marked_name": "v1", "marked_comment": "release", "disallowed": "hacked"},
+        workflow_ref=workflow_ref,
     )
 
     assert result.marked_name == "v1"
@@ -361,10 +361,9 @@ def test_update_workflow_returns_none_when_not_found(
 
     result = rag_pipeline_service.update_workflow(
         session=session,
-        workflow_id="wf-missing",
-        tenant_id="t1",
         account_id="u1",
         data={"marked_name": "v1"},
+        workflow_ref=WorkflowRef(tenant_id="t1", owner_id="pipeline-1", workflow_id="wf-missing"),
     )
 
     assert result is None
@@ -376,15 +375,12 @@ def test_update_workflow_with_ref_scopes_lookup_to_pipeline(
     workflow = SimpleNamespace(
         id="wf-1", marked_name="", marked_comment="", updated_by=None, updated_at=None, disallowed="original"
     )
-    pipeline = SimpleNamespace(id="pipeline-1", tenant_id="t1")
-    workflow_ref = WorkflowRefService.create_pipeline_workflow_ref(pipeline, "wf-1")
+    workflow_ref = WorkflowRef(tenant_id="t1", owner_id="pipeline-1", workflow_id="wf-1")
     session = mocker.Mock()
     session.scalar.return_value = workflow
 
     result = rag_pipeline_service.update_workflow(
         session=session,
-        workflow_id="wf-1",
-        tenant_id="t1",
         account_id="u1",
         data={"marked_name": "v1"},
         workflow_ref=workflow_ref,

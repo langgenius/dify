@@ -1597,28 +1597,24 @@ class WorkflowService:
         self,
         *,
         session: Session,
-        workflow_id: str,
-        tenant_id: str,
         account_id: str,
         data: dict[str, Any],
-        workflow_ref: WorkflowRef | None = None,
+        workflow_ref: WorkflowRef,
     ) -> Workflow | None:
         """
         Update workflow attributes
 
         :param session: SQLAlchemy database session
-        :param workflow_id: Workflow ID
-        :param tenant_id: Tenant ID
         :param account_id: Account ID (for permission check)
         :param data: Dictionary containing fields to update
-        :param workflow_ref: Optional trusted owner-bound workflow reference
+        :param workflow_ref: Owner-bound workflow reference
         :return: Updated workflow or None if not found
         """
-        lookup_workflow_id = workflow_ref.workflow_id if workflow_ref else workflow_id
-        lookup_tenant_id = workflow_ref.tenant_id if workflow_ref else tenant_id
-        stmt = select(Workflow).where(Workflow.id == lookup_workflow_id, Workflow.tenant_id == lookup_tenant_id)
-        if workflow_ref is not None:
-            stmt = stmt.where(Workflow.app_id == workflow_ref.owner_id)
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_ref.workflow_id,
+            Workflow.tenant_id == workflow_ref.tenant_id,
+            Workflow.app_id == workflow_ref.owner_id,
+        )
         workflow = session.scalar(stmt)
 
         if not workflow:
@@ -1635,37 +1631,33 @@ class WorkflowService:
 
         return workflow
 
-    def delete_workflow(
-        self, *, session: Session, workflow_id: str, tenant_id: str, workflow_ref: WorkflowRef | None = None
-    ) -> bool:
+    def delete_workflow(self, *, session: Session, workflow_ref: WorkflowRef) -> bool:
         """
         Delete a workflow
 
         :param session: SQLAlchemy database session
-        :param workflow_id: Workflow ID
-        :param tenant_id: Tenant ID
-        :param workflow_ref: Optional trusted owner-bound workflow reference
+        :param workflow_ref: Owner-bound workflow reference
         :return: True if successful
         :raises: ValueError if workflow not found
         :raises: WorkflowInUseError if workflow is in use
         :raises: DraftWorkflowDeletionError if workflow is a draft version
         """
-        lookup_workflow_id = workflow_ref.workflow_id if workflow_ref else workflow_id
-        lookup_tenant_id = workflow_ref.tenant_id if workflow_ref else tenant_id
-        stmt = select(Workflow).where(Workflow.id == lookup_workflow_id, Workflow.tenant_id == lookup_tenant_id)
-        if workflow_ref is not None:
-            stmt = stmt.where(Workflow.app_id == workflow_ref.owner_id)
+        stmt = select(Workflow).where(
+            Workflow.id == workflow_ref.workflow_id,
+            Workflow.tenant_id == workflow_ref.tenant_id,
+            Workflow.app_id == workflow_ref.owner_id,
+        )
         workflow = session.scalar(stmt)
 
         if not workflow:
-            raise ValueError(f"Workflow with ID {lookup_workflow_id} not found")
+            raise ValueError(f"Workflow with ID {workflow_ref.workflow_id} not found")
 
         # Check if workflow is a draft version
         if workflow.version == Workflow.VERSION_DRAFT:
             raise DraftWorkflowDeletionError("Cannot delete draft workflow versions")
 
         # Check if this workflow is currently referenced by an app
-        app_stmt = select(App).where(App.workflow_id == lookup_workflow_id)
+        app_stmt = select(App).where(App.workflow_id == workflow_ref.workflow_id)
         app = session.scalar(app_stmt)
         if app:
             # Cannot delete a workflow that's currently in use by an app

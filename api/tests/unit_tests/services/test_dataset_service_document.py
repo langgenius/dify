@@ -1,5 +1,7 @@
 """Unit tests for DocumentService behaviors in dataset_service."""
 
+from services.dataset_ref_service import DatasetRef
+
 from .dataset_service_test_helpers import (
     Account,
     BuiltInField,
@@ -115,7 +117,8 @@ class TestDocumentServiceMutations:
         ):
             mock_db.session.scalars.return_value.all.return_value = [document]
 
-            DocumentService.delete_documents(dataset, ["doc-1", "other-doc"])
+            dataset_ref = DatasetRef(tenant_id=dataset.tenant_id, dataset_id=dataset.id)
+            DocumentService.delete_documents(dataset_ref, ["doc-1", "other-doc"], dataset.doc_form)
 
         stmt = mock_db.session.scalars.call_args.args[0]
         compiled = stmt.compile()

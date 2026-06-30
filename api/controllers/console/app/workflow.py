@@ -1413,8 +1413,6 @@ class WorkflowByIdApi(Resource):
         with sessionmaker(db.engine, expire_on_commit=False).begin() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
-                workflow_id=workflow_id,
-                tenant_id=app_model.tenant_id,
                 account_id=current_user.id,
                 data=update_data,
                 workflow_ref=workflow_ref,
@@ -1444,8 +1442,6 @@ class WorkflowByIdApi(Resource):
             try:
                 workflow_service.delete_workflow(
                     session=session,
-                    workflow_id=workflow_id,
-                    tenant_id=app_model.tenant_id,
                     workflow_ref=workflow_ref,
                 )
             except WorkflowInUseError as e:

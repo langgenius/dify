@@ -14,7 +14,7 @@ from core.model_manager import ModelManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.enums import MessageStatus
 from models.model import App, AppMode, Message
-from services.app_ref_service import AppRefService, MessageRef
+from services.app_ref_service import MessageRef
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -93,9 +93,7 @@ class AudioService:
         text: str | None = None,
         voice: str | None = None,
         end_user: str | None = None,
-        message_id: str | None = None,
-        message_end_user_id: str | None = None,
-        message_account_id: str | None = None,
+        message_ref: MessageRef | None = None,
         is_draft: bool = False,
     ):
         def invoke_tts(text_content: str, app_model: App, voice: str | None = None, is_draft: bool = False):
@@ -142,18 +140,11 @@ class AudioService:
             except Exception as e:
                 raise e
 
-        if message_id:
+        if message_ref:
             try:
-                uuid.UUID(message_id)
+                uuid.UUID(message_ref.message_id)
             except ValueError:
                 return None
-            app_ref = AppRefService.create_app_ref(app_model)
-            message_ref = AppRefService.create_message_ref(
-                app_ref,
-                message_id,
-                end_user_id=message_end_user_id,
-                account_id=message_account_id,
-            )
             message = cls._get_message_by_ref(session, message_ref)
             if message is None:
                 return None
