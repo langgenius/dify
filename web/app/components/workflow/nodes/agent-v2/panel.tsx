@@ -31,6 +31,7 @@ import { getAgentV2DeclaredOutputs } from './output-variables'
 import { hasValidInlineAgentBinding } from './types'
 
 function FloatingOutputEditor({
+  agentTask,
   editOutputName,
   editOutputRequestKey,
   editOutputType,
@@ -39,13 +40,14 @@ function FloatingOutputEditor({
   onCancel,
   onChange,
 }: {
+  agentTask?: string
   editOutputName?: string
   editOutputRequestKey?: number
   editOutputType?: AgentOutputTypeOptionValue
   outputs: DeclaredOutputConfig[]
   position?: { left: number, top: number }
   onCancel: () => void
-  onChange: (outputs: DeclaredOutputConfig[]) => void
+  onChange: (outputs: DeclaredOutputConfig[], agentTask?: string) => void
 }) {
   if (!editOutputName || !position || typeof document === 'undefined')
     return null
@@ -76,9 +78,14 @@ function FloatingOutputEditor({
         }}
         onCancel={onCancel}
         onConfirm={(nextOutput) => {
+          const currentAgentTask = agentTask || ''
+          const nextAgentTask = nextOutput.name !== editOutputName && extractAgentOutputNames(currentAgentTask).has(editOutputName)
+            ? replaceAgentOutputName(currentAgentTask, editOutputName, nextOutput.name)
+            : undefined
+
           onChange(isExistingOutput
             ? outputs.map((item, index) => index === outputIndex ? nextOutput : item)
-            : [...outputs, nextOutput])
+            : [...outputs.filter(output => output.name !== editOutputName), nextOutput], nextAgentTask)
           onCancel()
         }}
       />
@@ -105,7 +112,8 @@ export function AgentV2Panel({
   const setOpenInlineAgentPanelNodeId = useStore(state => state.setOpenInlineAgentPanelNodeId)
   const appId = useStore(state => state.appId)
   const drawerPortalContainerRef = useRef<HTMLDivElement>(null)
-  const declaredOutputs = getAgentV2DeclaredOutputs(inputs)
+  const [localDeclaredOutputs, setLocalDeclaredOutputs] = useState<DeclaredOutputConfig[] | null>(null)
+  const declaredOutputs = localDeclaredOutputs ?? getAgentV2DeclaredOutputs(inputs)
   const rosterAgentId = inputs.agent_binding?.binding_type === 'roster_agent' ? inputs.agent_binding.agent_id : undefined
   const inlineAgentId = inputs.agent_binding?.binding_type === 'inline_agent' ? inputs.agent_binding.agent_id : undefined
   const isInlineAgentReady = hasValidInlineAgentBinding(inputs)
@@ -157,16 +165,29 @@ export function AgentV2Panel({
   const handleTaskChange = useCallback((value: string) => {
     const currentPromptOutputNames = extractAgentOutputNames(value)
     const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(name => !currentPromptOutputNames.has(name))
+    const addedPromptOutputNames = [...currentPromptOutputNames].filter(name => !promptOutputNamesRef.current.has(name))
     const newInputs = produce(inputsRef.current, (draft) => {
       draft.agent_task = value
       if (removedPromptOutputNames.length) {
-        const removedNameSet = new Set(removedPromptOutputNames)
-        draft.agent_declared_outputs = getAgentV2DeclaredOutputs(draft)
-          .filter(output => !removedNameSet.has(output.name))
+        const currentDeclaredOutputs = getAgentV2DeclaredOutputs(draft)
+        if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+          const oldName = removedPromptOutputNames[0]!
+          const nextName = addedPromptOutputNames[0]!
+          draft.agent_declared_outputs = currentDeclaredOutputs.map(output =>
+            output.name === oldName ? { ...output, name: nextName } : output,
+          )
+        }
+        else {
+          const removedNameSet = new Set(removedPromptOutputNames)
+          draft.agent_declared_outputs = currentDeclaredOutputs
+            .filter(output => !removedNameSet.has(output.name))
+        }
       }
     })
     inputsRef.current = newInputs
     promptOutputNamesRef.current = currentPromptOutputNames
+    if (removedPromptOutputNames.length)
+      setLocalDeclaredOutputs(newInputs.agent_declared_outputs ?? [])
     setInputs(newInputs)
   }, [setInputs])
 
@@ -382,6 +403,22 @@ export function AgentV2Panel({
   const handleDeclaredOutputsChange = useCallback((outputs: ReturnType<typeof getAgentV2DeclaredOutputs>, agentTask?: string) => {
     const previousOutputs = getAgentV2DeclaredOutputs(inputsRef.current)
     let nextAgentTask = agentTask
+    let nextOutputs = outputs
+    if (agentTask !== undefined) {
+      const nextPromptOutputNames = extractAgentOutputNames(agentTask)
+      const removedPromptOutputNames = [...promptOutputNamesRef.current].filter(name => !nextPromptOutputNames.has(name))
+      const addedPromptOutputNames = [...nextPromptOutputNames].filter(name => !promptOutputNamesRef.current.has(name))
+
+      if (removedPromptOutputNames.length === 1 && addedPromptOutputNames.length === 1) {
+        const oldName = removedPromptOutputNames[0]!
+        const nextName = addedPromptOutputNames[0]!
+        const oldOutputIndex = previousOutputs.findIndex(output => output.name === oldName)
+        const nextOutput = outputs.find(output => output.name === nextName)
+        if (oldOutputIndex >= 0 && nextOutput) {
+          nextOutputs = previousOutputs.map((output, index) => index === oldOutputIndex ? nextOutput : output)
+        }
+      }
+    }
     if (nextAgentTask === undefined && previousOutputs.length === outputs.length) {
       const renamedOutputs = previousOutputs
         .map((previousOutput, index) => ({
@@ -399,11 +436,12 @@ export function AgentV2Panel({
     }
 
     const newInputs = produce(inputsRef.current, (draft) => {
-      draft.agent_declared_outputs = outputs
+      draft.agent_declared_outputs = nextOutputs
       if (nextAgentTask !== undefined)
         draft.agent_task = nextAgentTask
     })
     inputsRef.current = newInputs
+    setLocalDeclaredOutputs(nextOutputs)
     if (nextAgentTask !== undefined)
       promptOutputNamesRef.current = extractAgentOutputNames(nextAgentTask)
     handleNodeDataUpdateWithSyncDraft(
@@ -438,6 +476,7 @@ export function AgentV2Panel({
   return (
     <div ref={drawerPortalContainerRef} className="relative pt-2">
       <FloatingOutputEditor
+        agentTask={inputs.agent_task}
         editOutputName={editingOutputFromTask?.name}
         editOutputRequestKey={editingOutputFromTask?.requestKey}
         editOutputType={editingOutputFromTask?.outputType}
