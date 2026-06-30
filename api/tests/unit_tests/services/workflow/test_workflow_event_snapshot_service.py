@@ -483,11 +483,11 @@ def test_build_snapshot_events_resolves_session_id_before_pause_form_lookups(
 
     assert resolved_session_ids == ["session-1"]
     human_input_event = next(event for event in events if event["event"] == "human_input_required")
-    assert human_input_event["data"]["form_id"] == "session-1"
+    assert human_input_event["data"]["form_id"] == "form-1"
     assert human_input_event["data"]["form_token"] == "token"
     assert human_input_event["data"]["inputs"][0]["output_variable_name"] == "field"
     pause_event = next(event for event in events if event["event"] == "workflow_paused")
-    assert pause_event["data"]["reasons"][0]["session_id"] == "session-1"
+    assert pause_event["data"]["reasons"][0]["form_id"] == "form-1"
     assert pause_event["data"]["reasons"][0]["form_token"] == "token"
 
 
@@ -901,11 +901,11 @@ def test_build_snapshot_events_preserves_public_form_token(monkeypatch: pytest.M
 
     human_input_event = next(event for event in events if event["event"] == StreamEvent.HUMAN_INPUT_REQUIRED)
     assert human_input_event["data"]["form_token"] == "wtok"
-    assert human_input_event["data"]["form_id"] == "session-1"
+    assert human_input_event["data"]["form_id"] == "form-1"
     assert human_input_event["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
     pause_data = next(event for event in events if event["event"] == StreamEvent.WORKFLOW_PAUSED)["data"]
     assert pause_data["reasons"][0]["form_token"] == "wtok"
-    assert pause_data["reasons"][0]["session_id"] == "session-1"
+    assert pause_data["reasons"][0]["form_id"] == "form-1"
     assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
 
 
@@ -1049,7 +1049,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(monkeypatch:
     assert human_input_event["data"]["inputs"][0]["option_source"]["value"] == ["approve", "reject"]
 
     pause_event = next(event for event in events if event["event"] == StreamEvent.WORKFLOW_PAUSED)
-    assert pause_event["data"]["reasons"][0]["session_id"] == "session-1"
+    assert pause_event["data"]["reasons"][0]["form_id"] == "form-1"
     assert "inputs" not in pause_event["data"]["reasons"][0]
 
 
@@ -1112,5 +1112,5 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
     pause_event = cast(Mapping[str, Any], events[-1])
     assert pause_event["event"] == StreamEvent.WORKFLOW_PAUSED
     assert pause_event["data"]["reasons"][0]["form_token"] == "wtok"
-    assert pause_event["data"]["reasons"][0]["session_id"] == "session-1"
+    assert pause_event["data"]["reasons"][0]["form_id"] == "form-1"
     assert pause_event["data"]["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())

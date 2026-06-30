@@ -80,7 +80,7 @@ def test_pause_details_resolves_session_id_before_loading_tokens(app: Flask, mon
         response["paused_nodes"][0]["pause_type"]["backstage_input_url"]
         == "https://web.example.com/form/backstage-token"
     )
-    assert response["paused_nodes"][0]["pause_type"]["form_id"] == "session-1"
+    assert response["paused_nodes"][0]["pause_type"]["form_id"] == "form-1"
     assert "pending_human_inputs" not in response
 
 

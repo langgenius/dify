@@ -209,12 +209,12 @@ def test_queue_workflow_paused_event_to_stream_responses(monkeypatch: pytest.Mon
     assert pause_resp.workflow_run_id == "run-id"
     assert pause_resp.data.paused_nodes == ["node-id"]
     assert pause_resp.data.outputs == {}
-    assert pause_resp.data.reasons[0]["session_id"] == "session-1"
+    assert pause_resp.data.reasons[0]["form_id"] == "form-1"
     assert pause_resp.data.reasons[0]["expiration_time"] == int(expiration_time.timestamp())
 
     assert isinstance(responses[0], HumanInputRequiredResponse)
     hi_resp = responses[0]
-    assert hi_resp.data.form_id == "session-1"
+    assert hi_resp.data.form_id == "form-1"
     assert hi_resp.data.node_id == "node-id"
     assert hi_resp.data.node_title == "Human Step"
     assert hi_resp.data.inputs[0].output_variable_name == "field"
@@ -376,7 +376,7 @@ def test_queue_workflow_paused_event_resolves_variable_select_options(monkeypatc
 
     assert isinstance(responses[-1], WorkflowPauseStreamResponse)
     pause_resp = responses[-1]
-    assert pause_resp.data.reasons[0]["session_id"] == "session-1"
+    assert pause_resp.data.reasons[0]["form_id"] == "form-1"
     assert "inputs" not in pause_resp.data.reasons[0]
 
 
@@ -438,9 +438,9 @@ def test_queue_workflow_paused_event_resolves_session_id_before_human_input_look
 
     assert resolved_session_ids == ["session-1"]
     assert isinstance(responses[0], HumanInputRequiredResponse)
-    assert responses[0].data.form_id == "session-1"
+    assert responses[0].data.form_id == "form-1"
     assert responses[0].data.form_token == "token"
     assert responses[0].data.inputs[0].output_variable_name == "field"
     assert isinstance(responses[-1], WorkflowPauseStreamResponse)
-    assert responses[-1].data.reasons[0]["session_id"] == "session-1"
+    assert responses[-1].data.reasons[0]["form_id"] == "form-1"
     assert responses[-1].data.reasons[0]["form_token"] == "token"

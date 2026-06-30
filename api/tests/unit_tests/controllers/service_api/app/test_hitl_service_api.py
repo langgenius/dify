@@ -641,13 +641,13 @@ class TestHitlServiceApi:
         assert pause_resp.data.paused_nodes == ["node-id"]
         assert pause_resp.data.outputs == {}
         assert pause_resp.data.reasons[0]["TYPE"] == "hitl_required"
-        assert pause_resp.data.reasons[0]["session_id"] == "session-1"
+        assert pause_resp.data.reasons[0]["form_id"] == "form-1"
         assert pause_resp.data.reasons[0]["form_token"] == "token"
         assert pause_resp.data.reasons[0]["expiration_time"] == int(expiration_time.timestamp())
 
         assert isinstance(responses[0], HumanInputRequiredResponse)
         hi_resp = responses[0]
-        assert hi_resp.data.form_id == "session-1"
+        assert hi_resp.data.form_id == "form-1"
         assert hi_resp.data.node_id == "node-id"
         assert hi_resp.data.node_title == "Human Step"
         assert hi_resp.data.inputs[0].output_variable_name == "field"
@@ -720,13 +720,13 @@ class TestHitlServiceApi:
             "workflow_paused",
         ]
         assert events[2]["data"]["status"] == WorkflowNodeExecutionStatus.PAUSED.value
-        assert events[3]["data"]["form_id"] == "hi::form-1"
+        assert events[3]["data"]["form_id"] == "form-1"
         assert events[3]["data"]["form_token"] == "wtok"
         pause_data = events[-1]["data"]
         assert pause_data["paused_nodes"] == ["node-1"]
         assert pause_data["outputs"] == {"result": "value"}
         assert pause_data["reasons"][0]["TYPE"] == "hitl_required"
-        assert pause_data["reasons"][0]["session_id"] == "hi::form-1"
+        assert pause_data["reasons"][0]["form_id"] == "form-1"
         assert pause_data["reasons"][0]["form_token"] == "wtok"
         assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
         assert pause_data["status"] == WorkflowExecutionStatus.PAUSED.value
