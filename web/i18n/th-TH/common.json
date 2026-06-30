@@ -235,7 +235,6 @@
   "members.invite": "เพิ่ม",
   "members.inviteTeamMember": "เพิ่มสมาชิกในทีม",
   "members.inviteTeamMemberTip": "พวกเขาสามารถเข้าถึงข้อมูลทีมของคุณได้โดยตรงหลังจากลงชื่อเข้าใช้",
-  "members.invited": "เชิญแล้ว",
   "members.invitedAsRole": "ได้รับเชิญให้เป็น {{role}}",
   "members.lastActive": "ใช้งานล่าสุด",
   "members.memberActions": "การดำเนินการกับสมาชิก",

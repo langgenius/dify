@@ -76,7 +76,7 @@ const MemberRow = ({
               {member.name}
               {isInvited && (
                 <span className="ml-1 system-xs-medium text-text-warning">
-                  {t('members.invited', { ns: 'common' })}
+                  {t('members.pending', { ns: 'common' })}
                 </span>
               )}
               {!isInvited && member.status === 'pending' && (

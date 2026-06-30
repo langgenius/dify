@@ -235,7 +235,6 @@
   "members.invite": "초대",
   "members.inviteTeamMember": "팀 멤버 초대",
   "members.inviteTeamMemberTip": "로그인 후에 바로 팀 데이터에 액세스할 수 있습니다.",
-  "members.invited": "초대됨",
   "members.invitedAsRole": "{{role}}로 초대되었습니다",
   "members.lastActive": "최근 활동",
   "members.memberActions": "멤버 작업",

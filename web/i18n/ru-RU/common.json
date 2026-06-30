@@ -235,7 +235,6 @@
   "members.invite": "Добавить",
   "members.inviteTeamMember": "Добавить участника команды",
   "members.inviteTeamMemberTip": "Они могут получить доступ к данным вашей команды сразу после входа в систему.",
-  "members.invited": "Приглашен",
   "members.invitedAsRole": "Приглашен как {{role}}",
   "members.lastActive": "ПОСЛЕДНЯЯ АКТИВНОСТЬ",
   "members.memberActions": "Действия с участником",

@@ -361,7 +361,7 @@ describe('MembersPage', () => {
     renderMembersPage()
 
     expect(screen.getByText('Invited User'))!.toBeInTheDocument()
-    expect(screen.getByText(/members\.invited/i))!.toBeInTheDocument()
+    expect(screen.getByText(/members\.pending/i))!.toBeInTheDocument()
     expect(screen.queryByText('Member Operation normal')).not.toBeInTheDocument()
 
     await user.click(within(screen.getByTestId('member-row-invited-1')).getByRole('button'))

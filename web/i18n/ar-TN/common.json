@@ -235,7 +235,6 @@
   "members.invite": "إضافة",
   "members.inviteTeamMember": "إضافة عضو فريق",
   "members.inviteTeamMemberTip": "يمكنهم الوصول إلى بيانات فريقك مباشرة بعد تسجيل الدخول.",
-  "members.invited": "تمت الدعوة",
   "members.invitedAsRole": "تمت الدعوة كـ {{role}}",
   "members.lastActive": "آخر نشاط",
   "members.memberActions": "إجراءات العضو",
