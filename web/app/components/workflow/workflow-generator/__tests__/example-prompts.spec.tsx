@@ -15,8 +15,11 @@ vi.mock('ahooks', async (importOriginal) => {
   const React = await import('react')
   return {
     ...actual,
-    useSessionStorageState: <T,>(_key: string, options?: { defaultValue?: T }) =>
-      React.useState<T | undefined>(options?.defaultValue),
+    useSessionStorageState: <T,>(key: string, options?: { defaultValue?: T }) => {
+      const stored = sessionStorage.getItem(key)
+      const initial = stored ? JSON.parse(stored) : options?.defaultValue
+      return React.useState<T | undefined>(initial)
+    },
   }
 })
 
@@ -72,6 +75,61 @@ describe('ExamplePrompts', () => {
       render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
 
       expect(await screen.findByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).toBeInTheDocument()
+    })
+
+    it('should silently ignore AbortError when unmounted or refreshed', async () => {
+      // Simulate fetch that we can manually abort
+      mockFetch.mockImplementation(async (_, opts) => {
+        return new Promise((resolve, reject) => {
+          if (opts?.getAbortController) {
+            const controller = new AbortController()
+            opts.getAbortController(controller)
+            controller.signal.addEventListener('abort', () => {
+              const err = new Error('AbortError')
+              err.name = 'AbortError'
+              reject(err)
+            })
+          }
+        })
+      })
+
+      const { unmount } = render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
+      // Unmount triggers abort
+      unmount()
+
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not fetch on mount if suggestions are already cached', async () => {
+      // Simulate already having cached suggestions
+      sessionStorage.setItem('workflow-gen-suggestions-workflow', JSON.stringify(['cached suggestion']))
+
+      render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
+
+      expect(await screen.findByRole('button', { name: 'cached suggestion' })).toBeInTheDocument()
+      expect(mockFetch).not.toHaveBeenCalled()
+    })
+
+    it('should gracefully handle empty response structure', async () => {
+      // Simulate an empty response with no suggestions array
+      // eslint-disable-next-line ts/no-explicit-any
+      mockFetch.mockResolvedValue({} as any)
+      render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
+
+      expect(await screen.findByRole('button', { name: /workflowGenerator\.examples\.workflow\.summarize/i })).toBeInTheDocument()
+    })
+
+    it('does not double-fetch on re-renders (simulating React Strict Mode)', async () => {
+      mockFetch.mockResolvedValue({ suggestions: ['test double-fetch'] })
+      const { rerender, unmount } = render(<ExamplePrompts mode="workflow" onSelect={vi.fn()} />)
+
+      // Re-render the same component instance with a new prop to trigger the effect again
+      rerender(<ExamplePrompts mode="advanced-chat" onSelect={vi.fn()} />)
+
+      await screen.findByRole('button', { name: 'test double-fetch' })
+      expect(mockFetch).toHaveBeenCalledTimes(1) // Only fetched once because didInit.current is true
+
+      unmount()
     })
   })
 

@@ -101,7 +101,7 @@ const ExamplePrompts = ({ mode, onSelect }: Props) => {
       abortRef.current = null
     }
     // eslint-disable-next-line react/exhaustive-deps
-  }, [])
+  }, [mode])
 
   const aiPrompts = cached ?? []
   const prompts = aiPrompts.length ? aiPrompts : staticPrompts

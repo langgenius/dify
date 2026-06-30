@@ -151,5 +151,36 @@ describe('useWorkflowGeneratorStore', () => {
 
       expect(sessionStorage.getItem('workflow-gen-workflow-app-42-versions')).not.toBeNull()
     })
+
+    it('should silently handle sessionStorage.removeItem throwing (e.g. privacy restrictions)', () => {
+      const { result } = renderHook(() => useWorkflowGeneratorStore())
+      const spy = vi.spyOn(sessionStorage, 'removeItem').mockImplementation(() => {
+        throw new Error('Access denied')
+      })
+
+      act(() => {
+        result.current.openGenerator({ mode: 'workflow' })
+      })
+
+      expect(spy).toHaveBeenCalled()
+      spy.mockRestore()
+    })
+
+    it('should exit early if window is undefined (e.g. SSR)', () => {
+      const originalWindow = globalThis.window
+      // @ts-expect-error - simulating SSR environment
+      delete globalThis.window
+
+      const spy = vi.spyOn(sessionStorage, 'removeItem')
+
+      // Call it directly without React's act to avoid React DOM crashing
+      useWorkflowGeneratorStore.getState().openGenerator({ mode: 'workflow' })
+
+      expect(useWorkflowGeneratorStore.getState().isOpen).toBe(true)
+      expect(spy).not.toHaveBeenCalled()
+
+      globalThis.window = originalWindow
+      spy.mockRestore()
+    })
   })
 })
