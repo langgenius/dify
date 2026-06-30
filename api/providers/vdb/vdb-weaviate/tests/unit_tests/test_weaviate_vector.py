@@ -202,6 +202,10 @@ class TestWeaviateVector(unittest.TestCase):
 
         # Mock dify_config
         mock_dify_config.WEAVIATE_TOKENIZATION = None
+        mock_dify_config.WEAVIATE_INDEX_TYPE = "hnsw"
+        mock_dify_config.WEAVIATE_COMPRESSION = None
+        mock_dify_config.WEAVIATE_DISTANCE_METRIC = "cosine"
+        mock_dify_config.WEAVIATE_REPLICATION_FACTOR = 1
 
         # Mock client
         mock_client = MagicMock()
