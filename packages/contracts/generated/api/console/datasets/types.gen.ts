@@ -97,51 +97,12 @@ export type ExternalDatasetCreatePayload = {
   name: string
 }
 
-export type DatasetDetail = {
-  app_count?: number
-  author_name?: string
-  built_in_field_enabled?: boolean
-  chunk_structure?: string
-  created_at?: number
-  created_by?: string
-  data_source_type?: string
-  description?: string
-  doc_form?: string
-  doc_metadata?: Array<DatasetDocMetadata>
-  document_count?: number
-  embedding_available?: boolean
-  embedding_model?: string
-  embedding_model_provider?: string
-  enable_api?: boolean
-  external_knowledge_info?: ExternalKnowledgeInfo
-  external_retrieval_model?: ExternalRetrievalModel
-  icon_info?: DatasetIconInfo
-  id?: string
-  indexing_technique?: string
-  is_multimodal?: boolean
-  is_published?: boolean
-  name?: string
-  permission?: string
-  permission_keys?: Array<string>
-  pipeline_id?: string
-  provider?: string
-  retrieval_model_dict?: DatasetRetrievalModel
-  runtime_mode?: string
-  summary_index_setting?: AnonymousInlineModelB1954337D565
-  tags?: Array<Tag>
-  total_available_documents?: number
-  total_documents?: number
-  updated_at?: number
-  updated_by?: string
-  word_count?: number
-}
-
 export type ExternalKnowledgeApiListResponse = {
   data: Array<ExternalKnowledgeApiResponse>
   has_more: boolean
   limit: number
   page: number
-  total: number
+  total: number | null
 }
 
 export type ExternalKnowledgeApiPayload = {
@@ -154,11 +115,11 @@ export type ExternalKnowledgeApiPayload = {
 export type ExternalKnowledgeApiResponse = {
   created_at: string
   created_by: string
-  dataset_bindings?: Array<ExternalKnowledgeDatasetBindingResponse>
+  dataset_bindings: Array<ExternalKnowledgeApiBindingResponse>
   description: string
   id: string
   name: string
-  settings?: {
+  settings: {
     [key: string]: unknown
   } | null
   tenant_id: string
@@ -183,8 +144,11 @@ export type IndexingEstimatePayload = {
 }
 
 export type IndexingEstimateResponse = {
-  preview: Array<IndexingEstimatePreviewItemResponse>
-  qa_preview?: Array<IndexingEstimateQaPreviewItemResponse> | null
+  currency: string
+  preview: Array<PreviewDetail>
+  qa_preview?: Array<QaPreviewDetail> | null
+  tokens: number
+  total_price: number | number
   total_segments: number
 }
 
@@ -236,8 +200,12 @@ export type IndexingEstimate = {
   total_segments: number
 }
 
-export type OpaqueObjectResponse = {
-  [key: string]: unknown
+export type ProcessRuleResponse = {
+  limits: {
+    [key: string]: unknown
+  }
+  mode: ProcessRuleMode
+  rules?: Rule | null
 }
 
 export type RetrievalSettingResponse = {
@@ -337,14 +305,46 @@ export type DocumentBatchDownloadZipPayload = {
   document_ids: Array<string>
 }
 
-export type BinaryFileResponse = Blob | File
-
 export type GenerateSummaryPayload = {
   document_list: Array<string>
 }
 
 export type MetadataOperationData = {
   operation_data: Array<DocumentMetadataOperation>
+}
+
+export type DocumentDetailResponse = {
+  archived?: boolean | null
+  average_segment_length?: number | null
+  completed_at?: number | null
+  created_at?: number | null
+  created_by?: string | null
+  created_from?: string | null
+  data_source_detail_dict?: unknown
+  data_source_info?: unknown
+  data_source_type?: string | null
+  dataset_process_rule?: unknown
+  dataset_process_rule_id?: string | null
+  disabled_at?: number | null
+  disabled_by?: string | null
+  display_status?: string | null
+  doc_form?: string | null
+  doc_language?: string | null
+  doc_metadata?: Array<DocumentMetadataResponse> | null
+  doc_type?: string | null
+  document_process_rule?: unknown
+  enabled?: boolean | null
+  error?: string | null
+  hit_count?: number | null
+  id: string
+  indexing_latency?: number | null
+  indexing_status?: string | null
+  name?: string | null
+  need_summary?: boolean | null
+  position?: number | null
+  segment_count?: number | null
+  tokens?: number | null
+  updated_at?: number | null
 }
 
 export type UrlResponse = {
@@ -374,6 +374,13 @@ export type DocumentMetadataUpdatePayload = {
 export type SimpleResultMessageResponse = {
   message: string
   result: string
+}
+
+export type DocumentPipelineExecutionLogResponse = {
+  datasource_info?: JsonValue | null
+  datasource_node_id?: string | null
+  datasource_type?: string | null
+  input_data?: JsonValue | null
 }
 
 export type DocumentRenamePayload = {
@@ -464,6 +471,12 @@ export type ChildChunkUpdatePayload = {
   content: string
 }
 
+export type DocumentSummaryStatusResponse = {
+  summaries: Array<SummaryEntryResponse>
+  summary_status: SummaryStatusResponse
+  total_segments: number
+}
+
 export type ErrorDocsResponse = {
   data: Array<DocumentStatusResponse>
   total: number
@@ -479,13 +492,10 @@ export type ExternalHitTestingPayload = {
   query: string
 }
 
-export type ExternalRetrievalTestResponse
-  = | {
-    [key: string]: unknown
-  }
-  | Array<{
-    [key: string]: unknown
-  }>
+export type ExternalHitTestingResponse = {
+  query: ExternalHitTestingQueryResponse
+  records: Array<ExternalHitTestingRecordResponse>
+}
 
 export type HitTestingPayload = {
   attachment_ids?: Array<string> | null
@@ -641,68 +651,18 @@ export type DatasetTagResponse = {
   type: string
 }
 
-export type DatasetDocMetadata = {
-  id?: string
-  name?: string
-  type?: string
-}
-
-export type ExternalKnowledgeInfo = {
-  external_knowledge_api_endpoint?: string
-  external_knowledge_api_id?: string
-  external_knowledge_api_name?: string
-  external_knowledge_id?: string
-}
-
-export type ExternalRetrievalModel = {
-  score_threshold?: number
-  score_threshold_enabled?: boolean
-  top_k?: number
-}
-
-export type DatasetIconInfo = {
-  icon?: string
-  icon_background?: string
-  icon_type?: string
-  icon_url?: string
-}
-
-export type DatasetRetrievalModel = {
-  reranking_enable?: boolean
-  reranking_mode?: string
-  reranking_model?: DatasetRerankingModel
-  score_threshold?: number
-  score_threshold_enabled?: boolean
-  search_method?: string
-  top_k?: number
-  weights?: DatasetWeightedScore
-}
-
-export type AnonymousInlineModelB1954337D565 = {
-  enable?: boolean
-  model_name?: string
-  model_provider_name?: string
-  summary_prompt?: string
-}
-
-export type Tag = {
-  id: string
-  name: string
-  type: string
-}
-
-export type ExternalKnowledgeDatasetBindingResponse = {
+export type ExternalKnowledgeApiBindingResponse = {
   id: string
   name: string
 }
 
-export type IndexingEstimatePreviewItemResponse = {
+export type PreviewDetail = {
   child_chunks?: Array<string> | null
   content: string
   summary?: string | null
 }
 
-export type IndexingEstimateQaPreviewItemResponse = {
+export type QaPreviewDetail = {
   answer: string
   question: string
 }
@@ -744,15 +704,13 @@ export type DatasetMetadataBuiltInFieldResponse = {
   type: string
 }
 
-export type PreviewDetail = {
-  child_chunks?: Array<string> | null
-  content: string
-  summary?: string | null
-}
+export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
 
-export type QaPreviewDetail = {
-  answer: string
-  question: string
+export type Rule = {
+  parent_mode?: 'full-doc' | 'paragraph' | null
+  pre_processing_rules?: Array<PreProcessingRule> | null
+  segmentation?: Segmentation | null
+  subchunk_segmentation?: Segmentation | null
 }
 
 export type DocumentWithSegmentsResponse = {
@@ -798,6 +756,8 @@ export type DocumentMetadataResponse = {
   value?: string | number | number | boolean | null
 }
 
+export type JsonValue = unknown
+
 export type SegmentResponse = {
   answer: string | null
   attachments: Array<SegmentAttachmentResponse>
@@ -842,6 +802,37 @@ export type ChildChunkResponse = {
 export type ChildChunkUpdateArgs = {
   content: string
   id?: string | null
+}
+
+export type SummaryEntryResponse = {
+  created_at?: number | null
+  error?: string | null
+  segment_id: string
+  segment_position: number
+  status: string
+  summary_preview?: string | null
+  updated_at?: number | null
+}
+
+export type SummaryStatusResponse = {
+  completed?: number
+  error?: number
+  generating?: number
+  not_started?: number
+  timeout?: number
+}
+
+export type ExternalHitTestingQueryResponse = {
+  content: string
+}
+
+export type ExternalHitTestingRecordResponse = {
+  content?: string | null
+  metadata?: {
+    [key: string]: unknown
+  } | null
+  score?: number | null
+  title?: string | null
 }
 
 export type HitTestingQuery = {
@@ -896,31 +887,11 @@ export type DatasetWeightedScoreResponse = {
   weight_type?: string | null
 }
 
-export type DatasetRerankingModel = {
-  reranking_model_name?: string
-  reranking_provider_name?: string
-}
-
-export type DatasetWeightedScore = {
-  keyword_setting?: DatasetKeywordSetting
-  vector_setting?: DatasetVectorSetting
-  weight_type?: string
-}
-
 export type InfoList = {
   data_source_type: 'notion_import' | 'upload_file' | 'website_crawl'
   file_info_list?: FileInfo | null
   notion_info_list?: Array<NotionInfo> | null
   website_info_list?: WebsiteInfo | null
-}
-
-export type ProcessRuleMode = 'automatic' | 'custom' | 'hierarchical'
-
-export type Rule = {
-  parent_mode?: 'full-doc' | 'paragraph' | null
-  pre_processing_rules?: Array<PreProcessingRule> | null
-  segmentation?: Segmentation | null
-  subchunk_segmentation?: Segmentation | null
 }
 
 export type MetadataFilteringCondition = {
@@ -943,6 +914,17 @@ export type WeightModel = {
   keyword_setting?: WeightKeywordSetting | null
   vector_setting?: WeightVectorSetting | null
   weight_type?: 'customized' | 'keyword_first' | 'semantic_first' | null
+}
+
+export type PreProcessingRule = {
+  enabled: boolean
+  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
+}
+
+export type Segmentation = {
+  chunk_overlap?: number
+  max_tokens: number
+  separator?: string
 }
 
 export type MetadataDetail = {
@@ -1018,16 +1000,6 @@ export type DatasetVectorSettingResponse = {
   vector_weight?: number | null
 }
 
-export type DatasetKeywordSetting = {
-  keyword_weight?: number
-}
-
-export type DatasetVectorSetting = {
-  embedding_model_name?: string
-  embedding_provider_name?: string
-  vector_weight?: number
-}
-
 export type FileInfo = {
   file_ids: Array<string>
 }
@@ -1043,17 +1015,6 @@ export type WebsiteInfo = {
   only_main_content?: boolean
   provider: string
   urls: Array<string>
-}
-
-export type PreProcessingRule = {
-  enabled: boolean
-  id: 'remove_extra_spaces' | 'remove_stopwords' | 'remove_urls_emails'
-}
-
-export type Segmentation = {
-  chunk_overlap?: number
-  max_tokens: number
-  separator?: string
 }
 
 export type Condition = {
@@ -1264,7 +1225,7 @@ export type PostDatasetsExternalErrors = {
 }
 
 export type PostDatasetsExternalResponses = {
-  201: DatasetDetail
+  201: DatasetDetailResponse
 }
 
 export type PostDatasetsExternalResponse
@@ -1293,6 +1254,10 @@ export type PostDatasetsExternalKnowledgeApiData = {
   path?: never
   query?: never
   url: '/datasets/external-knowledge-api'
+}
+
+export type PostDatasetsExternalKnowledgeApiErrors = {
+  403: unknown
 }
 
 export type PostDatasetsExternalKnowledgeApiResponses = {
@@ -1347,6 +1312,10 @@ export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdData = {
   url: '/datasets/external-knowledge-api/{external_knowledge_api_id}'
 }
 
+export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdErrors = {
+  404: unknown
+}
+
 export type PatchDatasetsExternalKnowledgeApiByExternalKnowledgeApiIdResponses = {
   200: ExternalKnowledgeApiResponse
 }
@@ -1396,7 +1365,7 @@ export type PostDatasetsInitErrors = {
 }
 
 export type PostDatasetsInitResponses = {
-  201: DatasetAndDocumentResponse
+  200: DatasetAndDocumentResponse
 }
 
 export type PostDatasetsInitResponse = PostDatasetsInitResponses[keyof PostDatasetsInitResponses]
@@ -1439,7 +1408,7 @@ export type GetDatasetsProcessRuleData = {
 }
 
 export type GetDatasetsProcessRuleResponses = {
-  200: OpaqueObjectResponse
+  200: ProcessRuleResponse
 }
 
 export type GetDatasetsProcessRuleResponse
@@ -1581,7 +1550,7 @@ export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateData = {
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponses = {
-  200: OpaqueObjectResponse
+  200: IndexingEstimateResponse
 }
 
 export type GetDatasetsByDatasetIdBatchByBatchIndexingEstimateResponse
@@ -1628,8 +1597,8 @@ export type GetDatasetsByDatasetIdDocumentsData = {
   query?: {
     fetch?: string
     keyword?: string
-    limit?: string
-    page?: string
+    limit?: number
+    page?: number
     sort?: string
     status?: string
   }
@@ -1669,7 +1638,9 @@ export type PostDatasetsByDatasetIdDocumentsDownloadZipData = {
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponses = {
-  200: BinaryFileResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdDocumentsDownloadZipResponse
@@ -1764,7 +1735,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentDetailResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdResponse
@@ -1803,7 +1774,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateErrors = 
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponses = {
-  200: OpaqueObjectResponse
+  200: IndexingEstimateResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdIndexingEstimateResponse
@@ -1880,7 +1851,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogData 
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentPipelineExecutionLogResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdPipelineExecutionLogResponse
@@ -2225,7 +2196,7 @@ export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusErrors = {
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponses = {
-  200: OpaqueObjectResponse
+  200: DocumentSummaryStatusResponse
 }
 
 export type GetDatasetsByDatasetIdDocumentsByDocumentIdSummaryStatusResponse
@@ -2283,7 +2254,7 @@ export type PostDatasetsByDatasetIdExternalHitTestingErrors = {
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
-  200: ExternalRetrievalTestResponse
+  200: ExternalHitTestingResponse
 }
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponse

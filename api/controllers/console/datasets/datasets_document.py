@@ -10,16 +10,17 @@ from uuid import UUID
 import sqlalchemy as sa
 from flask import request, send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, RootModel, field_validator
+from pydantic import BaseModel, Field, JsonValue, field_validator
 from sqlalchemy import asc, desc, func, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from controllers.common.controller_schemas import DocumentBatchDownloadZipPayload
-from controllers.common.fields import BinaryFileResponse, SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
-from controllers.common.schema import register_response_schema_models, register_schema_models
+from controllers.common.fields import SimpleResultMessageResponse, SimpleResultResponse, UrlResponse
+from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
+from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import (
     LLMBadRequestError,
     ModelCurrentlyNotSupportError,
@@ -29,6 +30,7 @@ from core.errors.error import (
 from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.plugin.impl.exc import PluginDaemonClientSideError
+from core.rag.entities import Rule
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
@@ -48,7 +50,7 @@ from libs.helper import dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
-from models.enums import IndexingStatus, SegmentStatus
+from models.enums import IndexingStatus, ProcessRuleMode, SegmentStatus
 from services.dataset_ref_service import DatasetRefService
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
@@ -147,8 +149,91 @@ class DocumentWithSegmentsListResponse(ResponseModel):
     page: int
 
 
-class OpaqueObjectResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
+class IndexingEstimateResponse(IndexingEstimate):
+    tokens: int
+    total_price: float | int
+    currency: str
+
+
+class DocumentDetailResponse(ResponseModel):
+    id: str
+    position: int | None = None
+    data_source_type: str | None = None
+    data_source_info: Any = None
+    data_source_detail_dict: Any = None
+    dataset_process_rule_id: str | None = None
+    dataset_process_rule: Any = None
+    document_process_rule: Any = None
+    name: str | None = None
+    created_from: str | None = None
+    created_by: str | None = None
+    created_at: int | None = None
+    tokens: int | None = None
+    indexing_status: str | None = None
+    completed_at: int | None = None
+    updated_at: int | None = None
+    indexing_latency: float | None = None
+    error: str | None = None
+    enabled: bool | None = None
+    disabled_at: int | None = None
+    disabled_by: str | None = None
+    archived: bool | None = None
+    doc_type: str | None = None
+    doc_metadata: list[DocumentMetadataResponse] | None = None
+    segment_count: int | None = None
+    average_segment_length: float | None = None
+    hit_count: int | None = None
+    display_status: str | None = None
+    doc_form: str | None = None
+    doc_language: str | None = None
+    need_summary: bool | None = None
+
+    @field_validator("data_source_type", "indexing_status", "display_status", "doc_form", mode="before")
+    @classmethod
+    def _normalize_enum_fields(cls, value: Any) -> Any:
+        return normalize_enum(value)
+
+
+class SummaryStatusResponse(ResponseModel):
+    completed: int = 0
+    generating: int = 0
+    error: int = 0
+    not_started: int = 0
+    timeout: int = 0
+
+
+class SummaryEntryResponse(ResponseModel):
+    segment_id: str
+    segment_position: int
+    status: str
+    summary_preview: str | None = None
+    error: str | None = None
+    created_at: int | None = None
+    updated_at: int | None = None
+
+    @field_validator("status", mode="before")
+    @classmethod
+    def _normalize_status(cls, value: Any) -> Any:
+        return normalize_enum(value)
+
+
+class DocumentSummaryStatusResponse(ResponseModel):
+    total_segments: int
+    summary_status: SummaryStatusResponse
+    summaries: list[SummaryEntryResponse]
+
+
+class ProcessRuleResponse(ResponseModel):
+    mode: ProcessRuleMode
+    rules: Rule | None = None
+    limits: dict[str, Any]
+
+
+class DocumentPipelineExecutionLogResponse(ResponseModel):
+    datasource_info: JsonValue | None = None
+    datasource_type: str | None = None
+    input_data: JsonValue | None = None
+    datasource_node_id: str | None = None
 
 
 register_schema_models(
@@ -160,11 +245,11 @@ register_schema_models(
     DocumentRenamePayload,
     GenerateSummaryPayload,
     DocumentMetadataUpdatePayload,
+    DocumentDatasetListParam,
     DocumentBatchDownloadZipPayload,
 )
 register_response_schema_models(
     console_ns,
-    BinaryFileResponse,
     SimpleResultMessageResponse,
     SimpleResultResponse,
     UrlResponse,
@@ -174,7 +259,11 @@ register_response_schema_models(
     DocumentWithSegmentsResponse,
     DatasetAndDocumentResponse,
     DocumentWithSegmentsListResponse,
-    OpaqueObjectResponse,
+    IndexingEstimateResponse,
+    DocumentDetailResponse,
+    DocumentSummaryStatusResponse,
+    ProcessRuleResponse,
+    DocumentPipelineExecutionLogResponse,
 )
 
 
@@ -224,7 +313,7 @@ class GetProcessRuleApi(Resource):
     @console_ns.doc("get_process_rule")
     @console_ns.doc(description="Get dataset document processing rules")
     @console_ns.doc(params={"document_id": "Document ID (optional)"})
-    @console_ns.response(200, "Process rules retrieved successfully", console_ns.models[OpaqueObjectResponse.__name__])
+    @console_ns.response(200, "Process rules retrieved successfully", console_ns.models[ProcessRuleResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -263,7 +352,7 @@ class GetProcessRuleApi(Resource):
                 mode = dataset_process_rule.mode
                 rules = dataset_process_rule.rules_dict
 
-        return {"mode": mode, "rules": rules, "limits": limits}
+        return dump_response(ProcessRuleResponse, {"mode": mode, "rules": rules, "limits": limits})
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents")
@@ -273,12 +362,7 @@ class DatasetDocumentListApi(Resource):
     @console_ns.doc(
         params={
             "dataset_id": "Dataset ID",
-            "page": "Page number (default: 1)",
-            "limit": "Number of items per page (default: 20)",
-            "keyword": "Search keyword",
-            "sort": "Sort order (default: -created_at)",
-            "fetch": "Fetch full details (default: false)",
-            "status": "Filter documents by display status",
+            **query_params_from_model(DocumentDatasetListParam),
         }
     )
     @console_ns.response(
@@ -489,7 +573,7 @@ class DatasetInitApi(Resource):
     @console_ns.doc(description="Initialize dataset with documents")
     @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(
-        201, "Dataset initialized successfully", console_ns.models[DatasetAndDocumentResponse.__name__]
+        200, "Dataset initialized successfully", console_ns.models[DatasetAndDocumentResponse.__name__]
     )
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -555,7 +639,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
     @console_ns.response(
         200,
         "Indexing estimate calculated successfully",
-        console_ns.models[OpaqueObjectResponse.__name__],
+        console_ns.models[IndexingEstimateResponse.__name__],
     )
     @console_ns.response(404, "Document not found")
     @console_ns.response(400, "Document already finished")
@@ -575,8 +659,6 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
         data_process_rule = document.dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
-
-        response = {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
 
         if document.data_source_type == "upload_file":
             data_source_info = document.data_source_info_dict
@@ -608,7 +690,18 @@ class DocumentIndexingEstimateApi(DocumentResource):
                         "English",
                         dataset_id_str,
                     )
-                    return estimate_response.model_dump(), 200
+                    return (
+                        # TODO: why using zero here? the same for the below endpoint
+                        IndexingEstimateResponse(
+                            tokens=0,
+                            total_price=0,
+                            currency="USD",
+                            total_segments=estimate_response.total_segments,
+                            preview=estimate_response.preview,
+                            qa_preview=estimate_response.qa_preview,
+                        ).model_dump(mode="json", exclude_none=True),
+                        200,
+                    )
                 except LLMBadRequestError:
                     raise ProviderNotInitializeError(
                         "No Embedding Model available. Please configure a valid provider "
@@ -621,15 +714,24 @@ class DocumentIndexingEstimateApi(DocumentResource):
                 except Exception as e:
                     raise IndexingEstimateError(str(e))
 
-        return response, 200
+        return (
+            IndexingEstimateResponse(
+                tokens=0,
+                total_price=0,
+                currency="USD",
+                total_segments=0,
+                preview=[],
+            ).model_dump(mode="json", exclude_none=True),
+            200,
+        )
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate")
 class DocumentBatchIndexingEstimateApi(DocumentResource):
     @console_ns.response(
         200,
-        "Batch indexing estimate calculated successfully",
-        console_ns.models[OpaqueObjectResponse.__name__],
+        "Indexing estimate calculated successfully",
+        console_ns.models[IndexingEstimateResponse.__name__],
     )
     @setup_required
     @login_required
@@ -641,7 +743,16 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         dataset_id_str = str(dataset_id)
         documents = self.get_batch_documents(dataset_id_str, batch, current_user)
         if not documents:
-            return {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}, 200
+            return (
+                IndexingEstimateResponse(
+                    tokens=0,
+                    total_price=0,
+                    currency="USD",
+                    total_segments=0,
+                    preview=[],
+                ).model_dump(mode="json", exclude_none=True),
+                200,
+            )
         data_process_rule = documents[0].dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict() if data_process_rule else {}
         extract_settings = []
@@ -715,7 +826,17 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     "English",
                     dataset_id_str,
                 )
-                return response.model_dump(), 200
+                return (
+                    IndexingEstimateResponse(
+                        tokens=0,
+                        total_price=0,
+                        currency="USD",
+                        total_segments=response.total_segments,
+                        preview=response.preview,
+                        qa_preview=response.qa_preview,
+                    ).model_dump(mode="json", exclude_none=True),
+                    200,
+                )
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
@@ -852,7 +973,7 @@ class DocumentApi(DocumentResource):
             "metadata": "Metadata inclusion (all/only/without)",
         }
     )
-    @console_ns.response(200, "Document retrieved successfully", console_ns.models[OpaqueObjectResponse.__name__])
+    @console_ns.response(200, "Document retrieved successfully", console_ns.models[DocumentDetailResponse.__name__])
     @console_ns.response(404, "Document not found")
     @setup_required
     @login_required
@@ -869,46 +990,21 @@ class DocumentApi(DocumentResource):
         if metadata not in self.METADATA_CHOICES:
             raise InvalidMetadataError(f"Invalid metadata value: {metadata}")
 
+        metadata_fields = {"doc_type", "doc_metadata"}
         if metadata == "only":
-            response = {"id": document.id, "doc_type": document.doc_type, "doc_metadata": document.doc_metadata_details}
-        elif metadata == "without":
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, db.session)
-            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
-            response = {
-                "id": document.id,
-                "position": document.position,
-                "data_source_type": document.data_source_type,
-                "data_source_info": document.data_source_info_dict,
-                "data_source_detail_dict": document.data_source_detail_dict,
-                "dataset_process_rule_id": document.dataset_process_rule_id,
-                "dataset_process_rule": dataset_process_rules,
-                "document_process_rule": document_process_rules,
-                "name": document.name,
-                "created_from": document.created_from,
-                "created_by": document.created_by,
-                "created_at": int(document.created_at.timestamp()),
-                "tokens": document.tokens,
-                "indexing_status": document.indexing_status,
-                "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
-                "updated_at": int(document.updated_at.timestamp()) if document.updated_at else None,
-                "indexing_latency": document.indexing_latency,
-                "error": document.error,
-                "enabled": document.enabled,
-                "disabled_at": int(document.disabled_at.timestamp()) if document.disabled_at else None,
-                "disabled_by": document.disabled_by,
-                "archived": document.archived,
-                "segment_count": document.segment_count,
-                "average_segment_length": document.average_segment_length,
-                "hit_count": document.hit_count,
-                "display_status": document.display_status,
-                "doc_form": document.doc_form,
-                "doc_language": document.doc_language,
-                "need_summary": document.need_summary if document.need_summary is not None else False,
-            }
-        else:
-            dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, db.session)
-            document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
-            response = {
+            response = DocumentDetailResponse.model_validate(
+                {
+                    "id": document.id,
+                    "doc_type": document.doc_type,
+                    "doc_metadata": document.doc_metadata_details,
+                }
+            )
+            return response.model_dump(mode="json", include={"id", *metadata_fields}, exclude_unset=True), 200
+
+        dataset_process_rules = DatasetService.get_process_rules(dataset_id_str, db.session)
+        document_process_rules = document.dataset_process_rule.to_dict() if document.dataset_process_rule else {}
+        response = DocumentDetailResponse.model_validate(
+            {
                 "id": document.id,
                 "position": document.position,
                 "data_source_type": document.data_source_type,
@@ -941,8 +1037,9 @@ class DocumentApi(DocumentResource):
                 "doc_language": document.doc_language,
                 "need_summary": document.need_summary if document.need_summary is not None else False,
             }
-
-        return response, 200
+        )
+        exclude = metadata_fields if metadata == "without" else None
+        return response.model_dump(mode="json", exclude=exclude, exclude_unset=True), 200
 
     @setup_required
     @login_required
@@ -988,7 +1085,7 @@ class DocumentDownloadApi(DocumentResource):
     def get(self, current_tenant_id: str, current_user: Account, dataset_id: UUID, document_id: UUID) -> dict[str, Any]:
         # Reuse the shared permission/tenant checks implemented in DocumentResource.
         document = self.get_document(str(dataset_id), str(document_id), current_user, current_tenant_id)
-        return {"url": DocumentService.get_document_download_url(document, db.session)}
+        return UrlResponse(url=DocumentService.get_document_download_url(document, db.session)).model_dump(mode="json")
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/download-zip")
@@ -997,7 +1094,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
 
     @console_ns.doc("download_dataset_documents_as_zip")
     @console_ns.doc(description="Download selected dataset documents as a single ZIP archive (upload-file only)")
-    @console_ns.response(200, "ZIP archive generated successfully", console_ns.models[BinaryFileResponse.__name__])
+    @console_ns.response(200, "ZIP archive downloaded successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -1032,6 +1129,7 @@ class DocumentBatchDownloadZipApi(DocumentResource):
             )
             cleanup = stack.pop_all()
             response.call_on_close(cleanup.close)
+        # response-contract:ignore binary ZIP download response
         return response
 
 
@@ -1091,7 +1189,7 @@ class DocumentProcessingApi(DocumentResource):
                 document.is_paused = False
                 db.session.commit()
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
@@ -1150,7 +1248,9 @@ class DocumentMetadataApi(DocumentResource):
         document.updated_at = naive_utc_now()
         db.session.commit()
 
-        return {"result": "success", "message": "Document metadata updated."}, 200
+        return SimpleResultMessageResponse(result="success", message="Document metadata updated.").model_dump(
+            mode="json"
+        ), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/status/<string:action>/batch")
@@ -1192,7 +1292,7 @@ class DocumentStatusApi(DocumentResource):
         except NotFound as e:
             raise NotFound(str(e))
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause")
@@ -1361,15 +1461,15 @@ class WebsiteDocumentSyncApi(DocumentResource):
         # sync document
         DocumentService.sync_website_document(dataset_id_str, document, db.session)
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/pipeline-execution-log")
 class DocumentPipelineExecutionLogApi(DocumentResource):
     @console_ns.response(
         200,
-        "Document pipeline execution log retrieved successfully",
-        console_ns.models[OpaqueObjectResponse.__name__],
+        "Pipeline execution log retrieved successfully",
+        console_ns.models[DocumentPipelineExecutionLogResponse.__name__],
     )
     @setup_required
     @login_required
@@ -1392,18 +1492,16 @@ class DocumentPipelineExecutionLogApi(DocumentResource):
             .limit(1)
         )
         if not log:
-            return {
-                "datasource_info": None,
-                "datasource_type": None,
-                "input_data": None,
-                "datasource_node_id": None,
-            }, 200
-        return {
-            "datasource_info": json.loads(log.datasource_info),
-            "datasource_type": log.datasource_type,
-            "input_data": log.input_data,
-            "datasource_node_id": log.datasource_node_id,
-        }, 200
+            return DocumentPipelineExecutionLogResponse().model_dump(mode="json"), 200
+        return dump_response(
+            DocumentPipelineExecutionLogResponse,
+            {
+                "datasource_info": json.loads(log.datasource_info),
+                "datasource_type": log.datasource_type,
+                "input_data": log.input_data,
+                "datasource_node_id": log.datasource_node_id,
+            },
+        ), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/generate-summary")
@@ -1506,7 +1604,7 @@ class DocumentGenerateSummaryApi(Resource):
                 dataset_id_str,
             )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/summary-status")
@@ -1514,7 +1612,11 @@ class DocumentSummaryStatusApi(DocumentResource):
     @console_ns.doc("get_document_summary_status")
     @console_ns.doc(description="Get summary index generation status for a document")
     @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @console_ns.response(200, "Summary status retrieved successfully", console_ns.models[OpaqueObjectResponse.__name__])
+    @console_ns.response(
+        200,
+        "Summary status retrieved successfully",
+        console_ns.models[DocumentSummaryStatusResponse.__name__],
+    )
     @console_ns.response(404, "Document not found")
     @setup_required
     @login_required
@@ -1532,6 +1634,7 @@ class DocumentSummaryStatusApi(DocumentResource):
           - generating: Number of summaries being generated
           - error: Number of summaries with errors
           - not_started: Number of segments without summary records
+          - timeout: Number of summaries that timed out
         - summaries: List of summary records with status and content preview
         """
         dataset_id_str = str(dataset_id)
@@ -1557,4 +1660,4 @@ class DocumentSummaryStatusApi(DocumentResource):
             session=db.session,
         )
 
-        return result, 200
+        return dump_response(DocumentSummaryStatusResponse, result), 200

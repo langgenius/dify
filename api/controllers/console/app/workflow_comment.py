@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 
 from flask_restx import Resource
-from pydantic import BaseModel, Field, TypeAdapter, computed_field, field_validator
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -19,7 +19,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.member_fields import AccountWithRole
+from fields.member_fields import AccountWithRoleResponse
 from libs.helper import build_avatar_url, dump_response, to_timestamp
 from libs.login import login_required
 from models import Account, App
@@ -52,7 +52,7 @@ class WorkflowCommentReplyPayload(BaseModel):
 
 
 class WorkflowCommentMentionUsersPayload(BaseModel):
-    users: list[AccountWithRole]
+    users: list[AccountWithRoleResponse]
 
 
 class WorkflowCommentAccount(ResponseModel):
@@ -189,7 +189,7 @@ class WorkflowCommentReplyUpdate(ResponseModel):
 
 register_schema_models(
     console_ns,
-    AccountWithRole,
+    AccountWithRoleResponse,
     WorkflowCommentMentionUsersPayload,
     WorkflowCommentCreatePayload,
     WorkflowCommentUpdatePayload,
@@ -491,6 +491,4 @@ class WorkflowCommentMentionUsersApi(Resource):
         if current_tenant is None:
             raise ValueError("current tenant is required")
         members = TenantService.get_tenant_members(current_tenant, session=db.session)
-        users = TypeAdapter(list[AccountWithRole]).validate_python(members, from_attributes=True)
-        response = WorkflowCommentMentionUsersPayload(users=users)
-        return response.model_dump(mode="json"), 200
+        return dump_response(WorkflowCommentMentionUsersPayload, {"users": members}), 200

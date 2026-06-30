@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
@@ -73,7 +73,7 @@ class ChatMessagePayload(BaseModel):
 
 
 register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
-register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultResponse)
+register_response_schema_models(console_ns, SimpleResultResponse)
 
 
 # define completion api for user
@@ -83,7 +83,7 @@ register_response_schema_models(console_ns, GeneratedAppResponse, SimpleResultRe
 )
 class CompletionApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @with_current_user
     def post(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
@@ -106,6 +106,7 @@ class CompletionApi(InstalledAppResource):
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -150,7 +151,7 @@ class CompletionStopApi(InstalledAppResource):
             app_mode=AppMode.value_of(app_model.mode),
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200
 
 
 @console_ns.route(
@@ -159,7 +160,7 @@ class CompletionStopApi(InstalledAppResource):
 )
 class ChatApi(InstalledAppResource):
     @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success")
     @with_current_user
     def post(self, current_user: Account, installed_app: InstalledApp):
         app_model = installed_app.app
@@ -182,6 +183,7 @@ class ChatApi(InstalledAppResource):
                 app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -229,4 +231,4 @@ class ChatStopApi(InstalledAppResource):
             app_mode=app_mode,
         )
 
-        return {"result": "success"}, 200
+        return SimpleResultResponse(result="success").model_dump(mode="json"), 200

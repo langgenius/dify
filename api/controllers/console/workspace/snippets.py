@@ -1,16 +1,14 @@
 import logging
 import re
-from typing import Any
 from urllib.parse import quote
+from uuid import UUID
 
 from flask import Response, request
-from flask_restx import Resource, marshal
-from pydantic import RootModel
+from flask_restx import Resource
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.datastructures import MultiDict
 from werkzeug.exceptions import NotFound
 
-from controllers.common.fields import TextFileResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.snippets.payloads import (
@@ -32,12 +30,13 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from fields.snippet_fields import snippet_fields, snippet_list_fields, snippet_pagination_fields
+from fields.snippet_fields import SnippetPaginationResponse, SnippetResponse
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from models.snippet import SnippetType
 from services.app_dsl_service import ImportStatus
-from services.snippet_dsl_service import SnippetDslService
+from services.snippet_dsl_service import CheckDependenciesResult, SnippetDslService, SnippetImportInfo
 from services.snippet_service import SnippetService
 
 logger = logging.getLogger(__name__)
@@ -45,15 +44,7 @@ _TAG_IDS_BRACKET_PATTERN = re.compile(r"^tag_ids\[(\d+)\]$")
 _CREATOR_IDS_BRACKET_PATTERN = re.compile(r"^creator_ids\[(\d+)\]$")
 
 
-class SnippetImportResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
-
-
-class SnippetDependencyCheckResponse(RootModel[dict[str, Any]]):
-    root: dict[str, Any]
-
-
-class SnippetUseCountResponse(ResponseModel):
+class SnippetUseCountIncrementResponse(ResponseModel):
     result: str
     use_count: int
 
@@ -101,29 +92,26 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    TextFileResponse,
-    SnippetImportResponse,
-    SnippetDependencyCheckResponse,
-    SnippetUseCountResponse,
+    SnippetResponse,
+    SnippetPaginationResponse,
+    SnippetUseCountIncrementResponse,
+    SnippetImportInfo,
+    CheckDependenciesResult,
 )
-
-# Create namespace models for marshaling
-snippet_model = console_ns.model("Snippet", snippet_fields)
-snippet_list_model = console_ns.model("SnippetList", snippet_list_fields)
-snippet_pagination_model = console_ns.model("SnippetPagination", snippet_pagination_fields)
 
 
 @console_ns.route("/workspaces/current/customized-snippets")
 class CustomizedSnippetsApi(Resource):
     @console_ns.doc("list_customized_snippets")
     @console_ns.doc(params=query_params_from_model(SnippetListQuery))
-    @console_ns.response(200, "Snippets retrieved successfully", snippet_pagination_model)
+    @console_ns.response(200, "Snippets retrieved successfully", console_ns.models[SnippetPaginationResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
     def get(self, current_tenant_id: str):
         """List customized snippets with pagination and search."""
+
         query = SnippetListQuery.model_validate(_normalize_snippet_list_query_args(request.args))
 
         snippet_service = _snippet_service()
@@ -138,17 +126,20 @@ class CustomizedSnippetsApi(Resource):
             tag_ids=query.tag_ids,
         )
 
-        return {
-            "data": marshal(snippets, snippet_list_fields),
-            "page": query.page,
-            "limit": query.limit,
-            "total": total,
-            "has_more": has_more,
-        }, 200
+        return dump_response(
+            SnippetPaginationResponse,
+            {
+                "data": snippets,
+                "page": query.page,
+                "limit": query.limit,
+                "total": total,
+                "has_more": has_more,
+            },
+        ), 200
 
     @console_ns.doc("create_customized_snippet")
     @console_ns.expect(console_ns.models.get(CreateSnippetPayload.__name__))
-    @console_ns.response(201, "Snippet created successfully", snippet_model)
+    @console_ns.response(201, "Snippet created successfully", console_ns.models[SnippetResponse.__name__])
     @console_ns.response(400, "Invalid request")
     @setup_required
     @login_required
@@ -161,6 +152,7 @@ class CustomizedSnippetsApi(Resource):
     @with_current_tenant_id
     def post(self, current_tenant_id: str, current_user: Account):
         """Create a new customized snippet."""
+
         payload = CreateSnippetPayload.model_validate(console_ns.payload or {})
 
         try:
@@ -185,20 +177,21 @@ class CustomizedSnippetsApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 201
+        return dump_response(SnippetResponse, snippet), 201
 
 
 @console_ns.route("/workspaces/current/customized-snippets/<uuid:snippet_id>")
 class CustomizedSnippetDetailApi(Resource):
     @console_ns.doc("get_customized_snippet")
-    @console_ns.response(200, "Snippet retrieved successfully", snippet_model)
+    @console_ns.response(200, "Snippet retrieved successfully", console_ns.models[SnippetResponse.__name__])
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
     @account_initialization_required
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: str):
+    def get(self, current_tenant_id: str, snippet_id: UUID):
         """Get customized snippet details."""
+
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -208,11 +201,11 @@ class CustomizedSnippetDetailApi(Resource):
         if not snippet:
             raise NotFound("Snippet not found")
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("update_customized_snippet")
     @console_ns.expect(console_ns.models.get(UpdateSnippetPayload.__name__))
-    @console_ns.response(200, "Snippet updated successfully", snippet_model)
+    @console_ns.response(200, "Snippet updated successfully", console_ns.models[SnippetResponse.__name__])
     @console_ns.response(400, "Invalid request")
     @console_ns.response(404, "Snippet not found")
     @setup_required
@@ -224,8 +217,9 @@ class CustomizedSnippetDetailApi(Resource):
     )
     @with_current_user
     @with_current_tenant_id
-    def patch(self, current_tenant_id: str, current_user: Account, snippet_id: str):
+    def patch(self, current_tenant_id: str, current_user: Account, snippet_id: UUID):
         """Update customized snippet."""
+
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -257,7 +251,7 @@ class CustomizedSnippetDetailApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return marshal(snippet, snippet_fields), 200
+        return dump_response(SnippetResponse, snippet), 200
 
     @console_ns.doc("delete_customized_snippet")
     @console_ns.response(204, "Snippet deleted successfully")
@@ -268,8 +262,9 @@ class CustomizedSnippetDetailApi(Resource):
     @edit_permission_required
     @rbac_permission_required(RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_MANAGE, resource_required=False)
     @with_current_tenant_id
-    def delete(self, current_tenant_id: str, snippet_id: str):
+    def delete(self, current_tenant_id: str, snippet_id: UUID):
         """Delete customized snippet."""
+
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -296,7 +291,7 @@ class CustomizedSnippetExportApi(Resource):
     @console_ns.doc(description="Export snippet configuration as DSL")
     @console_ns.doc(params={"snippet_id": "Snippet ID to export"})
     @console_ns.doc(params=query_params_from_model(IncludeSecretQuery))
-    @console_ns.response(200, "Snippet exported successfully", console_ns.models[TextFileResponse.__name__])
+    @console_ns.response(200, "Snippet exported successfully")
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
@@ -306,8 +301,9 @@ class CustomizedSnippetExportApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: str):
+    def get(self, current_tenant_id: str, snippet_id: UUID):
         """Export snippet as DSL."""
+
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -343,8 +339,8 @@ class CustomizedSnippetImportApi(Resource):
     @console_ns.doc("import_customized_snippet")
     @console_ns.doc(description="Import snippet from DSL")
     @console_ns.expect(console_ns.models.get(SnippetImportPayload.__name__))
-    @console_ns.response(200, "Snippet imported successfully", console_ns.models[SnippetImportResponse.__name__])
-    @console_ns.response(202, "Import pending confirmation", console_ns.models[SnippetImportResponse.__name__])
+    @console_ns.response(200, "Snippet imported successfully", console_ns.models[SnippetImportInfo.__name__])
+    @console_ns.response(202, "Import pending confirmation", console_ns.models[SnippetImportInfo.__name__])
     @console_ns.response(400, "Import failed")
     @setup_required
     @login_required
@@ -385,7 +381,7 @@ class CustomizedSnippetImportConfirmApi(Resource):
     @console_ns.doc("confirm_snippet_import")
     @console_ns.doc(description="Confirm a pending snippet import")
     @console_ns.doc(params={"import_id": "Import ID to confirm"})
-    @console_ns.response(200, "Import confirmed successfully", console_ns.models[SnippetImportResponse.__name__])
+    @console_ns.response(200, "Import confirmed successfully", console_ns.models[SnippetImportInfo.__name__])
     @console_ns.response(400, "Import failed")
     @setup_required
     @login_required
@@ -412,11 +408,7 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
     @console_ns.doc("check_snippet_dependencies")
     @console_ns.doc(description="Check dependencies for a snippet")
     @console_ns.doc(params={"snippet_id": "Snippet ID"})
-    @console_ns.response(
-        200,
-        "Dependencies checked successfully",
-        console_ns.models[SnippetDependencyCheckResponse.__name__],
-    )
+    @console_ns.response(200, "Dependencies checked successfully", console_ns.models[CheckDependenciesResult.__name__])
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
@@ -426,7 +418,7 @@ class CustomizedSnippetCheckDependenciesApi(Resource):
         RBACResourceScope.WORKSPACE, RBACPermission.SNIPPETS_CREATE_AND_MODIFY, resource_required=False
     )
     @with_current_tenant_id
-    def get(self, current_tenant_id: str, snippet_id: str):
+    def get(self, current_tenant_id: str, snippet_id: UUID):
         """Check dependencies for a snippet."""
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
@@ -449,15 +441,20 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
     @console_ns.doc("increment_snippet_use_count")
     @console_ns.doc(description="Increment snippet use count by 1")
     @console_ns.doc(params={"snippet_id": "Snippet ID"})
-    @console_ns.response(200, "Use count incremented successfully", console_ns.models[SnippetUseCountResponse.__name__])
+    @console_ns.response(
+        200,
+        "Use count incremented successfully",
+        console_ns.models[SnippetUseCountIncrementResponse.__name__],
+    )
     @console_ns.response(404, "Snippet not found")
     @setup_required
     @login_required
     @account_initialization_required
     @edit_permission_required
     @with_current_tenant_id
-    def post(self, current_tenant_id: str, snippet_id: str):
+    def post(self, current_tenant_id: str, snippet_id: UUID):
         """Increment snippet use count when it is inserted into a workflow."""
+
         snippet_service = _snippet_service()
         snippet = snippet_service.get_snippet_by_id(
             snippet_id=str(snippet_id),
@@ -473,4 +470,6 @@ class CustomizedSnippetUseCountIncrementApi(Resource):
             session.commit()
             session.refresh(snippet)
 
-        return {"result": "success", "use_count": snippet.use_count}, 200
+        return SnippetUseCountIncrementResponse(result="success", use_count=snippet.use_count).model_dump(
+            mode="json"
+        ), 200

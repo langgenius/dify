@@ -45,7 +45,7 @@ export type AppDetailWithSite = {
   permission_keys?: Array<string>
   site?: AppDetailSiteResponse | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -119,10 +119,9 @@ export type HumanInputFormPreviewPayload = {
 }
 
 export type HumanInputFormPreviewResponse = {
-  actions?: Array<{
-    [key: string]: unknown
-  }>
-  display_in_ui?: boolean | null
+  TYPE?: 'human_input_required'
+  actions?: Array<HumanInputUserActionResponse>
+  display_in_ui?: boolean
   expiration_time?: number | null
   form_content: string
   form_id: string
@@ -147,17 +146,11 @@ export type HumanInputFormSubmitPayload = {
   }
 }
 
-export type HumanInputFormSubmitResponse = {
-  [key: string]: unknown
-}
-
 export type IterationNodeRunPayload = {
   inputs?: {
     [key: string]: unknown
   } | null
 }
-
-export type GeneratedAppResponse = JsonValue
 
 export type LoopNodeRunPayload = {
   inputs?: {
@@ -253,14 +246,18 @@ export type AnnotationReplyPayload = {
 }
 
 export type AnnotationJobStatusResponse = {
-  error_msg?: string | null
-  job_id?: string | null
-  job_status?: string | null
-  record_count?: number | null
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+}
+
+export type AnnotationJobStatusDetailResponse = {
+  error_msg?: string
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
 }
 
 export type AnnotationSettingResponse = {
-  embedding_model?: AnnotationEmbeddingModelResponse | null
+  embedding_model?: AnnotationSettingEmbeddingModelResponse | null
   enabled: boolean
   id?: string | null
   score_threshold?: number | null
@@ -294,6 +291,13 @@ export type Annotation = {
   hit_count?: number | null
   id: string
   question?: string | null
+}
+
+export type AnnotationBatchImportResponse = {
+  error_msg?: string | null
+  job_id?: string | null
+  job_status?: string | null
+  record_count?: number | null
 }
 
 export type AnnotationCountResponse = {
@@ -341,7 +345,7 @@ export type AppDetail = {
   name: string
   permission_keys?: Array<string>
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
@@ -353,10 +357,10 @@ export type AudioTranscriptResponse = {
 }
 
 export type ConversationWithSummaryPagination = {
-  has_next: boolean
-  items: Array<ConversationWithSummary>
+  data: Array<ConversationWithSummary>
+  has_more: boolean
+  limit: number
   page: number
-  per_page: number
   total: number
 }
 
@@ -391,20 +395,20 @@ export type SimpleResultResponse = {
 }
 
 export type ConversationPagination = {
-  has_next: boolean
-  items: Array<Conversation>
+  data: Array<Conversation>
+  has_more: boolean
+  limit: number
   page: number
-  per_page: number
   total: number
 }
 
 export type ConversationMessageDetail = {
   created_at?: number | null
-  first_message?: MessageDetail | null
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
   id: string
+  message?: MessageDetail | null
   model_config?: ModelConfig | null
   status: string
 }
@@ -450,6 +454,16 @@ export type CopyAppPayload = {
   name?: string | null
 }
 
+export type AppImportResponse = {
+  app_id?: string | null
+  app_mode?: string | null
+  current_dsl_version: string
+  error?: string
+  id: string
+  imported_dsl_version?: string
+  status: ImportStatus
+}
+
 export type AppExportResponse = {
   data: string
 }
@@ -469,16 +483,16 @@ export type AppIconPayload = {
 }
 
 export type MessageDetailResponse = {
-  agent_thoughts?: Array<AgentThought>
+  agent_thoughts: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
   answer: string
-  answer_tokens?: number | null
+  answer_tokens: number
   conversation_id: string
   created_at?: number | null
   error?: string | null
   extra_contents?: Array<HumanInputContent>
-  feedbacks?: Array<Feedback>
+  feedbacks: Array<Feedback>
   from_account_id?: string | null
   from_end_user_id?: string | null
   from_source: string
@@ -486,12 +500,12 @@ export type MessageDetailResponse = {
   inputs: {
     [key: string]: JsonValue
   }
-  message?: JsonValue | null
-  message_files?: Array<MessageFile>
-  message_tokens?: number | null
-  metadata?: JsonValue | null
+  message: JsonValue
+  message_files: Array<MessageFile>
+  message_tokens: number
+  metadata: JsonValue
   parent_message_id?: string | null
-  provider_response_latency?: number | null
+  provider_response_latency: number
   query: string
   status: string
   workflow_run_id?: string | null
@@ -650,14 +664,10 @@ export type TextToSpeechPayload = {
   voice?: string | null
 }
 
-export type AudioBinaryResponse = Blob | File
-
-export type TextToSpeechVoiceListResponse = Array<{
-  [key: string]: unknown
-}>
+export type TextToSpeechVoiceListResponse = Array<TextToSpeechVoiceResponse>
 
 export type AppTraceResponse = {
-  enabled: boolean
+  enabled?: boolean
   tracing_provider?: string | null
 }
 
@@ -733,7 +743,7 @@ export type WorkflowRunPaginationResponse = {
 
 export type WorkflowRunDetailResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -801,7 +811,7 @@ export type WorkflowCommentCreate = {
 }
 
 export type WorkflowCommentMentionUsersPayload = {
-  users: Array<AccountWithRole>
+  users: Array<AccountWithRoleResponse>
 }
 
 export type WorkflowCommentDetail = {
@@ -878,18 +888,10 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
-export type DefaultBlockConfigsResponse = Array<{
-  [key: string]: unknown
-}>
-
-export type DefaultBlockConfigResponse = {
-  [key: string]: unknown
-}
-
 export type WorkflowResponse = {
   conversation_variables: Array<WorkflowConversationVariableResponse>
   created_at: number
-  created_by?: SimpleAccount | null
+  created_by?: SimpleAccountResponse | null
   environment_variables: Array<WorkflowEnvironmentVariableResponse>
   features: {
     [key: string]: unknown
@@ -904,7 +906,7 @@ export type WorkflowResponse = {
   rag_pipeline_variables: Array<PipelineVariableResponse>
   tool_published: boolean
   updated_at: number
-  updated_by?: SimpleAccount | null
+  updated_by?: SimpleAccountResponse | null
   version: string
 }
 
@@ -925,13 +927,13 @@ export type SyncDraftWorkflowPayload = {
 }
 
 export type SyncDraftWorkflowResponse = {
-  hash?: string
-  result?: string
-  updated_at?: string
+  hash: string
+  result: string
+  updated_at: number
 }
 
-export type WorkflowDraftVariableList = {
-  items?: Array<WorkflowDraftVariable>
+export type WorkflowDraftVariableListResponse = {
+  items: Array<WorkflowDraftVariableResponse>
 }
 
 export type ConversationVariableUpdatePayload = {
@@ -940,8 +942,8 @@ export type ConversationVariableUpdatePayload = {
   }>
 }
 
-export type EnvironmentVariableListResponse = {
-  items: Array<EnvironmentVariableItemResponse>
+export type WorkflowDraftEnvironmentVariableListResponse = {
+  items: Array<WorkflowDraftEnvironmentVariableResponse>
 }
 
 export type EnvironmentVariableUpdatePayload = {
@@ -963,7 +965,7 @@ export type HumanInputDeliveryTestPayload = {
   }
 }
 
-export type EmptyObjectResponse = {
+export type HumanInputDeliveryTestResponse = {
   [key: string]: unknown
 }
 
@@ -1034,7 +1036,7 @@ export type AgentComposerValidateResponse = {
 
 export type WorkflowRunNodeExecutionResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   elapsed_time?: number | null
@@ -1104,7 +1106,7 @@ export type OutputPreviewView = {
   value?: unknown
 }
 
-export type DraftWorkflowTriggerRunRequest = {
+export type DraftWorkflowTriggerRunPayload = {
   node_id: string
 }
 
@@ -1112,48 +1114,39 @@ export type DraftWorkflowTriggerRunAllPayload = {
   node_ids: Array<string>
 }
 
-export type WorkflowDraftVariableListWithoutValue = {
-  items?: Array<WorkflowDraftVariableWithoutValue>
-  total?: number
+export type WorkflowDraftVariableListWithoutValueResponse = {
+  items: Array<WorkflowDraftVariableWithoutValueResponse>
+  total: number | null
 }
 
-export type WorkflowDraftVariable = {
-  description?: string
-  edited?: boolean
-  full_content?: {
-    [key: string]: unknown
-  }
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value?:
-    | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableResponse = {
+  description: string
+  edited: boolean
+  full_content: WorkflowDraftVariableFullContentResponse | null
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value: unknown
+  value_type: string
+  visible: boolean
 }
 
 export type WorkflowDraftVariableUpdatePayload = {
   name?: string | null
-  value?: unknown | null
+  value?: unknown
 }
 
 export type PublishWorkflowPayload = {
   knowledge_base_setting?: {
     [key: string]: unknown
   } | null
+  marked_comment?: string | null
+  marked_name?: string | null
 }
 
-export type WorkflowPublishResponse = {
+export type PublishWorkflowResponse = {
   created_at: number
   result: string
 }
@@ -1170,12 +1163,6 @@ export type WebhookTriggerResponse = {
 export type WorkflowUpdatePayload = {
   marked_comment?: string | null
   marked_name?: string | null
-}
-
-export type WorkflowRestoreResponse = {
-  hash: string
-  result: string
-  updated_at: number
 }
 
 export type ApiKeyList = {
@@ -1228,12 +1215,30 @@ export type DeletedTool = {
 }
 
 export type ModelConfig = {
-  completion_params?: {
-    [key: string]: unknown
-  }
-  mode: LlmMode
-  name: string
-  provider: string
+  agent_mode?: unknown | null
+  annotation_reply?: unknown | null
+  chat_prompt_config?: unknown | null
+  completion_prompt_config?: unknown | null
+  created_at?: number | null
+  created_by?: string | null
+  dataset_configs?: unknown | null
+  dataset_query_variable?: string | null
+  external_data_tools?: unknown | null
+  file_upload?: unknown | null
+  model?: unknown | null
+  more_like_this?: unknown | null
+  opening_statement?: string | null
+  pre_prompt?: string | null
+  prompt_type?: string | null
+  retriever_resource?: unknown | null
+  sensitive_word_avoidance?: unknown | null
+  speech_to_text?: unknown | null
+  suggested_questions?: unknown | null
+  suggested_questions_after_answer?: unknown | null
+  text_to_speech?: unknown | null
+  updated_at?: number | null
+  updated_by?: string | null
+  user_input_form?: unknown | null
 }
 
 export type AppDetailSiteResponse = {
@@ -1270,17 +1275,6 @@ export type Tag = {
   type: string
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
-
 export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
@@ -1293,7 +1287,7 @@ export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 
 
 export type PluginDependency = {
   current_identifier?: string | null
-  type: Type
+  type: PluginDependencyType
   value: Github | Marketplace | Package
 }
 
@@ -1305,7 +1299,7 @@ export type WorkflowOnlineUsersByApp = {
 export type AdvancedChatWorkflowRunForListResponse = {
   conversation_id?: string | null
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -1316,6 +1310,12 @@ export type AdvancedChatWorkflowRunForListResponse = {
   total_steps?: number | null
   total_tokens?: number | null
   version?: string | null
+}
+
+export type HumanInputUserActionResponse = {
+  button_style?: string
+  id: string
+  title: string
 }
 
 export type AgentDriveItemResponse = {
@@ -1412,7 +1412,7 @@ export type CliToolSuggestion = {
   name: string
 }
 
-export type AnnotationEmbeddingModelResponse = {
+export type AnnotationSettingEmbeddingModelResponse = {
   embedding_model_name?: string | null
   embedding_provider_name?: string | null
 }
@@ -1443,7 +1443,7 @@ export type ConversationWithSummary = {
   read_at?: number | null
   status: string
   status_count?: StatusCount | null
-  summary_or_query: string
+  summary: string
   updated_at?: number | null
   user_feedback_stats?: FeedbackStat | null
 }
@@ -1457,13 +1457,13 @@ export type Conversation = {
   admin_feedback_stats?: FeedbackStat | null
   annotation?: ConversationAnnotation | null
   created_at?: number | null
-  first_message?: SimpleMessageDetail | null
   from_account_id?: string | null
   from_account_name?: string | null
   from_end_user_id?: string | null
   from_end_user_session_id?: string | null
   from_source: string
   id: string
+  message?: SimpleMessageDetail | null
   model_config?: SimpleModelConfig | null
   read_at?: number | null
   status: string
@@ -1475,6 +1475,7 @@ export type MessageDetail = {
   agent_thoughts: Array<AgentThought>
   annotation?: ConversationAnnotation | null
   annotation_hit_history?: ConversationAnnotationHitHistory | null
+  answer: string
   answer_tokens: number
   conversation_id: string
   created_at?: number | null
@@ -1489,12 +1490,11 @@ export type MessageDetail = {
   }
   message: JsonValue
   message_files: Array<MessageFile>
-  message_metadata_dict: JsonValue
   message_tokens: number
+  metadata: JsonValue
   parent_message_id?: string | null
   provider_response_latency: number
   query: string
-  re_sign_file_url_answer: string
   status: string
   workflow_run_id?: string | null
 }
@@ -1553,6 +1553,8 @@ export type Feedback = {
   rating: string
 }
 
+export type JsonValue = unknown
+
 export type MessageFile = {
   belongs_to?: string | null
   filename: string
@@ -1593,10 +1595,10 @@ export type DailyMessageStatisticItem = {
 }
 
 export type DailyTokenCostStatisticItem = {
-  currency: string
+  currency?: string | null
   date: string
-  token_count: number
-  total_price: string | number
+  token_count?: number | null
+  total_price?: string | null
 }
 
 export type TokensPerSecondStatisticItem = {
@@ -1609,9 +1611,14 @@ export type UserSatisfactionRateStatisticItem = {
   rate: number
 }
 
+export type TextToSpeechVoiceResponse = {
+  name: string
+  value: string
+}
+
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -1622,7 +1629,7 @@ export type WorkflowAppLogPartialResponse = {
 
 export type WorkflowArchivedLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   id: string
   trigger_metadata?: unknown
@@ -1631,7 +1638,7 @@ export type WorkflowArchivedLogPartialResponse = {
 
 export type WorkflowRunForListResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   elapsed_time?: number | null
   exceptions_count?: number | null
   finished_at?: number | null
@@ -1643,7 +1650,7 @@ export type WorkflowRunForListResponse = {
   version?: string | null
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1686,8 +1693,9 @@ export type WorkflowCommentBasic = {
   updated_at?: number | null
 }
 
-export type AccountWithRole = {
+export type AccountWithRoleResponse = {
   avatar?: string | null
+  readonly avatar_url: string | null
   created_at?: number | null
   email: string
   id: string
@@ -1775,7 +1783,7 @@ export type PipelineVariableResponse = {
   variable: string
 }
 
-export type EnvironmentVariableItemResponse = {
+export type WorkflowDraftEnvironmentVariableResponse = {
   description?: string | null
   editable: boolean
   edited: boolean
@@ -1985,30 +1993,35 @@ export type NodeOutputStatus
 
 export type DeclaredOutputType = 'array' | 'boolean' | 'file' | 'number' | 'object' | 'string'
 
-export type WorkflowDraftVariableWithoutValue = {
-  description?: string
-  edited?: boolean
-  id?: string
-  is_truncated?: boolean
-  name?: string
-  selector?: Array<string>
-  type?: string
-  value_type?: string
-  visible?: boolean
+export type WorkflowDraftVariableWithoutValueResponse = {
+  description: string
+  edited: boolean
+  id: string
+  is_truncated: boolean
+  name: string
+  selector: Array<string>
+  type: string
+  value_type: string
+  visible: boolean
+}
+
+export type WorkflowDraftVariableFullContentResponse = {
+  download_url: string
+  length: number | null
+  size_bytes: number | null
+  value_type: string
 }
 
 export type ModelConfigPartial = {
   created_at?: number | null
   created_by?: string | null
-  model?: JsonValue | null
+  model?: unknown | null
   pre_prompt?: string | null
   updated_at?: number | null
   updated_by?: string | null
 }
 
-export type LlmMode = 'chat' | 'completion'
-
-export type Type = 'github' | 'marketplace' | 'package'
+export type PluginDependencyType = 'github' | 'marketplace' | 'package'
 
 export type Github = {
   github_plugin_unique_identifier: string
@@ -2058,7 +2071,7 @@ export type EnvSuggestion = {
 }
 
 export type SimpleModelConfig = {
-  model_dict?: JsonValue | null
+  model?: JsonValue | null
   pre_prompt?: string | null
 }
 
@@ -2076,6 +2089,12 @@ export type SimpleMessageDetail = {
   }
   message: string
   query: string
+}
+
+export type SimpleAccount = {
+  email: string
+  id: string
+  name: string
 }
 
 export type HumanInputFormDefinition = {
@@ -2759,17 +2778,19 @@ export type AppDetailWithSiteWritable = {
   permission_keys?: Array<string>
   site?: AppDetailSiteResponseWritable | null
   tags?: Array<Tag>
-  tracing?: JsonValue | null
+  tracing?: unknown | null
   updated_at?: number | null
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
 }
 
-export type GeneratedAppResponseWritable = JsonValue
-
 export type WorkflowCommentBasicListWritable = {
   data: Array<WorkflowCommentBasicWritable>
+}
+
+export type WorkflowCommentMentionUsersPayloadWritable = {
+  users: Array<AccountWithRoleResponseWritable>
 }
 
 export type WorkflowCommentDetailWritable = {
@@ -2787,6 +2808,10 @@ export type WorkflowCommentDetailWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type HumanInputDeliveryTestResponseWritable = {
+  [key: string]: unknown
 }
 
 export type AppPartialWritable = {
@@ -2860,6 +2885,21 @@ export type WorkflowCommentBasicWritable = {
   resolved_by?: string | null
   resolved_by_account?: WorkflowCommentAccountWritable | null
   updated_at?: number | null
+}
+
+export type AccountWithRoleResponseWritable = {
+  avatar?: string | null
+  created_at?: number | null
+  email: string
+  id: string
+  last_active_at?: number | null
+  last_login_at?: number | null
+  name: string
+  role: string
+  roles?: Array<{
+    [key: string]: string
+  }>
+  status: string
 }
 
 export type WorkflowCommentAccountWritable = {
@@ -3156,7 +3196,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdForm
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
-  200: HumanInputFormSubmitResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
@@ -3178,7 +3220,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunEr
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftIterationNodesByNodeIdRunResponse
@@ -3200,7 +3244,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunErrors 
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftLoopNodesByNodeIdRunResponse
@@ -3221,7 +3267,9 @@ export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunErrors = {
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftRunResponse
@@ -3481,7 +3529,7 @@ export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdErrors = {
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsByAppIdAnnotationReplyByActionStatusByJobIdResponse
@@ -3605,7 +3653,7 @@ export type PostAppsByAppIdAnnotationsBatchImportErrors = {
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationBatchImportResponse
 }
 
 export type PostAppsByAppIdAnnotationsBatchImportResponse
@@ -3626,7 +3674,7 @@ export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdErrors = {
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsByAppIdAnnotationsBatchImportStatusByJobIdResponse
@@ -3992,7 +4040,9 @@ export type PostAppsByAppIdCompletionMessagesErrors = {
 }
 
 export type PostAppsByAppIdCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdCompletionMessagesResponse
@@ -4069,6 +4119,7 @@ export type PostAppsByAppIdCopyErrors = {
 
 export type PostAppsByAppIdCopyResponses = {
   201: AppDetailWithSite
+  202: AppImportResponse
 }
 
 export type PostAppsByAppIdCopyResponse
@@ -4565,7 +4616,9 @@ export type PostAppsByAppIdTextToAudioErrors = {
 }
 
 export type PostAppsByAppIdTextToAudioResponses = {
-  200: AudioBinaryResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdTextToAudioResponse
@@ -5273,7 +5326,9 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponses = {
-  200: DefaultBlockConfigsResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsResponse
@@ -5296,7 +5351,9 @@ export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeErrors 
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponses = {
-  200: DefaultBlockConfigResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsByBlockTypeResponse
@@ -5357,7 +5414,7 @@ export type GetAppsByAppIdWorkflowsDraftConversationVariablesErrors = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftConversationVariablesResponse
@@ -5393,7 +5450,7 @@ export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesErrors = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponses = {
-  200: EnvironmentVariableListResponse
+  200: WorkflowDraftEnvironmentVariableListResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftEnvironmentVariablesResponse
@@ -5442,7 +5499,7 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestData
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponses = {
-  200: EmptyObjectResponse
+  200: HumanInputDeliveryTestResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdDeliveryTestResponse
@@ -5476,7 +5533,9 @@ export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunData = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponses = {
-  200: HumanInputFormSubmitResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftHumanInputNodesByNodeIdFormRunResponse
@@ -5498,7 +5557,9 @@ export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftIterationNodesByNodeIdRunResponse
@@ -5520,7 +5581,9 @@ export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftLoopNodesByNodeIdRunResponse
@@ -5707,7 +5770,7 @@ export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponses = {
-  200: GeneratedAppResponse
+  200: WorkflowRunNodeExecutionResponse
 }
 
 export type PostAppsByAppIdWorkflowsDraftNodesByNodeIdTriggerRunResponse
@@ -5741,7 +5804,7 @@ export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftNodesByNodeIdVariablesResponse
@@ -5761,7 +5824,9 @@ export type PostAppsByAppIdWorkflowsDraftRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftRunResponse
@@ -5865,14 +5930,14 @@ export type GetAppsByAppIdWorkflowsDraftSystemVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponses = {
-  200: WorkflowDraftVariableList
+  200: WorkflowDraftVariableListResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftSystemVariablesResponse
   = GetAppsByAppIdWorkflowsDraftSystemVariablesResponses[keyof GetAppsByAppIdWorkflowsDraftSystemVariablesResponses]
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunData = {
-  body: DraftWorkflowTriggerRunRequest
+  body: DraftWorkflowTriggerRunPayload
   path: {
     app_id: string
   }
@@ -5886,7 +5951,9 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunResponse
@@ -5907,7 +5974,9 @@ export type PostAppsByAppIdWorkflowsDraftTriggerRunAllErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostAppsByAppIdWorkflowsDraftTriggerRunAllResponse
@@ -5942,7 +6011,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesData = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesResponses = {
-  200: WorkflowDraftVariableListWithoutValue
+  200: WorkflowDraftVariableListWithoutValueResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesResponse
@@ -5984,7 +6053,7 @@ export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type GetAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse
@@ -6005,7 +6074,7 @@ export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdErrors = {
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
 }
 
 export type PatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse
@@ -6026,7 +6095,7 @@ export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetErrors = {
 }
 
 export type PutAppsByAppIdWorkflowsDraftVariablesByVariableIdResetResponses = {
-  200: WorkflowDraftVariable
+  200: WorkflowDraftVariableResponse
   204: void
 }
 
@@ -6059,7 +6128,7 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishResponses = {
-  200: WorkflowPublishResponse
+  200: PublishWorkflowResponse
 }
 
 export type PostAppsByAppIdWorkflowsPublishResponse
@@ -6228,7 +6297,7 @@ export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreErrors = {
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponses = {
-  200: WorkflowRestoreResponse
+  200: SyncDraftWorkflowResponse
 }
 
 export type PostAppsByAppIdWorkflowsByWorkflowIdRestoreResponse

@@ -1,8 +1,9 @@
 from datetime import datetime
+from typing import Any, cast
 
 import pytest
 
-from libs.helper import OptionalTimestampField, escape_like_pattern, extract_tenant_id
+from libs.helper import escape_like_pattern, extract_tenant_id, to_timestamp
 from models.account import Account
 from models.model import EndUser
 
@@ -42,7 +43,7 @@ class TestExtractTenantId:
         """Test extracting tenant_id from EndUser without tenant_id."""
         # Create a mock EndUser object
         end_user = EndUser()
-        end_user.tenant_id = None
+        cast(Any, end_user).tenant_id = None
 
         tenant_id = extract_tenant_id(end_user)
         assert tenant_id is None
@@ -52,32 +53,29 @@ class TestExtractTenantId:
         invalid_user = "not_a_user_object"
 
         with pytest.raises(ValueError, match="Invalid user type.*Expected Account or EndUser"):
-            extract_tenant_id(invalid_user)
+            extract_tenant_id(cast(Any, invalid_user))
 
     def test_extract_tenant_id_with_none_user(self):
         """Test extracting tenant_id with None user raises ValueError."""
         with pytest.raises(ValueError, match="Invalid user type.*Expected Account or EndUser"):
-            extract_tenant_id(None)
+            extract_tenant_id(cast(Any, None))
 
     def test_extract_tenant_id_with_dict_user(self):
         """Test extracting tenant_id with dict user raises ValueError."""
         dict_user = {"id": "123", "tenant_id": "456"}
 
         with pytest.raises(ValueError, match="Invalid user type.*Expected Account or EndUser"):
-            extract_tenant_id(dict_user)
+            extract_tenant_id(cast(Any, dict_user))
 
 
-class TestOptionalTimestampField:
+class TestToTimestamp:
     def test_format_returns_none_for_none(self):
-        field = OptionalTimestampField()
-
-        assert field.format(None) is None
+        assert to_timestamp(None) is None
 
     def test_format_returns_unix_timestamp_for_datetime(self):
-        field = OptionalTimestampField()
         value = datetime(2024, 1, 2, 3, 4, 5)
 
-        assert field.format(value) == int(value.timestamp())
+        assert to_timestamp(value) == int(value.timestamp())
 
 
 class TestEscapeLikePattern:
@@ -111,7 +109,7 @@ class TestEscapeLikePattern:
     def test_escape_none_handling(self):
         """Test escaping None returns None (falsy check handles it)."""
         # The function checks `if not pattern`, so None is falsy and returns as-is
-        result = escape_like_pattern(None)
+        result = escape_like_pattern(cast(Any, None))
         assert result is None
 
     def test_escape_normal_string_no_change(self):

@@ -31,6 +31,7 @@ from controllers.console.datasets.datasets import (
     DatasetUseCheckApi,
 )
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
+from core.entities.knowledge_entities import IndexingEstimate
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.provider_manager import ProviderManager
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -1379,8 +1380,7 @@ class TestDatasetIndexingEstimateApi:
 
         mock_file = self._upload_file()
 
-        mock_response = MagicMock()
-        mock_response.model_dump.return_value = {"tokens": 100}
+        mock_response = IndexingEstimate(total_segments=100, preview=[])
 
         with (
             app.test_request_context("/"),
@@ -1406,7 +1406,13 @@ class TestDatasetIndexingEstimateApi:
             response, status = method(api, "tenant-1")
 
         assert status == 200
-        assert response == {"tokens": 100}
+        assert response == {
+            "tokens": 0,
+            "total_price": 0,
+            "currency": "USD",
+            "total_segments": 100,
+            "preview": [],
+        }
 
     def test_post_file_not_found(self, app: Flask):
         api = DatasetIndexingEstimateApi()

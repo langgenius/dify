@@ -31,7 +31,16 @@ from controllers.console.wraps import (
     with_current_user_id,
 )
 from core.helper.position_helper import is_filtered
-from core.plugin.entities.plugin import PluginCategory, PluginInstallationSource
+from core.plugin.entities.bundle import PluginBundleDependency
+from core.plugin.entities.parameters import PluginParameterOption
+from core.plugin.entities.plugin import (
+    PluginCategory,
+    PluginDeclaration,
+    PluginEntity,
+    PluginInstallation,
+    PluginInstallationSource,
+)
+from core.plugin.entities.plugin_daemon import PluginDecodeResponse, PluginInstallTask, PluginInstallTaskStartResponse
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.plugin_service import PluginService
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -292,33 +301,33 @@ class PluginCategoryListResponse(ResponseModel):
     has_more: bool
 
 
-class PluginDaemonOperationResponse(RootModel[Any]):
-    root: Any
+class PluginBundleUploadResponse(RootModel[list[PluginBundleDependency]]):
+    pass
 
 
 class PluginListResponse(ResponseModel):
-    plugins: Any
+    plugins: list[PluginEntity]
     total: int
 
 
 class PluginVersionsResponse(ResponseModel):
-    versions: Any
+    versions: Mapping[str, PluginService.LatestPluginCache | None]
 
 
 class PluginInstallationsResponse(ResponseModel):
-    plugins: Any
+    plugins: list[PluginInstallation]
 
 
 class PluginManifestResponse(ResponseModel):
-    manifest: Any
+    manifest: PluginDeclaration
 
 
 class PluginTasksResponse(ResponseModel):
-    tasks: Any
+    tasks: list[PluginInstallTask]
 
 
 class PluginTaskResponse(ResponseModel):
-    task: Any
+    task: PluginInstallTask
 
 
 class PluginPermissionResponse(ResponseModel):
@@ -327,7 +336,7 @@ class PluginPermissionResponse(ResponseModel):
 
 
 class PluginDynamicOptionsResponse(ResponseModel):
-    options: Any
+    options: list[PluginParameterOption]
 
 
 class PluginOperationSuccessResponse(ResponseModel):
@@ -374,10 +383,12 @@ register_response_schema_models(
     PluginCategoryBuiltinToolResponse,
     PluginCategoryInstalledPluginResponse,
     PluginCategoryListResponse,
-    PluginDaemonOperationResponse,
+    PluginBundleUploadResponse,
+    PluginDecodeResponse,
     PluginDebuggingKeyResponse,
     PluginDynamicOptionsResponse,
     PluginInstallationsResponse,
+    PluginInstallTaskStartResponse,
     PluginListResponse,
     PluginManifestResponse,
     PluginOperationSuccessResponse,
@@ -611,7 +622,7 @@ class PluginAssetApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/pkg")
 class PluginUploadFromPkgApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDecodeResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -632,7 +643,7 @@ class PluginUploadFromPkgApi(Resource):
 @console_ns.route("/workspaces/current/plugin/upload/github")
 class PluginUploadFromGithubApi(Resource):
     @console_ns.expect(console_ns.models[ParserGithubUpload.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginDecodeResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -652,7 +663,7 @@ class PluginUploadFromGithubApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/upload/bundle")
 class PluginUploadFromBundleApi(Resource):
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginBundleUploadResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -673,7 +684,7 @@ class PluginUploadFromBundleApi(Resource):
 @console_ns.route("/workspaces/current/plugin/install/pkg")
 class PluginInstallFromPkgApi(Resource):
     @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -694,7 +705,7 @@ class PluginInstallFromPkgApi(Resource):
 @console_ns.route("/workspaces/current/plugin/install/github")
 class PluginInstallFromGithubApi(Resource):
     @console_ns.expect(console_ns.models[ParserGithubInstall.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -721,7 +732,7 @@ class PluginInstallFromGithubApi(Resource):
 @console_ns.route("/workspaces/current/plugin/install/marketplace")
 class PluginInstallFromMarketplaceApi(Resource):
     @console_ns.expect(console_ns.models[ParserPluginIdentifiers.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -867,7 +878,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
 @console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
 class PluginUpgradeFromMarketplaceApi(Resource):
     @console_ns.expect(console_ns.models[ParserMarketplaceUpgrade.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -890,7 +901,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
 @console_ns.route("/workspaces/current/plugin/upgrade/github")
 class PluginUpgradeFromGithubApi(Resource):
     @console_ns.expect(console_ns.models[ParserGithubUpgrade.__name__])
-    @console_ns.response(200, "Success", console_ns.models[PluginDaemonOperationResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[PluginInstallTaskStartResponse.__name__])
     @setup_required
     @login_required
     @account_initialization_required

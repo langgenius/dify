@@ -19,7 +19,7 @@ export type AgentThought = {
 }
 
 export type Annotation = {
-  content?: string | null
+  answer?: string | null
   created_at?: number | null
   hit_count?: number | null
   id: string
@@ -31,10 +31,15 @@ export type AnnotationCreatePayload = {
   question: string
 }
 
-export type AnnotationJobStatusResponse = {
-  error_msg?: string | null
+export type AnnotationJobStatusDetailResponse = {
+  error_msg?: string
   job_id: string
-  job_status: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
+}
+
+export type AnnotationJobStatusResponse = {
+  job_id: string
+  job_status: 'completed' | 'error' | 'processing' | 'waiting' | string
 }
 
 export type AnnotationList = {
@@ -567,7 +572,7 @@ export type DatasourceNodeRunPayload = {
 export type DatasourcePluginListResponse = Array<DatasourcePluginResponse>
 
 export type DatasourcePluginResponse = {
-  credentials: Array<DatasourceCredentialInfoResponse>
+  credentials?: Array<DatasourceCredentialInfoResponse>
   datasource_type?: string | null
   node_id?: string | null
   plugin_id?: string | null
@@ -592,40 +597,45 @@ export type DocumentBatchDownloadZipPayload = {
 }
 
 export type DocumentDetailResponse = {
-  archived?: boolean | null
-  average_segment_length?: number | null
+  archived?: boolean
+  average_segment_length?: number | number
   completed_at?: number | null
-  created_at?: number | null
-  created_by?: string | null
-  created_from?: string | null
+  created_at?: number
+  created_by?: string
+  created_from?: string
   data_source_info?: {
     [key: string]: unknown
-  } | null
-  data_source_type?: string | null
+  }
+  data_source_type?: string
   dataset_process_rule?: {
     [key: string]: unknown
-  } | null
+  }
   dataset_process_rule_id?: string | null
   disabled_at?: number | null
   disabled_by?: string | null
   display_status?: string | null
-  doc_form?: string | null
+  doc_form?: string
   doc_language?: string | null
-  doc_metadata?: Array<DocumentMetadataResponse> | null
+  doc_metadata?:
+    | Array<DocumentMetadataResponse>
+    | {
+      [key: string]: unknown
+    }
+    | null
   doc_type?: string | null
   document_process_rule?: {
     [key: string]: unknown
-  } | null
-  enabled?: boolean | null
+  }
+  enabled?: boolean
   error?: string | null
-  hit_count?: number | null
+  hit_count?: number
   id: string
   indexing_latency?: number | null
-  indexing_status?: string | null
-  name?: string | null
-  need_summary?: boolean | null
-  position?: number | null
-  segment_count?: number | null
+  indexing_status?: string
+  name?: string
+  need_summary?: boolean
+  position?: number
+  segment_count?: number
   summary_index_status?: string | null
   tokens?: number | null
   updated_at?: number | null
@@ -841,8 +851,6 @@ export type FormInputConfig
     type: 'file-list'
   } & FileListInputConfig)
 
-export type GeneratedAppResponse = JsonValue
-
 export type HitTestingChildChunk = {
   content: string
   id: string
@@ -1004,16 +1012,7 @@ export type JsonObject = {
   [key: string]: unknown
 }
 
-export type JsonValue
-  = | string
-    | number
-    | number
-    | boolean
-    | {
-      [key: string]: unknown
-    }
-    | Array<unknown>
-    | null
+export type JsonValue = unknown
 
 export type JsonValueType = unknown
 
@@ -1414,7 +1413,7 @@ export type SelectInputConfig = {
   type?: 'select'
 }
 
-export type SimpleAccount = {
+export type SimpleAccountResponse = {
   email: string
   id: string
   name: string
@@ -1573,7 +1572,7 @@ export type WorkflowAppLogPaginationResponse = {
 
 export type WorkflowAppLogPartialResponse = {
   created_at?: number | null
-  created_by_account?: SimpleAccount | null
+  created_by_account?: SimpleAccountResponse | null
   created_by_end_user?: SimpleEndUser | null
   created_by_role?: string | null
   created_from?: string | null
@@ -1674,8 +1673,6 @@ export type WorkflowRunResponse = {
   workflow_id: string
 }
 
-export type GeneratedAppResponseWritable = JsonValue
-
 export type HumanInputFormSubmitResponseWritable = {
   [key: string]: never
 }
@@ -1770,7 +1767,7 @@ export type GetAppsAnnotationReplyByActionStatusByJobIdErrors = {
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponses = {
-  200: AnnotationJobStatusResponse
+  200: AnnotationJobStatusDetailResponse
 }
 
 export type GetAppsAnnotationReplyByActionStatusByJobIdResponse
@@ -1904,7 +1901,9 @@ export type PostChatMessagesErrors = {
 }
 
 export type PostChatMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostChatMessagesResponse = PostChatMessagesResponses[keyof PostChatMessagesResponses]
@@ -1949,7 +1948,9 @@ export type PostCompletionMessagesErrors = {
 }
 
 export type PostCompletionMessagesResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostCompletionMessagesResponse
@@ -2626,6 +2627,7 @@ export type PatchDatasetsByDatasetIdDocumentsByDocumentIdData = {
 }
 
 export type PatchDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
+  400: unknown
   401: unknown
   403: unknown
   404: unknown
@@ -3196,7 +3198,9 @@ export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineDatasourceNodesByNodeIdRunResponse
@@ -3219,7 +3223,9 @@ export type PostDatasetsByDatasetIdPipelineRunErrors = {
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostDatasetsByDatasetIdPipelineRunResponse
@@ -3633,7 +3639,9 @@ export type PostWorkflowsRunErrors = {
 }
 
 export type PostWorkflowsRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkflowsRunResponse = PostWorkflowsRunResponses[keyof PostWorkflowsRunResponses]
@@ -3703,7 +3711,9 @@ export type PostWorkflowsByWorkflowIdRunErrors = {
 }
 
 export type PostWorkflowsByWorkflowIdRunResponses = {
-  200: GeneratedAppResponse
+  200: {
+    [key: string]: unknown
+  }
 }
 
 export type PostWorkflowsByWorkflowIdRunResponse
