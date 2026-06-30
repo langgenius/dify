@@ -270,12 +270,12 @@ class TestPluginModelProviderCache:
         client.fetch_model_providers.assert_not_called()
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
 
-    def test_fetch_plugin_model_providers_retries_lock_after_wait_timeout(self) -> None:
-        """Only a lock owner should refresh the daemon when the first refresh takes too long."""
+    def test_fetch_plugin_model_providers_keeps_waiting_until_refresh_lock_is_owned(self) -> None:
+        """Only a lock owner should refresh the daemon, even when the first lock owner exceeds the lock TTL."""
         with (
             patch(f"{MODULE}.redis_client") as redis_client,
-            patch(f"{MODULE}.time.sleep"),
-            patch(f"{MODULE}.PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT", 0),
+            patch(f"{MODULE}.time.sleep") as sleep,
+            patch(f"{MODULE}.PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_TTL", 0),
         ):
             redis_client.get.return_value = None
             redis_client.mget.return_value = [None, None]
@@ -291,9 +291,57 @@ class TestPluginModelProviderCache:
             call(blocking=False),
             call(blocking=False),
         ]
+        sleep.assert_called_once_with(PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL)
         client.fetch_model_providers.assert_called_once_with("tenant-1")
         redis_client.lock.return_value.release.assert_called_once_with()
         assert [provider.provider for provider in result] == ["langgenius/openai/openai"]
+
+    def test_fetch_plugin_model_providers_restarts_lock_path_after_generation_changes(self) -> None:
+        """Waiters re-read provider generation before trying to become the next refresh owner."""
+        generation_key = _provider_generation_key("tenant-1")
+        stale_cache_key = _provider_cache_key("tenant-1", 0)
+        legacy_cache_key = _provider_cache_key("tenant-1")
+        new_cache_key = _provider_cache_key("tenant-1", 1)
+        with (
+            patch(f"{MODULE}.redis_client") as redis_client,
+            patch(f"{MODULE}.time.sleep") as sleep,
+        ):
+            redis_client.get.side_effect = [None, b"1", b"1"]
+            redis_client.mget.side_effect = [[None, None], [None]]
+            redis_client.lock.return_value.acquire.side_effect = [False, True]
+            client = Mock()
+            client.fetch_model_providers.return_value = [_build_plugin_model_provider(provider="anthropic")]
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.fetch_plugin_model_providers(tenant_id="tenant-1", client=client)
+
+        assert redis_client.get.call_args_list == [
+            call(generation_key),
+            call(generation_key),
+            call(generation_key),
+        ]
+        assert redis_client.mget.call_args_list == [
+            call([stale_cache_key, legacy_cache_key]),
+            call([new_cache_key]),
+        ]
+        assert redis_client.lock.call_args_list == [
+            call(
+                PluginService._get_plugin_model_providers_lock_key("tenant-1", 0),
+                timeout=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_TTL,
+                blocking=False,
+            ),
+            call(
+                PluginService._get_plugin_model_providers_lock_key("tenant-1", 1),
+                timeout=PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_TTL,
+                blocking=False,
+            ),
+        ]
+        sleep.assert_called_once_with(PluginService.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL)
+        client.fetch_model_providers.assert_called_once_with("tenant-1")
+        redis_client.setex.assert_called_once()
+        assert redis_client.setex.call_args.args[0] == new_cache_key
+        assert [provider.provider for provider in result] == ["langgenius/anthropic/anthropic"]
 
     def test_fetch_plugin_model_providers_releases_owned_refresh_lock_after_store(self) -> None:
         """The refresh owner releases only its token after storing provider metadata."""
