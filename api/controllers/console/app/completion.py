@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Callable
 from typing import Any, Literal
 from uuid import UUID
 
@@ -8,6 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from clients.agent_backend import AgentBackendError
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -263,7 +265,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.response(200, "Build chat finalization started", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Build chat finalization completed", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "Agent, build draft, or conversation not found")
     @setup_required
@@ -335,6 +337,19 @@ def _resolve_current_user_agent_debug_conversation_id(
     )
 
 
+def _load_current_user_agent_debug_conversation_id(
+    *, current_tenant_id: str, current_user: Account, agent_id: str
+) -> str:
+    conversation_id = AgentRosterService(db.session).load_agent_app_debug_conversation_id(
+        tenant_id=current_tenant_id,
+        agent_id=agent_id,
+        account_id=current_user.id,
+    )
+    if conversation_id is None:
+        raise NotFound("Conversation Not Exists.")
+    return conversation_id
+
+
 def _create_chat_message(
     *,
     current_user: Account,
@@ -381,29 +396,22 @@ def _create_chat_message(
 def _create_build_chat_finalization_message(
     *, current_user: Account, app_model: App, current_tenant_id: str, agent_id: str
 ):
-    debug_conversation_id = _resolve_current_user_agent_debug_conversation_id(
+    debug_conversation_id = _load_current_user_agent_debug_conversation_id(
         current_tenant_id=current_tenant_id,
         current_user=current_user,
-        app_model=app_model,
         agent_id=agent_id,
     )
     args: dict[str, Any] = {
         "query": _BUILD_CHAT_FINALIZATION_QUERY,
         "inputs": {},
-        "response_mode": "streaming",
         "draft_type": "debug_build",
         "conversation_id": debug_conversation_id,
-        "auto_generate_name": False,
     }
-    external_trace_id = get_external_trace_id(request)
-    if external_trace_id:
-        args["external_trace_id"] = external_trace_id
 
-    return _generate_chat_message_response(
+    return _generate_stateless_agent_app_response(
         current_user=current_user,
         app_model=app_model,
         args=args,
-        streaming=True,
     )
 
 
@@ -414,11 +422,36 @@ def _generate_chat_message_response(
     args: dict[str, Any],
     streaming: bool,
 ):
-    try:
-        response = AppGenerateService.generate(
-            app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+    return _compact_generation_response(
+        lambda: AppGenerateService.generate(
+            app_model=app_model,
+            user=current_user,
+            args=args,
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=streaming,
         )
+    )
 
+
+def _generate_stateless_agent_app_response(
+    *,
+    current_user: Account,
+    app_model: App,
+    args: dict[str, Any],
+):
+    return _compact_generation_response(
+        lambda: AppGenerateService.generate_stateless_agent_app(
+            app_model=app_model,
+            user=current_user,
+            args=args,
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+    )
+
+
+def _compact_generation_response(generate_response: Callable[[], Any]):
+    try:
+        response = generate_response()
         return helper.compact_generate_response(response)
     except services.errors.conversation.ConversationNotExistsError:
         raise NotFound("Conversation Not Exists.")
@@ -435,6 +468,8 @@ def _generate_chat_message_response(
         raise ProviderModelCurrentlyNotSupportError()
     except InvokeRateLimitError as ex:
         raise InvokeRateLimitHttpError(ex.description)
+    except AgentBackendError as e:
+        raise CompletionRequestError(str(e))
     except InvokeError as e:
         raise CompletionRequestError(e.description)
     except ValueError as e:

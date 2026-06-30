@@ -11,11 +11,15 @@ from __future__ import annotations
 
 import contextlib
 import json
+from types import SimpleNamespace
 
 import pytest
 from pytest_mock import MockerFixture
 
-from core.app.apps.agent_app.app_generator import AgentAppGenerator, AgentAppGeneratorError
+from core.app.apps.agent_app.app_generator import (
+    AgentAppGenerator,
+    AgentAppGeneratorError,
+)
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from models import Account
@@ -200,6 +204,83 @@ class TestGenerateSuccess:
         )
 
         assert generate_entity.call_args.kwargs["extras"] == {"auto_generate_conversation_name": True}
+
+    def test_generate_stateless_skips_chat_records(self, generator: AgentAppGenerator, mocker: MockerFixture):
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", mode="agent")
+        user = DummyAccount("user")
+
+        generator._resolve_agent = mocker.MagicMock(
+            return_value=(mocker.MagicMock(id="agent1"), "build-draft-1", "build_draft", mocker.MagicMock())
+        )
+        generator._init_generate_records = mocker.MagicMock()
+        run_stateless = mocker.patch.object(generator, "_run_stateless", return_value={"result": "success"})
+        converter = mocker.patch(f"{MODULE}.AgentAppGenerateResponseConverter.convert")
+
+        result = generator.generate_stateless(
+            app_model=app_model,
+            user=user,
+            args={
+                "query": "finalize",
+                "inputs": {},
+                "conversation_id": "debug-conversation-1",
+                "draft_type": "debug_build",
+            },
+            invoke_from=InvokeFrom.DEBUGGER,
+        )
+
+        assert result == {"result": "success"}
+        generator._init_generate_records.assert_not_called()
+        converter.assert_not_called()
+        run_call = run_stateless.call_args.kwargs
+        assert run_call["conversation_id"] == "debug-conversation-1"
+        assert run_call["runtime_session_snapshot_id"] == "build-draft-1"
+
+    def test_generate_stateless_requires_conversation_id(self, generator: AgentAppGenerator, mocker: MockerFixture):
+        with pytest.raises(AgentAppGeneratorError, match="conversation_id is required"):
+            generator.generate_stateless(
+                app_model=mocker.MagicMock(),
+                user=DummyAccount("user"),
+                args={"query": "finalize", "inputs": {}, "draft_type": "debug_build"},
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+
+    def test_stateless_run_uses_agent_app_runner(
+        self, generator: AgentAppGenerator, mocker: MockerFixture
+    ):
+        app_model = mocker.MagicMock(id="app1", tenant_id="tenant", app_model_config=mocker.MagicMock())
+        user = DummyAccount("user")
+        agent = mocker.MagicMock(id="agent1")
+        dify_context = SimpleNamespace(tenant_id="tenant", app_id="app1")
+        mocker.patch(f"{MODULE}.DifyRunContext", return_value=dify_context)
+        runner = mocker.MagicMock()
+        build_runner = mocker.patch.object(generator, "_build_runner", return_value=runner)
+
+        result = generator._run_stateless(
+            app_model=app_model,
+            user=user,
+            invoke_from=InvokeFrom.DEBUGGER,
+            query="finalize",
+            conversation_id="debug-conversation-1",
+            agent=agent,
+            agent_config_id="build-draft-1",
+            agent_config_version_kind="build_draft",
+            agent_soul=mocker.MagicMock(),
+            runtime_session_snapshot_id="build-draft-1",
+        )
+
+        assert result == {"result": "success"}
+        build_runner.assert_called_once_with(dify_context)
+        runner.run_stateless.assert_called_once_with(
+            dify_context=dify_context,
+            agent_id="agent1",
+            agent_config_snapshot_id="build-draft-1",
+            agent_config_version_kind="build_draft",
+            agent_soul=mocker.ANY,
+            conversation_id="debug-conversation-1",
+            query="finalize",
+            idempotency_key=mocker.ANY,
+            session_scope_snapshot_id="build-draft-1",
+        )
 
 
 class TestGenerateWorker:

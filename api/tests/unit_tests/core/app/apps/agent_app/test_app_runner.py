@@ -99,6 +99,24 @@ class _RecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
         return super().cancel_run(run_id, request=request)
 
 
+class _BlockingRecordingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
+    def __init__(self, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.wait_calls: list[tuple[str, float | None]] = []
+        self.stream_called = False
+
+    @override
+    def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
+        del run_id, after
+        self.stream_called = True
+        return iter(())
+
+    @override
+    def wait_run(self, run_id: str, *, timeout_seconds: float | None = None):
+        self.wait_calls.append((run_id, timeout_seconds))
+        return super().wait_run(run_id, timeout_seconds=timeout_seconds)
+
+
 class _StreamingFakeAgentBackendRunClient(FakeAgentBackendRunClient):
     @override
     def stream_events(self, run_id: str, *, after: str | None = None) -> Iterator[RunEvent]:
@@ -303,6 +321,18 @@ def _run(runner: AgentAppRunner, qm: _FakeQueueManager) -> None:
         message_id="msg-1",
         model_name="gpt-4o-mini",
         queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+
+def _run_stateless(runner: AgentAppRunner) -> None:
+    runner.run_stateless(
+        dify_context=_dify_ctx(),
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-1",
+        agent_soul=_soul(),
+        conversation_id="conv-1",
+        query="finalize",
+        idempotency_key="run-req-1",
     )
 
 
@@ -528,6 +558,31 @@ def test_debug_session_scope_can_reuse_conversation_across_config_snapshots():
     assert client.request.session_snapshot is prior
     assert store.loaded_scopes[0].agent_config_snapshot_id is None
     assert store.saved[0][0].agent_config_snapshot_id is None
+
+
+def test_stateless_run_uses_bounded_wait_and_does_not_save_session_state():
+    prior = CompositorSessionSnapshot(layers=[])
+    client = _BlockingRecordingFakeAgentBackendRunClient()
+    store = _FakeSessionStore(loaded=prior)
+
+    _run_stateless(_runner(client, store))
+
+    assert client.request is not None
+    assert client.request.session_snapshot is prior
+    assert client.wait_calls == [("fake-run-1", app_runner_module.dify_config.APP_MAX_EXECUTION_TIME)]
+    assert client.stream_called is False
+    assert store.saved == []
+
+
+def test_stateless_run_raises_backend_error_on_failed_bounded_wait():
+    client = _BlockingRecordingFakeAgentBackendRunClient(scenario=FakeAgentBackendScenario.FAILED)
+    store = _FakeSessionStore()
+
+    with pytest.raises(AgentBackendError):
+        _run_stateless(_runner(client, store))
+
+    assert client.wait_calls == [("fake-run-1", app_runner_module.dify_config.APP_MAX_EXECUTION_TIME)]
+    assert store.saved == []
 
 
 def test_failed_run_raises_agent_backend_error():
