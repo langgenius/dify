@@ -33,4 +33,31 @@ describe('GenerationPlan', () => {
     // The planning-only state must be gone once a plan is present.
     expect(screen.queryByText(/workflowGenerator\.phases\.planning/i)).not.toBeInTheDocument()
   })
+
+  it('renders correctly when plan has no icon, app_name, or title', () => {
+    const plan: WorkflowGenPlan = {
+      mode: 'workflow',
+      nodes: [
+        { label: 'Start', node_type: 'start' },
+      ],
+      start_inputs: [],
+    } as unknown as WorkflowGenPlan
+    render(<GenerationPlan plan={plan} />)
+
+    expect(screen.getByText('Start')).toBeInTheDocument()
+    expect(screen.getByText(/workflowGenerator\.phases\.building/i)).toBeInTheDocument()
+  })
+
+  it('falls back to plan.title when plan.app_name is empty', () => {
+    const plan: WorkflowGenPlan = {
+      app_name: '',
+      title: 'Fallback Title',
+      mode: 'workflow',
+      nodes: [],
+      start_inputs: [],
+    } as unknown as WorkflowGenPlan
+    render(<GenerationPlan plan={plan} />)
+
+    expect(screen.getByText('Fallback Title')).toBeInTheDocument()
+  })
 })
