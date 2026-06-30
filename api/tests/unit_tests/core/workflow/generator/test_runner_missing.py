@@ -29,17 +29,22 @@ def test_declares_variable():
     
     # LLM node
     assert WorkflowGenerator._declares_variable({"data": {"type": "llm"}}, "text") == True
-    assert WorkflowGenerator._declares_variable({"data": {"type": "llm", "structured_output": {"schema": {"properties": {"json_var": {}}}}}}, "json_var") == True
-    assert WorkflowGenerator._declares_variable({"data": {"type": "llm", "structured_output": {"schema": {"properties": {"json_var": {}}}}}}, "other_var") == False
-    
+    llm_so = {"data": {"type": "llm", "structured_output": {"schema": {"properties": {"json_var": {}}}}}}
+    assert WorkflowGenerator._declares_variable(llm_so, "json_var") == True
+    assert WorkflowGenerator._declares_variable(llm_so, "other_var") == False
+
     # Code node
-    assert WorkflowGenerator._declares_variable({"data": {"type": "code", "outputs": {"code_var": "str"}}}, "code_var") == True
+    assert WorkflowGenerator._declares_variable(
+        {"data": {"type": "code", "outputs": {"code_var": "str"}}}, "code_var"
+    ) == True
     
     # Knowledge retrieval
     assert WorkflowGenerator._declares_variable({"data": {"type": "knowledge-retrieval"}}, "result") == True
     
     # Parameter extractor
-    assert WorkflowGenerator._declares_variable({"data": {"type": "parameter-extractor", "parameters": [{"name": "param1"}]}}, "param1") == True
+    assert WorkflowGenerator._declares_variable(
+        {"data": {"type": "parameter-extractor", "parameters": [{"name": "param1"}]}}, "param1"
+    ) == True
     
     # HTTP request
     assert WorkflowGenerator._declares_variable({"data": {"type": "http-request"}}, "body") == True
@@ -85,8 +90,6 @@ def test_collect_unknown_tools():
     assert len(errors) >= 1
     assert "missing provider" in errors[0]["detail"]
 
-
-    
     # Needs a real structure, skipping for now
 
 

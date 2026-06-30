@@ -34,8 +34,8 @@ def test_rule_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPatch) -
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
-        def _raise(*_args, **_kwargs):
-            raise err_to_raise
+        def _raise(*_args, _err=err_to_raise, **_kwargs):
+            raise _err
 
         monkeypatch.setattr(generator_module.LLMGenerator, "generate_rule_config", _raise)
 
@@ -59,8 +59,8 @@ def test_rule_code_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyPat
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
-        def _raise(*_args, **_kwargs):
-            raise err_to_raise
+        def _raise(*_args, _err=err_to_raise, **_kwargs):
+            raise _err
 
         monkeypatch.setattr(generator_module.LLMGenerator, "generate_code", _raise)
 
@@ -85,8 +85,8 @@ def test_structured_output_generate_exceptions(app: Flask, monkeypatch: pytest.M
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
-        def _raise(*_args, **_kwargs):
-            raise err_to_raise
+        def _raise(*_args, _err=err_to_raise, **_kwargs):
+            raise _err
 
         monkeypatch.setattr(generator_module.LLMGenerator, "generate_structured_output", _raise)
 
@@ -113,8 +113,8 @@ def test_instruction_generate_exceptions(app: Flask, monkeypatch: pytest.MonkeyP
     ]
 
     for err_to_raise, expected_exception in exceptions_to_test:
-        def _raise(*_args, **_kwargs):
-            raise err_to_raise
+        def _raise(*_args, _err=err_to_raise, **_kwargs):
+            raise _err
 
         monkeypatch.setattr(generator_module.LLMGenerator, "instruction_modify_legacy", _raise)
 
