@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Protocol
 
 from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType
 from graphon.nodes.human_input.entities import FormInputConfig, SelectInputConfig
@@ -71,6 +71,17 @@ class FormDisposition(NamedTuple):
     approval_channels: list[ApprovalChannel]
 
 
+class FormReplaySnapshot(Protocol):
+    @property
+    def expiration_time(self) -> int: ...
+
+    @property
+    def rendered_content(self) -> str: ...
+
+    @property
+    def default_values(self) -> Mapping[str, Any]: ...
+
+
 def disposition_for_surface(
     recipients: Sequence[tuple[RecipientType, str]],
     *,
@@ -92,7 +103,8 @@ def enrich_human_input_pause_reasons(
     reasons: Sequence[Mapping[str, Any]],
     *,
     dispositions_by_form_id: Mapping[str, FormDisposition],
-    expiration_times_by_form_id: Mapping[str, int],
+    expiration_times_by_form_id: Mapping[str, int] | None = None,
+    form_snapshots_by_form_id: Mapping[str, FormReplaySnapshot] | None = None,
 ) -> list[dict[str, Any]]:
     enriched: list[dict[str, Any]] = []
     for reason in reasons:
@@ -103,7 +115,13 @@ def enrich_human_input_pause_reasons(
                 disposition = dispositions_by_form_id.get(form_id)
                 updated["form_token"] = disposition.form_token if disposition else None
                 updated["approval_channels"] = list(disposition.approval_channels) if disposition else []
-                expiration_time = expiration_times_by_form_id.get(form_id)
+                form_snapshot = form_snapshots_by_form_id.get(form_id) if form_snapshots_by_form_id else None
+                if form_snapshot is not None:
+                    updated["form_content"] = form_snapshot.rendered_content
+                    updated["resolved_default_values"] = dict(form_snapshot.default_values)
+                expiration_time = form_snapshot.expiration_time if form_snapshot is not None else None
+                if expiration_time is None and expiration_times_by_form_id is not None:
+                    expiration_time = expiration_times_by_form_id.get(form_id)
                 if expiration_time is not None:
                     updated["expiration_time"] = expiration_time
         enriched.append(updated)
