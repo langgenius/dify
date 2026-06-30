@@ -581,6 +581,7 @@ class WorkflowRunArchiver:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
                 if storage.object_exists(self._get_manifest_object_key(identity)):
                     self._write_bundle_index(storage, identity)
+                    self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
                     result.error = "bundle already archived"
@@ -604,6 +605,7 @@ class WorkflowRunArchiver:
                 result.run_count = len(runs)
                 if storage.object_exists(self._get_manifest_object_key(identity)):
                     self._write_bundle_index(storage, identity)
+                    self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
                     result.error = "filtered bundle already archived"
@@ -635,6 +637,8 @@ class WorkflowRunArchiver:
                     storage.put_object(self._get_table_object_key(identity, table_name), payload)
                 storage.put_object(self._get_manifest_object_key(identity), manifest_data)
                 self._merge_bundle_manifest_into_index(storage, identity, [run.id for run in runs])
+                manifest = decode_archive_bundle_manifest(manifest_data)
+                upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
                 session.commit()
 
                 logger.info(
@@ -836,7 +840,7 @@ class WorkflowRunArchiver:
             archived_at=datetime.datetime.now(datetime.UTC).isoformat(),
             campaign_id=self.campaign_id,
             archive_window_start=self._format_window_datetime(self.start_from),
-            archive_window_end=end_before.isoformat(),
+            archive_window_end=self._format_window_datetime(end_before),
             run_shard=identity.shard,
             tables=tables,
             run_ids=[run.id for run in sorted_runs],
