@@ -289,16 +289,23 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     output_schema = dumped["composition"]["layers"][-1]["config"]["json_schema"]
     output_description = dumped["composition"]["layers"][-1]["config"]["description"]
     report_schema = output_schema["properties"]["report"]
-    assert report_schema["additionalProperties"] is False
-    assert report_schema["required"] == ["transfer_method"]
-    assert report_schema["properties"]["transfer_method"]["enum"] == [
-        "local_file",
-        "tool_file",
-        "datasource_file",
-        "remote_url",
-    ]
+    report_schema_branches = {
+        branch["properties"]["transfer_method"]["enum"][0]: branch for branch in report_schema["anyOf"]
+    }
+    assert set(report_schema_branches) == {"tool_file", "remote_url"}
+    tool_file_branch = report_schema_branches["tool_file"]
+    assert tool_file_branch["additionalProperties"] is False
+    assert tool_file_branch["required"] == ["transfer_method", "reference"]
+    assert set(tool_file_branch["properties"]) == {"transfer_method", "reference"}
+    assert tool_file_branch["properties"]["reference"]["pattern"].startswith("^dify-file-ref:")
+    remote_url_branch = report_schema_branches["remote_url"]
+    assert remote_url_branch["additionalProperties"] is False
+    assert remote_url_branch["required"] == ["transfer_method", "url"]
+    assert set(remote_url_branch["properties"]) == {"transfer_method", "url"}
     assert "dify-agent file upload <path>" in output_description
     assert "final_output.report" in output_description
+    assert "never invent the `reference` value" in output_description
+    assert "Do not call `final_output` before the upload command succeeds" in output_description
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}
