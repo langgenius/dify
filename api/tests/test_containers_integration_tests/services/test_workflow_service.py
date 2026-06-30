@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from models import Account, AccountStatus, App, TenantStatus, Workflow
 from models.model import AppMode
 from models.workflow import WorkflowType
+from services.workflow_ref_service import WorkflowRef
 from services.workflow_service import WorkflowService
 
 
@@ -1319,10 +1320,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=workflow.id,
-            tenant_id=workflow.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1350,10 +1350,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=non_existent_workflow_id,
-            tenant_id=app.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=app.tenant_id, owner_id=app.id, workflow_id=non_existent_workflow_id),
         )
 
         # Assert
@@ -1385,10 +1384,9 @@ class TestWorkflowService:
         # Act
         result = workflow_service.update_workflow(
             session=db_session_with_containers,
-            workflow_id=workflow.id,
-            tenant_id=workflow.tenant_id,
             account_id=account.id,
             data=update_data,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1421,7 +1419,8 @@ class TestWorkflowService:
 
         # Act
         result = workflow_service.delete_workflow(
-            session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+            session=db_session_with_containers,
+            workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
         )
 
         # Assert
@@ -1456,7 +1455,8 @@ class TestWorkflowService:
 
         with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow versions"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
     def test_delete_workflow_in_use_error(self, db_session_with_containers: Session):
@@ -1487,7 +1487,8 @@ class TestWorkflowService:
 
         with pytest.raises(WorkflowInUseError, match="Cannot delete workflow that is currently in use by app"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=workflow.id, tenant_id=workflow.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(tenant_id=workflow.tenant_id, owner_id=app.id, workflow_id=workflow.id),
             )
 
     def test_delete_workflow_not_found_error(self, db_session_with_containers: Session):
@@ -1507,7 +1508,12 @@ class TestWorkflowService:
         # Act & Assert
         with pytest.raises(ValueError, match=f"Workflow with ID {non_existent_workflow_id} not found"):
             workflow_service.delete_workflow(
-                session=db_session_with_containers, workflow_id=non_existent_workflow_id, tenant_id=app.tenant_id
+                session=db_session_with_containers,
+                workflow_ref=WorkflowRef(
+                    tenant_id=app.tenant_id,
+                    owner_id=app.id,
+                    workflow_id=non_existent_workflow_id,
+                ),
             )
 
     def test_run_free_workflow_node_success(self, db_session_with_containers: Session):

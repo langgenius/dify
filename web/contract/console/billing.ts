@@ -1,3 +1,4 @@
+import { billing } from '@dify/contracts/api/console/billing/orpc.gen'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -23,3 +24,9 @@ export const bindPartnerStackContract = base
     }
   }>())
   .output(type<unknown>())
+
+export const billingRouterContract = {
+  ...billing,
+  invoices: invoicesContract,
+  bindPartnerStack: bindPartnerStackContract,
+}

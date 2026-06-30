@@ -1,3 +1,4 @@
+import { workspaces } from '@dify/contracts/api/console/workspaces/orpc.gen'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -54,3 +55,11 @@ export const workspaceSwitchContract = base
     body: SwitchWorkspaceRequest
   }>())
   .output(type<SwitchWorkspaceResponse>())
+
+export const workspacesRouterContract = {
+  ...workspaces,
+  get: workspacesGetContract,
+  switch: {
+    post: workspaceSwitchContract,
+  },
+}

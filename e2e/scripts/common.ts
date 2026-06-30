@@ -1,3 +1,4 @@
+import type { Buffer } from 'node:buffer'
 import type { ChildProcess } from 'node:child_process'
 import { spawn } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -42,6 +43,7 @@ export const webEnvExampleFile = path.join(webDir, '.env.example')
 export const apiEnvExampleFile = path.join(apiDir, 'tests', 'integration_tests', '.env.example')
 export const e2eWebEnvOverrides = {
   NEXT_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/console/api',
+  NEXT_PUBLIC_ENABLE_AGENT_V2: 'true',
   NEXT_PUBLIC_PUBLIC_API_PREFIX: 'http://127.0.0.1:5001/api',
 } satisfies Record<string, string>
 
