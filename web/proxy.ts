@@ -5,7 +5,7 @@ import { Buffer } from 'node:buffer'
 import { NextResponse } from 'next/server'
 import { env } from '@/env'
 
-const NECESSARY_DOMAIN = '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://ungh.cc https://api2.amplitude.com *.amplitude.com'
+const NECESSARY_DOMAIN = '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://ungh.cc https://unpkg.com https://api2.amplitude.com *.amplitude.com'
 const CURRENT_PATHNAME_HEADER = 'x-dify-pathname'
 const CURRENT_SEARCH_HEADER = 'x-dify-search'
 const EMBEDDABLE_PATH_PREFIXES = ['/chat', '/workflow', '/completion', '/webapp-signin']
