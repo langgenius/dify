@@ -287,13 +287,18 @@ def test_builds_workflow_run_request_with_file_output_schema_and_reserved_metada
     assert layers[DIFY_EXECUTION_CONTEXT_LAYER_ID]["config"]["invoke_from"] == "service-api"
     assert dumped["idempotency_key"] == "node-exec-1"
     output_schema = dumped["composition"]["layers"][-1]["config"]["json_schema"]
+    output_description = dumped["composition"]["layers"][-1]["config"]["description"]
     report_schema = output_schema["properties"]["report"]
-    assert len(report_schema["oneOf"]) == 4
-    assert all(branch["additionalProperties"] is False for branch in report_schema["oneOf"])
-    assert report_schema["oneOf"][0]["required"] == ["transfer_method", "reference"]
-    assert report_schema["oneOf"][1]["required"] == ["transfer_method", "reference"]
-    assert report_schema["oneOf"][2]["required"] == ["transfer_method", "reference"]
-    assert report_schema["oneOf"][3]["required"] == ["transfer_method", "url"]
+    assert report_schema["additionalProperties"] is False
+    assert report_schema["required"] == ["transfer_method"]
+    assert report_schema["properties"]["transfer_method"]["enum"] == [
+        "local_file",
+        "tool_file",
+        "datasource_file",
+        "remote_url",
+    ]
+    assert "dify-agent file upload <path>" in output_description
+    assert "final_output.report" in output_description
     assert output_schema["properties"]["confidence"]["type"] == "number"
     assert output_schema["required"] == ["report"]
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_settings"] == {"temperature": 0.2}

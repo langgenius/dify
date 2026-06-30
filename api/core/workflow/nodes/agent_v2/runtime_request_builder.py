@@ -493,7 +493,10 @@ class WorkflowAgentRuntimeRequestBuilder:
         schema: dict[str, Any] = {"type": "object", "properties": properties}
         if required:
             schema["required"] = required
-        return AgentBackendOutputConfig(json_schema=schema)
+        return AgentBackendOutputConfig(
+            json_schema=schema,
+            description=WorkflowAgentRuntimeRequestBuilder._build_output_description(effective_outputs),
+        )
 
     @staticmethod
     def effective_declared_outputs(
@@ -550,47 +553,37 @@ class WorkflowAgentRuntimeRequestBuilder:
                     array_schema["items"]["description"] = array_item.description
                 return array_schema
             case DeclaredOutputType.FILE:
-                return {
-                    "oneOf": [
-                        {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "transfer_method": {"const": FileTransferMethod.LOCAL_FILE.value},
-                                "reference": {"type": "string"},
-                            },
-                            "required": ["transfer_method", "reference"],
-                        },
-                        {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "transfer_method": {"const": FileTransferMethod.TOOL_FILE.value},
-                                "reference": {"type": "string"},
-                            },
-                            "required": ["transfer_method", "reference"],
-                        },
-                        {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "transfer_method": {"const": FileTransferMethod.DATASOURCE_FILE.value},
-                                "reference": {"type": "string"},
-                            },
-                            "required": ["transfer_method", "reference"],
-                        },
-                        {
-                            "type": "object",
-                            "additionalProperties": False,
-                            "properties": {
-                                "transfer_method": {"const": FileTransferMethod.REMOTE_URL.value},
-                                "url": {"type": "string"},
-                            },
-                            "required": ["transfer_method", "url"],
-                        },
-                    ],
-                }
+                return cast(dict[str, Any], AgentStubFileMapping.model_json_schema())
         assert_never(output_type)
+
+    @staticmethod
+    def _build_output_description(declared_outputs: Sequence[DeclaredOutputConfig]) -> str | None:
+        file_output_lines: list[str] = []
+        for output in declared_outputs:
+            if output.type == DeclaredOutputType.FILE:
+                file_output_lines.append(
+                    f"- `{output.name}`: create the file in the sandbox, run `dify-agent file upload <path>`, "
+                    f"and set `final_output.{output.name}` to the returned AgentStubFileMapping JSON object."
+                )
+            elif (
+                output.type == DeclaredOutputType.ARRAY
+                and output.array_item is not None
+                and output.array_item.type == DeclaredOutputType.FILE
+            ):
+                file_output_lines.append(
+                    f"- `{output.name}`: for every produced file, run `dify-agent file upload <path>` and set "
+                    f"`final_output.{output.name}` to an array of the returned AgentStubFileMapping JSON objects."
+                )
+        if not file_output_lines:
+            return None
+
+        return "\n".join(
+            [
+                "When filling file outputs, do not return a local filesystem path directly.",
+                "Upload each sandbox-local file through the Agent Stub CLI first:",
+                *file_output_lines,
+            ]
+        )
 
     @staticmethod
     def _apply_child_properties(schema: dict[str, Any], children: Sequence[DeclaredOutputChildConfig]) -> None:
