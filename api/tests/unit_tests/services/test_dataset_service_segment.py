@@ -38,9 +38,12 @@ def _make_segment_ref(segment_id: str = "segment-1"):
 class TestDatasetRefService:
     """Unit tests for typed dataset resource refs."""
 
-    def test_dataset_ref_requires_service_ctor_token(self):
-        with pytest.raises(ValueError, match="DatasetRef must be created by DatasetRefService"):
-            DatasetRef("tenant-1", "dataset-1", object())
+    def test_dataset_ref_is_plain_named_tuple(self):
+        dataset_ref = DatasetRef("tenant-1", "dataset-1")
+
+        assert dataset_ref.tenant_id == "tenant-1"
+        assert dataset_ref.dataset_id == "dataset-1"
+        assert tuple(dataset_ref) == ("tenant-1", "dataset-1")
 
     def test_create_document_ref_rejects_document_outside_dataset(self):
         dataset = _make_dataset(dataset_id="dataset-1", tenant_id="tenant-1")

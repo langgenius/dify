@@ -1618,7 +1618,7 @@ class WorkflowService:
         lookup_tenant_id = workflow_ref.tenant_id if workflow_ref else tenant_id
         stmt = select(Workflow).where(Workflow.id == lookup_workflow_id, Workflow.tenant_id == lookup_tenant_id)
         if workflow_ref is not None:
-            stmt = stmt.where(Workflow.app_id == workflow_ref.app_id)
+            stmt = stmt.where(Workflow.app_id == workflow_ref.owner_id)
         workflow = session.scalar(stmt)
 
         if not workflow:
@@ -1654,7 +1654,7 @@ class WorkflowService:
         lookup_tenant_id = workflow_ref.tenant_id if workflow_ref else tenant_id
         stmt = select(Workflow).where(Workflow.id == lookup_workflow_id, Workflow.tenant_id == lookup_tenant_id)
         if workflow_ref is not None:
-            stmt = stmt.where(Workflow.app_id == workflow_ref.app_id)
+            stmt = stmt.where(Workflow.app_id == workflow_ref.owner_id)
         workflow = session.scalar(stmt)
 
         if not workflow:
