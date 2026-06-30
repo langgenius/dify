@@ -2570,6 +2570,25 @@ export type GetAgentByAgentIdConfigSkillsByNameDownloadResponses = {
 export type GetAgentByAgentIdConfigSkillsByNameDownloadResponse
   = GetAgentByAgentIdConfigSkillsByNameDownloadResponses[keyof GetAgentByAgentIdConfigSkillsByNameDownloadResponses]
 
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentData = {
+  body?: never
+  path: {
+    agent_id: string
+    name: string
+  }
+  query?: never
+  url: '/agent/{agent_id}/config/skills/{name}/files/content'
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type GetAgentByAgentIdConfigSkillsByNameFilesContentResponse
+  = GetAgentByAgentIdConfigSkillsByNameFilesContentResponses[keyof GetAgentByAgentIdConfigSkillsByNameFilesContentResponses]
+
 export type GetAgentByAgentIdConfigSkillsByNameFilesDownloadData = {
   body?: never
   path: {

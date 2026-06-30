@@ -3098,6 +3098,19 @@ export const zGetAgentByAgentIdConfigSkillsByNameDownloadQuery = z.object({
  */
 export const zGetAgentByAgentIdConfigSkillsByNameDownloadResponse = zAgentConfigDownloadResponse
 
+export const zGetAgentByAgentIdConfigSkillsByNameFilesContentPath = z.object({
+  agent_id: z.uuid(),
+  name: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetAgentByAgentIdConfigSkillsByNameFilesContentResponse = z.record(
+  z.string(),
+  z.unknown(),
+)
+
 export const zGetAgentByAgentIdConfigSkillsByNameFilesDownloadPath = z.object({
   agent_id: z.uuid(),
   name: z.string(),
