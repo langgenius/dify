@@ -335,23 +335,17 @@ class AgentComposerService:
         return cls._serialize_workflow_state(binding=binding, agent=inline_agent, version=version, session=session)
 
     @classmethod
-    def load_agent_app_composer(
-        cls, *, tenant_id: str, app_id: str, session: _SessionLike
-    ) -> dict[str, Any]:
+    def load_agent_app_composer(cls, *, tenant_id: str, app_id: str, session: _SessionLike) -> dict[str, Any]:
         agent = cls._require_agent_app_agent(tenant_id=tenant_id, app_id=app_id, session=session)
         return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent, session=session)
 
     @classmethod
-    def load_agent_composer(
-        cls, *, tenant_id: str, agent_id: str, session: _SessionLike
-    ) -> dict[str, Any]:
+    def load_agent_composer(cls, *, tenant_id: str, agent_id: str, session: _SessionLike) -> dict[str, Any]:
         agent = cls._require_agent(tenant_id=tenant_id, agent_id=agent_id, session=session)
         return cls._load_agent_composer_for_agent(tenant_id=tenant_id, agent=agent, session=session)
 
     @classmethod
-    def _load_agent_composer_for_agent(
-        cls, *, tenant_id: str, agent: Agent, session: _SessionLike
-    ) -> dict[str, Any]:
+    def _load_agent_composer_for_agent(cls, *, tenant_id: str, agent: Agent, session: _SessionLike) -> dict[str, Any]:
         draft = cls._get_or_create_agent_draft(
             tenant_id=tenant_id,
             agent=agent,
@@ -920,9 +914,7 @@ class AgentComposerService:
         return cls._parse_soul_snapshot(version)
 
     @classmethod
-    def _load_agent_soul(
-        cls, *, tenant_id: str, agent_id: str, session: _SessionLike
-    ) -> AgentSoulConfig | None:
+    def _load_agent_soul(cls, *, tenant_id: str, agent_id: str, session: _SessionLike) -> AgentSoulConfig | None:
         agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=agent_id, session=session)
         if agent is None:
             return None
@@ -1027,9 +1019,7 @@ class AgentComposerService:
         return tools
 
     @classmethod
-    def calculate_impact(
-        cls, *, tenant_id: str, current_snapshot_id: str, session: _SessionLike
-    ) -> dict[str, Any]:
+    def calculate_impact(cls, *, tenant_id: str, current_snapshot_id: str, session: _SessionLike) -> dict[str, Any]:
         snapshot = session.scalar(
             select(AgentConfigSnapshot)
             .where(
