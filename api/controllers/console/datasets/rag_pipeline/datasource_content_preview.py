@@ -1,5 +1,4 @@
 from typing import Any
-from extensions.ext_database import db
 
 from flask_restx import (  # type: ignore
     Resource,  # type: ignore
@@ -10,6 +9,7 @@ from controllers.common.schema import register_response_schema_models, register_
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required, with_current_user
+from extensions.ext_database import db
 from libs.login import login_required
 from models import Account
 from models.dataset import Pipeline

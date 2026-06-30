@@ -4,11 +4,11 @@ import time
 import click
 from celery import shared_task
 from sqlalchemy import delete, select
-from extensions.ext_database import db
 
 from core.db.session_factory import session_factory
 from core.indexing_runner import IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from models import Account, Tenant
