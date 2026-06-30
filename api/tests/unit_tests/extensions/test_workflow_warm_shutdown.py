@@ -1,3 +1,4 @@
+import logging
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -26,7 +27,10 @@ def test_worker_shutting_down_sends_stop_commands_for_warm_shutdown(monkeypatch:
 
     workflow_warm_shutdown._on_worker_shutting_down(how="warm")
 
-    assert manager.send_stop_command.call_args_list == [call("task-a"), call("task-b")]
+    assert manager.send_stop_command.call_args_list == [
+        call("task-a", reason=workflow_warm_shutdown.WORKFLOW_WARM_SHUTDOWN_ABORT_REASON),
+        call("task-b", reason=workflow_warm_shutdown.WORKFLOW_WARM_SHUTDOWN_ABORT_REASON),
+    ]
 
 
 def test_worker_shutting_down_continues_after_stop_command_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -39,3 +43,27 @@ def test_worker_shutting_down_continues_after_stop_command_failure(monkeypatch: 
     workflow_warm_shutdown._on_worker_shutting_down(how="warm")
 
     assert manager.send_stop_command.call_count == 2
+
+
+def test_worker_shutdown_logs_when_all_tracked_tasks_ended(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO, logger=workflow_warm_shutdown.logger.name)
+    monkeypatch.setattr(workflow_warm_shutdown, "get_active_workflow_task_ids", lambda: ())
+
+    workflow_warm_shutdown._on_worker_shutdown()
+
+    assert "after all tracked workflow tasks ended" in caplog.text
+
+
+def test_worker_shutdown_logs_remaining_tracked_tasks(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO, logger=workflow_warm_shutdown.logger.name)
+    monkeypatch.setattr(workflow_warm_shutdown, "get_active_workflow_task_ids", lambda: ("task-a", "task-b"))
+
+    workflow_warm_shutdown._on_worker_shutdown()
+
+    assert "with 2 workflow task(s) still active after warm shutdown wait" in caplog.text
