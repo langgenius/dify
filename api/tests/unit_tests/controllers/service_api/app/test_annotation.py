@@ -141,14 +141,14 @@ class TestAppModelPatterns:
 
         assert app.id is not None
         assert app.status == "normal"
-        assert app.enable_api is True
+        assert app.enable_api
 
     def test_app_model_disabled_api(self):
         """Test app with disabled API access."""
         app = Mock(spec=App)
         app.enable_api = False
 
-        assert app.enable_api is False
+        assert not app.enable_api
 
     def test_app_model_archived_status(self):
         """Test app with archived status."""
@@ -183,7 +183,7 @@ class TestAnnotationErrorPatterns:
 
 class TestAnnotationReplyActionApi:
     def test_enable(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        enable_mock = Mock()
+        enable_mock = Mock(return_value={"job_id": "job-1", "job_status": "waiting"})
         monkeypatch.setattr(AppAnnotationService, "enable_app_annotation", enable_mock)
 
         api = AnnotationReplyActionApi()
@@ -198,10 +198,11 @@ class TestAnnotationReplyActionApi:
             response, status = handler(api, app_model=app_model, action="enable")
 
         assert status == 200
+        assert response == {"job_id": "job-1", "job_status": "waiting"}
         enable_mock.assert_called_once()
 
     def test_disable(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        disable_mock = Mock()
+        disable_mock = Mock(return_value={"job_id": "job-1", "job_status": "waiting"})
         monkeypatch.setattr(AppAnnotationService, "disable_app_annotation", disable_mock)
 
         api = AnnotationReplyActionApi()
@@ -216,6 +217,7 @@ class TestAnnotationReplyActionApi:
             response, status = handler(api, app_model=app_model, action="disable")
 
         assert status == 200
+        assert response == {"job_id": "job-1", "job_status": "waiting"}
         disable_mock.assert_called_once()
 
 

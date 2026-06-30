@@ -370,6 +370,7 @@ import {
   zPostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateResponse,
   zPostWorkspacesCustomConfigBody,
   zPostWorkspacesCustomConfigResponse,
+  zPostWorkspacesCustomConfigWebappLogoUploadBody,
   zPostWorkspacesCustomConfigWebappLogoUploadResponse,
   zPostWorkspacesInfoBody,
   zPostWorkspacesInfoResponse,
@@ -4121,6 +4122,7 @@ export const post72 = oc
     successStatus: 201,
     tags: ['console'],
   })
+  .input(z.object({ body: zPostWorkspacesCustomConfigWebappLogoUploadBody }))
   .output(zPostWorkspacesCustomConfigWebappLogoUploadResponse)
 
 export const upload2 = {

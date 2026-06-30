@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel, computed_field
 
@@ -8,7 +8,6 @@ from fields.base import ResponseModel
 from graphon.file import helpers as file_helpers
 from models.model import IconType
 
-type JSONValue = str | int | float | bool | None | dict[str, Any] | list[Any]
 type JSONObject = dict[str, Any]
 
 
@@ -22,10 +21,6 @@ class SystemParameters(BaseModel):
 
 class SimpleResultResponse(ResponseModel):
     result: str
-
-
-class GeneratedAppResponse(RootModel[JSONValue]):
-    root: JSONValue
 
 
 class EventStreamResponse(RootModel[str]):
@@ -50,6 +45,11 @@ class AudioBinaryResponse(RootModel[bytes]):
 
 class AudioTranscriptResponse(ResponseModel):
     text: str
+
+
+class ValidationResultResponse(ResponseModel):
+    result: Literal["success", "error"]
+    error: str | None = None
 
 
 class SimpleResultMessageResponse(ResponseModel):

@@ -9,17 +9,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 from controllers.common.controller_schemas import WorkflowUpdatePayload
-from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
+from controllers.common.fields import EventStreamResponse, SimpleResultResponse
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
 from controllers.console.app.workflow import (
     RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE,
-    DefaultBlockConfigsResponse,
+    PublishWorkflowResponse,
+    SyncDraftWorkflowResponse,
     WorkflowPaginationResponse,
-    WorkflowPublishResponse,
     WorkflowResponse,
-    WorkflowRestoreResponse,
 )
 from controllers.console.snippets.payloads import (
     PublishWorkflowPayload,
@@ -44,6 +43,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from fields.base import ResponseModel
 from fields.workflow_run_fields import (
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -52,7 +52,7 @@ from fields.workflow_run_fields import (
 )
 from graphon.graph_engine.manager import GraphEngineManager
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import dump_response, to_timestamp
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from models.snippet import CustomizedSnippet
@@ -77,7 +77,7 @@ class SnippetWorkflowResponse(WorkflowResponse):
     input_fields: list[dict] = Field(default_factory=list)
 
 
-class SnippetDraftConfigResponse(BaseModel):
+class SnippetDraftConfigResponse(ResponseModel):
     parallel_depth_limit: int
 
 
@@ -102,15 +102,14 @@ register_schema_models(
 )
 register_response_schema_models(
     console_ns,
-    DefaultBlockConfigsResponse,
-    GeneratedAppResponse,
+    EventStreamResponse,
     SimpleResultResponse,
     SnippetDraftConfigResponse,
     SnippetWorkflowResponse,
     SnippetWorkflowPaginationResponse,
-    WorkflowPublishResponse,
+    PublishWorkflowResponse,
     WorkflowPaginationResponse,
-    WorkflowRestoreResponse,
+    SyncDraftWorkflowResponse,
     WorkflowRunPaginationResponse,
     WorkflowRunDetailResponse,
     WorkflowRunNodeExecutionListResponse,
@@ -176,7 +175,7 @@ class SnippetDraftWorkflowApi(Resource):
             raise DraftWorkflowNotExist()
 
         workflow.conversation_variables = []
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = dump_response(SnippetWorkflowResponse, workflow)
         response["input_fields"] = snippet.input_fields_list
         return response
 
@@ -185,7 +184,7 @@ class SnippetDraftWorkflowApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow synced successfully",
-        console_ns.models[WorkflowRestoreResponse.__name__],
+        console_ns.models[SyncDraftWorkflowResponse.__name__],
     )
     @console_ns.response(400, "Hash mismatch")
     @setup_required
@@ -215,11 +214,11 @@ class SnippetDraftWorkflowApi(Resource):
         except ValueError as e:
             return {"message": str(e)}, 400
 
-        return {
-            "result": "success",
-            "hash": workflow.unique_hash,
-            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-        }
+        return SyncDraftWorkflowResponse(
+            result="success",
+            hash=workflow.unique_hash,
+            updated_at=to_timestamp(workflow.updated_at or workflow.created_at),
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/config")
@@ -237,9 +236,7 @@ class SnippetDraftConfigApi(Resource):
     @edit_permission_required
     def get(self, snippet: CustomizedSnippet):
         """Get snippet draft workflow configuration limits."""
-        return {
-            "parallel_depth_limit": 3,
-        }
+        return SnippetDraftConfigResponse(parallel_depth_limit=3).model_dump(mode="json")
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/publish")
@@ -267,13 +264,12 @@ class SnippetPublishedWorkflowApi(Resource):
         if not workflow:
             return None
 
-        response = SnippetWorkflowResponse.model_validate(workflow, from_attributes=True).model_dump(mode="json")
+        response = dump_response(SnippetWorkflowResponse, workflow)
         response["input_fields"] = snippet.input_fields_list
         return response
 
     @console_ns.doc("publish_snippet_workflow")
-    @console_ns.expect(console_ns.models.get(PublishWorkflowPayload.__name__))
-    @console_ns.response(200, "Workflow published successfully", console_ns.models[WorkflowPublishResponse.__name__])
+    @console_ns.response(200, "Workflow published successfully", console_ns.models[PublishWorkflowResponse.__name__])
     @console_ns.response(400, "No draft workflow found")
     @setup_required
     @login_required
@@ -296,25 +292,18 @@ class SnippetPublishedWorkflowApi(Resource):
                     snippet=snippet,
                     account=current_user,
                 )
-                workflow_created_at = TimestampField().format(workflow.created_at)
+                workflow_created_at = to_timestamp(workflow.created_at)
                 session.commit()
             except ValueError as e:
                 return {"message": str(e)}, 400
 
-        return {
-            "result": "success",
-            "created_at": workflow_created_at,
-        }
+        return PublishWorkflowResponse(result="success", created_at=workflow_created_at).model_dump(mode="json")
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/default-workflow-block-configs")
 class SnippetDefaultBlockConfigsApi(Resource):
     @console_ns.doc("get_snippet_default_block_configs")
-    @console_ns.response(
-        200,
-        "Default block configs retrieved successfully",
-        console_ns.models[DefaultBlockConfigsResponse.__name__],
-    )
+    @console_ns.response(200, "Default block configs retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -377,7 +366,7 @@ class SnippetDraftWorkflowRestoreApi(Resource):
     @console_ns.doc("restore_snippet_workflow_to_draft")
     @console_ns.doc(description="Restore a published snippet workflow version into the draft workflow")
     @console_ns.doc(params={"snippet_id": "Snippet ID", "workflow_id": "Published workflow ID"})
-    @console_ns.response(200, "Workflow restored successfully", console_ns.models[WorkflowRestoreResponse.__name__])
+    @console_ns.response(200, "Workflow restored successfully", console_ns.models[SyncDraftWorkflowResponse.__name__])
     @console_ns.response(400, "Source workflow must be published")
     @console_ns.response(404, "Workflow not found")
     @setup_required
@@ -406,11 +395,11 @@ class SnippetDraftWorkflowRestoreApi(Resource):
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
 
-        return {
-            "result": "success",
-            "hash": workflow.unique_hash,
-            "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
-        }
+        return SyncDraftWorkflowResponse(
+            result="success",
+            hash=workflow.unique_hash,
+            updated_at=to_timestamp(workflow.updated_at or workflow.created_at),
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/<string:workflow_id>")
@@ -485,7 +474,7 @@ class SnippetWorkflowRunsApi(Resource):
         snippet_service = _snippet_service()
         result = snippet_service.get_snippet_workflow_runs(snippet=snippet, args=args)
 
-        return WorkflowRunPaginationResponse.model_validate(result, from_attributes=True).model_dump(mode="json")
+        return dump_response(WorkflowRunPaginationResponse, result)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/<uuid:run_id>")
@@ -511,7 +500,7 @@ class SnippetWorkflowRunDetailApi(Resource):
         if not workflow_run:
             raise NotFound("Workflow run not found")
 
-        return WorkflowRunDetailResponse.model_validate(workflow_run, from_attributes=True).model_dump(mode="json")
+        return dump_response(WorkflowRunDetailResponse, workflow_run)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflow-runs/<uuid:run_id>/node-executions")
@@ -536,9 +525,7 @@ class SnippetWorkflowRunNodeExecutionsApi(Resource):
             run_id=run_id,
         )
 
-        return WorkflowRunNodeExecutionListResponse.model_validate(
-            {"data": node_executions}, from_attributes=True
-        ).model_dump(mode="json")
+        return dump_response(WorkflowRunNodeExecutionListResponse, {"data": node_executions})
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/run")
@@ -586,9 +573,7 @@ class SnippetDraftNodeRunApi(Resource):
             session_maker=_snippet_session_maker(),
         )
 
-        return WorkflowRunNodeExecutionResponse.model_validate(
-            workflow_node_execution, from_attributes=True
-        ).model_dump(mode="json")
+        return dump_response(WorkflowRunNodeExecutionResponse, workflow_node_execution)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/last-run")
@@ -624,7 +609,7 @@ class SnippetDraftNodeLastRunApi(Resource):
         if node_exec is None:
             raise NotFound("Node last run not found")
 
-        return WorkflowRunNodeExecutionResponse.model_validate(node_exec, from_attributes=True).model_dump(mode="json")
+        return dump_response(WorkflowRunNodeExecutionResponse, node_exec)
 
 
 @console_ns.route("/snippets/<uuid:snippet_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
@@ -636,7 +621,7 @@ class SnippetDraftRunIterationNodeApi(Resource):
     @console_ns.response(
         200,
         "Iteration node run started successfully (SSE stream)",
-        console_ns.models[GeneratedAppResponse.__name__],
+        console_ns.models[EventStreamResponse.__name__],
     )
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
@@ -664,6 +649,7 @@ class SnippetDraftRunIterationNodeApi(Resource):
                 session_maker=_snippet_session_maker(),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ValueError as e:
             raise e
@@ -681,7 +667,7 @@ class SnippetDraftRunLoopNodeApi(Resource):
     @console_ns.response(
         200,
         "Loop node run started successfully (SSE stream)",
-        console_ns.models[GeneratedAppResponse.__name__],
+        console_ns.models[EventStreamResponse.__name__],
     )
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
@@ -709,6 +695,7 @@ class SnippetDraftRunLoopNodeApi(Resource):
                 session_maker=_snippet_session_maker(),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ValueError as e:
             raise e
@@ -724,7 +711,7 @@ class SnippetDraftWorkflowRunApi(Resource):
     @console_ns.response(
         200,
         "Draft workflow run started successfully (SSE stream)",
-        console_ns.models[GeneratedAppResponse.__name__],
+        console_ns.models[EventStreamResponse.__name__],
     )
     @console_ns.response(404, "Snippet or draft workflow not found")
     @setup_required
@@ -753,6 +740,7 @@ class SnippetDraftWorkflowRunApi(Resource):
                 session_maker=_snippet_session_maker(),
             )
 
+            # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
         except ValueError as e:
             raise e
@@ -785,4 +773,4 @@ class SnippetWorkflowTaskStopApi(Resource):
         # New graph engine command channel mechanism
         GraphEngineManager(redis_client).send_stop_command(task_id)
 
-        return {"result": "success"}
+        return SimpleResultResponse(result="success").model_dump(mode="json")

@@ -941,8 +941,14 @@ Strict (extra='forbid').
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | current_identifier | string |  | No |
-| type | [Type](#type) |  | Yes |
+| type | [PluginDependencyType](#plugindependencytype) |  | Yes |
 | value | [Github](#github)<br>[Marketplace](#marketplace)<br>[Package](#package) |  | Yes |
+
+#### PluginDependencyType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PluginDependencyType | string |  |  |
 
 #### RevokeResponse
 
@@ -1023,12 +1029,6 @@ types it as a required `'success'` rather than an optional field.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
-
-#### Type
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| Type | string |  |  |
 
 #### UsageInfo
 

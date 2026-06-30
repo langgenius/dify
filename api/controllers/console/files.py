@@ -27,6 +27,7 @@ from controllers.console.wraps import (
 )
 from extensions.ext_database import db
 from fields.file_fields import FileResponse, UploadConfig
+from libs.helper import dump_response
 from libs.login import login_required
 from models import Account
 from services.file_service import FileService
@@ -100,8 +101,7 @@ class FileApi(Resource):
         except services.errors.file.BlockedFileExtensionError as blocked_extension_error:
             raise BlockedFileExtensionError(blocked_extension_error.description)
 
-        response = FileResponse.model_validate(upload_file, from_attributes=True)
-        return response.model_dump(mode="json"), 201
+        return dump_response(FileResponse, upload_file), 201
 
 
 @console_ns.route("/files/<uuid:file_id>/preview")
@@ -114,7 +114,7 @@ class FilePreviewApi(Resource):
     def get(self, current_tenant_id: str, file_id: UUID):
         file_id_str = str(file_id)
         text = FileService(db.engine).get_file_preview(file_id_str, current_tenant_id)
-        return {"content": text}
+        return TextContentResponse(content=text).model_dump(mode="json")
 
 
 @console_ns.route("/files/support-type")
@@ -124,4 +124,4 @@ class FileSupportTypeApi(Resource):
     @account_initialization_required
     @console_ns.response(200, "Success", console_ns.models[AllowedExtensionsResponse.__name__])
     def get(self):
-        return {"allowed_extensions": list(DOCUMENT_EXTENSIONS)}
+        return AllowedExtensionsResponse(allowed_extensions=list(DOCUMENT_EXTENSIONS)).model_dump(mode="json")
