@@ -214,7 +214,7 @@ class TestAnnotationImportServiceValidation:
             with patch("services.annotation_service.FeatureService") as mock_features:
                 mock_features.get_features.return_value.billing.enabled = False
 
-                result = AppAnnotationService.batch_import_app_annotations("app_id", file)
+                result = AppAnnotationService.batch_import_app_annotations("app_id", file, session=mock_db_session)
 
                 # Should return error about too many records
                 assert "error_msg" in result
@@ -231,7 +231,7 @@ class TestAnnotationImportServiceValidation:
         with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
-            result = AppAnnotationService.batch_import_app_annotations("app_id", file)
+            result = AppAnnotationService.batch_import_app_annotations("app_id", file, session=mock_db_session)
 
             # Should return error about insufficient records
             assert "error_msg" in result
