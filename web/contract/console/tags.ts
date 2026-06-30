@@ -1,3 +1,4 @@
+import { tags } from '@dify/contracts/api/console/tags/orpc.gen'
 import { type } from '@orpc/contract'
 import { base } from '../base'
 
@@ -89,3 +90,13 @@ export const tagBindingRemoveContract = base
     }
   }>())
   .output(type<unknown>())
+
+export const tagsRouterContract = {
+  ...tags,
+  list: tagListContract,
+  create: tagCreateContract,
+  update: tagUpdateContract,
+  delete: tagDeleteContract,
+  bind: tagBindingCreateContract,
+  unbind: tagBindingRemoveContract,
+}
