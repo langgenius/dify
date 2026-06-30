@@ -155,6 +155,7 @@ class _AgentProcessRecorder:
         self._thinking_by_index: dict[int, str] = {}
         self._tool_by_index: dict[int, str] = {}
         self._tool_by_call_id: dict[str, str] = {}
+        self._open_tool_by_name: dict[str, set[str]] = {}
 
     def handle_stream_event(self, event: AgentBackendStreamInternalEvent) -> None:
         data = event.data
@@ -220,7 +221,11 @@ class _AgentProcessRecorder:
 
         content = data.get("content")
         if content is not None:
-            self._record_tool_observation(None, content)
+            self._record_tool_observation(
+                tool_call_id=_string_or_none(data.get("tool_call_id")),
+                tool_name=_string_or_none(data.get("tool_name")),
+                observation=content,
+            )
 
     def _append_thinking(self, index: int, content_delta: str) -> None:
         thought_id = self._thinking_by_index.get(index)
@@ -237,7 +242,9 @@ class _AgentProcessRecorder:
         thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
         if thought_id is None:
             thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(args_delta))
-            self._remember_tool_thought(index=index, tool_call_id=tool_call_id, thought_id=thought_id)
+            self._remember_tool_thought(
+                index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
+            )
             return
 
         self._update_thought(
@@ -252,7 +259,9 @@ class _AgentProcessRecorder:
         thought_id = self._lookup_tool_thought(index=index, tool_call_id=tool_call_id)
         if thought_id is None:
             thought_id = self._create_thought(tool=tool_name, tool_input=_json_or_text(part.get("args")))
-            self._remember_tool_thought(index=index, tool_call_id=tool_call_id, thought_id=thought_id)
+            self._remember_tool_thought(
+                index=index, tool_call_id=tool_call_id, tool_name=tool_name, thought_id=thought_id
+            )
             return
 
         self._update_thought(
@@ -263,17 +272,18 @@ class _AgentProcessRecorder:
 
     def _record_tool_return_part(self, part: dict[str, Any]) -> None:
         tool_call_id = _string_or_none(part.get("tool_call_id"))
+        tool_name = _string_or_none(part.get("tool_name"))
         content = part.get("content")
         if content is None:
             content = part
-        self._record_tool_observation(tool_call_id, content)
+        self._record_tool_observation(tool_call_id=tool_call_id, tool_name=tool_name, observation=content)
 
-    def _record_tool_observation(self, tool_call_id: str | None, observation: Any) -> None:
-        thought_id = self._tool_by_call_id.get(tool_call_id) if tool_call_id else None
-        if thought_id is None and self._tool_by_index:
-            thought_id = next(reversed(self._tool_by_index.values()))
+    def _record_tool_observation(self, *, tool_call_id: str | None, tool_name: str | None, observation: Any) -> None:
+        thought_id = self._lookup_observation_thought(tool_call_id=tool_call_id, tool_name=tool_name)
         if thought_id is None:
-            thought_id = self._create_thought()
+            thought_id = self._create_thought(tool=tool_name)
+        else:
+            self._mark_tool_observed(thought_id)
         self._update_thought(thought_id, observation=_json_or_text(observation))
 
     def _lookup_tool_thought(self, *, index: int, tool_call_id: str | None) -> str | None:
@@ -281,10 +291,27 @@ class _AgentProcessRecorder:
             return self._tool_by_call_id[tool_call_id]
         return self._tool_by_index.get(index)
 
-    def _remember_tool_thought(self, *, index: int, tool_call_id: str | None, thought_id: str) -> None:
+    def _remember_tool_thought(
+        self, *, index: int, tool_call_id: str | None, tool_name: str | None, thought_id: str
+    ) -> None:
         self._tool_by_index[index] = thought_id
         if tool_call_id:
             self._tool_by_call_id[tool_call_id] = thought_id
+        if tool_name:
+            self._open_tool_by_name.setdefault(tool_name, set()).add(thought_id)
+
+    def _lookup_observation_thought(self, *, tool_call_id: str | None, tool_name: str | None) -> str | None:
+        if tool_call_id:
+            return self._tool_by_call_id.get(tool_call_id)
+        if tool_name:
+            open_thought_ids = self._open_tool_by_name.get(tool_name, set())
+            if len(open_thought_ids) == 1:
+                return next(iter(open_thought_ids))
+        return None
+
+    def _mark_tool_observed(self, thought_id: str) -> None:
+        for open_thought_ids in self._open_tool_by_name.values():
+            open_thought_ids.discard(thought_id)
 
     def _create_thought(
         self, *, thought: str | None = None, tool: str | None = None, tool_input: str | None = None
