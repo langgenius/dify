@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -9,6 +10,7 @@ from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.workflow.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
 from core.ops.ops_trace_manager import TraceTask, TraceTaskName
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
+from extensions.otel.semconv import DifySpanAttributes
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import (
@@ -284,6 +286,21 @@ class TestWorkflowPersistenceLayer:
         saved = exec_repo.saved[-1]
         assert saved.status == WorkflowExecutionStatus.STOPPED
         assert saved.error_message
+
+    def test_handle_graph_run_aborted_records_otel_reason(self, monkeypatch: pytest.MonkeyPatch):
+        span = MagicMock()
+        span.is_recording.return_value = True
+        monkeypatch.setattr("core.app.workflow.layers.persistence.get_current_span", lambda: span)
+        layer, _, _, _ = _make_layer()
+        layer._handle_graph_run_started()
+
+        layer._handle_graph_run_aborted(GraphRunAbortedEvent(reason="worker shutdown", outputs={}))
+
+        span.set_attribute.assert_called_once_with(DifySpanAttributes.WORKFLOW_ABORT_REASON, "worker shutdown")
+        span.add_event.assert_called_once_with(
+            "dify.workflow.aborted",
+            attributes={DifySpanAttributes.WORKFLOW_ABORT_REASON: "worker shutdown"},
+        )
 
     def test_handle_graph_run_paused_updates_outputs(self):
         layer, exec_repo, _, runtime_state = _make_layer()
