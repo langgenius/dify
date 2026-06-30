@@ -433,7 +433,7 @@ class DatasourceProviderService:
         """
         check if system oauth params exist
         """
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine) as session:
             return (
                 session.scalar(
                     select(DatasourceOauthParamConfig)
@@ -510,7 +510,7 @@ class DatasourceProviderService:
         """
         provider = datasource_provider_id.provider_name
         plugin_id = datasource_provider_id.plugin_id
-        with Session(db.engine).no_autoflush as session:
+        with Session(db.engine) as session:
             # get tenant oauth client params
             tenant_oauth_client_params = session.scalar(
                 select(DatasourceOauthTenantParamConfig)
