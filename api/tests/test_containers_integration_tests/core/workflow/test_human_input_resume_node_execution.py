@@ -13,8 +13,8 @@ from core.app.workflow.layers import PersistenceWorkflowInfo, WorkflowPersistenc
 from core.repositories.human_input_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
 from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
-from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
 from core.workflow.human_input import HumanInputFormStatus, HumanInputNodeData, UserActionConfig
+from core.workflow.human_input.callback import build_dify_human_input_hitl_callback
 from core.workflow.node_runtime import DifyHumanInputNodeRuntime
 from core.workflow.system_variables import build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus, WorkflowType
