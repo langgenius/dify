@@ -58,6 +58,7 @@ export function AgentBuildDraftBar({
       <Button
         type="button"
         variant="primary"
+        loading={isApplying}
         disabled={applyDisabled}
         className="relative z-1 h-8 rounded-lg px-3"
         onClick={onApply}

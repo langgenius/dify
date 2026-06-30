@@ -42,6 +42,7 @@ export type AgentFileNode = {
   fileId?: string
   configName?: string
   children?: AgentFileNode[]
+  virtualContent?: string
   mimeType?: string
   name: string
   size?: number

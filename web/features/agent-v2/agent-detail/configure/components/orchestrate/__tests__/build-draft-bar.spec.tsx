@@ -30,18 +30,32 @@ describe('AgentBuildDraftBar', () => {
     expect(onDiscard).not.toHaveBeenCalled()
   })
 
-  it('should disable both actions while apply is pending', () => {
+  it('should disable both actions while apply is pending', async () => {
+    const user = userEvent.setup()
+    const onApply = vi.fn()
+    const onDiscard = vi.fn()
+
     render(
       <AgentBuildDraftBar
         changesCount={1}
         isApplying
-        onApply={vi.fn()}
-        onDiscard={vi.fn()}
+        onApply={onApply}
+        onDiscard={onDiscard}
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'custom.apply' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toBeDisabled()
+    const applyButton = screen.getByRole('button', { name: 'custom.apply' })
+    const discardButton = screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })
+
+    expect(applyButton).toHaveAttribute('aria-disabled', 'true')
+    expect(applyButton.querySelector('[aria-hidden="true"]')).toBeInTheDocument()
+    expect(discardButton).toBeDisabled()
+
+    await user.click(applyButton)
+    await user.click(discardButton)
+
+    expect(onApply).not.toHaveBeenCalled()
+    expect(onDiscard).not.toHaveBeenCalled()
   })
 
   it('should disable both actions while discard is pending', () => {
@@ -58,7 +72,7 @@ describe('AgentBuildDraftBar', () => {
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toBeDisabled()
   })
 
-  it('should only disable apply when there are no build draft changes', async () => {
+  it('should keep both actions enabled when there are no build draft changes', async () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
     const onDiscard = vi.fn()
@@ -78,12 +92,12 @@ describe('AgentBuildDraftBar', () => {
     expect(buttons[0]).toBe(discardButton)
     expect(buttons[1]).toBe(applyButton)
     expect(discardButton).toBeEnabled()
-    expect(applyButton).toBeDisabled()
+    expect(applyButton).toBeEnabled()
 
     await user.click(discardButton)
     await user.click(applyButton)
 
     expect(onDiscard).toHaveBeenCalledTimes(1)
-    expect(onApply).not.toHaveBeenCalled()
+    expect(onApply).toHaveBeenCalledTimes(1)
   })
 })
