@@ -13,13 +13,12 @@ Focus on:
 - Service method interfaces
 """
 
-from unittest.mock import MagicMock
 import sys
 import uuid
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import Flask

@@ -287,7 +287,9 @@ class TestOpsService:
             mock_otm.encrypt_tracing_config.return_value = {}
 
             app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            result = OpsService.create_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {"project": ""},db_session_with_containers)
+            result = OpsService.create_tracing_app_config(
+                app.id, TracingProviderEnum.ARIZE, {"project": ""}, db_session_with_containers
+            )
 
         assert result == {"result": "success"}
 
@@ -352,7 +354,9 @@ class TestOpsService:
             app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
             self._insert_trace_config(db_session_with_containers, app.id, str(TracingProviderEnum.ARIZE))
 
-            result = OpsService.update_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers)
+            result = OpsService.update_tracing_app_config(
+                app.id, TracingProviderEnum.ARIZE, {}, db_session_with_containers
+            )
 
         assert result is not None
         assert result["app_id"] == app.id

@@ -1042,7 +1042,9 @@ class TestAppDslService:
 
     # ── Workflow Export Data ───────────────────────────────────────────
 
-    def test_append_workflow_export_data_filters_and_overrides(self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session):
+    def test_append_workflow_export_data_filters_and_overrides(
+        self, monkeypatch: pytest.MonkeyPatch, db_session_with_containers: Session
+    ):
         workflow_dict = {
             "graph": {
                 "nodes": [

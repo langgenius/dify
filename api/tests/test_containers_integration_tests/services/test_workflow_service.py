@@ -366,7 +366,9 @@ class TestWorkflowService:
         workflow_service = WorkflowService()
 
         # Act
-        result = workflow_service.get_published_workflow_by_id(app, non_existent_workflow_id, session=db_session_with_containers)
+        result = workflow_service.get_published_workflow_by_id(
+            app, non_existent_workflow_id, session=db_session_with_containers
+        )
 
         # Assert
         assert result is None
