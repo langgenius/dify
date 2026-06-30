@@ -165,7 +165,8 @@ class AnnotationReplyActionStatusApi(Resource):
         error_msg = ""
         if job_status == "error":
             app_annotation_error_key = f"{action}_app_annotation_error_{job_id_str}"
-            error_msg = redis_client.get(app_annotation_error_key).decode()
+            error_msg = redis_client.get(app_annotation_error_key)
+            error_msg = error_msg.decode() if error_msg else ""
 
         return {"job_id": job_id_str, "job_status": job_status, "error_msg": error_msg}, 200
 
