@@ -1,4 +1,4 @@
-export const INSTANCE_DETAIL_TAB_KEYS = ['overview', 'instances', 'releases', 'access', 'api-tokens'] as const
+export const INSTANCE_DETAIL_TAB_KEYS = ['overview', 'instances', 'releases', 'api-tokens'] as const as readonly ('overview' | 'instances' | 'releases' | 'access' | 'api-tokens')[]
 
 export type InstanceDetailTabKey = typeof INSTANCE_DETAIL_TAB_KEYS[number]
 
