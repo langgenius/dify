@@ -6,7 +6,7 @@ from typing import Any, NotRequired, TypedDict, cast
 
 from flask import abort, request
 from flask_restx import Resource, fields
-from pydantic import AliasChoices, BaseModel, Field, RootModel, ValidationError, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, RootModel, ValidationError, field_validator
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotFound
 
@@ -159,8 +159,40 @@ class ConvertToWorkflowPayload(BaseModel):
     icon_background: str | None = None
 
 
+class WorkflowFeatureTogglePayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    enabled: bool | None = None
+
+
+class WorkflowFileUploadImagePayload(WorkflowFeatureTogglePayload):
+    number_limits: int | None = None
+    transfer_methods: list[str] | None = None
+
+
+class WorkflowFileUploadPayload(WorkflowFeatureTogglePayload):
+    allowed_file_types: list[str] | None = None
+    allowed_file_extensions: list[str] | None = None
+    allowed_file_upload_methods: list[str] | None = None
+    number_limits: int | None = None
+    image: WorkflowFileUploadImagePayload | None = None
+
+
+class WorkflowFeaturesConfigPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    opening_statement: str | None = None
+    suggested_questions: list[str] | None = None
+    suggested_questions_after_answer: WorkflowFeatureTogglePayload | None = None
+    text_to_speech: WorkflowFeatureTogglePayload | None = None
+    speech_to_text: WorkflowFeatureTogglePayload | None = None
+    retriever_resource: WorkflowFeatureTogglePayload | None = None
+    sensitive_word_avoidance: WorkflowFeatureTogglePayload | None = None
+    file_upload: WorkflowFileUploadPayload | None = None
+
+
 class WorkflowFeaturesPayload(BaseModel):
-    features: dict[str, Any] = Field(
+    features: WorkflowFeaturesConfigPayload = Field(
         ...,
         description="Workflow feature configuration",
     )
@@ -344,6 +376,10 @@ register_schema_models(
     ConvertToWorkflowPayload,
     WorkflowListQuery,
     WorkflowUpdatePayload,
+    WorkflowFeatureTogglePayload,
+    WorkflowFileUploadImagePayload,
+    WorkflowFileUploadPayload,
+    WorkflowFeaturesConfigPayload,
     WorkflowFeaturesPayload,
     WorkflowOnlineUsersPayload,
     DraftWorkflowTriggerRunPayload,
@@ -1275,7 +1311,7 @@ class WorkflowFeaturesApi(Resource):
     def post(self, current_user: Account, app_model: App):
 
         args = WorkflowFeaturesPayload.model_validate(console_ns.payload or {})
-        features = args.features
+        features = args.features.model_dump(mode="json", exclude_unset=True)
 
         workflow_service = WorkflowService()
         workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)

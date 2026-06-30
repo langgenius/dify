@@ -5,7 +5,15 @@ import * as z from 'zod'
 /**
  * RecommendedAppDetailResponse
  */
-export const zRecommendedAppDetailResponse = z.record(z.string(), z.unknown())
+export const zRecommendedAppDetailResponse = z.object({
+  can_trial: z.boolean().nullish(),
+  export_data: z.string(),
+  icon: z.string().nullish(),
+  icon_background: z.string().nullish(),
+  id: z.string(),
+  mode: z.string(),
+  name: z.string(),
+})
 
 /**
  * BannerResponse

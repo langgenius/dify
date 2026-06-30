@@ -1,7 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { UserProfile } from '@/contract/console/workflow-comment'
+import type { UserProfile } from '@/app/components/workflow/comment/types'
 import { Avatar } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -165,8 +165,8 @@ const MentionInputInner = forwardRef<HTMLTextAreaElement, MentionInputProps>(({
 
     state.setMentionableUsersLoading(appId, true)
     try {
-      const response = await consoleClient.workflowComments.mentionUsers({
-        params: { appId },
+      const response = await consoleClient.apps.byAppId.workflow.comments.mentionUsers.get({
+        params: { app_id: appId },
       })
       workflowStore.getState().setMentionableUsersCache(appId, response.users)
     }

@@ -4751,7 +4751,7 @@ Refresh MCP server configuration and regenerate server code
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [BillingResponse](#billingresponse)<br> |
+| 200 | Success | **application/json**: [BillingInvoiceResponse](#billinginvoiceresponse)<br> |
 
 ### [PUT] /billing/partners/{partner_key}/tenants
 Sync partner tenants bindings
@@ -6344,6 +6344,12 @@ Check if dataset is in use
 | 200 | Success | **application/json**: [UploadConfig](#uploadconfig)<br> |
 
 ### [POST] /files/upload
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary, **"source"**: string, <br>**Available values:** "datasets" }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -10616,6 +10622,12 @@ Returns permission flags that control workspace features like member invitations
 | app_id | path |  | Yes | string (uuid) |
 | policy_id | path |  | Yes | string |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_DeleteMemberBindingsRequest](#_deletememberbindingsrequest)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -10655,6 +10667,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | app_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -10668,6 +10681,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | app_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -10683,6 +10697,12 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
 | target_account_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
 
 #### Responses
 
@@ -10710,6 +10730,12 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ResourceAccessScopeRequest](#_resourceaccessscoperequest)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -10723,6 +10749,12 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string (uuid) |
 | policy_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_DeleteMemberBindingsRequest](#_deletememberbindingsrequest)<br> |
 
 #### Responses
 
@@ -10763,6 +10795,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -10776,6 +10809,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
+| language | query | Localized policy label language | No | string, <br>**Available values:** "en", "ja", "zh" |
 | dataset_id | path |  | Yes | string (uuid) |
 
 #### Responses
@@ -10791,6 +10825,12 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string (uuid) |
 | target_account_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [ReplaceUserAccessPolicies](#replaceuseraccesspolicies)<br> |
 
 #### Responses
 
@@ -10818,6 +10858,12 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ---------- | ----------- | -------- | ------ |
 | dataset_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ResourceAccessScopeRequest](#_resourceaccessscoperequest)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -10843,6 +10889,12 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | member_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ReplaceMemberRolesRequest](#_replacememberrolesrequest)<br> |
 
 #### Responses
 
@@ -10964,6 +11016,12 @@ Returns permission flags that control workspace features like member invitations
 | ---- | ---------- | ----------- | -------- | ------ |
 | policy_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ReplaceBindingsRequest](#_replacebindingsrequest)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -11009,6 +11067,12 @@ Returns permission flags that control workspace features like member invitations
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | policy_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [_ReplaceBindingsRequest](#_replacebindingsrequest)<br> |
 
 #### Responses
 
@@ -11586,7 +11650,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerProviderApiEntity](#triggerproviderapientity)<br> |
 
 ### [DELETE] /workspaces/current/trigger-provider/{provider}/oauth/client
 **Remove custom OAuth client configuration**
@@ -11680,7 +11744,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerSubscriptionBuilderCreateResponse](#triggersubscriptionbuildercreateresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/logs/{subscription_builder_id}
 **Get the request logs for a subscription instance for a trigger provider**
@@ -11696,7 +11760,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerSubscriptionBuilderLogsResponse](#triggersubscriptionbuilderlogsresponse)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/update/{subscription_builder_id}
 **Update a subscription instance for a trigger provider**
@@ -11718,7 +11782,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
 
 ### [POST] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/verify-and-update/{subscription_builder_id}
 **Verify and update a subscription instance for a trigger provider**
@@ -11740,7 +11804,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerSubscriptionBuilderVerifyResponse](#triggersubscriptionbuilderverifyresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/builder/{subscription_builder_id}
 **Get a subscription instance for a trigger provider**
@@ -11756,7 +11820,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/list
 **List all trigger subscriptions for the current tenant's provider**
@@ -11771,7 +11835,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerSubscriptionListResponse](#triggersubscriptionlistresponse)<br> |
 
 ### [GET] /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize
 **Initiate OAuth authorization flow for a trigger provider**
@@ -11853,7 +11917,7 @@ Returns permission flags that control workspace features like member invitations
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [TriggerProviderOpaqueResponse](#triggerprovideropaqueresponse)<br> |
+| 200 | Success | **application/json**: [TriggerProviderListResponse](#triggerproviderlistresponse)<br> |
 
 ### [POST] /workspaces/custom-config
 #### Request Body
@@ -14296,6 +14360,12 @@ AppMCPServer Status Enum
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
 
+#### AppSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AppSelectorScope | string |  |  |
+
 #### AppSiteResponse
 
 | Name | Type | Description | Required |
@@ -14458,6 +14528,12 @@ Retrieval settings for Amazon Bedrock knowledge base queries.
 | ---- | ---- | ----------- | -------- |
 | score_threshold | number | Minimum relevance score threshold | No |
 | top_k | integer | Maximum number of results to retrieve | No |
+
+#### BillingInvoiceResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| url | string |  | Yes |
 
 #### BillingModel
 
@@ -14997,6 +15073,16 @@ Enum class for configurate method of provider model.
 | auto_generate | boolean | Automatically generate the conversation name. When `true`, the `name` field is ignored. | No |
 | name | string | Conversation name. Required when `auto_generate` is `false`. | No |
 
+#### ConversationVariableItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+| value |  |  | No |
+| value_type | string |  | No |
+
 #### ConversationVariableResponse
 
 | Name | Type | Description | Required |
@@ -15013,7 +15099,7 @@ Enum class for configurate method of provider model.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| conversation_variables | [ object ] | Conversation variables for the draft workflow | Yes |
+| conversation_variables | [ [ConversationVariableItemPayload](#conversationvariableitempayload) ] | Conversation variables for the draft workflow | Yes |
 
 #### ConversationVariablesQuery
 
@@ -16359,6 +16445,16 @@ Request payload for bulk downloading documents as a zip archive.
 | reason | string |  | No |
 | secret_likely | boolean |  | No |
 
+#### EnvironmentVariableItemPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | No |
+| id | string |  | No |
+| name | string |  | No |
+| value |  |  | No |
+| value_type | string |  | No |
+
 #### EnvironmentVariableItemResponse
 
 | Name | Type | Description | Required |
@@ -16384,7 +16480,7 @@ Request payload for bulk downloading documents as a zip archive.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| environment_variables | [ object ] | Environment variables for the draft workflow | Yes |
+| environment_variables | [ [EnvironmentVariableItemPayload](#environmentvariableitempayload) ] | Environment variables for the draft workflow | Yes |
 
 #### ErrorDocsResponse
 
@@ -16392,6 +16488,56 @@ Request payload for bulk downloading documents as a zip archive.
 | ---- | ---- | ----------- | -------- |
 | data | [ [DocumentStatusResponse](#documentstatusresponse) ] |  | Yes |
 | total | integer |  | Yes |
+
+#### EventApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | [I18nObject](#i18nobject) | The description of the trigger | Yes |
+| identity | [EventIdentity](#eventidentity) | The identity of the trigger | Yes |
+| name | string | The name of the trigger | Yes |
+| output_schema | object | The output schema of the trigger | Yes |
+| parameters | [ [EventParameter](#eventparameter) ] | The parameters of the trigger | Yes |
+
+#### EventIdentity
+
+The identity of the event
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the event | Yes |
+| label | [I18nObject](#i18nobject) | The label of the event | Yes |
+| name | string | The name of the event | Yes |
+| provider | string | The provider of the event | No |
+
+#### EventParameter
+
+The parameter of the event
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| auto_generate | [PluginParameterAutoGenerate](#pluginparameterautogenerate) | The auto generate of the parameter | No |
+| default | integer<br>number<br>string<br>[ object ] |  | No |
+| description | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) | The label presented to the user | Yes |
+| max | number<br>integer |  | No |
+| min | number<br>integer |  | No |
+| multiple | boolean | Whether the parameter is multiple select, only valid for select or dynamic-select type | No |
+| name | string | The name of the parameter | Yes |
+| options | [ [PluginParameterOption](#pluginparameteroption) ] |  | No |
+| precision | integer |  | No |
+| required | boolean |  | No |
+| scope | string |  | No |
+| template | [PluginParameterTemplate](#pluginparametertemplate) | The template of the parameter | No |
+| type | [EventParameterType](#eventparametertype) |  | Yes |
+
+#### EventParameterType
+
+The type of the parameter
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EventParameterType | string | The type of the parameter |  |
 
 #### EventStreamResponse
 
@@ -17219,6 +17365,17 @@ Enum class for large language model mode.
 | ---- | ---- | ----------- | -------- |
 | LLMMode | string | Enum class for large language model mode. |  |
 
+#### LatestPluginCache
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| alternative_plugin_id | string |  | Yes |
+| deprecated_reason | string |  | Yes |
+| plugin_id | string |  | Yes |
+| status | string |  | Yes |
+| unique_identifier | string |  | Yes |
+| version | string |  | Yes |
+
 #### LearnDifyAppListResponse
 
 | Name | Type | Description | Required |
@@ -17672,6 +17829,12 @@ Enum class for model property key.
 | ---- | ---- | ----------- | -------- |
 | payment_link | string |  | Yes |
 
+#### ModelSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ModelSelectorScope | string |  |  |
+
 #### ModelStatus
 
 Enum class for model status.
@@ -17962,6 +18125,15 @@ Coarse node-level status used by Inspector to pick a banner.
 | refresh_token | string |  | Yes |
 | token_type | string |  | Yes |
 
+#### OAuthSchema
+
+OAuth schema
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| client_schema | [ [ProviderConfig](#providerconfig) ] | client schema like client_id, client_secret, etc. | No |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] | credentials schema like access_token, refresh_token, etc. | No |
+
 #### OAuthTokenRequest
 
 | Name | Type | Description | Required |
@@ -17978,6 +18150,13 @@ Coarse node-level status used by Inspector to pick a banner.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | OpaqueObjectResponse | object |  |  |
+
+#### Option
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
 
 #### OutputErrorStrategy
 
@@ -18684,6 +18863,25 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | endpoints | [ object ] | Endpoint information | Yes |
 
+#### PluginInstallationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checksum | string |  | Yes |
+| created_at | dateTime |  | Yes |
+| declaration | object |  | Yes |
+| endpoints_active | integer |  | Yes |
+| endpoints_setups | integer |  | Yes |
+| id | string |  | Yes |
+| meta | object |  | Yes |
+| plugin_id | string |  | Yes |
+| plugin_unique_identifier | string |  | Yes |
+| runtime_type | string |  | Yes |
+| source | [PluginInstallationSource](#plugininstallationsource) |  | Yes |
+| tenant_id | string |  | Yes |
+| updated_at | dateTime |  | Yes |
+| version | string |  | Yes |
+
 #### PluginInstallationPermissionModel
 
 | Name | Type | Description | Required |
@@ -18707,7 +18905,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| plugins |  |  | Yes |
+| plugins | [ [PluginInstallationItemResponse](#plugininstallationitemresponse) ] |  | Yes |
 
 #### PluginListResponse
 
@@ -18740,6 +18938,26 @@ Shared permission levels for resources (datasets, credentials, etc.)
 | ---- | ---- | ----------- | -------- |
 | message | string |  | No |
 | success | boolean |  | Yes |
+
+#### PluginParameterAutoGenerate
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| type | [core__plugin__entities__parameters__PluginParameterAutoGenerate__Type](#core__plugin__entities__parameters__pluginparameterautogenerate__type) |  | Yes |
+
+#### PluginParameterOption
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| icon | string | The icon of the option, can be a url or a base64 encoded image | No |
+| label | [I18nObject](#i18nobject) | The label of the option | Yes |
+| value | string | The value of the option | Yes |
+
+#### PluginParameterTemplate
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean | Whether the parameter is jinja enabled | No |
 
 #### PluginPermissionResponse
 
@@ -18777,7 +18995,7 @@ Shared permission levels for resources (datasets, credentials, etc.)
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| versions |  |  | Yes |
+| versions | object |  | Yes |
 
 #### PreProcessingRule
 
@@ -18819,6 +19037,24 @@ Dataset Process Rule Mode
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ProcessRuleMode | string | Dataset Process Rule Mode |  |
+
+#### ProviderConfig
+
+Model class for common provider settings like credentials
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default | integer<br>string<br>number<br>boolean |  | No |
+| help | [I18nObject](#i18nobject) |  | No |
+| label | [I18nObject](#i18nobject) |  | No |
+| multiple | boolean |  | No |
+| name | string | The name of the credentials | Yes |
+| options | [ [Option](#option) ] |  | No |
+| placeholder | [I18nObject](#i18nobject) |  | No |
+| required | boolean |  | No |
+| scope | [AppSelectorScope](#appselectorscope)<br>[ModelSelectorScope](#modelselectorscope)<br>[ToolSelectorScope](#toolselectorscope) |  | No |
+| type | [core__entities__provider_entities__BasicProviderConfig__Type](#core__entities__provider_entities__basicproviderconfig__type) | The type of the credentials | Yes |
+| url | string |  | No |
 
 #### ProviderCredentialResponse
 
@@ -19002,6 +19238,14 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | QuotaUnit | string |  |  |
 
+#### RBACResourceWhitelistScope
+
+Whitelist scopes accepted by RBAC app and dataset access config APIs.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| RBACResourceWhitelistScope | string | Whitelist scopes accepted by RBAC app and dataset access config APIs. |  |
+
 #### RBACRole
 
 | Name | Type | Description | Required |
@@ -19100,7 +19344,13 @@ Model class for provider quota configuration.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| RecommendedAppDetailResponse | object |  |  |
+| can_trial | boolean |  | No |
+| export_data | string |  | Yes |
+| icon | string |  | No |
+| icon_background | string |  | No |
+| id | string |  | Yes |
+| mode | string |  | Yes |
+| name | string |  | Yes |
 
 #### RecommendedAppInfoResponse
 
@@ -19186,11 +19436,27 @@ Model class for provider quota configuration.
 | ---- | ---- | ----------- | -------- |
 | url | string | URL to fetch | Yes |
 
+#### ReplaceUserAccessPolicies
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| access_policy_ids | [ string ] |  | No |
+
 #### ReplaceUserAccessPoliciesResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | access_policies | [ [AccessPolicy](#accesspolicy) ] |  | No |
+
+#### RequestLog
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | dateTime | The created at of the request log | Yes |
+| endpoint | string | The endpoint of the request log | Yes |
+| id | string | The id of the request log | Yes |
+| request | object | The request of the request log | Yes |
+| response | object | The response of the request log | Yes |
 
 #### RerankingModel
 
@@ -19918,6 +20184,29 @@ Default configuration for form inputs.
 | type | [ValueSourceType](#valuesourcetype) |  | Yes |
 | value | string |  | No |
 
+#### SubscriptionBuilderApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_type | [CredentialType](#credentialtype) | The credential type of the subscription builder | Yes |
+| credentials | object | The credentials of the subscription builder | Yes |
+| endpoint | string | The endpoint id of the subscription builder | Yes |
+| id | string | The id of the subscription builder | Yes |
+| name | string | The name of the subscription builder | Yes |
+| parameters | object | The parameters of the subscription builder | Yes |
+| properties | object | The properties of the subscription builder | Yes |
+| provider | string | The provider id of the subscription builder | Yes |
+
+#### SubscriptionConstructor
+
+The subscription constructor of the trigger provider
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials_schema | [ [ProviderConfig](#providerconfig) ] | The credentials schema of the subscription constructor | No |
+| oauth_schema | [OAuthSchema](#oauthschema) | The OAuth schema of the subscription constructor if OAuth is supported | No |
+| parameters | [ [EventParameter](#eventparameter) ] | The parameters schema of the subscription constructor | No |
+
 #### SubscriptionModel
 
 | Name | Type | Description | Required |
@@ -20233,6 +20522,12 @@ Enum class for tool provider
 | ---- | ---- | ----------- | -------- |
 | ToolProviderType | string | Enum class for tool provider |  |
 
+#### ToolSelectorScope
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ToolSelectorScope | string |  |  |
+
 #### TraceAppConfigResponse
 
 | Name | Type | Description | Required |
@@ -20469,12 +20764,18 @@ Enum class for tool provider
 | updated_at | long |  | No |
 | updated_by | string |  | No |
 
+#### TriggerCreationMethod
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerCreationMethod | string |  |  |
+
 #### TriggerOAuthAuthorizeResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | authorization_url | string |  | Yes |
-| subscription_builder |  |  | Yes |
+| subscription_builder | [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity) |  | Yes |
 | subscription_builder_id | string |  | Yes |
 
 #### TriggerOAuthClientPayload
@@ -20496,17 +20797,67 @@ Enum class for tool provider
 | redirect_uri | string |  | Yes |
 | system_configured | boolean |  | Yes |
 
+#### TriggerProviderApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| author | string | The author of the trigger provider | Yes |
+| description | [I18nObject](#i18nobject) | The description of the trigger provider | Yes |
+| events | [ [EventApiEntity](#eventapientity) ] | The events of the trigger provider | Yes |
+| icon | string | The icon of the trigger provider | No |
+| icon_dark | string | The dark icon of the trigger provider | No |
+| label | [I18nObject](#i18nobject) | The label of the trigger provider | Yes |
+| name | string | The name of the trigger provider | Yes |
+| plugin_id | string | The plugin id of the tool | No |
+| plugin_unique_identifier | string | The unique identifier of the tool | No |
+| subscription_constructor | [SubscriptionConstructor](#subscriptionconstructor) | The subscription constructor of the trigger provider | No |
+| subscription_schema | [ [ProviderConfig](#providerconfig) ] | The subscription schema of the trigger provider | No |
+| supported_creation_methods | [ [TriggerCreationMethod](#triggercreationmethod) ] | Supported creation methods for the trigger provider. like 'OAUTH', 'APIKEY', 'MANUAL'. | No |
+| tags | [ string ] | The tags of the trigger provider | No |
+
+#### TriggerProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerProviderListResponse | array |  |  |
+
 #### TriggerProviderOpaqueResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TriggerProviderOpaqueResponse |  |  |  |
 
+#### TriggerProviderSubscriptionApiEntity
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credential_type | [CredentialType](#credentialtype) | The type of the credential | Yes |
+| credentials | object | The credentials of the subscription | Yes |
+| endpoint | string | The endpoint of the subscription | Yes |
+| id | string | The unique id of the subscription | Yes |
+| name | string | The name of the subscription | Yes |
+| parameters | object | The parameters of the subscription | Yes |
+| properties | object | The properties of the subscription | Yes |
+| provider | string | The provider id of the subscription | Yes |
+| workflows_in_use | integer | The number of workflows using this subscription | Yes |
+
 #### TriggerSubscriptionBuilderCreatePayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credential_type | string, <br>**Default:** unauthorized |  | No |
+
+#### TriggerSubscriptionBuilderCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| subscription_builder | [SubscriptionBuilderApiEntity](#subscriptionbuilderapientity) |  | Yes |
+
+#### TriggerSubscriptionBuilderLogsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| logs | [ [RequestLog](#requestlog) ] |  | Yes |
 
 #### TriggerSubscriptionBuilderUpdatePayload
 
@@ -20522,6 +20873,18 @@ Enum class for tool provider
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | credentials | object |  | Yes |
+
+#### TriggerSubscriptionBuilderVerifyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| verified | boolean |  | Yes |
+
+#### TriggerSubscriptionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TriggerSubscriptionListResponse | array |  |  |
 
 #### Type
 
@@ -21143,11 +21506,49 @@ How a workflow node is bound to an Agent.
 | ---- | ---- | ----------- | -------- |
 | WorkflowExecutionStatus | string |  |  |
 
+#### WorkflowFeatureTogglePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+
+#### WorkflowFeaturesConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_upload | [WorkflowFileUploadPayload](#workflowfileuploadpayload) |  | No |
+| opening_statement | string |  | No |
+| retriever_resource | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
+| sensitive_word_avoidance | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
+| speech_to_text | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
+| suggested_questions | [ string ] |  | No |
+| suggested_questions_after_answer | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
+| text_to_speech | [WorkflowFeatureTogglePayload](#workflowfeaturetogglepayload) |  | No |
+
 #### WorkflowFeaturesPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| features | object | Workflow feature configuration | Yes |
+| features | [WorkflowFeaturesConfigPayload](#workflowfeaturesconfigpayload) | Workflow feature configuration | Yes |
+
+#### WorkflowFileUploadImagePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | No |
+| number_limits | integer |  | No |
+| transfer_methods | [ string ] |  | No |
+
+#### WorkflowFileUploadPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | No |
+| allowed_file_types | [ string ] |  | No |
+| allowed_file_upload_methods | [ string ] |  | No |
+| enabled | boolean |  | No |
+| image | [WorkflowFileUploadImagePayload](#workflowfileuploadimagepayload) |  | No |
+| number_limits | integer |  | No |
 
 #### WorkflowGeneratePayload
 
@@ -21640,6 +22041,12 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | permission_keys | [ string ] |  | No |
 
+#### _AccessControlLanguageQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| language | string | Localized policy label language | No |
+
 #### _AccessPolicyList
 
 | Name | Type | Description | Required |
@@ -21691,6 +22098,12 @@ Workflow tool configuration
 | model_provider_name | string |  | No |
 | summary_prompt | string |  | No |
 
+#### _DeleteMemberBindingsRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | No |
+
 #### _MembersInRoleList
 
 | Name | Type | Description | Required |
@@ -21711,6 +22124,37 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | data | [ [RBACRole](#rbacrole) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
+
+#### _ReplaceBindingsRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_ids | [ string ] |  | No |
+| role_ids | [ string ] |  | No |
+
+#### _ReplaceMemberRolesRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| role_ids | [ string ], <br>**Default:**  |  | No |
+
+#### _ResourceAccessScopeRequest
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
+
+#### core__entities__provider_entities__BasicProviderConfig__Type
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| core__entities__provider_entities__BasicProviderConfig__Type | string |  |  |
+
+#### core__plugin__entities__parameters__PluginParameterAutoGenerate__Type
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| core__plugin__entities__parameters__PluginParameterAutoGenerate__Type | string |  |  |
 
 #### core__tools__entities__common_entities__I18nObject
 
