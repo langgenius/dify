@@ -14,6 +14,8 @@ from core.plugin.entities.plugin import (
 )
 from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
+    PluginInstallIdentifierMeta,
+    PluginInstallIdentifiersRequest,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginListResponse,
@@ -133,21 +135,23 @@ class PluginInstaller(BasePluginClient):
         tenant_id: str,
         identifiers: Sequence[str],
         source: PluginInstallationSource,
-        metas: list[dict],
+        metas: Sequence[PluginInstallIdentifierMeta],
     ) -> PluginInstallTaskStartResponse:
         """
         Install a plugin from an identifier.
         """
+        request = PluginInstallIdentifiersRequest(
+            plugin_unique_identifiers=list(identifiers),
+            source=source,
+            metas=list(metas),
+        )
+
         # exception will be raised if the request failed
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/identifiers",
             PluginInstallTaskStartResponse,
-            data={
-                "plugin_unique_identifiers": identifiers,
-                "source": source,
-                "metas": metas,
-            },
+            data=request.model_dump(mode="json"),
             headers={"Content-Type": "application/json"},
         )
 

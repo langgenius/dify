@@ -28,6 +28,8 @@ from core.plugin.entities.plugin import (
     PluginResourceRequirements,
 )
 from core.plugin.entities.plugin_daemon import (
+    MarketplacePluginInstallIdentifierMeta,
+    PackagePluginInstallIdentifierMeta,
     PluginDecodeResponse,
     PluginInstallTask,
     PluginInstallTaskStartResponse,
@@ -258,13 +260,25 @@ class TestPluginLoading:
                 tenant_id="test-tenant",
                 identifiers=["plugin1/1.0.0", "plugin2/2.0.0"],
                 source=PluginInstallationSource.Marketplace,
-                metas=[{"key": "value1"}, {"key": "value2"}],
+                metas=[
+                    MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier="plugin1/1.0.0"),
+                    MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier="plugin2/2.0.0"),
+                ],
             )
 
             # Assert: Verify installation task was created
             assert result.task_id == "task-123"
             assert result.all_installed is False
             mock_request.assert_called_once()
+            call_kwargs = mock_request.call_args.kwargs
+            assert call_kwargs["data"] == {
+                "plugin_unique_identifiers": ["plugin1/1.0.0", "plugin2/2.0.0"],
+                "source": "marketplace",
+                "metas": [
+                    {"plugin_unique_identifier": "plugin1/1.0.0"},
+                    {"plugin_unique_identifier": "plugin2/2.0.0"},
+                ],
+            }
 
     def test_install_from_identifiers_all_installed(self, plugin_installer):
         """Test installation when all plugins are already installed."""
@@ -277,11 +291,21 @@ class TestPluginLoading:
                 tenant_id="test-tenant",
                 identifiers=["existing-plugin/1.0.0"],
                 source=PluginInstallationSource.Package,
-                metas=[{}],
+                metas=[PackagePluginInstallIdentifierMeta()],
             )
 
             # Assert: Verify all_installed flag is True
             assert result.all_installed is True
+
+    def test_install_from_identifiers_requires_meta_per_identifier(self, plugin_installer):
+        """Test install request validation rejects mismatched meta count."""
+        with pytest.raises(ValueError, match="metas must contain exactly one entry"):
+            plugin_installer.install_from_identifiers(
+                tenant_id="test-tenant",
+                identifiers=["plugin1/1.0.0"],
+                source=PluginInstallationSource.Marketplace,
+                metas=[],
+            )
 
     def test_fetch_plugin_installation_task(self, plugin_installer):
         """Test fetching a specific plugin installation task."""

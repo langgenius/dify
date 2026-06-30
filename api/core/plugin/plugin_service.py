@@ -39,7 +39,11 @@ from core.plugin.entities.plugin import (
     PluginInstallationSource,
 )
 from core.plugin.entities.plugin_daemon import (
+    GithubPluginInstallIdentifierMeta,
+    MarketplacePluginInstallIdentifierMeta,
+    PackagePluginInstallIdentifierMeta,
     PluginDecodeResponse,
+    PluginInstallIdentifierMeta,
     PluginInstallTask,
     PluginInstallTaskStatus,
     PluginListResponse,
@@ -859,7 +863,7 @@ class PluginService:
             tenant_id,
             plugin_unique_identifiers,
             PluginInstallationSource.Package,
-            [{}],
+            [PackagePluginInstallIdentifierMeta() for _ in plugin_unique_identifiers],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
@@ -880,13 +884,7 @@ class PluginService:
             tenant_id,
             [plugin_unique_identifier],
             PluginInstallationSource.Github,
-            [
-                {
-                    "repo": repo,
-                    "version": version,
-                    "package": package,
-                }
-            ],
+            [GithubPluginInstallIdentifierMeta(repo=repo, version=version, package=package)],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result
@@ -929,8 +927,8 @@ class PluginService:
         manager = PluginInstaller()
 
         # collect actual plugin_unique_identifiers
-        actual_plugin_unique_identifiers = []
-        metas = []
+        actual_plugin_unique_identifiers: list[str] = []
+        metas: list[PluginInstallIdentifierMeta] = []
         features = FeatureService.get_system_features()
 
         # check if already downloaded
@@ -942,7 +940,7 @@ class PluginService:
                 PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
                 # already downloaded, skip
                 actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
+                metas.append(MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=plugin_unique_identifier))
             except Exception:
                 # plugin not installed, download and upload pkg
                 pkg = download_plugin_pkg(plugin_unique_identifier)
@@ -955,7 +953,9 @@ class PluginService:
                 PluginService._check_plugin_installation_scope(response.verification)
                 # use response plugin_unique_identifier
                 actual_plugin_unique_identifiers.append(response.unique_identifier)
-                metas.append({"plugin_unique_identifier": response.unique_identifier})
+                metas.append(
+                    MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=response.unique_identifier)
+                )
 
         result = manager.install_from_identifiers(
             tenant_id,

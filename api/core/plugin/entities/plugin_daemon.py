@@ -4,15 +4,15 @@ import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from core.agent.plugin_entities import AgentProviderEntityWithPlugin
 from core.datasource.entities.datasource_entities import DatasourceProviderEntityWithPlugin
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.parameters import PluginParameterOption
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity
+from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 from core.trigger.entities.entities import TriggerProviderEntity
@@ -169,6 +169,51 @@ class PluginInstallTaskStartResponse(BaseModel):
     all_installed: bool = Field(description="Whether all plugins are installed.")
     task_id: str = Field(description="The ID of the install task.")
     task: PluginInstallTask | None = Field(default=None, description="The install task.")
+
+
+class PackagePluginInstallIdentifierMeta(BaseModel):
+    """Metadata for package installs; the daemon expects an empty object."""
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class GithubPluginInstallIdentifierMeta(BaseModel):
+    """Metadata required by plugin daemon for GitHub package installs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    repo: str
+    version: str
+    package: str
+
+
+class MarketplacePluginInstallIdentifierMeta(BaseModel):
+    """Metadata required by plugin daemon for marketplace package installs."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plugin_unique_identifier: str
+
+
+type PluginInstallIdentifierMeta = (
+    PackagePluginInstallIdentifierMeta | GithubPluginInstallIdentifierMeta | MarketplacePluginInstallIdentifierMeta
+)
+
+
+class PluginInstallIdentifiersRequest(BaseModel):
+    """JSON request body for daemon plugin installation from identifiers."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    plugin_unique_identifiers: list[str]
+    source: PluginInstallationSource
+    metas: list[PluginInstallIdentifierMeta]
+
+    @model_validator(mode="after")
+    def ensure_meta_count_matches_identifiers(self) -> Self:
+        if len(self.metas) != len(self.plugin_unique_identifiers):
+            raise ValueError("metas must contain exactly one entry per plugin_unique_identifier")
+        return self
 
 
 class PluginVerification(BaseModel):
