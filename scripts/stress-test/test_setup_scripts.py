@@ -107,21 +107,12 @@ def test_plugin_install_response_without_task_is_non_blocking():
 
     assert install_openai_plugin.is_non_blocking_install_response({"ok": True}) is True
     assert install_openai_plugin.is_non_blocking_install_response({}) is True
-    assert (
-        install_openai_plugin.is_non_blocking_install_response({"code": "plugin_error"})
-        is False
-    )
+    assert install_openai_plugin.is_non_blocking_install_response({"code": "plugin_error"}) is False
 
 
 def test_import_response_with_warnings_and_app_id_is_success():
     import_workflow_app = _load_setup_module("import_workflow_app")
 
-    assert import_workflow_app.is_successful_import_response(
-        {"status": "completed-with-warnings", "app_id": "app-id"}
-    )
-    assert not import_workflow_app.is_successful_import_response(
-        {"status": "failed", "app_id": "app-id"}
-    )
-    assert not import_workflow_app.is_successful_import_response(
-        {"status": "completed"}
-    )
+    assert import_workflow_app.is_successful_import_response({"status": "completed-with-warnings", "app_id": "app-id"})
+    assert not import_workflow_app.is_successful_import_response({"status": "failed", "app_id": "app-id"})
+    assert not import_workflow_app.is_successful_import_response({"status": "completed"})
