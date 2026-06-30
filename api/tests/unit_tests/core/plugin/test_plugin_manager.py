@@ -28,6 +28,7 @@ from core.plugin.entities.plugin import (
     PluginResourceRequirements,
 )
 from core.plugin.entities.plugin_daemon import (
+    GithubPluginInstallIdentifierMeta,
     MarketplacePluginInstallIdentifierMeta,
     PackagePluginInstallIdentifierMeta,
     PluginDecodeResponse,
@@ -305,6 +306,32 @@ class TestPluginLoading:
                 identifiers=["plugin1/1.0.0"],
                 source=PluginInstallationSource.Marketplace,
                 metas=[],
+            )
+
+    def test_install_from_identifiers_requires_meta_matching_source(self, plugin_installer):
+        """Test install request validation rejects source/meta mismatches."""
+        with pytest.raises(ValueError, match="MarketplacePluginInstallIdentifierMeta"):
+            plugin_installer.install_from_identifiers(
+                tenant_id="test-tenant",
+                identifiers=["plugin1/1.0.0"],
+                source=PluginInstallationSource.Marketplace,
+                metas=[PackagePluginInstallIdentifierMeta()],
+            )
+
+        with pytest.raises(ValueError, match="GithubPluginInstallIdentifierMeta"):
+            plugin_installer.install_from_identifiers(
+                tenant_id="test-tenant",
+                identifiers=["plugin1/1.0.0"],
+                source=PluginInstallationSource.Github,
+                metas=[MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier="plugin1/1.0.0")],
+            )
+
+        with pytest.raises(ValueError, match="PackagePluginInstallIdentifierMeta"):
+            plugin_installer.install_from_identifiers(
+                tenant_id="test-tenant",
+                identifiers=["plugin1/1.0.0"],
+                source=PluginInstallationSource.Package,
+                metas=[GithubPluginInstallIdentifierMeta(repo="owner/repo", version="v1", package="plugin.difypkg")],
             )
 
     def test_fetch_plugin_installation_task(self, plugin_installer):

@@ -45,6 +45,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDecodeResponse,
     PluginInstallIdentifierMeta,
     PluginInstallTask,
+    PluginInstallTaskStartResponse,
     PluginInstallTaskStatus,
     PluginListResponse,
     PluginListWithoutTotalResponse,
@@ -962,6 +963,26 @@ class PluginService:
             actual_plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
             metas,
+        )
+        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
+        return result
+
+    @staticmethod
+    def install_from_resolved_marketplace_identifiers(
+        tenant_id: str, plugin_unique_identifiers: Sequence[str]
+    ) -> PluginInstallTaskStartResponse:
+        """
+        Install already-resolved marketplace plugin identifiers and refresh tenant plugin caches.
+        """
+        manager = PluginInstaller()
+        result = manager.install_from_identifiers(
+            tenant_id,
+            plugin_unique_identifiers,
+            PluginInstallationSource.Marketplace,
+            [
+                MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier=plugin_unique_identifier)
+                for plugin_unique_identifier in plugin_unique_identifiers
+            ],
         )
         PluginService.invalidate_plugin_model_providers_cache(tenant_id)
         return result

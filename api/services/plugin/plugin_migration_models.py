@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from _thread import LockType
 from collections.abc import Mapping
-from dataclasses import dataclass, field
-from threading import Lock
+from dataclasses import dataclass
 from types import MappingProxyType
 from typing import NamedTuple
 
@@ -47,28 +45,40 @@ class TenantPluginNotInstalled(BaseModel):
 class PluginInstallSummary(BaseModel):
     """JSON summary written after tenant plugin installation."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     not_installed: list[TenantPluginNotInstalled] = Field(default_factory=list)
-    plugin_install_failed: list[str] = Field(default_factory=list)
+    failed_plugin_ids: list[str] = Field(default_factory=list, alias="plugin_install_failed")
 
 
 class RagPipelinePluginInstallSummary(BaseModel):
     """JSON summary written after RAG pipeline plugin installation."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     total_success_tenant: int = 0
     total_failed_tenant: int = 0
-    plugin_install_failed: list[str] = Field(default_factory=list)
+    failed_plugin_ids: list[str] = Field(default_factory=list, alias="plugin_install_failed")
 
 
 @dataclass(frozen=True, slots=True)
 class PluginInstallResult:
-    """Internal result of installing plugin packages for one tenant."""
+    """Internal result of installing plugin packages, keyed by plugin ID."""
 
-    success: tuple[str, ...] = ()
-    failed: tuple[str, ...] = ()
+    successful_plugin_ids: tuple[str, ...] = ()
+    failed_plugin_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class TenantPluginInstallOutcome:
+    """Internal tenant installation outcome, keyed by plugin ID."""
+
+    tenant_id: str
+    failed_plugin_ids: tuple[str, ...] = ()
+
+    @property
+    def succeeded(self) -> bool:
+        return not self.failed_plugin_ids
 
 
 @dataclass(frozen=True, slots=True)
@@ -110,25 +120,12 @@ class TenantPluginInstallPlan:
             identifier_by_id=MappingProxyType(identifier_by_id),
         )
 
+    @property
+    def installable_plugin_ids(self) -> tuple[str, ...]:
+        return tuple(plugin_id for plugin_id in self.plugin_ids if plugin_id in self.identifier_by_id)
+
     def to_not_installed_record(self) -> TenantPluginNotInstalled:
         return TenantPluginNotInstalled(
             tenant_id=self.tenant_id,
             plugin_not_exist=list(self.unresolved_plugin_ids),
         )
-
-
-@dataclass(slots=True)
-class TenantInstallCounters:
-    """Thread-safe counters for RAG pipeline tenant installation results."""
-
-    success: int = 0
-    failed: int = 0
-    _lock: LockType = field(default_factory=Lock, init=False, repr=False)
-
-    def record_success(self) -> None:
-        with self._lock:
-            self.success += 1
-
-    def record_failure(self) -> None:
-        with self._lock:
-            self.failed += 1

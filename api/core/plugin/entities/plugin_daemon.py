@@ -210,9 +210,20 @@ class PluginInstallIdentifiersRequest(BaseModel):
     metas: list[PluginInstallIdentifierMeta]
 
     @model_validator(mode="after")
-    def ensure_meta_count_matches_identifiers(self) -> Self:
+    def ensure_meta_contract(self) -> Self:
         if len(self.metas) != len(self.plugin_unique_identifiers):
             raise ValueError("metas must contain exactly one entry per plugin_unique_identifier")
+        match self.source:
+            case PluginInstallationSource.Package:
+                expected_meta_cls = PackagePluginInstallIdentifierMeta
+            case PluginInstallationSource.Github:
+                expected_meta_cls = GithubPluginInstallIdentifierMeta
+            case PluginInstallationSource.Marketplace:
+                expected_meta_cls = MarketplacePluginInstallIdentifierMeta
+            case _:
+                raise ValueError(f"installing plugins from {self.source} is not supported")
+        if any(not isinstance(meta, expected_meta_cls) for meta in self.metas):
+            raise ValueError(f"{self.source} installs require {expected_meta_cls.__name__} metas")
         return self
 
 

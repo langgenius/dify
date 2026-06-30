@@ -7,7 +7,13 @@ import pytest
 from pydantic import TypeAdapter
 from redis import RedisError
 
-from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStatus, PluginModelProviderEntity
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import (
+    MarketplacePluginInstallIdentifierMeta,
+    PluginInstallTask,
+    PluginInstallTaskStatus,
+    PluginModelProviderEntity,
+)
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 
@@ -774,6 +780,30 @@ class TestPluginModelProviderCacheInvalidation:
             result = PluginService.install_from_marketplace_pkg("tenant-1", ["langgenius/openai:1.0.0"])
 
         assert result == "task-id"
+        invalidate_cache.assert_called_once_with("tenant-1")
+
+    def test_install_from_resolved_marketplace_identifiers_uses_marketplace_meta(self) -> None:
+        """Resolved marketplace installs centralize daemon meta construction and cache invalidation."""
+        with (
+            patch(f"{MODULE}.PluginInstaller") as installer_cls,
+            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache") as invalidate_cache,
+        ):
+            installer = installer_cls.return_value
+            installer.install_from_identifiers.return_value = "task-id"
+
+            from core.plugin.plugin_service import PluginService
+
+            result = PluginService.install_from_resolved_marketplace_identifiers(
+                "tenant-1", ["langgenius/openai:1.0.0@abc"]
+            )
+
+        assert result == "task-id"
+        installer.install_from_identifiers.assert_called_once_with(
+            "tenant-1",
+            ["langgenius/openai:1.0.0@abc"],
+            PluginInstallationSource.Marketplace,
+            [MarketplacePluginInstallIdentifierMeta(plugin_unique_identifier="langgenius/openai:1.0.0@abc")],
+        )
         invalidate_cache.assert_called_once_with("tenant-1")
 
     def test_uninstall_invalidates_model_provider_cache_for_tenant(self) -> None:
