@@ -182,5 +182,5 @@ def test_missing_terminal_mode_auto():
     graph = {"nodes": [{"id": "n1", "data": {"type": "start"}}], "edges": []}
 
     # Missing terminal check happens inside _validate_structure
-    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set(), node_ids=set())
+    errors = WorkflowGenerator._validate_structure(graph=graph, mode="workflow", installed_tools=set())
     # Mocking this deeply is hard, but we can verify it doesn't fail

@@ -1,3 +1,4 @@
+import type { AppModeEnum } from '@/types/app'
 // service/base is the dependency we're mocking in this test; the
 // no-restricted-imports rule targets production imports, not test
 // instrumentation — mirrors sibling service specs (annotation.spec.ts etc.).
@@ -104,7 +105,7 @@ describe('debug service — generateWorkflow', () => {
       const callbacks = { onData: vi.fn(), onCompleted: vi.fn(), onError: vi.fn(), onMessageReplace: vi.fn() }
       await sendCompletionMessage('app-1', { text: 'hello' }, callbacks)
       expect(ssePost).toHaveBeenCalledWith('apps/app-1/completion-messages', {
-        body: { text: 'hello', response_mode: 'streaming' }
+        body: { text: 'hello', response_mode: 'streaming' },
       }, callbacks)
     })
 
@@ -133,15 +134,15 @@ describe('debug service — generateWorkflow', () => {
     it('generateWorkflowStream', async () => {
       const body = { mode: 'workflow' as const, instruction: 'test', model_config: { provider: 'test', name: 'test', mode: 'chat' } }
       const callbacks = { onPlan: vi.fn(), onResult: vi.fn(), onError: vi.fn(), onCompleted: vi.fn(), getAbortController: vi.fn() }
-      
-      vi.mocked(sseGeneratorPost).mockImplementation((url, body, options) => {
-        if (options?.onPlan) options.onPlan({ title: 'plan' } as any)
-        if (options?.onResult) options.onResult({ graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } } } as any)
-        return Promise.resolve() as any
+
+      vi.mocked(sseGeneratorPost).mockImplementation((_url, _body, options) => {
+        options?.onPlan?.({ title: 'plan' })
+        options?.onResult?.({ graph: { nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } } })
+        return Promise.resolve()
       })
-      
+
       await generateWorkflowStream(body, callbacks)
-      
+
       expect(sseGeneratorPost).toHaveBeenCalled()
       expect(callbacks.onPlan).toHaveBeenCalled()
       expect(callbacks.onResult).toHaveBeenCalled()
@@ -159,14 +160,14 @@ describe('debug service — generateWorkflow', () => {
     })
 
     it('fetchPromptTemplate', async () => {
-      await fetchPromptTemplate({ appMode: 'chat' as any, mode: 'chat' as any, modelName: 'gpt-4', hasSetDataSet: true })
+      await fetchPromptTemplate({ appMode: 'chat' as AppModeEnum, mode: 'chat', modelName: 'gpt-4', hasSetDataSet: true })
       expect(get).toHaveBeenCalledWith('/app/prompt-templates', {
         params: {
           app_mode: 'chat',
           model_mode: 'chat',
           model_name: 'gpt-4',
           has_context: true,
-        }
+        },
       })
     })
 

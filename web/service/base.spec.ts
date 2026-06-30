@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { handleStream } from './base'
+// eslint-disable-next-line no-restricted-imports
+import { del, get, handleStream, patch, post, put } from './base'
 
 describe('handleStream', () => {
   beforeEach(() => {
@@ -283,9 +284,6 @@ describe('handleStream', () => {
 
 describe('HTTP methods', () => {
   it('should export methods correctly', () => {
-    // Just asserting they are defined is enough to get them covered if they're simple wrappers
-    // The actual testing would be mocking `request` which is complex
-    const { get, post, put, patch, del } = require('./base')
     expect(typeof get).toBe('function')
     expect(typeof post).toBe('function')
     expect(typeof put).toBe('function')
