@@ -287,7 +287,7 @@ class TestOpsService:
             mock_otm.encrypt_tracing_config.return_value = {}
 
             app, _ = self._create_app(db_session_with_containers, mock_external_service_dependencies)
-            result = OpsService.create_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {"project": ""})
+            result = OpsService.create_tracing_app_config(app.id, TracingProviderEnum.ARIZE, {"project": ""},db_session_with_containers)
 
         assert result == {"result": "success"}
 
