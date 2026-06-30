@@ -557,6 +557,75 @@ class TestDatasetDocumentSegmentUpdateApi:
         assert status == 200
         assert "data" in response
 
+    def test_patch_document_outside_dataset_is_not_found(self, app: Flask):
+        api = DatasetDocumentSegmentUpdateApi()
+        method = inspect.unwrap(api.patch)
+
+        payload = {"content": "updated"}
+        user = MagicMock(is_dataset_editor=True)
+        dataset = MagicMock(id="ds-1", tenant_id="tenant-1", indexing_technique="economy")
+        document = MagicMock(id="doc-1", dataset_id="other-dataset", tenant_id="tenant-1")
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+        ):
+            with pytest.raises(NotFound):
+                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
+
+    def test_patch_segment_not_found(self, app: Flask):
+        api = DatasetDocumentSegmentUpdateApi()
+        method = inspect.unwrap(api.patch)
+
+        payload = {"content": "updated"}
+        user = MagicMock(is_dataset_editor=True)
+        dataset = MagicMock(indexing_technique="economy")
+        document = MagicMock()
+        _bind_dataset_document(dataset, document)
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_model_setting",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=None,
+            ),
+        ):
+            with pytest.raises(NotFound):
+                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
+
     def test_patch_llm_bad_request(self, app: Flask):
         api = DatasetDocumentSegmentUpdateApi()
         method = inspect.unwrap(api.patch)
@@ -917,6 +986,35 @@ class TestChildChunkAddApi:
             with pytest.raises(ChildChunkIndexingError):
                 method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
 
+    def test_post_permission_denied(self, app: Flask):
+        api = ChildChunkAddApi()
+        method = inspect.unwrap(api.post)
+
+        payload = {"content": "child"}
+        user = MagicMock(is_dataset_editor=True)
+        dataset = MagicMock(indexing_technique="economy")
+        document = MagicMock()
+        _bind_dataset_document(dataset, document)
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                side_effect=services.errors.account.NoPermissionError("no access"),
+            ),
+        ):
+            with pytest.raises(Forbidden):
+                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1")
+
 
 class TestChildChunkUpdateApi:
     def test_delete_success(self, app: Flask):
@@ -1004,6 +1102,80 @@ class TestChildChunkUpdateApi:
             ),
         ):
             with pytest.raises(ChildChunkDeleteIndexError):
+                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
+
+    def test_delete_child_chunk_not_found(self, app: Flask):
+        api = ChildChunkUpdateApi()
+        method = inspect.unwrap(api.delete)
+
+        user = MagicMock(is_dataset_editor=True)
+        dataset = MagicMock()
+        document = MagicMock()
+        _bind_dataset_document(dataset, document)
+        segment = MagicMock()
+
+        with (
+            app.test_request_context("/"),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=segment,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_child_chunk_by_segment_ref",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+        ):
+            with pytest.raises(NotFound):
+                method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
+
+    def test_patch_child_chunk_not_found(self, app: Flask):
+        api = ChildChunkUpdateApi()
+        method = inspect.unwrap(api.patch)
+
+        payload = {"content": "updated child"}
+        user = MagicMock(is_dataset_editor=True)
+        dataset = MagicMock()
+        document = MagicMock()
+        _bind_dataset_document(dataset, document)
+        segment = MagicMock()
+
+        with (
+            app.test_request_context("/", json=payload),
+            patch.object(type(console_ns), "payload", payload),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.get_dataset",
+                return_value=dataset,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DocumentService.get_document",
+                return_value=document,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_segment_by_ref",
+                return_value=segment,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.SegmentService.get_child_chunk_by_segment_ref",
+                return_value=None,
+            ),
+            patch(
+                "controllers.console.datasets.datasets_segments.DatasetService.check_dataset_permission",
+                return_value=None,
+            ),
+        ):
+            with pytest.raises(NotFound):
                 method(api, "tenant-1", user, "ds-1", "doc-1", "seg-1", "cc-1")
 
 
