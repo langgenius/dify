@@ -1,4 +1,6 @@
+import json
 import logging
+from collections.abc import Generator
 from typing import Any, Literal
 from uuid import UUID
 
@@ -34,6 +36,7 @@ from controllers.console.wraps import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
     ProviderTokenNotInitError,
@@ -262,7 +265,7 @@ class AgentBuildChatFinalizeApi(Resource):
     @console_ns.doc("finalize_agent_build_chat")
     @console_ns.doc(description="Run a build-draft Agent App turn that asks the agent to push config updates")
     @console_ns.doc(params={"agent_id": "Agent ID"})
-    @console_ns.response(200, "Build chat finalization started", console_ns.models[GeneratedAppResponse.__name__])
+    @console_ns.response(200, "Success", console_ns.models[SimpleResultResponse.__name__])
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "Agent, build draft, or conversation not found")
     @setup_required
@@ -398,15 +401,63 @@ def _create_build_chat_finalization_message(
     if external_trace_id:
         args["external_trace_id"] = external_trace_id
 
-    return _generate_chat_message_response(
+    response = _generate_chat_message(
         current_user=current_user,
         app_model=app_model,
         args=args,
         streaming=True,
     )
+    _drain_streaming_generate_response(response)
+    return {"result": "success"}, 200
 
 
-def _generate_chat_message_response(
+def _drain_streaming_generate_response(response: RateLimitGenerator | Generator[str, None, None]) -> None:
+    """Consume a streamed app-generate response until a terminal message event arrives.
+
+    Finalize keeps the normal Agent App streaming path so the existing queue,
+    persistence, and runtime-session behavior stay intact. The console API only
+    changes the HTTP boundary: it drains the SSE stream server-side and returns
+    success after the generated build-chat message reaches ``message_end``.
+    """
+    close = getattr(response, "close", None)
+    try:
+        for chunk in response:
+            for raw_event in chunk.split("\n\n"):
+                if not raw_event.strip():
+                    continue
+
+                event_name: str | None = None
+                data_lines: list[str] = []
+                for line in raw_event.splitlines():
+                    if line.startswith("event: "):
+                        event_name = line.removeprefix("event: ").strip()
+                    elif line.startswith("data: "):
+                        data_lines.append(line.removeprefix("data: "))
+
+                if not data_lines:
+                    if event_name == "ping":
+                        continue
+                    continue
+
+                payload = json.loads("\n".join(data_lines))
+                if not isinstance(payload, dict):
+                    continue
+
+                payload_event = payload.get("event")
+                if payload_event == "message_end":
+                    return
+                if payload_event == "error":
+                    raise CompletionRequestError(
+                        str(payload.get("message") or "Build chat finalization failed.")
+                    )
+    finally:
+        if callable(close):
+            close()
+
+    raise CompletionRequestError("Build chat finalization did not complete.")
+
+
+def _generate_chat_message(
     *,
     current_user: Account,
     app_model: App,
@@ -414,11 +465,13 @@ def _generate_chat_message_response(
     streaming: bool,
 ):
     try:
-        response = AppGenerateService.generate(
-            app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+        return AppGenerateService.generate(
+            app_model=app_model,
+            user=current_user,
+            args=args,
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=streaming,
         )
-
-        return helper.compact_generate_response(response)
     except services.errors.conversation.ConversationNotExistsError:
         raise NotFound("Conversation Not Exists.")
     except services.errors.conversation.ConversationCompletedError:
@@ -434,6 +487,8 @@ def _generate_chat_message_response(
         raise ProviderModelCurrentlyNotSupportError()
     except InvokeRateLimitError as ex:
         raise InvokeRateLimitHttpError(ex.description)
+    except CompletionRequestError:
+        raise
     except InvokeError as e:
         raise CompletionRequestError(e.description)
     except ValueError as e:
@@ -441,6 +496,22 @@ def _generate_chat_message_response(
     except Exception as e:
         logger.exception("internal server error.")
         raise InternalServerError()
+
+
+def _generate_chat_message_response(
+    *,
+    current_user: Account,
+    app_model: App,
+    args: dict[str, Any],
+    streaming: bool,
+):
+    response = _generate_chat_message(
+        current_user=current_user,
+        app_model=app_model,
+        args=args,
+        streaming=streaming,
+    )
+    return helper.compact_generate_response(response)
 
 
 def _stop_chat_message(*, current_user_id: str, app_model: App, task_id: str):

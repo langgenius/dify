@@ -44,7 +44,12 @@ from controllers.console.agent.roster import (
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app import message as message_controller
-from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
+from controllers.console.app.completion import (
+    AgentBuildChatFinalizeApi,
+    AgentChatMessageApi,
+    AgentChatMessageStopApi,
+)
+from controllers.console.app.error import CompletionRequestError
 from controllers.console.app.message import (
     AgentChatMessageListApi,
     AgentMessageApi,
@@ -1403,7 +1408,13 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
 
     def generate(**kwargs: object) -> dict[str, object]:
         captured["generate"] = kwargs
-        return {"answer": "ok"}
+        return iter(
+            [
+                'event: ping\n\n',
+                'data: {"event":"message","answer":"working"}\n\n',
+                'data: {"event":"message_end"}\n\n',
+            ]
+        )
 
     monkeypatch.setattr(
         completion_controller,
@@ -1411,11 +1422,6 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
         resolve_debug_conversation,
     )
     monkeypatch.setattr(completion_controller.AppGenerateService, "generate", generate)
-    monkeypatch.setattr(
-        completion_controller.helper,
-        "compact_generate_response",
-        lambda response: {"response": response},
-    )
 
     with app.test_request_context(headers={"X-Trace-Id": "trace-1"}):
         result = completion_controller._create_build_chat_finalization_message(
@@ -1425,7 +1431,7 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
             agent_id="agent-1",
         )
 
-    assert result == {"response": {"answer": "ok"}}
+    assert result == ({"result": "success"}, 200)
     assert captured["resolve_debug_conversation"] == {
         "current_tenant_id": "tenant-1",
         "current_user": SimpleNamespace(id=account_id),
@@ -1442,13 +1448,48 @@ def test_build_chat_finalization_helper_forces_debug_build_and_push_prompt(
     assert args["inputs"] == {}
     assert args["auto_generate_name"] is False
     assert args["external_trace_id"] == "trace-1"
-    query = cast(str, args["query"])
-    assert "Update the config note with useful new build context when available" in query
-    assert "This is required" not in query
-    assert "piping the JSON push spec to `dify-agent config push`" in query
-    assert "what you installed or configured outside the workspace" in query
-    assert "Do not repeat details already managed through `dify-agent config push`" in query
-    assert "After the push completes, respond FINISHED." in query
+    assert args["query"] == completion_controller._BUILD_CHAT_FINALIZATION_QUERY
+
+
+def test_drain_streaming_generate_response_returns_on_message_end() -> None:
+    class ClosableResponse:
+        def __init__(self) -> None:
+            self._chunks = iter(
+                [
+                    'event: ping\n\n',
+                    'data: {"event":"message","answer":"working"}\n\n',
+                    'data: {"event":"message_end","message_id":"msg-1"}\n\n',
+                ]
+            )
+            self.closed = False
+
+        def __iter__(self):
+            return self
+
+        def __next__(self) -> str:
+            return next(self._chunks)
+
+        def close(self) -> None:
+            self.closed = True
+
+    response = ClosableResponse()
+
+    assert completion_controller._drain_streaming_generate_response(response) is None
+    assert response.closed is True
+
+
+def test_drain_streaming_generate_response_maps_error_event() -> None:
+    response = iter(['data: {"event":"error","message":"backend failed"}\n\n'])
+
+    with pytest.raises(CompletionRequestError, match="backend failed"):
+        completion_controller._drain_streaming_generate_response(response)
+
+
+def test_drain_streaming_generate_response_raises_when_stream_ends_early() -> None:
+    response = iter(['data: {"event":"message","answer":"working"}\n\n'])
+
+    with pytest.raises(CompletionRequestError, match="did not complete"):
+        completion_controller._drain_streaming_generate_response(response)
 
 
 def test_agent_chat_helper_forces_agent_streaming_and_external_trace(
