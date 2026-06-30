@@ -113,7 +113,7 @@ def test_workflow_pause_converter_rehydrates_hitl_payload_from_form_definition(
     assert resolved_session_ids == ["session-1"]
 
     human_input_response = responses[0]
-    assert human_input_response.data.form_id == "session-1"
+    assert human_input_response.data.form_id == "form-1"
     assert human_input_response.data.node_id == "node-1"
     assert human_input_response.data.node_title == "Approval Gate"
     assert human_input_response.data.form_content == "Need manager approval"
@@ -128,7 +128,7 @@ def test_workflow_pause_converter_rehydrates_hitl_payload_from_form_definition(
     assert pause_response.data.reasons == [
         {
             "TYPE": "hitl_required",
-            "session_id": "session-1",
+            "form_id": "form-1",
             "node_id": "node-1",
             "node_title": "Approval Gate",
             "form_token": "token-1",

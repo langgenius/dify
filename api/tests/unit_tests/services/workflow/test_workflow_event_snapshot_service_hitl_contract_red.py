@@ -221,7 +221,7 @@ def test_snapshot_builder_rehydrates_hitl_payload_from_form_definition(
     assert pause_event["data"]["reasons"] == [
         {
             "TYPE": "hitl_required",
-            "session_id": "session-1",
+            "form_id": "form-1",
             "node_id": "node-1",
             "node_title": "Approval Gate",
             "form_token": "token-1",
