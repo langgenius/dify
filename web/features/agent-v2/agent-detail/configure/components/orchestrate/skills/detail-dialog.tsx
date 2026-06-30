@@ -235,7 +235,7 @@ export function AgentSkillDetailDialog({
   detail: AgentSkillDetail
 }) {
   const { t } = useTranslation('agentV2')
-  const previewTitle = detail.filePreview?.fileName ?? skillName
+  const previewTitle = detail.filePreview?.fileName
 
   return (
     <DialogContent backdropProps={{ forceRender: true }} backdropClassName="fixed" className="flex h-[min(720px,calc(100dvh-2rem))] max-h-none w-[min(960px,calc(100vw-2rem))] flex-row overflow-hidden rounded-2xl p-0">
@@ -244,7 +244,7 @@ export function AgentSkillDetailDialog({
           {detail.description}
         </DialogDescription>
         <DialogTitle className="sr-only">
-          {previewTitle}
+          {previewTitle || skillName}
         </DialogTitle>
         <div className="min-h-0 w-full">
           <AgentSkillFileList
@@ -261,9 +261,11 @@ export function AgentSkillDetailDialog({
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex shrink-0 items-start gap-2 px-4 pt-3.5 pb-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
-            <h2 className="min-w-0 truncate system-xl-semibold text-text-primary" title={previewTitle}>
-              {previewTitle}
-            </h2>
+            {!!previewTitle && (
+              <h2 className="min-w-0 truncate system-xl-semibold text-text-primary" title={previewTitle}>
+                {previewTitle}
+              </h2>
+            )}
           </div>
           <DialogCloseButton className="static size-7 shrink-0 rounded-md" />
         </div>
