@@ -42,7 +42,7 @@ class TestRagPipelineServiceGetPipeline:
         yield
         db_session_with_containers.rollback()
 
-    def _make_service(self, flask_app_with_containers: Flask) -> RagPipelineService:
+    def _make_service(self, flask_app_with_containers: Flask, db_session_with_containers: Session) -> RagPipelineService:
         with (
             patch(
                 "services.rag_pipeline.rag_pipeline.DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository",
@@ -54,7 +54,7 @@ class TestRagPipelineServiceGetPipeline:
             ),
         ):
             session_factory = sessionmaker(bind=flask_app_with_containers.extensions["sqlalchemy"].engine)
-            return RagPipelineService(session_maker=session_factory)
+            return RagPipelineService(db_session_with_containers, session_maker=session_factory)
 
     def _create_pipeline(self, db_session: Session, tenant_id: str, created_by: str) -> Pipeline:
         pipeline = Pipeline(
