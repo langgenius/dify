@@ -36,7 +36,7 @@ from graphon.entities import GraphInitParams
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent
 from graphon.node_events.node import StreamCompletedEvent
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     HumanInputNodeData,
@@ -46,7 +46,7 @@ from graphon.nodes.human_input.entities import (
     StringSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import (
+from core.workflow.nodes.human_input.enums import (
     ButtonStyle,
     FormInputType,
     HumanInputFormStatus,

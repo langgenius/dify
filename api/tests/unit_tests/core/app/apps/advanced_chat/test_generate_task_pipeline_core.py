@@ -53,7 +53,7 @@ from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.workflow.system_variables import build_system_variables
 from graphon.entities.pause_reason import PauseReasonType
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import UserActionConfig
+from core.workflow.nodes.human_input.entities import UserActionConfig
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.enums import MessageStatus

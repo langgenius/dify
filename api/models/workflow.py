@@ -25,6 +25,11 @@ from typing_extensions import deprecated
 
 from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
+from core.workflow.nodes.human_input.pause_reason import (
+    HUMAN_INPUT_REQUIRED_REASON_TYPE,
+    HumanInputRequired,
+    PauseReason as DifyPauseReason,
+)
 from core.workflow.variable_prefixes import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
@@ -32,7 +37,7 @@ from core.workflow.variable_prefixes import (
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason, PauseReasonType, SchedulingPause
 from graphon.enums import (
     BuiltinNodeTypes,
     NodeType,
@@ -2144,12 +2149,17 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     )
 
     @classmethod
-    def from_entity(cls, *, pause_id: str, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(
+        cls,
+        *,
+        pause_id: str,
+        pause_reason: GraphonPauseReason | DifyPauseReason,
+    ) -> "WorkflowPauseReason":
         match pause_reason:
             case HumanInputRequired():
                 return cls(
                     pause_id=pause_id,
-                    type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                    type_=HUMAN_INPUT_REQUIRED_REASON_TYPE,
                     form_id=pause_reason.form_id,
                     node_id=pause_reason.node_id,
                 )
@@ -2158,8 +2168,8 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             case _:
                 raise AssertionError(f"Unknown pause reason type: {pause_reason}")
 
-    def to_entity(self) -> PauseReason:
-        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+    def to_entity(self) -> GraphonPauseReason | DifyPauseReason:
+        if self.type_ == HUMAN_INPUT_REQUIRED_REASON_TYPE:
             return HumanInputRequired(
                 form_id=self.form_id,
                 form_content="",

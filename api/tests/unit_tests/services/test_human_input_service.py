@@ -15,7 +15,7 @@ from core.repositories.human_input_repository import (
     HumanInputFormSubmissionRepository,
 )
 from graphon.file import File, FileTransferMethod, FileType
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     FormDefinition,
@@ -24,7 +24,7 @@ from graphon.nodes.human_input.entities import (
     StringListSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from libs.datetime_utils import naive_utc_now
 from models.human_input import RecipientType

@@ -34,6 +34,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.rag.entities import RetrievalSourceMetadata
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
@@ -51,7 +52,6 @@ from core.workflow.variable_pool_initializer import add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from core.workflow.workflow_run_outputs import project_node_outputs_for_workflow_run
 from graphon.entities.graph_config import NodeConfigDictAdapter
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.graph import Graph
 from graphon.graph_engine.layers import GraphEngineLayer
 from graphon.graph_events import (

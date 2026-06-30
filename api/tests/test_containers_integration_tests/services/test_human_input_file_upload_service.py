@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import services.human_input_file_upload_service as service_module
 from extensions.ext_database import db
-from graphon.nodes.human_input.enums import HumanInputFormKind
+from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     HumanInputForm,

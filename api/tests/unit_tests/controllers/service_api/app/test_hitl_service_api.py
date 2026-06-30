@@ -34,8 +34,8 @@ from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
 from graphon.entities.pause_reason import HumanInputRequired, PauseReasonType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-from graphon.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
-from graphon.nodes.human_input.enums import FormInputType
+from core.workflow.nodes.human_input.entities import ParagraphInputConfig, UserActionConfig
+from core.workflow.nodes.human_input.enums import FormInputType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account
 from models.enums import CreatorUserRole

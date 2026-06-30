@@ -22,13 +22,13 @@ from core.workflow.nodes.agent_v2.ask_human_hitl import (
     build_delivery_methods,
     parse_ask_human_args,
 )
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     ParagraphInputConfig,
     SelectInputConfig,
 )
-from graphon.nodes.human_input.enums import ButtonStyle, TimeoutUnit
+from core.workflow.nodes.human_input.enums import ButtonStyle, TimeoutUnit
 from models.agent_config_entities import AgentHumanContactConfig
 
 

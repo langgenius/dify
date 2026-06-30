@@ -14,7 +14,7 @@ from graphon.graph_events import (
     NodeRunHumanInputFormTimeoutEvent,
     NodeRunStartedEvent,
 )
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     HumanInputNodeData,
@@ -23,7 +23,7 @@ from graphon.nodes.human_input.entities import (
     StringListSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.protocols import FileReferenceFactoryProtocol
 from graphon.runtime import GraphRuntimeState, VariablePool

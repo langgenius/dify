@@ -17,8 +17,8 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
 )
 from graphon.enums import BuiltinNodeTypes
-from graphon.nodes.human_input.entities import FileInputConfig, HumanInputNodeData
-from graphon.nodes.human_input.enums import HumanInputFormKind
+from core.workflow.nodes.human_input.entities import FileInputConfig, HumanInputNodeData
+from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import HumanInputForm, HumanInputFormRecipient, HumanInputFormUploadFile
 from models.model import App, AppMode, UploadFile

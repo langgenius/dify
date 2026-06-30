@@ -25,7 +25,7 @@ from graphon.graph_events import (
 from graphon.nodes.base.entities import OutputVariableEntity
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     HumanInputNodeData,
@@ -33,7 +33,7 @@ from graphon.nodes.human_input.entities import (
     StringListSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode

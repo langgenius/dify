@@ -20,7 +20,7 @@ from core.workflow.human_input_adapter import (
 )
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom

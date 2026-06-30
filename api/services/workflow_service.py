@@ -23,6 +23,7 @@ from core.workflow.human_input_adapter import (
     adapt_human_input_node_data_for_graph,
     parse_human_input_delivery_methods,
 )
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from core.workflow.node_factory import (
     LATEST_VERSION,
     DifyGraphInitContext,
@@ -45,7 +46,6 @@ from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
-from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import (
     ErrorStrategy,
     NodeType,
@@ -59,8 +59,8 @@ from graphon.node_events import NodeRunResult
 from graphon.nodes import BuiltinNodeTypes
 from graphon.nodes.base.node import Node
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, build_http_request_config
-from graphon.nodes.human_input.entities import HumanInputNodeData
-from graphon.nodes.human_input.enums import HumanInputFormKind
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.enums import HumanInputFormKind
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import GraphRuntimeState, VariablePool
@@ -1585,7 +1585,7 @@ class WorkflowService:
         Raises:
             ValueError: If the node data format is invalid
         """
-        from graphon.nodes.human_input.entities import HumanInputNodeData
+        from core.workflow.nodes.human_input.entities import HumanInputNodeData
 
         try:
             HumanInputNodeData.model_validate(adapt_human_input_node_data_for_graph(node_data))

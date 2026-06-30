@@ -23,7 +23,7 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
 from extensions.ext_database import db
 from fields.base import ResponseModel
-from graphon.nodes.human_input.entities import FormInputConfig
+from core.workflow.nodes.human_input.entities import FormInputConfig
 from libs.helper import to_timestamp
 from models.model import App, EndUser
 from services.human_input_service import Form, FormNotFoundError, HumanInputService

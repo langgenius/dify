@@ -32,7 +32,7 @@ from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.node_events import PauseRequestedEvent, StreamCompletedEvent
-from graphon.nodes.human_input.entities import UserActionConfig
+from core.workflow.nodes.human_input.entities import UserActionConfig
 from graphon.runtime import GraphRuntimeState
 from graphon.variables.segments import ArrayFileSegment, FileSegment, StringSegment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding

@@ -17,8 +17,8 @@ from core.workflow.human_input_adapter import DeliveryMethodType
 from graphon.entities import WorkflowExecution
 from graphon.entities.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus
-from graphon.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from core.workflow.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource, UserActionConfig
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
 from graphon.runtime import GraphRuntimeState, VariablePool
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom

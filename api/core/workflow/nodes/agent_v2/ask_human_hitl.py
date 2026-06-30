@@ -48,8 +48,8 @@ from core.workflow.human_input_adapter import (
     ExternalRecipient,
     InteractiveSurfaceDeliveryMethod,
 )
-from graphon.entities.pause_reason import HumanInputRequired
-from graphon.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
+from core.workflow.nodes.human_input.entities import (
     FileInputConfig,
     FileListInputConfig,
     FormInputConfig,
@@ -60,7 +60,7 @@ from graphon.nodes.human_input.entities import (
     StringSource,
     UserActionConfig,
 )
-from graphon.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
+from core.workflow.nodes.human_input.enums import ButtonStyle, TimeoutUnit, ValueSourceType
 from models.agent_config_entities import AgentHumanContactConfig
 
 # Default ask_human tool name (see ``DifyAskHumanLayerConfig.tool_name``). The

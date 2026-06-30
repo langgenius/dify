@@ -21,8 +21,8 @@ from graphon.graph_engine import GraphEngine
 from graphon.graph_engine.command_channels import InMemoryChannel
 from graphon.nodes.end.end_node import EndNode
 from graphon.nodes.end.entities import EndNodeData
-from graphon.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
-from graphon.nodes.human_input.enums import HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserActionConfig
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from graphon.nodes.human_input.human_input_node import HumanInputNode
 from graphon.nodes.start.entities import StartNodeData
 from graphon.nodes.start.start_node import StartNode

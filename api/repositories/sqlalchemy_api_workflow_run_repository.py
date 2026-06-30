@@ -34,9 +34,14 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from extensions.ext_storage import storage
-from graphon.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
+from core.workflow.nodes.human_input.pause_reason import (
+    HUMAN_INPUT_REQUIRED_REASON_TYPE,
+    HumanInputRequired,
+    PauseReason as DifyPauseReason,
+)
+from graphon.entities.pause_reason import PauseReason as GraphonPauseReason, PauseReasonType, SchedulingPause
 from graphon.enums import WorkflowExecutionStatus, WorkflowType
-from graphon.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.entities import FormDefinition
 from libs.datetime_utils import naive_utc_now
 from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
@@ -947,7 +952,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
-        pause_reasons: Sequence[PauseReason],
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason],
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.
@@ -1007,7 +1012,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                         # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
                         pause_reason_model = WorkflowPauseReason(
                             pause_id=pause_model.id,
-                            type_=reason.TYPE,
+                            type_=HUMAN_INPUT_REQUIRED_REASON_TYPE,
                             form_id=reason.form_id,
                         )
                     case SchedulingPause():
@@ -1046,11 +1051,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         session: Session,
         pause_reason_models: Sequence[WorkflowPauseReason],
-    ) -> list[PauseReason]:
+    ) -> list[GraphonPauseReason | DifyPauseReason]:
         form_ids = [
             reason.form_id
             for reason in pause_reason_models
-            if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED and reason.form_id
+            if reason.type_ == HUMAN_INPUT_REQUIRED_REASON_TYPE and reason.form_id
         ]
         form_models: dict[str, HumanInputForm] = {}
         if form_ids:
@@ -1063,9 +1068,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             for recipient in session.scalars(recipient_stmt).all():
                 recipients_by_form_id.setdefault(recipient.form_id, []).append(recipient)
 
-        pause_reasons: list[PauseReason] = []
+        pause_reasons: list[GraphonPauseReason | DifyPauseReason] = []
         for reason in pause_reason_models:
-            if reason.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+            if reason.type_ == HUMAN_INPUT_REQUIRED_REASON_TYPE:
                 form_model = form_models.get(reason.form_id)
                 pause_reasons.append(
                     _build_human_input_required_reason(
@@ -1541,7 +1546,7 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         *,
         pause_model: WorkflowPause,
         reason_models: Sequence[WorkflowPauseReason],
-        pause_reasons: Sequence[PauseReason] | None = None,
+        pause_reasons: Sequence[GraphonPauseReason | DifyPauseReason] | None = None,
         human_input_form: Sequence = (),
     ) -> None:
         self._pause_model = pause_model
