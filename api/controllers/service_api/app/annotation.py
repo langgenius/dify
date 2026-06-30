@@ -285,9 +285,7 @@ class AnnotationUpdateDeleteApi(Resource):
         update_args: UpdateAnnotationArgs = {"question": payload.question, "answer": payload.answer}
         app_ref = AppRefService.create_app_ref(app_model)
         annotation_ref = AppRefService.create_annotation_ref(app_ref, str(annotation_id))
-        annotation = AppAnnotationService.update_app_annotation_directly(
-            update_args, annotation_ref, db.session
-        )
+        annotation = AppAnnotationService.update_app_annotation_directly(update_args, annotation_ref, db.session)
         response = Annotation.model_validate(annotation, from_attributes=True)
         return response.model_dump(mode="json")
 
