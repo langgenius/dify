@@ -38,6 +38,7 @@ from pydantic_ai.messages import (
 from clients.agent_backend import (
     AgentBackendError,
     AgentBackendRunEventAdapter,
+    AgentBackendStreamInternalEvent,
     FakeAgentBackendRunClient,
     FakeAgentBackendScenario,
 )
@@ -402,6 +403,94 @@ def test_successful_turn_persists_thinking_and_tool_process_events(monkeypatch):
     assert rows[1].tool == "bash"
     assert rows[1].tool_input == '{"cmd": "ls"}'
     assert rows[1].observation == "ok"
+
+
+def test_tool_result_without_identity_does_not_attach_to_previous_tool(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "shell_run",
+                    "args": {"script": "npx skills find browser"},
+                    "tool_call_id": "shell-call-1",
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "content": "Knowledge base search results: browser skill",
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 2
+    assert rows[0].tool == "shell_run"
+    assert rows[0].tool_input == '{"script": "npx skills find browser"}'
+    assert rows[0].observation is None
+    assert rows[1].tool is None
+    assert rows[1].tool_input is None
+    assert rows[1].observation == "Knowledge base search results: browser skill"
+
+
+def test_tool_result_without_call_id_matches_unique_open_tool_name(monkeypatch):
+    fake_session = _FakeDbSession()
+    monkeypatch.setattr(app_runner_module.db, "session", fake_session)
+    qm = _FakeQueueManager()
+    recorder = app_runner_module._AgentProcessRecorder(
+        dify_context=_dify_ctx(),
+        message_id="msg-1",
+        queue_manager=qm,  # type: ignore[arg-type]
+    )
+
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_call",
+                "part": {
+                    "part_kind": "tool-call",
+                    "tool_name": "knowledge_base_search",
+                    "args": {"query": "browser"},
+                },
+            },
+        )
+    )
+    recorder.handle_stream_event(
+        AgentBackendStreamInternalEvent(
+            run_id="run-1",
+            data={
+                "event_kind": "function_tool_result",
+                "part": {
+                    "part_kind": "tool-return",
+                    "tool_name": "knowledge_base_search",
+                    "content": "Knowledge base search results: browser skill",
+                },
+            },
+        )
+    )
+
+    rows = sorted(fake_session.rows.values(), key=lambda row: row.position)
+    assert len(rows) == 1
+    assert rows[0].tool == "knowledge_base_search"
+    assert rows[0].tool_input == '{"query": "browser"}'
+    assert rows[0].observation == "Knowledge base search results: browser skill"
 
 
 def test_prior_session_snapshot_is_threaded_into_request():
