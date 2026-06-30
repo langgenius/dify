@@ -592,9 +592,7 @@ def test_generate_and_vectorize_summary_creates_missing_record_and_logs_usage(
     monkeypatch.setattr(SummaryIndexService, "vectorize_summary", MagicMock(return_value=None))
 
     with caplog.at_level(logging.INFO, logger="services.summary_index_service"):
-        result = SummaryIndexService.generate_and_vectorize_summary(
-            segment, dataset, {"enable": True}, session=session
-        )
+        result = SummaryIndexService.generate_and_vectorize_summary(segment, dataset, {"enable": True}, session=session)
         assert result.status in {SummaryStatus.GENERATING, SummaryStatus.COMPLETED}
         assert any(r.levelno >= logging.INFO for r in caplog.records)
 
@@ -650,9 +648,7 @@ def test_generate_summaries_for_document_runs_and_handles_errors(monkeypatch: py
     update_err_mock = MagicMock()
     monkeypatch.setattr(SummaryIndexService, "update_summary_record_error", update_err_mock)
 
-    records = SummaryIndexService.generate_summaries_for_document(
-        dataset, document, {"enable": True}, session=session
-    )
+    records = SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}, session=session)
     assert len(records) == 1
     update_err_mock.assert_called_once()
 
@@ -673,8 +669,7 @@ def test_generate_summaries_for_document_no_segments_returns_empty(monkeypatch: 
     )
 
     assert (
-        SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}, session=session)
-        == []
+        SummaryIndexService.generate_summaries_for_document(dataset, document, {"enable": True}, session=session) == []
     )
 
 
@@ -733,9 +728,7 @@ def test_disable_summaries_for_segments_handles_vector_delete_error(monkeypatch:
         sys.modules, "libs.datetime_utils", SimpleNamespace(naive_utc_now=MagicMock(return_value=datetime(2024, 1, 1)))
     )
 
-    SummaryIndexService.disable_summaries_for_segments(
-        dataset, segment_ids=["seg-1"], disabled_by="u", session=session
-    )
+    SummaryIndexService.disable_summaries_for_segments(dataset, segment_ids=["seg-1"], disabled_by="u", session=session)
     assert summary1.enabled is False
     assert summary1.disabled_by == "u"
     session.commit.assert_called_once()
@@ -1092,9 +1085,9 @@ def test_get_segment_summary_and_document_summaries(monkeypatch: pytest.MonkeyPa
     )
 
     assert SummaryIndexService.get_segment_summary("seg-1", "dataset-1", session=session) is record
-    assert SummaryIndexService.get_document_summaries(
-        "doc-1", "dataset-1", segment_ids=["seg-1"], session=session
-    ) == [record]
+    assert SummaryIndexService.get_document_summaries("doc-1", "dataset-1", segment_ids=["seg-1"], session=session) == [
+        record
+    ]
 
 
 def test_get_segments_summaries_non_empty(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1125,8 +1118,7 @@ def test_get_document_summary_index_status_no_segments_returns_none(monkeypatch:
         raising=False,
     )
     assert (
-        SummaryIndexService.get_document_summary_index_status("doc-1", "dataset-1", "tenant-1", session=session)
-        is None
+        SummaryIndexService.get_document_summary_index_status("doc-1", "dataset-1", "tenant-1", session=session) is None
     )
 
 
@@ -1150,9 +1142,7 @@ def test_get_documents_summary_index_status_no_pending_sets_none(monkeypatch: py
         "get_segments_summaries",
         MagicMock(return_value={"seg-1": SimpleNamespace(status=SummaryStatus.COMPLETED)}),
     )
-    result = SummaryIndexService.get_documents_summary_index_status(
-        ["doc-1"], "dataset-1", "tenant-1", session=session
-    )
+    result = SummaryIndexService.get_documents_summary_index_status(["doc-1"], "dataset-1", "tenant-1", session=session)
     assert result["doc-1"] is None
 
 
