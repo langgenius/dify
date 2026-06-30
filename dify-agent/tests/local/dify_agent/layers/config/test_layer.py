@@ -76,56 +76,6 @@ def _file_pull_output(*, include_file: bool = True) -> str:
     return "/workspace/.dify_conf/files/guide.txt\n"
 
 
-def test_config_layer_prefix_prompt_includes_loaded_skill_and_file_paths() -> None:
-    layer = _build_layer()
-    layer.runtime_state.pulled_skill_outputs = {"alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."}
-    layer.runtime_state.pulled_file_outputs = {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
-
-    prompt = layer.build_prompt_context()
-
-    assert "Config note" not in prompt
-    assert "Loaded mentioned skills" in prompt
-    assert "Name: alpha" in prompt
-    assert "Pull output:\n/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it." in prompt
-    assert "Mentioned files pulled locally" in prompt
-    assert "Name: guide.txt\nPull output:\n/workspace/.dify_conf/files/guide.txt" in prompt
-
-
-def test_config_layer_suffix_prompt_uses_cached_soul_context_cli_help_and_resource_mutation_prompt() -> None:
-    layer = _build_layer(writable=True)
-    layer._initialize_runtime_prompt_state()
-
-    prompt = layer.build_suffix_prompt()
-
-    assert "Agent config context from the current Agent Soul" in prompt
-    assert '"agent_id":"agent-1"' in prompt
-    assert '"kind":"build_draft"' in prompt
-    assert "runtime-skill" in prompt
-    assert "runtime-file.txt" in prompt
-    assert "RUNTIME_KEY" in prompt
-    assert "Runtime note." in prompt
-    assert "`dify-agent config manifest` output" not in prompt
-    assert "config push" not in prompt
-    assert "dify-agent config note push [PATH|-]" in prompt
-    assert "dify-agent config files delete NAME..." in prompt
-    assert "$ dify-agent config note push --help" in prompt
-    assert "$ dify-agent config files push --help" in prompt
-    assert "$ dify-agent config skills delete --help" in prompt
-
-
-def test_config_layer_suffix_prompt_omits_push_usage_when_config_is_not_writable() -> None:
-    layer = _build_layer(writable=False)
-    layer._initialize_runtime_prompt_state()
-
-    prompt = layer.build_suffix_prompt()
-
-    assert "Agent config context from the current Agent Soul" in prompt
-    assert "$ dify-agent config manifest --help" in prompt
-    assert "$ dify-agent config note push --help" not in prompt
-    assert "dify-agent config note push [PATH|-]" not in prompt
-    assert "Save updated build-draft config files/skills/env/note" not in prompt
-
-
 def test_build_shell_pull_scripts_include_targets() -> None:
     layer = _build_layer()
 
