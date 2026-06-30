@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from services.auth.watercrawl.watercrawl import WatercrawlAuth
+from services.auth.watercrawl.watercrawl import _CREDENTIAL_VALIDATION_TIMEOUT, WatercrawlAuth
 
 
 class TestWatercrawlAuth:
@@ -77,6 +77,7 @@ class TestWatercrawlAuth:
         mock_get.assert_called_once_with(
             "https://app.watercrawl.dev/api/v1/core/crawl-requests/",
             headers={"Content-Type": "application/json", "X-API-KEY": "test_api_key_123"},
+            timeout=_CREDENTIAL_VALIDATION_TIMEOUT,
         )
 
     @pytest.mark.parametrize(
@@ -216,3 +217,19 @@ class TestWatercrawlAuth:
 
         # Verify the timeout exception is raised with original message
         assert "timed out" in str(exc_info.value)
+
+    @patch("services.auth.watercrawl.watercrawl.httpx.get", autospec=True)
+    def test_should_pass_bounded_timeout_to_credential_validation(self, mock_get, auth_instance):
+        """Credential validation must not use the default unbounded timeout."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_get.return_value = mock_response
+
+        auth_instance.validate_credentials()
+
+        call_kwargs = mock_get.call_args
+        assert "timeout" in call_kwargs.kwargs, "timeout keyword is missing from _get_request"
+        timeout = call_kwargs.kwargs["timeout"]
+        assert isinstance(timeout, httpx.Timeout)
+        assert timeout.connect == _CREDENTIAL_VALIDATION_TIMEOUT.connect
+        assert timeout.read == _CREDENTIAL_VALIDATION_TIMEOUT.read
