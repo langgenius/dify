@@ -27,7 +27,7 @@ export function AgentBuildDraftBar({
     ? t('agentDetail.configure.buildDraft.changes', { count: changesCount })
     : t('agentDetail.configure.buildDraft.noChanges')
   const isActionPending = isApplying || isDiscarding
-  const applyDisabled = disabled || isActionPending || changesCount <= 0
+  const applyDisabled = disabled || isActionPending
   const discardDisabled = disabled || isActionPending
 
   return (

@@ -151,8 +151,10 @@ export function useAgentConfigureBuildDraftActions({
     },
   })
   const agentDetailQueryKey = consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: agentId } } })
+  const finalizeBuildChatMutation = useMutation(consoleQuery.agent.byAgentId.buildChat.finalize.post.mutationOptions())
   const applyBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.apply.post.mutationOptions())
   const discardBuildDraftMutation = useMutation(consoleQuery.agent.byAgentId.buildDraft.delete.mutationOptions())
+  const { mutateAsync: finalizeBuildChatRequest, isPending: isFinalizingBuildChat } = finalizeBuildChatMutation
   const { mutateAsync: applyBuildDraftRequest, isPending: isApplyingBuildDraft } = applyBuildDraftMutation
   const { mutateAsync: discardBuildDraftRequest, isPending: isDiscardingBuildDraft } = discardBuildDraftMutation
   const { prepareBuildDraftBeforeRun } = usePrepareAgentBuildDraftBeforeRun({
@@ -220,6 +222,11 @@ export function useAgentConfigureBuildDraftActions({
 
   const applyBuildDraft = async () => {
     try {
+      await finalizeBuildChatRequest({
+        params: {
+          agent_id: agentId,
+        },
+      })
       await applyBuildDraftRequest({
         params: {
           agent_id: agentId,
@@ -264,7 +271,7 @@ export function useAgentConfigureBuildDraftActions({
     applyBuildDraft,
     cancelBuildDraftRefresh,
     discardBuildDraft,
-    isApplyingBuildDraft,
+    isApplyingBuildDraft: isFinalizingBuildChat || isApplyingBuildDraft,
     isDiscardingBuildDraft,
     prepareBuildDraftBeforeRun: prepareBuildDraftRun,
     refreshBuildDraftAfterBuildChat,
