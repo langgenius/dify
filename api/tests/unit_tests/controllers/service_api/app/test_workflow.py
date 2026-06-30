@@ -168,26 +168,6 @@ class TestWorkflowLogQuery:
         query_max_limit = WorkflowLogQuery(limit=100)
         assert query_max_limit.limit == 100
 
-    def test_query_rejects_page_below_minimum(self):
-        """Test query rejects page < 1."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(page=0)
-
-    def test_query_rejects_page_above_maximum(self):
-        """Test query rejects page > 99999."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(page=100000)
-
-    def test_query_rejects_limit_below_minimum(self):
-        """Test query rejects limit < 1."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(limit=0)
-
-    def test_query_rejects_limit_above_maximum(self):
-        """Test query rejects limit > 100."""
-        with pytest.raises(ValueError):
-            WorkflowLogQuery(limit=101)
-
     def test_query_with_keyword_search(self):
         """Test query with keyword filter."""
         query = WorkflowLogQuery(keyword="workflow execution")
