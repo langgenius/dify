@@ -716,9 +716,14 @@ def _delete_records(query_sql: str, params: dict[str, Any], delete_func: Callabl
                     continue
 
             rs.close()
-            
+
             # If we couldn't delete ANY records in this batch, we must break out of the while loop
             # to prevent an infinite loop where we keep fetching the same failing records.
             if success_count == 0:
-                logger.warning(click.style(f"Failed to delete any {name} in the current batch. Stopping to prevent infinite loop.", fg="yellow"))
+                logger.warning(
+                    click.style(
+                        f"Failed to delete any {name} in the current batch. Stopping to prevent infinite loop.",
+                        fg="yellow",
+                    )
+                )
                 break
