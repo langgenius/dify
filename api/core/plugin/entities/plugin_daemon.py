@@ -213,6 +213,11 @@ class PluginInstallIdentifiersRequest(BaseModel):
     def ensure_meta_contract(self) -> Self:
         if len(self.metas) != len(self.plugin_unique_identifiers):
             raise ValueError("metas must contain exactly one entry per plugin_unique_identifier")
+        expected_meta_cls: (
+            type[PackagePluginInstallIdentifierMeta]
+            | type[GithubPluginInstallIdentifierMeta]
+            | type[MarketplacePluginInstallIdentifierMeta]
+        )
         match self.source:
             case PluginInstallationSource.Package:
                 expected_meta_cls = PackagePluginInstallIdentifierMeta
