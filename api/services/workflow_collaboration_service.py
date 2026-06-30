@@ -45,9 +45,9 @@ class WorkflowCollaborationService:
         The Socket.IO payload still calls the room key `workflow_id`, but the identifier is the workflow app's
         `App.id`. Returning `None` lets the controller reject the join before any Redis or room state is created.
         """
-        session = self._socketio.get_session(sid)
-        user_id = session.get("user_id")
-        tenant_id = session.get("tenant_id")
+        socket_session = self._socketio.get_session(sid)
+        user_id = socket_session.get("user_id")
+        tenant_id = socket_session.get("tenant_id")
         if not user_id or not tenant_id:
             return None
 
@@ -63,8 +63,8 @@ class WorkflowCollaborationService:
 
         session_info: WorkflowSessionInfo = {
             "user_id": str(user_id),
-            "username": str(session.get("username", "Unknown")),
-            "avatar": session.get("avatar"),
+            "username": str(socket_session.get("username", "Unknown")),
+            "avatar": socket_session.get("avatar"),
             "sid": sid,
             "connected_at": int(time.time()),
         }
