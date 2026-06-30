@@ -165,7 +165,9 @@ class TestUpdateCustomizedPipelineTemplate:
             description="Updated description",
             icon_info=IconInfo(icon="🔥"),
         )
-        result = RagPipelineService.update_customized_pipeline_template(template.id, info, account, tenant_id)
+        result = RagPipelineService.update_customized_pipeline_template(
+            template.id, info, account, tenant_id, session=db_session_with_containers
+        )
 
         assert result.name == "Updated Name"
         assert result.description == "Updated description"
@@ -183,7 +185,9 @@ class TestUpdateCustomizedPipelineTemplate:
             icon_info=IconInfo(icon="📄"),
         )
         with pytest.raises(ValueError, match="Customized pipeline template not found"):
-            RagPipelineService.update_customized_pipeline_template(str(uuid4()), info, account, tenant_id)
+            RagPipelineService.update_customized_pipeline_template(
+                str(uuid4()), info, account, tenant_id, session=db_session_with_containers
+            )
 
     def test_update_template_raises_on_duplicate_name(
         self, db_session_with_containers: Session, flask_app_with_containers: Flask
@@ -203,7 +207,9 @@ class TestUpdateCustomizedPipelineTemplate:
             icon_info=IconInfo(icon="📄"),
         )
         with pytest.raises(ValueError, match="Template name is already exists"):
-            RagPipelineService.update_customized_pipeline_template(template1.id, info, account, tenant_id)
+            RagPipelineService.update_customized_pipeline_template(
+                template1.id, info, account, tenant_id, session=db_session_with_containers
+            )
 
 
 class TestDeleteCustomizedPipelineTemplate:
@@ -241,7 +247,9 @@ class TestDeleteCustomizedPipelineTemplate:
         template_id = template.id
         db_session_with_containers.flush()
 
-        RagPipelineService.delete_customized_pipeline_template(template_id, tenant_id)
+        RagPipelineService.delete_customized_pipeline_template(
+            template_id, tenant_id, session=db_session_with_containers
+        )
 
         # Verify the record is deleted within the same context
         from sqlalchemy import select
@@ -260,4 +268,6 @@ class TestDeleteCustomizedPipelineTemplate:
         tenant_id = str(uuid4())
 
         with pytest.raises(ValueError, match="Customized pipeline template not found"):
-            RagPipelineService.delete_customized_pipeline_template(str(uuid4()), tenant_id)
+            RagPipelineService.delete_customized_pipeline_template(
+                str(uuid4()), tenant_id, session=db_session_with_containers
+            )

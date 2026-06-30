@@ -132,7 +132,7 @@ class TestAgentService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Update the app model config to set agent_mode for agent-chat mode
         if app.mode == AppMode.AGENT_CHAT and app.app_model_config:

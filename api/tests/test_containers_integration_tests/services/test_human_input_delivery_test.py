@@ -119,6 +119,7 @@ def test_human_input_delivery_test_sends_email(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
+        session=db_session_with_containers,
     )
 
     assert send_mock.call_count == 1
@@ -145,6 +146,7 @@ def test_human_input_delivery_test_form_accepts_file_upload(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
+        session=db_session_with_containers,
     )
 
     form = db_session_with_containers.scalar(
@@ -213,6 +215,7 @@ def test_human_input_delivery_test_form_accepts_remote_file_upload(
         account=account,
         node_id="human-node",
         delivery_method_id=str(delivery_method_id),
+        session=db_session_with_containers,
     )
 
     form = db_session_with_containers.scalar(

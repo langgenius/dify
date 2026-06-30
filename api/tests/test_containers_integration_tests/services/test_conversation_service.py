@@ -502,7 +502,7 @@ class TestConversationServiceMessageCreation:
             conversation_id=conversation.id,
             first_id=None,
             limit=10,
-            order="asc",  # Ascending order
+            order="asc",  # Ascending order,
             session=db_session_with_containers,
         )
 
@@ -726,7 +726,9 @@ class TestConversationServiceMessageAnnotation:
         args = {"message_id": message.id, "answer": "AI is artificial intelligence"}
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.message_id == message.id
@@ -760,7 +762,9 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.message_id is None
@@ -809,7 +813,9 @@ class TestConversationServiceMessageAnnotation:
         args = {"message_id": message.id, "answer": "Updated annotation content"}
 
         # Act
-        result = AppAnnotationService.up_insert_app_annotation_from_message(args, app_model.id)
+        result = AppAnnotationService.up_insert_app_annotation_from_message(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.id == existing_annotation.id
@@ -845,7 +851,11 @@ class TestConversationServiceMessageAnnotation:
 
         # Act
         result_items, result_total = AppAnnotationService.get_annotation_list_by_app_id(
-            app_id=app_model.id, page=1, limit=10, keyword=""
+            app_id=app_model.id,
+            page=1,
+            limit=10,
+            keyword="",
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -893,7 +903,8 @@ class TestConversationServiceMessageAnnotation:
             app_id=app_model.id,
             page=1,
             limit=10,
-            keyword="machine",  # Search keyword
+            keyword="machine",  # Search keyword,
+            session=db_session_with_containers,
         )
 
         # Assert
@@ -921,7 +932,9 @@ class TestConversationServiceMessageAnnotation:
         }
 
         # Act
-        result = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
+        result = AppAnnotationService.insert_app_annotation_directly(
+            args, app_model.id, session=db_session_with_containers
+        )
 
         # Assert
         assert result.question == args["question"]
@@ -996,7 +1009,7 @@ class TestConversationServiceExport:
         mock_current_account.return_value = (account, app_model.tenant_id)
 
         # Act
-        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id)
+        result = AppAnnotationService.export_annotation_list_by_app_id(app_model.id, session=db_session_with_containers)
 
         # Assert
         assert len(result) == 10

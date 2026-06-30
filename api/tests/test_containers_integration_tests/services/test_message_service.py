@@ -119,7 +119,7 @@ class TestMessageService:
 
         # Create app
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         # Setup current_user mock
         self._mock_current_user(mock_external_service_dependencies, account.id, tenant.id)

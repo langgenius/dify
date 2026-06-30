@@ -80,7 +80,7 @@ class CreateAppParams(BaseModel):
 class AppService:
     @staticmethod
     def _build_app_list_filters(
-        user_id: str, tenant_id: str, params: AppListBaseParams, session: scoped_session
+        user_id: str, tenant_id: str, params: AppListBaseParams, session: Session | scoped_session
     ) -> list[sa.ColumnElement[bool]]:
         filters = [App.tenant_id == tenant_id, App.is_universal == False]
 
@@ -219,7 +219,7 @@ class AppService:
         )
 
     def get_paginate_apps(
-        self, user_id: str, tenant_id: str, params: AppListParams, session: scoped_session
+        self, user_id: str, tenant_id: str, params: AppListParams, session: Session | scoped_session
     ) -> Pagination | None:
         """
         Get app list with pagination, filters, and explicit sort order.
@@ -254,7 +254,7 @@ class AppService:
         return app_models
 
     def get_paginate_starred_apps(
-        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: scoped_session
+        self, user_id: str, tenant_id: str, params: StarredAppListParams, session: Session | scoped_session
     ) -> Pagination | None:
         """
         Get apps starred by the current account with pagination, filters, and explicit sort order.

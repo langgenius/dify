@@ -90,7 +90,7 @@ class TestWebConversationService:
         )
 
         app_service = AppService()
-        app = app_service.create_app(tenant.id, app_args, account)
+        app = app_service.create_app(tenant.id, app_args, account, session=db_session_with_containers)
 
         return app, account
 
