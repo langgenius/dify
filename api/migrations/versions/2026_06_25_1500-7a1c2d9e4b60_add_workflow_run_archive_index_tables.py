@@ -1,7 +1,7 @@
 """add workflow run archive bundle index table
 
 Revision ID: 7a1c2d9e4b60
-Revises: d9e8f7a6b5c4
+Revises: c3d4e5f6a7b8
 Create Date: 2026-06-25 15:00:00.000000
 
 """
@@ -13,7 +13,7 @@ import models
 
 # revision identifiers, used by Alembic.
 revision = "7a1c2d9e4b60"
-down_revision = "d9e8f7a6b5c4"
+down_revision = "c3d4e5f6a7b8"
 branch_labels = None
 depends_on = None
 
