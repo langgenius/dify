@@ -46,6 +46,22 @@ When('I open the Agent v2 configure page', async function (this: DifyWorld) {
   await this.getPage().goto(getAgentConfigurePath(getCurrentAgentId(this)))
 })
 
+When(
+  'I open the Agent v2 configure page from the Agent Roster',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const agentId = getCurrentAgentId(this)
+    const agentName = this.lastCreatedAgentName
+    if (!agentName)
+      throw new Error('No Agent v2 name found. Create an Agent v2 test agent first.')
+
+    await page.goto('/roster')
+    await page.getByRole('link', { name: agentName }).click()
+    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agentId}/configure(?:\\?.*)?$`))
+    await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+  },
+)
+
 When('I discard the Agent v2 Build draft', async function (this: DifyWorld) {
   await this.getPage().getByRole('button', { name: 'Discard' }).click()
 })
