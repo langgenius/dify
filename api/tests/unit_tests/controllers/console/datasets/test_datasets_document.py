@@ -1,5 +1,5 @@
 import inspect
-from unittest.mock import MagicMock, patch
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -743,7 +743,7 @@ class TestDocumentRetryApi:
             resp, status = method(api, "ds-1")
 
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [])
+        retry_mock.assert_called_once_with("ds-1", [], ANY)
 
     def test_retry_success(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
@@ -772,7 +772,7 @@ class TestDocumentRetryApi:
             response, status = method(api, "ds-1")
 
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [document])
+        retry_mock.assert_called_once_with("ds-1", [document], ANY)
 
     def test_retry_skips_completed_document(self, app: Flask, patch_tenant, patch_dataset):
         api = DocumentRetryApi()
@@ -797,7 +797,7 @@ class TestDocumentRetryApi:
             response, status = method(api, "ds-1")
 
         assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [])
+        retry_mock.assert_called_once_with("ds-1", [], ANY)
 
 
 class TestDocumentPipelineExecutionLogApi:

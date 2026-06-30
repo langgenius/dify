@@ -107,7 +107,7 @@ class MetadataService:
             ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
-                documents = DocumentService.get_document_by_ids(document_ids)
+                documents = DocumentService.get_document_by_ids(document_ids, session)
                 for document in documents:
                     if not document.doc_metadata:
                         doc_metadata = {}
@@ -145,7 +145,7 @@ class MetadataService:
             ).all()
             if dataset_metadata_bindings:
                 document_ids = [binding.document_id for binding in dataset_metadata_bindings]
-                documents = DocumentService.get_document_by_ids(document_ids)
+                documents = DocumentService.get_document_by_ids(document_ids, session)
                 for document in documents:
                     if not document.doc_metadata:
                         doc_metadata = {}
@@ -179,7 +179,7 @@ class MetadataService:
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
             session.add(dataset)
-            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
+            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id, session)
             if documents:
                 for document in documents:
                     if not document.doc_metadata:
@@ -208,7 +208,7 @@ class MetadataService:
         try:
             MetadataService.knowledge_base_metadata_lock_check(dataset.id, None)
             session.add(dataset)
-            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id)
+            documents = DocumentService.get_working_documents_by_dataset_id(dataset.id, session)
             document_ids = []
             if documents:
                 for document in documents:
@@ -246,7 +246,7 @@ class MetadataService:
             lock_key = f"document_metadata_lock_{operation.document_id}"
             try:
                 MetadataService.knowledge_base_metadata_lock_check(None, operation.document_id)
-                document = DocumentService.get_document(dataset.id, operation.document_id)
+                document = DocumentService.get_document(dataset.id, operation.document_id, session=session)
                 if document is None:
                     raise ValueError("Document not found.")
                 if operation.partial_update:

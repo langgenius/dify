@@ -88,7 +88,13 @@ class TestSegmentServiceChildChunks:
             mock_redis.lock.return_value = _make_lock_context()
             mock_db.session.scalar.return_value = 2
 
-            child_chunk = SegmentService.create_child_chunk("child content", segment, document, dataset)
+            child_chunk = SegmentService.create_child_chunk(
+                "child content",
+                segment,
+                document,
+                dataset,
+                mock_db.session,
+            )
 
         assert isinstance(child_chunk, ChildChunk)
         assert child_chunk.position == 3
@@ -116,7 +122,7 @@ class TestSegmentServiceChildChunks:
             vector_service.create_child_chunk_vector.side_effect = RuntimeError("vector failed")
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
-                SegmentService.create_child_chunk("child content", segment, document, dataset)
+                SegmentService.create_child_chunk("child content", segment, document, dataset, mock_db.session)
 
         mock_db.session.rollback.assert_called_once()
         mock_db.session.commit.assert_not_called()
@@ -164,6 +170,7 @@ class TestSegmentServiceChildChunks:
                 segment,
                 document,
                 dataset,
+                mock_db.session,
             )
 
         assert [chunk.position for chunk in result] == [1, 3]
@@ -201,6 +208,7 @@ class TestSegmentServiceChildChunks:
                     segment,
                     document,
                     dataset,
+                    mock_db.session,
                 )
 
         mock_db.session.rollback.assert_called_once()
@@ -216,7 +224,7 @@ class TestSegmentServiceChildChunks:
             patch("services.dataset_service.VectorService") as vector_service,
         ):
             result = SegmentService.update_child_chunk(
-                "new content", child_chunk, _make_segment(), _make_document(), dataset
+                "new content", child_chunk, _make_segment(), _make_document(), dataset, mock_db.session
             )
 
         assert result is child_chunk
@@ -239,7 +247,7 @@ class TestSegmentServiceChildChunks:
             vector_service.delete_child_chunk_vector.side_effect = RuntimeError("delete failed")
 
             with pytest.raises(ChildChunkDeleteIndexError, match="delete failed"):
-                SegmentService.delete_child_chunk(child_chunk, dataset)
+                SegmentService.delete_child_chunk(child_chunk, dataset, mock_db.session)
 
         mock_db.session.delete.assert_called_once_with(child_chunk)
         mock_db.session.rollback.assert_called_once()
@@ -284,13 +292,13 @@ class TestSegmentServiceQueries:
 
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = child_chunk
-            result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1")
+            result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1", mock_db.session)
 
         assert result is child_chunk
 
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = SimpleNamespace()
-            result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1")
+            result = SegmentService.get_child_chunk_by_id("child-a", "tenant-1", mock_db.session)
 
         assert result is None
 
@@ -348,13 +356,13 @@ class TestSegmentServiceQueries:
         segment.id = "segment-1"
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = segment
-            result = SegmentService.get_segment_by_id("segment-1", "tenant-1")
+            result = SegmentService.get_segment_by_id("segment-1", "tenant-1", mock_db.session)
 
         assert result is segment
 
         with patch("services.dataset_service.db") as mock_db:
             mock_db.session.scalar.return_value = SimpleNamespace()
-            result = SegmentService.get_segment_by_id("segment-1", "tenant-1")
+            result = SegmentService.get_segment_by_id("segment-1", "tenant-1", mock_db.session)
 
         assert result is None
 
@@ -403,6 +411,7 @@ class TestSegmentServiceQueries:
             result = SegmentService.get_segments_by_document_and_dataset(
                 document_id="doc-1",
                 dataset_id="dataset-1",
+                session=mock_db.session,
                 status="completed",
                 enabled=True,
             )
@@ -489,7 +498,12 @@ class TestSegmentServiceMutations:
             mock_db.session.add.side_effect = add_side_effect
             vector_service.create_segments_vector.side_effect = RuntimeError("vector failed")
 
-            result = SegmentService.create_segment(args=args, document=document, dataset=dataset)
+            result = SegmentService.create_segment(
+                args=args,
+                document=document,
+                dataset=dataset,
+                session=mock_db.session,
+            )
 
         created_segment = vector_service.create_segments_vector.call_args.args[1][0]
         attachment_bindings = [
@@ -539,7 +553,7 @@ class TestSegmentServiceMutations:
             mock_db.session.scalar.return_value = 1
             vector_service.create_segments_vector.side_effect = RuntimeError("vector failed")
 
-            result = SegmentService.multi_create_segment(segments, document, dataset)
+            result = SegmentService.multi_create_segment(segments, document, dataset, mock_db.session)
             assert result
 
         assert len(result) == 2
@@ -568,7 +582,7 @@ class TestSegmentServiceMutations:
         ):
             mock_redis.get.return_value = None
 
-            result = SegmentService.update_segment(args, segment, document, dataset)
+            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
 
         assert result is segment
         assert segment.enabled is False
@@ -588,7 +602,9 @@ class TestSegmentServiceMutations:
             mock_redis.get.return_value = None
 
             with pytest.raises(ValueError, match="Can't update disabled segment"):
-                SegmentService.update_segment(SegmentUpdateArgs(content="new content"), segment, document, dataset)
+                SegmentService.update_segment(
+                    SegmentUpdateArgs(content="new content"), segment, document, dataset, MagicMock()
+                )
 
     def test_update_segment_rejects_when_indexing_cache_exists(self, account_context):
         segment = _make_segment(enabled=True)
@@ -599,7 +615,9 @@ class TestSegmentServiceMutations:
             mock_redis.get.return_value = "1"
 
             with pytest.raises(ValueError, match="Segment is indexing"):
-                SegmentService.update_segment(SegmentUpdateArgs(content="new content"), segment, document, dataset)
+                SegmentService.update_segment(
+                    SegmentUpdateArgs(content="new content"), segment, document, dataset, MagicMock()
+                )
 
     def test_update_segment_updates_keywords_for_same_content_segment(self, account_context):
         segment = _make_segment(content="same content", keywords=["old"])
@@ -616,7 +634,7 @@ class TestSegmentServiceMutations:
             mock_redis.get.return_value = None
             mock_db.session.get.return_value = refreshed_segment
 
-            result = SegmentService.update_segment(args, segment, document, dataset)
+            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
 
         assert result is refreshed_segment
         assert segment.keywords == ["new"]
@@ -655,7 +673,7 @@ class TestSegmentServiceMutations:
             # scalar call: existing_summary
             mock_db.session.scalar.return_value = existing_summary
 
-            result = SegmentService.update_segment(args, segment, document, dataset)
+            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
 
         assert result is refreshed_segment
         vector_service.generate_child_chunks.assert_called_once_with(
@@ -697,7 +715,7 @@ class TestSegmentServiceMutations:
             mock_db.session.scalar.return_value = existing_summary
             mock_db.session.get.return_value = refreshed_segment
 
-            result = SegmentService.update_segment(args, segment, document, dataset)
+            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
 
         assert result is refreshed_segment
         assert segment.content == "new content"
@@ -737,7 +755,7 @@ class TestSegmentServiceMutations:
             mock_db.session.scalar.return_value = existing_summary
             mock_db.session.get.return_value = refreshed_segment
 
-            result = SegmentService.update_segment(args, segment, document, dataset)
+            result = SegmentService.update_segment(args, segment, document, dataset, mock_db.session)
 
         assert result is refreshed_segment
         generate_summary.assert_called_once_with(segment, dataset, {"enable": True})
@@ -757,7 +775,7 @@ class TestSegmentServiceMutations:
             mock_redis.get.return_value = None
             mock_db.session.scalars.return_value.all.return_value = ["child-1", "child-2"]
 
-            SegmentService.delete_segment(segment, document, dataset)
+            SegmentService.delete_segment(segment, document, dataset, mock_db.session)
 
         assert document.word_count == 6
         mock_redis.setex.assert_called_once_with(f"segment_{segment.id}_delete_indexing", 600, 1)
@@ -781,7 +799,7 @@ class TestSegmentServiceMutations:
             mock_redis.get.return_value = "1"
 
             with pytest.raises(ValueError, match="Segment is deleting"):
-                SegmentService.delete_segment(segment, document, dataset)
+                SegmentService.delete_segment(segment, document, dataset, MagicMock())
 
     def test_delete_segments_removes_records_and_clamps_document_word_count(self):
         dataset = _make_dataset()
@@ -803,7 +821,7 @@ class TestSegmentServiceMutations:
             # scalars() for child_node_ids
             mock_db.session.scalars.return_value.all.return_value = ["child-1"]
 
-            SegmentService.delete_segments(["segment-1", "segment-2"], document, dataset)
+            SegmentService.delete_segments(["segment-1", "segment-2"], document, dataset, mock_db.session)
 
         assert document.word_count == 0
         mock_db.session.add.assert_called_once_with(document)
@@ -833,7 +851,9 @@ class TestSegmentServiceMutations:
             mock_db.session.scalars.return_value.all.return_value = [segment_a, segment_b]
             mock_redis.get.side_effect = [None, "1"]
 
-            SegmentService.update_segments_status(["segment-a", "segment-b"], "enable", dataset, document)
+            SegmentService.update_segments_status(
+                ["segment-a", "segment-b"], "enable", dataset, document, mock_db.session
+            )
 
         assert segment_a.enabled is True
         assert segment_a.disabled_at is None
@@ -860,7 +880,9 @@ class TestSegmentServiceMutations:
             mock_db.session.scalars.return_value.all.return_value = [segment_a, segment_b]
             mock_redis.get.side_effect = [None, "1"]
 
-            SegmentService.update_segments_status(["segment-a", "segment-b"], "disable", dataset, document)
+            SegmentService.update_segments_status(
+                ["segment-a", "segment-b"], "disable", dataset, document, mock_db.session
+            )
 
         assert segment_a.enabled is False
         assert segment_a.disabled_at == "now"
@@ -888,7 +910,7 @@ class TestSegmentServiceChildChunkTailHelpers:
 
             with pytest.raises(ChildChunkIndexingError, match="vector failed"):
                 SegmentService.update_child_chunk(
-                    "new content", child_chunk, SimpleNamespace(), SimpleNamespace(), dataset
+                    "new content", child_chunk, SimpleNamespace(), SimpleNamespace(), dataset, mock_db.session
                 )
 
         mock_db.session.rollback.assert_called_once()
@@ -902,7 +924,7 @@ class TestSegmentServiceChildChunkTailHelpers:
             patch("services.dataset_service.db") as mock_db,
             patch("services.dataset_service.VectorService") as vector_service,
         ):
-            SegmentService.delete_child_chunk(child_chunk, dataset)
+            SegmentService.delete_child_chunk(child_chunk, dataset, mock_db.session)
 
         mock_db.session.delete.assert_called_once_with(child_chunk)
         vector_service.delete_child_chunk_vector.assert_called_once_with(child_chunk, dataset)
@@ -940,6 +962,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
                 segment,
                 document,
                 dataset,
+                mock_db.session,
             )
 
         assert result is refreshed_segment
@@ -975,6 +998,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
                 segment,
                 document,
                 dataset,
+                mock_db.session,
             )
 
         assert result is refreshed_segment
@@ -1023,6 +1047,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
                 segment,
                 document,
                 dataset,
+                mock_db.session,
             )
 
         assert result is refreshed_segment
@@ -1066,6 +1091,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
                 segment,
                 document,
                 dataset,
+                mock_db.session,
             )
 
         assert result is refreshed_segment
