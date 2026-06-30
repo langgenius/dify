@@ -30,6 +30,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext, _WorkflowGenerateEntityWrapper
 from core.workflow.human_input import FormInputType, ParagraphInputConfig, UserActionConfig
+from core.workflow.human_input import session_binding as session_binding_module
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
 from core.workflow.system_variables import build_system_variables
 from graphon.entities import WorkflowStartReason
@@ -114,7 +115,7 @@ def _build_advanced_chat_paused_blocking_response() -> AdvancedChatPausedBlockin
         paused_nodes=["node-1"],
         reasons=[
             {
-                "type": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                "type": PauseReasonType.HITL_REQUIRED,
                 "form_id": "form-1",
                 "expiration_time": 100,
             }
@@ -143,8 +144,23 @@ def _build_workflow_paused_blocking_response() -> WorkflowAppPausedBlockingRespo
             created_at=1,
             finished_at=None,
             paused_nodes=["node-1"],
-            reasons=[{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 100}],
+            reasons=[{"TYPE": "hitl_required", "form_id": "form-1", "expiration_time": 100}],
         ),
+    )
+
+
+def _build_form_definition_json(*, expiration_time: datetime) -> str:
+    return json.dumps(
+        {
+            "form_content": "Need manager approval",
+            "inputs": [{"type": "paragraph", "output_variable_name": "field"}],
+            "user_actions": [{"id": "approve", "title": "Approve"}],
+            "rendered_content": "Need manager approval",
+            "expiration_time": expiration_time.isoformat(),
+            "default_values": {"field": "prefilled"},
+            "node_title": "Human Step",
+            "display_in_ui": True,
+        }
     )
 
 
@@ -382,7 +398,7 @@ class TestHitlServiceApi:
         assert response["event"] == "workflow_paused"
         assert response["workflow_run_id"] == "run-1"
         assert response["answer"] == "partial"
-        assert response["data"]["reasons"][0]["type"] == PauseReasonType.HUMAN_INPUT_REQUIRED
+        assert response["data"]["reasons"][0]["type"] == PauseReasonType.HITL_REQUIRED
         assert response["data"]["reasons"][0]["expiration_time"] == 100
         assert "human_input_forms" not in response["data"]
 
@@ -396,9 +412,7 @@ class TestHitlServiceApi:
         assert response["workflow_run_id"] == "r1"
         assert response["data"]["status"] == WorkflowExecutionStatus.PAUSED
         assert response["data"]["paused_nodes"] == ["node-1"]
-        assert response["data"]["reasons"] == [
-            {"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 100}
-        ]
+        assert response["data"]["reasons"] == [{"TYPE": "hitl_required", "form_id": "form-1", "expiration_time": 100}]
         assert "human_input_forms" not in response["data"]
 
     def test_advanced_chat_blocking_pipeline_pause_payload_contract(self) -> None:
@@ -474,7 +488,7 @@ class TestHitlServiceApi:
                     outputs={},
                     reasons=[
                         {
-                            "type": PauseReasonType.HUMAN_INPUT_REQUIRED,
+                            "type": PauseReasonType.HITL_REQUIRED,
                             "form_id": "form-1",
                             "node_id": "node-1",
                             "expiration_time": 123,
@@ -551,7 +565,7 @@ class TestHitlServiceApi:
                     status=WorkflowExecutionStatus.PAUSED,
                     outputs={},
                     paused_nodes=["node-1"],
-                    reasons=[{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 1}],
+                    reasons=[{"TYPE": "hitl_required", "form_id": "form-1", "expiration_time": 1}],
                     created_at=1,
                     elapsed_time=0.1,
                     total_tokens=0,
@@ -564,7 +578,7 @@ class TestHitlServiceApi:
         assert isinstance(response, WorkflowAppPausedBlockingResponse)
         assert response.data.status == WorkflowExecutionStatus.PAUSED
         assert response.data.paused_nodes == ["node-1"]
-        assert response.data.reasons == [{"TYPE": "human_input_required", "form_id": "form-1", "expiration_time": 1}]
+        assert response.data.reasons == [{"TYPE": "hitl_required", "form_id": "form-1", "expiration_time": 1}]
 
     def test_service_api_pause_event_serializes_hitl_reason(self, monkeypatch: pytest.MonkeyPatch) -> None:
         converter = _build_service_api_pause_converter()
@@ -579,7 +593,7 @@ class TestHitlServiceApi:
 
         class _FakeSession:
             def execute(self, _stmt):
-                return [("form-1", expiration_time, '{"display_in_ui": true}')]
+                return [("form-1", expiration_time, _build_form_definition_json(expiration_time=expiration_time))]
 
             def __enter__(self):
                 return self
@@ -597,8 +611,14 @@ class TestHitlServiceApi:
             },
         )
 
+        monkeypatch.setattr(
+            session_binding_module,
+            "resolve_form_id_from_session_id",
+            lambda *, session_id: "form-1",
+        )
+
         reason = HitlRequired(
-            session_id="hi::form-1",
+            session_id="session-1",
             node_id="node-id",
             node_title="Human Step",
         )
@@ -620,14 +640,14 @@ class TestHitlServiceApi:
         assert pause_resp.workflow_run_id == "run-id"
         assert pause_resp.data.paused_nodes == ["node-id"]
         assert pause_resp.data.outputs == {}
-        assert pause_resp.data.reasons[0]["TYPE"] == "human_input_required"
-        assert pause_resp.data.reasons[0]["form_id"] == "form-1"
+        assert pause_resp.data.reasons[0]["TYPE"] == "hitl_required"
+        assert pause_resp.data.reasons[0]["session_id"] == "session-1"
         assert pause_resp.data.reasons[0]["form_token"] == "token"
         assert pause_resp.data.reasons[0]["expiration_time"] == int(expiration_time.timestamp())
 
         assert isinstance(responses[0], HumanInputRequiredResponse)
         hi_resp = responses[0]
-        assert hi_resp.data.form_id == "form-1"
+        assert hi_resp.data.form_id == "session-1"
         assert hi_resp.data.node_id == "node-id"
         assert hi_resp.data.node_title == "Human Step"
         assert hi_resp.data.inputs[0].output_variable_name == "field"
@@ -641,6 +661,10 @@ class TestHitlServiceApi:
         workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
         snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
         resumption_context = _build_resumption_context("task-ctx")
+        monkeypatch.setattr(
+            "services.workflow_event_snapshot_service.session_binding.resolve_form_id_from_session_id",
+            lambda *, session_id: "form-1",
+        )
         monkeypatch.setattr(
             "services.workflow_event_snapshot_service.load_form_dispositions_by_form_id",
             lambda form_ids, session=None, surface=None: {
@@ -696,12 +720,13 @@ class TestHitlServiceApi:
             "workflow_paused",
         ]
         assert events[2]["data"]["status"] == WorkflowNodeExecutionStatus.PAUSED.value
+        assert events[3]["data"]["form_id"] == "hi::form-1"
         assert events[3]["data"]["form_token"] == "wtok"
-        assert events[3]["data"]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
         pause_data = events[-1]["data"]
         assert pause_data["paused_nodes"] == ["node-1"]
         assert pause_data["outputs"] == {"result": "value"}
-        assert pause_data["reasons"][0]["TYPE"] == "human_input_required"
+        assert pause_data["reasons"][0]["TYPE"] == "hitl_required"
+        assert pause_data["reasons"][0]["session_id"] == "hi::form-1"
         assert pause_data["reasons"][0]["form_token"] == "wtok"
         assert pause_data["reasons"][0]["expiration_time"] == int(datetime(2024, 1, 1, tzinfo=UTC).timestamp())
         assert pause_data["status"] == WorkflowExecutionStatus.PAUSED.value
