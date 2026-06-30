@@ -282,7 +282,8 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_iteration(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, streaming=True
+                pipeline=pipeline, user=current_user, node_id=node_id, args=args, 
+                session=db.session(), streaming=True
             )
 
             return helper.compact_generate_response(response)
@@ -317,7 +318,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
         try:
             response = PipelineGenerateService.generate_single_loop(
-                pipeline=pipeline, user=current_user, node_id=node_id, args=args, streaming=True
+                pipeline=pipeline, user=current_user, node_id=node_id, args=args, session=db.session(), streaming=True
             )
 
             return helper.compact_generate_response(response)
