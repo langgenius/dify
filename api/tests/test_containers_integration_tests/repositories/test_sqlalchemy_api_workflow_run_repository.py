@@ -721,7 +721,7 @@ class TestBuildHumanInputRequiredReason:
 
         reason_model = WorkflowPauseReason(
             pause_id=pause.id,
-            type_=PauseReasonType.HITL_REQUIRED,
+            type_=PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED,
             form_id=form_model.id,
             node_id="node-1",
             message="",
@@ -823,7 +823,7 @@ class TestBuildHumanInputRequiredReason:
 
         reason_model = WorkflowPauseReason(
             pause_id=pause.id,
-            type_=PauseReasonType.HITL_REQUIRED,
+            type_=PauseReasonType.LEGACY_HUMAN_INPUT_REQUIRED,
             form_id=form_model.id,
             node_id="node-1",
             message="",
