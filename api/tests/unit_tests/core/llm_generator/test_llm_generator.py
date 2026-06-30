@@ -683,3 +683,75 @@ class TestLLMGenerator:
                 "tenant_id", "flow_id", "current", "instruction", model_config_entity, "ideal"
             )
             assert "An unexpected error occurred" in result["error"]
+
+    @patch("core.llm_generator.llm_generator.ModelManager")
+    def test_generate_workflow_instruction_suggestions_success(self, mock_model_manager):
+        mock_model_instance = MagicMock()
+        mock_model_manager.for_tenant.return_value.get_default_model_instance.return_value = mock_model_instance
+        
+        mock_response = MagicMock(spec=LLMResult)
+        mock_response.message.get_text_content.return_value = '["Idea 1", "Idea 2", "Idea 3", "Idea 4"]'
+        mock_model_instance.invoke_llm.return_value = mock_response
+        
+        with patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context", return_value="context"):
+            result = LLMGenerator.generate_workflow_instruction_suggestions("tenant_id", mode="workflow", language="en", count=4)
+        
+        assert result == ["Idea 1", "Idea 2", "Idea 3", "Idea 4"]
+
+    @patch("core.llm_generator.llm_generator.ModelManager")
+    def test_generate_workflow_instruction_suggestions_no_model(self, mock_model_manager):
+        mock_model_manager.for_tenant.return_value.get_default_model_instance.side_effect = Exception("No default model")
+        
+        result = LLMGenerator.generate_workflow_instruction_suggestions("tenant_id", mode="workflow")
+        
+        assert result == []
+
+    @patch("core.llm_generator.llm_generator.ModelManager")
+    def test_generate_workflow_instruction_suggestions_invoke_error(self, mock_model_manager):
+        mock_model_instance = MagicMock()
+        mock_model_manager.for_tenant.return_value.get_default_model_instance.return_value = mock_model_instance
+        mock_model_instance.invoke_llm.side_effect = Exception("Invoke error")
+        
+        with patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context", return_value="context"):
+            result = LLMGenerator.generate_workflow_instruction_suggestions("tenant_id", mode="workflow")
+            
+        assert result == []
+
+    @patch("core.llm_generator.llm_generator.ModelManager")
+    def test_generate_workflow_instruction_suggestions_with_chatflow(self, mock_model_manager):
+        mock_model_instance = MagicMock()
+        mock_model_manager.for_tenant.return_value.get_default_model_instance.return_value = mock_model_instance
+        
+        mock_response = MagicMock(spec=LLMResult)
+        mock_response.message.get_text_content.return_value = '["Idea 1", "Idea 2"]'
+        mock_model_instance.invoke_llm.return_value = mock_response
+        
+        with patch("core.llm_generator.llm_generator.LLMGenerator._build_suggestion_context", return_value="context"):
+            result = LLMGenerator.generate_workflow_instruction_suggestions("tenant_id", mode="advanced-chat", count=2)
+            
+        assert result == ["Idea 1", "Idea 2"]
+
+    @patch("core.llm_generator.llm_generator.db")
+    @patch("core.llm_generator.llm_generator.build_tool_catalogue")
+    @patch("core.llm_generator.llm_generator.format_tool_catalogue")
+    def test_build_suggestion_context_success(self, mock_format, mock_build, mock_db):
+        mock_db.session.scalars.return_value.all.return_value = ["kb1", "kb2"]
+        mock_format.return_value = "tool1\ntool2"
+        
+        result = LLMGenerator._build_suggestion_context("tenant_id")
+        
+        assert "Knowledge bases:" in result
+        assert "- kb1" in result
+        assert "- kb2" in result
+        assert "Installed tools:" in result
+        assert "tool1" in result
+
+    @patch("core.llm_generator.llm_generator.db")
+    @patch("core.llm_generator.llm_generator.build_tool_catalogue")
+    def test_build_suggestion_context_errors(self, mock_build, mock_db):
+        mock_db.session.scalars.side_effect = Exception("DB Error")
+        mock_build.side_effect = Exception("Tool Error")
+        
+        result = LLMGenerator._build_suggestion_context("tenant_id")
+        
+        assert result == ""

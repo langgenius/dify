@@ -280,3 +280,97 @@ describe('handleStream', () => {
     })
   })
 })
+
+describe('sseGeneratorPost', () => {
+  it('should call fetch and process data correctly', async () => {
+    const { sseGeneratorPost } = await import('./base');
+    const mockOnPlan = vi.fn()
+    const mockOnResult = vi.fn()
+    const mockOnCompleted = vi.fn()
+    
+    // Create a mock stream reader
+    const mockReader = {
+      read: vi.fn()
+    }
+    
+    // Setup the mock reader to return two chunks then done
+    const encoder = new TextEncoder()
+    mockReader.read.mockResolvedValueOnce({
+      done: false,
+      value: encoder.encode('data: {"event":"plan","plan":"test"}\n\n')
+    }).mockResolvedValueOnce({
+      done: false,
+      value: encoder.encode('data: {"event":"result","result":"test"}\n\n')
+    }).mockResolvedValueOnce({
+      done: true
+    })
+    
+    // Setup global fetch mock
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      body: {
+        getReader: () => mockReader
+      }
+    })
+    
+    sseGeneratorPost('/test-url', { test: true }, {
+      onPlan: mockOnPlan,
+      onResult: mockOnResult,
+      onCompleted: mockOnCompleted
+    })
+    
+    // Give promises time to resolve
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    expect(globalThis.fetch).toHaveBeenCalled()
+    expect(mockOnPlan).toHaveBeenCalledWith({ event: 'plan', plan: 'test' })
+    expect(mockOnResult).toHaveBeenCalledWith({ event: 'result', result: 'test' })
+    expect(mockOnCompleted).toHaveBeenCalled()
+  })
+
+  it('should handle partial JSON properly', async () => {
+    const { sseGeneratorPost } = await import('./base');
+    const mockOnPlan = vi.fn()
+    
+    const mockReader = { read: vi.fn() }
+    const encoder = new TextEncoder()
+    
+    // Return partial JSON in first chunk, rest in second chunk
+    mockReader.read.mockResolvedValueOnce({
+      done: false,
+      value: encoder.encode('data: {"event":"plan","plan')
+    }).mockResolvedValueOnce({
+      done: false,
+      value: encoder.encode('":"test"}\n\n')
+    }).mockResolvedValueOnce({
+      done: true
+    })
+    
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 200,
+      body: { getReader: () => mockReader }
+    })
+    
+    sseGeneratorPost('/test-url', {}, { onPlan: mockOnPlan })
+    
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    expect(mockOnPlan).toHaveBeenCalledWith({ event: 'plan', plan: 'test' })
+  })
+
+  it('should handle errors gracefully', async () => {
+    const { sseGeneratorPost } = await import('./base');
+    const mockOnError = vi.fn()
+    
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      status: 500,
+      json: vi.fn().mockResolvedValue({ message: 'Server error' })
+    })
+    
+    sseGeneratorPost('/test-url', {}, { onError: mockOnError })
+    
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    expect(mockOnError).toHaveBeenCalledWith('Server error')
+  })
+})

@@ -2,8 +2,8 @@
 // no-restricted-imports rule targets production imports, not test
 // instrumentation — mirrors sibling service specs (annotation.spec.ts etc.).
 // eslint-disable-next-line no-restricted-imports
-import { post } from './base'
-import { generateWorkflow } from './debug'
+import { post, get } from './base'
+import { generateWorkflow, fetchWorkflowInstructionSuggestions } from './debug'
 
 // Stub the shared `post` wrapper so tests verify only what `generateWorkflow`
 // composes on top of it — URL, body, and the typed response surface.
@@ -81,3 +81,26 @@ describe('debug service — generateWorkflow', () => {
     expect(vi.mocked(post).mock.calls[0]).toHaveLength(2)
   })
 })
+
+describe('fetchWorkflowInstructionSuggestions', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should call post on /workflow-generate/suggestions', () => {
+    const body = { mode: 'workflow' as const, language: 'en', count: 4 };
+    
+    fetchWorkflowInstructionSuggestions(body);
+    
+    expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', { body });
+  });
+
+  it('should forward getAbortController to post when provided', () => {
+    const body = { mode: 'workflow' as const, language: 'en', count: 4 };
+    const getAbortController = vi.fn();
+    
+    fetchWorkflowInstructionSuggestions(body, { getAbortController });
+    
+    expect(post).toHaveBeenCalledWith('/workflow-generate/suggestions', { body }, { getAbortController });
+  });
+});
