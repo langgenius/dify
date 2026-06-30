@@ -69,7 +69,7 @@ _provider_entities_adapter: TypeAdapter[list[ProviderEntity]] = TypeAdapter(list
 
 
 class _RedisLock(Protocol):
-    def acquire(self, *, blocking: bool = True) -> bool: ...
+    def acquire(self, *, blocking: bool = True, blocking_timeout: float | None = None) -> bool: ...
 
     def release(self) -> None: ...
 
@@ -91,6 +91,7 @@ class PluginService:
     PLUGIN_MODEL_PROVIDERS_GENERATION_REDIS_KEY_PREFIX = "plugin_model_providers_generation:tenant_id:"
     PLUGIN_MODEL_PROVIDERS_LOCK_REDIS_KEY_PREFIX = "plugin_model_providers_refresh_lock:tenant_id:"
     PLUGIN_MODEL_PROVIDERS_LOCK_TTL = 30
+    PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT = 2.0
     PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL = 0.05
     PLUGIN_INSTALL_TASK_TERMINAL_STATUSES = (PluginInstallTaskStatus.Success, PluginInstallTaskStatus.Failed)
     # Mirror the detail-panel endpoint query size so list reconciliation and
@@ -279,12 +280,20 @@ class PluginService:
 
     @classmethod
     def _try_acquire_plugin_model_providers_lock(
-        cls, tenant_id: str, generation: int
+        cls, tenant_id: str, generation: int, *, wait_timeout: float | None = None
     ) -> tuple[_RedisLock | None, bool]:
         lock_key = cls._get_plugin_model_providers_lock_key(tenant_id, generation)
+        blocking = wait_timeout is not None
         try:
-            lock = redis_client.lock(lock_key, timeout=cls.PLUGIN_MODEL_PROVIDERS_LOCK_TTL, blocking=False)
-            acquired = lock.acquire(blocking=False)
+            lock = redis_client.lock(
+                lock_key,
+                timeout=cls.PLUGIN_MODEL_PROVIDERS_LOCK_TTL,
+                sleep=cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL,
+            )
+            if blocking:
+                acquired = lock.acquire(blocking=True, blocking_timeout=wait_timeout)
+            else:
+                acquired = lock.acquire(blocking=False)
         except (RedisError, RuntimeError):
             logger.warning(
                 "Failed to acquire plugin model providers refresh lock for tenant %s.",
@@ -317,9 +326,9 @@ class PluginService:
         Return cached provider metadata or a lock granting permission to refresh it.
 
         Redis lock TTL is only a lease for crashed refresh owners; it is not a
-        waiter deadline. As long as Redis coordination is available, waiters keep
-        retrying the current generation until they either read cache or become
-        the next refresh owner.
+        waiter deadline. Waiters use Redis lock blocking with a short request
+        budget, then re-check cache before failing so requests do not hang behind
+        a stale or slow refresh owner.
         """
         while True:
             generation = cls._load_plugin_model_providers_generation(tenant_id)
@@ -331,13 +340,39 @@ class PluginService:
             if generation is None or not cache_available:
                 return None, None, generation
 
-            refresh_lock, lock_available = cls._try_acquire_plugin_model_providers_lock(tenant_id, generation)
-            if refresh_lock is not None:
-                return None, refresh_lock, generation
+            refresh_lock, lock_available = cls._try_acquire_plugin_model_providers_lock(
+                tenant_id,
+                generation,
+                wait_timeout=cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_TIMEOUT,
+            )
             if not lock_available:
                 return None, None, generation
 
-            time.sleep(cls.PLUGIN_MODEL_PROVIDERS_LOCK_WAIT_INTERVAL)
+            latest_generation = cls._load_plugin_model_providers_generation(tenant_id)
+            cached_providers, cache_available = cls._load_cached_plugin_model_providers_for_generation(
+                tenant_id, latest_generation
+            )
+            if cached_providers is not None:
+                if refresh_lock is not None:
+                    cls._release_plugin_model_providers_lock(tenant_id, refresh_lock)
+                return cached_providers, None, latest_generation
+            if latest_generation is None or not cache_available:
+                if refresh_lock is not None:
+                    cls._release_plugin_model_providers_lock(tenant_id, refresh_lock)
+                return None, None, latest_generation
+            if latest_generation != generation:
+                if refresh_lock is not None:
+                    cls._release_plugin_model_providers_lock(tenant_id, refresh_lock)
+                continue
+            if refresh_lock is not None:
+                return None, refresh_lock, generation
+
+            logger.warning(
+                "Timed out waiting for plugin model providers refresh lock for tenant %s generation %s.",
+                tenant_id,
+                generation,
+            )
+            raise RuntimeError(f"Timed out waiting for plugin model providers refresh lock for tenant {tenant_id}.")
 
     @classmethod
     def invalidate_plugin_model_providers_cache(cls, tenant_id: str) -> None:
