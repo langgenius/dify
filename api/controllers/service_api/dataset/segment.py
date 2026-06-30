@@ -137,7 +137,7 @@ def _get_segment_for_document(
         raise NotFound("Document not found.")
 
     segment_ref = DatasetRefService.create_segment_ref(document_ref, segment_id)
-    segment = SegmentService.get_segment_by_ref(segment_ref)
+    segment = SegmentService.get_segment_by_ref(segment_ref, db.session)
     if not segment:
         raise NotFound("Segment not found.")
     return segment_ref, segment
@@ -233,7 +233,7 @@ class SegmentApi(DatasetApiResource):
         summaries: dict[str, str | None] = {}
         if segment_ids:
             summary_records = SummaryIndexService.get_segments_summaries(
-                segment_ids=segment_ids, dataset_id=dataset_id_str
+                segment_ids=segment_ids, dataset_id=dataset_id_str, session=db.session
             )
             summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
         response = {
@@ -317,7 +317,7 @@ class SegmentApi(DatasetApiResource):
         summaries: dict[str, str | None] = {}
         if segment_ids:
             summary_records = SummaryIndexService.get_segments_summaries(
-                segment_ids=segment_ids, dataset_id=dataset_id_str
+                segment_ids=segment_ids, dataset_id=dataset_id_str, session=db.session
             )
             summaries = {chunk_id: record.summary_content for chunk_id, record in summary_records.items()}
 
@@ -435,7 +435,9 @@ class DatasetSegmentApi(DatasetApiResource):
         payload = SegmentUpdatePayload.model_validate(service_api_ns.payload or {})
 
         updated_segment = SegmentService.update_segment(payload.segment, segment, document, dataset, db.session)
-        summary = SummaryIndexService.get_segment_summary(segment_id=updated_segment.id, dataset_id=dataset_id_str)
+        summary = SummaryIndexService.get_segment_summary(
+            segment_id=updated_segment.id, dataset_id=dataset_id_str, session=db.session
+        )
         response = {
             "data": segment_response_with_summary(updated_segment, summary.summary_content if summary else None),
             "doc_form": document.doc_form,
@@ -487,7 +489,9 @@ class DatasetSegmentApi(DatasetApiResource):
         segment_id_str = str(segment_id)
         _, segment = _get_segment_for_document(dataset, document, segment_id_str)
 
-        summary = SummaryIndexService.get_segment_summary(segment_id=segment.id, dataset_id=dataset_id_str)
+        summary = SummaryIndexService.get_segment_summary(
+            segment_id=segment.id, dataset_id=dataset_id_str, session=db.session
+        )
         response = {
             "data": segment_response_with_summary(segment, summary.summary_content if summary else None),
             "doc_form": document.doc_form,
@@ -689,7 +693,7 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         child_chunk_id_str = str(child_chunk_id)
         # check child chunk
-        child_chunk = SegmentService.get_child_chunk_by_segment_ref(child_chunk_id_str, segment_ref)
+        child_chunk = SegmentService.get_child_chunk_by_segment_ref(child_chunk_id_str, segment_ref, db.session)
         if not child_chunk:
             raise NotFound("Child chunk not found.")
 
@@ -750,7 +754,7 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         child_chunk_id_str = str(child_chunk_id)
         # get child chunk
-        child_chunk = SegmentService.get_child_chunk_by_segment_ref(child_chunk_id_str, segment_ref)
+        child_chunk = SegmentService.get_child_chunk_by_segment_ref(child_chunk_id_str, segment_ref, db.session)
         if not child_chunk:
             raise NotFound("Child chunk not found.")
 

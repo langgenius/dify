@@ -222,7 +222,12 @@ class TrialAppWorkflowRunApi(TrialAppResource):
             app_id = app_model.id
             user_id = current_user.id
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
@@ -295,7 +300,12 @@ class TrialChatApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
+                streaming=True,
             )
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)
             return helper.compact_generate_response(response)
@@ -336,7 +346,11 @@ class TrialMessageSuggestedQuestionApi(TrialAppResource):
 
         try:
             questions = MessageService.get_suggested_questions_after_answer(
-                app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
+                app_model=app_model,
+                user=current_user,
+                message_id=message_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
             )
         except MessageNotExistsError:
             raise NotFound("Message not found")
@@ -485,7 +499,12 @@ class TrialCompletionApi(TrialAppResource):
             user_id = current_user.id
 
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
+                streaming=streaming,
             )
 
             RecommendedAppService.add_trial_app_record(db.session, app_id, user_id)

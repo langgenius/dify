@@ -3,6 +3,7 @@ from typing import Any, override
 
 import httpx
 from flask import has_request_context, request
+from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
 from services.recommend_app.buildin.buildin_retrieval import BuildInRecommendAppRetrieval
@@ -33,7 +34,8 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
     """
 
     @override
-    def get_recommend_app_detail(self, app_id: str):
+    def get_recommend_app_detail(self, app_id: str, *, session: scoped_session | Session):
+        del session
         try:
             result = self.fetch_recommended_app_detail_from_dify_official(app_id)
         except Exception as e:
@@ -42,7 +44,8 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         return result
 
     @override
-    def get_recommended_apps_and_categories(self, language: str):
+    def get_recommended_apps_and_categories(self, language: str, *, session: scoped_session | Session):
+        del session
         try:
             result = self.fetch_recommended_apps_from_dify_official(language)
         except Exception as e:
@@ -51,12 +54,12 @@ class RemoteRecommendAppRetrieval(RecommendAppRetrievalBase):
         return result
 
     @override
-    def get_learn_dify_apps(self, language: str):
+    def get_learn_dify_apps(self, language: str, *, session: scoped_session | Session):
         try:
             result = self.fetch_learn_dify_apps_from_dify_official(language)
         except Exception as e:
             logger.warning("fetch learn dify apps from dify official failed: %s, switch to database.", e)
-            result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language)
+            result = DatabaseRecommendAppRetrieval.fetch_learn_dify_apps_from_db(language, session=session)
         return result
 
     @override

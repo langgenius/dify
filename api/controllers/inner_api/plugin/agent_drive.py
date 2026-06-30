@@ -17,6 +17,7 @@ from controllers.console.wraps import setup_required
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.plugin.wraps import get_user
 from controllers.inner_api.wraps import plugin_inner_api_only
+from extensions.ext_database import db
 from services.agent_drive_service import (
     AgentDriveError,
     AgentDriveService,
@@ -53,6 +54,7 @@ class AgentDriveManifestApi(Resource):
                 agent_id=agent_id,
                 prefix=request.args.get("prefix", ""),
                 include_download_url=include_download_url,
+                session=db.session,
             )
         except AgentDriveError as exc:
             return _error_response(exc)
@@ -71,7 +73,7 @@ class AgentDriveSkillsApi(Resource):
             tenant_id = (request.args.get("tenant_id") or "").strip()
             if not tenant_id:
                 raise AgentDriveError("missing_tenant_id", "tenant_id is required", status_code=400)
-            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=agent_id)
+            items = AgentDriveService().list_skills(tenant_id=tenant_id, agent_id=agent_id, session=db.session)
         except AgentDriveError as exc:
             return _error_response(exc)
         return {"items": items}
@@ -96,6 +98,7 @@ class AgentDriveCommitApi(Resource):
                 user_id=user.id,
                 agent_id=agent_id,
                 items=body.items,
+                session=db.session,
             )
         except AgentDriveError as exc:
             return _error_response(exc)

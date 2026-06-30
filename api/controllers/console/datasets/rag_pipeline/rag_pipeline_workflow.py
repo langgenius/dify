@@ -357,6 +357,7 @@ class DraftRagPipelineRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
+                session=db.session,
             )
 
             return helper.compact_generate_response(response)
@@ -390,6 +391,7 @@ class PublishedRagPipelineRunApi(Resource):
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER if payload.is_preview else InvokeFrom.PUBLISHED_PIPELINE,
                 streaming=streaming,
+                session=db.session,
             )
 
             return helper.compact_generate_response(response)

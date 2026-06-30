@@ -103,7 +103,12 @@ class CompletionApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=streaming
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -179,7 +184,12 @@ class ChatApi(InstalledAppResource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.EXPLORE,
+                session=db.session,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)

@@ -193,6 +193,7 @@ class TestConversationServiceVariables:
             user=account,
             limit=10,
             last_id=None,
+            session=db_session_with_containers,
         )
 
         assert [item["id"] for item in result.data] == [first_variable.id, second_variable.id]
@@ -237,6 +238,7 @@ class TestConversationServiceVariables:
             user=account,
             limit=10,
             last_id=first_variable.id,
+            session=db_session_with_containers,
         )
 
         assert [item["id"] for item in result.data] == [second_variable.id, third_variable.id]
@@ -257,6 +259,7 @@ class TestConversationServiceVariables:
                 user=account,
                 limit=10,
                 last_id=str(uuid4()),
+                session=db_session_with_containers,
             )
 
     def test_get_conversational_variable_sets_has_more(
@@ -282,6 +285,7 @@ class TestConversationServiceVariables:
             user=account,
             limit=2,
             last_id=None,
+            session=db_session_with_containers,
         )
 
         assert len(result.data) == 2
@@ -309,6 +313,7 @@ class TestConversationServiceVariables:
                 variable_id=existing.id,
                 user=account,
                 new_value="support",
+                session=db_session_with_containers,
             )
 
         db_session_with_containers.expire_all()
@@ -335,6 +340,7 @@ class TestConversationServiceVariables:
                 variable_id=str(uuid4()),
                 user=account,
                 new_value="support",
+                session=db_session_with_containers,
             )
 
     def test_update_conversation_variable_type_mismatch_raises_error(
@@ -358,6 +364,7 @@ class TestConversationServiceVariables:
                 variable_id=existing.id,
                 user=account,
                 new_value="wrong-type",
+                session=db_session_with_containers,
             )
 
     def test_update_conversation_variable_integer_number_compatibility(
@@ -380,6 +387,7 @@ class TestConversationServiceVariables:
             variable_id=existing.id,
             user=account,
             new_value=42,
+            session=db_session_with_containers,
         )
 
         db_session_with_containers.expire_all()

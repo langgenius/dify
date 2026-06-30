@@ -416,6 +416,7 @@ class DatasetListApi(Resource):
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             str(current_tenant_id),
             current_user.id,
+            session=db.session,
         )
 
         accessible_dataset_ids: list[str] | None = None
@@ -570,6 +571,7 @@ class DatasetListApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [str(dataset.id)],
+            session=db.session,
         )
 
         item = DatasetDetailWithPartialMembersResponse.model_validate(dataset, from_attributes=True).model_dump(
@@ -610,6 +612,7 @@ class DatasetApi(Resource):
             str(current_tenant_id),
             current_user.id,
             dataset_id=dataset_id_str,
+            session=db.session,
         )
         permission_keys_map = permissions.dataset.permission_keys_by_resource_ids([dataset_id_str])
         data = dump_response(DatasetDetailResponse, dataset)
@@ -693,6 +696,7 @@ class DatasetApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [dataset_id_str],
+            session=db.session,
         )
         result_data = dump_response(DatasetDetailResponse, dataset)
         result_data["permission_keys"] = permission_keys_map.get(dataset_id_str, [])

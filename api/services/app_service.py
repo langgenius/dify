@@ -243,7 +243,7 @@ class AppService:
 
         app_ids = [str(app.id) for app in app_models.items]
         starred_app_ids = self.get_starred_app_ids(
-            db.session,
+            session,
             tenant_id=tenant_id,
             account_id=user_id,
             app_ids=app_ids,
@@ -399,15 +399,15 @@ class AppService:
         app.maintainer = account.id
         app.updated_by = account.id
 
-        db.session.add(app)
-        db.session.flush()
+        session.add(app)
+        session.flush()
 
         if default_model_config:
             app_model_config = AppModelConfig(
                 **default_model_config, app_id=app.id, created_by=account.id, updated_by=account.id
             )
-            db.session.add(app_model_config)
-            db.session.flush()
+            session.add(app_model_config)
+            session.flush()
 
             app.app_model_config_id = app_model_config.id
         elif app_mode == AppMode.AGENT:
@@ -420,8 +420,8 @@ class AppService:
             # left unset so App.is_agent stays False (this is the new Agent App
             # type, not a legacy function-call/react agent).
             agent_app_model_config = AppModelConfig(app_id=app.id, created_by=account.id, updated_by=account.id)
-            db.session.add(agent_app_model_config)
-            db.session.flush()
+            session.add(agent_app_model_config)
+            session.flush()
 
             app.app_model_config_id = agent_app_model_config.id
 
@@ -433,7 +433,7 @@ class AppService:
             from services.agent.roster_service import AgentRosterService
 
             icon_type = AgentIconType(params.icon_type) if params.icon_type else None
-            AgentRosterService(db.session).create_backing_agent_for_app(
+            AgentRosterService(session).create_backing_agent_for_app(
                 tenant_id=tenant_id,
                 account_id=account.id,
                 app_id=app.id,
@@ -445,7 +445,7 @@ class AppService:
                 icon_background=params.icon_background,
             )
 
-        db.session.commit()
+        session.commit()
 
         app_was_created.send(app, account=account)
         enterprise_rbac_service.try_sync_creator_access_policy_member_bindings(
@@ -547,7 +547,7 @@ class AppService:
     def _get_backing_agent_for_update(app: App) -> Agent | None:
         if app.mode != AppMode.AGENT:
             return None
-        return db.session.scalar(
+        return session.scalar(
             select(Agent).where(
                 Agent.tenant_id == app.tenant_id,
                 Agent.app_id == app.id,
@@ -609,9 +609,9 @@ class AppService:
     @staticmethod
     def _commit_app_identity_update(app: App) -> None:
         try:
-            db.session.commit()
+            session.commit()
         except IntegrityError as exc:
-            db.session.rollback()
+            session.rollback()
             if app.mode == AppMode.AGENT:
                 raise AgentNameConflictError() from exc
             raise
@@ -707,7 +707,7 @@ class AppService:
             account_id=current_user.id,
             updated_at=app.updated_at,
         )
-        db.session.commit()
+        session.commit()
 
         app_was_updated.send(app)
 
@@ -726,7 +726,7 @@ class AppService:
         app.enable_site = enable_site
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         app_was_updated.send(app)
 
@@ -746,7 +746,7 @@ class AppService:
         app.enable_api = enable_api
         app.updated_by = current_user.id
         app.updated_at = naive_utc_now()
-        db.session.commit()
+        session.commit()
 
         app_was_updated.send(app)
 
@@ -769,8 +769,8 @@ class AppService:
             backing_agent.updated_by = account_id
             backing_agent.updated_at = now
 
-        db.session.delete(app)
-        db.session.commit()
+        session.delete(app)
+        session.commit()
 
         # clean up web app settings
         if FeatureService.get_system_features().webapp_auth.enabled:
@@ -835,7 +835,7 @@ class AppService:
                     meta["tool_icons"][tool_name] = url_prefix + provider_id + "/icon"
                 elif provider_type == "api":
                     try:
-                        provider: ApiToolProvider | None = db.session.get(ApiToolProvider, provider_id)
+                        provider: ApiToolProvider | None = session.get(ApiToolProvider, provider_id)
                         if provider is None:
                             raise ValueError(f"provider not found for tool {tool_name}")
                         meta["tool_icons"][tool_name] = json.loads(provider.icon)
@@ -851,7 +851,7 @@ class AppService:
         :param app_id: app id
         :return: app code
         """
-        site = db.session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
+        site = session.scalar(select(Site).where(Site.app_id == app_id).limit(1))
         if not site:
             raise ValueError(f"App with id {app_id} not found")
         return str(site.code)
@@ -863,7 +863,7 @@ class AppService:
         :param app_code: app code
         :return: app id
         """
-        site = db.session.scalar(select(Site).where(Site.code == app_code).limit(1))
+        site = session.scalar(select(Site).where(Site.code == app_code).limit(1))
         if not site:
             raise ValueError(f"App with code {app_code} not found")
         return str(site.app_id)

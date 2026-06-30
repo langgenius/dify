@@ -69,6 +69,7 @@ def disable_segment_from_index_task(segment_id: str):
             try:
                 SummaryIndexService.disable_summaries_for_segments(
                     dataset=dataset,
+                    session=session,
                     segment_ids=[segment.id],
                     disabled_by=segment.disabled_by,
                 )

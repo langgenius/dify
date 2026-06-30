@@ -106,7 +106,7 @@ def export_migration_data(input_file: str | None, output_file: str | None, overw
         assert output_file is not None
         raw_config = _load_json_object(input_file, "Export config")
         selection = ExportConfigParser().parse(raw_config)
-        result = MigrationExportService().export(selection)
+        result = MigrationExportService().export(selection, session=db.session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _render_report(result.report_items, context=_with_output_path(result.report_context, output_file))
@@ -248,7 +248,7 @@ def migration_data_wizard() -> None:
             conflict_strategy=conflict_strategy,
             output_file=output_file,
         )
-        result = MigrationExportService().export(selection)
+        result = MigrationExportService().export(selection, session=db.session)
         MigrationPackageService().save_package(result.package, output_file, overwrite=overwrite)
         click.echo(click.style(f"Output written to {output_file}", fg="green"))
         _print_wizard_step("Report")

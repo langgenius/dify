@@ -17,7 +17,7 @@ class TestRemoteRecommendAppRetrieval:
         return_value={"id": "app-1"},
     )
     def test_get_recommend_app_detail_success(self, mock_fetch):
-        result = RemoteRecommendAppRetrieval().get_recommend_app_detail("app-1")
+        result = RemoteRecommendAppRetrieval().get_recommend_app_detail("app-1", session=MagicMock())
         assert result == {"id": "app-1"}
         mock_fetch.assert_called_once_with("app-1")
 
@@ -32,7 +32,7 @@ class TestRemoteRecommendAppRetrieval:
         side_effect=ConnectionError("timeout"),
     )
     def test_get_recommend_app_detail_falls_back_on_error(self, mock_fetch, mock_builtin):
-        result = RemoteRecommendAppRetrieval().get_recommend_app_detail("app-1")
+        result = RemoteRecommendAppRetrieval().get_recommend_app_detail("app-1", session=MagicMock())
         assert result == {"id": "fallback"}
         mock_builtin.assert_called_once_with("app-1")
 
@@ -42,7 +42,7 @@ class TestRemoteRecommendAppRetrieval:
         return_value={"recommended_apps": [], "categories": []},
     )
     def test_get_recommended_apps_success(self, mock_fetch):
-        result = RemoteRecommendAppRetrieval().get_recommended_apps_and_categories("en-US")
+        result = RemoteRecommendAppRetrieval().get_recommended_apps_and_categories("en-US", session=MagicMock())
         assert result == {"recommended_apps": [], "categories": []}
 
     @patch(
@@ -56,7 +56,7 @@ class TestRemoteRecommendAppRetrieval:
         side_effect=ValueError("server error"),
     )
     def test_get_recommended_apps_falls_back_on_error(self, mock_fetch, mock_builtin):
-        result = RemoteRecommendAppRetrieval().get_recommended_apps_and_categories("en-US")
+        result = RemoteRecommendAppRetrieval().get_recommended_apps_and_categories("en-US", session=MagicMock())
         assert result == {"recommended_apps": [{"id": "builtin"}]}
 
     @patch.object(
@@ -65,7 +65,7 @@ class TestRemoteRecommendAppRetrieval:
         return_value={"recommended_apps": [{"id": "learn-dify-app"}]},
     )
     def test_get_learn_dify_apps_success(self, mock_fetch):
-        result = RemoteRecommendAppRetrieval().get_learn_dify_apps("en-US")
+        result = RemoteRecommendAppRetrieval().get_learn_dify_apps("en-US", session=MagicMock())
 
         assert result == {"recommended_apps": [{"id": "learn-dify-app"}]}
         mock_fetch.assert_called_once_with("en-US")
@@ -80,10 +80,12 @@ class TestRemoteRecommendAppRetrieval:
         side_effect=ValueError("server error"),
     )
     def test_get_learn_dify_apps_falls_back_to_database_on_error(self, mock_fetch, mock_database):
-        result = RemoteRecommendAppRetrieval().get_learn_dify_apps("en-US")
+        session = MagicMock()
+
+        result = RemoteRecommendAppRetrieval().get_learn_dify_apps("en-US", session=session)
 
         assert result == {"recommended_apps": [{"id": "db-fallback"}]}
-        mock_database.assert_called_once_with("en-US")
+        mock_database.assert_called_once_with("en-US", session=session)
 
 
 class TestFetchFromDifyOfficial:

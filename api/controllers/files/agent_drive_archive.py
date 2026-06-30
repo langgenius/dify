@@ -8,6 +8,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import register_schema_models
 from controllers.files import files_ns
+from extensions.ext_database import db
 from models.agent import AgentDriveFileKind
 from services.agent_drive_service import AgentDriveError, AgentDriveService
 
@@ -54,6 +55,7 @@ class AgentDriveArchiveMemberApi(Resource):
                 archive_file_kind=args.archive_file_kind,
                 archive_file_id=args.archive_file_id,
                 member_path=args.member_path,
+                session=db.session,
             )
         except AgentDriveError as exc:
             raise NotFound(exc.message) from exc

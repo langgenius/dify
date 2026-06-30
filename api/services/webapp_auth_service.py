@@ -4,10 +4,10 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config
-from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
@@ -33,9 +33,9 @@ class WebAppAuthService:
     """Service for web app authentication."""
 
     @staticmethod
-    def authenticate(email: str, password: str) -> Account:
+    def authenticate(email: str, password: str, session: scoped_session | Session) -> Account:
         """authenticate account with email and password"""
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
+        account = AccountService.get_account_by_email_with_case_fallback(session, email)
         if not account:
             raise AccountNotFoundError()
 
@@ -54,8 +54,8 @@ class WebAppAuthService:
         return access_token
 
     @classmethod
-    def get_user_through_email(cls, email: str):
-        account = AccountService.get_account_by_email_with_case_fallback(db.session, email)
+    def get_user_through_email(cls, email: str, session: scoped_session | Session):
+        account = AccountService.get_account_by_email_with_case_fallback(session, email)
         if not account:
             return None
 
@@ -93,11 +93,11 @@ class WebAppAuthService:
         TokenManager.revoke_token(token, "email_code_login")
 
     @classmethod
-    def create_end_user(cls, app_code, email) -> EndUser:
-        site = db.session.scalar(select(Site).where(Site.code == app_code).limit(1))
+    def create_end_user(cls, app_code, email, session: scoped_session | Session) -> EndUser:
+        site = session.scalar(select(Site).where(Site.code == app_code).limit(1))
         if not site:
             raise NotFound("Site not found.")
-        app_model = db.session.get(App, site.app_id)
+        app_model = session.get(App, site.app_id)
         if not app_model:
             raise NotFound("App not found.")
         end_user = EndUser(
@@ -109,8 +109,8 @@ class WebAppAuthService:
             name="enterpriseuser",
             external_user_id="enterpriseuser",
         )
-        db.session.add(end_user)
-        db.session.commit()
+        session.add(end_user)
+        session.commit()
 
         return end_user
 

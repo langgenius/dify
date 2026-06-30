@@ -451,7 +451,7 @@ class DatasourceProviderService:
         check if tenant oauth params is enabled
         """
         return (
-            db.session.scalar(
+            session.scalar(
                 select(func.count(DatasourceOauthTenantParamConfig.id)).where(
                     DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
                     DatasourceOauthTenantParamConfig.provider == datasource_provider_id.provider_name,
@@ -468,7 +468,7 @@ class DatasourceProviderService:
         """
         get tenant oauth client
         """
-        tenant_oauth_client_params = db.session.scalar(
+        tenant_oauth_client_params = session.scalar(
             select(DatasourceOauthTenantParamConfig)
             .where(
                 DatasourceOauthTenantParamConfig.tenant_id == tenant_id,
@@ -829,11 +829,11 @@ class DatasourceProviderService:
                 credential_type=CredPermType.DATASOURCE_PROVIDER,
                 user=user,
             )
-        datasource_providers: list[DatasourceProvider] = list(db.session.scalars(query).all())
+        datasource_providers: list[DatasourceProvider] = list(session.scalars(query).all())
         if not datasource_providers:
             return []
         copy_credentials_list = []
-        default_provider = db.session.execute(
+        default_provider = session.execute(
             select(DatasourceProvider.id)
             .where(
                 DatasourceProvider.tenant_id == tenant_id,
@@ -998,7 +998,7 @@ class DatasourceProviderService:
         """
         # Get all provider configurations of the current workspace
         datasource_providers: list[DatasourceProvider] = list(
-            db.session.scalars(
+            session.scalars(
                 select(DatasourceProvider).where(
                     DatasourceProvider.tenant_id == tenant_id,
                     DatasourceProvider.provider == provider,
@@ -1119,7 +1119,7 @@ class DatasourceProviderService:
         :param plugin_id: plugin id
         :return:
         """
-        datasource_provider = db.session.scalar(
+        datasource_provider = session.scalar(
             select(DatasourceProvider)
             .where(
                 DatasourceProvider.tenant_id == tenant_id,
@@ -1130,5 +1130,5 @@ class DatasourceProviderService:
             .limit(1)
         )
         if datasource_provider:
-            db.session.delete(datasource_provider)
-            db.session.commit()
+            session.delete(datasource_provider)
+            session.commit()

@@ -14,6 +14,7 @@ from controllers.console import console_ns
 from controllers.console.wraps import RBACPermission, RBACResourceScope, rbac_permission_required
 from core.db.session_factory import session_factory
 from core.rbac import RBACResourceWhitelistScope
+from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import Account
 from services.enterprise import rbac_service as svc
@@ -550,6 +551,7 @@ class RBACMyPermissionsApi(Resource):
                 account_id,
                 app_id=request.args.get("app_id") or None,
                 dataset_id=request.args.get("dataset_id") or None,
+                session=db.session,
             )
         )
 
@@ -873,7 +875,7 @@ class RBACMemberRolesApi(Resource):
     @console_ns.response(200, "Success", console_ns.models[svc.MemberRolesResponse.__name__])
     def get(self, member_id):
         tenant_id, account_id = _current_ids()
-        return _dump(svc.RBACService.MemberRoles.get(tenant_id, account_id, str(member_id)))
+        return _dump(svc.RBACService.MemberRoles.get(tenant_id, account_id, str(member_id), session=db.session))
 
     @login_required
     @console_ns.response(200, "Success", console_ns.models[svc.MemberRolesResponse.__name__])
@@ -886,6 +888,7 @@ class RBACMemberRolesApi(Resource):
                 account_id,
                 str(member_id),
                 role_ids=list(request.role_ids),
+                session=db.session,
             )
         )
 

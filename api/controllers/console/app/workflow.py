@@ -450,7 +450,7 @@ class DraftWorkflowApi(Resource):
         """
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model)
+        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=db.session)
 
         if not workflow:
             raise DraftWorkflowNotExist()
@@ -530,6 +530,7 @@ class DraftWorkflowApi(Resource):
                 account=current_user,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                session=db.session,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
@@ -572,7 +573,12 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=True
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                session=db.session,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -617,7 +623,12 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_iteration(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -660,7 +671,12 @@ class WorkflowDraftRunIterationNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_iteration(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -699,7 +715,12 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_loop(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -742,7 +763,12 @@ class WorkflowDraftRunLoopNodeApi(Resource):
 
         try:
             response = AppGenerateService.generate_single_loop(
-                app_model=app_model, user=current_user, node_id=node_id, args=args, streaming=True
+                app_model=app_model,
+                user=current_user,
+                node_id=node_id,
+                args=args,
+                session=db.session,
+                streaming=True,
             )
 
             return helper.compact_generate_response(response)
@@ -819,6 +845,7 @@ class AdvancedChatDraftHumanInputFormPreviewApi(Resource):
             account=current_user,
             node_id=node_id,
             inputs=inputs,
+            session=db.session,
         )
         return jsonable_encoder(preview)
 
@@ -854,6 +881,7 @@ class AdvancedChatDraftHumanInputFormRunApi(Resource):
             form_inputs=args.form_inputs,
             inputs=args.inputs,
             action=args.action,
+            session=db.session,
         )
         return jsonable_encoder(result)
 
@@ -885,6 +913,7 @@ class WorkflowDraftHumanInputFormPreviewApi(Resource):
             account=current_user,
             node_id=node_id,
             inputs=inputs,
+            session=db.session,
         )
         return jsonable_encoder(preview)
 
@@ -920,6 +949,7 @@ class WorkflowDraftHumanInputFormRunApi(Resource):
             form_inputs=args.form_inputs,
             inputs=args.inputs,
             action=args.action,
+            session=db.session,
         )
         return jsonable_encoder(result)
 
@@ -950,6 +980,7 @@ class WorkflowDraftHumanInputDeliveryTestApi(Resource):
             node_id=node_id,
             delivery_method_id=args.delivery_method_id,
             inputs=args.inputs,
+            session=db.session,
         )
         return jsonable_encoder({})
 
@@ -989,6 +1020,7 @@ class DraftWorkflowRunApi(Resource):
                 user=current_user,
                 args=args,
                 invoke_from=InvokeFrom.DEBUGGER,
+                session=db.session,
                 streaming=True,
             )
 
@@ -1058,7 +1090,7 @@ class DraftWorkflowNodeRunApi(Resource):
 
         workflow_srv = WorkflowService()
         # fetch draft workflow by app_model
-        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model)
+        draft_workflow = workflow_srv.get_draft_workflow(app_model=app_model, session=db.session)
         if not draft_workflow:
             raise ValueError("Workflow not initialized")
         files = _parse_file(draft_workflow, args.get("files"))
@@ -1101,7 +1133,7 @@ class PublishedWorkflowApi(Resource):
         """
         # fetch published workflow by app_model
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_published_workflow(app_model=app_model)
+        workflow = workflow_service.get_published_workflow(app_model=app_model, session=db.session)
 
         # return workflow, if not found, return None
         if workflow is None:
@@ -1243,7 +1275,9 @@ class ConvertToWorkflowApi(Resource):
 
         # convert to workflow mode
         workflow_service = WorkflowService()
-        new_app_model = workflow_service.convert_to_workflow(app_model=app_model, account=current_user, args=args)
+        new_app_model = workflow_service.convert_to_workflow(
+            app_model=app_model, account=current_user, args=args, session=db.session
+        )
 
         # return app id
         return {
@@ -1278,7 +1312,9 @@ class WorkflowFeaturesApi(Resource):
         features = args.features
 
         workflow_service = WorkflowService()
-        workflow_service.update_draft_workflow_features(app_model=app_model, features=features, account=current_user)
+        workflow_service.update_draft_workflow_features(
+            app_model=app_model, features=features, account=current_user, session=db.session
+        )
 
         return {"result": "success"}
 
@@ -1359,6 +1395,7 @@ class DraftWorkflowRestoreApi(Resource):
                 app_model=app_model,
                 workflow_id=workflow_id,
                 account=current_user,
+                session=db.session,
             )
         except IsDraftWorkflowError as exc:
             raise BadRequest(RESTORE_SOURCE_WORKFLOW_MUST_BE_PUBLISHED_MESSAGE) from exc
@@ -1473,7 +1510,7 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
-        workflow = srv.get_draft_workflow(app_model)
+        workflow = srv.get_draft_workflow(app_model, session=db.session)
         if not workflow:
             raise NotFound("Workflow not found")
         node_exec = srv.get_node_last_run(
@@ -1525,7 +1562,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
         node_id = args.node_id
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model)
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session)
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1550,6 +1587,7 @@ class DraftWorkflowTriggerRunApi(Resource):
                     user=current_user,
                     args=workflow_args,
                     invoke_from=InvokeFrom.DEBUGGER,
+                    session=db.session,
                     streaming=True,
                     root_node_id=node_id,
                 )
@@ -1593,7 +1631,7 @@ class DraftWorkflowTriggerNodeApi(Resource):
         """
 
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model)
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session)
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1676,7 +1714,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         args = DraftWorkflowTriggerRunAllPayload.model_validate(console_ns.payload or {})
         node_ids = args.node_ids
         workflow_service = WorkflowService()
-        draft_workflow = workflow_service.get_draft_workflow(app_model)
+        draft_workflow = workflow_service.get_draft_workflow(app_model, session=db.session)
         if not draft_workflow:
             raise ValueError("Workflow not found")
 
@@ -1704,6 +1742,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                 user=current_user,
                 args=workflow_args,
                 invoke_from=InvokeFrom.DEBUGGER,
+                session=db.session,
                 streaming=True,
                 root_node_id=trigger_debug_event.node_id,
             )
@@ -1744,7 +1783,7 @@ class WorkflowOnlineUsersApi(Resource):
             return {"data": []}
 
         workflow_service = WorkflowService()
-        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id)
+        accessible_app_ids = workflow_service.get_accessible_app_ids(app_ids, current_tenant_id, session=db.session)
         ordered_accessible_app_ids = [app_id for app_id in app_ids if app_id in accessible_app_ids]
 
         users_json_by_app_id: dict[str, Any] = {}

@@ -69,7 +69,7 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid)
+    result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=db.session)
     if not result:
         return {"msg": "unauthorized"}, 401
 

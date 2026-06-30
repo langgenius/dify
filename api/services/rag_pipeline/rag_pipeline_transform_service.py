@@ -16,7 +16,6 @@ from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from extensions.ext_database import db
 from factories import variable_factory
 from models.dataset import Dataset, Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import DatasetRuntimeMode, DataSourceType
@@ -227,8 +226,8 @@ class RagPipelineTransformService:
         )
         pipeline.id = str(uuid4())
 
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
         # create draft workflow
         draft_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
@@ -254,11 +253,11 @@ class RagPipelineTransformService:
             conversation_variables=conversation_variables,
             rag_pipeline_variables=rag_pipeline_variables_list,
         )
-        db.session.add(draft_workflow)
-        db.session.add(published_workflow)
-        db.session.flush()
+        session.add(draft_workflow)
+        session.add(published_workflow)
+        session.flush()
         pipeline.workflow_id = published_workflow.id
-        db.session.add(pipeline)
+        session.add(pipeline)
         return pipeline
 
     def _deal_dependencies(self, pipeline_yaml: dict[str, Any], tenant_id: str):
@@ -296,15 +295,15 @@ class RagPipelineTransformService:
             description=dataset.description,
             created_by=current_user.id,
         )
-        db.session.add(pipeline)
-        db.session.flush()
+        session.add(pipeline)
+        session.flush()
 
         dataset.pipeline_id = pipeline.id
         dataset.runtime_mode = DatasetRuntimeMode.RAG_PIPELINE
         dataset.updated_by = current_user.id
         dataset.updated_at = datetime.now(UTC).replace(tzinfo=None)
-        db.session.add(dataset)
-        db.session.commit()
+        session.add(dataset)
+        session.commit()
         return {
             "pipeline_id": pipeline.id,
             "dataset_id": dataset.id,

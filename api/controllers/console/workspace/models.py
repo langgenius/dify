@@ -28,6 +28,7 @@ from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from graphon.model_runtime.utils.encoders import jsonable_encoder
+from extensions.ext_database import db
 from libs.helper import uuid_value
 from libs.login import login_required
 from models import Account
@@ -297,6 +298,7 @@ class ModelProviderModelApi(Resource):
                 model_type=args.model_type,
                 configs=args.load_balancing.configs,
                 config_from=args.config_from or "",
+                session=db.session,
             )
 
             if args.load_balancing.enabled:
@@ -356,6 +358,7 @@ class ModelProviderModelCredentialApi(Resource):
             provider=provider,
             model=args.model,
             model_type=args.model_type,
+            session=db.session,
             config_from=args.config_from or "",
         )
 

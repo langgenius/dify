@@ -2,6 +2,7 @@ import json
 from typing import Any, TypedDict
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -18,7 +19,6 @@ from core.helper import encrypter
 from core.prompt.simple_prompt_transform import SimplePromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.app_event import app_was_created
-from extensions.ext_database import db
 from graphon.file import FileUploadConfig
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.utils.encoders import jsonable_encoder
@@ -53,7 +53,14 @@ class WorkflowConverter:
     """
 
     def convert_to_workflow(
-        self, app_model: App, account: Account, name: str, icon_type: str, icon: str, icon_background: str
+        self,
+        app_model: App,
+        account: Account,
+        name: str,
+        icon_type: str,
+        icon: str,
+        icon_background: str,
+        session: Session | scoped_session,
     ):
         """
         Convert app to workflow
@@ -77,7 +84,7 @@ class WorkflowConverter:
             raise ValueError("App model config is required")
 
         workflow = self.convert_app_model_config_to_workflow(
-            app_model=app_model, app_model_config=app_model.app_model_config, account_id=account.id
+            app_model=app_model, app_model_config=app_model.app_model_config, account_id=account.id, session=session
         )
 
         # create new app
@@ -97,17 +104,19 @@ class WorkflowConverter:
         new_app.created_by = account.id
         new_app.maintainer = account.id
         new_app.updated_by = account.id
-        db.session.add(new_app)
-        db.session.flush()
+        session.add(new_app)
+        session.flush()
 
         workflow.app_id = new_app.id
-        db.session.commit()
+        session.commit()
 
         app_was_created.send(new_app, account=account)
 
         return new_app
 
-    def convert_app_model_config_to_workflow(self, app_model: App, app_model_config: AppModelConfig, account_id: str):
+    def convert_app_model_config_to_workflow(
+        self, app_model: App, app_model_config: AppModelConfig, account_id: str, session: Session | scoped_session
+    ):
         """
         Convert app model config to workflow mode
         :param app_model: App instance
@@ -144,6 +153,7 @@ class WorkflowConverter:
                 app_model=app_model,
                 variables=app_config.variables,
                 external_data_variables=app_config.external_data_variables,
+                session=session,
             )
 
             for http_request_node in http_request_nodes:
@@ -217,8 +227,8 @@ class WorkflowConverter:
             conversation_variables=[],
         )
 
-        db.session.add(workflow)
-        db.session.commit()
+        session.add(workflow)
+        session.commit()
 
         return workflow
 
@@ -262,7 +272,11 @@ class WorkflowConverter:
         }
 
     def _convert_to_http_request_node(
-        self, app_model: App, variables: list[VariableEntity], external_data_variables: list[ExternalDataVariableEntity]
+        self,
+        app_model: App,
+        variables: list[VariableEntity],
+        external_data_variables: list[ExternalDataVariableEntity],
+        session: Session | scoped_session,
     ) -> tuple[list[_NodeType], dict[str, str]]:
         """
         Convert API Based Extension to HTTP Request Node
@@ -290,7 +304,7 @@ class WorkflowConverter:
 
             # get api_based_extension
             api_based_extension = self._get_api_based_extension(
-                tenant_id=tenant_id, api_based_extension_id=api_based_extension_id
+                tenant_id=tenant_id, api_based_extension_id=api_based_extension_id,session=session
             )
 
             # decrypt api_key
@@ -650,14 +664,16 @@ class WorkflowConverter:
         else:
             return AppMode.ADVANCED_CHAT
 
-    def _get_api_based_extension(self, tenant_id: str, api_based_extension_id: str):
+    def _get_api_based_extension(
+        self, tenant_id: str, api_based_extension_id: str, session: Session | scoped_session
+    ):
         """
         Get API Based Extension
         :param tenant_id: tenant id
         :param api_based_extension_id: api based extension id
         :return:
         """
-        api_based_extension = db.session.scalar(
+        api_based_extension = session.scalar(
             select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
             .limit(1)

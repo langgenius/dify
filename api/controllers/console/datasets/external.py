@@ -351,6 +351,7 @@ class ExternalDatasetCreateApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [dataset_id_str],
+            session=db.session,
         )
         item["permission_keys"] = permission_keys_map.get(dataset_id_str, [])
 

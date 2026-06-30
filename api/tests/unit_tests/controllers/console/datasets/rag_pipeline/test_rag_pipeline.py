@@ -64,7 +64,10 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(template_type: str, language: str, current_tenant_id: str) -> dict[str, object]:
+        def get_pipeline_templates(
+            template_type: str, language: str, current_tenant_id: str, *, session
+        ) -> dict[str, object]:
+            del session
             service_calls.append((template_type, language, current_tenant_id))
             return {"pipeline_templates": [_template_item()]}
 
@@ -92,7 +95,10 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(template_type: str, language: str, current_tenant_id: str) -> dict[str, object]:
+        def get_pipeline_templates(
+            template_type: str, language: str, current_tenant_id: str, *, session
+        ) -> dict[str, object]:
+            del session
             service_calls.append((template_type, language, current_tenant_id))
             return {"pipeline_templates": []}
 
@@ -114,7 +120,10 @@ class TestPipelineTemplateDetailApi:
         service_calls: list[tuple[str, str]] = []
 
         class Service:
-            def get_pipeline_template_detail(self, template_id: str, template_type: str) -> dict[str, object]:
+            def get_pipeline_template_detail(
+                self, template_id: str, template_type: str, *, session
+            ) -> dict[str, object]:
+                del session
                 service_calls.append((template_id, template_type))
                 return _template_detail()
 
@@ -133,8 +142,8 @@ class TestPipelineTemplateDetailApi:
         method = unwrap(api.get)
 
         class Service:
-            def get_pipeline_template_detail(self, template_id: str, template_type: str) -> None:
-                return None
+            def get_pipeline_template_detail(self, template_id: str, template_type: str, *, session) -> None:
+                del session
 
         with (
             app.test_request_context("/rag/pipeline/templates/missing"),

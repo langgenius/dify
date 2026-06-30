@@ -112,7 +112,7 @@ class ConversationApi(WebApiResource):
 
         conversation_id = str(c_id)
         try:
-            ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id, end_user, session=db.session)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         return "", 204
@@ -157,7 +157,7 @@ class ConversationRenameApi(WebApiResource):
 
         try:
             conversation = ConversationService.rename(
-                app_model, conversation_id, end_user, payload.name, payload.auto_generate
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate, session=db.session
             )
             return (
                 TypeAdapter(SimpleConversation)
@@ -192,7 +192,7 @@ class ConversationPinApi(WebApiResource):
         conversation_id = str(c_id)
 
         try:
-            WebConversationService.pin(app_model, conversation_id, end_user)
+            WebConversationService.pin(app_model, conversation_id, end_user, db.session)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
@@ -221,6 +221,6 @@ class ConversationUnPinApi(WebApiResource):
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        WebConversationService.unpin(app_model, conversation_id, end_user)
+        WebConversationService.unpin(app_model, conversation_id, end_user, db.session)
 
         return ResultResponse(result="success").model_dump(mode="json")

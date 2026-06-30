@@ -223,7 +223,7 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute authentication
-        result = WebAppAuthService.authenticate(account.email, password)
+        result = WebAppAuthService.authenticate(account.email, password, db_session_with_containers)
 
         # Assert: Verify successful authentication
         assert result is not None
@@ -260,7 +260,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountNotFoundError):
-            WebAppAuthService.authenticate(non_existent_email, "any_password")
+            WebAppAuthService.authenticate(non_existent_email, "any_password", db_session_with_containers)
 
     def test_authenticate_account_banned(self, db_session_with_containers: Session, mock_external_service_dependencies):
         """
@@ -297,7 +297,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountLoginError) as exc_info:
-            WebAppAuthService.authenticate(account.email, password)
+            WebAppAuthService.authenticate(account.email, password, db_session_with_containers)
 
         assert "Account is banned." in str(exc_info.value)
 
@@ -318,7 +318,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling with wrong password
         with pytest.raises(AccountPasswordError) as exc_info:
-            WebAppAuthService.authenticate(account.email, "wrong_password")
+            WebAppAuthService.authenticate(account.email, "wrong_password", db_session_with_containers)
 
         assert "Invalid email or password." in str(exc_info.value)
 
@@ -350,7 +350,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(AccountPasswordError) as exc_info:
-            WebAppAuthService.authenticate(account.email, "any_password")
+            WebAppAuthService.authenticate(account.email, "any_password", db_session_with_containers)
 
         assert "Invalid email or password." in str(exc_info.value)
 
@@ -403,7 +403,7 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute user retrieval
-        result = WebAppAuthService.get_user_through_email(account.email)
+        result = WebAppAuthService.get_user_through_email(account.email, db_session_with_containers)
 
         # Assert: Verify successful retrieval
         assert result is not None
@@ -430,7 +430,7 @@ class TestWebAppAuthService:
         non_existent_email = f"nonexistent_{uuid.uuid4().hex}@example.com"
 
         # Act: Execute user retrieval
-        result = WebAppAuthService.get_user_through_email(non_existent_email)
+        result = WebAppAuthService.get_user_through_email(non_existent_email, db_session_with_containers)
 
         # Assert: Verify proper handling
         assert result is None
@@ -463,7 +463,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(Unauthorized) as exc_info:
-            WebAppAuthService.get_user_through_email(account.email)
+            WebAppAuthService.get_user_through_email(account.email, db_session_with_containers)
 
         assert "Account is banned." in str(exc_info.value)
 
@@ -659,7 +659,7 @@ class TestWebAppAuthService:
         )
 
         # Act: Execute end user creation
-        result = WebAppAuthService.create_end_user(site.code, "test@example.com")
+        result = WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
 
         # Assert: Verify successful creation
         assert result is not None
@@ -694,7 +694,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            WebAppAuthService.create_end_user(non_existent_code, "test@example.com")
+            WebAppAuthService.create_end_user(non_existent_code, "test@example.com", db_session_with_containers)
 
         assert "Site not found." in str(exc_info.value)
 
@@ -732,7 +732,7 @@ class TestWebAppAuthService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(NotFound) as exc_info:
-            WebAppAuthService.create_end_user(site.code, "test@example.com")
+            WebAppAuthService.create_end_user(site.code, "test@example.com", db_session_with_containers)
 
         assert "App not found." in str(exc_info.value)
 

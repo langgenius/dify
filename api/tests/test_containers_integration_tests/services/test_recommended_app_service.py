@@ -124,7 +124,7 @@ class TestRecommendedAppServiceGetApps:
         assert len(result["recommended_apps"]) == 2
         assert len(result["categories"]) == 3
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
-        mock_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
+        mock_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US", session=db.session)
 
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
@@ -185,7 +185,7 @@ class TestRecommendedAppServiceGetApps:
             result = RecommendedAppService.get_recommended_apps_and_categories(db.session, language)
 
             assert result["recommended_apps"][0]["id"] == f"app-{language}"
-            mock_instance.get_recommended_apps_and_categories.assert_called_with(language)
+            mock_instance.get_recommended_apps_and_categories.assert_called_with(language, session=db.session)
 
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
     @patch("services.recommended_app_service.dify_config")
@@ -240,7 +240,7 @@ class TestRecommendedAppServiceGetDetail:
             result = RecommendedAppService.get_recommend_app_detail(db.session, app_id)
 
             assert result == expected
-            mock_instance.get_recommend_app_detail.assert_called_once_with(app_id)
+            mock_instance.get_recommend_app_detail.assert_called_once_with(app_id, session=db.session)
 
     @patch("services.recommended_app_service.FeatureService", autospec=True)
     @patch("services.recommended_app_service.RecommendAppRetrievalFactory", autospec=True)
@@ -259,7 +259,7 @@ class TestRecommendedAppServiceGetDetail:
             result = RecommendedAppService.get_recommend_app_detail(db.session, "test-app")
 
             assert result is not None
-            mock_instance.get_recommend_app_detail.assert_called_with("test-app")
+            mock_instance.get_recommend_app_detail.assert_called_with("test-app", session=db.session)
             mock_factory_class.get_recommend_app_factory.assert_called_with(mode)
 
 
@@ -287,7 +287,7 @@ class TestRecommendedAppServiceGetLearnDifyApps:
 
         assert result == {"recommended_apps": [expected_app]}
         mock_factory_class.get_recommend_app_factory.assert_called_once_with("remote")
-        mock_instance.get_learn_dify_apps.assert_called_once_with("en-US")
+        mock_instance.get_learn_dify_apps.assert_called_once_with("en-US", session=db.session)
 
     @patch("services.recommended_app_service.dify_config")
     def test_sets_can_trial_when_trial_feature_enabled(
@@ -336,7 +336,7 @@ class TestRecommendedAppServiceTrialFeatures:
         result = RecommendedAppService.get_recommended_apps_and_categories(db.session, "en-US")
 
         assert result == expected
-        retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US")
+        retrieval_instance.get_recommended_apps_and_categories.assert_called_once_with("en-US", session=db.session)
         builtin_instance.fetch_recommended_apps_from_builtin.assert_not_called()
 
     def test_get_apps_should_enrich_can_trial_when_enabled(
@@ -424,7 +424,7 @@ class TestRecommendedAppServiceTrialFeatures:
         result = RecommendedAppService.get_recommend_app_detail(db.session, "nonexistent")
 
         assert result is None
-        mock_instance.get_recommend_app_detail.assert_called_once_with("nonexistent")
+        mock_instance.get_recommend_app_detail.assert_called_once_with("nonexistent", session=db.session)
         mock_feature_service.get_system_features.assert_not_called()
 
     def test_add_trial_app_record_increments_count_for_existing(self, db_session_with_containers: Session) -> None:

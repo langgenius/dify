@@ -18,6 +18,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from fields.base import ResponseModel
+from extensions.ext_database import db
 from libs.login import login_required
 from models import App
 from services.ops_service import OpsService
@@ -78,7 +79,7 @@ class TraceAppConfigApi(Resource):
 
         try:
             trace_config = OpsService.get_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider
+                app_id=app_model.id, tracing_provider=args.tracing_provider, session=db.session
             )
             if not trace_config:
                 return {"has_not_configured": True}
@@ -109,7 +110,10 @@ class TraceAppConfigApi(Resource):
 
         try:
             result = OpsService.create_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_model.id,
+                tracing_provider=args.tracing_provider,
+                tracing_config=args.tracing_config,
+                session=db.session,
             )
             if not result:
                 raise TracingConfigIsExist()
@@ -142,7 +146,10 @@ class TraceAppConfigApi(Resource):
 
         try:
             result = OpsService.update_tracing_app_config(
-                app_id=app_model.id, tracing_provider=args.tracing_provider, tracing_config=args.tracing_config
+                app_id=app_model.id,
+                tracing_provider=args.tracing_provider,
+                tracing_config=args.tracing_config,
+                session=db.session,
             )
             if not result:
                 raise TracingConfigNotExist()
@@ -168,7 +175,9 @@ class TraceAppConfigApi(Resource):
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))
 
         try:
-            result = OpsService.delete_tracing_app_config(app_id=app_model.id, tracing_provider=args.tracing_provider)
+            result = OpsService.delete_tracing_app_config(
+                app_id=app_model.id, tracing_provider=args.tracing_provider, session=db.session
+            )
             if not result:
                 raise TracingConfigNotExist()
             return "", 204

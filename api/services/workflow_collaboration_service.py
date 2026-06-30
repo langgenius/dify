@@ -6,8 +6,8 @@ from collections.abc import Mapping
 from typing import override
 
 from sqlalchemy import select
+from sqlalchemy.orm import Session, scoped_session
 
-from core.db.session_factory import session_factory
 from models.account import Account
 from models.model import App
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository, WorkflowSessionInfo
@@ -36,7 +36,9 @@ class WorkflowCollaborationService:
             },
         )
 
-    def authorize_and_join_workflow_room(self, workflow_id: str, sid: str) -> tuple[str, bool] | None:
+    def authorize_and_join_workflow_room(
+        self, workflow_id: str, sid: str, *, session: scoped_session | Session
+    ) -> tuple[str, bool] | None:
         """
         Join a collaboration room only after validating the socket session and tenant-scoped app access.
 
@@ -49,7 +51,7 @@ class WorkflowCollaborationService:
         if not user_id or not tenant_id:
             return None
 
-        if not self._can_access_workflow(workflow_id, str(tenant_id)):
+        if not self._can_access_workflow(workflow_id, str(tenant_id), session=session):
             logger.warning(
                 "Workflow collaboration join rejected: workflow_id=%s tenant_id=%s user_id=%s sid=%s",
                 workflow_id,
@@ -79,10 +81,9 @@ class WorkflowCollaborationService:
 
         return str(user_id), is_leader
 
-    def _can_access_workflow(self, workflow_id: str, tenant_id: str) -> bool:
+    def _can_access_workflow(self, workflow_id: str, tenant_id: str, *, session: scoped_session | Session) -> bool:
         """Check room access without relying on Flask's app-context-bound scoped session."""
-        with session_factory.create_session() as session:
-            app_id = session.scalar(select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1))
+        app_id = session.scalar(select(App.id).where(App.id == workflow_id, App.tenant_id == tenant_id).limit(1))
         return app_id is not None
 
     def disconnect_session(self, sid: str) -> None:

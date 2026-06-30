@@ -305,13 +305,13 @@ class TestSegmentServiceQueries:
     def test_get_child_chunk_by_segment_ref_uses_full_ownership_chain(self):
         child_chunk = _make_child_chunk()
         segment_ref = _make_segment_ref()
+        session = MagicMock()
+        session.scalar.return_value = child_chunk
 
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = child_chunk
-            result = SegmentService.get_child_chunk_by_segment_ref("child-a", segment_ref)
+        result = SegmentService.get_child_chunk_by_segment_ref("child-a", segment_ref, session)
 
         assert result is child_chunk
-        stmt = mock_db.session.scalar.call_args.args[0]
+        stmt = session.scalar.call_args.args[0]
         sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
         assert "child_chunks.id = 'child-a'" in sql
         assert "child_chunks.tenant_id = 'tenant-1'" in sql
@@ -379,13 +379,13 @@ class TestSegmentServiceQueries:
         )
         segment.id = "segment-1"
         segment_ref = _make_segment_ref()
+        session = MagicMock()
+        session.scalar.return_value = segment
 
-        with patch("services.dataset_service.db") as mock_db:
-            mock_db.session.scalar.return_value = segment
-            result = SegmentService.get_segment_by_ref(segment_ref)
+        result = SegmentService.get_segment_by_ref(segment_ref, session)
 
         assert result is segment
-        stmt = mock_db.session.scalar.call_args.args[0]
+        stmt = session.scalar.call_args.args[0]
         sql = str(stmt.compile(compile_kwargs={"literal_binds": True}))
         assert "document_segments.id = 'segment-1'" in sql
         assert "document_segments.tenant_id = 'tenant-1'" in sql
@@ -564,7 +564,7 @@ class TestSegmentServiceMutations:
         assert all(segment.error == "vector failed" for segment in result)
         assert document.word_count == 5 + sum(len(item["content"]) + len(item["answer"]) for item in segments)
         vector_service.create_segments_vector.assert_called_once_with(
-            [["k1"], None], result, dataset, document.doc_form
+            [["k1"], None], result, dataset, document.doc_form, mock_db.session
         )
         mock_db.session.commit.assert_called_once()
 
@@ -639,7 +639,7 @@ class TestSegmentServiceMutations:
         assert result is refreshed_segment
         assert segment.keywords == ["new"]
         vector_service.update_segment_vector.assert_called_once_with(["new"], segment, dataset)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_regenerates_child_chunks_and_updates_manual_summary(self, account_context):
         segment = _make_segment(content="same content", word_count=len("same content"))
@@ -682,10 +682,11 @@ class TestSegmentServiceMutations:
             dataset,
             embedding_model_instance,
             processing_rule,
+            mock_db.session,
             True,
         )
         update_summary.assert_called_once_with(segment, dataset, "new summary")
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_auto_regenerates_summary_after_content_change(self, account_context):
         segment = _make_segment(content="old", word_count=3)
@@ -724,7 +725,7 @@ class TestSegmentServiceMutations:
         assert document.word_count == 18
         vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset)
         generate_summary.assert_called_once_with(segment, dataset, {"enable": True})
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_regenerates_summary_when_manual_summary_is_unchanged(self, account_context):
         segment = _make_segment(content="old", word_count=3)
@@ -760,7 +761,7 @@ class TestSegmentServiceMutations:
         assert result is refreshed_segment
         generate_summary.assert_called_once_with(segment, dataset, {"enable": True})
         update_summary.assert_not_called()
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_delete_segment_removes_index_and_updates_document_word_count(self):
         segment = _make_segment(word_count=4, index_node_id="parent-node")
@@ -970,7 +971,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.word_count == len("question") + len("new answer")
         assert document.word_count == 20 + (len("question") + len("new answer") - 8)
         vector_service.update_segment_vector.assert_not_called()
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_content_change_uses_answer_when_counting_tokens_for_qa_segments(self, account_context):
         segment = _make_segment(content="old", word_count=3)
@@ -1007,7 +1008,7 @@ class TestSegmentServiceAdditionalRegenerationBranches:
         assert segment.tokens == 21
         assert segment.word_count == len("new question") + len("new answer")
         vector_service.update_segment_vector.assert_called_once_with(["kw-1"], segment, dataset)
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_content_change_parent_child_uses_default_embedding_and_ignores_summary_failures(
         self, account_context
@@ -1061,10 +1062,11 @@ class TestSegmentServiceAdditionalRegenerationBranches:
             dataset,
             embedding_model_instance,
             processing_rule,
+            mock_db.session,
             True,
         )
         update_summary.assert_called_once_with(segment, dataset, "new summary")
-        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset)
+        vector_service.update_multimodel_vector.assert_called_once_with(segment, [], dataset, mock_db.session)
 
     def test_update_segment_same_content_parent_child_marks_segment_error_for_non_high_quality_dataset(
         self, account_context

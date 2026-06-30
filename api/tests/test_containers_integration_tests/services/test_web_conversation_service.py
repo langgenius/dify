@@ -312,7 +312,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify the conversation was pinned
 
@@ -346,10 +346,10 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation first time
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Pin the conversation again
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify only one pinned conversation record exists
 
@@ -380,7 +380,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, end_user, fake)
 
         # Pin the conversation
-        WebConversationService.pin(app, conversation.id, end_user)
+        WebConversationService.pin(app, conversation.id, end_user, db_session_with_containers)
 
         # Verify the conversation was pinned
 
@@ -412,7 +412,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation first
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify it was pinned
 
@@ -430,7 +430,7 @@ class TestWebConversationService:
         assert pinned_conversation is not None
 
         # Unpin the conversation
-        WebConversationService.unpin(app, conversation.id, account)
+        WebConversationService.unpin(app, conversation.id, account, db_session_with_containers)
 
         # Verify it was unpinned
         pinned_conversation = (
@@ -459,7 +459,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Try to unpin a conversation that was never pinned
-        WebConversationService.unpin(app, conversation.id, account)
+        WebConversationService.unpin(app, conversation.id, account, db_session_with_containers)
 
         # Verify no pinned conversation record exists
 
@@ -509,7 +509,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Try to pin with None user
-        WebConversationService.pin(app, conversation.id, None)
+        WebConversationService.pin(app, conversation.id, None, db_session_with_containers)
 
         # Verify no pinned conversation was created
 
@@ -537,7 +537,7 @@ class TestWebConversationService:
         conversation = self._create_test_conversation(db_session_with_containers, app, account, fake)
 
         # Pin the conversation first
-        WebConversationService.pin(app, conversation.id, account)
+        WebConversationService.pin(app, conversation.id, account, db_session_with_containers)
 
         # Verify it was pinned
 
@@ -555,7 +555,7 @@ class TestWebConversationService:
         assert pinned_conversation is not None
 
         # Try to unpin with None user
-        WebConversationService.unpin(app, conversation.id, None)
+        WebConversationService.unpin(app, conversation.id, None, db_session_with_containers)
 
         # Verify the conversation is still pinned
         pinned_conversation = (

@@ -28,7 +28,12 @@ class SavedMessageService:
         message_ids = [sm.message_id for sm in saved_messages]
 
         return MessageService.pagination_by_last_id(
-            app_model=app_model, user=user, last_id=last_id, limit=limit, include_ids=message_ids
+            app_model=app_model,
+            user=user,
+            last_id=last_id,
+            limit=limit,
+            include_ids=message_ids,
+            session=session,
         )
 
     @classmethod
@@ -49,7 +54,7 @@ class SavedMessageService:
         if saved_message:
             return
 
-        message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id)
+        message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id, session=session)
 
         saved_message = SavedMessage(
             app_id=app_model.id,

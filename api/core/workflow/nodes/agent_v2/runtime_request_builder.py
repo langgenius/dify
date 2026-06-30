@@ -47,6 +47,7 @@ from clients.agent_backend import (
 from configs import dify_config
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom
 from core.workflow.system_variables import SystemVariableKey, get_system_text
+from extensions.ext_database import db
 from graphon.file import File, FileTransferMethod
 from graphon.variables.segments import Segment
 from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
@@ -763,9 +764,11 @@ def build_drive_aware_soul_mention_resolver(
 
     base_resolver = build_soul_mention_resolver(agent_soul)
     drive_service = AgentDriveService()
-    skill_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
+    skill_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id, session=db.session)
     skill_names_by_key = {skill["skill_md_key"]: skill["name"] for skill in skill_catalog}
-    drive_keys = {item["key"] for item in drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)}
+    drive_keys = {
+        item["key"] for item in drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id, session=db.session)
+    }
 
     def _resolve(mention: object) -> str | None:
         if not hasattr(mention, "kind") or not hasattr(mention, "ref_id"):
@@ -812,8 +815,8 @@ def build_drive_layer_config(
         ]
 
     drive_service = AgentDriveService()
-    skills_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id)
-    manifest_items = drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id)
+    skills_catalog = drive_service.list_skills(tenant_id=tenant_id, agent_id=agent_id, session=db.session)
+    manifest_items = drive_service.manifest(tenant_id=tenant_id, agent_id=agent_id, session=db.session)
     manifest_by_key = {item["key"]: item for item in manifest_items}
     skill_keys = {skill["skill_md_key"] for skill in skills_catalog}
     warnings: list[dict[str, str]] = []

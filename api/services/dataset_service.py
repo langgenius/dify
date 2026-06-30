@@ -243,11 +243,11 @@ class _EstimateArgs(BaseModel):
 
 class DatasetService:
     @staticmethod
-    def _can_manage_all_datasets(tenant_id: str, account_id: str) -> bool:
+    def _can_manage_all_datasets(tenant_id: str, account_id: str, *, session: scoped_session | Session) -> bool:
         if not dify_config.RBAC_ENABLED:
             return False
 
-        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id)
+        permissions = enterprise_rbac_service.RBACService.MyPermissions.get(tenant_id, account_id, session=session)
         workspace_permission_keys = getattr(getattr(permissions, "workspace", None), "permission_keys", []) or []
         return "dataset.create_and_management" in workspace_permission_keys
 
@@ -290,7 +290,9 @@ class DatasetService:
                     return [], 0
             else:
                 if dify_config.RBAC_ENABLED:
-                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(str(tenant_id), str(user.id))
+                    can_manage_all_datasets = DatasetService._can_manage_all_datasets(
+                        str(tenant_id), str(user.id), session=session
+                    )
                     should_show_all_datasets = include_all and can_manage_all_datasets
                 else:
                     should_show_all_datasets = user.current_role == TenantAccountRole.OWNER and include_all
@@ -1717,6 +1719,7 @@ class DocumentService:
         documents: Sequence[Document],
         dataset: Dataset,
         tenant_id: str,
+        session: scoped_session | Session,
     ) -> None:
         """
         Enrich documents with summary_index_status based on dataset summary index settings.
@@ -1728,6 +1731,7 @@ class DocumentService:
             documents: List of Document instances to enrich
             dataset: Dataset instance containing summary_index_setting
             tenant_id: Tenant ID for summary status lookup
+            session: SQLAlchemy session used to read summary status records
         """
         # Check if dataset has summary index enabled
         has_summary_index = dataset.summary_index_setting and dataset.summary_index_setting.get("enable") is True
@@ -1745,6 +1749,7 @@ class DocumentService:
                 document_ids=document_ids_need_summary,
                 dataset_id=dataset.id,
                 tenant_id=tenant_id,
+                session=session,
             )
 
         # Add summary_index_status to each document
@@ -3408,7 +3413,13 @@ class SegmentService:
             try:
                 keywords = args.get("keywords")
                 keywords_list = [keywords] if keywords is not None else None
-                VectorService.create_segments_vector(keywords_list, [segment_document], dataset, document.doc_form)
+                VectorService.create_segments_vector(
+                    keywords_list,
+                    [segment_document],
+                    dataset,
+                    document.doc_form,
+                    session,
+                )
             except Exception as e:
                 logger.exception("create segment index failed")
                 segment_document.enabled = False
@@ -3498,7 +3509,11 @@ class SegmentService:
                 try:
                     # save vector index
                     VectorService.create_segments_vector(
-                        keywords_list, pre_segment_data_list, dataset, document.doc_form
+                        keywords_list,
+                        pre_segment_data_list,
+                        dataset,
+                        document.doc_form,
+                        session,
                     )
                 except Exception as e:
                     logger.exception("create segment index failed")
@@ -3597,7 +3612,13 @@ class SegmentService:
                     processing_rule = session.get(DatasetProcessRule, document.dataset_process_rule_id)
                     if processing_rule:
                         VectorService.generate_child_chunks(
-                            segment, document, dataset, embedding_model_instance, processing_rule, True
+                            segment,
+                            document,
+                            dataset,
+                            embedding_model_instance,
+                            processing_rule,
+                            session,
+                            True,
                         )
                 elif document.doc_form in (IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX):
                     if args.enabled or keyword_changed:
@@ -3628,7 +3649,9 @@ class SegmentService:
                             from services.summary_index_service import SummaryIndexService
 
                             try:
-                                SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
+                                SummaryIndexService.update_summary_for_segment(
+                                    segment, dataset, args.summary, session=session
+                                )
                             except Exception:
                                 logger.exception("Failed to update summary for segment %s", segment.id)
                                 # Don't fail the entire update if summary update fails
@@ -3697,7 +3720,13 @@ class SegmentService:
                     processing_rule = session.get(DatasetProcessRule, document.dataset_process_rule_id)
                     if processing_rule:
                         VectorService.generate_child_chunks(
-                            segment, document, dataset, embedding_model_instance, processing_rule, True
+                            segment,
+                            document,
+                            dataset,
+                            embedding_model_instance,
+                            processing_rule,
+                            session,
+                            True,
                         )
                 elif document.doc_form in (IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX):
                     # update segment vector index
@@ -3728,7 +3757,7 @@ class SegmentService:
 
                             try:
                                 SummaryIndexService.generate_and_vectorize_summary(
-                                    segment, dataset, dataset.summary_index_setting
+                                    segment, dataset, dataset.summary_index_setting, session=session
                                 )
                                 logger.info("Auto-regenerated summary for segment %s after content change", segment.id)
                             except Exception:
@@ -3743,7 +3772,9 @@ class SegmentService:
                             from services.summary_index_service import SummaryIndexService
 
                             try:
-                                SummaryIndexService.update_summary_for_segment(segment, dataset, args.summary)
+                                SummaryIndexService.update_summary_for_segment(
+                                    segment, dataset, args.summary, session=session
+                                )
                                 logger.info("Updated summary for segment %s with user-provided content", segment.id)
                             except Exception:
                                 logger.exception("Failed to update summary for segment %s", segment.id)
@@ -3760,7 +3791,7 @@ class SegmentService:
 
                                 try:
                                     SummaryIndexService.generate_and_vectorize_summary(
-                                        segment, dataset, dataset.summary_index_setting
+                                        segment, dataset, dataset.summary_index_setting, session=session
                                     )
                                     logger.info(
                                         "Regenerated summary for segment %s after content change (summary unchanged)",
@@ -3770,7 +3801,7 @@ class SegmentService:
                                     logger.exception("Failed to regenerate summary for segment %s", segment.id)
                                     # Don't fail the entire update if summary regeneration fails
             # update multimodel vector index
-            VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset)
+            VectorService.update_multimodel_vector(segment, args.attachment_ids or [], dataset, session)
         except Exception as e:
             logger.exception("update segment index failed")
             segment.enabled = False
@@ -4134,9 +4165,11 @@ class SegmentService:
         return result if isinstance(result, ChildChunk) else None
 
     @classmethod
-    def get_child_chunk_by_segment_ref(cls, child_chunk_id: str, segment_ref: SegmentRef) -> ChildChunk | None:
+    def get_child_chunk_by_segment_ref(
+        cls, child_chunk_id: str, segment_ref: SegmentRef, session: scoped_session | Session
+    ) -> ChildChunk | None:
         """Get a child chunk through the full tenant/dataset/document/segment chain."""
-        result = db.session.scalar(
+        result = session.scalar(
             select(ChildChunk)
             .where(
                 ChildChunk.id == child_chunk_id,
@@ -4190,9 +4223,9 @@ class SegmentService:
         return result if isinstance(result, DocumentSegment) else None
 
     @classmethod
-    def get_segment_by_ref(cls, segment_ref: SegmentRef) -> DocumentSegment | None:
+    def get_segment_by_ref(cls, segment_ref: SegmentRef, session: scoped_session | Session) -> DocumentSegment | None:
         """Get a segment through the full tenant/dataset/document ownership chain."""
-        result = db.session.scalar(
+        result = session.scalar(
             select(DocumentSegment)
             .where(
                 DocumentSegment.id == segment_ref.segment_id,

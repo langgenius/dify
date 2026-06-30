@@ -38,6 +38,7 @@ from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
+from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import dump_response
@@ -950,7 +951,7 @@ class PluginChangePermissionApi(Resource):
         args = ParserPermissionChange.model_validate(console_ns.payload)
 
         set_permission_result = PluginPermissionService.change_permission(
-            tenant_id, args.install_permission, args.debug_permission
+            tenant_id, args.install_permission, args.debug_permission, session=db.session
         )
         if not set_permission_result:
             return jsonable_encoder({"success": False, "message": "Failed to set permission"})
@@ -966,7 +967,7 @@ class PluginFetchPermissionApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     def get(self, tenant_id: str):
-        permission = PluginPermissionService.get_permission(tenant_id)
+        permission = PluginPermissionService.get_permission(tenant_id, session=db.session)
         if not permission:
             return jsonable_encoder(
                 {
@@ -1071,6 +1072,7 @@ class PluginChangeAutoUpgradeApi(Resource):
             auto_upgrade.exclude_plugins,
             auto_upgrade.include_plugins,
             category=args.category,
+            session=db.session,
         )
         if not set_auto_upgrade_strategy_result:
             return jsonable_encoder({"success": False, "message": "Failed to set auto upgrade strategy"})
@@ -1088,7 +1090,7 @@ class PluginFetchAutoUpgradeApi(Resource):
     @with_current_tenant_id
     def get(self, tenant_id: str):
         args = ParserAutoUpgradeFetch.model_validate(request.args.to_dict(flat=True))
-        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, args.category)
+        auto_upgrade = PluginAutoUpgradeService.get_strategy(tenant_id, args.category, session=db.session)
         auto_upgrade_dict = (
             _auto_upgrade_settings_to_dict(auto_upgrade)
             if auto_upgrade
@@ -1117,7 +1119,11 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
         args = ParserExcludePlugin.model_validate(console_ns.payload)
 
         return jsonable_encoder(
-            {"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args.plugin_id, args.category)}
+            {
+                "success": PluginAutoUpgradeService.exclude_plugin(
+                    tenant_id, args.plugin_id, args.category, session=db.session
+                )
+            }
         )
 
 

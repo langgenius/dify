@@ -1,8 +1,7 @@
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, scoped_session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
 from models.enums import CreatorUserRole
@@ -16,7 +15,7 @@ class WebConversationService:
     def pagination_by_last_id(
         cls,
         *,
-        session: Session,
+        session: Session | scoped_session,
         app_model: App,
         user: Account | EndUser | None,
         last_id: str | None,
@@ -59,10 +58,12 @@ class WebConversationService:
         )
 
     @classmethod
-    def pin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
+    def pin(
+        cls, app_model: App, conversation_id: str, user: Account | EndUser | None, session: Session | scoped_session
+    ):
         if not user:
             return
-        pinned_conversation = db.session.scalar(
+        pinned_conversation = session.scalar(
             select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app_model.id,
@@ -77,7 +78,7 @@ class WebConversationService:
             return
 
         conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user
+            app_model=app_model, conversation_id=conversation_id, user=user, session=session
         )
 
         pinned_conversation = PinnedConversation(
@@ -87,14 +88,16 @@ class WebConversationService:
             created_by=user.id,
         )
 
-        db.session.add(pinned_conversation)
-        db.session.commit()
+        session.add(pinned_conversation)
+        session.commit()
 
     @classmethod
-    def unpin(cls, app_model: App, conversation_id: str, user: Account | EndUser | None):
+    def unpin(
+        cls, app_model: App, conversation_id: str, user: Account | EndUser | None, session: Session | scoped_session
+    ):
         if not user:
             return
-        pinned_conversation = db.session.scalar(
+        pinned_conversation = session.scalar(
             select(PinnedConversation)
             .where(
                 PinnedConversation.app_id == app_model.id,
@@ -108,5 +111,5 @@ class WebConversationService:
         if not pinned_conversation:
             return
 
-        db.session.delete(pinned_conversation)
-        db.session.commit()
+        session.delete(pinned_conversation)
+        session.commit()

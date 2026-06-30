@@ -317,7 +317,7 @@ class WorkflowVariableCollectionApi(Resource):
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
-        workflow_exist = workflow_service.is_workflow_exist(app_model=app_model)
+        workflow_exist = workflow_service.is_workflow_exist(app_model=app_model, session=db.session)
         if not workflow_exist:
             raise DraftWorkflowNotExist()
 
@@ -533,7 +533,7 @@ class VariableResetApi(Resource):
         )
 
         workflow_srv = WorkflowService()
-        draft_workflow = workflow_srv.get_draft_workflow(app_model)
+        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=db.session)
         if draft_workflow is None:
             raise NotFoundError(
                 f"Draft workflow not found, app_id={app_model.id}",
@@ -586,7 +586,7 @@ class ConversationVariableCollectionApi(Resource):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
         workflow_srv = WorkflowService()
-        draft_workflow = workflow_srv.get_draft_workflow(app_model)
+        draft_workflow = workflow_srv.get_draft_workflow(app_model, session=db.session)
         if draft_workflow is None:
             raise NotFoundError(description=f"draft workflow not found, id={app_model.id}")
         draft_var_srv = WorkflowDraftVariableService(db.session())
@@ -624,6 +624,7 @@ class ConversationVariableCollectionApi(Resource):
             app_model=app_model,
             account=current_user,
             conversation_variables=conversation_variables,
+            session=db.session,
         )
 
         return {"result": "success"}
@@ -661,7 +662,7 @@ class EnvironmentVariableCollectionApi(Resource):
         """
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
-        workflow = workflow_service.get_draft_workflow(app_model=app_model)
+        workflow = workflow_service.get_draft_workflow(app_model=app_model, session=db.session)
         if workflow is None:
             raise DraftWorkflowNotExist()
 
@@ -716,6 +717,7 @@ class EnvironmentVariableCollectionApi(Resource):
             app_model=app_model,
             account=current_user,
             environment_variables=environment_variables,
+            session=db.session,
         )
 
         return {"result": "success"}

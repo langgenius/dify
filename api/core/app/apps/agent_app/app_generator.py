@@ -96,7 +96,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
         conversation_id = args.get("conversation_id")
         if conversation_id:
             conversation = ConversationService.get_conversation(
-                app_model=app_model, conversation_id=conversation_id, user=user
+                app_model=app_model, conversation_id=conversation_id, user=user, session=db.session
             )
 
         # Build the EasyUI-shaped config from the Agent Soul so the chat pipeline
@@ -199,7 +199,7 @@ class AgentAppGenerator(MessageBasedAppGenerator):
             user=user,
         )
         conversation = ConversationService.get_conversation(
-            app_model=app_model, conversation_id=conversation_id, user=user
+            app_model=app_model, conversation_id=conversation_id, user=user, session=db.session
         )
 
         app_config = AgentAppConfigManager.get_app_config(

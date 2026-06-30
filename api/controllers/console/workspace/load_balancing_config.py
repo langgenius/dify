@@ -15,6 +15,7 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import login_required
 from models import Account, TenantAccountRole
+from extensions.ext_database import db
 from services.model_load_balancing_service import ModelLoadBalancingService
 
 
@@ -69,6 +70,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
                 model=payload.model,
                 model_type=payload.model_type,
                 credentials=payload.credentials,
+                session=db.session,
             )
         except CredentialsValidateFailedError as ex:
             result = False
@@ -118,6 +120,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
                 model=payload.model,
                 model_type=payload.model_type,
                 credentials=payload.credentials,
+                session=db.session,
                 config_id=config_id,
             )
         except CredentialsValidateFailedError as ex:

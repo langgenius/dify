@@ -135,7 +135,12 @@ class CompletionMessageApi(Resource):
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+                app_model=app_model,
+                user=current_user,
+                args=args,
+                invoke_from=InvokeFrom.DEBUGGER,
+                session=db.session,
+                streaming=streaming,
             )
 
             return helper.compact_generate_response(response)
@@ -316,7 +321,12 @@ def _create_chat_message(
 
     try:
         response = AppGenerateService.generate(
-            app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=streaming
+            app_model=app_model,
+            user=current_user,
+            args=args,
+            invoke_from=InvokeFrom.DEBUGGER,
+            session=db.session,
+            streaming=streaming,
         )
 
         return helper.compact_generate_response(response)

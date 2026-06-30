@@ -105,7 +105,9 @@ class PipelineTemplateListApi(Resource):
     def get(self, current_tenant_id: str) -> JsonResponseWithStatus:
         query = PipelineTemplateListQuery.model_validate(request.args.to_dict(flat=True))
         # get pipeline templates
-        pipeline_templates = RagPipelineService.get_pipeline_templates(query.type, query.language, current_tenant_id)
+        pipeline_templates = RagPipelineService.get_pipeline_templates(
+            query.type, query.language, current_tenant_id, session=db.session()
+        )
         return dump_response(PipelineTemplateListResponse, pipeline_templates), 200
 
 
@@ -120,7 +122,9 @@ class PipelineTemplateDetailApi(Resource):
     def get(self, template_id: str) -> JsonResponseWithStatus:
         query = PipelineTemplateDetailQuery.model_validate(request.args.to_dict(flat=True))
         rag_pipeline_service = RagPipelineService()
-        pipeline_template = rag_pipeline_service.get_pipeline_template_detail(template_id, query.type)
+        pipeline_template = rag_pipeline_service.get_pipeline_template_detail(
+            template_id, query.type, session=db.session()
+        )
         if pipeline_template is None:
             raise NotFound("Pipeline template not found from upstream service.")
         return dump_response(PipelineTemplateDetailResponse, pipeline_template), 200

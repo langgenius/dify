@@ -23,6 +23,7 @@ from enums.quota_type import QuotaType
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
+from sqlalchemy.orm import Session, scoped_session
 from services.errors.app import QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.quota_service import QuotaService, unlimited
@@ -93,6 +94,8 @@ class AppGenerateService:
         user: Account | EndUser,
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
+        *,
+        session: Session | scoped_session,
         streaming: bool = True,
         root_node_id: str | None = None,
     ):
@@ -161,7 +164,7 @@ class AppGenerateService:
                     )
                 case AppMode.ADVANCED_CHAT:
                     workflow_id = args.get("workflow_id")
-                    workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                    workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
 
                     if streaming:
                         # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
@@ -218,7 +221,7 @@ class AppGenerateService:
                         )
                 case AppMode.WORKFLOW:
                     workflow_id = args.get("workflow_id")
-                    workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                    workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
                     if streaming:
                         with rate_limit_context(rate_limit, request_id):
                             payload = AppExecutionParams.new(
@@ -301,12 +304,21 @@ class AppGenerateService:
         return min(limits) if limits else 0
 
     @classmethod
-    def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
+    def generate_single_iteration(
+        cls,
+        app_model: App,
+        user: Account,
+        node_id: str,
+        args: Any,
+        *,
+        session: Session | scoped_session,
+        streaming: bool = True,
+    ):
         match app_model.mode:
             case AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
+                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator().single_iteration_generate(
                         app_model=app_model,
@@ -318,7 +330,7 @@ class AppGenerateService:
                     )
                 )
             case AppMode.WORKFLOW:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
+                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator().single_iteration_generate(
                         app_model=app_model,
@@ -336,13 +348,20 @@ class AppGenerateService:
 
     @classmethod
     def generate_single_loop(
-        cls, app_model: App, user: Account, node_id: str, args: LoopNodeRunPayload, streaming: bool = True
+        cls,
+        app_model: App,
+        user: Account,
+        node_id: str,
+        args: LoopNodeRunPayload,
+        *,
+        session: Session | scoped_session,
+        streaming: bool = True,
     ):
         match app_model.mode:
             case AppMode.COMPLETION | AppMode.CHAT | AppMode.AGENT_CHAT:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
             case AppMode.ADVANCED_CHAT:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
+                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     AdvancedChatAppGenerator().single_loop_generate(
                         app_model=app_model,
@@ -354,7 +373,7 @@ class AppGenerateService:
                     )
                 )
             case AppMode.WORKFLOW:
-                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
+                workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER, session=session)
                 return AdvancedChatAppGenerator.convert_to_event_stream(
                     WorkflowAppGenerator().single_loop_generate(
                         app_model=app_model,
@@ -393,7 +412,14 @@ class AppGenerateService:
         )
 
     @classmethod
-    def _get_workflow(cls, app_model: App, invoke_from: InvokeFrom, workflow_id: str | None = None) -> Workflow:
+    def _get_workflow(
+        cls,
+        app_model: App,
+        invoke_from: InvokeFrom,
+        workflow_id: str | None = None,
+        *,
+        session: Session | scoped_session,
+    ) -> Workflow:
         """
         Get workflow
         :param app_model: app model
@@ -409,20 +435,22 @@ class AppGenerateService:
                 _ = uuid.UUID(workflow_id)
             except ValueError:
                 raise WorkflowIdFormatError(f"Invalid workflow_id format: '{workflow_id}'. ")
-            workflow = workflow_service.get_published_workflow_by_id(app_model=app_model, workflow_id=workflow_id)
+            workflow = workflow_service.get_published_workflow_by_id(
+                app_model=app_model, workflow_id=workflow_id, session=session
+            )
             if not workflow:
                 raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
             return workflow
 
         if invoke_from == InvokeFrom.DEBUGGER:
             # fetch draft workflow by app_model
-            workflow = workflow_service.get_draft_workflow(app_model=app_model)
+            workflow = workflow_service.get_draft_workflow(app_model=app_model, session=session)
 
             if not workflow:
                 raise ValueError("Workflow not initialized")
         else:
             # fetch published workflow by app_model
-            workflow = workflow_service.get_published_workflow(app_model=app_model)
+            workflow = workflow_service.get_published_workflow(app_model=app_model, session=session)
 
             if not workflow:
                 raise ValueError("Workflow not published")

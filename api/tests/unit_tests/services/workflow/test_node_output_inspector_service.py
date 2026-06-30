@@ -1,8 +1,8 @@
 """Unit tests for NodeOutputInspectorService (Stage 4 §8).
 
 The service reads from postgres and resolves agent v2 bindings; this suite
-mocks ``session_factory`` and the binding resolver so we exercise the
-view-construction logic without DB / network access.
+mocks the DB session and binding resolver so we exercise the view-construction
+logic without DB / network access.
 """
 
 from __future__ import annotations
@@ -105,7 +105,7 @@ def _patch_session(
     workflow_run: SimpleNamespace | None,
     executions: list[SimpleNamespace] | None = None,
 ):
-    """Patch ``session_factory.create_session`` to return the configured rows.
+    """Patch ``db.session`` to return the configured rows.
 
     Returns a context manager that the test uses with ``with``.
     """
@@ -113,12 +113,9 @@ def _patch_session(
     mock_session = MagicMock()
     mock_session.scalar.return_value = workflow_run
     mock_session.scalars.return_value.all.return_value = executions
-    cm = MagicMock()
-    cm.__enter__.return_value = mock_session
-    cm.__exit__.return_value = False
     return patch(
-        "services.workflow.node_output_inspector_service.session_factory.create_session",
-        return_value=cm,
+        "services.workflow.node_output_inspector_service.db.session",
+        mock_session,
     )
 
 

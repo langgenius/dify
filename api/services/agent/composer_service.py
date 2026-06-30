@@ -202,7 +202,7 @@ class AgentComposerService:
                     tenant_id=tenant_id, account_id=account_id, binding=binding, payload=payload
                 )
 
-        db.session.commit()
+        session.commit()
         agent = cls._get_agent_if_present(tenant_id=tenant_id, agent_id=binding.agent_id)
         version_id = (
             agent.active_config_snapshot_id
@@ -292,8 +292,8 @@ class AgentComposerService:
         binding.agent_id = inline_agent.id
         binding.current_snapshot_id = inline_agent.active_config_snapshot_id
         binding.updated_by = account_id
-        db.session.flush()
-        db.session.commit()
+        session.flush()
+        session.commit()
 
         version = cls._require_version(
             tenant_id=tenant_id,
@@ -368,11 +368,11 @@ class AgentComposerService:
                 created_by=account_id,
                 updated_by=account_id,
             )
-            db.session.add(agent)
+            session.add(agent)
             try:
-                db.session.flush()
+                session.flush()
             except IntegrityError as exc:
-                db.session.rollback()
+                session.rollback()
                 raise AgentNameConflictError() from exc
         return cls._save_agent_composer_for_agent(
             tenant_id=tenant_id,
@@ -421,7 +421,7 @@ class AgentComposerService:
         agent.updated_by = account_id
         agent.active_config_is_published = False
 
-        db.session.commit()
+        session.commit()
         state = cls.load_agent_composer(tenant_id=tenant_id, agent_id=agent.id)
         state["validation"] = cls.collect_validation_findings(
             tenant_id=tenant_id,
@@ -469,7 +469,7 @@ class AgentComposerService:
         agent.updated_by = account_id
         draft.base_snapshot_id = version.id
         draft.updated_by = account_id
-        db.session.commit()
+        session.commit()
         return {
             "result": "success",
             "active_config_snapshot_id": version.id,
@@ -506,11 +506,11 @@ class AgentComposerService:
                 draft_owner_key=account_id,
                 created_by=account_id,
             )
-            db.session.add(build_draft)
+            session.add(build_draft)
         build_draft.base_snapshot_id = normal_draft.base_snapshot_id
         build_draft.config_snapshot = AgentSoulConfig.model_validate(normal_draft.config_snapshot_dict)
         build_draft.updated_by = account_id
-        db.session.commit()
+        session.commit()
         return cls._serialize_build_draft_state(build_draft)
 
     @classmethod
@@ -543,7 +543,7 @@ class AgentComposerService:
             agent_soul=payload.agent_soul,
             account_id_for_audit=account_id,
         )
-        db.session.commit()
+        session.commit()
         return cls._serialize_build_draft_state(build_draft)
 
     @classmethod
@@ -568,8 +568,8 @@ class AgentComposerService:
         )
         agent.active_config_is_published = False
         agent.updated_by = account_id
-        db.session.delete(build_draft)
-        db.session.commit()
+        session.delete(build_draft)
+        session.commit()
         return {"result": "success", "draft": cls._serialize_draft(normal_draft)}
 
     @classmethod
@@ -581,8 +581,8 @@ class AgentComposerService:
             account_id=account_id,
         )
         if build_draft is not None:
-            db.session.delete(build_draft)
-            db.session.commit()
+            session.delete(build_draft)
+            session.commit()
         return {"result": "success"}
 
     @classmethod
@@ -634,7 +634,7 @@ class AgentComposerService:
     @classmethod
     def resolve_bound_agent_id(cls, *, tenant_id: str, app_id: str) -> str | None:
         """The Agent App's bound roster agent id, if any (validate-endpoint context)."""
-        return db.session.scalar(
+        return session.scalar(
             select(Agent.id)
             .where(
                 Agent.tenant_id == tenant_id,
@@ -680,7 +680,7 @@ class AgentComposerService:
             return []
 
         existing_keys = set(
-            db.session.scalars(
+            session.scalars(
                 select(AgentDriveFile.key).where(
                     AgentDriveFile.tenant_id == tenant_id,
                     AgentDriveFile.agent_id == agent_id,
@@ -907,7 +907,7 @@ class AgentComposerService:
 
     @classmethod
     def calculate_impact(cls, *, tenant_id: str, current_snapshot_id: str) -> dict[str, Any]:
-        snapshot = db.session.scalar(
+        snapshot = session.scalar(
             select(AgentConfigSnapshot)
             .where(
                 AgentConfigSnapshot.tenant_id == tenant_id,
@@ -923,7 +923,7 @@ class AgentComposerService:
                 & (WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT)
             )
         bindings = list(
-            db.session.scalars(
+            session.scalars(
                 select(WorkflowAgentNodeBinding).where(
                     WorkflowAgentNodeBinding.tenant_id == tenant_id,
                     or_(*predicates),
@@ -1014,8 +1014,8 @@ class AgentComposerService:
             created_by=account_id,
             updated_by=account_id,
         )
-        db.session.add(binding)
-        db.session.flush()
+        session.add(binding)
+        session.flush()
         return binding
 
     @classmethod
@@ -1055,7 +1055,7 @@ class AgentComposerService:
         binding.current_snapshot_id = agent.active_config_snapshot_id
         binding.node_job_config = payload.node_job or binding.node_job_config
         binding.updated_by = account_id
-        db.session.flush()
+        session.flush()
         return binding
 
     @classmethod
@@ -1162,13 +1162,13 @@ class AgentComposerService:
                 node_id=node_id,
                 created_by=account_id,
             )
-            db.session.add(binding)
+            session.add(binding)
         binding.binding_type = WorkflowAgentBindingType.ROSTER_AGENT
         binding.agent_id = agent.id
         binding.current_snapshot_id = agent.active_config_snapshot_id
         binding.node_job_config = node_job
         binding.updated_by = account_id
-        db.session.flush()
+        session.flush()
         return binding
 
     @classmethod
@@ -1237,7 +1237,7 @@ class AgentComposerService:
         icon: str | None = None,
         icon_background: str | None = None,
     ) -> Agent:
-        backing_app = AgentRosterService(db.session).create_hidden_backing_app_for_workflow_agent(
+        backing_app = AgentRosterService(session).create_hidden_backing_app_for_workflow_agent(
             tenant_id=tenant_id,
             account_id=account_id,
             name=name or f"Workflow Agent {node_id}",
@@ -1265,8 +1265,8 @@ class AgentComposerService:
             created_by=account_id,
             updated_by=account_id,
         )
-        db.session.add(agent)
-        db.session.flush()
+        session.add(agent)
+        session.flush()
         version = cls._create_config_version(
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -1300,7 +1300,7 @@ class AgentComposerService:
             return
 
         source_rows = list(
-            db.session.scalars(
+            session.scalars(
                 select(AgentDriveFile).where(
                     AgentDriveFile.tenant_id == tenant_id,
                     AgentDriveFile.agent_id == source_agent_id,
@@ -1312,7 +1312,7 @@ class AgentComposerService:
             return
 
         existing_target_keys = set(
-            db.session.scalars(
+            session.scalars(
                 select(AgentDriveFile.key).where(
                     AgentDriveFile.tenant_id == tenant_id,
                     AgentDriveFile.agent_id == target_agent_id,
@@ -1323,7 +1323,7 @@ class AgentComposerService:
         for row in source_rows:
             if row.key in existing_target_keys:
                 continue
-            db.session.add(
+            session.add(
                 AgentDriveFile(
                     tenant_id=tenant_id,
                     agent_id=target_agent_id,
@@ -1404,10 +1404,10 @@ class AgentComposerService:
                 account,
             )
         except IntegrityError as exc:
-            db.session.rollback()
+            session.rollback()
             raise AgentNameConflictError() from exc
 
-        agent = AgentRosterService(db.session).get_app_backing_agent(tenant_id=tenant_id, app_id=app.id)
+        agent = AgentRosterService(session).get_app_backing_agent(tenant_id=tenant_id, app_id=app.id)
         if agent is None:
             raise AgentNotFoundError()
 
@@ -1442,7 +1442,7 @@ class AgentComposerService:
         previous_snapshot_id: str | None = None,
     ) -> AgentConfigSnapshot:
         next_version = (
-            db.session.scalar(
+            session.scalar(
                 select(func.max(AgentConfigSnapshot.version)).where(
                     AgentConfigSnapshot.tenant_id == tenant_id,
                     AgentConfigSnapshot.agent_id == agent_id,
@@ -1458,8 +1458,8 @@ class AgentComposerService:
             version_note=version_note,
             created_by=account_id,
         )
-        db.session.add(version)
-        db.session.flush()
+        session.add(version)
+        session.flush()
         revision = AgentConfigRevision(
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -1470,8 +1470,8 @@ class AgentComposerService:
             version_note=version_note,
             created_by=account_id,
         )
-        db.session.add(revision)
-        db.session.flush()
+        session.add(revision)
+        session.flush()
         return version
 
     @classmethod
@@ -1497,7 +1497,7 @@ class AgentComposerService:
     @classmethod
     def _next_revision(cls, *, tenant_id: str, agent_id: str) -> int:
         return (
-            db.session.scalar(
+            session.scalar(
                 select(func.max(AgentConfigRevision.revision)).where(
                     AgentConfigRevision.tenant_id == tenant_id,
                     AgentConfigRevision.agent_id == agent_id,
@@ -1508,7 +1508,7 @@ class AgentComposerService:
 
     @classmethod
     def _get_agent_app_agent(cls, *, tenant_id: str, app_id: str) -> Agent | None:
-        return db.session.scalar(
+        return session.scalar(
             select(Agent)
             .where(
                 Agent.tenant_id == tenant_id,
@@ -1546,7 +1546,7 @@ class AgentComposerService:
             stmt = stmt.where(AgentConfigDraft.account_id == account_id)
         else:
             stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
-        return db.session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
+        return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
 
     @classmethod
     def _get_or_create_agent_draft(
@@ -1587,8 +1587,8 @@ class AgentComposerService:
             created_by=created_by,
             updated_by=created_by,
         )
-        db.session.add(draft)
-        db.session.flush()
+        session.add(draft)
+        session.flush()
         return draft
 
     @classmethod
@@ -1618,7 +1618,7 @@ class AgentComposerService:
         draft.updated_by = account_id_for_audit
         if draft_type == AgentConfigDraftType.DRAFT and account_id is None:
             agent.active_config_is_published = False
-        db.session.flush()
+        session.flush()
         return draft
 
     @classmethod
@@ -1647,7 +1647,7 @@ class AgentComposerService:
 
     @classmethod
     def _get_draft_workflow(cls, *, tenant_id: str, app_id: str) -> Workflow:
-        workflow = db.session.scalar(
+        workflow = session.scalar(
             select(Workflow)
             .where(
                 Workflow.tenant_id == tenant_id,
@@ -1668,7 +1668,7 @@ class AgentComposerService:
         # is scoped to ``workflow_version="draft"``. Published bindings are
         # materialized by WorkflowAgentPublishService.copy_agent_node_bindings_to_published
         # and are not edited through the Composer.
-        return db.session.scalar(
+        return session.scalar(
             select(WorkflowAgentNodeBinding)
             .where(
                 WorkflowAgentNodeBinding.tenant_id == tenant_id,
@@ -1689,14 +1689,14 @@ class AgentComposerService:
     def _require_agent(cls, *, tenant_id: str, agent_id: str | None) -> Agent:
         if not agent_id:
             raise AgentNotFoundError()
-        agent = db.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        agent = session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
         if not agent:
             raise AgentNotFoundError()
         return agent
 
     @classmethod
     def _require_account(cls, *, account_id: str) -> Account:
-        account = db.session.get(Account, account_id)
+        account = session.get(Account, account_id)
         if not account:
             raise ValueError("Account not found")
         return account
@@ -1705,13 +1705,13 @@ class AgentComposerService:
     def _get_agent_if_present(cls, *, tenant_id: str, agent_id: str | None) -> Agent | None:
         if not agent_id:
             return None
-        return db.session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
+        return session.scalar(select(Agent).where(Agent.tenant_id == tenant_id, Agent.id == agent_id).limit(1))
 
     @classmethod
     def _require_version(cls, *, tenant_id: str, agent_id: str | None, version_id: str | None) -> AgentConfigSnapshot:
         if not agent_id or not version_id:
             raise AgentVersionNotFoundError()
-        version = db.session.scalar(
+        version = session.scalar(
             select(AgentConfigSnapshot)
             .where(
                 AgentConfigSnapshot.tenant_id == tenant_id,
@@ -1730,7 +1730,7 @@ class AgentComposerService:
     ) -> AgentConfigSnapshot | None:
         if not agent_id or not version_id:
             return None
-        return db.session.scalar(
+        return session.scalar(
             select(AgentConfigSnapshot)
             .where(
                 AgentConfigSnapshot.tenant_id == tenant_id,

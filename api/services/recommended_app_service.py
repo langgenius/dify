@@ -19,7 +19,7 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result = retrieval_instance.get_recommended_apps_and_categories(language)
+        result = retrieval_instance.get_recommended_apps_and_categories(language, session=session)
         if not result.get("recommended_apps"):
             result = (
                 RecommendAppRetrievalFactory.get_buildin_recommend_app_retrieval().fetch_recommended_apps_from_builtin(
@@ -43,7 +43,7 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result = retrieval_instance.get_learn_dify_apps(language)
+        result = retrieval_instance.get_learn_dify_apps(language, session=session)
 
         if FeatureService.get_system_features().enable_trial_app:
             for app in result["recommended_apps"]:
@@ -60,7 +60,7 @@ class RecommendedAppService:
         """
         mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         retrieval_instance = RecommendAppRetrievalFactory.get_recommend_app_factory(mode)()
-        result: dict[str, Any] | None = retrieval_instance.get_recommend_app_detail(app_id)
+        result: dict[str, Any] | None = retrieval_instance.get_recommend_app_detail(app_id, session=session)
         if result is None:
             return None
         if FeatureService.get_system_features().enable_trial_app:

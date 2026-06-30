@@ -88,7 +88,7 @@ class ImportTargetResolver:
         if request.cli_target_tenant or request.config_target_tenant:
             tenant = self._resolve_tenant_by_id_or_name(target_tenant_name)
         elif package_target.get("id") and self._is_uuid(package_target["id"]):
-            tenant = db.session.get(Tenant, package_target["id"])
+            tenant = session.get(Tenant, package_target["id"])
             if tenant is not None and package_target.get("name") and tenant.name != package_target.get("name"):
                 raise MigrationDataError(
                     f"Target tenant id/name mismatch: {package_target['id']} / {package_target['name']}"
@@ -99,7 +99,7 @@ class ImportTargetResolver:
             raise MigrationDataError(f"Target tenant not found: {target_tenant_name}")
 
         account_query = (
-            db.session.query(Account)
+            session.query(Account)
             .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id)
             .filter(TenantAccountJoin.tenant_id == tenant.id)
         )
@@ -125,10 +125,10 @@ class ImportTargetResolver:
 
     def _resolve_tenant_by_id_or_name(self, value: str) -> Tenant | None:
         if self._is_uuid(value):
-            tenant = db.session.get(Tenant, value)
+            tenant = session.get(Tenant, value)
             if tenant is not None:
                 return tenant
-        tenants = list(db.session.scalars(sa.select(Tenant).where(Tenant.name == value)).all())
+        tenants = list(session.scalars(sa.select(Tenant).where(Tenant.name == value)).all())
         if len(tenants) > 1:
             raise MigrationDataError(f"Target tenant name is ambiguous; use target_tenant.id: {value}")
         return tenants[0] if tenants else None
@@ -223,8 +223,8 @@ class MigrationImportService:
         only_app_ids: set[str] | None = None,
         skip_app_ids: set[str] | None = None,
     ) -> None:
-        account = db.session.get(Account, target.operator_id)
-        tenant = db.session.get(Tenant, target.tenant_id)
+        account = session.get(Account, target.operator_id)
+        tenant = session.get(Tenant, target.tenant_id)
         if account is None:
             raise MigrationDataError(f"Operator account not found: {target.operator_id}")
         if tenant is None:
@@ -311,7 +311,7 @@ class MigrationImportService:
         existing_app: App | None,
         options: ImportOptions,
     ) -> str:
-        import_service = AppDslService(cast(Session, db.session))
+        import_service = AppDslService(cast(Session, session))
         if existing_app is not None:
             import_result = import_service.import_app(
                 account=account,
@@ -332,7 +332,7 @@ class MigrationImportService:
             raise MigrationDataError(f"Workflow import failed: {error}")
         if import_result.app_id is None:
             raise MigrationDataError(f"Workflow import did not return an app id: {workflow_data.get('name')}")
-        db.session.commit()
+        session.commit()
         return import_result.app_id
 
     def _rewrite_workflow_dsl_provider_ids(self, dsl_content: str, id_mapping: dict[str, str]) -> str:
@@ -403,10 +403,10 @@ class MigrationImportService:
     def _find_existing_app(self, app_id: str | None, tenant_id: str) -> App | None:
         if not self._is_uuid_string(app_id):
             return None
-        return db.session.scalar(sa.select(App).where(App.id == app_id, App.tenant_id == tenant_id))
+        return session.scalar(sa.select(App).where(App.id == app_id, App.tenant_id == tenant_id))
 
     def _create_or_reuse_app_api_token(self, app_id: str, tenant_id: str) -> None:
-        existing = db.session.scalar(
+        existing = session.scalar(
             sa.select(ApiToken).where(
                 ApiToken.type == ApiTokenType.APP,
                 ApiToken.app_id == app_id,
@@ -420,8 +420,8 @@ class MigrationImportService:
         api_token.tenant_id = tenant_id
         api_token.token = ApiToken.generate_api_key("app", 24)
         api_token.type = ApiTokenType.APP
-        db.session.add(api_token)
-        db.session.commit()
+        session.add(api_token)
+        session.commit()
 
     def _import_api_tools(
         self,
@@ -436,7 +436,7 @@ class MigrationImportService:
         for tool_data in package.tools:
             provider_name = self._required_string(tool_data, "provider_name", "api_tool")
             schema = self._required_string(tool_data, "schema", "api_tool")
-            existing = db.session.scalar(
+            existing = session.scalar(
                 sa.select(ApiToolProvider).where(
                     ApiToolProvider.tenant_id == target.tenant_id,
                     ApiToolProvider.name == provider_name,
@@ -514,7 +514,7 @@ class MigrationImportService:
             report_items.append(ResourceReportItem(ResourceType.API_TOOL, provider_name, provider_name, status))
 
     def _find_api_tool_provider(self, tenant_id: str, provider_name: str) -> ApiToolProvider | None:
-        return db.session.scalar(
+        return session.scalar(
             sa.select(ApiToolProvider).where(
                 ApiToolProvider.tenant_id == tenant_id,
                 ApiToolProvider.name == provider_name,
@@ -558,7 +558,7 @@ class MigrationImportService:
     ) -> None:
         if not package.workflow_tools:
             return
-        account = db.session.get(Account, target.operator_id)
+        account = session.get(Account, target.operator_id)
         if account is None:
             raise MigrationDataError(f"Operator account not found: {target.operator_id}")
         for workflow_tool_data in package.workflow_tools:
@@ -730,7 +730,7 @@ class MigrationImportService:
                 report_items.append(ResourceReportItem(ResourceType.MCP_TOOL, existing.id, name, "skipped"))
                 continue
 
-            service = MCPToolManageService(session=cast(Session, db.session))
+            service = MCPToolManageService(session=cast(Session, session))
             configuration = MCPConfiguration.model_validate(mcp_data.get("configuration") or {})
             authentication = (
                 MCPAuthentication.model_validate(mcp_data["authentication"]) if mcp_data.get("authentication") else None
@@ -752,7 +752,7 @@ class MigrationImportService:
                     # stored mode (update_provider now defaults to OFF when omitted).
                     identity_mode=IdentityMode(existing.identity_mode),
                 )
-                db.session.commit()
+                session.commit()
                 status = "updated"
                 identifier = existing.id
                 provider = existing
@@ -777,7 +777,7 @@ class MigrationImportService:
                 provider = created_provider
                 identifier = provider.id
             self._restore_mcp_provider_tools(provider, mcp_data)
-            db.session.commit()
+            session.commit()
             if provider_id:
                 self._record_id_mappings(
                     id_mapping,
@@ -802,7 +802,7 @@ class MigrationImportService:
         predicates = [MCPToolProvider.server_identifier == server_identifier]
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
-        return db.session.scalar(
+        return session.scalar(
             sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates)).limit(1)
         )
 
@@ -821,7 +821,7 @@ class MigrationImportService:
         predicates = [WorkflowToolProvider.name == tool_name, WorkflowToolProvider.app_id == app_id]
         if self._is_uuid_string(workflow_tool_id):
             predicates.append(WorkflowToolProvider.id == workflow_tool_id)
-        return db.session.scalar(
+        return session.scalar(
             sa.select(WorkflowToolProvider)
             .where(WorkflowToolProvider.tenant_id == tenant_id, or_(*predicates))
             .limit(1)
@@ -869,7 +869,7 @@ class MigrationImportService:
         predicates = [MCPToolProvider.server_identifier == provider_id]
         if self._is_uuid_string(provider_id):
             predicates.append(MCPToolProvider.id == provider_id)
-        return db.session.scalar(
+        return session.scalar(
             sa.select(MCPToolProvider).where(MCPToolProvider.tenant_id == tenant_id, or_(*predicates)).limit(1)
         )
 

@@ -330,11 +330,10 @@ class TestConversationServiceHelpers:
 class TestConversationServiceConversationalVariable:
     """Test conversational variable operations."""
 
-    @patch("services.conversation_service.session_factory")
     @patch("services.conversation_service.ConversationService.get_conversation")
     @patch("services.conversation_service.dify_config")
     def test_get_conversational_variable_with_name_filter_mysql(
-        self, mock_config, mock_get_conversation, mock_session_factory
+        self, mock_config, mock_get_conversation
     ):
         """
         Test variable filtering by name for MySQL databases.
@@ -351,7 +350,6 @@ class TestConversationServiceConversationalVariable:
 
         # Mock session
         mock_session = MagicMock()
-        mock_session_factory.create_session.return_value.__enter__.return_value = mock_session
         mock_session.scalars.return_value.all.return_value = []
 
         # Act
@@ -362,6 +360,7 @@ class TestConversationServiceConversationalVariable:
             limit=10,
             last_id=None,
             variable_name="test_var",
+            session=mock_session,
         )
 
         # Assert - JSON filter should be applied

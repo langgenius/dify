@@ -90,6 +90,7 @@ def generate_summary_index_task(dataset_id: str, document_id: str, segment_ids: 
                 dataset=dataset,
                 document=document,
                 summary_index_setting=summary_index_setting,
+                session=session,
                 segment_ids=segment_ids,
                 only_parent_chunks=only_parent_chunks,
             )

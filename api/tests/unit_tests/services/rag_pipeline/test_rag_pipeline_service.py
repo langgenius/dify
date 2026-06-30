@@ -127,8 +127,9 @@ def test_get_pipeline_templates_fallbacks_to_builtin_for_non_english_empty_resul
     builtin_retrieval = mocker.Mock()
     builtin_retrieval.fetch_pipeline_templates_from_builtin.return_value = {"pipeline_templates": [{"id": "builtin-1"}]}
     factory_mock.get_built_in_pipeline_template_retrieval.return_value = builtin_retrieval
+    session = mocker.Mock()
 
-    result = RagPipelineService.get_pipeline_templates(type="built-in", language="ja-JP")
+    result = RagPipelineService.get_pipeline_templates(type="built-in", language="ja-JP", session=session)
 
     assert result == {"pipeline_templates": [{"id": "builtin-1"}]}
     builtin_retrieval.fetch_pipeline_templates_from_builtin.assert_called_once_with("en-US")
@@ -140,8 +141,9 @@ def test_get_pipeline_templates_customized_mode_uses_customized_factory(mocker: 
 
     factory_mock = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
     factory_mock.get_pipeline_template_factory.return_value.return_value = retrieval
+    session = mocker.Mock()
 
-    result = RagPipelineService.get_pipeline_templates(type="customized", language="en-US")
+    result = RagPipelineService.get_pipeline_templates(type="customized", language="en-US", session=session)
 
     assert result == {"pipeline_templates": [{"id": "custom-1"}]}
     factory_mock.get_pipeline_template_factory.assert_called_with("customized")
@@ -155,8 +157,9 @@ def test_get_pipeline_template_detail_uses_expected_mode(mocker: MockerFixture, 
 
     factory_mock = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
     factory_mock.get_pipeline_template_factory.return_value.return_value = retrieval
+    session = mocker.Mock()
 
-    result = RagPipelineService.get_pipeline_template_detail("tpl-1", type=template_type)
+    result = RagPipelineService.get_pipeline_template_detail("tpl-1", type=template_type, session=session)
 
     assert result == {"id": "tpl-1"}
     expected_mode = "remote" if template_type == "built-in" else "customized"
@@ -1825,8 +1828,9 @@ def test_get_pipeline_templates_builtin_en_us_no_fallback(mocker: MockerFixture)
     factory = mocker.patch("services.rag_pipeline.rag_pipeline.PipelineTemplateRetrievalFactory")
     factory.get_pipeline_template_factory.return_value.return_value = retrieval
     builtin = factory.get_built_in_pipeline_template_retrieval.return_value
+    session = mocker.Mock()
 
-    result = RagPipelineService.get_pipeline_templates(type="built-in", language="en-US")
+    result = RagPipelineService.get_pipeline_templates(type="built-in", language="en-US", session=session)
 
     assert result == {"pipeline_templates": []}
     builtin.fetch_pipeline_templates_from_builtin.assert_not_called()

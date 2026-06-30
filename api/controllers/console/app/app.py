@@ -607,6 +607,7 @@ class AppListApi(Resource):
         permissions = enterprise_rbac_service.RBACService.MyPermissions.get(
             str(current_tenant_id),
             current_user_id,
+            session=db.session,
         )
         if dify_config.RBAC_ENABLED:
             access_filter = resolve_app_access_filter(
@@ -671,6 +672,7 @@ class AppListApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [str(app.id)],
+            session=db.session,
         )
         app_detail = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app.id), [])}
@@ -778,6 +780,7 @@ class AppApi(Resource):
             str(current_tenant_id),
             current_user.id,
             app_id=str(app_model.id),
+            session=db.session,
         )
         permission_keys_map = permissions.app.permission_keys_by_resource_ids([str(app_model.id)])
 
@@ -902,6 +905,7 @@ class AppCopyApi(Resource):
             str(current_tenant_id),
             current_user.id,
             [str(app.id)],
+            session=db.session,
         )
         response_model = AppDetailWithSite.model_validate(app, from_attributes=True).model_copy(
             update={"permission_keys": permission_keys_map.get(str(app.id), [])}

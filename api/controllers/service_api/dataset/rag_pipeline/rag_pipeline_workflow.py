@@ -287,6 +287,7 @@ class PipelineRunApi(DatasetApiResource):
                 args=payload.model_dump(),
                 invoke_from=InvokeFrom.PUBLISHED_PIPELINE if payload.is_published else InvokeFrom.DEBUGGER,
                 streaming=payload.response_mode == "streaming",
+                session=db.session,
             )
 
             return helper.compact_generate_response(response)

@@ -375,6 +375,7 @@ class DatasetDocumentListApi(Resource):
             documents=documents,
             dataset=dataset,
             tenant_id=current_tenant_id,
+            session=db.session,
         )
 
         if fetch:

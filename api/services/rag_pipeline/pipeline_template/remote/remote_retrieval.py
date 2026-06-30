@@ -2,6 +2,7 @@ import logging
 from typing import Any, override
 
 import httpx
+from sqlalchemy.orm import Session, scoped_session
 
 from configs import dify_config
 from services.rag_pipeline.pipeline_template.database.database_retrieval import DatabasePipelineTemplateRetrieval
@@ -17,21 +18,27 @@ class RemotePipelineTemplateRetrieval(PipelineTemplateRetrievalBase):
     """
 
     @override
-    def get_pipeline_template_detail(self, template_id: str) -> dict[str, Any] | None:
+    def get_pipeline_template_detail(
+        self, template_id: str, *, session: scoped_session | Session
+    ) -> dict[str, Any] | None:
         try:
             return self.fetch_pipeline_template_detail_from_dify_official(template_id)
         except Exception as e:
             logger.warning("fetch recommended app detail from dify official failed: %r, switch to database.", e)
-            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(template_id)
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_template_detail_from_db(
+                template_id, session=session
+            )
 
     @override
-    def get_pipeline_templates(self, language: str, current_tenant_id: str | None = None) -> dict[str, Any]:
+    def get_pipeline_templates(
+        self, language: str, current_tenant_id: str | None = None, *, session: scoped_session | Session
+    ) -> dict[str, Any]:
         del current_tenant_id
         try:
             return self.fetch_pipeline_templates_from_dify_official(language)
         except Exception as e:
             logger.warning("fetch pipeline templates from dify official failed: %r, switch to database.", e)
-            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language)
+            return DatabasePipelineTemplateRetrieval.fetch_pipeline_templates_from_db(language, session=session)
 
     @override
     def get_type(self) -> str:
