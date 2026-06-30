@@ -72,6 +72,30 @@ describe('AgentBuildDraftBar', () => {
     expect(screen.getByRole('button', { name: 'agentV2.agentDetail.configure.buildDraft.discard' })).toBeDisabled()
   })
 
+  it('should not show build draft change metadata', () => {
+    const { rerender } = render(
+      <AgentBuildDraftBar
+        changesCount={0}
+        onApply={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
+    expect(screen.getAllByText(/^agentV2\.agentDetail\.configure\.buildDraft\./)).toHaveLength(2)
+
+    rerender(
+      <AgentBuildDraftBar
+        changesCount={2}
+        onApply={vi.fn()}
+        onDiscard={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByText('agentV2.agentDetail.configure.buildDraft.title')).toBeInTheDocument()
+    expect(screen.getAllByText(/^agentV2\.agentDetail\.configure\.buildDraft\./)).toHaveLength(2)
+  })
+
   it('should keep both actions enabled when there are no build draft changes', async () => {
     const user = userEvent.setup()
     const onApply = vi.fn()
