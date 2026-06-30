@@ -57,6 +57,7 @@ from models.agent_config_entities import (
     AgentKnowledgeModelConfig,
     AgentKnowledgeRetrievalConfig,
     AgentSoulConfig,
+    AgentSoulToolsConfig,
     DeclaredArrayItem,
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,
@@ -80,7 +81,12 @@ from services.agent.prompt_mentions import (
 )
 
 from .output_failure_orchestrator import retry_idempotency_key
-from .plugin_tools_builder import WorkflowAgentPluginToolsBuilder, WorkflowAgentPluginToolsBuildError
+from .dify_tools_builder import (
+    WorkflowAgentToolLayers,
+    WorkflowAgentDifyToolLayersBuilder,
+    WorkflowAgentDifyToolsBuildError,
+    WorkflowAgentDifyToolsBuilder,
+)
 from .runtime_feature_manifest import build_runtime_feature_manifest
 
 _DENIED_PERMISSION_STATUSES = frozenset({"unauthorized", "denied", "forbidden", "invalid", "unavailable"})
@@ -159,11 +165,11 @@ class WorkflowAgentRuntimeRequestBuilder:
         *,
         credentials_provider: CredentialsProvider,
         request_builder: AgentBackendRunRequestBuilder | None = None,
-        plugin_tools_builder: WorkflowAgentPluginToolsBuilder | None = None,
+        dify_tools_builder: WorkflowAgentDifyToolLayersBuilder | None = None,
     ) -> None:
         self._credentials_provider = credentials_provider
         self._request_builder = request_builder or AgentBackendRunRequestBuilder()
-        self._plugin_tools_builder = plugin_tools_builder or WorkflowAgentPluginToolsBuilder()
+        self._dify_tools_builder = dify_tools_builder or WorkflowAgentDifyToolsBuilder()
 
     def build(self, context: WorkflowAgentRuntimeBuildContext) -> WorkflowAgentRuntimeRequest:
         agent_soul = AgentSoulConfig.model_validate(context.snapshot.config_snapshot_dict)
@@ -184,25 +190,19 @@ class WorkflowAgentRuntimeRequestBuilder:
         user_prompt = workflow_context_prompt or self._WORKFLOW_USER_PROMPT_FALLBACK
         credentials = self._credentials_provider.fetch(agent_soul.model.model_provider, agent_soul.model.model)
         try:
-            tools_layer = self._plugin_tools_builder.build(
+            tool_layers = self._build_tool_layers(
                 tenant_id=context.dify_context.tenant_id,
                 app_id=context.dify_context.app_id,
                 user_id=context.dify_context.user_id,
                 tools=agent_soul.tools,
-                # Thread the *real* runtime invocation source through to
-                # ToolManager so credential quotas, rate limits, and audit
-                # trails match the actual call site (DEBUGGER for draft test
-                # run, SERVICE_API / WEB_APP for published run).
                 invoke_from=context.dify_context.invoke_from,
             )
-        except WorkflowAgentPluginToolsBuildError as error:
+        except WorkflowAgentDifyToolsBuildError as error:
             raise WorkflowAgentRuntimeRequestBuildError(error.error_code, str(error)) from error
-        if tools_layer is not None or agent_soul.tools.cli_tools:
+        if tool_layers.plugin_tools is not None or tool_layers.core_tools is not None or agent_soul.tools.cli_tools:
             metadata["agent_tools"] = {
-                "dify_tool_count": len(tools_layer.tools) if tools_layer is not None else 0,
-                "dify_tool_names": [tool.name or tool.tool_name for tool in tools_layer.tools]
-                if tools_layer is not None
-                else [],
+                "dify_tool_count": len(tool_layers.exposed_tool_names()),
+                "dify_tool_names": tool_layers.exposed_tool_names(),
                 "cli_tool_count": len(agent_soul.tools.cli_tools),
             }
 
@@ -258,7 +258,8 @@ class WorkflowAgentRuntimeRequestBuilder:
                 workflow_node_job_prompt=workflow_job_prompt,
                 user_prompt=user_prompt,
                 output=self._build_output_config(node_job.declared_outputs),
-                tools=tools_layer,
+                tools=tool_layers.plugin_tools,
+                core_tools=tool_layers.core_tools,
                 knowledge=knowledge_config,
                 config_layer_config=config_layer_config,
                 ask_human_config=build_ask_human_layer_config(agent_soul),
@@ -277,6 +278,26 @@ class WorkflowAgentRuntimeRequestBuilder:
             agent_soul=agent_soul,
             node_job=node_job,
             metadata=metadata,
+        )
+
+    def _build_tool_layers(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        user_id: str | None,
+        tools: AgentSoulToolsConfig,
+        invoke_from: InvokeFrom,
+    ) -> WorkflowAgentToolLayers:
+        # Production workflow runs intentionally keep existing plugin configs on
+        # the direct `dify.plugin.tools` route. This builder emits plugin tools
+        # directly and non-plugin Dify tools through `dify.core.tools`.
+        return self._dify_tools_builder.build_layers(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            tools=tools,
+            invoke_from=invoke_from,
         )
 
     @staticmethod

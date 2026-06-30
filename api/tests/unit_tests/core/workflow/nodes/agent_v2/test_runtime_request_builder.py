@@ -1,17 +1,24 @@
 import json
 from dataclasses import replace
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
 from agenton.compositor import CompositorSessionSnapshot
+from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 from dify_agent.protocol import DIFY_AGENT_HISTORY_LAYER_ID, DIFY_AGENT_MODEL_LAYER_ID
 
-from clients.agent_backend import DIFY_CONFIG_LAYER_ID, DIFY_EXECUTION_CONTEXT_LAYER_ID, DIFY_PLUGIN_TOOLS_LAYER_ID
+from clients.agent_backend import (
+    DIFY_CONFIG_LAYER_ID,
+    DIFY_CORE_TOOLS_LAYER_ID,
+    DIFY_EXECUTION_CONTEXT_LAYER_ID,
+    DIFY_PLUGIN_TOOLS_LAYER_ID,
+)
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import build_file_reference
-from core.workflow.nodes.agent_v2.plugin_tools_builder import WorkflowAgentPluginToolsBuilder
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
 from core.workflow.nodes.agent_v2.runtime_request_builder import (
     WorkflowAgentRuntimeBuildContext,
     WorkflowAgentRuntimeRequestBuilder,
@@ -24,6 +31,7 @@ from models.agent import Agent, AgentConfigSnapshot, WorkflowAgentNodeBinding
 from models.agent_config_entities import (
     AgentSoulConfig,
     AgentSoulModelConfig,
+    AgentSoulToolsConfig,
     DeclaredArrayItem,
     DeclaredOutputChildConfig,
     DeclaredOutputConfig,
@@ -79,35 +87,65 @@ def test_agent_soul_round_trip_preserves_existing_app_feature_fields():
     assert dumped["app_features"]["more_like_this"] == {"enabled": False}
 
 
-class FakePluginToolsBuilder:
+class CapturingPluginLayerBuilder:
     def __init__(self) -> None:
         # Capture the runtime invocation source so tests can assert it was
         # threaded through from ``DifyRunContext.invoke_from`` rather than
         # hard-coded to a placeholder like ``VALIDATION``.
         self.last_invoke_from: InvokeFrom | None = None
 
-    def build(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
         assert tenant_id == "tenant-1"
         assert app_id == "app-1"
         assert user_id == "user-1"
         self.last_invoke_from = invoke_from
         if not tools.dify_tools:
-            return None
-        return DifyPluginToolsLayerConfig(
-            tools=[
-                DifyPluginToolConfig(
-                    plugin_id="langgenius/time",
-                    provider="time",
-                    tool_name="current_time",
-                    credential_type="unauthorized",
-                    name="current_time",
-                    description="Get current time.",
-                    credentials={},
-                    runtime_parameters={},
-                    parameters=[],
-                    parameters_json_schema={"type": "object", "properties": {}, "required": []},
-                )
-            ]
+            return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
+        return SimpleNamespace(
+            plugin_tools=DifyPluginToolsLayerConfig(
+                tools=[
+                    DifyPluginToolConfig(
+                        plugin_id="langgenius/time",
+                        provider="time",
+                        tool_name="current_time",
+                        credential_type="unauthorized",
+                        name="current_time",
+                        description="Get current time.",
+                        credentials={},
+                        runtime_parameters={},
+                        parameters=[],
+                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                    )
+                ]
+            ),
+            core_tools=None,
+            exposed_tool_names=lambda: ["current_time"],
+        )
+
+
+class FakeCoreLayerBuilder:
+    def build_layers(self, *, tenant_id, app_id, user_id, tools, invoke_from):
+        assert tenant_id == "tenant-1"
+        assert app_id == "app-1"
+        assert user_id == "user-1"
+        del tools, invoke_from
+        return SimpleNamespace(
+            plugin_tools=None,
+            core_tools=DifyCoreToolsLayerConfig(
+                tools=[
+                    DifyCoreToolConfig(
+                        provider_type="builtin",
+                        provider_id="audio",
+                        tool_name="transcribe",
+                        name="transcribe",
+                        description="Transcribe audio.",
+                        runtime_parameters={},
+                        parameters=[],
+                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                    )
+                ]
+            ),
+            exposed_tool_names=lambda: ["transcribe"],
         )
 
 
@@ -216,6 +254,89 @@ def test_builds_create_run_request_from_agent_soul_and_node_job():
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
     redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
     assert redacted_layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["credentials"] == "[REDACTED]"
+
+
+def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_debugger():
+    tools_builder = CapturingPluginLayerBuilder()
+    context = _context()
+    context.snapshot.config_snapshot.tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_type": "plugin",
+                    "provider_id": "langgenius/time/time",
+                    "tool_name": "current_time",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(
+        credentials_provider=FakeCredentialsProvider(),
+        dify_tools_builder=tools_builder,  # type: ignore[arg-type]
+    ).build(context)
+
+    layers = _request_layers(result)
+    assert DIFY_PLUGIN_TOOLS_LAYER_ID in layers
+    assert DIFY_CORE_TOOLS_LAYER_ID not in layers
+    assert tools_builder.last_invoke_from == InvokeFrom.DEBUGGER
+
+
+def test_build_forwards_service_api_invoke_from_to_injected_plugin_layer_builder():
+    tools_builder = CapturingPluginLayerBuilder()
+    context = _context()
+    context.snapshot.config_snapshot.tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_type": "plugin",
+                    "provider_id": "langgenius/time/time",
+                    "tool_name": "current_time",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+    context = replace(
+        context,
+        dify_context=context.dify_context.model_copy(update={"invoke_from": InvokeFrom.SERVICE_API}),
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(
+        credentials_provider=FakeCredentialsProvider(),
+        dify_tools_builder=tools_builder,  # type: ignore[arg-type]
+    ).build(context)
+
+    layers = _request_layers(result)
+    assert DIFY_PLUGIN_TOOLS_LAYER_ID in layers
+    assert DIFY_CORE_TOOLS_LAYER_ID not in layers
+    assert tools_builder.last_invoke_from == InvokeFrom.SERVICE_API
+
+
+def test_build_includes_core_tools_layer_returned_by_injected_builder():
+    context = _context()
+    context.snapshot.config_snapshot.tools = AgentSoulToolsConfig.model_validate(
+        {
+            "dify_tools": [
+                {
+                    "provider_type": "builtin",
+                    "provider_id": "audio",
+                    "tool_name": "transcribe",
+                    "credential_type": "unauthorized",
+                }
+            ]
+        }
+    )
+
+    result = WorkflowAgentRuntimeRequestBuilder(
+        credentials_provider=FakeCredentialsProvider(),
+        dify_tools_builder=FakeCoreLayerBuilder(),  # type: ignore[arg-type]
+    ).build(context)
+
+    layers = _request_layers(result)
+    assert DIFY_CORE_TOOLS_LAYER_ID in layers
+    assert DIFY_PLUGIN_TOOLS_LAYER_ID not in layers
 
 
 def test_normalizes_langgenius_model_provider_for_agent_backend_transport():
@@ -519,10 +640,10 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     )
     context = replace(context, snapshot=snapshot)
 
-    plugin_tools_builder = FakePluginToolsBuilder()
+    dify_tools_builder = CapturingPluginLayerBuilder()
     result = WorkflowAgentRuntimeRequestBuilder(
         credentials_provider=FakeCredentialsProvider(),
-        plugin_tools_builder=cast(WorkflowAgentPluginToolsBuilder, plugin_tools_builder),
+        dify_tools_builder=cast(WorkflowAgentDifyToolsBuilder, dify_tools_builder),
     ).build(context)
 
     dumped = result.request.model_dump(mode="json")
@@ -539,7 +660,7 @@ def test_builds_workflow_run_request_with_dify_plugin_tools_layer():
     # into the plugin tools builder so ToolManager attributes credential
     # quotas / rate limits / audit tags to the real call site instead of a
     # hard-coded ``VALIDATION`` placeholder.
-    assert plugin_tools_builder.last_invoke_from == context.dify_context.invoke_from
+    assert dify_tools_builder.last_invoke_from == context.dify_context.invoke_from
 
 
 def test_build_maps_agent_soul_knowledge_to_knowledge_layer_config():

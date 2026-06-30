@@ -585,12 +585,15 @@ class AgentSoulDifyToolCredentialRef(BaseModel):
 
 
 class AgentSoulDifyToolConfig(BaseModel):
-    """One Dify Plugin Tool configured on Agent Soul.
+    """One Dify tool configured on Agent Soul.
 
     The API backend prepares this persisted product shape into
-    ``DifyPluginToolConfig`` before sending a run request to Agent backend.
-    ``provider_id`` keeps compatibility with existing Agent tool config payloads;
-    new callers should send ``plugin_id`` + ``provider`` when available.
+    either ``DifyPluginToolConfig`` or ``DifyCoreToolConfig`` before sending a
+    run request to Agent backend. ``plugin`` providers keep the direct
+    ``dify.plugin.tools`` transport; ``builtin`` / ``api`` / ``workflow`` /
+    ``mcp`` providers are prepared for ``dify.core.tools``. ``provider_id``
+    keeps compatibility with existing Agent tool config payloads; new callers
+    should send ``plugin_id`` + ``provider`` when available.
     """
 
     # ``extra="ignore"`` (not ``"allow"``) so historical Agent Soul payloads
@@ -600,10 +603,10 @@ class AgentSoulDifyToolConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     enabled: bool = True
-    # Dify Plugin Tools live behind the ``PLUGIN`` provider type. ``BUILT_IN`` /
-    # ``WORKFLOW`` / ``API`` providers are not exposed to the Agent backend in
-    # this layer — keep the default narrow so a missing field surfaces as
-    # ``agent_tool_declaration_not_found`` against the correct provider table.
+    # ``plugin`` remains the default for legacy Agent Soul payloads. The runtime
+    # now also accepts ``builtin`` / ``api`` / ``workflow`` / ``mcp`` here and
+    # routes them through ``dify.core.tools``; keeping the default narrow still
+    # makes a missing field resolve against the plugin provider table.
     provider_type: str = "plugin"
     provider_id: str | None = Field(default=None, max_length=255)
     plugin_id: str | None = Field(default=None, max_length=255)

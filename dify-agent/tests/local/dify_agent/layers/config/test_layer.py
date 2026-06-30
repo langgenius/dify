@@ -91,7 +91,7 @@ def test_config_layer_prefix_prompt_includes_loaded_skill_and_file_paths() -> No
     assert "Name: guide.txt\nPull output:\n/workspace/.dify_conf/files/guide.txt" in prompt
 
 
-def test_config_layer_suffix_prompt_uses_cached_soul_context_cli_help_and_push_schema() -> None:
+def test_config_layer_suffix_prompt_uses_cached_soul_context_cli_help_and_resource_mutation_prompt() -> None:
     layer = _build_layer(writable=True)
     layer._initialize_runtime_prompt_state()
 
@@ -105,11 +105,12 @@ def test_config_layer_suffix_prompt_uses_cached_soul_context_cli_help_and_push_s
     assert "RUNTIME_KEY" in prompt
     assert "Runtime note." in prompt
     assert "`dify-agent config manifest` output" not in prompt
-    assert "Config push JSON spec" in prompt
-    assert '"properties"' in prompt
-    assert "./.dify_conf/files/guide.txt" in prompt
-    assert "$ dify-agent config push --help" in prompt
-    assert "Recommended usage reads the JSON spec from stdin" in prompt
+    assert "config push" not in prompt
+    assert "dify-agent config note push [PATH|-]" in prompt
+    assert "dify-agent config files delete NAME..." in prompt
+    assert "$ dify-agent config note push --help" in prompt
+    assert "$ dify-agent config files push --help" in prompt
+    assert "$ dify-agent config skills delete --help" in prompt
 
 
 def test_config_layer_suffix_prompt_omits_push_usage_when_config_is_not_writable() -> None:
@@ -120,8 +121,8 @@ def test_config_layer_suffix_prompt_omits_push_usage_when_config_is_not_writable
 
     assert "Agent config context from the current Agent Soul" in prompt
     assert "$ dify-agent config manifest --help" in prompt
-    assert "$ dify-agent config push --help" not in prompt
-    assert "Config push JSON spec" not in prompt
+    assert "$ dify-agent config note push --help" not in prompt
+    assert "dify-agent config note push [PATH|-]" not in prompt
     assert "Save updated build-draft config files/skills/env/note" not in prompt
 
 
@@ -131,9 +132,9 @@ def test_build_shell_pull_scripts_include_targets() -> None:
     skill_script = layer._build_shell_skill_pull_script("alpha")
     file_script = layer._build_shell_file_pull_script("guide.txt")
 
-    assert skill_script == "set -eu\ndify-agent config skill pull alpha"
+    assert skill_script == "set -eu\ndify-agent config skills pull alpha"
     assert "__DIFY_CONFIG_SKILLS_BEGIN__" not in skill_script
-    assert file_script == "set -eu\ndify-agent config file pull guide.txt"
+    assert file_script == "set -eu\ndify-agent config files pull guide.txt"
     assert "__DIFY_CONFIG_FILES_BEGIN__" not in file_script
 
 
@@ -157,9 +158,9 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
         max_active_commands = max(max_active_commands, active_commands)
         await asyncio.sleep(0)
         active_commands -= 1
-        if "skill pull" in script:
+        if "skills pull" in script:
             return _remote_result(_skill_pull_output())
-        if "file pull" in script:
+        if "files pull" in script:
             return _remote_result(_file_pull_output())
         raise AssertionError(f"unexpected script: {script}")
 
@@ -170,13 +171,13 @@ async def test_on_context_create_computes_runtime_fields_and_pulls_mentioned_ass
     assert max_active_commands > 1
     assert len(captured_scripts) == 2
     assert sorted(captured_scripts) == [
-        "set -eu\ndify-agent config file pull guide.txt",
-        "set -eu\ndify-agent config skill pull alpha",
+        "set -eu\ndify-agent config files pull guide.txt",
+        "set -eu\ndify-agent config skills pull alpha",
     ]
     assert layer.runtime_state.pulled_skill_outputs == {"alpha": "/workspace/.dify_conf/skills/alpha\n# Alpha\nUse it."}
     assert layer.runtime_state.pulled_file_outputs == {"guide.txt": "/workspace/.dify_conf/files/guide.txt"}
-    assert "dify-agent config push --help" in layer.runtime_state.config_cli_help
-    assert "ConfigPushSpec" in layer.runtime_state.push_spec_json_schema
+    assert "dify-agent config note push --help" in layer.runtime_state.config_cli_help
+    assert layer.runtime_state.push_spec_json_schema == ""
 
 
 @pytest.mark.anyio
@@ -205,7 +206,7 @@ async def test_on_context_create_raises_when_shell_output_is_truncated(
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
         del self, inject_agent_stub_env, timeout
-        if "skill pull" in script:
+        if "skills pull" in script:
             return _remote_result(_skill_pull_output(), output_complete=False, incomplete_reason="output_limit")
         return _remote_result(_file_pull_output())
 
@@ -223,7 +224,7 @@ async def test_on_context_create_raises_when_mentioned_skill_is_missing(
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
         del self, inject_agent_stub_env, timeout
-        if "skill pull" in script:
+        if "skills pull" in script:
             return _remote_result(_skill_pull_output(include_skill=False))
         return _remote_result(_file_pull_output())
 
@@ -241,7 +242,7 @@ async def test_on_context_create_raises_when_mentioned_file_is_missing(
 
     async def fake_run_remote_script(self, script: str, *, inject_agent_stub_env: bool = False, timeout: float = 10.0):
         del self, inject_agent_stub_env, timeout
-        if "skill pull" in script:
+        if "skills pull" in script:
             return _remote_result(_skill_pull_output())
         return _remote_result(_file_pull_output(include_file=False))
 

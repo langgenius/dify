@@ -1,17 +1,17 @@
 from __future__ import annotations
 
 import io
-import json
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
 from dify_agent.agent_stub.cli import _config as config_cli
 from dify_agent.agent_stub.cli._env import AgentStubEnvironment
 from dify_agent.agent_stub.client._errors import AgentStubValidationError
-from dify_agent.agent_stub.protocol.agent_stub import AgentStubConfigManifestResponse
+from dify_agent.agent_stub.protocol.agent_stub import AgentStubConfigManifestResponse, AgentStubConfigPushRequest
 
 
 def _manifest_payload() -> AgentStubConfigManifestResponse:
@@ -108,41 +108,152 @@ def test_pull_config_env_and_note_use_hidden_default_dir(
     assert note_path.read_text(encoding="utf-8") == "Use carefully."
 
 
-def test_push_config_from_environment_builds_request_from_files_skills_env_and_note(
+def test_push_config_note_from_environment_reads_default_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    note_path = tmp_path / ".dify_conf" / "note.md"
+    note_path.parent.mkdir()
+    note_path.write_text("hello", encoding="utf-8")
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    response = config_cli.push_config_note_from_environment(None)
+
+    assert response.agent_id == "agent-1"
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert request.note == "hello"
+    assert request.env_text is None
+    assert request.files == []
+    assert request.skills == []
+
+
+def test_push_config_note_from_environment_reads_explicit_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    note_path = tmp_path / "note.md"
+    note_path.write_text("explicit", encoding="utf-8")
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.push_config_note_from_environment(str(note_path))
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert request.note == "explicit"
+
+
+def test_push_config_note_from_environment_reads_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+    monkeypatch.setattr(config_cli.os, "dup", lambda _fd: 99)
+    monkeypatch.setattr(config_cli.os, "fdopen", lambda _fd, encoding: io.StringIO("from-stdin"))
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.push_config_note_from_environment("-")
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert request.note == "from-stdin"
+
+
+def test_push_config_env_from_environment_reads_default_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.chdir(tmp_path)
+    env_path = tmp_path / ".dify_conf" / ".env"
+    env_path.parent.mkdir()
+    env_path.write_text("API_KEY=value\n", encoding="utf-8")
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.push_config_env_from_environment(None)
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert request.env_text == "API_KEY=value\n"
+    assert request.note is None
+
+
+def test_push_config_env_from_environment_reads_explicit_file(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    env_path = tmp_path / "custom.env"
+    env_path.write_text("API_KEY=custom\n", encoding="utf-8")
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.push_config_env_from_environment(str(env_path))
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert request.env_text == "API_KEY=custom\n"
+
+
+def test_push_config_env_from_environment_reads_stdin(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+    monkeypatch.setattr(config_cli.os, "dup", lambda _fd: 99)
+    monkeypatch.setattr(config_cli.os, "fdopen", lambda _fd, encoding: io.StringIO("API_KEY=stdin\n"))
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.push_config_env_from_environment("-")
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert request.env_text == "API_KEY=stdin\n"
+
+
+def test_push_config_files_from_environment_builds_upload_items(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
     file_path = tmp_path / "guide.txt"
     file_path.write_text("guide", encoding="utf-8")
-    skill_dir = tmp_path / "alpha"
-    skill_dir.mkdir()
-    (skill_dir / "SKILL.md").write_text("# Alpha\n", encoding="utf-8")
-    env_path = tmp_path / ".env"
-    env_path.write_text("API_KEY=value\n", encoding="utf-8")
-    note_path = tmp_path / "note.md"
-    note_path.write_text("hello", encoding="utf-8")
-    spec_path = tmp_path / "push.json"
-    spec_path.write_text(
-        json.dumps(
-            {
-                "files": [str(file_path), {"name": "old.txt"}],
-                "skills": [str(skill_dir), {"name": "old-skill"}],
-                "env": str(env_path),
-                "note": str(note_path),
-            }
-        ),
-        encoding="utf-8",
-    )
-
-    uploaded_paths: list[str] = []
-
-    def fake_upload_tool_file_resource_from_environment(*, path: str):
-        uploaded_paths.append(path)
-        return SimpleNamespace(tool_file_id=f"tool-file-{len(uploaded_paths)}")
-
     monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
     monkeypatch.setattr(
-        config_cli, "upload_tool_file_resource_from_environment", fake_upload_tool_file_resource_from_environment
+        config_cli,
+        "upload_tool_file_resource_from_environment",
+        lambda *, path: SimpleNamespace(tool_file_id=f"tool-file:{Path(path).name}"),
     )
 
     captured: dict[str, object] = {}
@@ -153,27 +264,117 @@ def test_push_config_from_environment_builds_request_from_files_skills_env_and_n
 
     monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
 
-    response = config_cli.push_config_from_environment(str(spec_path))
+    config_cli.push_config_files_from_environment([str(file_path)], None)
 
-    assert response.agent_id == "agent-1"
-    request = captured["request"]
+    request = cast(AgentStubConfigPushRequest, captured["request"])
     assert request.files[0].name == "guide.txt"
-    assert request.files[0].file_ref.id == "tool-file-1"
-    assert request.files[1].name == "old.txt"
-    assert request.files[1].file_ref is None
+    assert request.files[0].file_ref is not None
+    assert request.files[0].file_ref.id == "tool-file:guide.txt"
+    assert request.skills == []
+
+
+def test_push_config_files_from_environment_validates_name_usage(tmp_path: Path) -> None:
+    first = tmp_path / "a.txt"
+    second = tmp_path / "b.txt"
+    first.write_text("a", encoding="utf-8")
+    second.write_text("b", encoding="utf-8")
+
+    with pytest.raises(AgentStubValidationError, match="--name requires exactly one PATH"):
+        config_cli.push_config_files_from_environment([str(first), str(second)], "renamed.txt")
+
+
+def test_push_config_files_from_environment_rejects_empty_paths() -> None:
+    with pytest.raises(AgentStubValidationError, match="at least one file path is required"):
+        config_cli.push_config_files_from_environment([], None)
+
+
+def test_delete_config_files_from_environment_builds_delete_items(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.delete_config_files_from_environment(["old.txt", "legacy.txt"])
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert [item.name for item in request.files] == ["old.txt", "legacy.txt"]
+    assert all(item.file_ref is None for item in request.files)
+
+
+def test_delete_config_files_from_environment_rejects_empty_names() -> None:
+    with pytest.raises(AgentStubValidationError, match="at least one file name is required"):
+        config_cli.delete_config_files_from_environment([])
+
+
+def test_push_config_skills_from_environment_builds_archive_upload_items(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    skill_dir = tmp_path / "alpha"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text("# Alpha\n", encoding="utf-8")
+    uploaded_paths: list[str] = []
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+
+    def fake_upload_tool_file_resource_from_environment(*, path: str):
+        uploaded_paths.append(path)
+        return SimpleNamespace(tool_file_id=f"tool-file-{len(uploaded_paths)}")
+
+    monkeypatch.setattr(
+        config_cli,
+        "upload_tool_file_resource_from_environment",
+        fake_upload_tool_file_resource_from_environment,
+    )
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.push_config_skills_from_environment([str(skill_dir)])
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
     assert request.skills[0].name == "alpha"
-    assert request.skills[0].file_ref.id == "tool-file-2"
-    assert request.skills[1].name == "old-skill"
-    assert request.skills[1].file_ref is None
-    assert request.env_text == "API_KEY=value\n"
-    assert request.note == "hello"
-    assert uploaded_paths[0] == str(file_path)
-    assert uploaded_paths[1].endswith("/alpha.zip")
+    assert request.skills[0].file_ref is not None
+    assert request.skills[0].file_ref.id == "tool-file-1"
+    assert len(uploaded_paths) == 1
+    assert uploaded_paths[0].endswith("/alpha.zip")
 
 
-def test_prepare_push_items_rejects_delete_entries_without_name() -> None:
-    with pytest.raises(AgentStubValidationError, match="delete entries require a name"):
-        config_cli._prepare_push_items([{}], kind="file")
+def test_push_config_skills_from_environment_rejects_empty_paths() -> None:
+    with pytest.raises(AgentStubValidationError, match="at least one skill directory is required"):
+        config_cli.push_config_skills_from_environment([])
+
+
+def test_delete_config_skills_from_environment_builds_delete_items(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config_cli, "read_agent_stub_environment", lambda: _environment())
+
+    captured: dict[str, object] = {}
+
+    def fake_push_sync(**kwargs):
+        captured.update(kwargs)
+        return _manifest_payload()
+
+    monkeypatch.setattr(config_cli, "request_agent_stub_config_push_sync", fake_push_sync)
+
+    config_cli.delete_config_skills_from_environment(["alpha", "beta"])
+
+    request = cast(AgentStubConfigPushRequest, captured["request"])
+    assert [item.name for item in request.skills] == ["alpha", "beta"]
+    assert all(item.file_ref is None for item in request.skills)
+
+
+def test_delete_config_skills_from_environment_rejects_empty_names() -> None:
+    with pytest.raises(AgentStubValidationError, match="at least one skill name is required"):
+        config_cli.delete_config_skills_from_environment([])
 
 
 def test_build_file_push_item_rejects_non_regular_files(tmp_path: Path) -> None:
@@ -187,12 +388,3 @@ def test_build_skill_push_item_rejects_missing_skill_md(tmp_path: Path) -> None:
 
     with pytest.raises(AgentStubValidationError, match="must contain SKILL.md"):
         config_cli._build_skill_push_item(item=config_cli._PreparedPushItem(name="alpha", path=skill_dir))
-
-
-def test_build_skill_push_item_rejects_directory_name_mismatch(tmp_path: Path) -> None:
-    skill_dir = tmp_path / "alpha"
-    skill_dir.mkdir()
-    (skill_dir / "SKILL.md").write_text("# Alpha\n", encoding="utf-8")
-
-    with pytest.raises(AgentStubValidationError, match="must match the directory name"):
-        config_cli._build_skill_push_item(item=config_cli._PreparedPushItem(name="beta", path=skill_dir))

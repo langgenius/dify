@@ -21,6 +21,7 @@ from agenton_collections.layers.plain import PLAIN_PROMPT_LAYER_TYPE_ID, PromptL
 from agenton_collections.layers.pydantic_ai import PYDANTIC_AI_HISTORY_LAYER_TYPE_ID
 from dify_agent.layers.ask_human import DIFY_ASK_HUMAN_LAYER_TYPE_ID, DifyAskHumanLayerConfig
 from dify_agent.layers.config import DIFY_CONFIG_LAYER_TYPE_ID, DifyConfigLayerConfig
+from dify_agent.layers.dify_core_tools import DIFY_CORE_TOOLS_LAYER_TYPE_ID, DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import (
     DIFY_PLUGIN_LLM_LAYER_TYPE_ID,
     DIFY_PLUGIN_TOOLS_LAYER_TYPE_ID,
@@ -58,6 +59,7 @@ DIFY_EXECUTION_CONTEXT_LAYER_ID = "execution_context"
 DIFY_CONFIG_LAYER_ID = "config"
 DIFY_DRIVE_LAYER_ID = "drive"
 DIFY_PLUGIN_TOOLS_LAYER_ID = "tools"
+DIFY_CORE_TOOLS_LAYER_ID = "core_tools"
 DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
 DIFY_ASK_HUMAN_LAYER_ID = "ask_human"
 DIFY_SHELL_LAYER_ID = "shell"
@@ -165,6 +167,7 @@ class AgentBackendWorkflowNodeRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
@@ -213,6 +216,7 @@ class AgentBackendAgentAppRunInput(BaseModel):
     idempotency_key: str | None = None
     output: AgentBackendOutputConfig | None = None
     tools: DifyPluginToolsLayerConfig | None = None
+    core_tools: DifyCoreToolsLayerConfig | None = None
     knowledge: DifyKnowledgeBaseLayerConfig | None = None
     config_layer_config: DifyConfigLayerConfig | None = None
     # Drive Skills & Files declaration (dify.drive) — an index the agent pulls
@@ -251,8 +255,9 @@ class AgentBackendRunRequestBuilder:
 
         Layer graph: optional Agent Soul system prompt → user prompt →
         execution context → optional history (multi-turn) → LLM → optional
-        plugin tools / knowledge search → optional structured output. Mirrors the workflow-node
-        layer ordering minus the workflow-job / previous-node prompt.
+        plugin-direct tools / core-routed tools / knowledge search →
+        optional structured output. Mirrors the workflow-node layer ordering
+        minus the workflow-job / previous-node prompt.
         """
         layers: list[RunLayerSpec] = []
         if run_input.agent_soul_prompt:
@@ -359,6 +364,17 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
+        if run_input.core_tools is not None and run_input.core_tools.tools:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_CORE_TOOLS_LAYER_ID,
+                    type=DIFY_CORE_TOOLS_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.core_tools,
+                )
+            )
+
         if run_input.knowledge is not None and run_input.knowledge.sets:
             layers.append(
                 RunLayerSpec(
@@ -424,7 +440,8 @@ class AgentBackendRunRequestBuilder:
         non-plugin layer graph that produced the snapshot. Plugin layers
         (``dify.plugin.llm``, ``dify.plugin.tools``) are excluded from both the
         composition and the snapshot before submission because their configs
-        require credentials that are not persisted between runs.
+        may carry credentials or runtime-only declarations that are not
+        persisted between runs.
         """
         if not runtime_layer_specs:
             raise ValueError(
@@ -457,8 +474,9 @@ class AgentBackendRunRequestBuilder:
         """Build a workflow Agent Node run request without defining another wire schema.
 
         Layer graph mirrors the workflow surface: prompts → execution context →
-        optional drive/history → LLM → optional plugin tools / knowledge search
-        → optional auxiliary layers such as ask_human, shell, and structured output.
+        optional drive/history → LLM → optional plugin-direct tools /
+        core-routed tools / knowledge search → optional auxiliary layers such
+        as ask_human, shell, and structured output.
         """
         layers: list[RunLayerSpec] = []
         if run_input.agent_soul_prompt:
@@ -570,6 +588,17 @@ class AgentBackendRunRequestBuilder:
                     deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
                     metadata=run_input.metadata,
                     config=run_input.tools,
+                )
+            )
+
+        if run_input.core_tools is not None and run_input.core_tools.tools:
+            layers.append(
+                RunLayerSpec(
+                    name=DIFY_CORE_TOOLS_LAYER_ID,
+                    type=DIFY_CORE_TOOLS_LAYER_TYPE_ID,
+                    deps={"execution_context": DIFY_EXECUTION_CONTEXT_LAYER_ID},
+                    metadata=run_input.metadata,
+                    config=run_input.core_tools,
                 )
             )
 

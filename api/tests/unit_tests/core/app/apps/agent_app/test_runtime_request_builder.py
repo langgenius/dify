@@ -7,10 +7,14 @@ from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
 from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.dify_plugin import DifyPluginToolConfig, DifyPluginToolsLayerConfig
 
 from clients.agent_backend import (
     DIFY_CONFIG_LAYER_ID,
+    DIFY_CORE_TOOLS_LAYER_ID,
+    DIFY_PLUGIN_TOOLS_LAYER_ID,
     AgentBackendAgentAppRunInput,
     AgentBackendModelConfig,
     AgentBackendRunRequestBuilder,
@@ -82,8 +86,56 @@ class _FakeCredentialsProvider:
 
 
 class _NoToolsBuilder:
-    def build(self, **kwargs):
+    def build_layers(self, **kwargs):
         del kwargs
+        return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
+
+
+class _PluginLayerBuilder:
+    def build_layers(self, **kwargs):
+        return SimpleNamespace(
+            plugin_tools=DifyPluginToolsLayerConfig(
+                tools=[
+                    DifyPluginToolConfig(
+                        plugin_id="langgenius/time",
+                        provider="time",
+                        tool_name="current_time",
+                        credential_type="unauthorized",
+                        name="current_time",
+                        description="Get current time.",
+                        credentials={},
+                        runtime_parameters={},
+                        parameters=[],
+                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                    )
+                ]
+            ),
+            core_tools=None,
+            exposed_tool_names=lambda: ["current_time"],
+        )
+
+
+class _CoreLayerBuilder:
+    def build_layers(self, **kwargs):
+        del kwargs
+        return SimpleNamespace(
+            plugin_tools=None,
+            core_tools=DifyCoreToolsLayerConfig(
+                tools=[
+                    DifyCoreToolConfig(
+                        provider_type="builtin",
+                        provider_id="audio",
+                        tool_name="transcribe",
+                        name="transcribe",
+                        description="Transcribe audio.",
+                        runtime_parameters={},
+                        parameters=[],
+                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                    )
+                ]
+            ),
+            exposed_tool_names=lambda: ["transcribe"],
+        )
 
 
 def _ctx(
@@ -128,7 +180,7 @@ class TestAgentAppRuntimeRequestBuilder:
     def test_build_maps_soul_to_run_request(self):
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
         result = builder.build(_ctx(_soul_with_model()))
 
@@ -157,6 +209,68 @@ class TestAgentAppRuntimeRequestBuilder:
         assert result.redacted_request["composition"]["layers"][-1]["config"]["credentials"] == "[REDACTED]"
         assert result.metadata["conversation_id"] == "conv-1"
 
+    def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_draft(self):
+        soul = _soul_with_model()
+        soul.tools.dify_tools = [
+            {
+                "provider_type": "plugin",
+                "provider_id": "langgenius/time/time",
+                "tool_name": "current_time",
+            }
+        ]
+        tools_builder = _PluginLayerBuilder()
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=tools_builder,  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul, agent_config_version_kind="draft"))
+
+        names = [layer.name for layer in result.request.composition.layers]
+        assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
+        assert DIFY_CORE_TOOLS_LAYER_ID not in names
+
+    def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_snapshot(self):
+        soul = _soul_with_model()
+        soul.tools.dify_tools = [
+            {
+                "provider_type": "plugin",
+                "provider_id": "langgenius/time/time",
+                "tool_name": "current_time",
+            }
+        ]
+        tools_builder = _PluginLayerBuilder()
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=tools_builder,  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul, agent_config_version_kind="snapshot"))
+
+        names = [layer.name for layer in result.request.composition.layers]
+        assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
+        assert DIFY_CORE_TOOLS_LAYER_ID not in names
+
+    def test_build_includes_core_tools_layer_returned_by_injected_builder(self):
+        soul = _soul_with_model()
+        soul.tools.dify_tools = [
+            {
+                "provider_type": "builtin",
+                "provider_id": "audio",
+                "tool_name": "transcribe",
+            }
+        ]
+        builder = AgentAppRuntimeRequestBuilder(
+            credentials_provider=_FakeCredentialsProvider(),
+            dify_tools_builder=_CoreLayerBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        names = [layer.name for layer in result.request.composition.layers]
+        assert DIFY_CORE_TOOLS_LAYER_ID in names
+        assert DIFY_PLUGIN_TOOLS_LAYER_ID not in names
+
     def test_build_normalizes_marketplace_model_plugin_id(self):
         soul = _soul_with_model()
         soul.model.plugin_id = (
@@ -164,7 +278,7 @@ class TestAgentAppRuntimeRequestBuilder:
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(soul))
@@ -200,7 +314,7 @@ class TestAgentAppRuntimeRequestBuilder:
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(soul))
@@ -219,7 +333,7 @@ class TestAgentAppRuntimeRequestBuilder:
     def test_build_raises_when_model_missing(self):
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
         with pytest.raises(AgentAppRuntimeRequestBuildError) as exc:
             builder.build(_ctx(AgentSoulConfig()))
@@ -241,7 +355,7 @@ class TestAgentAppRuntimeRequestBuilder:
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(soul))
@@ -286,7 +400,7 @@ class TestAgentAppConfigLayer:
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(_soul_with_model_and_skill()))
@@ -316,7 +430,7 @@ class TestAgentAppConfigLayer:
         monkeypatch.setattr("core.app.apps.agent_app.runtime_request_builder.dify_config.AGENT_SHELL_ENABLED", True)
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(_soul_with_model()))
@@ -332,7 +446,7 @@ class TestAgentAppConfigLayer:
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(_soul_with_model_and_skill(), agent_config_version_kind="build_draft"))
@@ -362,7 +476,7 @@ class TestAgentAppConfigLayer:
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
         result = builder.build(_ctx(_soul_with_model_and_skill()))
         assert all(layer.name != DIFY_CONFIG_LAYER_ID for layer in result.request.composition.layers)
@@ -393,7 +507,7 @@ class TestAgentAppConfigLayer:
         soul.prompt.system_prompt = system_prompt
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(soul))
@@ -415,7 +529,7 @@ class TestAgentAppConfigLayer:
         )
         builder = AgentAppRuntimeRequestBuilder(
             credentials_provider=_FakeCredentialsProvider(),
-            plugin_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
         )
 
         result = builder.build(_ctx(soul))
