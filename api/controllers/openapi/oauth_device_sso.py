@@ -13,6 +13,7 @@ handlers do redirects + cookie kwargs that don't fit the Resource shape.
 from __future__ import annotations
 
 import logging
+import re
 import secrets
 from dataclasses import dataclass
 from urllib.parse import urlencode
@@ -77,11 +78,16 @@ _SSO_COMPLETE_PATH = "/openapi/v1/oauth/device/sso-complete"
 
 _ALLOWED_SSO_ERRORS = {"sso_failed", "email_belongs_to_dify_account"}
 
+# user_code only ever reaches the redirect as a urlencoded query value; the
+# charset bound additionally forbids the path/scheme separators a redirection
+# attack would need, so an untrusted value cannot escape the fixed /device path.
+_USER_CODE_RE = re.compile(r"\A[A-Z0-9-]{1,16}\Z")
+
 
 def _device_error_redirect(code: str, user_code: str | None = None):
     safe_code = code if code in _ALLOWED_SSO_ERRORS else "sso_failed"
     params: dict[str, str] = {"sso_error": safe_code}
-    if user_code:
+    if user_code and _USER_CODE_RE.match(user_code):
         params["user_code"] = user_code
     return redirect(f"/device?{urlencode(params)}", code=302)
 

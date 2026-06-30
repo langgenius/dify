@@ -125,6 +125,18 @@ def test_device_error_redirect_omits_empty_user_code():
     assert "user_code=" not in resp.headers["Location"]
 
 
+def test_device_error_redirect_drops_malformed_user_code():
+    from controllers.openapi import oauth_device_sso
+
+    app = Flask(__name__)
+    with app.test_request_context():
+        resp = oauth_device_sso._device_error_redirect("sso_failed", "https://evil.example/")
+    loc = resp.headers["Location"]
+    assert loc.startswith("/device?")
+    assert "user_code=" not in loc
+    assert "evil" not in loc
+
+
 # ---------------------------------------------------------------------------
 # sso_complete redirect behaviour
 # ---------------------------------------------------------------------------
@@ -148,7 +160,9 @@ def test_sso_complete_relays_inbound_sso_error(ee_feat, openapi_app):
     )
     assert resp.status_code == 302
     loc = resp.headers["Location"]
-    assert "/device?" in loc and "sso_error=sso_failed" in loc and "user_code=ABCD-1234" in loc
+    assert "/device?" in loc
+    assert "sso_error=sso_failed" in loc
+    assert "user_code=ABCD-1234" in loc
 
 
 @patch("libs.device_flow_security.FeatureService.get_system_features")
