@@ -16,10 +16,13 @@ import {
   useTriggerSubscriptions,
   useUpdateTriggerSubscription,
   useUpdateTriggerSubscriptionBuilder,
+  useVerifyAndUpdateTriggerSubscriptionBuilder,
+  useVerifyTriggerSubscription,
 } from '../use-triggers'
 
 const {
   mockBaseGet,
+  mockBasePost,
   mockBuildBuilder,
   mockConfigureOAuth,
   mockCreateBuilder,
@@ -36,6 +39,7 @@ const {
   mockUseInvalid,
 } = vi.hoisted(() => ({
   mockBaseGet: vi.fn(),
+  mockBasePost: vi.fn(),
   mockBuildBuilder: vi.fn(),
   mockConfigureOAuth: vi.fn(),
   mockCreateBuilder: vi.fn(),
@@ -54,7 +58,7 @@ const {
 
 vi.mock('../base', () => ({
   get: mockBaseGet,
-  post: vi.fn(),
+  post: mockBasePost,
 }))
 
 vi.mock('../use-base', () => ({
@@ -400,6 +404,38 @@ describe('use-triggers generated client hooks', () => {
     expect(mockBaseGet).toHaveBeenCalledWith(
       '/workspaces/current/trigger-provider/provider-a/subscriptions/oauth/authorize',
       {},
+      { silent: true },
+    )
+  })
+
+  it('should verify trigger subscriptions through legacy endpoints while using generated mutation keys', async () => {
+    mockBasePost.mockResolvedValue({ verified: true })
+
+    const wrapper = createWrapper()
+    const verifyAndUpdateBuilderMutation = renderHook(() => useVerifyAndUpdateTriggerSubscriptionBuilder(), { wrapper })
+    const verifySubscriptionMutation = renderHook(() => useVerifyTriggerSubscription(), { wrapper })
+
+    await act(async () => {
+      await verifyAndUpdateBuilderMutation.result.current.mutateAsync({
+        credentials: { token: 'secret' },
+        provider: 'provider-a',
+        subscriptionBuilderId: 'builder-1',
+      })
+      await verifySubscriptionMutation.result.current.mutateAsync({
+        credentials: { token: 'secret' },
+        provider: 'provider-a',
+        subscriptionId: 'sub-1',
+      })
+    })
+
+    expect(mockBasePost).toHaveBeenCalledWith(
+      '/workspaces/current/trigger-provider/provider-a/subscriptions/builder/verify-and-update/builder-1',
+      { body: { credentials: { token: 'secret' } } },
+      { silent: true },
+    )
+    expect(mockBasePost).toHaveBeenCalledWith(
+      '/workspaces/current/trigger-provider/provider-a/subscriptions/verify/sub-1',
+      { body: { credentials: { token: 'secret' } } },
       { silent: true },
     )
   })
