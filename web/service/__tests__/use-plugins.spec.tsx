@@ -4,6 +4,7 @@ import type { Permissions, PluginTaskStart } from '@/app/components/plugins/type
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import { AUTO_UPDATE_MODE, AUTO_UPDATE_STRATEGY } from '@/app/components/plugins/reference-setting-modal/auto-update-setting/types'
 import { PermissionType, PluginCategoryEnum, PluginSource, TaskStatus } from '@/app/components/plugins/types'
 import {
@@ -193,7 +194,16 @@ const createPluginInstallation = (): PluginInstallationItemResponse => ({
           client_schema: [],
           credentials_schema: [],
         },
-        parameters: [],
+        parameters: [
+          {
+            name: 'max_retries',
+            label: { en_US: 'Max retries' },
+            type: 'number',
+            default: 3,
+            required: false,
+            multiple: false,
+          },
+        ],
       },
       subscription_schema: [
         {
@@ -226,6 +236,7 @@ describe('normalizeInstalledPluginDetail', () => {
     })
     expect(detail.declaration.trigger.identity.name).toBe('github-trigger')
     expect(detail.declaration.trigger.events[0]?.parameters[0]?.default).toBe(0)
+    expect(detail.declaration.trigger.subscription_constructor.parameters[0]?.type).toBe(FormTypeEnum.textNumber)
     expect(detail.declaration.trigger.subscription_schema[0]?.name).toBe('repository')
   })
 })

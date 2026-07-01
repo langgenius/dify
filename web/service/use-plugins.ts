@@ -268,8 +268,12 @@ const normalizeFormType = (type: unknown): FormTypeEnum => {
     case FormTypeEnum.select:
       return FormTypeEnum.select
     case FormTypeEnum.textNumber:
+    case 'number':
       return FormTypeEnum.textNumber
     case FormTypeEnum.textInput:
+    case 'string':
+    case 'array':
+    case 'object':
       return FormTypeEnum.textInput
   }
   return FormTypeEnum.textInput
