@@ -13,9 +13,10 @@
   - Shells out to local `ast-grep` first, with `uvx` fallback if local binary is absent.
   - Follow-up fix: restricts scanning to Python source paths only (`.py` and `.pyi`), so changed non-Python files are ignored even if they contain `getattr(...)` text.
 - Added `/Users/qg/.codex/worktrees/4365/dify-ai-playground/scripts/ast_grep_rules/no_new_getattr.yml`.
-  - Simple AST rule matching `getattr($OBJ, $NAME, $$$REST)` in Python.
+  - AST rule now matches both `getattr($OBJ, $NAME)` and `getattr($OBJ, $NAME, $$$REST)` in Python.
 - Updated `/Users/qg/.codex/worktrees/4365/dify-ai-playground/api/tests/unit_tests/commands/test_check_no_new_getattr.py`.
   - Added a regression test proving a changed non-Python file containing `getattr(...)` text does not fail the guard.
+  - Added regression coverage for 2-arg `getattr` in both CI mode and pre-commit staged mode.
 
 ## Files Changed
 
@@ -102,6 +103,47 @@ Observed result:
 10 passed, 1 warning in 3.54s
 ```
 
+## Critical Follow-up TDD Evidence
+
+### RED Before 2-Arg Rule Fix
+
+Command used:
+
+```bash
+uv run --project api pytest -o addopts='' api/tests/unit_tests/commands/test_check_no_new_getattr.py -q
+```
+
+Observed result after adding the 2-arg regression tests:
+
+```text
+..F..F......                                                             [100%]
+2 failed, 10 passed, 1 warning in 4.31s
+```
+
+Representative failures:
+
+```text
+FAILED api/tests/unit_tests/commands/test_check_no_new_getattr.py::test_ci_mode_fails_for_new_file_with_two_arg_getattr
+FAILED api/tests/unit_tests/commands/test_check_no_new_getattr.py::test_pre_commit_mode_fails_for_staged_two_arg_getattr
+```
+
+Both failures were false negatives: the script returned `0` for new 2-arg `getattr(...)` usage because the ast-grep rule only matched the 3-arg form.
+
+### GREEN After 2-Arg Rule Fix
+
+Command used:
+
+```bash
+uv run --project api pytest -o addopts='' api/tests/unit_tests/commands/test_check_no_new_getattr.py -q
+```
+
+Observed result:
+
+```text
+............                                                             [100%]
+12 passed, 1 warning in 4.16s
+```
+
 ## Additional Regression
 
 Command used:
@@ -113,7 +155,7 @@ uv run --project api pytest -o addopts='' api/tests/unit_tests/commands -q
 Observed result:
 
 ```text
-110 passed, 493 warnings in 8.34s
+112 passed, 493 warnings in 9.37s
 ```
 
 Notes:
@@ -127,6 +169,7 @@ Notes:
 - The staged-content behavior is explicit in pre-commit mode and does not read the unstaged working tree.
 - The only functional correction needed after the first implementation pass was binding Git commands to the runtime working directory instead of the repository containing the wrapper script. After that change, the full contract suite passed.
 - The follow-up fix keeps the AST rule unchanged and narrows scope at the wrapper boundary, which is the right place to enforce "Python source files only" without complicating the rule logic.
+- The critical follow-up fix broadens matching at the rule layer, which is the right boundary for 2-arg vs 3-arg `getattr` syntax and keeps the wrapper logic unchanged.
 
 ## Concerns
 
