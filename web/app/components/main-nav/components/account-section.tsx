@@ -23,7 +23,7 @@ const AccountSection = ({
           aria-label={ariaLabel}
           title={userProfile.name}
           className={cn(
-            'text-components-main-nav-text flex min-w-0 shrink items-center rounded-full text-left transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
+            'flex min-w-0 shrink items-center rounded-full text-left text-components-main-nav-text transition-colors hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden focus-visible:ring-inset',
             compact ? 'justify-center p-1' : 'max-w-[180px] gap-3 py-1 pr-4 pl-1',
             isOpen && 'bg-state-base-hover',
           )}

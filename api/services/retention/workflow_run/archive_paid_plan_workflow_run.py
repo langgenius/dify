@@ -5,8 +5,8 @@ This service archives workflow run logs for paid plan users older than the confi
 90 days) to S3-compatible storage.
 
 Archive V2 writes bundle-level Parquet objects. A bundle contains many workflow runs and their related table rows.
-Bundle metadata lives in the object-store manifest instead of a database table, so archive/delete/restore does not move
-the large-table retention problem into another OLTP table.
+Bundle metadata lives in the object-store manifest as the recoverable source of truth. Completed bundles are also
+mirrored into a small database index so console listing and download jobs do not list object storage online.
 
 Archive campaigns should use fixed absolute UTC windows for every tenant-prefix/shard execution. Relative windows are
 evaluated at process start and are not safe for multi-day rollout because each command would scan a different window.
@@ -64,6 +64,12 @@ from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowN
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
+from services.retention.workflow_run.archive_bundle_index import (
+    ArchiveBundleManifest,
+    ArchiveBundleTableManifestEntry,
+    decode_archive_bundle_manifest,
+    upsert_archive_bundle_index_from_manifest,
+)
 from services.retention.workflow_run.constants import (
     ARCHIVE_BUNDLE_FORMAT,
     ARCHIVE_BUNDLE_INDEX_NAME,
@@ -575,6 +581,7 @@ class WorkflowRunArchiver:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
                 if storage.object_exists(self._get_manifest_object_key(identity)):
                     self._write_bundle_index(storage, identity)
+                    self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
                     result.error = "bundle already archived"
@@ -598,6 +605,7 @@ class WorkflowRunArchiver:
                 result.run_count = len(runs)
                 if storage.object_exists(self._get_manifest_object_key(identity)):
                     self._write_bundle_index(storage, identity)
+                    self._sync_existing_bundle_index(session, storage, identity)
                     result.success = True
                     result.skipped = True
                     result.error = "filtered bundle already archived"
@@ -629,6 +637,8 @@ class WorkflowRunArchiver:
                     storage.put_object(self._get_table_object_key(identity, table_name), payload)
                 storage.put_object(self._get_manifest_object_key(identity), manifest_data)
                 self._merge_bundle_manifest_into_index(storage, identity, [run.id for run in runs])
+                manifest = decode_archive_bundle_manifest(manifest_data)
+                upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
                 session.commit()
 
                 logger.info(
@@ -651,6 +661,23 @@ class WorkflowRunArchiver:
 
         result.elapsed_time = time.time() - start_time
         return result
+
+    def _sync_existing_bundle_index(
+        self,
+        session: Session,
+        storage: ArchiveStorage,
+        identity: ArchiveBundleIdentity,
+    ) -> None:
+        """Best-effort DB index sync for a bundle whose manifest already exists in archive storage."""
+        manifest_key = self._get_manifest_object_key(identity)
+        try:
+            manifest_data = storage.get_object(manifest_key)
+            manifest = decode_archive_bundle_manifest(manifest_data)
+            upsert_archive_bundle_index_from_manifest(session, manifest, len(manifest_data))
+            session.commit()
+        except Exception:
+            session.rollback()
+            logger.warning("Failed to sync workflow archive bundle index for %s", manifest_key, exc_info=True)
 
     def _lock_runs_for_archive(
         self,
@@ -779,9 +806,9 @@ class WorkflowRunArchiver:
         identity: ArchiveBundleIdentity,
         runs: Sequence[WorkflowRun],
         table_stats: list[TableStats],
-    ) -> ArchiveManifestDict:
+    ) -> ArchiveBundleManifest:
         """Generate a manifest for the archived workflow run bundle."""
-        tables: dict[str, TableStatsManifestEntry] = {
+        tables: dict[str, ArchiveBundleTableManifestEntry] = {
             stat.table_name: {
                 "row_count": stat.row_count,
                 "checksum": stat.checksum,
@@ -793,6 +820,9 @@ class WorkflowRunArchiver:
         sorted_runs = sorted(runs, key=lambda run: (run.created_at, run.id))
         end_before = self.end_before
         if end_before is None:
+            raise ValueError("archive window end must be set")
+        archive_window_end = self._format_window_datetime(end_before)
+        if archive_window_end is None:
             raise ValueError("archive window end must be set")
         return ArchiveManifestDict(
             schema_version=ARCHIVE_BUNDLE_SCHEMA_VERSION,
@@ -813,7 +843,7 @@ class WorkflowRunArchiver:
             archived_at=datetime.datetime.now(datetime.UTC).isoformat(),
             campaign_id=self.campaign_id,
             archive_window_start=self._format_window_datetime(self.start_from),
-            archive_window_end=end_before.isoformat(),
+            archive_window_end=archive_window_end,
             run_shard=identity.shard,
             tables=tables,
             run_ids=[run.id for run in sorted_runs],

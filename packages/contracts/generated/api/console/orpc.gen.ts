@@ -4,44 +4,67 @@ export const contractLoaders = {
   account: () => import('./account/orpc.gen').then(({ account }) => ({ account })),
   activate: () => import('./activate/orpc.gen').then(({ activate }) => ({ activate })),
   agent: () => import('./agent/orpc.gen').then(({ agent }) => ({ agent })),
-  allWorkspaces: () => import('./all-workspaces/orpc.gen').then(({ allWorkspaces }) => ({ allWorkspaces })),
-  apiBasedExtension: () => import('./api-based-extension/orpc.gen').then(({ apiBasedExtension }) => ({ apiBasedExtension })),
+  allWorkspaces: () =>
+    import('./all-workspaces/orpc.gen').then(({ allWorkspaces }) => ({ allWorkspaces })),
+  apiBasedExtension: () =>
+    import('./api-based-extension/orpc.gen').then(({ apiBasedExtension }) => ({
+      apiBasedExtension,
+    })),
   apiKeyAuth: () => import('./api-key-auth/orpc.gen').then(({ apiKeyAuth }) => ({ apiKeyAuth })),
   app: () => import('./app/orpc.gen').then(({ app }) => ({ app })),
-  appDslVersion: () => import('./app-dsl-version/orpc.gen').then(({ appDslVersion }) => ({ appDslVersion })),
+  appDslVersion: () =>
+    import('./app-dsl-version/orpc.gen').then(({ appDslVersion }) => ({ appDslVersion })),
   apps: () => import('./apps/orpc.gen').then(({ apps }) => ({ apps })),
   auth: () => import('./auth/orpc.gen').then(({ auth }) => ({ auth })),
   billing: () => import('./billing/orpc.gen').then(({ billing }) => ({ billing })),
-  codeBasedExtension: () => import('./code-based-extension/orpc.gen').then(({ codeBasedExtension }) => ({ codeBasedExtension })),
+  codeBasedExtension: () =>
+    import('./code-based-extension/orpc.gen').then(({ codeBasedExtension }) => ({
+      codeBasedExtension,
+    })),
   compliance: () => import('./compliance/orpc.gen').then(({ compliance }) => ({ compliance })),
   dataSource: () => import('./data-source/orpc.gen').then(({ dataSource }) => ({ dataSource })),
   datasets: () => import('./datasets/orpc.gen').then(({ datasets }) => ({ datasets })),
-  emailCodeLogin: () => import('./email-code-login/orpc.gen').then(({ emailCodeLogin }) => ({ emailCodeLogin })),
-  emailRegister: () => import('./email-register/orpc.gen').then(({ emailRegister }) => ({ emailRegister })),
+  emailCodeLogin: () =>
+    import('./email-code-login/orpc.gen').then(({ emailCodeLogin }) => ({ emailCodeLogin })),
+  emailRegister: () =>
+    import('./email-register/orpc.gen').then(({ emailRegister }) => ({ emailRegister })),
   explore: () => import('./explore/orpc.gen').then(({ explore }) => ({ explore })),
   features: () => import('./features/orpc.gen').then(({ features }) => ({ features })),
   files: () => import('./files/orpc.gen').then(({ files }) => ({ files })),
-  forgotPassword: () => import('./forgot-password/orpc.gen').then(({ forgotPassword }) => ({ forgotPassword })),
+  forgotPassword: () =>
+    import('./forgot-password/orpc.gen').then(({ forgotPassword }) => ({ forgotPassword })),
   form: () => import('./form/orpc.gen').then(({ form }) => ({ form })),
   info: () => import('./info/orpc.gen').then(({ info }) => ({ info })),
-  installedApps: () => import('./installed-apps/orpc.gen').then(({ installedApps }) => ({ installedApps })),
-  instructionGenerate: () => import('./instruction-generate/orpc.gen').then(({ instructionGenerate }) => ({ instructionGenerate })),
+  installedApps: () =>
+    import('./installed-apps/orpc.gen').then(({ installedApps }) => ({ installedApps })),
+  instructionGenerate: () =>
+    import('./instruction-generate/orpc.gen').then(({ instructionGenerate }) => ({
+      instructionGenerate,
+    })),
   login: () => import('./login/orpc.gen').then(({ login }) => ({ login })),
   logout: () => import('./logout/orpc.gen').then(({ logout }) => ({ logout })),
-  notification: () => import('./notification/orpc.gen').then(({ notification }) => ({ notification })),
+  notification: () =>
+    import('./notification/orpc.gen').then(({ notification }) => ({ notification })),
   notion: () => import('./notion/orpc.gen').then(({ notion }) => ({ notion })),
   oauth: () => import('./oauth/orpc.gen').then(({ oauth }) => ({ oauth })),
   rag: () => import('./rag/orpc.gen').then(({ rag }) => ({ rag })),
-  refreshToken: () => import('./refresh-token/orpc.gen').then(({ refreshToken }) => ({ refreshToken })),
+  refreshToken: () =>
+    import('./refresh-token/orpc.gen').then(({ refreshToken }) => ({ refreshToken })),
   remoteFiles: () => import('./remote-files/orpc.gen').then(({ remoteFiles }) => ({ remoteFiles })),
-  resetPassword: () => import('./reset-password/orpc.gen').then(({ resetPassword }) => ({ resetPassword })),
-  ruleCodeGenerate: () => import('./rule-code-generate/orpc.gen').then(({ ruleCodeGenerate }) => ({ ruleCodeGenerate })),
-  ruleGenerate: () => import('./rule-generate/orpc.gen').then(({ ruleGenerate }) => ({ ruleGenerate })),
+  resetPassword: () =>
+    import('./reset-password/orpc.gen').then(({ resetPassword }) => ({ resetPassword })),
+  ruleCodeGenerate: () =>
+    import('./rule-code-generate/orpc.gen').then(({ ruleCodeGenerate }) => ({ ruleCodeGenerate })),
+  ruleGenerate: () =>
+    import('./rule-generate/orpc.gen').then(({ ruleGenerate }) => ({ ruleGenerate })),
   ruleStructuredOutputGenerate: () =>
-    import('./rule-structured-output-generate/orpc.gen').then(({ ruleStructuredOutputGenerate }) => ({ ruleStructuredOutputGenerate })),
+    import('./rule-structured-output-generate/orpc.gen').then(
+      ({ ruleStructuredOutputGenerate }) => ({ ruleStructuredOutputGenerate }),
+    ),
   snippets: () => import('./snippets/orpc.gen').then(({ snippets }) => ({ snippets })),
   spec: () => import('./spec/orpc.gen').then(({ spec }) => ({ spec })),
-  systemFeatures: () => import('./system-features/orpc.gen').then(({ systemFeatures }) => ({ systemFeatures })),
+  systemFeatures: () =>
+    import('./system-features/orpc.gen').then(({ systemFeatures }) => ({ systemFeatures })),
   tagBindings: () => import('./tag-bindings/orpc.gen').then(({ tagBindings }) => ({ tagBindings })),
   tags: () => import('./tags/orpc.gen').then(({ tags }) => ({ tags })),
   test: () => import('./test/orpc.gen').then(({ test }) => ({ test })),
@@ -49,6 +72,11 @@ export const contractLoaders = {
   trialModels: () => import('./trial-models/orpc.gen').then(({ trialModels }) => ({ trialModels })),
   website: () => import('./website/orpc.gen').then(({ website }) => ({ website })),
   workflow: () => import('./workflow/orpc.gen').then(({ workflow }) => ({ workflow })),
-  workflowGenerate: () => import('./workflow-generate/orpc.gen').then(({ workflowGenerate }) => ({ workflowGenerate })),
+  workflowGenerate: () =>
+    import('./workflow-generate/orpc.gen').then(({ workflowGenerate }) => ({ workflowGenerate })),
+  workflowRunArchives: () =>
+    import('./workflow-run-archives/orpc.gen').then(({ workflowRunArchives }) => ({
+      workflowRunArchives,
+    })),
   workspaces: () => import('./workspaces/orpc.gen').then(({ workspaces }) => ({ workspaces })),
 }

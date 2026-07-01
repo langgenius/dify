@@ -56,6 +56,15 @@ def _parse_tenant_prefixes(prefixes: str | None) -> list[str]:
     return sorted(set(parsed))
 
 
+def _parse_comma_separated_ids(raw_ids: str | None, *, param_name: str) -> list[str] | None:
+    if raw_ids is None:
+        return None
+    parsed = sorted({raw_id.strip() for raw_id in raw_ids.split(",") if raw_id.strip()})
+    if not parsed:
+        raise click.BadParameter(f"{param_name} must not be empty")
+    return parsed
+
+
 def _get_archive_candidate_tenant_ids_by_prefix(
     prefix: str,
     *,
@@ -637,6 +646,82 @@ def archive_workflow_runs(
             fg="green",
         )
     )
+
+
+@click.command(
+    "backfill-workflow-run-archive-bundles",
+    help="Backfill workflow-run archive bundle DB index from object-storage manifests.",
+)
+@click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs.")
+@click.option(
+    "--tenant-prefixes",
+    default=None,
+    help="Optional comma-separated tenant ID first hex digits, e.g. 0,1,a,f.",
+)
+@click.option("--year", default=None, type=click.IntRange(min=1, max=9999), help="Optional archive year filter.")
+@click.option("--month", default=None, type=click.IntRange(min=1, max=12), help="Optional archive month filter.")
+@click.option("--limit", default=None, type=click.IntRange(min=1), help="Maximum number of manifests to process.")
+@click.option("--dry-run", is_flag=True, help="Preview without writing workflow_run_archive_bundles.")
+def backfill_workflow_run_archive_bundles(
+    tenant_ids: str | None,
+    tenant_prefixes: str | None,
+    year: int | None,
+    month: int | None,
+    limit: int | None,
+    dry_run: bool,
+) -> None:
+    """
+    Reconcile `workflow_run_archive_bundles` from V2 archive manifests.
+
+    This command is meant for bootstrapping the listing/download index after deploy or repairing index drift. The R2
+    manifests remain the source of truth; this command only mirrors their query metadata into the database.
+    """
+    from services.retention.workflow_run.archive_bundle_index import WorkflowRunArchiveBundleIndexBackfill
+
+    if tenant_ids and tenant_prefixes:
+        raise click.UsageError("Choose either --tenant-ids or --tenant-prefixes, not both.")
+    if month is not None and year is None:
+        raise click.UsageError("--month must be used with --year.")
+
+    parsed_tenant_ids = _parse_comma_separated_ids(tenant_ids, param_name="tenant-ids")
+    parsed_tenant_prefixes = _parse_tenant_prefixes(tenant_prefixes)
+    if not parsed_tenant_ids and not parsed_tenant_prefixes:
+        click.echo(
+            click.style(
+                "No tenant scope supplied; scanning the full workflow-runs/v2/ archive prefix.",
+                fg="yellow",
+            )
+        )
+
+    started_at = datetime.datetime.now(datetime.UTC)
+    click.echo(click.style(f"Starting archive bundle index backfill at {started_at.isoformat()}.", fg="white"))
+
+    backfill = WorkflowRunArchiveBundleIndexBackfill()
+    summary = backfill.run(
+        tenant_ids=parsed_tenant_ids,
+        tenant_prefixes=parsed_tenant_prefixes or None,
+        year=year,
+        month=month,
+        limit=limit,
+        dry_run=dry_run,
+    )
+    status = "completed with failures" if summary.bundles_failed else "completed successfully"
+    fg = "red" if summary.bundles_failed else "green"
+    action = "would_upsert" if dry_run else "upserted"
+    action_count = summary.bundles_processed if dry_run else summary.bundles_upserted
+    click.echo(
+        click.style(
+            f"Backfill {status}. manifests_found={summary.manifests_found} "
+            f"bundles_processed={summary.bundles_processed} {action}={action_count} "
+            f"bundles_failed={summary.bundles_failed} runs={summary.workflow_run_count} rows={summary.row_count} "
+            f"archive_bytes={summary.archive_bytes} duration={summary.elapsed_time:.2f}s",
+            fg=fg,
+        )
+    )
+    for error in summary.errors[:10]:
+        click.echo(click.style(f"  failed {error}", fg="red"))
+    if len(summary.errors) > 10:
+        click.echo(click.style(f"  ... and {len(summary.errors) - 10} more failures", fg="red"))
 
 
 def _echo_bundle_archive_operation_summary(summary) -> None:

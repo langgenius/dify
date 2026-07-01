@@ -36,6 +36,7 @@ import { test } from '@dify/contracts/api/console/test/orpc.gen'
 import { trialModels } from '@dify/contracts/api/console/trial-models/orpc.gen'
 import { website } from '@dify/contracts/api/console/website/orpc.gen'
 import { workflowGenerate } from '@dify/contracts/api/console/workflow-generate/orpc.gen'
+import { workflowRunArchives } from '@dify/contracts/api/console/workflow-run-archives/orpc.gen'
 import { workflow } from '@dify/contracts/api/console/workflow/orpc.gen'
 import { contract as enterpriseContract } from '@dify/contracts/enterprise/orpc.gen'
 import { rbacAccessConfigContract } from './console/access-control'
@@ -95,6 +96,7 @@ const communityContract = {
   website,
   workflow,
   workflowGenerate,
+  workflowRunArchives,
 }
 
 export const consoleRouterContract = {

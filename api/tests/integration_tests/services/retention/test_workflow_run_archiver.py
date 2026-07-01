@@ -7,6 +7,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
+from models.workflow import WorkflowRunArchiveBundle
 from services.retention.workflow_run.archive_paid_plan_workflow_run import (
     ArchiveSummary,
     WorkflowRunArchiver,
@@ -399,6 +400,37 @@ class TestArchiveRunIdempotency:
         assert result.success is True
         assert result.skipped is True
         assert result.error == "bundle already archived"
+
+    def test_successful_bundle_persists_archive_index(self):
+        archiver = WorkflowRunArchiver(days=90)
+        run = MagicMock()
+        run.id = str(uuid.uuid4())
+        run.tenant_id = str(uuid.uuid4())
+        run.created_at = datetime.datetime(2025, 3, 15, 10, 0, 0)
+        session = MagicMock()
+        session.scalar.return_value = None
+        storage = MagicMock()
+        storage.object_exists.return_value = False
+        table_data = {
+            "workflow_runs": [{"id": run.id, "tenant_id": run.tenant_id}],
+            "workflow_node_executions": [{"id": str(uuid.uuid4()), "workflow_run_id": run.id}],
+        }
+
+        with (
+            patch.object(archiver, "_lock_runs_for_archive", return_value=[run]),
+            patch.object(archiver, "_extract_bundle_data", return_value=table_data),
+        ):
+            result = archiver._archive_bundle(session, storage, [run])
+
+        archived_bundle = session.add.call_args.args[0]
+        assert result.success is True
+        assert isinstance(archived_bundle, WorkflowRunArchiveBundle)
+        assert archived_bundle.tenant_id == run.tenant_id
+        assert archived_bundle.year == 2025
+        assert archived_bundle.month == 3
+        assert archived_bundle.workflow_run_count == 1
+        assert archived_bundle.row_count == 2
+        session.commit.assert_called_once()
 
     def test_index_skips_all_already_archived_runs(self):
         archiver = WorkflowRunArchiver(days=90)

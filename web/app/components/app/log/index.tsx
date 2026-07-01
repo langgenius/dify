@@ -62,6 +62,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   useEffect(() => {
     const pageFromParams = getPageFromParams()
+    // eslint-disable-next-line react/set-state-in-effect -- URL page changes intentionally resync local pagination state.
     setCurrPage(prev => (prev === pageFromParams ? prev : pageFromParams))
   }, [getPageFromParams])
 

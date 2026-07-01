@@ -818,11 +818,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/log/index.tsx": {
-    "react/set-state-in-effect": {
-      "count": 1
-    }
-  },
   "web/app/components/app/log/list.tsx": {
     "react/set-state-in-effect": {
       "count": 6
