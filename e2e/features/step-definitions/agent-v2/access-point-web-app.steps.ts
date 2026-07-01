@@ -1,10 +1,8 @@
 import type { DifyWorld } from '../../support/world'
 import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
-import {
-  getAgentComposerDraft,
-  setAgentSiteAccessAndGetURL,
-} from '../../agent-v2/support/agent'
+import { setAgentSiteAccessAndGetURL } from '../../agent-v2/support/access-point'
+import { getAgentComposerDraft } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
 import {
   getCurrentAgentId,

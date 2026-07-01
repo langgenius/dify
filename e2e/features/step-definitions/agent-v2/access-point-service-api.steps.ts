@@ -3,10 +3,10 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
   createAgentApiKey,
-  publishAgent,
   sendAgentServiceApiChatMessage,
   setAgentApiAccess,
-} from '../../agent-v2/support/agent'
+} from '../../agent-v2/support/access-point'
+import { publishAgent } from '../../agent-v2/support/agent'
 import { agentBuilderExpectedTokens } from '../../agent-v2/support/agent-builder-resources'
 import { getCurrentAgentId, getServiceApiCard } from './access-point-helpers'
 

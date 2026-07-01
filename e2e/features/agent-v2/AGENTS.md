@@ -87,7 +87,7 @@ Use the existing namespace shape:
 - `world.agentBuilder.workflow.agentConsolePage`
 - `world.agentBuilder.workflow.outputVariables`
 
-Use `features/agent-v2/support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, API access toggles, Agent drive file cleanup, and Agent cleanup. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
+Use `features/agent-v2/support/agent.ts` for Agent v2 API fixtures. It owns roster-shaped Agent IDs, configure/access route helpers, composer draft sync, build-draft helpers, publish, Agent drive file cleanup, and Agent cleanup. Use `features/agent-v2/support/access-point.ts` for Web app access, Backend service API access, API keys, and service API request helpers. Store created roster Agent IDs in `DifyWorld.createdAgentIds`; the shared `After` hook deletes them after each scenario.
 
 Use `DifyWorld.createdAgentDriveFiles` for Agent drive files committed during a scenario and `DifyWorld.createdBuiltinToolCredentials` for built-in tool credentials created during a scenario. The shared `After` hook deletes Agent drive files first so cleanup also works for scenarios that upload into a preseeded Agent.
 

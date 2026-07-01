@@ -1,5 +1,4 @@
 import type {
-  AgentApiAccessResponse,
   AgentAppComposerResponse,
   AgentAppDetailWithSite,
   AgentBuildDraftResponse,
@@ -15,17 +14,11 @@ import type {
   AgentReferencingWorkflowsResponse,
   AgentSkillUploadResponse,
   AgentSoulConfig,
-  ApiKeyItem,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type {
-  ChatRequestPayloadWithUser,
-  PostChatMessagesResponse,
-} from '@dify/contracts/api/service/types.gen'
 import { Buffer } from 'node:buffer'
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { request } from '@playwright/test'
-import { createApiContext, expectApiResponseOK, setAppSiteEnabled } from '../../../support/api'
+import { createApiContext, expectApiResponseOK } from '../../../support/api'
 import { assertE2EResourceName, createE2EResourceName } from '../../../support/naming'
 
 export type AgentSeed = Pick<
@@ -62,12 +55,6 @@ export type CreateTestAgentOptions = {
   description?: string
   name?: string
   role?: string
-}
-
-export type AgentServiceApiChatResult = {
-  body: PostChatMessagesResponse | unknown
-  ok: boolean
-  status: number
 }
 
 export const defaultAgentSoulConfig: AgentSoulConfig = {
@@ -577,120 +564,6 @@ export async function publishAgent(agentId: string, versionNote = 'E2E publish')
       data: { version_note: versionNote },
     })
     await expectApiResponseOK(response, `Publish Agent v2 test agent ${agentId}`)
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
-
-export async function enableAgentSiteAndGetURL(agentId: string): Promise<string> {
-  return setAgentSiteAccessAndGetURL(agentId, true)
-}
-
-export async function setAgentSiteAccessAndGetURL(
-  agentId: string,
-  enabled: boolean,
-): Promise<string> {
-  const agent = await getTestAgent(agentId)
-  const appId = agent.app_id ?? agent.backing_app_id
-  if (!appId)
-    throw new Error(`Agent v2 ${agentId} does not expose a backing app ID.`)
-
-  const appDetail = await setAppSiteEnabled(appId, enabled)
-  const token = agent.site?.access_token ?? agent.site?.code ?? appDetail.site.access_token
-  const baseURL = agent.site?.app_base_url ?? appDetail.site.app_base_url
-
-  return `${baseURL.replace(/\/$/, '')}/agent/${token}`
-}
-
-export async function getAgentApiAccess(agentId: string): Promise<AgentApiAccessResponse> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.get(`/console/api/agent/${agentId}/api-access`)
-    await expectApiResponseOK(response, `Get Agent v2 API access for ${agentId}`)
-    return (await response.json()) as AgentApiAccessResponse
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
-
-export async function setAgentApiAccess(
-  agentId: string,
-  enabled: boolean,
-): Promise<AgentApiAccessResponse> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post(`/console/api/agent/${agentId}/api-enable`, {
-      data: { enable_api: enabled },
-    })
-    await expectApiResponseOK(
-      response,
-      `${enabled ? 'Enable' : 'Disable'} Agent v2 API access for ${agentId}`,
-    )
-    return (await response.json()) as AgentApiAccessResponse
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
-
-export async function createAgentApiKey(agentId: string): Promise<ApiKeyItem> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.post(`/console/api/agent/${agentId}/api-keys`)
-    await expectApiResponseOK(response, `Create Agent v2 API key for ${agentId}`)
-    return (await response.json()) as ApiKeyItem
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
-
-export async function deleteAgentApiKey(agentId: string, apiKeyId: string): Promise<void> {
-  const ctx = await createApiContext()
-  try {
-    const response = await ctx.delete(`/console/api/agent/${agentId}/api-keys/${apiKeyId}`)
-    await expectApiResponseOK(response, `Delete Agent v2 API key ${apiKeyId} for ${agentId}`)
-  }
-  finally {
-    await ctx.dispose()
-  }
-}
-
-export async function sendAgentServiceApiChatMessage({
-  apiKey,
-  query = 'Please reply with the test success marker.',
-  serviceApiBaseURL,
-}: {
-  apiKey: string
-  query?: string
-  serviceApiBaseURL: string
-}): Promise<AgentServiceApiChatResult> {
-  const ctx = await request.newContext()
-  const body = {
-    inputs: {},
-    query,
-    response_mode: 'blocking',
-    user: 'e2e-agent-access-point',
-  } satisfies ChatRequestPayloadWithUser
-
-  try {
-    const response = await ctx.post(`${serviceApiBaseURL.replace(/\/$/, '')}/chat-messages`, {
-      data: body,
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
-    })
-    const responseBody = await response.json().catch(async () => ({
-      message: await response.text().catch(() => ''),
-    }))
-
-    return {
-      body: responseBody as PostChatMessagesResponse | unknown,
-      ok: response.ok(),
-      status: response.status(),
-    }
   }
   finally {
     await ctx.dispose()
