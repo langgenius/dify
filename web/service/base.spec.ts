@@ -393,3 +393,60 @@ describe('HTTP methods', () => {
     expect(typeof del).toBe('function')
   })
 })
+
+describe('request 401 sign-in redirect', () => {
+  const originalLocation = globalThis.location
+  const hrefSetter = vi.fn<(value: string) => void>()
+
+  const mock401OnPublicPage = () => {
+    // Refresh fails, so the handler falls through to the sign-in redirect branch.
+    refreshAccessTokenOrReLoginMock.mockRejectedValue(new Error('refresh failed'))
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ message: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: {
+        origin: 'https://example.com',
+        pathname: '/chat/abc',
+        search: '',
+        get href() {
+          return 'https://example.com/chat/abc'
+        },
+        set href(value: string) {
+          hrefSetter(value)
+        },
+      },
+    })
+  })
+
+  afterEach(() => {
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: originalLocation,
+    })
+  })
+
+  it('does not redirect to sign-in for a silent request (best-effort call on a public page)', async () => {
+    mock401OnPublicPage()
+
+    await expect(get('/account/profile', {}, { silent: true })).rejects.toBeDefined()
+
+    expect(hrefSetter).not.toHaveBeenCalled()
+  })
+
+  it('redirects to sign-in for a non-silent request', async () => {
+    mock401OnPublicPage()
+
+    await expect(get('/account/profile', {}, {})).rejects.toBeDefined()
+
+    expect(hrefSetter).toHaveBeenCalledWith(expect.stringContaining('/signin'))
+  })
+})

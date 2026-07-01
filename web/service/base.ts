@@ -949,7 +949,12 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
       if (window.location.pathname === `${basePath}/device`)
         return Promise.reject(err)
       if (window.location.pathname !== `${basePath}/signin` || !IS_CE_EDITION) {
-        jumpTo(buildSigninUrlWithRedirect())
+        // A silent request is best-effort (e.g. the background timezone profile
+        // lookup that the shared chat renders on a public web-app page). A 401
+        // from it must not hijack navigation to the console sign-in page; reject
+        // and let the caller fall back instead. See issue #38158.
+        if (!silent)
+          jumpTo(buildSigninUrlWithRedirect())
         return Promise.reject(err)
       }
       if (!silent) {
