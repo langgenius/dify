@@ -7,6 +7,26 @@ Feature: Agent v2 Access Point
     And I switch to the Agent v2 Access Point section
     Then I should see the Agent v2 Access Point overview
 
+  @web-app-access
+  Scenario: Web app access actions open their public surfaces
+    Given I am signed in as the default E2E admin
+    And the Agent Builder preseeded Agent "E2E Agent Published Web App" is available
+    And the Agent Builder preseeded Agent "E2E Agent Published Web App" has published Web app access
+    When I open the preseeded Agent v2 Access Point page for "E2E Agent Published Web App" from the Agent Roster
+    Then I should see the Agent v2 Web app access URL
+    And I record the Agent v2 orchestration draft for "E2E Agent Published Web App"
+    When I copy the Agent v2 Web app access URL
+    Then the Agent v2 Web app access URL should show it was copied
+    When I launch the Agent v2 Web app
+    Then the Agent v2 Web app should open in a new tab
+    When I open Agent v2 Embedded configuration
+    Then I should see the Agent v2 Embedded configuration dialog
+    When I open Agent v2 Web app customization
+    Then I should see the Agent v2 Web app customization dialog
+    When I open Agent v2 Web app settings
+    Then I should see the Agent v2 Web app settings dialog
+    And the Agent v2 orchestration draft for "E2E Agent Published Web App" should be unchanged
+
   @workflow-reference
   Scenario: Workflow access shows the referencing workflow
     Given I am signed in as the default E2E admin

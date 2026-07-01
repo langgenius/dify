@@ -3,6 +3,7 @@ import { Given, Then, When } from '@cucumber/cucumber'
 import { expect } from '@playwright/test'
 import {
   getAgentAccessPath,
+  getAgentComposerDraft,
   getAgentReferencingWorkflows,
   setAgentApiAccess,
 } from '../../../support/agent'
@@ -25,6 +26,19 @@ const getPreseededResource = (world: DifyWorld, name: string, kind: 'agent' | 'w
   }
 
   return resource
+}
+
+const getAccessRegion = (world: DifyWorld) =>
+  world.getPage().getByRole('region', { name: 'Access Point' })
+
+const getDialog = (world: DifyWorld, name: string | RegExp) =>
+  world.getPage().getByRole('dialog', { name })
+
+const closeDialog = async (world: DifyWorld, name: string | RegExp) => {
+  const dialog = getDialog(world, name)
+
+  await dialog.getByLabel('Close').click()
+  await expect(dialog).not.toBeVisible()
 }
 
 Given(
@@ -95,6 +109,114 @@ Then('I should see the Agent v2 Access Point overview', async function (this: Di
   await expect(accessRegion.getByRole('columnheader', { name: 'Actions' })).toBeVisible()
   await expect(accessRegion.getByText('No workflow references yet.')).toBeVisible()
 })
+
+Then('I should see the Agent v2 Web app access URL', async function (this: DifyWorld) {
+  const accessRegion = getAccessRegion(this)
+
+  await expect(accessRegion.getByRole('heading', { name: 'Web app' })).toBeVisible()
+  await expect(accessRegion.getByText('Access URL')).toBeVisible()
+  await expect(accessRegion.getByLabel('Copy access URL')).toBeEnabled()
+  await expect(accessRegion.getByRole('link', { name: 'Launch' })).toBeVisible()
+})
+
+Then(
+  'I record the Agent v2 orchestration draft for {string}',
+  async function (this: DifyWorld, agentName: string) {
+    const agent = getPreseededResource(this, agentName, 'agent')
+    const draft = await getAgentComposerDraft(agent.id)
+
+    this.lastAgentComposerDraftSnapshot = JSON.stringify(draft.agent_soul ?? {})
+  },
+)
+
+When('I copy the Agent v2 Web app access URL', async function (this: DifyWorld) {
+  await getAccessRegion(this).getByLabel('Copy access URL').click()
+})
+
+Then('the Agent v2 Web app access URL should show it was copied', async function (this: DifyWorld) {
+  await expect(this.getPage().getByLabel('Copied')).toBeVisible()
+})
+
+When('I launch the Agent v2 Web app', async function (this: DifyWorld) {
+  const launchLink = getAccessRegion(this).getByRole('link', { name: 'Launch' })
+  const href = await launchLink.getAttribute('href')
+  if (!href)
+    throw new Error('Agent v2 Web app Launch link does not expose an href.')
+
+  const [webAppPage] = await Promise.all([
+    this.getPage().waitForEvent('popup'),
+    launchLink.click(),
+  ])
+
+  this.lastAgentWebAppURL = href
+  this.lastAgentWebAppPage = webAppPage
+})
+
+Then('the Agent v2 Web app should open in a new tab', async function (this: DifyWorld) {
+  const webAppPage = this.lastAgentWebAppPage
+  const webAppURL = this.lastAgentWebAppURL
+  if (!webAppPage || !webAppURL)
+    throw new Error('No Agent v2 Web app page was opened.')
+
+  await expect(webAppPage).toHaveURL(webAppURL)
+  await webAppPage.close()
+  this.lastAgentWebAppPage = undefined
+  this.lastAgentWebAppURL = undefined
+})
+
+When('I open Agent v2 Embedded configuration', async function (this: DifyWorld) {
+  await getAccessRegion(this).getByRole('button', { name: 'Embedded' }).click()
+})
+
+Then('I should see the Agent v2 Embedded configuration dialog', async function (this: DifyWorld) {
+  const dialog = getDialog(this, 'Embed on website')
+
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Embed on website')).toBeVisible()
+  await expect(dialog.getByText(/iframe|script/i)).toBeVisible()
+  await closeDialog(this, 'Embed on website')
+})
+
+When('I open Agent v2 Web app customization', async function (this: DifyWorld) {
+  await getAccessRegion(this).getByRole('button', { name: 'Customize' }).click()
+})
+
+Then('I should see the Agent v2 Web app customization dialog', async function (this: DifyWorld) {
+  const dialog = getDialog(this, 'Customize AI web app')
+
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Customize AI web app')).toBeVisible()
+  await expect(dialog.getByText(/NEXT_PUBLIC_APP_ID|NEXT_PUBLIC_API_URL/)).toBeVisible()
+  await closeDialog(this, 'Customize AI web app')
+})
+
+When('I open Agent v2 Web app settings', async function (this: DifyWorld) {
+  await getAccessRegion(this).getByRole('button', { name: 'Settings' }).click()
+})
+
+Then('I should see the Agent v2 Web app settings dialog', async function (this: DifyWorld) {
+  const dialog = getDialog(this, 'Web App Settings')
+
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByText('Web App Settings')).toBeVisible()
+  await expect(dialog.getByText('web app Name')).toBeVisible()
+  await expect(dialog.getByText('web app Description')).toBeVisible()
+  await closeDialog(this, 'Web App Settings')
+})
+
+Then(
+  'the Agent v2 orchestration draft for {string} should be unchanged',
+  async function (this: DifyWorld, agentName: string) {
+    const snapshot = this.lastAgentComposerDraftSnapshot
+    if (!snapshot)
+      throw new Error('No Agent v2 orchestration draft snapshot was recorded.')
+
+    const agent = getPreseededResource(this, agentName, 'agent')
+    const draft = await getAgentComposerDraft(agent.id)
+
+    expect(JSON.stringify(draft.agent_soul ?? {})).toBe(snapshot)
+  },
+)
 
 Then(
   'I should see the Agent v2 Workflow access reference for {string}',
