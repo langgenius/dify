@@ -16,7 +16,6 @@ Covers:
 import threading
 import time
 import uuid
-from contextlib import contextmanager
 from unittest.mock import MagicMock
 
 import pytest
@@ -24,6 +23,7 @@ from pytest_mock import MockerFixture
 
 import services.app_generate_service as ags_module
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from enums.quota_type import QuotaType
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
@@ -62,6 +62,28 @@ class _DummyRateLimit:
         return generator
 
 
+class _TrackingRateLimit(_DummyRateLimit):
+    instances: list["_TrackingRateLimit"] = []
+
+    def __init__(self, client_id: str, max_active_requests: int) -> None:
+        super().__init__(client_id, max_active_requests)
+        self.enter_calls: list[str] = []
+        self.exit_calls: list[str] = []
+        self.instances.append(self)
+
+    def enter(self, request_id: str | None = None) -> str:
+        resolved_request_id = super().enter(request_id)
+        self.enter_calls.append(resolved_request_id)
+        return resolved_request_id
+
+    def exit(self, request_id: str) -> None:
+        super().exit(request_id)
+        self.exit_calls.append(request_id)
+
+    def generate(self, generator, request_id: str):
+        return RateLimitGenerator(self, generator, request_id)
+
+
 def _make_app(mode: AppMode | str, *, max_active_requests: int = 0, is_agent: bool = False) -> MagicMock:
     app = MagicMock()
     app.mode = mode
@@ -83,12 +105,6 @@ def _make_workflow(*, workflow_id: str = "workflow-id", created_by: str = "owner
     workflow.id = workflow_id
     workflow.created_by = created_by
     return workflow
-
-
-@contextmanager
-def _noop_rate_limit_context(rate_limit, request_id):
-    """Drop-in replacement for rate_limit_context that doesn't touch Redis."""
-    yield
 
 
 # ---------------------------------------------------------------------------
@@ -218,11 +234,6 @@ class TestGenerate:
     def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        # Prevent AppExecutionParams.new from touching real models via isinstance
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     # -- COMPLETION ---------------------------------------------------------
     def test_completion_mode(self, mocker: MockerFixture):
@@ -436,16 +447,78 @@ class TestGenerate:
 
 
 # ---------------------------------------------------------------------------
+# generate – streaming rate limit
+# ---------------------------------------------------------------------------
+class TestGenerateStreamingRateLimit:
+    """Regression coverage for app-level active request limiting around streaming responses."""
+
+    @pytest.fixture(autouse=True)
+    def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", False)
+        monkeypatch.setattr(ags_module.dify_config, "PUBSUB_REDIS_CHANNEL_TYPE", "streams")
+        _TrackingRateLimit.instances.clear()
+        mocker.patch("services.app_generate_service.RateLimit", _TrackingRateLimit)
+        mocker.patch.object(AppGenerateService, "_get_workflow", return_value=_make_workflow())
+        mocker.patch(
+            "services.app_generate_service.AppExecutionParams.new",
+            return_value=MagicMock(workflow_run_id="wfr-stream", model_dump_json=MagicMock(return_value="{}")),
+        )
+        mocker.patch("services.app_generate_service.workflow_based_app_execution_task.delay")
+
+    def test_workflow_streaming_keeps_active_request_until_stream_closes(self, mocker: MockerFixture):
+        mocker.patch(
+            "services.app_generate_service.MessageBasedAppGenerator.retrieve_events",
+            return_value=iter(["data: workflow\n\n"]),
+        )
+        mocker.patch(
+            "services.app_generate_service.WorkflowAppGenerator.convert_to_event_stream",
+            side_effect=lambda value: value,
+        )
+
+        stream = AppGenerateService.generate(
+            app_model=_make_app(AppMode.WORKFLOW, max_active_requests=2),
+            user=_make_user(),
+            args={"inputs": {}},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=True,
+        )
+
+        rate_limit = _TrackingRateLimit.instances[-1]
+        assert rate_limit.enter_calls == ["dummy-request-id"]
+        assert rate_limit.exit_calls == []
+
+        stream.close()
+        assert rate_limit.exit_calls == ["dummy-request-id"]
+
+    def test_advanced_chat_streaming_keeps_active_request_until_stream_closes(self, mocker: MockerFixture):
+        generator = MagicMock()
+        generator.retrieve_events.return_value = iter(["data: advanced-chat\n\n"])
+        generator.convert_to_event_stream.side_effect = lambda value: value
+        mocker.patch("services.app_generate_service.AdvancedChatAppGenerator", return_value=generator)
+
+        stream = AppGenerateService.generate(
+            app_model=_make_app(AppMode.ADVANCED_CHAT, max_active_requests=2),
+            user=_make_user(),
+            args={"workflow_id": None, "query": "hi", "inputs": {}},
+            invoke_from=InvokeFrom.SERVICE_API,
+            streaming=True,
+        )
+
+        rate_limit = _TrackingRateLimit.instances[-1]
+        assert rate_limit.enter_calls == ["dummy-request-id"]
+        assert rate_limit.exit_calls == []
+
+        stream.close()
+        assert rate_limit.exit_calls == ["dummy-request-id"]
+
+
+# ---------------------------------------------------------------------------
 # generate – billing / quota
 # ---------------------------------------------------------------------------
 class TestGenerateBilling:
     @pytest.fixture(autouse=True)
     def _common(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         mocker.patch("services.app_generate_service.RateLimit", _DummyRateLimit)
-        mocker.patch(
-            "services.app_generate_service.rate_limit_context",
-            _noop_rate_limit_context,
-        )
 
     def test_billing_enabled_consumes_quota(self, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch):
         monkeypatch.setattr(ags_module.dify_config, "BILLING_ENABLED", True)
