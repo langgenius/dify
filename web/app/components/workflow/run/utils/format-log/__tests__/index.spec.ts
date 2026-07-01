@@ -196,4 +196,29 @@ describe('formatToTracingNodeList', () => {
       }),
     ])
   })
+
+  it('should not keep loop-end traces without loop metadata as top-level nodes', () => {
+    const t = vi.fn((key: string) => key)
+    const loopParent = createTrace({
+      id: 'loop-parent',
+      node_id: 'loop-parent',
+      node_type: BlockEnum.Loop,
+      index: 0,
+    })
+    const loopEnd = createTrace({
+      id: 'loop-end-trace',
+      node_id: 'loop-end',
+      node_type: BlockEnum.LoopEnd,
+      index: 1,
+    })
+
+    const result = formatToTracingNodeList([loopParent, loopEnd], t)
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        node_id: 'loop-parent',
+        parallelFormatted: true,
+      }),
+    ])
+  })
 })

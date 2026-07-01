@@ -8,7 +8,9 @@ import { addChildrenToLoopNode } from './loop'
 import formatParallelNode from './parallel'
 import formatRetryNode from './retry'
 
-const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
+type Translator = (key: string, options?: Record<string, string>) => string
+
+const formatIterationAndLoopNode = (list: NodeTracing[], t: Translator) => {
   const clonedList = cloneDeep(list)
 
   // Identify all loop and iteration nodes
@@ -22,7 +24,10 @@ const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
 
   // Identify all child nodes for both loop and iteration
   const loopChildrenNodeIds = clonedList
-    .filter(item => item.execution_metadata?.loop_id && loopNodeIds.includes(item.execution_metadata.loop_id))
+    .filter(item =>
+      (item.execution_metadata?.loop_id && loopNodeIds.includes(item.execution_metadata.loop_id))
+      || item.node_type === BlockEnum.LoopEnd,
+    )
     .map(item => item.node_id)
 
   const iterationChildrenNodeIds = clonedList
@@ -77,7 +82,7 @@ const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
   return result
 }
 
-const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
+const formatToTracingNodeList = (list: NodeTracing[], t: Translator) => {
   const allItems = cloneDeep([...list]).sort((a, b) => a.index - b.index)
   /*
   * First handle not change list structure node
