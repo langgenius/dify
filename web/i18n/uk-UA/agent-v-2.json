@@ -381,7 +381,7 @@
   "roster.searchLabel": "Пошук агентів",
   "roster.searchPlaceholder": "Пошук агентів за ім'ям…",
   "roster.tabs.agent": "Агент",
-  "roster.tabs.human": "Людина",
+  "roster.tabs.human": "Контакти",
   "roster.tabsLabel": "Тип Roster",
   "roster.updateSuccess": "Агента оновлено.",
   "roster.usageStatus.draft": "Чернетка"

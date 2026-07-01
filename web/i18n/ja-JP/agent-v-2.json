@@ -381,7 +381,7 @@
   "roster.searchLabel": "エージェントを検索",
   "roster.searchPlaceholder": "エージェントを名前で検索…",
   "roster.tabs.agent": "エージェント",
-  "roster.tabs.human": "人間",
+  "roster.tabs.human": "連絡先",
   "roster.tabsLabel": "Roster タイプ",
   "roster.updateSuccess": "エージェントを更新しました。",
   "roster.usageStatus.draft": "ドラフト"
