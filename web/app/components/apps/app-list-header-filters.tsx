@@ -54,24 +54,26 @@ export function AppListHeaderFilters({
   const { t } = useTranslation()
 
   return (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <AppTypeFilter value={category} onChange={onCategoryChange} />
-      <TagFilter
-        type="app"
-        value={tagIDs}
-        onChange={onTagIDsChange}
-        onOpenTagManagement={onOpenTagManagement}
-        showLeadingIcon={false}
-      />
-      <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
-      <AppSortFilter value={sortBy} onChange={onSortByChange} />
-      <SearchInput
-        className="w-50 max-w-full"
-        value={keywords}
-        onValueChange={onKeywordsChange}
-        aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
-      />
-      <div className="flex shrink-0 items-center gap-2">
+    <div className="flex flex-wrap items-start justify-between gap-2">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <AppTypeFilter value={category} onChange={onCategoryChange} />
+        <TagFilter
+          type="app"
+          value={tagIDs}
+          onChange={onTagIDsChange}
+          onOpenTagManagement={onOpenTagManagement}
+          showLeadingIcon={false}
+        />
+        <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
+        <SearchInput
+          className="w-50 max-w-full"
+          value={keywords}
+          onValueChange={onKeywordsChange}
+          aria-label={t('gotoAnything.actions.searchApplications', { ns: 'app' })}
+        />
+      </div>
+      <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
+        <AppSortFilter value={sortBy} onChange={onSortByChange} />
         <Link
           href="/snippets"
           className="flex h-8 items-center rounded-lg px-3 text-sm font-semibold whitespace-nowrap text-text-secondary outline-hidden hover:bg-state-base-hover hover:text-text-primary focus-visible:ring-2 focus-visible:ring-state-accent-solid"
