@@ -16,7 +16,10 @@ import {
   updatedAgentPrompt,
   updatedAgentSoulConfig,
 } from '../../../support/agent'
-import { agentBuilderFixedInputs } from '../../../support/agent-builder-resources'
+import {
+  agentBuilderFixedInputs,
+  agentBuilderPreseededResources,
+} from '../../../support/agent-builder-resources'
 import { waitForAgentConfigureAutosaved } from '../../../support/agent-configure'
 import {
   agentBuilderTestMaterials,
@@ -29,6 +32,25 @@ const getCurrentAgentId = (world: DifyWorld) => {
     throw new Error('No Agent v2 ID found. Create an Agent v2 test agent first.')
 
   return agentId
+}
+
+const getPreseededAgent = (world: DifyWorld, name: string) => {
+  const resource = world.agentBuilderPreseededResources[name]
+  if (!resource || resource.kind !== 'agent') {
+    throw new Error(
+      `Preseeded Agent "${name}" is not available. Run the matching preflight step first.`,
+    )
+  }
+
+  return resource
+}
+
+const getPreseededToolDisplayParts = (displayName: string) => {
+  const [providerName, actionName] = displayName.split(' / ')
+  if (!providerName || !actionName)
+    throw new Error(`Preseeded tool display name must use "Provider / Action": ${displayName}`)
+
+  return { actionName, providerName }
 }
 
 const getEnvVariableKey = (variable: AgentComposerEnvVariable) =>
@@ -188,6 +210,19 @@ When('I open the Agent v2 configure page from the Agent Roster', async function 
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
 })
 
+When(
+  'I open the preseeded Agent v2 configure page for {string} from the Agent Roster',
+  async function (this: DifyWorld, agentName: string) {
+    const page = this.getPage()
+    const agent = getPreseededAgent(this, agentName)
+
+    await page.goto('/roster')
+    await page.getByRole('link', { name: agentName }).click()
+    await expect(page).toHaveURL(new RegExp(`/roster/agent/${agent.id}/configure(?:\\?.*)?$`))
+    await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
+  },
+)
+
 When('I fill the Agent v2 prompt editor with the normal E2E prompt', async function (this: DifyWorld) {
   const page = this.getPage()
   const promptSection = page.getByRole('region', { name: 'Prompt' })
@@ -336,6 +371,47 @@ Then('I should see the Agent v2 configure workspace', async function (this: Dify
   await expect(page.getByRole('region', { name: 'Configure' })).toBeVisible({ timeout: 30_000 })
   await expect(page.getByRole('heading', { name: 'Configure' })).toBeVisible()
   await expect(page.getByText(this.lastCreatedAgentName!)).toBeVisible()
+})
+
+Then('I should see the Agent v2 tool state fixture tools', async function (this: DifyWorld) {
+  const page = this.getPage()
+  const toolsSection = page.getByRole('region', { name: 'Tools' })
+  const jsonTool = getPreseededToolDisplayParts(agentBuilderPreseededResources.jsonReplaceTool)
+  const tavilyTool = getPreseededToolDisplayParts(agentBuilderPreseededResources.tavilySearchTool)
+
+  await expect(toolsSection).toBeVisible({ timeout: 30_000 })
+  await expect(toolsSection.getByRole('button', { exact: true, name: 'Not authorized' })).toBeVisible()
+
+  const jsonProcessProvider = toolsSection.getByRole('button', {
+    exact: true,
+    name: jsonTool.providerName,
+  })
+  await expect(jsonProcessProvider).toBeVisible()
+
+  const jsonReplaceAction = toolsSection.getByText(jsonTool.actionName, { exact: true })
+  if (!await jsonReplaceAction.isVisible())
+    await jsonProcessProvider.click()
+  await expect(jsonReplaceAction).toBeVisible()
+  await jsonReplaceAction.hover()
+  await expect(toolsSection.getByRole('button', {
+    exact: true,
+    name: `Edit ${jsonTool.actionName}`,
+  })).toBeVisible()
+  await expect(toolsSection.getByRole('button', {
+    exact: true,
+    name: `Remove ${jsonTool.actionName}`,
+  })).toBeVisible()
+
+  const tavilyProvider = toolsSection.getByRole('button', {
+    exact: true,
+    name: tavilyTool.providerName,
+  })
+  await expect(tavilyProvider).toBeVisible()
+
+  const tavilySearchAction = toolsSection.getByText(tavilyTool.actionName, { exact: true })
+  if (!await tavilySearchAction.isVisible())
+    await tavilyProvider.click()
+  await expect(tavilySearchAction).toBeVisible()
 })
 
 Then(

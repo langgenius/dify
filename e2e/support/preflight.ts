@@ -270,15 +270,10 @@ const hasToolEntry = (
   },
 ) => Boolean(findToolEntry(items, tool))
 
-const hasToolCredentialReference = (item: unknown) => {
+const hasUnauthorizedToolCredentialState = (item: unknown) => {
   const record = asRecord(item)
-  const credentialRef = asRecord(record.credential_ref)
-  const credentialType = asString(record.credential_type)
 
-  return (
-    (credentialType === 'api-key' || credentialType === 'oauth2')
-    && (Boolean(asString(credentialRef.id)) || Boolean(asString(record.credential_id)))
-  )
+  return asString(record.credential_type) === 'unauthorized'
 }
 
 const hasKnowledgeDataset = (
@@ -726,8 +721,8 @@ export async function skipMissingPreseededToolStatesAgentConfiguration(
     if (!tavilyEntry) {
       missing.push(agentBuilderPreseededResources.tavilySearchTool)
     }
-    else if (!hasToolCredentialReference(tavilyEntry)) {
-      missing.push(`${agentBuilderPreseededResources.tavilySearchTool} credential reference`)
+    else if (!hasUnauthorizedToolCredentialState(tavilyEntry)) {
+      missing.push(`${agentBuilderPreseededResources.tavilySearchTool} unauthorized credential state`)
     }
 
     if (missing.length > 0) {
