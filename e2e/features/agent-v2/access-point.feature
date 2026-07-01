@@ -43,8 +43,10 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
+    And I record the current Agent v2 orchestration draft
     And I open Agent v2 Embedded configuration
     Then I should see the Agent v2 Embedded configuration dialog
+    And the current Agent v2 orchestration draft should be unchanged
 
   @core @web-app-access
   Scenario: Web app customization opens from Access Point
@@ -53,8 +55,10 @@ Feature: Agent v2 Access Point
     And Agent v2 Web app access has been enabled via API
     When I open the Agent v2 configure page from the Agent Roster
     And I switch to the Agent v2 Access Point section
+    And I record the current Agent v2 orchestration draft
     And I open Agent v2 Web app customization
     Then I should see the Agent v2 Web app customization dialog
+    And the current Agent v2 orchestration draft should be unchanged
 
   @core @web-app-access
   Scenario: Web app settings open from Access Point without changing orchestration
