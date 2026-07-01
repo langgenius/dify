@@ -20213,7 +20213,7 @@ Whitelist scopes accepted by RBAC app and dataset access config APIs.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | data | [ [ResourceUserAccessPolicies](#resourceuseraccesspolicies) ] |  | No |
-| scope | string |  | Yes |
+| scope | [RBACResourceWhitelistScope](#rbacresourcewhitelistscope) |  | Yes |
 
 #### ResourceWhitelist
 
