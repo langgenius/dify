@@ -300,7 +300,7 @@ describe('DatasetCard Component', () => {
     const dataset = createMockDataset({
       name: 'Preview Only Dataset',
       permission_keys: [DatasetACLPermission.Preview],
-      tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: 0 }],
+      tags: [{ id: 'tag-preview', name: 'Readonly Tag', type: 'knowledge' as const, binding_count: '' }],
     })
     render(<DatasetCard dataset={dataset} />)
 

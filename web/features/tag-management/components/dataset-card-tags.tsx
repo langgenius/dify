@@ -1,5 +1,5 @@
+import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
 import type { MouseEvent } from 'react'
-import type { Tag } from '@/contract/console/tags'
 import { cn } from '@langgenius/dify-ui/cn'
 import { TagSelector } from '@/features/tag-management/components/tag-selector'
 
