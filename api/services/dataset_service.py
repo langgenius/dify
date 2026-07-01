@@ -3127,6 +3127,8 @@ class DocumentService:
                 rules["parent_mode"] = "paragraph"
         args["process_rule"] = process_rule_dict
 
+        return validated_args
+
     @staticmethod
     def batch_update_document_status(
         dataset: Dataset,
