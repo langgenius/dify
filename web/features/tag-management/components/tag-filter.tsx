@@ -19,6 +19,7 @@ type TagFilterProps = {
   onChange: (v: string[]) => void
   onOpenTagManagement?: () => void
   showLeadingIcon?: boolean
+  triggerClassName?: string
 }
 export const TagFilter = ({
   type,
@@ -26,6 +27,7 @@ export const TagFilter = ({
   onChange,
   onOpenTagManagement = () => {},
   showLeadingIcon = true,
+  triggerClassName,
 }: TagFilterProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -78,6 +80,7 @@ export const TagFilter = ({
           className={cn(
             'flex h-8 max-w-60 min-w-28 cursor-pointer items-center gap-1 rounded-lg border-[0.5px] border-transparent bg-components-input-bg-normal px-2 py-0 text-left whitespace-nowrap select-none hover:bg-components-input-bg-normal focus-visible:bg-components-input-bg-normal focus-visible:ring-2 focus-visible:ring-state-accent-solid data-popup-open:bg-components-input-bg-normal',
             !!value.length && 'pr-6 shadow-xs',
+            triggerClassName,
           )}
         >
           <span className="flex w-full min-w-0 items-center gap-1">

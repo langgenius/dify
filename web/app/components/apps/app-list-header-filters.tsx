@@ -63,6 +63,7 @@ export function AppListHeaderFilters({
           onChange={onTagIDsChange}
           onOpenTagManagement={onOpenTagManagement}
           showLeadingIcon={false}
+          triggerClassName="min-w-0"
         />
         <CreatorsFilter value={creatorIDs} onChange={onCreatorIDsChange} />
         <SearchInput
