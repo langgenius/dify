@@ -462,9 +462,9 @@ describe('List', () => {
       expect(grid).toHaveClass(
         'grid',
         'grid-cols-1',
-        '@4xl/app-list:grid-cols-2',
-        '@6xl/app-list:grid-cols-3',
-        '@7xl/app-list:grid-cols-4',
+        '@3xl/app-list:grid-cols-2',
+        '@5xl/app-list:grid-cols-3',
+        '@6xl/app-list:grid-cols-4',
       )
     })
 
